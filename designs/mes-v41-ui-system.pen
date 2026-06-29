@@ -1,0 +1,332 @@
+{
+  "version": "2.8",
+  "themes": {
+    "mode": ["light", "dark"]
+  },
+  "variables": {
+    "color.primary": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#1677FF" },
+        { "theme": { "mode": "dark" }, "value": "#4096FF" }
+      ]
+    },
+    "color.success": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#52C41A" },
+        { "theme": { "mode": "dark" }, "value": "#73D13D" }
+      ]
+    },
+    "color.warning": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#FA8C16" },
+        { "theme": { "mode": "dark" }, "value": "#FFA940" }
+      ]
+    },
+    "color.error": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#FF4D4F" },
+        { "theme": { "mode": "dark" }, "value": "#FF7875" }
+      ]
+    },
+    "color.surface": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#FFFFFF" },
+        { "theme": { "mode": "dark" }, "value": "#141414" }
+      ]
+    },
+    "color.bg": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#F5F5F5" },
+        { "theme": { "mode": "dark" }, "value": "#0A0A0A" }
+      ]
+    },
+    "color.foreground": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#141414" },
+        { "theme": { "mode": "dark" }, "value": "#F0F0F0" }
+      ]
+    },
+    "color.muted": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#8C8C8C" },
+        { "theme": { "mode": "dark" }, "value": "#A6A6A6" }
+      ]
+    },
+    "color.border": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#D9D9D9" },
+        { "theme": { "mode": "dark" }, "value": "#424242" }
+      ]
+    },
+    "space.md": { "type": "number", "value": 16 },
+    "space.lg": { "type": "number", "value": 24 },
+    "radius.md": { "type": "number", "value": 6 },
+    "font.size.title": { "type": "number", "value": 20 },
+    "font.size.body": { "type": "number", "value": 14 }
+  },
+  "children": [
+    {
+      "type": "frame",
+      "id": "screen-sitemap",
+      "name": "00-设计总览与页面地图",
+      "x": 0,
+      "y": 0,
+      "width": 1440,
+      "height": 900,
+      "fill": "$color.bg",
+      "layout": "vertical",
+      "padding": ["$space.lg", "$space.lg", "$space.lg", "$space.lg"],
+      "gap": "$space.md",
+      "children": [
+        {
+          "type": "text",
+          "id": "sitemap-title",
+          "content": "卷筒纸加工 MES V4.1 — 全系统页面设计",
+          "fontSize": 24,
+          "fontWeight": "600",
+          "fill": "$color.foreground"
+        },
+        {
+          "type": "text",
+          "id": "sitemap-desc",
+          "content": "核心改造：成品配置工作台（三栏）+ 加工单详情（母卷产出视图）。Ant Design 5 中后台风格。",
+          "fontSize": "$font.size.body",
+          "fill": "$color.muted"
+        },
+        {
+          "type": "frame",
+          "id": "sitemap-grid",
+          "layout": "horizontal",
+          "gap": "$space.md",
+          "width": "fill_container",
+          "children": [
+            {
+              "type": "frame",
+              "id": "card-process",
+              "width": 320,
+              "layout": "vertical",
+              "padding": ["$space.md", "$space.md", "$space.md", "$space.md"],
+              "fill": "$color.surface",
+              "cornerRadius": "$radius.md",
+              "stroke": { "align": "inside", "thickness": 1, "fill": "$color.border" },
+              "children": [
+                { "type": "text", "id": "card-process-title", "content": "加工单模块", "fontWeight": "600", "fill": "$color.foreground" },
+                { "type": "text", "id": "card-process-list", "content": "列表 · 新建 · 配置工作台 · 详情 · 回录 · 打印", "fontSize": 13, "fill": "$color.muted" }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "card-delivery",
+              "width": 320,
+              "layout": "vertical",
+              "padding": ["$space.md", "$space.md", "$space.md", "$space.md"],
+              "fill": "$color.surface",
+              "cornerRadius": "$radius.md",
+              "stroke": { "align": "inside", "thickness": 1, "fill": "$color.border" },
+              "children": [
+                { "type": "text", "id": "card-delivery-title", "content": "出库 / 结算", "fontWeight": "600", "fill": "$color.foreground" },
+                { "type": "text", "id": "card-delivery-list", "content": "出库单列表 · 创建出库 · 结算单 · 收款登记", "fontSize": 13, "fill": "$color.muted" }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "card-basic",
+              "width": 320,
+              "layout": "vertical",
+              "padding": ["$space.md", "$space.md", "$space.md", "$space.md"],
+              "fill": "$color.surface",
+              "cornerRadius": "$radius.md",
+              "stroke": { "align": "inside", "thickness": 1, "fill": "$color.border" },
+              "children": [
+                { "type": "text", "id": "card-basic-title", "content": "基础档案 / 报表", "fontWeight": "600", "fill": "$color.foreground" },
+                { "type": "text", "id": "card-basic-list", "content": "客户 · 纸张 · 机台 · 仓库 · 统计报表", "fontSize": 13, "fill": "$color.muted" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "screen-config-finish",
+      "name": "01-成品配置工作台-三栏布局",
+      "x": 1600,
+      "y": 0,
+      "width": 1440,
+      "height": 900,
+      "fill": "$color.bg",
+      "layout": "vertical",
+      "padding": ["$space.lg", "$space.lg", "$space.lg", "$space.lg"],
+      "gap": "$space.md",
+      "children": [
+        {
+          "type": "frame",
+          "id": "config-header",
+          "layout": "horizontal",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            { "type": "text", "id": "config-title", "content": "成品规格配置 — 母卷加工工作台", "fontSize": "$font.size.title", "fontWeight": "600", "fill": "$color.foreground" },
+            { "type": "text", "id": "config-actions", "content": "取消  |  保存当前  |  保存全部并完成", "fontSize": 13, "fill": "$color.primary" }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "config-body",
+          "layout": "horizontal",
+          "width": "fill_container",
+          "height": 720,
+          "gap": "$space.md",
+          "children": [
+            {
+              "type": "frame",
+              "id": "config-left-roll-list",
+              "width": 280,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": ["$space.md", "$space.md", "$space.md", "$space.md"],
+              "fill": "$color.surface",
+              "cornerRadius": "$radius.md",
+              "stroke": { "align": "inside", "thickness": 1, "fill": "$color.border" },
+              "children": [
+                { "type": "text", "id": "left-title", "content": "母卷列表 · 多选 · 全选同规格", "fontWeight": "600", "fill": "$color.foreground" },
+                { "type": "text", "id": "left-item-1", "content": "☑ 原纸1 · 120g/1000mm · 已配 · 950×2", "fontSize": 12, "fill": "$color.primary" },
+                { "type": "text", "id": "left-item-2", "content": "☑ 原纸2 · 标准·复卷 · 已配", "fontSize": 12, "fill": "$color.foreground" },
+                { "type": "text", "id": "left-item-3", "content": "○ 原纸3 · 标准·锯纸 · 未配", "fontSize": 12, "fill": "$color.muted" },
+                { "type": "text", "id": "left-item-4", "content": "○ 原纸5 · 直发", "fontSize": 12, "fill": "$color.muted" }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "config-center-editor",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space.md",
+              "padding": ["$space.md", "$space.md", "$space.md", "$space.md"],
+              "fill": "$color.surface",
+              "cornerRadius": "$radius.md",
+              "stroke": { "align": "inside", "thickness": 1, "fill": "$color.border" },
+              "children": [
+                { "type": "text", "id": "editor-title", "content": "加工方案编辑器 · 复卷模式1", "fontWeight": "600", "fill": "$color.foreground" },
+                { "type": "text", "id": "editor-segment", "content": "段1 · 全卷 · 门幅排布：950 + 50修边 + 950 + 50修边", "fontSize": 13, "fill": "$color.foreground" },
+                { "type": "text", "id": "editor-table", "content": "类型 | 门幅 | 数量 | 修边\n成品 | 950 | 1 | 50\n成品 | 950 | 1 | 50", "fontSize": 12, "fill": "$color.muted" },
+                { "type": "text", "id": "editor-actions", "content": "保存此母卷 · 应用到选中 · 存为模板", "fontSize": 13, "fill": "$color.primary" }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "config-right-preview",
+              "width": 300,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": ["$space.md", "$space.md", "$space.md", "$space.md"],
+              "fill": "$color.surface",
+              "cornerRadius": "$radius.md",
+              "stroke": { "align": "inside", "thickness": 1, "fill": "$color.border" },
+              "children": [
+                { "type": "text", "id": "preview-title", "content": "方案预览", "fontWeight": "600", "fill": "$color.foreground" },
+                { "type": "text", "id": "preview-rolls", "content": "预计：2正式 + 1备用\nA001283 950mm 916kg\nA001284 950mm 916kg", "fontSize": 12, "fill": "$color.foreground" },
+                { "type": "text", "id": "preview-trim", "content": "修边 100mm ≈ 17.7kg", "fontSize": 12, "fill": "$color.muted" },
+                { "type": "text", "id": "preview-fee", "content": "复卷费 ¥370,000", "fontSize": 12, "fill": "$color.success" },
+                { "type": "rectangle", "id": "preview-bar", "width": 260, "height": 24, "cornerRadius": 4, "fill": "$color.primary" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "screen-order-detail",
+      "name": "02-加工单详情-母卷产出视图",
+      "x": 3200,
+      "y": 0,
+      "width": 1440,
+      "height": 900,
+      "fill": "$color.bg",
+      "layout": "vertical",
+      "padding": ["$space.lg", "$space.lg", "$space.lg", "$space.lg"],
+      "gap": "$space.md",
+      "children": [
+        {
+          "type": "text",
+          "id": "detail-title",
+          "content": "加工单详情 PO-20260625-001 · 华东纸业 · 加工中",
+          "fontSize": "$font.size.title",
+          "fontWeight": "600",
+          "fill": "$color.foreground"
+        },
+        {
+          "type": "frame",
+          "id": "detail-stats",
+          "layout": "horizontal",
+          "gap": "$space.md",
+          "children": [
+            { "type": "text", "id": "stat-weight", "content": "原纸 11,570kg", "fill": "$color.foreground" },
+            { "type": "text", "id": "stat-fee", "content": "加工费 ¥482,600", "fill": "$color.success" },
+            { "type": "text", "id": "stat-mix", "content": "混合工艺", "fill": "$color.error" }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "detail-production-table",
+          "width": "fill_container",
+          "layout": "vertical",
+          "padding": ["$space.md", "$space.md", "$space.md", "$space.md"],
+          "fill": "$color.surface",
+          "cornerRadius": "$radius.md",
+          "stroke": { "align": "inside", "thickness": 1, "fill": "$color.border" },
+          "children": [
+            { "type": "text", "id": "prod-table-title", "content": "母卷产出视图", "fontWeight": "600", "fill": "$color.foreground" },
+            { "type": "text", "id": "prod-table-header", "content": "母卷 | 规格 | 模式/工艺 | 方案摘要 | 产出成品 | 修边 | 状态", "fontSize": 11, "fill": "$color.muted" },
+            { "type": "text", "id": "prod-row-1", "content": "A-088 · 1000mm/1850kg · 标准/复卷 · 950×2 · A001283-A284 · 100mm · 加工中", "fontSize": 12, "fill": "$color.foreground" },
+            { "type": "text", "id": "prod-row-2", "content": "合并 A3+A4 · 500×6跨2卷 · A001288-A293 · A3:60% A4:40%", "fontSize": 12, "fill": "$color.foreground" },
+            { "type": "text", "id": "prod-expand", "content": "▼ 展开：分段明细 · 成品卷号 · 来源关系", "fontSize": 12, "fill": "$color.primary" }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "detail-steps",
+          "width": "fill_container",
+          "layout": "vertical",
+          "padding": ["$space.md", "$space.md", "$space.md", "$space.md"],
+          "fill": "$color.surface",
+          "cornerRadius": "$radius.md",
+          "stroke": { "align": "inside", "thickness": 1, "fill": "$color.border" },
+          "children": [
+            { "type": "text", "id": "steps-title", "content": "工序与费用（锯纸/复卷分栏）", "fontWeight": "600", "fill": "$color.foreground" },
+            { "type": "text", "id": "steps-row", "content": "原纸1 复卷 主工艺 1.85t ×200 = ¥370,000", "fontSize": 12, "fill": "$color.muted" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "screen-back-record",
+      "name": "03-回录页-上下对照",
+      "x": 4800,
+      "y": 0,
+      "width": 1440,
+      "height": 900,
+      "fill": "$color.bg",
+      "layout": "vertical",
+      "padding": ["$space.lg", "$space.lg", "$space.lg", "$space.lg"],
+      "gap": "$space.md",
+      "children": [
+        { "type": "text", "id": "back-title", "content": "回录 · 重量闭合状态栏", "fontSize": "$font.size.title", "fontWeight": "600", "fill": "$color.foreground" },
+        { "type": "text", "id": "back-upper", "content": "上层：原纸标称(灰) vs 实际(可编辑) · 一键复制 · 批量重算", "fontSize": 13, "fill": "$color.muted" },
+        { "type": "text", "id": "back-lower", "content": "下层：母卷左合并 + 成品卷号/实称重/±1kg/倒挤/作废备用", "fontSize": 13, "fill": "$color.foreground" }
+      ]
+    }
+  ]
+}

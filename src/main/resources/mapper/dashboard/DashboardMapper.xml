@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.paper.mes.dashboard.mapper.DashboardMapper">
+
+    <select id="metrics" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardMetricVO">
+        SELECT COALESCE(monthly.monthOrderCount, 0) AS monthOrderCount,
+               COALESCE(monthly.monthOriginalWeight, 0) AS monthOriginalWeight,
+               COALESCE(monthly.monthFinishWeight, 0) AS monthFinishWeight,
+               COALESCE(monthly.monthAmount, 0) AS monthAmount,
+               COALESCE(monthly.monthLossWeight, 0) AS monthLossWeight,
+               CASE WHEN COALESCE(monthly.monthOriginalWeight, 0) = 0 THEN 0
+                    ELSE ROUND(monthly.monthLossWeight / monthly.monthOriginalWeight * 100, 2)
+               END AS monthLossRatio,
+               COALESCE(stock.inStockFinishCount, 0) AS inStockFinishCount,
+               COALESCE(stock.inStockFinishWeight, 0) AS inStockFinishWeight,
+               COALESCE(receivable.receivableCount, 0) AS receivableCount,
+               COALESCE(receivable.receivableAmount, 0) AS receivableAmount
+        FROM (
+            SELECT COUNT(*) AS monthOrderCount,
+                   COALESCE(SUM(orig.originalWeight), 0) AS monthOriginalWeight,
+                   COALESCE(SUM(fin.finishWeight), 0) AS monthFinishWeight,
+                   COALESCE(SUM(o.total_amount), 0) AS monthAmount,
+                   COALESCE(SUM(orig.lossWeight), 0) AS monthLossWeight
+            FROM biz_process_order o
+            LEFT JOIN (
+                SELECT order_uuid,
+                       SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight,
+                       SUM(COALESCE(total_loss_weight, 0)) AS lossWeight
+                FROM biz_original_roll
+                WHERE is_deleted = 0
+                GROUP BY order_uuid
+            ) orig ON orig.order_uuid = o.uuid
+            LEFT JOIN (
+                SELECT order_uuid,
+                       SUM(COALESCE(actual_weight, estimate_weight, 0)) AS finishWeight
+                FROM biz_finish_roll
+                WHERE is_deleted = 0 AND COALESCE(is_spare, 0) = 0 AND COALESCE(roll_no_status, 1) != 3
+                GROUP BY order_uuid
+            ) fin ON fin.order_uuid = o.uuid
+            WHERE o.is_deleted = 0
+              AND o.order_status &gt;= 4
+              AND o.order_date &gt;= #{monthStart}
+              AND o.order_date &lt;= #{today}
+        ) monthly
+        CROSS JOIN (
+            SELECT COUNT(*) AS inStockFinishCount,
+                   COALESCE(SUM(COALESCE(actual_weight, estimate_weight, 0)), 0) AS inStockFinishWeight
+            FROM biz_finish_roll
+            WHERE is_deleted = 0
+              AND COALESCE(is_spare, 0) = 0
+              AND COALESCE(roll_no_status, 1) != 3
+              AND finish_status = 2
+        ) stock
+        CROSS JOIN (
+            SELECT COUNT(*) AS receivableCount,
+                   COALESCE(SUM(unreceived_amount), 0) AS receivableAmount
+            FROM biz_settle_order
+            WHERE is_deleted = 0
+              AND settle_status IN (1, 2)
+        ) receivable
+    </select>
+
+    <select id="statusQueue" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardStatusVO">
+        SELECT o.order_status AS status,
+               CASE o.order_status
+                   WHEN 0 THEN '草稿'
+                   WHEN 1 THEN '待下发'
+                   WHEN 2 THEN '加工中'
+                   WHEN 3 THEN '待回录'
+                   WHEN 4 THEN '已完成'
+                   WHEN 5 THEN '已结算'
+                   ELSE '未知'
+               END AS statusName,
+               COUNT(*) AS orderCount,
+               COALESCE(SUM(orig.originalWeight), 0) AS originalWeight
+        FROM biz_process_order o
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
+            FROM biz_original_roll
+            WHERE is_deleted = 0
+            GROUP BY order_uuid
+        ) orig ON orig.order_uuid = o.uuid
+        WHERE o.is_deleted = 0
+          AND o.order_status IN (0, 1, 2, 3)
+        GROUP BY o.order_status
+        ORDER BY o.order_status
+    </select>
+
+    <select id="monthlyTrend" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardTrendVO">
+        SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month,
+               COUNT(*) AS orderCount,
+               COALESCE(SUM(orig.originalWeight), 0) AS originalWeight,
+               COALESCE(SUM(fin.finishWeight), 0) AS finishWeight,
+               COALESCE(SUM(o.total_amount), 0) AS amount
+        FROM biz_process_order o
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
+            FROM biz_original_roll
+            WHERE is_deleted = 0
+            GROUP BY order_uuid
+        ) orig ON orig.order_uuid = o.uuid
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(actual_weight, estimate_weight, 0)) AS finishWeight
+            FROM biz_finish_roll
+            WHERE is_deleted = 0 AND COALESCE(is_spare, 0) = 0 AND COALESCE(roll_no_status, 1) != 3
+            GROUP BY order_uuid
+        ) fin ON fin.order_uuid = o.uuid
+        WHERE o.is_deleted = 0
+          AND o.order_status &gt;= 4
+          AND o.order_date &gt;= #{monthStart}
+          AND o.order_date &lt;= #{today}
+        GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
+        ORDER BY month
+    </select>
+
+    <select id="customerRank" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRankVO">
+        SELECT o.customer_uuid AS id,
+               o.customer_name AS name,
+               COUNT(*) AS count,
+               COALESCE(SUM(orig.originalWeight), 0) AS weight,
+               COALESCE(SUM(o.total_amount), 0) AS amount
+        FROM biz_process_order o
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
+            FROM biz_original_roll
+            WHERE is_deleted = 0
+            GROUP BY order_uuid
+        ) orig ON orig.order_uuid = o.uuid
+        WHERE o.is_deleted = 0
+          AND o.order_status &gt;= 4
+          AND o.order_date &gt;= #{monthStart}
+          AND o.order_date &lt;= #{today}
+        GROUP BY o.customer_uuid, o.customer_name
+        ORDER BY amount DESC
+        LIMIT 6
+    </select>
+
+    <select id="machineRank" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRankVO">
+        SELECT r.machine_uuid AS id,
+               m.machine_name AS name,
+               COUNT(*) AS count,
+               COALESCE(SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)), 0) AS weight,
+               COALESCE(SUM(r.process_amount), 0) AS amount
+        FROM biz_original_roll r
+        JOIN sys_machine m ON r.machine_uuid = m.uuid
+        JOIN biz_process_order o ON r.order_uuid = o.uuid AND o.is_deleted = 0
+        WHERE r.is_deleted = 0
+          AND r.machine_uuid IS NOT NULL
+          AND o.order_status &gt;= 4
+          AND o.order_date &gt;= #{monthStart}
+          AND o.order_date &lt;= #{today}
+        GROUP BY r.machine_uuid, m.machine_name
+        ORDER BY weight DESC
+        LIMIT 6
+    </select>
+
+    <select id="recentOrders" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRecentOrderVO">
+        SELECT o.uuid,
+               o.order_no AS orderNo,
+               o.customer_name AS customerName,
+               DATE_FORMAT(o.order_date, '%Y-%m-%d') AS orderDate,
+               o.priority,
+               o.order_status AS orderStatus,
+               o.print_status AS printStatus,
+               COALESCE(orig.originalWeight, 0) AS originalWeight,
+               COALESCE(fin.finishWeight, 0) AS finishWeight
+        FROM biz_process_order o
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
+            FROM biz_original_roll
+            WHERE is_deleted = 0
+            GROUP BY order_uuid
+        ) orig ON orig.order_uuid = o.uuid
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(actual_weight, estimate_weight, 0)) AS finishWeight
+            FROM biz_finish_roll
+            WHERE is_deleted = 0 AND COALESCE(is_spare, 0) = 0 AND COALESCE(roll_no_status, 1) != 3
+            GROUP BY order_uuid
+        ) fin ON fin.order_uuid = o.uuid
+        WHERE o.is_deleted = 0
+        ORDER BY o.create_time DESC
+        LIMIT 8
+    </select>
+</mapper>

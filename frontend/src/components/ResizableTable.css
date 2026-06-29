@@ -1,0 +1,15 @@
+.resizable-col-handle {
+  bottom: 0;
+  cursor: col-resize;
+  position: absolute;
+  right: -5px;
+  top: 0;
+  width: 10px;
+  z-index: 1;
+}
+
+.resizable-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

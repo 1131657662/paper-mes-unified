@@ -1,0 +1,150 @@
+@page {
+  size: A4 landscape;
+  margin: 8mm;
+}
+
+@media print {
+  html,
+  body {
+    width: auto;
+    margin: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  body > #root,
+  body > script {
+    display: none !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .ant-drawer,
+  .ant-drawer *,
+  .print-issue-drawer-root,
+  .print-issue-drawer-root * {
+    visibility: visible !important;
+  }
+
+  .ant-alert,
+  .ant-drawer-header,
+  .ant-drawer-mask,
+  .print-issue__screen-only,
+  .print-issue__reason {
+    display: none !important;
+  }
+
+  .ant-drawer,
+  .ant-drawer-content-wrapper,
+  .ant-drawer-content,
+  .ant-drawer-wrapper-body,
+  .ant-drawer-body {
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .ant-drawer-body {
+    padding: 0 !important;
+  }
+
+  .print-issue__content,
+  .print-issue__sheet-frame {
+    display: block !important;
+  }
+
+  .print-preview-sheet {
+    position: static;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .print-preview-sheet__header {
+    gap: 8mm;
+    padding-bottom: 3mm;
+    border-bottom-width: 1pt;
+  }
+
+  .print-preview-sheet h1 {
+    font-size: 16pt;
+  }
+
+  .print-preview-sheet h2 {
+    margin-top: 4mm;
+    margin-bottom: 2mm;
+    font-size: 11pt;
+    break-after: avoid;
+  }
+
+  .print-preview-sheet__meta,
+  .print-preview-sheet__summary,
+  .print-preview-sheet__footer {
+    gap: 2mm 4mm;
+    font-size: 9pt;
+  }
+
+  .print-preview-table {
+    font-size: 8.5pt;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .print-preview-table thead {
+    display: table-header-group;
+  }
+
+  .print-preview-table tbody {
+    display: table-row-group;
+  }
+
+  .print-preview-table th,
+  .print-preview-table td {
+    min-height: 0;
+    padding: 1.5mm 1.6mm;
+    border-width: 0.6pt;
+    line-height: 1.25;
+  }
+
+  .print-preview-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-preview-table--production {
+    margin-bottom: 3mm;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .print-preview-table__write {
+    height: 8mm;
+  }
+
+  .print-preview-sheet__roll-cell {
+    width: auto;
+  }
+
+  .print-preview-sheet__roll-cell span,
+  .print-preview-sheet__roll-cell strong,
+  .print-preview-sheet__roll-repeat span,
+  .print-preview-sheet__roll-repeat strong {
+    line-height: 1.35;
+  }
+
+  .print-preview-sheet__footer {
+    margin-top: 4mm;
+    padding-top: 3mm;
+    border-top-width: 1pt;
+  }
+}

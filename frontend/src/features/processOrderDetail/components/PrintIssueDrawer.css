@@ -1,0 +1,16 @@
+.print-issue__content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.print-issue__reason {
+  padding: 12px 14px 0;
+  background: #fff;
+  border: 1px solid #d4dde7;
+  border-radius: 8px;
+}
+
+.print-issue__result {
+  margin-top: 8px;
+}

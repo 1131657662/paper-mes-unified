@@ -1,0 +1,287 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.app-shell {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell__main {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell__brand {
+  height: 48px;
+  margin: 16px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 48px;
+  overflow: hidden;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.app-shell__header {
+  display: flex;
+  height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px 0 22px;
+  background: #fff;
+  border-bottom: 1px solid #edf1f5;
+  gap: 16px;
+}
+
+.app-shell__breadcrumb {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.app-shell__breadcrumb-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #526579;
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-shell__breadcrumb-home:hover {
+  color: #1677ff;
+}
+
+.app-shell__user {
+  height: 38px;
+  padding: 0 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .16s ease;
+  white-space: nowrap;
+}
+
+.app-shell__user:hover {
+  background: #f5f7fa;
+}
+
+.app-shell__tabs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  height: 46px;
+  align-items: end;
+  padding: 7px 12px 0;
+  background: #fff;
+  border-bottom: 1px solid #edf1f5;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 8%);
+  overflow: hidden;
+}
+
+.app-shell__tabs--scrollable {
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+}
+
+.app-shell__tabs-center {
+  min-width: 0;
+}
+
+.app-shell__tabs-arrow {
+  width: 34px;
+  min-width: 34px;
+  height: 32px;
+  border-radius: 4px 4px 0 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+.app-shell__tabs-arrow:hover {
+  background: #f2f4f7;
+  color: #1677ff;
+}
+
+.app-shell__tabs-arrow:disabled {
+  color: #d0d5dd;
+  cursor: default;
+}
+
+.app-shell__tabs-arrow:disabled:hover {
+  background: transparent;
+  color: #d0d5dd;
+}
+
+.app-shell__tabs-arrow--left {
+  box-shadow: 5px 0 8px -8px #98a2b3;
+}
+
+.app-shell__tabs-arrow--right {
+  box-shadow: -5px 0 8px -8px #98a2b3;
+}
+
+.app-shell__tabs-control {
+  height: 39px;
+  min-width: 0;
+}
+
+.app-shell__tabs-control.ant-tabs {
+  overflow: hidden;
+}
+
+.app-shell__tabs-control .ant-tabs-nav {
+  height: 39px;
+  margin: 0;
+}
+
+.app-shell__tabs-control .ant-tabs-nav::before {
+  border-bottom: 0;
+}
+
+.app-shell__tabs-control .ant-tabs-nav-list {
+  height: 39px;
+  align-items: flex-end;
+  padding-top: 3px;
+}
+
+.app-shell__tabs-control.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+  position: relative;
+  height: 33px;
+  min-width: 108px;
+  max-width: 196px;
+  margin: 0;
+  padding: 0 10px 0 12px;
+  border: 1px solid #dce3ec;
+  border-bottom-color: #dce3ec;
+  border-radius: 6px 6px 0 0;
+  background: #f8fafc;
+  color: #475467;
+  font-size: 13px;
+  line-height: 31px;
+  transition: background .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.app-shell__tabs-control.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab:hover {
+  border-color: #b7cffb;
+  background: #f1f6ff;
+  color: #1d2939;
+}
+
+.app-shell__tabs-control.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active {
+  z-index: 2;
+  border-color: #91caff;
+  border-bottom-color: #fff;
+  background: #fff;
+  color: #0958d9;
+  font-weight: 600;
+  box-shadow: 0 -2px 7px rgb(22 119 255 / 9%);
+}
+
+.app-shell__tabs-control .ant-tabs-tab-btn {
+  min-width: 0;
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell__tab-label {
+  display: inline-block;
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.app-shell__tabs-control .ant-tabs-tab-remove {
+  width: 16px;
+  height: 16px;
+  margin-left: 8px;
+  border-radius: 50%;
+  color: #98a2b3;
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.app-shell__tabs-control .ant-tabs-tab-remove:hover {
+  background: #e4e7ec;
+  color: #344054;
+}
+
+.app-shell__tabs-control .ant-tabs-nav-more {
+  display: none;
+  width: 0;
+  height: 0;
+  margin: 0;
+  color: #64748b;
+}
+
+.app-shell__tabs-control .ant-tabs-extra-content {
+  display: flex;
+  align-items: center;
+  height: 33px;
+  padding-left: 8px;
+}
+
+.app-shell__tabs-more {
+  width: 32px;
+  min-width: 32px;
+  height: 30px;
+  padding: 0;
+  color: #475569;
+  font-size: 13px;
+  border-radius: 0;
+}
+
+.app-shell__tabs-more:hover {
+  background: #f1f5f9;
+  color: #0958d9;
+}
+
+.app-shell__content {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  margin: 16px;
+  overflow: hidden;
+}
+
+.app-shell__content > * {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+.app-shell__auth-loading {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+}
+
+@media (max-width: 860px) {
+  .app-shell__header {
+    padding-inline: 12px;
+  }
+
+  .app-shell__user .ant-tag {
+    display: none;
+  }
+}

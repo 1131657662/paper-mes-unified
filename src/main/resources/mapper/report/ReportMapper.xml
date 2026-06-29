@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.paper.mes.report.mapper.ReportMapper">
+
+    <!-- 月度加工汇总：重量/刀数从明细聚合，避免旧单或未回填冗余字段导致报表为 0。 -->
+    <select id="monthlySummary" resultType="com.paper.mes.report.dto.MonthlyReportVO">
+        SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month,
+               COUNT(*)                            AS orderCount,
+               COALESCE(SUM(orig.originalWeight), 0) / 1000 AS totalTon,
+               COALESCE(SUM(step.totalKnife), 0) AS totalKnife,
+               COALESCE(SUM(o.total_amount), 0) AS totalAmount,
+               COALESCE(SUM(fin.finishWeight), 0) AS totalFinishWeight
+        FROM biz_process_order o
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
+            FROM biz_original_roll
+            WHERE is_deleted = 0
+            GROUP BY order_uuid
+        ) orig ON orig.order_uuid = o.uuid
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(actual_weight, estimate_weight, 0)) AS finishWeight
+            FROM biz_finish_roll
+            WHERE is_deleted = 0 AND COALESCE(is_spare, 0) = 0 AND COALESCE(roll_no_status, 1) != 3
+            GROUP BY order_uuid
+        ) fin ON fin.order_uuid = o.uuid
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(knife_count, 0)) AS totalKnife
+            FROM biz_process_step
+            WHERE is_deleted = 0 AND step_type = 1
+            GROUP BY order_uuid
+        ) step ON step.order_uuid = o.uuid
+        <where>
+            o.is_deleted = 0 AND o.order_status &gt;= 4
+            <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
+            <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
+            <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
+        </where>
+        GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
+        ORDER BY month
+    </select>
+
+    <!-- 客户维度统计：按客户分组，重量/刀数从明细聚合。 -->
+    <select id="customerSummary" resultType="com.paper.mes.report.dto.CustomerReportVO">
+        SELECT o.customer_uuid AS customerUuid,
+               o.customer_name AS customerName,
+               COUNT(*) AS orderCount,
+               COALESCE(SUM(orig.originalWeight), 0) / 1000 AS totalTon,
+               COALESCE(SUM(step.totalKnife), 0) AS totalKnife,
+               COALESCE(SUM(o.total_amount), 0) AS totalAmount
+        FROM biz_process_order o
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
+            FROM biz_original_roll
+            WHERE is_deleted = 0
+            GROUP BY order_uuid
+        ) orig ON orig.order_uuid = o.uuid
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(knife_count, 0)) AS totalKnife
+            FROM biz_process_step
+            WHERE is_deleted = 0 AND step_type = 1
+            GROUP BY order_uuid
+        ) step ON step.order_uuid = o.uuid
+        <where>
+            o.is_deleted = 0 AND o.order_status &gt;= 4
+            <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
+            <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
+            <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
+        </where>
+        GROUP BY o.customer_uuid, o.customer_name
+        ORDER BY totalAmount DESC
+    </select>
+
+    <!-- 损耗分析：原纸卷 JOIN 加工单（用 o.order_date 过滤+分组），按月汇总损耗。 -->
+    <select id="lossAnalysis" resultType="com.paper.mes.report.dto.LossReportVO">
+        SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month,
+               COUNT(*)                           AS rollCount,
+               COALESCE(SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)), 0) AS totalOriginalWeight,
+               COALESCE(SUM(r.total_loss_weight), 0)  AS totalLossWeight,
+               COALESCE(AVG(r.total_loss_ratio), 0)   AS avgLossRatio
+        FROM biz_original_roll r
+        JOIN biz_process_order o
+          ON r.order_uuid = o.uuid AND o.is_deleted = 0 AND o.order_status &gt;= 4
+        <where>
+            r.is_deleted = 0
+            <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
+            <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
+            <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
+        </where>
+        GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
+        ORDER BY month
+    </select>
+
+    <!-- 机台产出：原纸卷 JOIN 机台 + 加工单；锯纸刀数经子查询聚合后 LEFT JOIN，避免行膨胀。 -->
+    <select id="machineOutput" resultType="com.paper.mes.report.dto.MachineReportVO">
+        SELECT r.machine_uuid                   AS machineUuid,
+               m.machine_name                   AS machineName,
+               COUNT(*)                         AS rollCount,
+               COALESCE(SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)), 0) AS totalOutputWeight,
+               COALESCE(SUM(sk.kc), 0)               AS totalKnife,
+               COALESCE(SUM(r.total_loss_weight), 0) AS totalLossWeight
+        FROM biz_original_roll r
+        JOIN sys_machine m
+          ON r.machine_uuid = m.uuid
+        JOIN biz_process_order o
+          ON r.order_uuid = o.uuid AND o.is_deleted = 0 AND o.order_status &gt;= 4
+        LEFT JOIN (
+            SELECT original_uuid, SUM(knife_count) AS kc
+            FROM biz_process_step
+            WHERE step_type = 1 AND is_deleted = 0
+            GROUP BY original_uuid
+        ) sk ON sk.original_uuid = r.uuid
+        <where>
+            r.is_deleted = 0 AND r.machine_uuid IS NOT NULL
+            <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
+            <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
+            <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
+        </where>
+        GROUP BY r.machine_uuid, m.machine_name
+        ORDER BY totalOutputWeight DESC
+    </select>
+
+</mapper>

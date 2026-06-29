@@ -1,0 +1,226 @@
+.settle-workbench {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  border-color: var(--mes-color-border);
+  overflow: hidden;
+}
+
+.settle-workbench > .ant-card-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.settle-workbench .ant-card-head {
+  min-height: 48px;
+}
+
+.settle-workbench .ant-card-head-title {
+  color: var(--mes-color-text);
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.settle-header {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--mes-color-border-light);
+}
+
+.settle-header__title h2,
+.settle-panel__head h3 {
+  margin: 0;
+  color: var(--mes-color-text);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.settle-header__title p,
+.settle-panel__head p {
+  margin: 4px 0 0;
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.settle-header__actions {
+  align-self: start;
+  white-space: nowrap;
+}
+
+.settle-form-grid {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns:
+    minmax(220px, 1.35fr)
+    minmax(240px, 1.15fr)
+    minmax(145px, .75fr)
+    minmax(150px, .8fr)
+    minmax(180px, 1fr);
+  gap: 10px;
+}
+
+.settle-form-grid .ant-form-item {
+  margin-bottom: 0;
+}
+
+.settle-form-grid .ant-picker {
+  width: 100%;
+}
+
+.settle-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settle-metric {
+  min-width: 0;
+}
+
+.settle-metric span {
+  display: block;
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.settle-metric strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--mes-color-text);
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.settle-metric em {
+  display: block;
+  margin-top: 2px;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.settle-workbench__body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.25fr) minmax(430px, .75fr);
+  gap: 14px;
+  overflow: hidden;
+}
+
+.settle-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid var(--mes-color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.settle-panel__head {
+  display: flex;
+  min-height: 42px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.settle-cell-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settle-cell-stack span,
+.settle-cell-stack .ant-typography {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settle-cell-stack span {
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.settle-panel .ant-table-wrapper {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.settle-panel .ant-spin-nested-loading,
+.settle-panel .ant-spin-container,
+.settle-panel .ant-table,
+.settle-panel .ant-table-container {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+}
+
+.settle-panel .ant-table-body,
+.settle-panel .ant-table-content {
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: auto !important;
+}
+
+.settle-panel .ant-table-body {
+  max-height: none !important;
+}
+
+.settle-panel .ant-table-row {
+  cursor: default;
+}
+
+.settle-panel .is-selected > td {
+  background: #f1f7ff;
+}
+
+.settle-panel .ant-table-thead > tr > th {
+  background: #f7f9fc;
+}
+
+.settle-panel .ant-pagination {
+  margin-bottom: 0;
+}
+
+@media (max-width: 1360px) {
+  .settle-form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .settle-workbench__body {
+    align-content: start;
+    grid-template-columns: 1fr;
+    grid-auto-rows: minmax(300px, auto);
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+}
+
+@media (max-width: 860px) {
+  .settle-header,
+  .settle-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settle-header__actions {
+    justify-content: flex-start;
+  }
+}
