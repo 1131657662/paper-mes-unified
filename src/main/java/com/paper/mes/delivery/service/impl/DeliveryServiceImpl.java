@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.BusinessException;
@@ -555,20 +554,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     private List<DeliveryDetailItemVO> readSnapshotDeliveryItems(String snapDelivery) {
-        if (!StringUtils.hasText(snapDelivery)) {
-            return null;
-        }
-        try {
-            JsonNode root = objectMapper.readTree(snapDelivery);
-            JsonNode node = firstExisting(root, "detail_items", "detailItems");
-            if (node == null || !node.isArray()) {
-                return null;
-            }
-            return objectMapper.convertValue(node, new TypeReference<List<DeliveryDetailItemVO>>() {
-            });
-        } catch (Exception ignored) {
-            return null;
-        }
+        return DeliverySnapshotItemReader.read(snapDelivery, objectMapper);
     }
 
     private DeliveryOrder snapshotDeliveryOrder(DeliveryOrder order) {
