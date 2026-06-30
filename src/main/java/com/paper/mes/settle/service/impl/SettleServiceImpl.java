@@ -873,6 +873,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
         for (SettleDetail detail : amounts.details()) {
             detail.setSettleUuid(settle.getUuid());
+            ensureOrderNotSettled(detail.getOrderUuid());
             settleDetailMapper.insert(detail);
             processOrderService.changeStatus(detail.getOrderUuid(), ORDER_STATUS_SETTLED);
         }
@@ -880,6 +881,14 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         settle.setSnapBillTime(LocalDateTime.now());
         ConcurrencyGuard.requireUpdated(updateById(settle));
         return settle.getUuid();
+    }
+
+    private void ensureOrderNotSettled(String orderUuid) {
+        long count = settleDetailMapper.selectCount(new LambdaQueryWrapper<SettleDetail>()
+                .eq(SettleDetail::getOrderUuid, orderUuid));
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.E004, "加工单已生成结算单，不可重复结算");
+        }
     }
 
     private String buildSettleSnapshot(SettleOrder settle, List<SettleDetail> details, List<ProcessOrder> orders) {
