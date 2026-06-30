@@ -743,7 +743,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             if (!StringUtils.hasText(dto.getReason())) {
                 throw new BusinessException("补打必须填写原因");
             }
-            // TODO P2：补打需管理员权限校验（Phase 1 无鉴权体系，先放行并以 reason 留痕）。
+            // 补打权限由 ProcessOrderController 的 ORDER_MANAGE 接口权限约束，此处仅校验补打原因并留痕。
         }
 
         int nextCount = (order.getPrintCount() == null ? 0 : order.getPrintCount()) + 1;

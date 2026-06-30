@@ -85,6 +85,8 @@
 }
 
 .document-detail-table .ant-pro-table-list-toolbar-container {
+  display: flex;
+  align-items: center;
   min-height: 40px;
   padding: 4px 10px;
 }
@@ -100,8 +102,28 @@
 }
 
 .document-detail-table .ant-pro-table-list-toolbar-setting-item {
+  display: inline-flex;
   width: 30px;
   height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--mes-radius-sm);
+  line-height: 1;
+}
+
+.document-detail-table .ant-pro-table-list-toolbar-right,
+.document-detail-table .ant-pro-table-list-toolbar-setting-items {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.document-detail-table .ant-pro-table-list-toolbar-setting-item > span,
+.document-detail-table .ant-pro-table-list-toolbar-setting-item .anticon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .document-detail-table__grid .ant-table-pagination.ant-pagination {

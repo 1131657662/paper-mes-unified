@@ -53,8 +53,16 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
         FinishStatus from = FinishStatus.of(finishRoll.getFinishStatus());
         FinishStatus to = FinishStatus.of(targetStatus);
         StateMachine.assertTransition(from, to);
-
-        // TODO P1-6：出库(2→3)在此校验库存扣减；报废(1→4)在此校验回录上下文。
+        String rollNo = finishRoll.getFinishRollNo() == null ? finishRoll.getUuid() : finishRoll.getFinishRollNo();
+        if (to == FinishStatus.IN_STOCK) {
+            throw new BusinessException("成品入库必须通过加工回录完成：" + rollNo);
+        }
+        if (to == FinishStatus.OUT_STOCK) {
+            throw new BusinessException("成品出库必须通过出库单确认完成：" + rollNo);
+        }
+        if (to == FinishStatus.SCRAP && from != FinishStatus.PENDING_IN) {
+            throw new BusinessException("仅待入库成品允许报废：" + rollNo);
+        }
 
         finishRoll.setFinishStatus(to.getCode());
         ConcurrencyGuard.requireUpdated(updateById(finishRoll));
