@@ -54,6 +54,7 @@ import com.paper.mes.system.config.service.DocumentNoService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -379,8 +380,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         for (SettleDetail detail : details) {
             ProcessOrder order = processOrderService.getById(detail.getOrderUuid());
             if (order != null && order.getOrderStatus() != null && order.getOrderStatus() == ORDER_STATUS_SETTLED) {
-                order.setOrderStatus(ORDER_STATUS_FINISHED);
-                ConcurrencyGuard.requireUpdated(processOrderService.updateById(order));
+                rollbackSettledProcessOrder(order.getUuid());
             }
             ConcurrencyGuard.requireRowUpdated(settleDetailMapper.deleteById(detail.getUuid()));
         }
@@ -910,7 +910,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         for (SettleDetail detail : amounts.details()) {
             detail.setSettleUuid(settle.getUuid());
             ensureOrderNotSettled(detail.getOrderUuid());
-            settleDetailMapper.insert(detail);
+            insertSettleDetail(detail);
             processOrderService.changeStatus(detail.getOrderUuid(), ORDER_STATUS_SETTLED);
         }
         settle.setSnapBill(buildSettleSnapshot(settle, amounts.details(), context.orders()));
@@ -925,6 +925,25 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (count > 0) {
             throw new BusinessException(ErrorCode.E004, "加工单已生成结算单，不可重复结算");
         }
+    }
+
+    private void insertSettleDetail(SettleDetail detail) {
+        try {
+            settleDetailMapper.insert(detail);
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException(ErrorCode.E004, "鍔犲伐鍗曞凡鐢熸垚缁撶畻鍗曪紝涓嶅彲閲嶅缁撶畻");
+        }
+    }
+
+    private void rollbackSettledProcessOrder(String orderUuid) {
+        ConcurrencyGuard.requireRowUpdated(processOrderService.getBaseMapper().update(null,
+                new LambdaUpdateWrapper<ProcessOrder>()
+                        .eq(ProcessOrder::getUuid, orderUuid)
+                        .eq(ProcessOrder::getOrderStatus, ORDER_STATUS_SETTLED)
+                        .set(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED)
+                        .set(ProcessOrder::getUpdateTime, LocalDateTime.now())
+                        .set(ProcessOrder::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
     }
 
     private String buildSettleSnapshot(SettleOrder settle, List<SettleDetail> details, List<ProcessOrder> orders) {
