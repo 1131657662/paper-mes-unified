@@ -448,18 +448,15 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private void applySettlementAmountView(SettleOrder settle, List<SettleDetail> details) {
-        BigDecimal noTax = BigDecimal.ZERO;
-        BigDecimal total = BigDecimal.ZERO;
-        for (SettleDetail detail : details) {
-            noTax = noTax.add(detailBaseAmount(detail));
-            total = total.add(nz(detail.getOrderAmount()));
-        }
-        settle.setAmountNoTax(noTax.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
-        settle.setTaxAmount(total.subtract(noTax).setScale(MONEY_SCALE, RoundingMode.HALF_UP));
-        settle.setTotalAmount(total.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
+        SettleAmountSnapshotReader.Amounts amounts =
+                SettleAmountSnapshotReader.resolve(settle, details, objectMapper);
+        settle.setAmountNoTax(amounts.noTax());
+        settle.setTaxAmount(amounts.tax());
+        settle.setTotalAmount(amounts.total());
         BigDecimal received = activeReceiveAmount(settle.getUuid());
         settle.setReceivedAmount(received);
-        settle.setUnreceivedAmount(total.subtract(received).max(BigDecimal.ZERO).setScale(MONEY_SCALE, RoundingMode.HALF_UP));
+        settle.setUnreceivedAmount(amounts.total().subtract(received)
+                .max(BigDecimal.ZERO).setScale(MONEY_SCALE, RoundingMode.HALF_UP));
     }
 
     private SettleOrder requireSettle(String uuid) {
