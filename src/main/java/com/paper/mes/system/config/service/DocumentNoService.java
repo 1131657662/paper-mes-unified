@@ -102,12 +102,13 @@ public class DocumentNoService {
                 SELECT COALESCE(MAX(CAST(SUBSTRING(%s, ?) AS UNSIGNED)), 0)
                 FROM %s
                 WHERE is_deleted = 0
-                  AND %s LIKE ?
+                  AND LEFT(%s, ?) = ?
                   AND %s REGEXP ?
                 """.formatted(column.columnName(), column.tableName(), column.columnName(), column.columnName()),
                 Long.class,
                 head.length() + 1,
-                head + "%",
+                head.length(),
+                head,
                 regexp);
         return max == null ? 0L : max;
     }
