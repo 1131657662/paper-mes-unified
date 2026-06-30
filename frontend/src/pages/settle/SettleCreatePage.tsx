@@ -50,6 +50,10 @@ export default function SettleCreatePage() {
       message.warning('请先勾选需要结算的加工单')
       return
     }
+    if (selectedCandidates.some((item) => Number(item.totalAmount ?? 0) <= 0)) {
+      message.warning('存在待核价加工单，请先完成加工费计算后再结算')
+      return
+    }
     const uuid = await createMutation.mutateAsync({
       isInvoice: values.isInvoice,
       orderUuids: selectedCandidates.map((item) => item.orderUuid),

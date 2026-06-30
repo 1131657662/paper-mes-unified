@@ -203,8 +203,12 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         List<FinishRoll> picked = new ArrayList<>(dto.getItems().size());
         Map<String, String> orderNoCache = new LinkedHashMap<>();
         List<String> lockedFinishUuids = pendingDeliveryFinishUuids();
+        Set<String> requestFinishUuids = new HashSet<>();
         boolean hasCashOrder = false;
         for (DeliveryCreateDTO.Item item : dto.getItems()) {
+            if (!requestFinishUuids.add(item.getFinishUuid())) {
+                throw new BusinessException("出库成品重复：" + item.getFinishUuid());
+            }
             if (lockedFinishUuids.contains(item.getFinishUuid())) {
                 throw new BusinessException("成品已在待出库单中，不能重复创建出库：" + item.getFinishUuid());
             }
@@ -568,25 +572,50 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     private DeliveryOrder snapshotDeliveryOrder(DeliveryOrder order) {
+        DeliveryOrder view = copyDeliveryOrder(order);
         JsonNode root = snapshotRoot(order.getSnapDelivery());
         if (root == null) {
-            return order;
+            return view;
         }
-        order.setDeliveryNo(textValue(root, "delivery_no", "deliveryNo", order.getDeliveryNo()));
-        order.setCustomerUuid(textValue(root, "customer_uuid", "customerUuid", order.getCustomerUuid()));
-        order.setCustomerName(textValue(root, "customer_name", "customerName", order.getCustomerName()));
-        order.setDeliveryDate(dateValue(root, "delivery_date", "deliveryDate", order.getDeliveryDate()));
-        order.setDeliveryStatus(intValue(root, "delivery_status", "deliveryStatus", order.getDeliveryStatus()));
-        order.setPickerName(textValue(root, "picker_name", "pickerName", order.getPickerName()));
-        order.setCarNo(textValue(root, "car_no", "carNo", order.getCarNo()));
-        order.setContainerNo(textValue(root, "container_no", "containerNo", order.getContainerNo()));
-        order.setSignUser(textValue(root, "sign_user", "signUser", order.getSignUser()));
-        order.setSignTime(dateTimeValue(root, "sign_time", "signTime", order.getSignTime()));
-        order.setSettleBlockAction(intValue(root, "settle_block_action", "settleBlockAction", order.getSettleBlockAction()));
-        order.setTotalCount(intValue(root, "total_count", "totalCount", order.getTotalCount()));
-        order.setTotalWeight(decimalValue(root, "total_weight", "totalWeight", order.getTotalWeight()));
-        order.setRemark(textValue(root, "remark", "remark", order.getRemark()));
-        return order;
+        view.setDeliveryNo(textValue(root, "delivery_no", "deliveryNo", order.getDeliveryNo()));
+        view.setCustomerUuid(textValue(root, "customer_uuid", "customerUuid", order.getCustomerUuid()));
+        view.setCustomerName(textValue(root, "customer_name", "customerName", order.getCustomerName()));
+        view.setDeliveryDate(dateValue(root, "delivery_date", "deliveryDate", order.getDeliveryDate()));
+        view.setDeliveryStatus(intValue(root, "delivery_status", "deliveryStatus", order.getDeliveryStatus()));
+        view.setPickerName(textValue(root, "picker_name", "pickerName", order.getPickerName()));
+        view.setCarNo(textValue(root, "car_no", "carNo", order.getCarNo()));
+        view.setContainerNo(textValue(root, "container_no", "containerNo", order.getContainerNo()));
+        view.setSignUser(textValue(root, "sign_user", "signUser", order.getSignUser()));
+        view.setSignTime(dateTimeValue(root, "sign_time", "signTime", order.getSignTime()));
+        view.setSettleBlockAction(intValue(root, "settle_block_action", "settleBlockAction", order.getSettleBlockAction()));
+        view.setTotalCount(intValue(root, "total_count", "totalCount", order.getTotalCount()));
+        view.setTotalWeight(decimalValue(root, "total_weight", "totalWeight", order.getTotalWeight()));
+        view.setRemark(textValue(root, "remark", "remark", order.getRemark()));
+        return view;
+    }
+
+    private DeliveryOrder copyDeliveryOrder(DeliveryOrder order) {
+        DeliveryOrder view = new DeliveryOrder();
+        view.setUuid(order.getUuid());
+        view.setDeliveryNo(order.getDeliveryNo());
+        view.setCustomerUuid(order.getCustomerUuid());
+        view.setCustomerName(order.getCustomerName());
+        view.setDeliveryDate(order.getDeliveryDate());
+        view.setTotalCount(order.getTotalCount());
+        view.setTotalWeight(order.getTotalWeight());
+        view.setPickerName(order.getPickerName());
+        view.setCarNo(order.getCarNo());
+        view.setContainerNo(order.getContainerNo());
+        view.setSignUser(order.getSignUser());
+        view.setSignTime(order.getSignTime());
+        view.setSettleBlockAction(order.getSettleBlockAction());
+        view.setDeliveryStatus(order.getDeliveryStatus());
+        view.setSnapDelivery(order.getSnapDelivery());
+        view.setSnapDeliveryTime(order.getSnapDeliveryTime());
+        view.setRemark(order.getRemark());
+        view.setCreateTime(order.getCreateTime());
+        view.setUpdateTime(order.getUpdateTime());
+        return view;
     }
 
     private JsonNode snapshotRoot(String json) {

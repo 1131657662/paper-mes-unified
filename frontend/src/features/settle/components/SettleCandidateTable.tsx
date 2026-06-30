@@ -28,10 +28,16 @@ export default function SettleCandidateTable({
       columns={columns}
       dataSource={data}
       pagination={false}
-      rowSelection={{ selectedRowKeys, onChange: onSelectionChange }}
+      rowSelection={{
+        selectedRowKeys,
+        onChange: onSelectionChange,
+        getCheckboxProps: (record) => ({
+          disabled: !isBillableCandidate(record),
+        }),
+      }}
       rowClassName={(record) => (selectedRowKeys.includes(record.orderUuid) ? 'is-selected' : '')}
       onRow={(record) => ({
-        onClick: () => toggleKey(record.orderUuid, selectedRowKeys, onSelectionChange),
+        onClick: () => toggleKey(record.orderUuid, selectedRowKeys, onSelectionChange, record),
       })}
       scroll={{ x: 1080, y: scrollY }}
     />
@@ -87,7 +93,15 @@ const columns: ColumnsType<SettleCandidateVO> = [
   { title: '锯纸费', dataIndex: 'sawAmount', align: 'right', width: 105, render: (value) => formatMoney(value) },
   { title: '复卷费', dataIndex: 'rewindAmount', align: 'right', width: 105, render: (value) => formatMoney(value) },
   { title: '额外费', dataIndex: 'extraAmount', align: 'right', width: 105, render: (value) => formatMoney(value) },
-  { title: '应收', dataIndex: 'totalAmount', align: 'right', width: 115, render: (value) => <Typography.Text strong>{formatMoney(value)}</Typography.Text> },
+  {
+    title: '应收',
+    dataIndex: 'totalAmount',
+    align: 'right',
+    width: 125,
+    render: (value) => Number(value ?? 0) > 0
+      ? <Typography.Text strong>{formatMoney(value)}</Typography.Text>
+      : <Tag className="mes-status-tag" color="warning">待核价</Tag>,
+  },
 ]
 
 function textCell(value?: string | number) {
@@ -98,10 +112,18 @@ function toggleKey(
   key: string,
   selectedRowKeys: React.Key[],
   onSelectionChange: (keys: React.Key[]) => void,
+  record?: SettleCandidateVO,
 ) {
+  if (record && !isBillableCandidate(record)) {
+    return
+  }
   if (selectedRowKeys.includes(key)) {
     onSelectionChange(selectedRowKeys.filter((item) => item !== key))
     return
   }
   onSelectionChange([...selectedRowKeys, key])
+}
+
+function isBillableCandidate(record: SettleCandidateVO) {
+  return Number(record.totalAmount ?? 0) > 0
 }

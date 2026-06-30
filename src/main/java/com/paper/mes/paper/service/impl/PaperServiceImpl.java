@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.paper.dto.PaperQuery;
 import com.paper.mes.paper.dto.PaperSaveDTO;
@@ -68,7 +69,7 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
         existing.setUuid(uuid);
         existing.setVersion(savedVersion);
         existing.setPaperCode(keepCodeOrGenerate(savedCode));
-        updateById(existing);
+        ConcurrencyGuard.requireUpdated(updateById(existing));
     }
 
     @Override

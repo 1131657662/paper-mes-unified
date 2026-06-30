@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.customer.dto.CustomerQuery;
 import com.paper.mes.customer.dto.CustomerSaveDTO;
@@ -73,7 +74,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
         existing.setVersion(savedVersion);
         existing.setCustomerCode(keepCodeOrGenerate(savedCode, NoRuleBizType.CUSTOMER));
         applyDefaults(existing);
-        updateById(existing);
+        ConcurrencyGuard.requireUpdated(updateById(existing));
     }
 
     @Override

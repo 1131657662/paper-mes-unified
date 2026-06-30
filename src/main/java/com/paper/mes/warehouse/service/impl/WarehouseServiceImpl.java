@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.warehouse.dto.WarehouseQuery;
 import com.paper.mes.warehouse.dto.WarehouseSaveDTO;
@@ -80,7 +81,7 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
         if (existing.getStatus() == null) {
             existing.setStatus(keepStatus);
         }
-        updateById(existing);
+        ConcurrencyGuard.requireUpdated(updateById(existing));
     }
 
     @Override
