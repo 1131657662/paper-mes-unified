@@ -1,5 +1,6 @@
 import { Form, Input, Select } from 'antd'
 import type { FormInstance } from 'antd'
+import AutoCodeInput from '../../components/biz/AutoCodeInput'
 import type { MachineSaveDTO } from '../../types/machine'
 
 interface Props {
@@ -25,7 +26,7 @@ export default function MachineProfileForm({ editing, form, onFinish }: Props) {
         <h3>基础信息</h3>
         <div className="mes-form-grid">
           <Form.Item name="machineCode" label="机台编码">
-            <Input placeholder={editing ? undefined : '保存后系统自动生成'} title="系统自动生成，不支持手工修改" disabled readOnly />
+            <AutoCodeInput editing={editing} />
           </Form.Item>
           <Form.Item
             name="machineName"

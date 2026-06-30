@@ -1,5 +1,6 @@
 import { Form, Input, InputNumber, Select } from 'antd'
 import type { FormInstance } from 'antd'
+import AutoCodeInput from '../../components/biz/AutoCodeInput'
 import { DICT_TYPES, invoiceFallbackOptions, settleFallbackOptions } from '../../features/systemConfig/configFallbacks'
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
 import type { CustomerSaveDTO } from '../../types/customer'
@@ -36,7 +37,7 @@ export default function CustomerProfileForm({ editing, form, onFinish }: Props) 
             name="customerCode"
             label="客户编码"
           >
-            <Input placeholder={editing ? undefined : '保存后系统自动生成'} title="系统自动生成，不支持手工修改" disabled readOnly />
+            <AutoCodeInput editing={editing} />
           </Form.Item>
           <Form.Item
             name="customerName"
