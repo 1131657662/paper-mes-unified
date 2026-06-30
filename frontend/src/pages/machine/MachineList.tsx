@@ -8,8 +8,9 @@ import { useNavigate } from 'react-router-dom'
 import { pageMachines, deleteMachine } from '../../api/machine'
 import TooltipText from '../../components/biz/TooltipText'
 import { mesTablePagination } from '../../components/biz/MesPaginationBar'
-import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
+import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import { PERMISSIONS } from '../../constants/permissions'
+import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useHasPermission } from '../../stores/authStore'
 import type { Machine } from '../../types/machine'
 
@@ -22,6 +23,7 @@ export default function MachineList() {
   const actionRef = useRef<ActionType>(null)
   const navigate = useNavigate()
   const canManageBase = useHasPermission(PERMISSIONS.baseManage)
+  const columnsState = useTableColumnsState('table-columns-machines')
 
   const handleDelete = async (record: Machine) => {
     await deleteMachine(record.uuid)
@@ -31,7 +33,7 @@ export default function MachineList() {
 
   const columns: ProColumns<Machine>[] = [
     { title: '机台编码', dataIndex: 'machineCode', width: 140 },
-    { title: '机台名称', dataIndex: 'machineName', render: textCell },
+    { title: '机台名称', dataIndex: 'machineName', width: 200, render: textCell },
     {
       title: '类型',
       dataIndex: 'machineType',
@@ -61,6 +63,7 @@ export default function MachineList() {
     { title: '创建时间', dataIndex: 'createTime', width: 180, search: false, valueType: 'dateTime' },
     {
       title: '操作',
+      key: 'actions',
       valueType: 'option',
       width: 140,
       render: (_, record) => (
@@ -86,13 +89,16 @@ export default function MachineList() {
       ),
     },
   ]
+  const resizable = useResizableTableColumns<Machine, ProColumns<Machine>>(columns, 'machines')
 
   return (
     <ProTable<Machine>
       className="mes-pro-table-page"
       rowKey="uuid"
       actionRef={actionRef}
-      columns={columns}
+      columns={resizable.columns}
+      columnsState={columnsState}
+      components={resizable.components}
       headerTitle="机台档案"
       toolBarRender={() => canManageBase ? [
         <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/machines/create')}>
@@ -111,7 +117,7 @@ export default function MachineList() {
       bordered
       pagination={mesTablePagination(10)}
       search={{ labelWidth: 'auto' }}
-      scroll={MES_PRO_TABLE_SCROLL}
+      scroll={{ x: resizable.scrollX, y: '100%' }}
     />
   )
 }

@@ -11,10 +11,11 @@ import {
 } from '../../api/customer'
 import TooltipText from '../../components/biz/TooltipText'
 import { mesTablePagination } from '../../components/biz/MesPaginationBar'
-import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
+import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import { PERMISSIONS } from '../../constants/permissions'
 import { DICT_TYPES, invoiceFallbackOptions, settleFallbackOptions } from '../../features/systemConfig/configFallbacks'
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
+import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useHasPermission } from '../../stores/authStore'
 import type { Customer } from '../../types/customer'
 
@@ -24,6 +25,7 @@ export default function CustomerList() {
   const actionRef = useRef<ActionType>(null)
   const navigate = useNavigate()
   const canManageBase = useHasPermission(PERMISSIONS.baseManage)
+  const columnsState = useTableColumnsState('table-columns-customers')
   const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
   const { options: settleOptions } = useNumberDictOptions(DICT_TYPES.settleType, settleFallbackOptions)
 
@@ -35,7 +37,7 @@ export default function CustomerList() {
 
   const columns: ProColumns<Customer>[] = [
     { title: '客户编码', dataIndex: 'customerCode', width: 140 },
-    { title: '客户名称', dataIndex: 'customerName', render: textCell },
+    { title: '客户名称', dataIndex: 'customerName', width: 200, render: textCell },
     { title: '联系人', dataIndex: 'contact', width: 120, search: false },
     { title: '电话', dataIndex: 'phone', width: 140, search: false },
     {
@@ -78,6 +80,7 @@ export default function CustomerList() {
     { title: '创建时间', dataIndex: 'createTime', width: 180, search: false, valueType: 'dateTime' },
     {
       title: '操作',
+      key: 'actions',
       valueType: 'option',
       width: 140,
       render: (_, record) => (
@@ -103,13 +106,16 @@ export default function CustomerList() {
       ),
     },
   ]
+  const resizable = useResizableTableColumns<Customer, ProColumns<Customer>>(columns, 'customers')
 
   return (
     <ProTable<Customer>
       className="mes-pro-table-page"
       rowKey="uuid"
       actionRef={actionRef}
-      columns={columns}
+      columns={resizable.columns}
+      columnsState={columnsState}
+      components={resizable.components}
       headerTitle="客户管理"
       toolBarRender={() => canManageBase ? [
         <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/customers/create')}>
@@ -127,7 +133,7 @@ export default function CustomerList() {
       bordered
       pagination={mesTablePagination(10)}
       search={{ labelWidth: 'auto' }}
-      scroll={MES_PRO_TABLE_SCROLL}
+      scroll={{ x: resizable.scrollX, y: '100%' }}
     />
   )
 }

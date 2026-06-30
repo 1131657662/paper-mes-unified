@@ -6,16 +6,19 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { pageNoRules, previewNoRule } from '../../api/systemConfig'
 import { mesTablePagination } from '../../components/biz/MesPaginationBar'
 import TooltipText from '../../components/biz/TooltipText'
-import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
+import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import { useUpdateNoRule } from '../../features/systemConfig/hooks/useSystemConfigMutations'
+import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import type { ConfigStatus, NoRule, NoRuleSaveDTO } from '../../types/systemConfig'
 import { statusOptions, statusTag } from './systemConfigDisplay'
 
 export default function NoRulePanel() {
   const actionRef = useRef<ActionType>(null)
   const [editing, setEditing] = useState<NoRule>()
+  const columnsState = useTableColumnsState('table-columns-system-no-rule')
   const { mutateAsync: updateRule, isPending } = useUpdateNoRule()
   const columns = useNoRuleColumns({ onEdit: setEditing })
+  const resizable = useResizableTableColumns<NoRule, ProColumns<NoRule>>(columns, 'system-no-rule')
 
   async function submit(values: NoRuleSaveDTO) {
     if (!editing) return
@@ -31,7 +34,9 @@ export default function NoRulePanel() {
         className="mes-pro-table-page system-config-table"
         rowKey="uuid"
         actionRef={actionRef}
-        columns={columns}
+        columns={resizable.columns}
+        columnsState={columnsState}
+        components={resizable.components}
         headerTitle="单号规则"
         request={async (params) => {
           const res = await pageNoRules({
@@ -46,7 +51,7 @@ export default function NoRulePanel() {
         bordered
         pagination={mesTablePagination(20)}
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
-        scroll={MES_PRO_TABLE_SCROLL}
+        scroll={{ x: resizable.scrollX, y: '100%' }}
         options={{ density: true, reload: true, setting: true }}
       />
       <NoRuleModal
@@ -81,6 +86,7 @@ function useNoRuleColumns(options: { onEdit: (record: NoRule) => void }) {
     { title: '备注', dataIndex: 'remark', width: 240, search: false, render: textCell },
     {
       title: '操作',
+      key: 'actions',
       valueType: 'option',
       width: 90,
       render: (_, record) => (

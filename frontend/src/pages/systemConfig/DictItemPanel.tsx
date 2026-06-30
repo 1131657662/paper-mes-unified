@@ -7,9 +7,10 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { pageDictItems } from '../../api/systemConfig'
 import { mesTablePagination } from '../../components/biz/MesPaginationBar'
 import TooltipText from '../../components/biz/TooltipText'
-import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
+import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import type { ConfigStatus, DictItem, DictItemSaveDTO } from '../../types/systemConfig'
 import { useCreateDictItem, useDeleteDictItem, useUpdateDictItem } from '../../features/systemConfig/hooks/useSystemConfigMutations'
+import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { builtInTag, statusOptions, statusTag } from './systemConfigDisplay'
 import { DictItemModal } from './SystemConfigModal'
 
@@ -17,10 +18,12 @@ export default function DictItemPanel() {
   const actionRef = useRef<ActionType>(null)
   const [editing, setEditing] = useState<DictItem>()
   const [modalOpen, setModalOpen] = useState(false)
+  const columnsState = useTableColumnsState('table-columns-system-dict')
   const { mutateAsync: createItem, isPending: isCreating } = useCreateDictItem()
   const { mutateAsync: updateItem, isPending: isUpdating } = useUpdateDictItem()
   const { mutateAsync: deleteItem } = useDeleteDictItem()
   const columns = useDictColumns({ deleteItem, onEdit: openEdit })
+  const resizable = useResizableTableColumns<DictItem, ProColumns<DictItem>>(columns, 'system-dict')
 
   async function submit(values: DictItemSaveDTO) {
     if (editing) {
@@ -46,7 +49,9 @@ export default function DictItemPanel() {
         className="mes-pro-table-page system-config-table"
         rowKey="uuid"
         actionRef={actionRef}
-        columns={columns}
+        columns={resizable.columns}
+        columnsState={columnsState}
+        components={resizable.components}
         headerTitle="数据字典"
         toolBarRender={() => [
           <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
@@ -66,7 +71,7 @@ export default function DictItemPanel() {
         bordered
         pagination={mesTablePagination(20)}
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
-        scroll={MES_PRO_TABLE_SCROLL}
+        scroll={{ x: resizable.scrollX, y: '100%' }}
         options={{ density: true, reload: true, setting: true }}
       />
       <DictItemModal
@@ -97,6 +102,7 @@ function useDictColumns(options: { deleteItem: (uuid: string) => Promise<void>; 
     { title: '备注', dataIndex: 'remark', width: 240, search: false, render: textCell },
     {
       title: '操作',
+      key: 'actions',
       valueType: 'option',
       width: 130,
       render: (_, record) => (

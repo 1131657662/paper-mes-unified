@@ -9,11 +9,12 @@ import { useNavigate } from 'react-router-dom'
 import { pageUsers } from '../../api/user'
 import TooltipText from '../../components/biz/TooltipText'
 import { mesTablePagination } from '../../components/biz/MesPaginationBar'
-import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
+import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import { useAuthUser } from '../../stores/authStore'
 import type { SystemUser, UserRoleCode, UserStatus } from '../../types/user'
 import { useResetUserPassword, useUpdateUserStatus } from '../../features/user/hooks/useUserMutations'
 import { getRoleModuleNames, getRoleProfile } from '../../constants/permissionMeta'
+import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { roleTag, roleText, statusTag } from './userDisplay'
 import UserPasswordModal from './UserPasswordModal'
 import '../documentModule.css'
@@ -23,6 +24,7 @@ export default function UserList() {
   const actionRef = useRef<ActionType>(null)
   const navigate = useNavigate()
   const currentUser = useAuthUser()
+  const columnsState = useTableColumnsState('table-columns-users')
   const [passwordUser, setPasswordUser] = useState<SystemUser>()
   const { mutateAsync: changeStatus, isPending: isChangingStatus } = useUpdateUserStatus()
   const { mutateAsync: resetPassword, isPending: isResettingPassword } = useResetUserPassword()
@@ -39,6 +41,7 @@ export default function UserList() {
     {
       title: '角色',
       dataIndex: 'roleCode',
+      key: 'role',
       width: 120,
       valueType: 'select',
       valueEnum: {
@@ -49,7 +52,7 @@ export default function UserList() {
       },
       render: (_, record) => <RoleCell roleCode={record.roleCode} />,
     },
-    { title: '权限范围', dataIndex: 'roleCode', width: 260, search: false, render: (_, record) => <RoleScope roleCode={record.roleCode} /> },
+    { title: '权限范围', dataIndex: 'roleCode', key: 'roleScope', width: 260, search: false, render: (_, record) => <RoleScope roleCode={record.roleCode} /> },
     {
       title: '状态',
       dataIndex: 'status',
@@ -66,6 +69,7 @@ export default function UserList() {
     { title: '备注', dataIndex: 'remark', width: 220, search: false, render: textCell },
     {
       title: '操作',
+      key: 'actions',
       valueType: 'option',
       width: 240,
       render: (_, record) => (
@@ -104,6 +108,7 @@ export default function UserList() {
       ),
     },
   ]
+  const resizable = useResizableTableColumns<SystemUser, ProColumns<SystemUser>>(columns, 'users')
 
   return (
     <>
@@ -111,7 +116,9 @@ export default function UserList() {
         className="mes-pro-table-page"
         rowKey="uuid"
         actionRef={actionRef}
-        columns={columns}
+        columns={resizable.columns}
+        columnsState={columnsState}
+        components={resizable.components}
         headerTitle="用户权限"
         toolBarRender={() => [
           <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/users/create')}>
@@ -131,7 +138,7 @@ export default function UserList() {
         bordered
         pagination={mesTablePagination(10)}
         search={{ labelWidth: 'auto' }}
-        scroll={MES_PRO_TABLE_SCROLL}
+        scroll={{ x: resizable.scrollX, y: '100%' }}
       />
       <UserPasswordModal
         open={!!passwordUser}

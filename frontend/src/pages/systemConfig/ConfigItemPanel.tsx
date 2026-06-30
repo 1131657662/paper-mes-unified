@@ -7,9 +7,10 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { pageConfigItems } from '../../api/systemConfig'
 import { mesTablePagination } from '../../components/biz/MesPaginationBar'
 import TooltipText from '../../components/biz/TooltipText'
-import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
+import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import type { ConfigItem, ConfigItemSaveDTO, ConfigStatus } from '../../types/systemConfig'
 import { useCreateConfigItem, useDeleteConfigItem, useUpdateConfigItem } from '../../features/systemConfig/hooks/useSystemConfigMutations'
+import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { builtInTag, statusOptions, statusTag, valueTypeTag } from './systemConfigDisplay'
 import { ConfigItemModal } from './SystemConfigModal'
 
@@ -17,10 +18,12 @@ export default function ConfigItemPanel() {
   const actionRef = useRef<ActionType>(null)
   const [editing, setEditing] = useState<ConfigItem>()
   const [modalOpen, setModalOpen] = useState(false)
+  const columnsState = useTableColumnsState('table-columns-system-config')
   const { mutateAsync: createItem, isPending: isCreating } = useCreateConfigItem()
   const { mutateAsync: updateItem, isPending: isUpdating } = useUpdateConfigItem()
   const { mutateAsync: deleteItem } = useDeleteConfigItem()
   const columns = useConfigColumns({ deleteItem, onEdit: openEdit })
+  const resizable = useResizableTableColumns<ConfigItem, ProColumns<ConfigItem>>(columns, 'system-config')
 
   async function submit(values: ConfigItemSaveDTO) {
     if (editing) {
@@ -46,7 +49,9 @@ export default function ConfigItemPanel() {
         className="mes-pro-table-page system-config-table"
         rowKey="uuid"
         actionRef={actionRef}
-        columns={columns}
+        columns={resizable.columns}
+        columnsState={columnsState}
+        components={resizable.components}
         headerTitle="系统参数"
         toolBarRender={() => [
           <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
@@ -66,7 +71,7 @@ export default function ConfigItemPanel() {
         bordered
         pagination={mesTablePagination(20)}
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
-        scroll={MES_PRO_TABLE_SCROLL}
+        scroll={{ x: resizable.scrollX, y: '100%' }}
         options={{ density: true, reload: true, setting: true }}
       />
       <ConfigItemModal
@@ -98,6 +103,7 @@ function useConfigColumns(options: { deleteItem: (uuid: string) => Promise<void>
     { title: '备注', dataIndex: 'remark', width: 260, search: false, render: textCell },
     {
       title: '操作',
+      key: 'actions',
       valueType: 'option',
       width: 130,
       render: (_, record) => (

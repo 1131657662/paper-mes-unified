@@ -11,8 +11,9 @@ import {
 } from '../../api/warehouse'
 import TooltipText from '../../components/biz/TooltipText'
 import { mesTablePagination } from '../../components/biz/MesPaginationBar'
-import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
+import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import { PERMISSIONS } from '../../constants/permissions'
+import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useHasPermission } from '../../stores/authStore'
 import type { Warehouse } from '../../types/warehouse'
 
@@ -23,6 +24,7 @@ export default function WarehouseList() {
   const actionRef = useRef<ActionType>(null)
   const navigate = useNavigate()
   const canManageBase = useHasPermission(PERMISSIONS.baseManage)
+  const columnsState = useTableColumnsState('table-columns-warehouses')
 
   const handleDelete = async (record: Warehouse) => {
     await deleteWarehouse(record.uuid)
@@ -32,7 +34,7 @@ export default function WarehouseList() {
 
   const columns: ProColumns<Warehouse>[] = [
     { title: '仓库编码', dataIndex: 'warehouseCode', width: 140 },
-    { title: '仓库名称', dataIndex: 'warehouseName', render: textCell },
+    { title: '仓库名称', dataIndex: 'warehouseName', width: 200, render: textCell },
     { title: '库位', dataIndex: 'location', width: 200, search: false },
     {
       title: '状态',
@@ -52,6 +54,7 @@ export default function WarehouseList() {
     { title: '创建时间', dataIndex: 'createTime', width: 180, search: false, valueType: 'dateTime' },
     {
       title: '操作',
+      key: 'actions',
       valueType: 'option',
       width: 140,
       render: (_, record) => (
@@ -77,13 +80,16 @@ export default function WarehouseList() {
       ),
     },
   ]
+  const resizable = useResizableTableColumns<Warehouse, ProColumns<Warehouse>>(columns, 'warehouses')
 
   return (
     <ProTable<Warehouse>
       className="mes-pro-table-page"
       rowKey="uuid"
       actionRef={actionRef}
-      columns={columns}
+      columns={resizable.columns}
+      columnsState={columnsState}
+      components={resizable.components}
       headerTitle="仓库档案"
       toolBarRender={() => canManageBase ? [
         <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/warehouses/create')}>
@@ -102,7 +108,7 @@ export default function WarehouseList() {
       bordered
       pagination={mesTablePagination(10)}
       search={{ labelWidth: 'auto' }}
-      scroll={MES_PRO_TABLE_SCROLL}
+      scroll={{ x: resizable.scrollX, y: '100%' }}
     />
   )
 }

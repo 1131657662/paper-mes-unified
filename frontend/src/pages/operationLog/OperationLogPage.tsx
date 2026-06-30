@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { getOperationLogs } from '../../api/operationLog'
 import { mesTablePagination } from '../../components/biz/MesPaginationBar'
 import TooltipText from '../../components/biz/TooltipText'
-import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
+import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import type { OperationLog } from '../../types/operationLog'
 import { ACTION_TYPES, BIZ_TYPES } from '../../constants/operationLog'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
@@ -65,6 +65,7 @@ export default function OperationLogPage() {
     { title: '备注', dataIndex: 'remark', width: 220, hideInSearch: true, render: (text) => <TooltipText value={text} /> },
     {
       title: '操作',
+      key: 'actions',
       valueType: 'option',
       width: 90,
       render: (_, record) => (
@@ -74,13 +75,15 @@ export default function OperationLogPage() {
       ),
     },
   ]
+  const resizable = useResizableTableColumns<OperationLog, ProColumns<OperationLog>>(columns, 'operation-log')
 
   return (
     <>
       <ProTable<OperationLog>
         className="mes-pro-table-page operation-log-page"
-        columns={columns}
+        columns={resizable.columns}
         columnsState={columnsState}
+        components={resizable.components}
         actionRef={actionRef}
         headerTitle="操作日志"
         rowKey="uuid"
@@ -99,7 +102,7 @@ export default function OperationLogPage() {
         }}
         bordered
         pagination={mesTablePagination(20)}
-        scroll={MES_PRO_TABLE_SCROLL}
+        scroll={{ x: resizable.scrollX, y: '100%' }}
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         options={{ density: true, reload: true, setting: true }}
         dateFormatter="string"
