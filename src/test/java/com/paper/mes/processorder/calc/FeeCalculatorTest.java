@@ -49,6 +49,18 @@ class FeeCalculatorTest {
     }
 
     @Test
+    void invoice_adds_tax_on_no_tax_price() {
+        BigDecimal noTaxAmount = FeeCalculator.stepAmount(FeeCalculator.STEP_TYPE_REWIND,
+                null, new BigDecimal("3.255"), new BigDecimal("200"));
+
+        assertEquals(0, noTaxAmount.compareTo(new BigDecimal("651")), "不开票价按单价直接计算");
+        assertEquals(0, FeeCalculator.tax(noTaxAmount, new BigDecimal("6"), true)
+                .compareTo(new BigDecimal("39.06")), "开票按税点加价");
+        assertEquals(0, noTaxAmount.add(FeeCalculator.tax(noTaxAmount, new BigDecimal("6"), true))
+                .compareTo(new BigDecimal("690.06")), "开票应收=不开票价+税点");
+    }
+
+    @Test
     void assemble_no_invoice() {
         // 加工费 1075 + 附加费 200，不开票：总额=1275，税额=0。
         FeeCalculator.OrderFee f = FeeCalculator.assemble(
