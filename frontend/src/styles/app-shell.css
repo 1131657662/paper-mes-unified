@@ -305,7 +305,13 @@ body,
   height: 100%;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   background: #f5f7fa;
+}
+
+.app-shell__auth-loading-text {
+  color: #526579;
+  font-size: 14px;
 }
 
 @media (max-width: 860px) {

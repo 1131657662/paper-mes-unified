@@ -68,7 +68,7 @@ export default function SnapshotDiffModal({ uuid, open, onClose }: Props) {
       onCancel={onClose}
       footer={null}
       width={860}
-      destroyOnClose
+      destroyOnHidden
     >
       <Spin spinning={loading}>
         <Typography.Title level={5}>原纸快照差异</Typography.Title>

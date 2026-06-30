@@ -30,6 +30,7 @@ import type {
   SpareRollBatchVoidDTO,
 } from '../../types/processOrder'
 import { FINISH_STATUS, ROLL_NO_STATUS } from '../../constants/processOrder'
+import MesTooltip from '../../components/biz/MesTooltip'
 
 interface Props {
   orderUuid: string | null
@@ -267,7 +268,7 @@ export default function FinishRollManageDrawer({
         width={1200}
         open={open}
         onClose={onClose}
-        destroyOnClose
+        destroyOnHidden
         className="mes-detail-drawer"
       >
         <Spin spinning={loading}>
@@ -281,16 +282,17 @@ export default function FinishRollManageDrawer({
             )}
             <div className="mes-drawer-toolbar">
               <div className="mes-drawer-toolbar__actions">
-                <Button
-                  type="primary"
-                  onClick={() => setBatchOpen(true)}
-                  disabled={isAllDirectShip || isSettled}
-                  title={
-                    isAllDirectShip ? '直发卷在回录时自动产出，无需预生成' : undefined
-                  }
-                >
-                  批量生成正式号
-                </Button>
+                <MesTooltip title={isAllDirectShip ? '直发卷在回录时自动产出，无需预生成' : undefined}>
+                  <span>
+                    <Button
+                      type="primary"
+                      onClick={() => setBatchOpen(true)}
+                      disabled={isAllDirectShip || isSettled}
+                    >
+                      批量生成正式号
+                    </Button>
+                  </span>
+                </MesTooltip>
                 <Button onClick={() => setSpareOpen(true)} disabled={isSettled}>
                   追加备用号
                 </Button>
@@ -358,7 +360,7 @@ export default function FinishRollManageDrawer({
         confirmLoading={batchSubmitting}
         okText="生成"
         cancelText="取消"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form className="mes-modal-form" form={batchForm} layout="vertical">
           <div className="mes-form-grid">
@@ -402,7 +404,7 @@ export default function FinishRollManageDrawer({
         confirmLoading={spareSubmitting}
         okText="追加"
         cancelText="取消"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form className="mes-modal-form" form={spareForm} layout="vertical">
           <Form.Item

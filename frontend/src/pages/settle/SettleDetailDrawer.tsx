@@ -110,7 +110,7 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
       width={960}
       open={open}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       className="mes-detail-drawer"
     >
       <Spin spinning={loading}>

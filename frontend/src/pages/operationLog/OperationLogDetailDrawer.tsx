@@ -15,7 +15,7 @@ export default function OperationLogDetailDrawer({ log, onClose }: Props) {
       open={!!log}
       width={760}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
     >
       {log && (
         <div className="operation-log-drawer__body">

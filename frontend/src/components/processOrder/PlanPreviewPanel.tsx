@@ -41,8 +41,9 @@ const finishColumns: ColumnsType<RewindFinishItemPreview> = [
 export default function PlanPreviewPanel({ preview, loading }: Props) {
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-        <Spin tip="正在生成预览方案..." />
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 10, height: 400 }}>
+        <Spin />
+        <Typography.Text type="secondary">正在生成预览方案...</Typography.Text>
       </div>
     )
   }

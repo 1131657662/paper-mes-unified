@@ -34,7 +34,8 @@ export default function AuthGuard() {
   if (checking) {
     return (
       <div className="app-shell__auth-loading">
-        <Spin tip="正在恢复登录状态" />
+        <Spin />
+        <span className="app-shell__auth-loading-text">正在恢复登录状态</span>
       </div>
     )
   }

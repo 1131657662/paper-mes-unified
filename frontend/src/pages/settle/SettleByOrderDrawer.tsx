@@ -58,7 +58,7 @@ export default function SettleByOrderDrawer({ open, onClose, onSuccess }: Props)
       width={640}
       open={open}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       footer={
         <div className="mes-drawer-footer">
           <Button onClick={onClose}>取消</Button>

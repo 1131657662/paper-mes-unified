@@ -205,7 +205,7 @@ export default function DeliveryCreateDrawer({ open, onClose, onSuccess }: Props
       width={1000}
       open={open}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       className="mes-detail-drawer"
       footer={
         <div className="mes-drawer-footer">

@@ -56,7 +56,7 @@ export default function PrintModal({
       okText={result ? '关闭' : '确认打印'}
       cancelButtonProps={{ style: result ? { display: 'none' } : undefined }}
       confirmLoading={submitting}
-      destroyOnClose
+      destroyOnHidden
     >
       {result ? (
         <>

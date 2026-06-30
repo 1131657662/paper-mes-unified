@@ -52,7 +52,7 @@ export default function DeliveryDetailDrawer({ uuid, open, onChanged, onClose }:
       width={1080}
       open={open}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       className="mes-detail-drawer"
       extra={order && (
         <Space>

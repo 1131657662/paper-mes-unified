@@ -89,7 +89,7 @@ export default function OrderCreateDrawer({ open, onClose, onSuccess }: Props) {
       width={920}
       open={open}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       className="mes-detail-drawer"
       extra={
         <Space>

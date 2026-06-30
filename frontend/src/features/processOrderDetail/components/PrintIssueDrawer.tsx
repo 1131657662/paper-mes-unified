@@ -35,7 +35,7 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: P
       width="88vw"
       open={open}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       extra={
         <Space>
           <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
