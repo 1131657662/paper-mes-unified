@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { message } from 'antd'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType } from '@ant-design/pro-components'
+import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import { renderTableToolbarPortal } from '../../components/biz/TableToolbarPortal'
 import {
   pageProcessOrders,
@@ -131,7 +132,7 @@ export default function ProcessOrderList() {
           headerTitle={false}
           toolBarRender={() => []}
           optionsRender={renderTableToolbarPortal}
-          options={{ density: true, reload: true, setting: true }}
+          options={mesProTableOptions()}
           params={{
             quickStatus,
             ...searchFilters,

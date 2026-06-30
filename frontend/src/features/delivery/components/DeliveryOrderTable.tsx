@@ -4,6 +4,7 @@ import type { ProColumns } from '@ant-design/pro-components'
 import type { ReactNode } from 'react'
 import type { TableRowSelection } from 'antd/es/table/interface'
 import TooltipText from '../../../components/biz/TooltipText'
+import { mesProTableOptions } from '../../../components/biz/mesProTableOptions'
 import { renderTableToolbarPortal } from '../../../components/biz/TableToolbarPortal'
 import { useTableColumnsState } from '../../../hooks/useTableColumnsState'
 import { useResizableTableColumns } from '../../../components/useResizableTableColumns'
@@ -52,7 +53,7 @@ export default function DeliveryOrderTable({
       bordered
       cardProps={false}
       headerTitle={false}
-      options={{ density: true, reload: onReload ? () => onReload() : true, setting: true }}
+      options={mesProTableOptions(onReload)}
       optionsRender={renderTableToolbarPortal}
       search={false}
       scroll={{ x: resizable.scrollX, y: '100%' }}

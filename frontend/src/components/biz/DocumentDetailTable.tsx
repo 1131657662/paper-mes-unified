@@ -6,6 +6,7 @@ import { useMemo } from 'react'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useResizableTableColumns } from '../useResizableTableColumns'
 import { mesTablePagination } from './MesPaginationBar'
+import { mesProTableOptions } from './mesProTableOptions'
 
 interface DocumentDetailTableProps<RecordType extends object>
   extends Omit<TableProps<RecordType>, 'bordered' | 'columns' | 'size'> {
@@ -39,7 +40,7 @@ export default function DocumentDetailTable<RecordType extends object>({
         components={resizable.components}
         defaultSize={defaultSize}
         headerTitle={false}
-        options={{ density: true, reload: onReload ? () => onReload() : true, setting: true }}
+        options={mesProTableOptions(onReload)}
         pagination={pagination === false ? false : mesTablePagination(10, typeof pagination === 'object' ? pagination : undefined)}
         search={false}
         scroll={{ ...tableProps.scroll, x: tableProps.scroll?.x ?? resizable.scrollX }}

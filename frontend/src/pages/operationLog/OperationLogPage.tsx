@@ -6,6 +6,7 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { useNavigate } from 'react-router-dom'
 import { getOperationLogs } from '../../api/operationLog'
 import { mesTablePagination } from '../../components/biz/MesPaginationBar'
+import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import TooltipText from '../../components/biz/TooltipText'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import type { OperationLog } from '../../types/operationLog'
@@ -104,7 +105,7 @@ export default function OperationLogPage() {
         pagination={mesTablePagination(20)}
         scroll={{ x: resizable.scrollX, y: '100%' }}
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
-        options={{ density: true, reload: true, setting: true }}
+        options={mesProTableOptions()}
         dateFormatter="string"
       />
 

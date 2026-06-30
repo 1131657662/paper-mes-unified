@@ -5,6 +5,7 @@ import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { pageNoRules, previewNoRule } from '../../api/systemConfig'
 import { mesTablePagination } from '../../components/biz/MesPaginationBar'
+import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import TooltipText from '../../components/biz/TooltipText'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import { useUpdateNoRule } from '../../features/systemConfig/hooks/useSystemConfigMutations'
@@ -52,7 +53,7 @@ export default function NoRulePanel() {
         pagination={mesTablePagination(20)}
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         scroll={{ x: resizable.scrollX, y: '100%' }}
-        options={{ density: true, reload: true, setting: true }}
+        options={mesProTableOptions()}
       />
       <NoRuleModal
         item={editing}
