@@ -145,6 +145,8 @@ function buildMenuItems(permissions?: string[]): MenuProps['items'] {
 function isEdgeScrollRoute(pathname: string) {
   return pathname === '/dashboard'
     || pathname === '/reports'
+    || pathname === '/system-config'
+    || pathname === '/operation-logs'
     || pathname === '/process-orders/create'
     || isProcessOrderDetailRoute(pathname)
     || isProcessOrderWorkbenchRoute(pathname)

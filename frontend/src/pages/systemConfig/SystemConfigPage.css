@@ -6,12 +6,21 @@
   gap: 14px;
 }
 
+.app-shell__content--edge-scroll .system-config-page {
+  height: auto;
+  min-height: 100%;
+}
+
 .system-config-card {
   display: flex;
   min-height: 0;
   flex: 1 1 0;
   flex-direction: column;
   overflow: hidden;
+}
+
+.app-shell__content--edge-scroll .system-config-card {
+  min-height: 640px;
 }
 
 .system-config-card > .ant-card-body {

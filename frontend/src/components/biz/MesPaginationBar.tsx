@@ -6,6 +6,10 @@ export function mesPaginationShowTotal(total: number) {
   return `共 ${formatTotal(total)} 条`
 }
 
+export function mesPaginationTotalText(total: number) {
+  return `，${mesPaginationShowTotal(total)}`
+}
+
 interface Props {
   className?: string
   current: number
@@ -32,7 +36,7 @@ export default function MesPaginationBar({
           popupMatchSelectWidth={false}
           size="middle"
         />
-        <span>条，{mesPaginationShowTotal(total)}</span>
+        <span>条{mesPaginationTotalText(total)}</span>
       </div>
       <Pagination
         current={current}
