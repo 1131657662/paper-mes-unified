@@ -57,6 +57,11 @@ public class DocumentNoService {
         return values.isEmpty() || values.get(0) == null ? 0L : values.get(0);
     }
 
+    public long nextPreviewValue(SysNoRule rule, LocalDate bizDate) {
+        String sequenceKey = sequenceKey(rule, bizDate);
+        return Math.max(currentValue(sequenceKey), maxPersistedValue(rule, bizDate)) + 1L;
+    }
+
     private long nextSequence(String sequenceKey, SysNoRule rule, LocalDate bizDate) {
         jdbcTemplate.update("""
                 INSERT INTO sys_roll_no_sequence(sequence_key, current_value)

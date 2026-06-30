@@ -96,12 +96,13 @@ public class NoRuleServiceImpl extends ServiceImpl<SysNoRuleMapper, SysNoRule> i
         SysNoRule rule = activeRule(bizType);
         String sequenceKey = documentNoService.sequenceKey(rule, bizDate);
         long current = documentNoService.currentValue(sequenceKey);
+        long next = documentNoService.nextPreviewValue(rule, bizDate);
         NoRulePreviewVO vo = new NoRulePreviewVO();
         vo.setBizType(bizType);
         vo.setSequenceKey(sequenceKey);
         vo.setCurrentValue(current);
-        vo.setNextValue(current + 1);
-        vo.setExampleNo(documentNoService.preview(rule, bizDate, current + 1));
+        vo.setNextValue(next);
+        vo.setExampleNo(documentNoService.preview(rule, bizDate, next));
         return vo;
     }
 

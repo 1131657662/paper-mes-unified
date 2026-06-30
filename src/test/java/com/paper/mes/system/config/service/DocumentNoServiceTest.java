@@ -66,6 +66,19 @@ class DocumentNoServiceTest {
     }
 
     @Test
+    void nextPreviewValue_whenPersistedNoIsGreater_usesPersistedMax() {
+        FakeJdbcTemplate jdbcTemplate = new FakeJdbcTemplate();
+        jdbcTemplate.setMaxPersistedValue(18L);
+        SysNoRule rule = rule(NoRuleBizType.SETTLE_ORDER, "JS", 1, 4, 1);
+        DocumentNoService service = service(rule, jdbcTemplate);
+
+        long next = service.nextPreviewValue(rule, BIZ_DATE);
+
+        assertEquals(19L, next);
+        assertEquals("JS202607010019", service.preview(rule, BIZ_DATE, next));
+    }
+
+    @Test
     void next_whenCalledConcurrently_returnsUniqueIncreasingNumbers() throws Exception {
         DocumentNoService service = service(rule(NoRuleBizType.FINISH_ROLL, "A", 2, 6, 0));
         ExecutorService executor = Executors.newFixedThreadPool(6);
