@@ -930,7 +930,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         try {
             settleDetailMapper.insert(detail);
         } catch (DuplicateKeyException e) {
-            throw new BusinessException(ErrorCode.E004, "鍔犲伐鍗曞凡鐢熸垚缁撶畻鍗曪紝涓嶅彲閲嶅缁撶畻");
+            throw new BusinessException(ErrorCode.E004, "加工单已生成结算单，不可重复结算");
         }
     }
 
