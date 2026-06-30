@@ -37,7 +37,6 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
     private static final String PLACEHOLDER_PAPER_NAME = "待定";
     private static final int PLACEHOLDER_GRAM_WEIGHT = 0;
     private static final int PLACEHOLDER_FINISH_WIDTH = 0;
-    /** 仅字母流水卷号（A-Y + 6位数字）参与最大值计算，排除直发母卷号等异形值。 */
     /** 唯一索引冲突时的重试次数，应对并发同时取到同一最大值。 */
     private static final int ALLOC_RETRY = 5;
 
@@ -177,7 +176,7 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
         throw new BusinessException("卷号分配冲突，请重试");
     }
 
-    /** 全局下一字母流水卷号：取现有最大字母流水 +1，无则从 A000001 起。 */
+    /** 由系统单号规则生成下一成品卷号，唯一索引兜底防并发重复。 */
     private String nextRollNo() {
         return rollNoSequenceService.nextFinishRollNo();
     }
