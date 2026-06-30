@@ -514,7 +514,10 @@
   line-height: 1;
 }
 
-.app-shell__content .ant-pro-table-list-toolbar-setting-item > span {
+.app-shell__content .ant-pro-table-list-toolbar-setting-item > span,
+.app-shell__content .ant-pro-table-list-toolbar-setting-item > button,
+.app-shell__content .mes-table-options-portal > span > span,
+.app-shell__content .mes-table-options-portal > span > button {
   display: inline-flex;
   width: 100%;
   height: 100%;
@@ -530,6 +533,17 @@
   justify-content: center;
   font-size: 14px;
   line-height: 1;
+}
+
+.rewinding-config-form__source-label {
+  width: 100px;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+.rewind-source-editor__source-label {
+  min-width: 300px;
+  max-width: 560px;
 }
 
 .app-shell__content .ant-table-thead > tr > th.ant-table-cell-fix-left,

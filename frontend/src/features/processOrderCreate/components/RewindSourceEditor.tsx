@@ -1,4 +1,5 @@
 import { Button, InputNumber, Select, Space, Tag, Typography } from 'antd'
+import TooltipText from '../../../components/biz/TooltipText'
 import type { RewindSegmentPlanDTO, RewindSourcePlanDTO } from '../../../types/processOrder'
 import {
   consumptionSources,
@@ -72,9 +73,7 @@ export function RewindSourceEditor({ segment, roll, rolls, sourceOptions, onChan
       {sources.map((source, index) => (
         <Space key={source.originalUuid ?? index} wrap>
           <Tag>{index + 1}</Tag>
-          <Typography.Text style={{ minWidth: 300, maxWidth: 560 }} ellipsis>
-            {labelForSource(source, sourceOptions)}
-          </Typography.Text>
+          <TooltipText className="rewind-source-editor__source-label" value={labelForSource(source, sourceOptions)} />
           <InputNumber
             addonBefore="消耗"
             addonAfter="%"

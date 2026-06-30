@@ -255,6 +255,7 @@
   min-height: 34px;
   align-items: center;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .process-order-shell__table-tools .ant-pro-table-list-toolbar-setting-item {

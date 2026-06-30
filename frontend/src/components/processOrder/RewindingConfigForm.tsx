@@ -3,6 +3,7 @@ import { Button, Col, Divider, InputNumber, Row, Select, Space, Tag, Typography,
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { previewRewindPlan } from '../../api/processOrder'
 import MesTooltip from '../biz/MesTooltip'
+import TooltipText from '../biz/TooltipText'
 import LayoutBar from './LayoutBar'
 import PlanPreviewPanel from './PlanPreviewPanel'
 import type {
@@ -428,9 +429,10 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                               const option = sourceRollOptions.find((item) => item.value === source.originalUuid)
                               return (
                                 <Space key={source.originalUuid} size={4}>
-                                  <Typography.Text type="secondary" style={{ fontSize: 12, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {option?.label ?? source.originalUuid}
-                                  </Typography.Text>
+                                  <TooltipText
+                                    className="rewinding-config-form__source-label"
+                                    value={option?.label ?? source.originalUuid}
+                                  />
                                   <InputNumber
                                     min={0}
                                     max={100}
