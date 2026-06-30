@@ -1,6 +1,7 @@
 package com.paper.mes.settle.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -356,7 +357,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         record.setCancelTime(LocalDateTime.now());
         record.setCancelBy(operator);
         record.setCancelReason(dto.getReason());
-        ConcurrencyGuard.requireRowUpdated(receiveRecordMapper.updateById(record));
+        updateReceiveRecordForCancel(record);
 
         refreshReceiveState(settle);
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,
@@ -485,6 +486,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private void refreshReceiveState(SettleOrder settle) {
+        Integer previousStatus = settle.getSettleStatus();
         applySettlementAmountView(settle, normalizeDetailsForInvoiceView(settle, settleDetails(settle.getUuid())));
         BigDecimal received = nz(settle.getReceivedAmount());
         BigDecimal total = nz(settle.getTotalAmount());
@@ -498,7 +500,44 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         } else {
             settle.setSettleStatus(SETTLE_STATUS_PARTIAL);
         }
-        ConcurrencyGuard.requireUpdated(updateById(settle));
+        updateSettleReceiveState(settle, previousStatus);
+    }
+
+    private void updateReceiveRecordForCancel(ReceiveRecord record) {
+        ConcurrencyGuard.requireRowUpdated(receiveRecordMapper.update(null,
+                new LambdaUpdateWrapper<ReceiveRecord>()
+                        .eq(ReceiveRecord::getUuid, record.getUuid())
+                        .eq(ReceiveRecord::getRecordStatus, RECEIVE_STATUS_ACTIVE)
+                        .set(ReceiveRecord::getRecordStatus, RECEIVE_STATUS_CANCELLED)
+                        .set(ReceiveRecord::getCancelTime, record.getCancelTime())
+                        .set(ReceiveRecord::getCancelBy, record.getCancelBy())
+                        .set(ReceiveRecord::getCancelReason, record.getCancelReason())
+                        .set(ReceiveRecord::getUpdateTime, LocalDateTime.now())
+                        .set(ReceiveRecord::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
+    }
+
+    private void updateSettleReceiveState(SettleOrder settle, Integer previousStatus) {
+        LambdaUpdateWrapper<SettleOrder> wrapper = new LambdaUpdateWrapper<SettleOrder>()
+                .eq(SettleOrder::getUuid, settle.getUuid())
+                .set(SettleOrder::getSawAmount, settle.getSawAmount())
+                .set(SettleOrder::getRewindAmount, settle.getRewindAmount())
+                .set(SettleOrder::getExtraAmount, settle.getExtraAmount())
+                .set(SettleOrder::getAmountNoTax, settle.getAmountNoTax())
+                .set(SettleOrder::getTaxAmount, settle.getTaxAmount())
+                .set(SettleOrder::getTotalAmount, settle.getTotalAmount())
+                .set(SettleOrder::getReceivedAmount, settle.getReceivedAmount())
+                .set(SettleOrder::getUnreceivedAmount, settle.getUnreceivedAmount())
+                .set(SettleOrder::getSettleStatus, settle.getSettleStatus())
+                .set(SettleOrder::getUpdateTime, LocalDateTime.now())
+                .set(SettleOrder::getUpdateBy, currentOperator())
+                .setSql("version = version + 1");
+        if (previousStatus == null) {
+            wrapper.isNull(SettleOrder::getSettleStatus);
+        } else {
+            wrapper.eq(SettleOrder::getSettleStatus, previousStatus);
+        }
+        ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null, wrapper));
     }
 
     private BigDecimal activeReceiveAmount(String settleUuid) {
@@ -1217,6 +1256,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (operator != null && !operator.isBlank()) {
             return operator;
         }
+        return currentOperator();
+    }
+
+    private String currentOperator() {
         return AuthContextHolder.currentDisplayName();
     }
 
