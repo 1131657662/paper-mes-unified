@@ -181,19 +181,6 @@
   gap: 8px;
 }
 
-.mes-table-options-portal .ant-pro-table-list-toolbar-setting-item {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-}
-
-.mes-table-options-portal .ant-pro-table-list-toolbar-setting-item:hover {
-  background: var(--mes-color-soft);
-}
-
 .document-page-table .ant-spin-nested-loading,
 .document-page-table .ant-spin-container,
 .document-page-table .ant-table,

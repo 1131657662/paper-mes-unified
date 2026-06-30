@@ -514,6 +514,15 @@
   line-height: 1;
 }
 
+.app-shell__content .mes-table-options-portal > .anticon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--mes-radius-sm);
+}
+
 .app-shell__content .ant-pro-table-list-toolbar-setting-item > span,
 .app-shell__content .ant-pro-table-list-toolbar-setting-item > button,
 .app-shell__content .mes-table-options-portal > span > span,
@@ -524,6 +533,12 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
+}
+
+.app-shell__content .ant-pro-table-list-toolbar-setting-item:hover,
+.app-shell__content .mes-table-options-portal > span:hover,
+.app-shell__content .mes-table-options-portal > .anticon:hover {
+  background: var(--mes-color-soft);
 }
 
 .app-shell__content .ant-pro-table-list-toolbar-setting-item .anticon,
