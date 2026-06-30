@@ -1,6 +1,8 @@
 import { Tag } from 'antd'
+import type { ReactNode } from 'react'
 import type { ProColumns } from '@ant-design/pro-components'
 import type { ProcessOrder } from '../../types/processOrder'
+import TooltipText from '../../components/biz/TooltipText'
 import { ORDER_STATUS, PRIORITY } from '../../constants/processOrder'
 import ProcessOrderRowActions from './ProcessOrderRowActions'
 import { BillingCell, OrderNoCell, OrderScheduleCell, PriorityPill, ProductionSummary } from './ProcessOrderListCells'
@@ -31,7 +33,7 @@ export function buildProcessOrderColumns(options: ColumnOptions): ProColumns<Pro
   return [
     { title: '加工单', dataIndex: 'orderNo', width: 170, hideInSearch: true, render: (_, record) => <OrderNoCell record={record} /> },
     { title: '加工单号/客户', dataIndex: 'keyword', hideInTable: true },
-    { title: '客户', dataIndex: 'customerName', width: 150, hideInSearch: true, ellipsis: true },
+    { title: '客户', dataIndex: 'customerName', width: 150, hideInSearch: true, render: textCell },
     { title: '客户', dataIndex: 'customerUuid', hideInTable: true, valueType: 'select', valueEnum: options.customerEnum },
     { title: '制单日期', dataIndex: 'orderDate', width: 112, hideInSearch: true },
     { title: '制单日期', dataIndex: 'dateRange', valueType: 'dateRange', hideInTable: true },
@@ -44,6 +46,10 @@ export function buildProcessOrderColumns(options: ColumnOptions): ProColumns<Pro
     { title: '费用', dataIndex: 'totalAmount', width: 116, hideInSearch: true, render: (_, record) => renderMoney(record.totalAmount) },
     { title: '操作', key: 'actions', valueType: 'option', width: 148, fixed: 'right', render: (_, record) => <ProcessOrderRowActions record={record} {...options} /> },
   ]
+}
+
+function textCell(value?: ReactNode) {
+  return <TooltipText value={value} />
 }
 
 function renderStatus(record: ProcessOrder) {

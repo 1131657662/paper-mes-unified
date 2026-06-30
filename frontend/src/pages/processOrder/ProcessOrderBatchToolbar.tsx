@@ -1,4 +1,4 @@
-import { Button, Dropdown, Modal, Space, Tooltip } from 'antd'
+import { Button, Dropdown, Modal, Space } from 'antd'
 import {
   CalculatorOutlined,
   DiffOutlined,
@@ -9,6 +9,7 @@ import {
   RollbackOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
+import MesTooltip from '../../components/biz/MesTooltip'
 import type { ProcessOrder } from '../../types/processOrder'
 
 type MenuItems = NonNullable<MenuProps['items']>
@@ -67,11 +68,11 @@ function ActionButton({
   onClick: () => void
 }) {
   return (
-    <Tooltip title={disabled ? '请选择一张符合状态的加工单' : undefined}>
+    <MesTooltip title={disabled ? '请选择一张符合状态的加工单' : undefined}>
       <Button icon={icon} disabled={disabled} onClick={onClick}>
         {children}
       </Button>
-    </Tooltip>
+    </MesTooltip>
   )
 }
 

@@ -9,10 +9,16 @@ export const ACTION_TYPES: Record<string, string> = {
   收款: '收款',
   回退: '回退',
   字段修改: '字段修改',
+  新增用户: '新增用户',
+  编辑用户: '编辑用户',
+  账号启停: '账号启停',
+  重置密码: '重置密码',
 }
 
 export const BIZ_TYPES: Record<string, string> = {
   加工单: '加工单',
   出库单: '出库单',
   结算单: '结算单',
+  系统用户: '系统用户',
+  系统配置: '系统配置',
 }

@@ -28,5 +28,10 @@ public class ReceiveRecord extends BaseEntity {
     private Integer payMethod;
     private String payNo;
     private String operator;
+    /** 1有效 2已撤销 */
+    private Integer recordStatus;
+    private LocalDateTime cancelTime;
+    private String cancelBy;
+    private String cancelReason;
     private String remark;
 }

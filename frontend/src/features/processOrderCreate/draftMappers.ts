@@ -132,7 +132,8 @@ export function normalizeBaseInfo(values: DraftOrderBaseDTO): DraftOrderBaseDTO 
   }
 }
 
-export function defaultPlanForRoll(roll: RollDraft): ProcessPlanDTO {
+export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions = {}): ProcessPlanDTO {
+  const spareCount = Math.max(0, options.spareCount ?? 0)
   if (roll.processMode === 3) {
     return { processMode: 3, spareCount: 0, finishSpecs: [] }
   }
@@ -144,7 +145,7 @@ export function defaultPlanForRoll(roll: RollDraft): ProcessPlanDTO {
       rewindMode: mainStepType === 2 ? 2 : undefined,
       knifeCount: mainStepType === 1 ? 0 : undefined,
       unitPrice: mainStepType === 1 ? 1.5 : 200,
-      spareCount: 0,
+      spareCount,
       finishSpecs: [{ itemType: 'FINISH', count: 1, finishWidth: 0, estimateWeight: 0 }],
       segments: [],
     }
@@ -155,7 +156,7 @@ export function defaultPlanForRoll(roll: RollDraft): ProcessPlanDTO {
       mainStepType: 1,
       knifeCount: 0,
       unitPrice: 1.5,
-      spareCount: 0,
+      spareCount,
       finishSpecs: [{ itemType: 'FINISH', count: 1, finishWidth: Math.max(1, roll.originalWidth - 100), estimateWeight: 0 }],
     }
   }
@@ -164,7 +165,7 @@ export function defaultPlanForRoll(roll: RollDraft): ProcessPlanDTO {
     mainStepType: 2,
     rewindMode: 2,
     unitPrice: 200,
-    spareCount: 0,
+    spareCount,
     finishSpecs: [],
     segments: [
       {
@@ -180,8 +181,8 @@ export function defaultPlanForRoll(roll: RollDraft): ProcessPlanDTO {
   }
 }
 
-export function defaultConfigForRoll(roll: RollDraft): FinishConfigSaveDTO {
-  const plan = defaultPlanForRoll(roll)
+export function defaultConfigForRoll(roll: RollDraft, options: DefaultPlanOptions = {}): FinishConfigSaveDTO {
+  const plan = defaultPlanForRoll(roll, options)
   if (roll.processMode === 3) {
     return { processMode: 3, spareCount: 0, finishSpecs: [] }
   }
@@ -207,4 +208,8 @@ export function defaultConfigForRoll(roll: RollDraft): FinishConfigSaveDTO {
         })),
     })),
   }
+}
+
+export interface DefaultPlanOptions {
+  spareCount?: number
 }

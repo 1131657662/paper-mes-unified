@@ -19,7 +19,7 @@ export interface Customer {
   invoiceAddress?: string
   bankAccount?: string
   deliveryAddress?: string
-  customerLevel?: string
+  customerLevel?: number
   exportTemplate?: string
   remark?: string
   createTime?: string
@@ -34,8 +34,17 @@ export interface CustomerSaveDTO {
   phone?: string
   settleType?: number
   settleDay?: number
+  sawPrice?: number
+  rewindPrice?: number
   defaultInvoice?: number
+  priceIncludeTax?: number
   taxRate?: number
+  taxNo?: string
+  invoiceAddress?: string
+  bankAccount?: string
+  deliveryAddress?: string
+  customerLevel?: number
+  exportTemplate?: string
   remark?: string
 }
 

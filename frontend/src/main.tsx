@@ -11,12 +11,20 @@ import { router } from './router'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { queryClient } from './app/queryClient'
 
+const antdLocale = {
+  ...zhCN,
+  Pagination: {
+    ...zhCN.Pagination,
+    items_per_page: '',
+  },
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ConfigProvider
-          locale={zhCN}
+          locale={antdLocale}
           theme={{
             token: {
               colorPrimary: '#1677ff',

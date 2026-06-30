@@ -1,41 +1,86 @@
 import {
-  formatKg,
-  formatMoney,
-  formatNumber,
-  formatPercent,
-  formatTon,
-} from '../utils/reportFormatters'
+  AccountBookOutlined,
+  BarChartOutlined,
+  DollarOutlined,
+  FieldTimeOutlined,
+  FileDoneOutlined,
+  ScissorOutlined,
+} from '@ant-design/icons'
+import { StatisticCard } from '@ant-design/pro-components'
+import type { ReactNode } from 'react'
+import type { ReportOverviewVO } from '../../../types/report'
+import { formatKg, formatMoney, formatNumber, formatPercent, formatTonFromKg } from '../utils/reportFormatters'
 
 interface Props {
-  summary: {
-    avgLossRatio: number
-    machineCount: number
-    totalAmount: number
-    totalFinishWeight: number
-    totalKnife: number
-    totalLossWeight: number
-    totalOrders: number
-    totalTon: number
-  }
+  overview?: ReportOverviewVO
 }
 
-export default function ReportMetricStrip({ summary }: Props) {
+export default function ReportMetricStrip({ overview }: Props) {
+  const cards: MetricProps[] = [
+    {
+      icon: <FileDoneOutlined />,
+      main: `${formatNumber(overview?.orderCount)} 单`,
+      sub: `${formatNumber(overview?.originalRollCount)} 原卷 / ${formatNumber(overview?.finishRollCount)} 成品`,
+      title: '加工单',
+    },
+    {
+      icon: <DollarOutlined />,
+      main: formatMoney(overview?.totalAmount),
+      sub: `加工费 ${formatMoney(overview?.processAmount)} / 附加 ${formatMoney(overview?.extraAmount)}`,
+      title: '加工收入',
+      tone: 'primary',
+    },
+    {
+      icon: <BarChartOutlined />,
+      main: formatTonFromKg(overview?.originalWeight),
+      sub: `成品 ${formatKg(overview?.finishWeight)}`,
+      title: '生产吨位',
+    },
+    {
+      icon: <ScissorOutlined />,
+      main: formatKg(overview?.lossWeight),
+      sub: formatPercent(overview?.lossRatio),
+      title: '损耗表现',
+      tone: 'warning',
+    },
+    {
+      icon: <AccountBookOutlined />,
+      main: formatMoney(overview?.unreceivedAmount),
+      sub: `已收 ${formatMoney(overview?.receivedAmount)}`,
+      title: '未收金额',
+      tone: 'danger',
+    },
+    {
+      icon: <FieldTimeOutlined />,
+      main: `${formatNumber(overview?.knifeCount)} 刀`,
+      sub: `锯 ${formatMoney(overview?.sawAmount)} / 复卷 ${formatMoney(overview?.rewindAmount)}`,
+      title: '刀数与工艺费',
+    },
+  ]
+
   return (
-    <div className="report-metrics mes-metrics">
-      <Metric title="完成加工单" main={`${formatNumber(summary.totalOrders)} 单`} sub={formatMoney(summary.totalAmount)} />
-      <Metric title="原纸吨位" main={formatTon(summary.totalTon)} sub={`${formatNumber(summary.totalKnife)} 刀`} />
-      <Metric title="成品重量" main={formatKg(summary.totalFinishWeight)} sub={`${summary.machineCount} 台机台`} />
-      <Metric title="损耗表现" main={formatKg(summary.totalLossWeight)} sub={formatPercent(summary.avgLossRatio)} />
-    </div>
+    <StatisticCard.Group className="report-metrics" gutter={[10, 10]} ghost>
+      {cards.map((item) => (
+        <StatisticCard
+          className={`report-metric report-metric--${item.tone ?? 'default'}`}
+          colSpan={{ xs: 24, sm: 12, md: 8, xl: 4 }}
+          key={item.title}
+          statistic={{
+            description: item.sub,
+            icon: <span className="report-metric__icon">{item.icon}</span>,
+            title: item.title,
+            value: item.main,
+          }}
+        />
+      ))}
+    </StatisticCard.Group>
   )
 }
 
-function Metric({ main, sub, title }: { title: string; main: string; sub: string }) {
-  return (
-    <div className="report-metric mes-metric">
-      <span>{title}</span>
-      <strong>{main}</strong>
-      <em>{sub}</em>
-    </div>
-  )
+interface MetricProps {
+  icon: ReactNode
+  main: string
+  sub: string
+  title: string
+  tone?: 'danger' | 'default' | 'primary' | 'warning'
 }

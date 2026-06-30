@@ -1,150 +1,151 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { Button } from 'antd'
+import { EyeOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
-import { Tag } from 'antd'
+import { useNavigate } from 'react-router-dom'
 import { getOperationLogs } from '../../api/operationLog'
+import { mesPageSizeOptions, mesPaginationShowTotal } from '../../components/biz/MesPaginationBar'
+import TooltipText from '../../components/biz/TooltipText'
+import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
 import type { OperationLog } from '../../types/operationLog'
 import { ACTION_TYPES, BIZ_TYPES } from '../../constants/operationLog'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
+import OperationLogDetailDrawer from './OperationLogDetailDrawer'
+import { actionTag } from './operationLogDisplay'
+import './OperationLogPage.css'
+
+const BIZ_ROUTE_PREFIX: Record<string, string> = {
+  加工单: '/process-orders',
+  出库单: '/delivery-orders',
+  结算单: '/settle-orders',
+  系统用户: '/users',
+  系统配置: '/system-config',
+}
 
 export default function OperationLogPage() {
   const actionRef = useRef<ActionType>()
   const columnsState = useTableColumnsState('table-columns-operation-log')
+  const navigate = useNavigate()
+  const [selectedLog, setSelectedLog] = useState<OperationLog>()
 
   const columns: ProColumns<OperationLog>[] = [
-    {
-      title: '操作时间',
-      dataIndex: 'operateTime',
-      valueType: 'dateTime',
-      width: 160,
-      hideInSearch: true,
-      sorter: true,
-    },
+    { title: '操作时间', dataIndex: 'operateTime', valueType: 'dateTime', width: 170, hideInSearch: true },
     {
       title: '操作日期',
       dataIndex: 'dateRange',
       valueType: 'dateRange',
       hideInTable: true,
-      search: {
-        transform: (value) => ({
-          dateFrom: value[0],
-          dateTo: value[1],
-        }),
-      },
+      search: { transform: (value) => ({ dateFrom: value[0], dateTo: value[1] }) },
     },
-    {
-      title: '业务类型',
-      dataIndex: 'bizType',
-      width: 100,
-      valueType: 'select',
-      valueEnum: BIZ_TYPES,
-    },
+    { title: '业务类型', dataIndex: 'bizType', width: 110, valueType: 'select', valueEnum: BIZ_TYPES },
     {
       title: '业务单号',
       dataIndex: 'bizNo',
-      width: 140,
+      width: 150,
+      render: (_, record) => bizNoCell(record, navigate),
     },
     {
       title: '动作类型',
       dataIndex: 'actionType',
-      width: 100,
+      width: 120,
       valueType: 'select',
       valueEnum: ACTION_TYPES,
-      render: (_, record) => {
-        const colorMap: Record<string, string> = {
-          回退: 'warning',
-          超差放行: 'error',
-          作废卷号: 'default',
-          回录: 'processing',
-          补打: 'default',
-          出库确认: 'success',
-          结算: 'success',
-          收款: 'success',
-          字段修改: 'default',
-        }
-        return <Tag className="mes-data-tag" color={colorMap[record.actionType] || 'default'}>{record.actionType}</Tag>
-      },
+      render: (_, record) => actionTag(record.actionType),
     },
+    { title: '操作人', dataIndex: 'operator', width: 110 },
+    { title: '字段名', dataIndex: 'fieldName', width: 130, hideInSearch: true, render: textOrDash },
     {
-      title: '操作人',
-      dataIndex: 'operator',
-      width: 100,
-    },
-    {
-      title: '字段名',
-      dataIndex: 'fieldName',
-      width: 120,
+      title: '变更内容',
+      dataIndex: 'change',
+      width: 260,
       hideInSearch: true,
-      render: (text) => text || '-',
+      render: (_, record) => <ChangeCell log={record} />,
     },
+    { title: '备注', dataIndex: 'remark', width: 220, hideInSearch: true, render: (text) => <TooltipText value={text} /> },
     {
-      title: '修改前',
-      dataIndex: 'oldValue',
-      width: 120,
-      hideInSearch: true,
-      ellipsis: true,
-      render: (text) => text || '-',
-    },
-    {
-      title: '修改后',
-      dataIndex: 'newValue',
-      width: 120,
-      hideInSearch: true,
-      ellipsis: true,
-      render: (text) => text || '-',
-    },
-    {
-      title: '备注',
-      dataIndex: 'remark',
-      ellipsis: true,
-      hideInSearch: true,
-      render: (text) => text || '-',
+      title: '操作',
+      valueType: 'option',
+      width: 90,
+      render: (_, record) => (
+        <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => setSelectedLog(record)}>
+          查看
+        </Button>
+      ),
     },
   ]
 
   return (
-    <ProTable<OperationLog>
-      className="mes-pro-table-page"
-      columns={columns}
-      columnsState={columnsState}
-      actionRef={actionRef}
-      headerTitle="操作日志"
-      rowKey="uuid"
-      request={async (params) => {
-        const res = await getOperationLogs({
-          current: params.current,
-          size: params.pageSize,
-          bizType: params.bizType,
-          bizNo: params.bizNo,
-          actionType: params.actionType,
-          operator: params.operator,
-          dateFrom: params.dateFrom,
-          dateTo: params.dateTo,
-        })
-        return {
-          data: res.records || [],
-          total: res.total || 0,
-          success: true,
-        }
-      }}
-      bordered
-      pagination={{
-        defaultPageSize: 20,
-        showSizeChanger: true,
-        showQuickJumper: true,
-        pageSizeOptions: [10, 20, 50, 100, 200, 500, 1000],
-      }}
-      scroll={{ x: 'max-content' }}
-      search={{
-        labelWidth: 'auto',
-        defaultCollapsed: false,
-      }}
-      options={{
-        reload: true,
-        density: true,
-        setting: true,
-      }}
-      dateFormatter="string"
-    />
+    <>
+      <ProTable<OperationLog>
+        className="mes-pro-table-page operation-log-page"
+        columns={columns}
+        columnsState={columnsState}
+        actionRef={actionRef}
+        headerTitle="操作日志"
+        rowKey="uuid"
+        request={async (params) => {
+          const res = await getOperationLogs({
+            actionType: params.actionType,
+            bizNo: params.bizNo,
+            bizType: params.bizType,
+            current: params.current,
+            dateFrom: params.dateFrom,
+            dateTo: params.dateTo,
+            operator: params.operator,
+            size: params.pageSize,
+          })
+          return { data: res.records || [], total: res.total || 0, success: true }
+        }}
+        bordered
+        pagination={{
+          defaultPageSize: 20,
+          pageSizeOptions: mesPageSizeOptions,
+          showQuickJumper: true,
+          showSizeChanger: true,
+          showTotal: mesPaginationShowTotal,
+        }}
+        scroll={MES_PRO_TABLE_SCROLL}
+        search={{ defaultCollapsed: false, labelWidth: 'auto' }}
+        options={{ density: true, reload: true, setting: true }}
+        dateFormatter="string"
+      />
+
+      <OperationLogDetailDrawer log={selectedLog} onClose={() => setSelectedLog(undefined)} />
+    </>
   )
+}
+
+function ChangeCell({ log }: { log: OperationLog }) {
+  if (!log.fieldName && !log.oldValue && !log.newValue) {
+    return <span className="operation-log-muted">-</span>
+  }
+  return (
+    <div className="operation-log-change-cell">
+      <span>
+        <em>前</em>
+        <TooltipText value={log.oldValue} />
+      </span>
+      <span>
+        <em>后</em>
+        <TooltipText value={log.newValue} />
+      </span>
+    </div>
+  )
+}
+
+function bizNoCell(record: OperationLog, navigate: (path: string) => void) {
+  if (!record.bizNo) return '-'
+  const prefix = BIZ_ROUTE_PREFIX[record.bizType]
+  if (!prefix || !record.bizUuid) return <TooltipText value={record.bizNo} />
+  return (
+    <Button className="operation-log-biz-link" type="link" size="small" onClick={() => navigate(`${prefix}/${record.bizUuid}`)}>
+      {record.bizNo}
+    </Button>
+  )
+}
+
+function textOrDash(text?: unknown) {
+  if (typeof text === 'string' || typeof text === 'number') return text
+  return '-'
 }

@@ -10,14 +10,23 @@ import com.paper.mes.warehouse.dto.WarehouseSaveDTO;
 import com.paper.mes.warehouse.entity.Warehouse;
 import com.paper.mes.warehouse.mapper.WarehouseMapper;
 import com.paper.mes.warehouse.service.WarehouseService;
+import com.paper.mes.system.config.constant.NoRuleBizType;
+import com.paper.mes.system.config.service.DocumentNoService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
+
 @Service
+@RequiredArgsConstructor
 public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse> implements WarehouseService {
 
     private static final int STATUS_ENABLED = 1;
+
+    private final DocumentNoService documentNoService;
 
     @Override
     public PageResult<Warehouse> pageWarehouses(WarehouseQuery query) {
@@ -45,10 +54,11 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String create(WarehouseSaveDTO dto) {
-        ensureCodeUnique(dto.getWarehouseCode(), null);
         Warehouse warehouse = new Warehouse();
         BeanUtils.copyProperties(dto, warehouse);
+        warehouse.setWarehouseCode(documentNoService.next(NoRuleBizType.WAREHOUSE, LocalDate.now()));
         if (warehouse.getStatus() == null) {
             warehouse.setStatus(STATUS_ENABLED);
         }
@@ -57,14 +67,16 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void update(String uuid, WarehouseSaveDTO dto) {
         Warehouse existing = getByUuid(uuid);
-        ensureCodeUnique(dto.getWarehouseCode(), uuid);
         Integer savedVersion = existing.getVersion();
         Integer keepStatus = existing.getStatus();
+        String savedCode = existing.getWarehouseCode();
         BeanUtils.copyProperties(dto, existing);
         existing.setUuid(uuid);
         existing.setVersion(savedVersion);
+        existing.setWarehouseCode(keepCodeOrGenerate(savedCode));
         if (existing.getStatus() == null) {
             existing.setStatus(keepStatus);
         }
@@ -77,17 +89,7 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
         removeById(uuid);
     }
 
-    private void ensureCodeUnique(String warehouseCode, String excludeUuid) {
-        if (!StringUtils.hasText(warehouseCode)) {
-            return;
-        }
-        LambdaQueryWrapper<Warehouse> wrapper = new LambdaQueryWrapper<Warehouse>()
-                .eq(Warehouse::getWarehouseCode, warehouseCode);
-        if (StringUtils.hasText(excludeUuid)) {
-            wrapper.ne(Warehouse::getUuid, excludeUuid);
-        }
-        if (count(wrapper) > 0) {
-            throw new BusinessException("仓库编码已存在：" + warehouseCode);
-        }
+    private String keepCodeOrGenerate(String code) {
+        return StringUtils.hasText(code) ? code : documentNoService.next(NoRuleBizType.WAREHOUSE, LocalDate.now());
     }
 }

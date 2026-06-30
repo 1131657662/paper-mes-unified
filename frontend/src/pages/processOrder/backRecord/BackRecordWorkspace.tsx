@@ -89,6 +89,7 @@ function WorkspaceTopbar({
           <BackRecordQuickActions
             detail={workspace.detail ?? null}
             form={workspace.form}
+            onValuesFilled={workspace.syncFilledValues}
             onOpenChange={() => workspace.openChangeGuide(null)}
           />
           <Space wrap size={[8, 8]}>

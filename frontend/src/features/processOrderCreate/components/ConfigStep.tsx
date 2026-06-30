@@ -10,12 +10,13 @@ import ResizableWorkspace from './ResizableWorkspace'
 import WorkbenchRollList from './WorkbenchRollList'
 
 const workbenchCardStyle = {
-  height: 'max(360px, calc(100vh - 400px))',
+  height: 'max(580px, calc(100vh - 310px))',
   display: 'flex',
   flexDirection: 'column',
 } as const
 
 interface Props {
+  defaultSpareCount?: number
   orderUuid?: string
   rolls: RollDraft[]
   selectedId?: string
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export default function ConfigStep({
+  defaultSpareCount = 0,
   orderUuid,
   rolls,
   selectedId,
@@ -50,7 +52,7 @@ export default function ConfigStep({
   const selected = rolls.find((roll) => roll.localId === selectedId && !lockedRolls[roll.localId])
     ?? rolls.find((roll) => roll.processMode !== 3 && !lockedRolls[roll.localId])
   const [checkedIds, setCheckedIds] = useState<string[]>(selected ? [selected.localId] : [])
-  const selectedPlan = selected ? plans[selected.localId] ?? defaultPlanForRoll(selected) : undefined
+  const selectedPlan = selected ? plans[selected.localId] ?? defaultPlanForRoll(selected, { spareCount: defaultSpareCount }) : undefined
   useAutoPlanPreview({ orderUuid, selected, selectedPlan, onPreviewPlan })
 
   const toggle = (localId: string, checked: boolean) => {
@@ -115,6 +117,7 @@ export default function ConfigStep({
       roll={selected}
       rolls={rolls}
       plan={selectedPlan}
+      defaultSpareCount={defaultSpareCount}
       onChange={(plan) => onPlanChange(selected.localId, plan)}
     />
   ) : (

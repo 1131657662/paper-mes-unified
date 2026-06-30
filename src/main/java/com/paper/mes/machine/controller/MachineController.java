@@ -2,6 +2,8 @@ package com.paper.mes.machine.controller;
 
 import com.paper.mes.common.PageResult;
 import com.paper.mes.common.R;
+import com.paper.mes.auth.permission.Permissions;
+import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.machine.dto.MachineQuery;
 import com.paper.mes.machine.dto.MachineSaveDTO;
 import com.paper.mes.machine.entity.Machine;
@@ -25,27 +27,32 @@ public class MachineController {
     private final MachineService machineService;
 
     @GetMapping
+    @RequirePermission(Permissions.BASE_VIEW)
     public R<PageResult<Machine>> page(MachineQuery query) {
         return R.success(machineService.pageMachines(query));
     }
 
     @GetMapping("/{uuid}")
+    @RequirePermission(Permissions.BASE_VIEW)
     public R<Machine> detail(@PathVariable String uuid) {
         return R.success(machineService.getByUuid(uuid));
     }
 
     @PostMapping
+    @RequirePermission(Permissions.BASE_MANAGE)
     public R<String> create(@Valid @RequestBody MachineSaveDTO dto) {
         return R.success(machineService.create(dto));
     }
 
     @PutMapping("/{uuid}")
+    @RequirePermission(Permissions.BASE_MANAGE)
     public R<Void> update(@PathVariable String uuid, @Valid @RequestBody MachineSaveDTO dto) {
         machineService.update(uuid, dto);
         return R.success();
     }
 
     @DeleteMapping("/{uuid}")
+    @RequirePermission(Permissions.BASE_MANAGE)
     public R<Void> delete(@PathVariable String uuid) {
         machineService.delete(uuid);
         return R.success();

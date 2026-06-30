@@ -28,6 +28,9 @@ export interface ReferenceOption {
   defaultInvoice?: number
   settleDay?: number
   settleType?: number
+  priceIncludeTax?: number
+  rewindPrice?: number
+  sawPrice?: number
   taxRate?: number
 }
 

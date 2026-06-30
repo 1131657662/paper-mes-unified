@@ -26,4 +26,5 @@ export interface MachineSaveDTO {
 /** 机台列表查询入参。 */
 export interface MachineQuery extends PageQuery {
   keyword?: string
+  status?: number
 }

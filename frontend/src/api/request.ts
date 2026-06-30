@@ -41,6 +41,9 @@ instance.interceptors.request.use((config) => {
 // 后端恒回 HTTP 200，真实结果在 body.code；这里统一解包 R<T>，成功直出 data。
 instance.interceptors.response.use(
   (resp) => {
+    if (resp.config.responseType === 'blob') {
+      return resp as unknown as AxiosResponse
+    }
     const body = resp.data as R<unknown>
     if (body && body.code === 200) {
       return body.data as unknown as AxiosResponse
@@ -70,6 +73,8 @@ instance.interceptors.response.use(
 export function request<T = unknown>(config: AxiosRequestConfig): Promise<T> {
   return instance.request<unknown, T>(config)
 }
+
+export const rawRequest = instance
 
 export default request
 

@@ -1,6 +1,8 @@
 import { Button, DatePicker, Form, Input, Radio, Select, Space } from 'antd'
 import { FileAddOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
+import { DICT_TYPES, invoiceFallbackOptions } from '../../systemConfig/configFallbacks'
+import { useNumberDictOptions } from '../../systemConfig/hooks/useRuntimeDictOptions'
 import type { Customer } from '../../../types/customer'
 
 const { RangePicker } = DatePicker
@@ -24,6 +26,8 @@ export default function SettleWorkbenchHeader({
   selectedCount,
   submitting,
 }: Props) {
+  const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
+
   return (
     <div className="settle-header">
       <div className="settle-header__title">
@@ -64,8 +68,11 @@ export default function SettleWorkbenchHeader({
         </Form.Item>
         <Form.Item<SettleWorkbenchForm> label="是否开票" name="isInvoice">
           <Radio.Group optionType="button">
-            <Radio.Button value={2}>不开票</Radio.Button>
-            <Radio.Button value={1}>开票</Radio.Button>
+            {invoiceOptions.map((item) => (
+              <Radio.Button key={item.value} value={item.value}>
+                {item.label}
+              </Radio.Button>
+            ))}
           </Radio.Group>
         </Form.Item>
         <Form.Item<SettleWorkbenchForm> label="备注" name="remark">

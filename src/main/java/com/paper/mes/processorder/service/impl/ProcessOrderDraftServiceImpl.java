@@ -37,6 +37,8 @@ import com.paper.mes.processorder.service.ProcessPlanDraftManager;
 import com.paper.mes.processorder.service.ProcessPlanMapper;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.system.config.constant.NoRuleBizType;
+import com.paper.mes.system.config.service.DocumentNoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -44,7 +46,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -65,8 +66,6 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     private static final int IS_SPARE_YES = 1;
     private static final int DEFAULT_SETTLE_TYPE = 2;
     private static final int DEFAULT_IS_INVOICE = 2;
-    private static final DateTimeFormatter DAY_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
-
     private final ProcessOrderMapper processOrderMapper;
     private final OriginalRollMapper originalRollMapper;
     private final ProcessConfigDraftMapper draftMapper;
@@ -78,6 +77,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     private final ProcessPlanMapper processPlanMapper;
     private final OriginalRollImportParser importParser;
     private final ObjectMapper objectMapper;
+    private final DocumentNoService documentNoService;
 
     @Override
     public List<DraftSummaryVO> listDrafts() {
@@ -440,9 +440,6 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     }
 
     private String nextOrderNo(DraftOrderBaseDTO dto) {
-        String prefix = "JG" + dto.getOrderDate().format(DAY_FMT);
-        long todayCount = processOrderMapper.selectCount(new LambdaQueryWrapper<ProcessOrder>()
-                .likeRight(ProcessOrder::getOrderNo, prefix));
-        return prefix + String.format("%04d", todayCount + 1);
+        return documentNoService.next(NoRuleBizType.PROCESS_ORDER, dto.getOrderDate());
     }
 }

@@ -1,0 +1,213 @@
+package com.paper.mes.report.service;
+
+import com.paper.mes.report.dto.ReportDetailVO;
+import com.paper.mes.report.dto.ReportDimensionVO;
+import com.paper.mes.report.dto.ReportOverviewVO;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+/**
+ * 统计报表 Excel 导出。
+ */
+@Service
+public class ReportExportService {
+
+    public Workbook buildWorkbook(ReportOverviewVO overview,
+                                  List<ReportDimensionVO> dimensions,
+                                  List<ReportDetailVO> details,
+                                  String dimension) {
+        Workbook workbook = new XSSFWorkbook();
+        CellStyle titleStyle = titleStyle(workbook);
+        CellStyle headerStyle = headerStyle(workbook);
+        writeOverview(workbook.createSheet("汇总"), overview, titleStyle);
+        writeDimensions(workbook.createSheet("维度汇总"), dimensions, dimension, headerStyle);
+        writeDetails(workbook.createSheet("加工单明细"), details, headerStyle);
+        return workbook;
+    }
+
+    private void writeOverview(Sheet sheet, ReportOverviewVO overview, CellStyle titleStyle) {
+        Row title = sheet.createRow(0);
+        title.createCell(0).setCellValue("统计报表汇总");
+        title.getCell(0).setCellStyle(titleStyle);
+        row(sheet, 2, "加工单数", overview.getOrderCount(), "原卷数", overview.getOriginalRollCount());
+        row(sheet, 3, "成品卷数", overview.getFinishRollCount(), "刀数", overview.getKnifeCount());
+        row(sheet, 4, "原纸重量kg", overview.getOriginalWeight(), "成品重量kg", overview.getFinishWeight());
+        row(sheet, 5, "损耗kg", overview.getLossWeight(), "损耗率%", overview.getLossRatio());
+        row(sheet, 6, "锯纸费", overview.getSawAmount(), "复卷费", overview.getRewindAmount());
+        row(sheet, 7, "加工费", overview.getProcessAmount(), "附加费", overview.getExtraAmount());
+        row(sheet, 8, "应收合计", overview.getTotalAmount(), "已收金额", overview.getReceivedAmount());
+        row(sheet, 9, "未收金额", overview.getUnreceivedAmount(), "", "");
+        autosize(sheet, 5);
+    }
+
+    private void writeDimensions(Sheet sheet,
+                                 List<ReportDimensionVO> rows,
+                                 String dimension,
+                                 CellStyle headerStyle) {
+        header(sheet, headerStyle, "维度", "加工单", "原卷", "成品", "原纸kg", "成品kg", "损耗kg",
+                "损耗率%", "刀数", "锯纸费", "复卷费", "加工费", "附加费", "应收", "未收");
+        int index = 1;
+        for (ReportDimensionVO item : rows) {
+            Row row = sheet.createRow(index++);
+            row.createCell(0).setCellValue(label(item, dimension));
+            row.createCell(1).setCellValue(num(item.getOrderCount()));
+            row.createCell(2).setCellValue(num(item.getOriginalRollCount()));
+            row.createCell(3).setCellValue(num(item.getFinishRollCount()));
+            row.createCell(4).setCellValue(num(item.getOriginalWeight()));
+            row.createCell(5).setCellValue(num(item.getFinishWeight()));
+            row.createCell(6).setCellValue(num(item.getLossWeight()));
+            row.createCell(7).setCellValue(num(item.getLossRatio()));
+            row.createCell(8).setCellValue(num(item.getKnifeCount()));
+            row.createCell(9).setCellValue(num(item.getSawAmount()));
+            row.createCell(10).setCellValue(num(item.getRewindAmount()));
+            row.createCell(11).setCellValue(num(item.getProcessAmount()));
+            row.createCell(12).setCellValue(num(item.getExtraAmount()));
+            row.createCell(13).setCellValue(num(item.getTotalAmount()));
+            row.createCell(14).setCellValue(num(item.getUnreceivedAmount()));
+        }
+        autosize(sheet, 15);
+    }
+
+    private void writeDetails(Sheet sheet, List<ReportDetailVO> rows, CellStyle headerStyle) {
+        header(sheet, headerStyle, "加工单号", "日期", "客户", "纸品", "工艺", "状态", "结算",
+                "开票", "原卷", "成品", "原纸kg", "成品kg", "损耗kg", "损耗率%", "刀数",
+                "锯纸费", "复卷费", "加工费", "附加费", "应收", "已收", "未收");
+        int index = 1;
+        for (ReportDetailVO item : rows) {
+            Row row = sheet.createRow(index++);
+            row.createCell(0).setCellValue(text(item.getOrderNo()));
+            row.createCell(1).setCellValue(text(item.getOrderDate()));
+            row.createCell(2).setCellValue(text(item.getCustomerName()));
+            row.createCell(3).setCellValue(text(item.getPaperSummary()));
+            row.createCell(4).setCellValue(text(item.getProcessSummary()));
+            row.createCell(5).setCellValue(statusText(item.getOrderStatus()));
+            row.createCell(6).setCellValue(settleText(item.getSettleType()));
+            row.createCell(7).setCellValue(invoiceText(item.getIsInvoice()));
+            row.createCell(8).setCellValue(num(item.getOriginalRollCount()));
+            row.createCell(9).setCellValue(num(item.getFinishRollCount()));
+            row.createCell(10).setCellValue(num(item.getOriginalWeight()));
+            row.createCell(11).setCellValue(num(item.getFinishWeight()));
+            row.createCell(12).setCellValue(num(item.getLossWeight()));
+            row.createCell(13).setCellValue(num(item.getLossRatio()));
+            row.createCell(14).setCellValue(num(item.getKnifeCount()));
+            row.createCell(15).setCellValue(num(item.getSawAmount()));
+            row.createCell(16).setCellValue(num(item.getRewindAmount()));
+            row.createCell(17).setCellValue(num(item.getProcessAmount()));
+            row.createCell(18).setCellValue(num(item.getExtraAmount()));
+            row.createCell(19).setCellValue(num(item.getTotalAmount()));
+            row.createCell(20).setCellValue(num(item.getReceivedAmount()));
+            row.createCell(21).setCellValue(num(item.getUnreceivedAmount()));
+        }
+        autosize(sheet, 22);
+    }
+
+    private void header(Sheet sheet, CellStyle style, String... labels) {
+        Row row = sheet.createRow(0);
+        for (int i = 0; i < labels.length; i++) {
+            row.createCell(i).setCellValue(labels[i]);
+            row.getCell(i).setCellStyle(style);
+        }
+    }
+
+    private void row(Sheet sheet, int rowIndex, String k1, Object v1, String k2, Object v2) {
+        Row row = sheet.createRow(rowIndex);
+        row.createCell(0).setCellValue(k1);
+        row.createCell(1).setCellValue(text(v1));
+        row.createCell(3).setCellValue(k2);
+        row.createCell(4).setCellValue(text(v2));
+    }
+
+    private String label(ReportDimensionVO item, String dimension) {
+        if ("status".equals(dimension)) {
+            return statusText(parseInt(item.getDimensionKey()));
+        }
+        if ("invoice".equals(dimension)) {
+            return "1".equals(item.getDimensionKey()) ? "开票" : "不开票";
+        }
+        if ("settleType".equals(dimension)) {
+            return "1".equals(item.getDimensionKey()) ? "次结" : "月结";
+        }
+        return text(item.getDimensionName());
+    }
+
+    private CellStyle titleStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        Font font = workbook.createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 14);
+        style.setFont(font);
+        return style;
+    }
+
+    private CellStyle headerStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        return style;
+    }
+
+    private void autosize(Sheet sheet, int count) {
+        for (int i = 0; i < count; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, Math.min(sheet.getColumnWidth(i) + 512, 12000));
+        }
+    }
+
+    private String statusText(Integer status) {
+        if (status == null) {
+            return "-";
+        }
+        return switch (status) {
+            case 0 -> "草稿";
+            case 1 -> "待下发";
+            case 2 -> "加工中";
+            case 3 -> "待回录";
+            case 4 -> "已完成";
+            case 5 -> "已结算";
+            default -> String.valueOf(status);
+        };
+    }
+
+    private Integer parseInt(String value) {
+        try {
+            return value == null ? null : Integer.valueOf(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String settleText(Integer value) {
+        if (value == null) {
+            return "-";
+        }
+        return value == 2 ? "月结" : value == 1 ? "次结" : String.valueOf(value);
+    }
+
+    private String invoiceText(Integer value) {
+        if (value == null) {
+            return "-";
+        }
+        return value == 1 ? "开票" : "不开票";
+    }
+
+    private double num(BigDecimal value) {
+        return value == null ? 0 : value.doubleValue();
+    }
+
+    private double num(Long value) {
+        return value == null ? 0 : value.doubleValue();
+    }
+
+    private String text(Object value) {
+        return value == null ? "-" : value.toString();
+    }
+}

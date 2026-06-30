@@ -1,9 +1,12 @@
 import { Alert, Button, Form, Input, InputNumber, Select, Tag, Typography } from 'antd'
 import { CopyOutlined } from '@ant-design/icons'
 import { IS_REMAIN } from '../../../constants/processOrder'
+import { DICT_TYPES, abnormalFallbackOptions } from '../../../features/systemConfig/configFallbacks'
+import { useDictOptions } from '../../../features/systemConfig/hooks/useRuntimeDictOptions'
 import type { FinishRoll } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import type { BackRecordWorkItem, WorkbenchFinish } from './backRecordWorkbenchTypes'
+import { theoreticalItemFinishValues } from './backRecordTheoryFill'
 
 interface Props {
   item: BackRecordWorkItem
@@ -11,17 +14,12 @@ interface Props {
 
 export default function BackRecordFinishEntryList({ item }: Props) {
   const form = Form.useFormInstance<BackRecordFormValues>()
+  const { options: abnormalTypeOptions } = useDictOptions(DICT_TYPES.abnormalType, abnormalFallbackOptions)
 
   const fillFinishes = () => {
-    for (const { finish } of item.finishes) {
-      form.setFieldValue(['finishes', finish.uuid], {
-        actualWeight: finish.actualWeight ?? (finish.isSpare === 1 ? undefined : finish.estimateWeight),
-        scrapWeight: finish.scrapWeight,
-        isRemain: finish.isRemain ?? 0,
-        isAbnormal: finish.isAbnormal ?? 0,
-        abnormalType: finish.abnormalType,
-        actualRemark: finish.actualRemark,
-      })
+    const values = theoreticalItemFinishValues(item)
+    for (const [uuid, value] of Object.entries(values)) {
+      form.setFieldValue(['finishes', uuid], value)
     }
   }
 
@@ -37,14 +35,14 @@ export default function BackRecordFinishEntryList({ item }: Props) {
         <Alert showIcon type="info" message="当前母卷没有已绑定成品。直发卷会在提交回录时由后端生成出库用记录。" />
       ) : (
         <div className="back-record-finish-list">
-          {item.finishes.map((entry) => <FinishEntryRow key={entry.finish.uuid} entry={entry} />)}
+          {item.finishes.map((entry) => <FinishEntryRow key={entry.finish.uuid} abnormalTypeOptions={abnormalTypeOptions} entry={entry} />)}
         </div>
       )}
     </section>
   )
 }
 
-function FinishEntryRow({ entry }: { entry: WorkbenchFinish }) {
+function FinishEntryRow({ abnormalTypeOptions, entry }: { abnormalTypeOptions: Array<{ label: string; value: number | string }>; entry: WorkbenchFinish }) {
   const finish = entry.finish
 
   return (
@@ -79,7 +77,7 @@ function FinishEntryRow({ entry }: { entry: WorkbenchFinish }) {
           <Select options={abnormalOptions} />
         </Form.Item>
         <Form.Item name={['finishes', finish.uuid, 'abnormalType']} label="异常类型">
-          <Input placeholder="破损/潮边" />
+          <Select allowClear options={abnormalTypeOptions} placeholder="请选择" />
         </Form.Item>
         <Form.Item name={['finishes', finish.uuid, 'actualRemark']} label="备注">
           <Input placeholder="车间说明" />

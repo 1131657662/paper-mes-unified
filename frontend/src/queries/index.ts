@@ -5,6 +5,8 @@ import { createOrderKeys } from '../features/processOrderCreate/queries/createOr
 import { processOrderDetailKeys } from '../features/processOrderDetail/queries/processOrderDetailKeys'
 import { reportKeys } from '../features/report/queries/reportKeys'
 import { settleKeys } from '../features/settle/queries/settleKeys'
+import { systemConfigKeys } from '../features/systemConfig/queries/systemConfigKeys'
+import { userKeys } from '../features/user/queries/userKeys'
 
 export const queries = mergeQueryKeys(
   dashboardKeys,
@@ -13,4 +15,6 @@ export const queries = mergeQueryKeys(
   deliveryKeys,
   settleKeys,
   reportKeys,
+  userKeys,
+  systemConfigKeys,
 )

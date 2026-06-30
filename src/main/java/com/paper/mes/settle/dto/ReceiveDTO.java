@@ -1,5 +1,6 @@
 package com.paper.mes.settle.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
@@ -24,7 +25,8 @@ public class ReceiveDTO {
     private String payNo;
     private String operator;
 
-    /** 收款时间，可空默认 now */
+    /** 收款时间，可空默认 now。 */
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime receiveDate;
 
     private String remark;

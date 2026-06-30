@@ -57,7 +57,7 @@ export default function OrderDetailPanel({
   }
 
   return (
-    <Spin spinning={isLoadingDetail}>
+    <Spin spinning={isLoadingDetail} wrapperClassName="mes-spin-fill">
       {!uuid ? (
         <Empty description="未选择加工单" />
       ) : !detail && !isLoadingDetail ? (

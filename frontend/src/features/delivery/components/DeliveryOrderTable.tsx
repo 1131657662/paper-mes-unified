@@ -1,5 +1,12 @@
-import { Button, Space, Table, Tag, Typography } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { Button, Space, Tag, Typography } from 'antd'
+import { ProTable } from '@ant-design/pro-components'
+import type { ProColumns } from '@ant-design/pro-components'
+import type { ReactNode } from 'react'
+import type { TableRowSelection } from 'antd/es/table/interface'
+import TooltipText from '../../../components/biz/TooltipText'
+import { renderTableToolbarPortal } from '../../../components/biz/TableToolbarPortal'
+import { useTableColumnsState } from '../../../hooks/useTableColumnsState'
+import { useResizableTableColumns } from '../../../components/useResizableTableColumns'
 import type { DeliveryOrder } from '../../../types/delivery'
 import { DELIVERY_STATUS, SETTLE_BLOCK_ACTION } from '../../../constants/delivery'
 import { formatKg } from '../utils/deliveryFormatters'
@@ -7,12 +14,12 @@ import { formatKg } from '../utils/deliveryFormatters'
 interface Props {
   data: DeliveryOrder[]
   loading: boolean
-  page: number
-  pageSize: number
-  total: number
+  onReload?: () => void
+  rowClassName?: (record: DeliveryOrder) => string
+  rowSelection?: TableRowSelection<DeliveryOrder>
   onConfirm: (record: DeliveryOrder) => void
   onDetail: (record: DeliveryOrder) => void
-  onPageChange: (page: number, pageSize: number) => void
+  onRow?: (record: DeliveryOrder) => React.HTMLAttributes<HTMLElement>
 }
 
 export default function DeliveryOrderTable({
@@ -20,30 +27,39 @@ export default function DeliveryOrderTable({
   loading,
   onConfirm,
   onDetail,
-  onPageChange,
-  page,
-  pageSize,
-  total,
+  onReload,
+  onRow,
+  rowClassName,
+  rowSelection,
 }: Props) {
   const columns = buildColumns({ onConfirm, onDetail })
+  const columnsState = useTableColumnsState('table-columns-delivery-orders')
+  const resizable = useResizableTableColumns<DeliveryOrder, ProColumns<DeliveryOrder>>(columns, 'delivery-orders')
+
   return (
-    <Table<DeliveryOrder>
-      className="mes-table-card"
+    <ProTable<DeliveryOrder>
+      className="delivery-order-table mes-table-card"
       rowKey="uuid"
-      size="small"
       loading={loading}
-      columns={columns}
+      columns={resizable.columns}
+      columnsState={columnsState}
+      components={resizable.components}
       dataSource={data}
-      pagination={{
-        current: page,
-        pageSize,
-        total,
-        showSizeChanger: true,
-        pageSizeOptions: [10, 20, 50, 100, 200],
-        showTotal: (value) => `共 ${value} 条`,
-        onChange: onPageChange,
-      }}
-      scroll={{ x: 980, y: 'calc(100vh - 590px)' }}
+      pagination={false}
+      rowClassName={rowClassName}
+      rowSelection={rowSelection}
+      onRow={onRow}
+      bordered
+      cardProps={false}
+      headerTitle={false}
+      options={{ density: true, reload: onReload ? () => onReload() : true, setting: true }}
+      optionsRender={renderTableToolbarPortal}
+      search={false}
+      scroll={{ x: resizable.scrollX, y: '100%' }}
+      tableAlertRender={false}
+      tableAlertOptionRender={false}
+      tableLayout="fixed"
+      toolBarRender={() => []}
     />
   )
 }
@@ -51,7 +67,7 @@ export default function DeliveryOrderTable({
 function buildColumns(actions: {
   onConfirm: (record: DeliveryOrder) => void
   onDetail: (record: DeliveryOrder) => void
-}): ColumnsType<DeliveryOrder> {
+}): ProColumns<DeliveryOrder>[] {
   return [
     {
       title: '出库单号',
@@ -60,7 +76,7 @@ function buildColumns(actions: {
       width: 150,
       render: (value) => <Typography.Text strong>{value}</Typography.Text>,
     },
-    { title: '客户', dataIndex: 'customerName', width: 140, ellipsis: true },
+    { title: '客户', dataIndex: 'customerName', width: 140, render: (_, record) => textCell(record.customerName) },
     { title: '日期', dataIndex: 'deliveryDate', width: 110 },
     {
       title: '出库统计',
@@ -79,8 +95,8 @@ function buildColumns(actions: {
       title: '状态',
       dataIndex: 'deliveryStatus',
       width: 105,
-      render: (value) => {
-        const status = DELIVERY_STATUS[value]
+      render: (_, record) => {
+        const status = DELIVERY_STATUS[record.deliveryStatus]
         return status ? <Tag className="mes-status-tag" color={status.color}>{status.text}</Tag> : '-'
       },
     },
@@ -88,11 +104,14 @@ function buildColumns(actions: {
       title: '结算拦截',
       dataIndex: 'settleBlockAction',
       width: 110,
-      render: (value) => (value ? <Tag className="mes-status-tag" color="orange">{SETTLE_BLOCK_ACTION[value]}</Tag> : '-'),
+      render: (_, record) => record.settleBlockAction
+        ? <Tag className="mes-status-tag" color="orange">{SETTLE_BLOCK_ACTION[record.settleBlockAction]}</Tag>
+        : '-',
     },
     {
       title: '操作',
       key: 'actions',
+      className: 'delivery-order-table__actions-cell',
       fixed: 'right',
       width: 150,
       render: (_, record) => (
@@ -109,4 +128,8 @@ function buildColumns(actions: {
       ),
     },
   ]
+}
+
+function textCell(value?: ReactNode) {
+  return <TooltipText value={value} />
 }

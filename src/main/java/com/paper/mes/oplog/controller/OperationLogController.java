@@ -2,6 +2,8 @@ package com.paper.mes.oplog.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.paper.mes.auth.permission.Permissions;
+import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.common.R;
 import com.paper.mes.oplog.dto.OperationLogQuery;
@@ -21,6 +23,7 @@ import java.time.LocalTime;
  */
 @RestController
 @RequestMapping("/api/operation-logs")
+@RequirePermission(Permissions.SYSTEM_AUDIT)
 @RequiredArgsConstructor
 public class OperationLogController {
 

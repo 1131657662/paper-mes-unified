@@ -245,7 +245,7 @@ export default function FinishRollManageDrawer({
             title="作废后不可恢复，是否继续？"
             onConfirm={() => handleVoidSingle(r.uuid)}
           >
-            <a>作废</a>
+            <Button danger type="link" size="small">作废</Button>
           </Popconfirm>
         )
       },

@@ -1,7 +1,7 @@
 package com.paper.mes.delivery.dto;
 
-import com.paper.mes.delivery.entity.DeliveryDetail;
 import com.paper.mes.delivery.entity.DeliveryOrder;
+import com.paper.mes.oplog.entity.OperationLog;
 import lombok.Data;
 
 import java.util.List;
@@ -13,5 +13,6 @@ import java.util.List;
 public class DeliveryDetailVO {
 
     private DeliveryOrder order;
-    private List<DeliveryDetail> details;
+    private List<DeliveryDetailItemVO> details;
+    private List<OperationLog> operationLogs;
 }

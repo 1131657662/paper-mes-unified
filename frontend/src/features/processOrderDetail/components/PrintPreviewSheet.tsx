@@ -8,6 +8,8 @@ import {
   rewindModeLabel,
 } from '../../../components/processOrder/shared/detailHelpers'
 import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
+import { CONFIG_KEYS } from '../../systemConfig/configFallbacks'
+import { useSystemConfigValue } from '../../systemConfig/hooks/useSystemConfigValue'
 import type { FinishProductionVO, ProcessOrderDetailVO, RollProductionVO } from '../../../types/processOrder'
 import { buildDetailMetrics, formatKg } from '../orderDetailUtils'
 import './PrintPreviewSheet.css'
@@ -20,12 +22,13 @@ interface Props {
 export default function PrintPreviewSheet({ detail }: Props) {
   const metrics = buildDetailMetrics(detail)
   const rows = buildDisplayRows(detail.rollProductions ?? [])
+  const { value: printTitle } = useSystemConfigValue(CONFIG_KEYS.processOrderTitle, '车间加工单')
 
   return (
     <div className="print-preview-sheet">
       <header className="print-preview-sheet__header">
         <div>
-          <h1>车间加工单</h1>
+          <h1>{printTitle}</h1>
           <div className="print-preview-sheet__meta">
             <span>加工单号：{detail.order.orderNo ?? '-'}</span>
             <span>客户：{detail.order.customerName ?? '-'}</span>

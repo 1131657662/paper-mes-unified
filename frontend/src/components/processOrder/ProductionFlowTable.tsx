@@ -11,6 +11,7 @@ import {
 } from './shared/detailHelpers'
 import { buildDisplayRows } from './shared/displayRowBuilder'
 import ExpandedProductionRow from './ExpandedProductionRow'
+import TooltipText from '../biz/TooltipText'
 import type { RollProductionVO } from '../../types/processOrder'
 import { ROLL_STATUS } from '../../constants/processOrder'
 
@@ -159,14 +160,14 @@ const compactColumns: ColumnsType<DisplayRow> = [
     },
   },
   {
-    title: '产出规格', width: 130, ellipsis: true,
+    title: '产出规格', width: 130,
     render: (_, row) => {
       const layoutText = buildLayoutText(row.mainProduction)
       const trim = calcTrimWidth(row.mainProduction)
       if (row.isDirectShip) return <Text type="secondary" style={{ fontSize: 11 }}>直发</Text>
       if (layoutText === '-') return <Text type="secondary" style={{ fontSize: 11 }}>-</Text>
       const suffix = trim > 0 ? ` · 修${trim}` : ''
-      return <Text style={{ fontSize: 11 }}>{layoutText}{suffix}</Text>
+      return <TooltipText value={`${layoutText}${suffix}`} />
     },
   },
   {

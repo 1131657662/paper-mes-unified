@@ -1,12 +1,34 @@
-.order-detail-view {
-  display: flex;
+.order-detail-scroll {
   height: 100%;
   min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  scrollbar-gutter: stable;
+}
+
+.order-detail-scroll--page {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+  padding: 0;
+  scrollbar-gutter: auto;
+}
+
+.order-detail-view {
+  display: flex;
+  min-height: 100%;
   flex-direction: column;
   gap: 16px;
   color: var(--mes-color-text);
-  overflow: auto;
-  padding-right: 4px;
+  padding-right: 10px;
+}
+
+.order-detail-view--page {
+  padding-right: 0;
+}
+
+.order-detail-view > * {
+  flex-shrink: 0;
 }
 
 .order-detail-view--drawer {
@@ -37,33 +59,49 @@
 }
 
 .order-detail-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
+  width: 100%;
 }
 
 .order-detail-metric {
   min-height: 76px;
-  padding: 12px;
   background: var(--mes-color-panel);
   border: 1px solid var(--mes-color-border);
   border-radius: var(--mes-radius);
+  overflow: hidden;
 }
 
-.order-detail-metric__label {
+.order-detail-metric > .ant-pro-card-body {
+  min-height: 84px;
+  padding: 12px;
+}
+
+.order-detail-metric .ant-pro-card-statistic,
+.order-detail-metric .ant-pro-card-statistic-wrapper {
+  min-width: 0;
+}
+
+.order-detail-metric .ant-statistic-title {
+  margin-bottom: 6px;
   color: var(--mes-color-text-secondary);
   font-size: 12px;
 }
 
-.order-detail-metric__value {
-  margin-top: 6px;
+.order-detail-metric .ant-statistic-content {
   color: var(--mes-color-text);
-  font-size: 21px;
   font-weight: 650;
   line-height: 1.1;
 }
 
-.order-detail-metric__hint {
+.order-detail-metric .ant-statistic-content-value {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 21px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-detail-metric .ant-pro-card-statistic-description {
   margin-top: 6px;
   color: var(--mes-color-text-muted);
   font-size: 12px;

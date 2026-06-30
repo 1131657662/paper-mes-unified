@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { message } from 'antd'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType } from '@ant-design/pro-components'
+import { renderTableToolbarPortal } from '../../components/biz/TableToolbarPortal'
 import {
   pageProcessOrders,
   changeOrderStatus,
@@ -16,7 +17,6 @@ import ProcessOrderListHeader from './ProcessOrderListHeader'
 import ProcessOrderListDialogs from './ProcessOrderListDialogs'
 import ProcessOrderPaginationBar from './ProcessOrderPaginationBar'
 import ProcessOrderSearchBar, { type ProcessOrderSearchFilters } from './ProcessOrderSearchBar'
-import ProcessOrderTableTools from './ProcessOrderTableTools'
 import type { QueueStatus } from './ProcessOrderQueueBar'
 import { useProcessOrderCustomerEnum } from './useProcessOrderCustomerEnum'
 import { useResizableProcessColumns } from './useResizableProcessColumns'
@@ -33,9 +33,8 @@ export default function ProcessOrderList() {
   const rowSelection = useProcessOrderRowSelection()
   const dialogs = useProcessOrderListDialogs()
   const customerEnum = useProcessOrderCustomerEnum()
-  const [tableSize, setTableSize] = useState<'large' | 'middle' | 'small'>('middle')
   const [searchFilters, setSearchFilters] = useState<ProcessOrderSearchFilters>({})
-  const orderPagination = useProcessOrderPagination()
+  const orderPagination = useProcessOrderPagination(20)
   const columnsState = useTableColumnsState('table-columns-process-order')
   useProcessOrderSearchShortcut()
 
@@ -114,15 +113,6 @@ export default function ProcessOrderList() {
     <>
       <ProcessOrderListHeader
         actions={batchActions}
-        extra={
-          <ProcessOrderTableTools
-            columns={resizableTable.columns}
-            columnsState={columnsState}
-            onReload={() => actionRef.current?.reload()}
-            onTableSizeChange={setTableSize}
-            tableSize={tableSize}
-          />
-        }
         onCreate={() => navigate('/process-orders/create')}
         onQuickStatusChange={handleQuickStatusChange}
         quickStatus={quickStatus}
@@ -139,8 +129,9 @@ export default function ProcessOrderList() {
           bordered
           cardProps={false}
           headerTitle={false}
-          toolBarRender={false}
-          options={false}
+          toolBarRender={() => []}
+          optionsRender={renderTableToolbarPortal}
+          options={{ density: true, reload: true, setting: true }}
           params={{
             quickStatus,
             ...searchFilters,
@@ -150,7 +141,7 @@ export default function ProcessOrderList() {
           rowSelection={rowSelection.rowSelection}
           rowClassName={rowSelection.rowClassName}
           onRow={rowSelection.onRow}
-          scroll={{ x: 'max-content' }}
+          scroll={{ x: resizableTable.scrollX, y: '100%' }}
           tableLayout="fixed"
           tableAlertRender={false}
           tableAlertOptionRender={false}
@@ -172,7 +163,6 @@ export default function ProcessOrderList() {
           }}
           pagination={false}
           search={false}
-          size={tableSize}
         />
         <ProcessOrderPaginationBar
           current={orderPagination.pagination.current}

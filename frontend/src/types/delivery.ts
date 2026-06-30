@@ -1,4 +1,5 @@
 import type { PageQuery } from './common'
+import type { OperationLog } from './operationLog'
 
 export interface DeliveryOrder {
   uuid: string
@@ -25,10 +26,24 @@ export interface DeliveryDetail {
   deliveryUuid: string
   finishUuid: string
   orderUuid: string
+  orderNo?: string
   finishRollNo: string
   paperName: string
+  gramWeight?: number
+  finishWidth?: number
+  finishDiameter?: number
+  finishCoreDiameter?: number
+  actualWeight?: number
   outWeight: number
+  sourceType?: number
+  finishStatus?: number
+  originalRollNos?: string
+  originalSummary?: string
+  processModeText?: string
+  processSummary?: string
   remark?: string
+  finishRemark?: string
+  actualRemark?: string
 }
 
 export interface AvailableFinishVO {
@@ -54,6 +69,7 @@ export interface AvailableFinishVO {
 export interface DeliveryDetailVO {
   order: DeliveryOrder
   details: DeliveryDetail[]
+  operationLogs?: OperationLog[]
 }
 
 export interface DeliveryCreateDTO {
@@ -63,6 +79,11 @@ export interface DeliveryCreateDTO {
   carNo?: string
   containerNo?: string
   remark?: string
+  forceRelease: boolean
+  items: DeliveryCreateItemDTO[]
+}
+
+export interface DeliveryAppendItemsDTO {
   forceRelease: boolean
   items: DeliveryCreateItemDTO[]
 }
@@ -79,8 +100,14 @@ export interface DeliveryConfirmDTO {
   remark?: string
 }
 
+export interface DeliveryRollbackDTO {
+  reason: string
+}
+
 export interface DeliveryQuery extends PageQuery {
   keyword?: string
   customerUuid?: string
   deliveryStatus?: number
+  dateFrom?: string
+  dateTo?: string
 }

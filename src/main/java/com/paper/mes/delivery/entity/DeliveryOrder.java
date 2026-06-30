@@ -37,5 +37,7 @@ public class DeliveryOrder extends BaseEntity {
     private Integer settleBlockAction;
     /** 1待出库 2已出库签收 */
     private Integer deliveryStatus;
+    private String snapDelivery;
+    private LocalDateTime snapDeliveryTime;
     private String remark;
 }

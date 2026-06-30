@@ -9,6 +9,7 @@ import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 结算单主表 biz_settle_order。
@@ -41,5 +42,7 @@ public class SettleOrder extends BaseEntity {
     private Integer isInvoice;
     /** 1待结算 2部分收款 3全部结清 */
     private Integer settleStatus;
+    private String snapBill;
+    private LocalDateTime snapBillTime;
     private String remark;
 }

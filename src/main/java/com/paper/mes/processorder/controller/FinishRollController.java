@@ -1,6 +1,8 @@
 package com.paper.mes.processorder.controller;
 
 import com.paper.mes.common.R;
+import com.paper.mes.auth.permission.Permissions;
+import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.processorder.dto.FinishRollBatchDTO;
 import com.paper.mes.processorder.dto.SpareRollAppendDTO;
 import com.paper.mes.processorder.dto.SpareRollBatchVoidDTO;
@@ -22,6 +24,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/finish-rolls")
+@RequirePermission(Permissions.ORDER_MANAGE)
 @RequiredArgsConstructor
 public class FinishRollController {
 
@@ -63,6 +66,7 @@ public class FinishRollController {
 
     /** 卷号全局查重：返回是否可用。 */
     @GetMapping("/check")
+    @RequirePermission(Permissions.ORDER_VIEW)
     public R<Boolean> checkRollNo(@RequestParam String rollNo,
                                   @RequestParam(required = false) String excludeUuid) {
         return R.success(finishRollService.isRollNoAvailable(rollNo, excludeUuid));

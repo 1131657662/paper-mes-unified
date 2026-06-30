@@ -7,6 +7,7 @@ const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:80
 export default defineConfig({
   plugins: [react()],
   define: {
+    process: { env: { NODE_ENV: process.env.NODE_ENV ?? 'development' } },
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'development'),
   },
   server: {

@@ -10,12 +10,21 @@ import com.paper.mes.paper.dto.PaperSaveDTO;
 import com.paper.mes.paper.entity.Paper;
 import com.paper.mes.paper.mapper.PaperMapper;
 import com.paper.mes.paper.service.PaperService;
+import com.paper.mes.system.config.constant.NoRuleBizType;
+import com.paper.mes.system.config.service.DocumentNoService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
+
 @Service
+@RequiredArgsConstructor
 public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements PaperService {
+
+    private final DocumentNoService documentNoService;
 
     @Override
     public PageResult<Paper> pagePapers(PaperQuery query) {
@@ -40,22 +49,25 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String create(PaperSaveDTO dto) {
-        ensureCodeUnique(dto.getPaperCode(), null);
         Paper paper = new Paper();
         BeanUtils.copyProperties(dto, paper);
+        paper.setPaperCode(documentNoService.next(NoRuleBizType.PAPER, LocalDate.now()));
         save(paper);
         return paper.getUuid();
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void update(String uuid, PaperSaveDTO dto) {
         Paper existing = getByUuid(uuid);
-        ensureCodeUnique(dto.getPaperCode(), uuid);
         Integer savedVersion = existing.getVersion();
+        String savedCode = existing.getPaperCode();
         BeanUtils.copyProperties(dto, existing);
         existing.setUuid(uuid);
         existing.setVersion(savedVersion);
+        existing.setPaperCode(keepCodeOrGenerate(savedCode));
         updateById(existing);
     }
 
@@ -65,17 +77,7 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
         removeById(uuid);
     }
 
-    private void ensureCodeUnique(String paperCode, String excludeUuid) {
-        if (!StringUtils.hasText(paperCode)) {
-            return;
-        }
-        LambdaQueryWrapper<Paper> wrapper = new LambdaQueryWrapper<Paper>()
-                .eq(Paper::getPaperCode, paperCode);
-        if (StringUtils.hasText(excludeUuid)) {
-            wrapper.ne(Paper::getUuid, excludeUuid);
-        }
-        if (count(wrapper) > 0) {
-            throw new BusinessException("纸张编码已存在：" + paperCode);
-        }
+    private String keepCodeOrGenerate(String code) {
+        return StringUtils.hasText(code) ? code : documentNoService.next(NoRuleBizType.PAPER, LocalDate.now());
     }
 }

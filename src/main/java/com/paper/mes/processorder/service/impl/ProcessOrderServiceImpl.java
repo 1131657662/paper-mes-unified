@@ -54,11 +54,12 @@ import com.paper.mes.processorder.service.MultiSourceConsumptionNormalizer;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.RollNoSequenceService;
 import com.paper.mes.processorder.service.SawPlanPreviewer;
-import com.paper.mes.processorder.statemachine.FinishRollNoGenerator;
 import com.paper.mes.processorder.statemachine.OrderStatus;
 import com.paper.mes.processorder.statemachine.RollStatus;
 import com.paper.mes.processorder.statemachine.StateMachine;
 import com.paper.mes.settle.mapper.SettleDetailMapper;
+import com.paper.mes.system.config.constant.NoRuleBizType;
+import com.paper.mes.system.config.service.DocumentNoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DuplicateKeyException;
@@ -71,7 +72,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -84,7 +84,6 @@ import java.util.Set;
 public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, ProcessOrder>
         implements ProcessOrderService {
 
-    private static final DateTimeFormatter DAY_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final int STATUS_PENDING = 1;
     private static final int STATUS_PROCESSING = 2;
     private static final int STATUS_TO_RECORD = 3;
@@ -124,6 +123,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private final FileStorageService fileStorageService;
     private final RollNoSequenceService rollNoSequenceService;
     private final SawPlanPreviewer sawPlanPreviewer;
+    private final DocumentNoService documentNoService;
 
     @Override
     public PageResult<ProcessOrder> pageOrders(ProcessOrderQuery query) {
@@ -2782,11 +2782,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
      * 唯一索引 uk_order_no 兜底防并发重复。
      */
     private String nextOrderNo(LocalDate orderDate) {
-        String prefix = "JG" + orderDate.format(DAY_FMT);
-        LambdaQueryWrapper<ProcessOrder> wrapper = new LambdaQueryWrapper<ProcessOrder>()
-                .likeRight(ProcessOrder::getOrderNo, prefix);
-        long todayCount = count(wrapper);
-        return prefix + String.format("%04d", todayCount + 1);
+        return documentNoService.next(NoRuleBizType.PROCESS_ORDER, orderDate);
     }
 
     // ==================== Phase 5.1：追加工序功能 ====================

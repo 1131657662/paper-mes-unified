@@ -12,11 +12,6 @@
     overflow: visible !important;
   }
 
-  body > #root,
-  body > script {
-    display: none !important;
-  }
-
   body * {
     visibility: hidden !important;
   }

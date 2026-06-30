@@ -18,6 +18,8 @@ import { useSaveProgress } from './useSaveProgress'
 import { useSubmitDraft } from './useSubmitDraft'
 import { useUpdateRoll } from './useUpdateRoll'
 import type { Customer } from '../../../types/customer'
+import { CONFIG_KEYS } from '../../systemConfig/configFallbacks'
+import { useNumberConfigValue } from '../../systemConfig/hooks/useSystemConfigValue'
 
 export function useCreateOrderPage(draftUuid?: string) {
   const hydratedDraftUuid = useRef<string>()
@@ -33,6 +35,7 @@ export function useCreateOrderPage(draftUuid?: string) {
   const { data: draft, isLoading: loadingDraft } = useGetDraft(draftUuid)
   const { data: customerPage } = useCustomers()
   const { data: warehousePage } = useWarehouses()
+  const { value: defaultSpareCount } = useNumberConfigValue(CONFIG_KEYS.spareRollNoCount, 0)
   const { mutateAsync: createDraft, isPending: creatingDraft } = useCreateDraft()
   const { mutateAsync: saveBaseInfo, isPending: savingBase } = useSaveBaseInfo()
   const { mutateAsync: saveProgress } = useSaveProgress()
@@ -80,7 +83,7 @@ export function useCreateOrderPage(draftUuid?: string) {
     const uuids = await replaceRolls({ uuid: orderUuid, rolls: rolls.map(toRollDto) })
     const savedRolls = attachSavedUuids(rolls, uuids)
     setRolls(savedRolls)
-    setPlans(plansForRolls(savedRolls, {}))
+    setPlans(plansForRolls(savedRolls, {}, { spareCount: defaultSpareCount }))
     setPreviews({})
     setSelectedId(savedRolls[0]?.localId)
     await moveToStep(2)
@@ -90,7 +93,7 @@ export function useCreateOrderPage(draftUuid?: string) {
     await Promise.all(
       rolls.filter((roll) => roll.uuid).map((roll) => updateRoll({ rollUuid: roll.uuid!, dto: toRollDto(roll) })),
     )
-    setPlans(plansForRolls(rolls, plans))
+    setPlans(plansForRolls(rolls, plans, { spareCount: defaultSpareCount }))
     setPreviews({})
     await moveToStep(3)
   }
@@ -151,7 +154,7 @@ export function useCreateOrderPage(draftUuid?: string) {
     const mergedSourceUuids = mergedSourceUuidSet(rolls, plans)
     for (const roll of rolls.filter((item) => item.processMode !== 3)) {
       if (roll.uuid && mergedSourceUuids.has(roll.uuid)) continue
-      await saveRollPlan(roll, plans[roll.localId] ?? defaultPlanForRoll(roll))
+      await saveRollPlan(roll, plans[roll.localId] ?? defaultPlanForRoll(roll, { spareCount: defaultSpareCount }))
     }
     await moveToStep(4)
   }
@@ -166,6 +169,7 @@ export function useCreateOrderPage(draftUuid?: string) {
   return {
     baseInfo,
     current,
+    defaultSpareCount,
     loadingDraft,
     orderUuid,
     plans,
@@ -206,6 +210,9 @@ function toCustomerOptions(items: Customer[]) {
     label: item.customerName,
     value: item.uuid,
     defaultInvoice: item.defaultInvoice,
+    priceIncludeTax: item.priceIncludeTax,
+    rewindPrice: item.rewindPrice,
+    sawPrice: item.sawPrice,
     settleDay: item.settleDay,
     settleType: item.settleType,
     taxRate: item.taxRate,

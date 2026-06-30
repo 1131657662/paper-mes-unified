@@ -11,7 +11,9 @@ public class DashboardOverviewVO {
     private DashboardMetricVO metrics;
     private List<DashboardStatusVO> statusQueue;
     private List<DashboardTrendVO> monthlyTrend;
+    private List<DashboardTrendVO> yearlyTrend;
     private List<DashboardRankVO> customerRank;
+    private List<DashboardRankVO> customerYearRank;
     private List<DashboardRankVO> machineRank;
     private List<DashboardTodoVO> todos;
     private List<DashboardRecentOrderVO> recentOrders;

@@ -61,6 +61,10 @@ function RollActualPanel({
     <section className="back-record-panel">
       <PanelHead title="原纸复称" extra={<Button size="small" icon={<CopyOutlined />} onClick={fillCurrent}>带入标称</Button>} />
       <div className="back-record-roll-facts">
+        <Fact label="卷号" value={roll.rollNo || '-'} />
+        <Fact label="编号" value={roll.extraNo || '-'} />
+        <Fact label="批次" value={roll.batchNo || '-'} />
+        <Fact label="件数" value={`${roll.pieceNum ?? 1} 件`} />
         <Fact label="标称" value={`${roll.paperName || '-'} / ${roll.gramWeight ?? '-'}g / ${roll.originalWidth ?? '-'}mm`} />
         <Fact label="来料重量" value={formatKg((roll.rollWeight ?? 0) * (roll.pieceNum ?? 1))} />
         <Fact label="加工方式" value={PROCESS_MODE[roll.processMode ?? 1] ?? '-'} />

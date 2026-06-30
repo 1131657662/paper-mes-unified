@@ -1,4 +1,5 @@
 import type { PageQuery } from './common'
+import type { OperationLog } from './operationLog'
 
 export interface SettleOrder {
   uuid: string
@@ -36,6 +37,41 @@ export interface SettleDetail {
   remark?: string
 }
 
+export interface SettlePrintLine {
+  settleUuid: string
+  orderUuid: string
+  orderNo: string
+  orderDate?: string
+  originalUuid: string
+  originalLabel: string
+  paperName?: string
+  gramWeight?: number
+  originalWidth?: number
+  originalWeight?: number
+  processMode?: number
+  mainStepType?: number
+  processText?: string
+  finishSummary?: string
+  finishCount?: number
+  finishWeight?: number
+  trimWeight?: number
+  sawWeight?: number
+  rewindWeight?: number
+  sawUnitPrice?: number
+  sawInvoiceUnitPrice?: number
+  rewindUnitPrice?: number
+  rewindInvoiceUnitPrice?: number
+  sawAmount?: number
+  rewindAmount?: number
+  processAmount?: number
+  extraAmount?: number
+  extraFeeSummary?: string
+  taxAmount?: number
+  lineAmount?: number
+  isInvoice?: number
+  remark?: string
+}
+
 export interface ReceiveRecord {
   uuid: string
   settleUuid: string
@@ -44,6 +80,10 @@ export interface ReceiveRecord {
   payMethod: number
   payNo?: string
   operator?: string
+  recordStatus?: number
+  cancelTime?: string
+  cancelBy?: string
+  cancelReason?: string
   remark?: string
 }
 
@@ -51,6 +91,8 @@ export interface SettleDetailVO {
   order: SettleOrder
   details: SettleDetail[]
   receives: ReceiveRecord[]
+  printLines?: SettlePrintLine[]
+  operationLogs?: OperationLog[]
 }
 
 export interface SettleCandidateQuery {
@@ -110,6 +152,10 @@ export interface ReceiveDTO {
   operator?: string
   receiveDate?: string
   remark?: string
+}
+
+export interface SettleActionReasonDTO {
+  reason: string
 }
 
 export interface SettleQuery extends PageQuery {

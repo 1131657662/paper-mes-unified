@@ -35,11 +35,18 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
   const addStepMutation = useAddProcessStep()
   const changeStatusMutation = useChangeOrderStatus()
   const values = useBackRecordFormValues(form)
+  const [filledValues, setFilledValues] = useState<BackRecordFormValues>({})
+  const displayValues = mergeBackRecordValues(values, filledValues)
 
   useEffect(() => {
-    if (enabled && detailQuery.data) form.setFieldsValue(initialBackRecordValues(detailQuery.data))
+    if (enabled && detailQuery.data) {
+      const initialValues = initialBackRecordValues(detailQuery.data)
+      form.setFieldsValue(initialValues)
+      setFilledValues(initialValues)
+    }
     if (!enabled) {
       form.resetFields()
+      setFilledValues({})
       authForm.resetFields()
       setAuthOpen(false)
       setChangeOpen(false)
@@ -50,7 +57,8 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
 
   const submit = async (authorization?: BackRecordAuthorization) => {
     if (!detailQuery.data) return
-    const formValues = await form.validateFields()
+    await form.validateFields()
+    const formValues = form.getFieldsValue(true) as BackRecordFormValues
     const payload = buildBackRecordDTO(detailQuery.data, formValues, authorization)
     await submitPayload(payload)
   }
@@ -129,7 +137,8 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
         onSubmitAuth={submitAuthorization}
         stepFormOpen={stepFormOpen}
       />,
-    values,
+    values: displayValues,
+    syncFilledValues: setFilledValues,
     openChangeGuide,
     submit,
   }
@@ -139,4 +148,16 @@ function useBackRecordFormValues(form: ReturnType<typeof Form.useForm<BackRecord
   const rolls = Form.useWatch('rolls', form)
   const finishes = Form.useWatch('finishes', form)
   return { rolls, finishes }
+}
+
+function mergeBackRecordValues(
+  watched: BackRecordFormValues,
+  fallback: BackRecordFormValues,
+): BackRecordFormValues {
+  return {
+    ...fallback,
+    ...watched,
+    finishes: { ...fallback.finishes, ...watched.finishes },
+    rolls: { ...fallback.rolls, ...watched.rolls },
+  }
 }

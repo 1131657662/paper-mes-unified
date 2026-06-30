@@ -259,12 +259,44 @@ body,
   overflow: hidden;
 }
 
+.app-shell__content--page-scroll {
+  margin: 0;
+}
+
+.app-shell__content--edge-scroll {
+  display: block;
+  margin: 0;
+  overflow: auto;
+  padding: 16px;
+  scrollbar-gutter: stable;
+}
+
 .app-shell__content > * {
   min-width: 0;
   min-height: 0;
   height: 100%;
   flex: 1 1 0;
   overflow: hidden;
+}
+
+.app-shell__content--edge-scroll > * {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+.app-shell__content--edge-scroll > .mes-spin-fill,
+.app-shell__content--edge-scroll > .mes-spin-fill > .ant-spin-container {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+.app-shell__content--edge-scroll .mes-scroll-page {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+  padding-right: 0;
 }
 
 .app-shell__auth-loading {

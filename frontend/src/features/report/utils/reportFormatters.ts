@@ -13,10 +13,14 @@ export function formatKg(value?: number) {
   return `${formatNumber(value, 3)}kg`
 }
 
+export function formatPercent(value?: number) {
+  return `${formatNumber(value, 2)}%`
+}
+
 export function formatTon(value?: number) {
   return `${formatNumber(value, 3)}t`
 }
 
-export function formatPercent(value?: number) {
-  return `${formatNumber(value, 2)}%`
+export function formatTonFromKg(value?: number) {
+  return formatTon(Number(value ?? 0) / 1000)
 }

@@ -10,15 +10,24 @@ import com.paper.mes.customer.dto.CustomerSaveDTO;
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.mapper.CustomerMapper;
 import com.paper.mes.customer.service.CustomerService;
+import com.paper.mes.system.config.constant.NoRuleBizType;
+import com.paper.mes.system.config.service.DocumentNoService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
+
 @Service
+@RequiredArgsConstructor
 public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> implements CustomerService {
 
     private static final int DEFAULT_SETTLE_TYPE = 2;
     private static final int DEFAULT_INVOICE = 2;
+
+    private final DocumentNoService documentNoService;
 
     @Override
     public PageResult<Customer> pageCustomers(CustomerQuery query) {
@@ -43,23 +52,26 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String create(CustomerSaveDTO dto) {
-        ensureCodeUnique(dto.getCustomerCode(), null);
         Customer customer = new Customer();
         BeanUtils.copyProperties(dto, customer);
+        customer.setCustomerCode(documentNoService.next(NoRuleBizType.CUSTOMER, LocalDate.now()));
         applyDefaults(customer);
         save(customer);
         return customer.getUuid();
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void update(String uuid, CustomerSaveDTO dto) {
         Customer existing = getByUuid(uuid);
-        ensureCodeUnique(dto.getCustomerCode(), uuid);
         Integer savedVersion = existing.getVersion();
+        String savedCode = existing.getCustomerCode();
         BeanUtils.copyProperties(dto, existing);
         existing.setUuid(uuid);
         existing.setVersion(savedVersion);
+        existing.setCustomerCode(keepCodeOrGenerate(savedCode, NoRuleBizType.CUSTOMER));
         applyDefaults(existing);
         updateById(existing);
     }
@@ -70,15 +82,8 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
         removeById(uuid);
     }
 
-    private void ensureCodeUnique(String customerCode, String excludeUuid) {
-        LambdaQueryWrapper<Customer> wrapper = new LambdaQueryWrapper<Customer>()
-                .eq(Customer::getCustomerCode, customerCode);
-        if (StringUtils.hasText(excludeUuid)) {
-            wrapper.ne(Customer::getUuid, excludeUuid);
-        }
-        if (count(wrapper) > 0) {
-            throw new BusinessException("客户编码已存在：" + customerCode);
-        }
+    private String keepCodeOrGenerate(String code, String bizType) {
+        return StringUtils.hasText(code) ? code : documentNoService.next(bizType, LocalDate.now());
     }
 
     private void applyDefaults(Customer customer) {

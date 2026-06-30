@@ -1,5 +1,6 @@
 package com.paper.mes.settle.dto;
 
+import com.paper.mes.oplog.entity.OperationLog;
 import com.paper.mes.settle.entity.ReceiveRecord;
 import com.paper.mes.settle.entity.SettleDetail;
 import com.paper.mes.settle.entity.SettleOrder;
@@ -16,4 +17,6 @@ public class SettleDetailVO {
     private SettleOrder order;
     private List<SettleDetail> details;
     private List<ReceiveRecord> receives;
+    private List<SettlePrintLineVO> printLines;
+    private List<OperationLog> operationLogs;
 }

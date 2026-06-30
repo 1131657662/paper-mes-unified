@@ -29,8 +29,12 @@ export default function BackRecordChangeModal({
       title="现场变更处理"
       open={open}
       onCancel={onCancel}
-      footer={<Button onClick={onCancel}>关闭</Button>}
-      width={760}
+      footer={(
+        <div className="mes-drawer-footer">
+          <Button onClick={onCancel}>关闭</Button>
+        </div>
+      )}
+      width={800}
       destroyOnHidden
     >
       <div className="back-record-change">

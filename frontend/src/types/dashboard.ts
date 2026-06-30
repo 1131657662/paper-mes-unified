@@ -2,7 +2,9 @@ export interface DashboardOverview {
   metrics?: DashboardMetrics
   statusQueue?: DashboardStatus[]
   monthlyTrend?: DashboardTrend[]
+  yearlyTrend?: DashboardTrend[]
   customerRank?: DashboardRank[]
+  customerYearRank?: DashboardRank[]
   machineRank?: DashboardRank[]
   todos?: DashboardTodo[]
   recentOrders?: DashboardRecentOrder[]

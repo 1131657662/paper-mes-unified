@@ -52,12 +52,13 @@ export function hydrateDraftState(draft: DraftOrderVO): HydratedCreateOrderState
 export function plansForRolls(
   rolls: RollDraft[],
   currentPlans: Record<string, ProcessPlanDTO>,
+  options: PlansForRollsOptions = {},
 ) {
   return rolls.reduce<Record<string, ProcessPlanDTO>>((next, roll) => {
     const existing = currentPlans[roll.localId]
     next[roll.localId] = planMatchesRoll(existing, roll)
       ? rebasePlanForRoll(existing, roll)
-      : defaultPlanForRoll(roll)
+      : defaultPlanForRoll(roll, { spareCount: options.spareCount })
     return next
   }, {})
 }
@@ -107,4 +108,8 @@ function planMatchesRoll(plan: ProcessPlanDTO | undefined, roll: RollDraft) {
   if (plan.processMode !== roll.processMode) return false
   if (roll.processMode === 3) return true
   return plan.mainStepType === roll.mainStepType
+}
+
+interface PlansForRollsOptions {
+  spareCount?: number
 }

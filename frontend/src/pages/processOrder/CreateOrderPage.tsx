@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Alert, Card, Spin, Steps } from 'antd'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import MesPageHeader from '../../components/layout/MesPageHeader'
@@ -20,12 +21,17 @@ export default function CreateOrderPage() {
 
 function CreateOrderContent({ draftUuid }: { draftUuid?: string }) {
   const navigate = useNavigate()
+  const pageRef = useRef<HTMLDivElement | null>(null)
   const state = useCreateOrderPage(draftUuid)
   const createAnother = () => navigate(`/process-orders/create?fresh=${Date.now()}`, { replace: true })
 
+  useEffect(() => {
+    scrollCreatePageToTop(pageRef.current)
+  }, [state.current, state.submitResult?.orderUuid])
+
   return (
     <Spin className="mes-spin-fill" spinning={state.loadingDraft}>
-      <div className="mes-scroll-page mes-form-page">
+      <div ref={pageRef} className="mes-scroll-page mes-form-page">
         <MesPageHeader
           backText="返回列表"
           description="草稿阶段可反复调整；预览、重量、来源关系、正式卷号都以后端为准，最终提交后才生成真实成品卷号。"
@@ -74,6 +80,7 @@ function CreateOrderContent({ draftUuid }: { draftUuid?: string }) {
         )}
         {state.current === 3 && (
           <ConfigStep
+            defaultSpareCount={state.defaultSpareCount}
             orderUuid={state.orderUuid}
             rolls={state.rolls}
             selectedId={state.selectedId}
@@ -106,4 +113,9 @@ function CreateOrderContent({ draftUuid }: { draftUuid?: string }) {
       </div>
     </Spin>
   )
+}
+
+function scrollCreatePageToTop(element: HTMLElement | null) {
+  const scroller = element?.closest('.app-shell__content--edge-scroll') ?? element
+  scroller?.scrollTo({ top: 0, left: 0 })
 }

@@ -10,14 +10,23 @@ import com.paper.mes.machine.dto.MachineSaveDTO;
 import com.paper.mes.machine.entity.Machine;
 import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.machine.service.MachineService;
+import com.paper.mes.system.config.constant.NoRuleBizType;
+import com.paper.mes.system.config.service.DocumentNoService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
+
 @Service
+@RequiredArgsConstructor
 public class MachineServiceImpl extends ServiceImpl<MachineMapper, Machine> implements MachineService {
 
     private static final int STATUS_ENABLED = 1;
+
+    private final DocumentNoService documentNoService;
 
     @Override
     public PageResult<Machine> pageMachines(MachineQuery query) {
@@ -45,10 +54,11 @@ public class MachineServiceImpl extends ServiceImpl<MachineMapper, Machine> impl
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String create(MachineSaveDTO dto) {
-        ensureCodeUnique(dto.getMachineCode(), null);
         Machine machine = new Machine();
         BeanUtils.copyProperties(dto, machine);
+        machine.setMachineCode(documentNoService.next(NoRuleBizType.MACHINE, LocalDate.now()));
         if (machine.getStatus() == null) {
             machine.setStatus(STATUS_ENABLED);
         }
@@ -57,14 +67,16 @@ public class MachineServiceImpl extends ServiceImpl<MachineMapper, Machine> impl
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void update(String uuid, MachineSaveDTO dto) {
         Machine existing = getByUuid(uuid);
-        ensureCodeUnique(dto.getMachineCode(), uuid);
         Integer savedVersion = existing.getVersion();
         Integer keepStatus = existing.getStatus();
+        String savedCode = existing.getMachineCode();
         BeanUtils.copyProperties(dto, existing);
         existing.setUuid(uuid);
         existing.setVersion(savedVersion);
+        existing.setMachineCode(keepCodeOrGenerate(savedCode));
         if (existing.getStatus() == null) {
             existing.setStatus(keepStatus);
         }
@@ -77,17 +89,7 @@ public class MachineServiceImpl extends ServiceImpl<MachineMapper, Machine> impl
         removeById(uuid);
     }
 
-    private void ensureCodeUnique(String machineCode, String excludeUuid) {
-        if (!StringUtils.hasText(machineCode)) {
-            return;
-        }
-        LambdaQueryWrapper<Machine> wrapper = new LambdaQueryWrapper<Machine>()
-                .eq(Machine::getMachineCode, machineCode);
-        if (StringUtils.hasText(excludeUuid)) {
-            wrapper.ne(Machine::getUuid, excludeUuid);
-        }
-        if (count(wrapper) > 0) {
-            throw new BusinessException("机台编码已存在：" + machineCode);
-        }
+    private String keepCodeOrGenerate(String code) {
+        return StringUtils.hasText(code) ? code : documentNoService.next(NoRuleBizType.MACHINE, LocalDate.now());
     }
 }

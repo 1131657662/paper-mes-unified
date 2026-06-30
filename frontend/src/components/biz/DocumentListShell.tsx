@@ -1,0 +1,70 @@
+import { useState } from 'react'
+import { Button, Card } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
+import { TableToolbarHostProvider } from './TableToolbarPortal'
+import './DocumentListShell.css'
+
+interface QueueOption<T extends string> {
+  label: string
+  value: T
+}
+
+interface Props<T extends string> {
+  title: string
+  createText: string
+  queue: T
+  queueOptions: QueueOption<T>[]
+  children: React.ReactNode
+  extra?: React.ReactNode
+  leftActions?: React.ReactNode
+  search?: React.ReactNode
+  onCreate: () => void
+  onQueueChange: (value: T) => void
+}
+
+export default function DocumentListShell<T extends string>({
+  children,
+  createText,
+  extra,
+  leftActions,
+  onCreate,
+  onQueueChange,
+  queue,
+  queueOptions,
+  search,
+  title,
+}: Props<T>) {
+  const [toolsHost, setToolsHost] = useState<HTMLDivElement | null>(null)
+
+  return (
+    <Card title={title} className="document-list-shell">
+      {search && <div className="document-list-shell__search">{search}</div>}
+      <div className="document-list-shell__toolbar">
+        <div className="document-list-shell__actions">
+          <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>{createText}</Button>
+          {leftActions}
+        </div>
+        <div className="document-list-shell__queue">
+          <div className="document-list-shell__queue-tabs">
+            {queueOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={option.value === queue ? 'is-active' : undefined}
+                onClick={() => onQueueChange(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="document-list-shell__tools" ref={setToolsHost}>
+          {extra}
+        </div>
+      </div>
+      <TableToolbarHostProvider host={toolsHost}>
+        {children}
+      </TableToolbarHostProvider>
+    </Card>
+  )
+}

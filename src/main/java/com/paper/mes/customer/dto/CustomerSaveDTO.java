@@ -7,17 +7,16 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 /**
- * 客户新增/修改入参。
+ * Customer create/update payload.
  */
 @Data
 public class CustomerSaveDTO {
 
-    @NotBlank(message = "客户编码不能为空")
-    @Size(max = 50, message = "客户编码长度不能超过50")
+    @Size(max = 50, message = "\u5ba2\u6237\u7f16\u7801\u957f\u5ea6\u4e0d\u80fd\u8d85\u8fc750")
     private String customerCode;
 
-    @NotBlank(message = "客户名称不能为空")
-    @Size(max = 100, message = "客户名称长度不能超过100")
+    @NotBlank(message = "\u5ba2\u6237\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a")
+    @Size(max = 100, message = "\u5ba2\u6237\u540d\u79f0\u957f\u5ea6\u4e0d\u80fd\u8d85\u8fc7100")
     private String customerName;
 
     private String contact;

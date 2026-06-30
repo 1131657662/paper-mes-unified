@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, DatePicker, Drawer, Form, Radio, Input, Select, Space, message } from 'antd'
+import { Button, DatePicker, Drawer, Form, Radio, Input, Select, message } from 'antd'
 import dayjs from 'dayjs'
 import { pageCustomers } from '../../api/customer'
 import { createSettleByMonth } from '../../api/settle'
@@ -59,17 +59,17 @@ export default function SettleByMonthDrawer({ open, onClose, onSuccess }: Props)
   return (
     <Drawer
       title="按月批量生成结算单"
-      width={500}
+      width={640}
       open={open}
       onClose={onClose}
       destroyOnClose
       footer={
-        <Space style={{ float: 'right' }}>
+        <div className="mes-drawer-footer">
           <Button onClick={onClose}>取消</Button>
           <Button type="primary" onClick={handleSubmit} loading={submitting}>
             确定
           </Button>
-        </Space>
+        </div>
       }
     >
       <Form form={form} layout="vertical">

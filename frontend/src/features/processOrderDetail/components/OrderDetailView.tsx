@@ -26,19 +26,21 @@ export default function OrderDetailView({
   onDeleteStep,
 }: Props) {
   return (
-    <div className={`order-detail-view order-detail-view--${mode}`}>
-      <OrderDetailHeader order={detail?.order} onBack={onBack} />
-      <OrderStatusProgress order={detail?.order} />
-      <OrderExecutionHost detail={detail} />
-      <OrderMetricStrip detail={detail} />
-      <OrderInfoSection detail={detail} />
-      <ProductionTree productions={detail?.rollProductions} />
-      <StepTableSection
-        detail={detail}
-        onAdd={onAddStep}
-        onEdit={onEditStep}
-        onDelete={onDeleteStep}
-      />
+    <div className={`order-detail-scroll order-detail-scroll--${mode}`}>
+      <div className={`order-detail-view order-detail-view--${mode}`}>
+        <OrderDetailHeader order={detail?.order} onBack={onBack} />
+        <OrderStatusProgress order={detail?.order} />
+        <OrderExecutionHost detail={detail} />
+        <OrderMetricStrip detail={detail} />
+        <OrderInfoSection detail={detail} />
+        <ProductionTree productions={detail?.rollProductions} />
+        <StepTableSection
+          detail={detail}
+          onAdd={onAddStep}
+          onEdit={onEditStep}
+          onDelete={onDeleteStep}
+        />
+      </div>
     </div>
   )
 }

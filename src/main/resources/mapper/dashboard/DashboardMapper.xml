@@ -140,6 +140,29 @@
         LIMIT 6
     </select>
 
+    <select id="customerYearRank" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRankVO">
+        SELECT o.customer_uuid AS id,
+               o.customer_name AS name,
+               COUNT(*) AS count,
+               COALESCE(SUM(orig.originalWeight), 0) AS weight,
+               COALESCE(SUM(o.total_amount), 0) AS amount
+        FROM biz_process_order o
+        LEFT JOIN (
+            SELECT order_uuid,
+                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
+            FROM biz_original_roll
+            WHERE is_deleted = 0
+            GROUP BY order_uuid
+        ) orig ON orig.order_uuid = o.uuid
+        WHERE o.is_deleted = 0
+          AND o.order_status &gt;= 4
+          AND o.order_date &gt;= #{yearStart}
+          AND o.order_date &lt;= #{today}
+        GROUP BY o.customer_uuid, o.customer_name
+        ORDER BY amount DESC
+        LIMIT 8
+    </select>
+
     <select id="machineRank" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRankVO">
         SELECT r.machine_uuid AS id,
                m.machine_name AS name,

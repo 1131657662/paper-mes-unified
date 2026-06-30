@@ -1,5 +1,7 @@
 import { Button, Tag, Typography } from 'antd'
 import { PROCESS_MODE } from '../../../constants/processOrder'
+import { formatKg } from '../../../features/processOrderDetail/orderDetailUtils'
+import type { OriginalRoll } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import { buildWorkItemMetrics, workItemStatus } from './backRecordWorkbenchUtils'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
@@ -47,6 +49,8 @@ function RollNavItem({
   const status = workItemStatus(item, values)
   const metrics = buildWorkItemMetrics(item, values)
   const mode = item.roll?.processMode ? PROCESS_MODE[item.roll.processMode] : '成品池'
+  const shouldShowDiff = item.roll?.processMode !== 3
+    && item.finishes.some(({ finish }) => finish.isSpare !== 1)
 
   return (
     <Button
@@ -58,12 +62,28 @@ function RollNavItem({
         <span className="back-record-nav-item__title">{item.title}</span>
         <Tag color={status.color}>{status.text}</Tag>
       </span>
-      <span className="back-record-nav-item__sub">{item.subtitle || mode}</span>
+      {item.roll && (
+        <span className="back-record-nav-item__identity">
+          <span>{`\u5377\u53f7\uff1a${item.roll.rollNo || '-'}`}</span>
+          <span>{`\u7f16\u53f7\uff1a${item.roll.extraNo || '-'}`}</span>
+          {item.roll.batchNo && <span>{`\u6279\u6b21\uff1a${item.roll.batchNo}`}</span>}
+          <span>{`\u4ef6\u6570\uff1a${item.roll.pieceNum ?? 1}\u4ef6`}</span>
+        </span>
+      )}
+      <span className="back-record-nav-item__sub">{item.roll ? rollSpec(item.roll) : item.subtitle || mode}</span>
       <span className="back-record-nav-item__meta">
         <span>{mode}</span>
+        {item.roll && <span>{formatKg((item.roll.rollWeight ?? 0) * (item.roll.pieceNum ?? 1))}</span>}
         <span>{item.finishes.filter(({ finish }) => finish.isSpare !== 1).length} 件成品</span>
-        {metrics.diff != null && <span>差 {metrics.diff.toFixed(3)}kg</span>}
+        {shouldShowDiff && metrics.diff != null && <span>差 {metrics.diff.toFixed(3)}kg</span>}
       </span>
     </Button>
   )
+}
+
+function rollSpec(roll: OriginalRoll) {
+  const paper = roll.paperName || '-'
+  const gram = roll.gramWeight ? `${roll.gramWeight}g` : '-'
+  const width = roll.originalWidth ? `${roll.originalWidth}mm` : '-'
+  return `${paper} / ${gram} / ${width}`
 }

@@ -31,7 +31,7 @@ export default function MesPageHeader({
         {eyebrow && <span className="mes-page-header__eyebrow">{eyebrow}</span>}
         <div className="mes-page-header__title-row">
           {onBack && (
-            <Button icon={<ArrowLeftOutlined />} onClick={onBack}>
+            <Button className="mes-back-btn" type="text" icon={<ArrowLeftOutlined />} onClick={onBack}>
               {backText}
             </Button>
           )}

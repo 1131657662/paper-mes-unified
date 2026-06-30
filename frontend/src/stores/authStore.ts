@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { PERMISSIONS } from '../constants/permissions'
+import { hasAnyPermission } from '../utils/permission'
 import type { AuthUser } from '../types/auth'
 
 interface AuthState {
@@ -44,7 +46,14 @@ export function useAuthActions() {
 export function useHasPermission(permission: string) {
   return useAuthStore((state) => {
     if (state.user?.roleCode === 'admin') return true
-    return state.permissions.includes(permission)
+    return state.permissions.includes(PERMISSIONS.all) || state.permissions.includes(permission)
+  })
+}
+
+export function useHasAnyPermission(permissions: string[]) {
+  return useAuthStore((state) => {
+    if (state.user?.roleCode === 'admin') return true
+    return hasAnyPermission(state.permissions, permissions)
   })
 }
 

@@ -223,8 +223,9 @@
 
 .process-order-shell__toolbar {
   display: grid;
-  grid-template-columns: minmax(300px, auto) minmax(260px, 1fr) auto;
-  margin-bottom: 12px;
+  grid-template-columns: minmax(220px, max-content) minmax(180px, 1fr) minmax(96px, max-content);
+  min-height: 34px;
+  margin-bottom: 8px;
   min-width: 0;
   align-items: center;
   gap: 12px;
@@ -243,19 +244,30 @@
   display: none;
 }
 
-.process-order-shell__toolbar-tools {
-  display: flex;
-  justify-content: flex-end;
-  min-width: max-content;
+.process-order-shell__queue {
+  min-width: 0;
+  overflow: hidden;
 }
 
-.process-order-column-settings {
+.process-order-shell__table-tools {
   display: flex;
-  width: 160px;
-  max-height: 280px;
-  flex-direction: column;
-  gap: 8px;
-  overflow: auto;
+  min-width: 96px;
+  min-height: 34px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.process-order-shell__table-tools .ant-pro-table-list-toolbar-setting-item {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.process-order-shell__table-tools .ant-pro-table-list-toolbar-setting-item:hover {
+  background: #f8fafc;
 }
 
 .process-order-table .ant-table-row {
@@ -288,6 +300,27 @@
   overflow: hidden;
 }
 
+.process-order-table .ant-pro-table-list-toolbar {
+  position: absolute;
+  width: 0;
+  height: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.process-order-table .ant-pro-table-list-toolbar-container {
+  min-height: 30px;
+  padding: 0;
+}
+
+.process-order-table .ant-pro-table-list-toolbar-left {
+  display: none;
+}
+
+.process-order-table .ant-pro-table-list-toolbar-right {
+  display: contents;
+}
+
 .process-order-table .ant-spin-nested-loading,
 .process-order-table .ant-spin-container,
 .process-order-table .ant-table,
@@ -303,7 +336,8 @@
   background: #ffffff;
 }
 
-.process-order-table .ant-table-content {
+.process-order-table .ant-table-content,
+.process-order-table .ant-table-body {
   height: 0;
   min-height: 0;
   flex: 1 1 0;
@@ -311,70 +345,8 @@
   background: #ffffff;
 }
 
-.process-order-table .ant-table-body {
-  min-height: 0;
-  flex: 1;
-  overflow: auto !important;
-}
-
 .process-order-table .ant-table-content > table {
   min-width: 100%;
-}
-
-.process-order-table .ant-table-thead > tr > th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: #f7f9fc;
-}
-
-.process-order-pagination {
-  display: flex;
-  min-height: 56px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 14px;
-  background: #fbfcfd;
-  border: 1px solid #d9e2ec;
-  border-top: 0;
-  border-radius: 0 0 8px 8px;
-}
-
-.process-order-pagination__size {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #526579;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.process-order-pagination__size .ant-select {
-  width: 96px;
-}
-
-.process-order-pagination .ant-pagination {
-  margin: 0;
-}
-
-.process-order-pagination .ant-pagination-item,
-.process-order-pagination .ant-pagination-prev,
-.process-order-pagination .ant-pagination-next,
-.process-order-pagination .ant-pagination-jump-prev,
-.process-order-pagination .ant-pagination-jump-next {
-  margin-inline-end: 6px;
-}
-
-.process-order-pagination .ant-pagination-item {
-  border-radius: 6px;
-}
-
-.process-order-pagination .ant-pagination-item-active {
-  font-weight: 650;
-  background: #edf5ff;
-  border-color: #8bb5d6;
 }
 
 @media (max-width: 1280px) {
@@ -387,16 +359,8 @@
   }
 
   .process-order-shell__toolbar {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(190px, max-content) minmax(0, 1fr) minmax(96px, max-content);
   }
-
-  .process-order-queue {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-content: flex-start;
-    padding-left: 0;
-  }
-
 }
 
 @media (max-width: 720px) {
@@ -408,16 +372,12 @@
     grid-template-columns: 1fr;
   }
 
-  .process-order-shell__toolbar-tools {
-    justify-content: flex-start;
-  }
-
-  .process-order-pagination {
+  .mes-pagination {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .process-order-pagination .ant-pagination {
+  .mes-pagination .ant-pagination {
     overflow-x: auto;
     padding-bottom: 2px;
     white-space: nowrap;

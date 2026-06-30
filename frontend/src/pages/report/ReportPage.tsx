@@ -1,95 +1,140 @@
-import { useState } from 'react'
-import { Card, Spin } from 'antd'
+import { Card, Spin, message } from 'antd'
 import dayjs from 'dayjs'
+import { useState } from 'react'
 import ReportBarList from '../../features/report/components/ReportBarList'
 import ReportFilterBar, {
   type ReportFilterValues,
 } from '../../features/report/components/ReportFilterBar'
+import ReportFilterSummary from '../../features/report/components/ReportFilterSummary'
+import ReportInsightStrip from '../../features/report/components/ReportInsightStrip'
 import ReportMetricStrip from '../../features/report/components/ReportMetricStrip'
 import ReportTables from '../../features/report/components/ReportTables'
 import ReportTrendPanel from '../../features/report/components/ReportTrendPanel'
-import { useReportCustomer } from '../../features/report/hooks/useReportCustomer'
-import { useReportLoss } from '../../features/report/hooks/useReportLoss'
-import { useReportMachine } from '../../features/report/hooks/useReportMachine'
-import { useReportMonthly } from '../../features/report/hooks/useReportMonthly'
-import { formatKg, formatMoney } from '../../features/report/utils/reportFormatters'
-import { summarizeReports } from '../../features/report/utils/reportSummary'
+import { useExportReport } from '../../features/report/hooks/useExportReport'
+import { useReportDetails } from '../../features/report/hooks/useReportDetails'
+import { useReportDimensions } from '../../features/report/hooks/useReportDimensions'
+import { useReportOverview } from '../../features/report/hooks/useReportOverview'
+import { useReportMachines, useReportPapers } from '../../features/report/hooks/useReportReferenceData'
+import { formatKg, formatMoney, formatNumber } from '../../features/report/utils/reportFormatters'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
-import type { ReportQuery } from '../../types/report'
+import type { ReportDimension, ReportQuery } from '../../types/report'
+import '../documentModule.css'
 import './ReportPage.css'
 
 export default function ReportPage() {
-  const initialFilters: ReportFilterValues = { period: [dayjs().startOf('month'), dayjs()] }
-  const [query, setQuery] = useState<ReportQuery>(() => currentMonthQuery())
+  const initialFilters = defaultFilters()
+  const [query, setQuery] = useState<ReportQuery>(() => toQuery(initialFilters))
+  const [dimension, setDimension] = useState<ReportDimension>(initialFilters.dimension)
+  const overviewQuery = useReportOverview(query)
+  const dimensionQuery = useReportDimensions({ ...query, dimension })
+  const detailsQuery = useReportDetails(query)
+  const monthlyQuery = useReportDimensions({ ...query, dimension: 'month' })
+  const customerRankQuery = useReportDimensions({ ...query, dimension: 'customer' })
+  const productRankQuery = useReportDimensions({ ...query, dimension: 'paper' })
   const customersQuery = useCustomers()
-  const monthlyQuery = useReportMonthly(query)
-  const customerQuery = useReportCustomer(query)
-  const lossQuery = useReportLoss(query)
-  const machineQuery = useReportMachine(query)
-
-  const monthly = monthlyQuery.data ?? []
-  const customers = customerQuery.data ?? []
-  const losses = lossQuery.data ?? []
-  const machines = machineQuery.data ?? []
-  const summary = summarizeReports({ customers, losses, machines, monthly })
-  const loading = monthlyQuery.isFetching || customerQuery.isFetching || lossQuery.isFetching || machineQuery.isFetching
+  const machinesQuery = useReportMachines()
+  const papersQuery = useReportPapers()
+  const exportMutation = useExportReport()
+  const loading = overviewQuery.isFetching || dimensionQuery.isFetching || detailsQuery.isFetching
 
   const refresh = () => {
+    overviewQuery.refetch()
+    dimensionQuery.refetch()
+    detailsQuery.refetch()
     monthlyQuery.refetch()
-    customerQuery.refetch()
-    lossQuery.refetch()
-    machineQuery.refetch()
+    customerRankQuery.refetch()
+    productRankQuery.refetch()
+  }
+
+  const submit = (values: ReportFilterValues) => {
+    const nextQuery = toQuery(values)
+    setQuery(nextQuery)
+    setDimension(values.dimension)
+  }
+
+  const exportCurrent = () => {
+    exportMutation.mutate(
+      { ...query, dimension },
+      {
+        onError: (error) => {
+          message.error(error instanceof Error ? error.message : '导出失败，请稍后重试')
+        },
+        onSuccess: (result) => message.success(`已导出 ${result.filename}（${formatFileSize(result.size)}）`),
+      },
+    )
   }
 
   return (
-    <Card className="report-workbench mes-fill-card mes-workbench" title="统计报表">
-      <ReportFilterBar
-        customers={customersQuery.data?.records ?? []}
-        initialValues={initialFilters}
-        loading={customersQuery.isLoading}
-        onRefresh={refresh}
-        onValuesChange={(_, values) => setQuery(toQuery(values))}
-      />
+    <div className="report-workbench mes-workbench">
+      <Card className="report-filter-card" title="统计报表">
+        <ReportFilterBar
+          customers={customersQuery.data?.records ?? []}
+          exporting={exportMutation.isPending}
+          initialValues={initialFilters}
+          loading={customersQuery.isLoading}
+          machines={machinesQuery.data?.records ?? []}
+          onExport={exportCurrent}
+          onRefresh={refresh}
+          onSubmit={submit}
+          papers={papersQuery.data?.records ?? []}
+        />
+      </Card>
 
-      <Spin spinning={loading}>
-        <div className="report-workbench__content">
-          <ReportMetricStrip summary={summary} />
-          <div className="report-workbench__grid">
-            <ReportTrendPanel monthly={monthly} />
-            <ReportBarList
-              title="客户金额排行"
-              emptyText="当前周期暂无客户统计"
-              items={customers.slice(0, 6).map((item) => ({
-                key: item.customerUuid,
-                label: item.customerName,
-                meta: `${item.orderCount ?? 0} 单 / ${item.totalTon ?? 0}t`,
-                value: item.totalAmount ?? 0,
-                valueText: formatMoney(item.totalAmount),
-              }))}
+      <Card className="report-result-card" title="分析结果">
+        <Spin spinning={loading}>
+          <div className="report-workbench__content">
+            <ReportFilterSummary
+              customers={customersQuery.data?.records ?? []}
+              machines={machinesQuery.data?.records ?? []}
+              papers={papersQuery.data?.records ?? []}
+              query={query}
             />
-            <ReportBarList
-              title="机台产出排行"
-              emptyText="当前周期暂无机台产出"
-              items={machines.slice(0, 6).map((item) => ({
-                key: item.machineUuid,
-                label: item.machineName,
-                meta: `${item.rollCount ?? 0} 卷 / ${item.totalKnife ?? 0} 刀`,
-                value: item.totalOutputWeight ?? 0,
-                valueText: formatKg(item.totalOutputWeight),
-              }))}
+            <ReportMetricStrip overview={overviewQuery.data} />
+            <ReportInsightStrip overview={overviewQuery.data} />
+            <div className="report-workbench__grid">
+              <ReportTrendPanel monthly={monthlyQuery.data ?? []} />
+              <ReportBarList
+                title="客户加工金额排行"
+                emptyText="当前条件暂无客户汇总"
+                items={(customerRankQuery.data ?? []).slice(0, 8).map((item) => ({
+                  key: item.dimensionKey,
+                  label: item.dimensionName,
+                  meta: `${formatNumber(item.orderCount)} 单 / ${formatKg(item.originalWeight)}`,
+                  value: item.totalAmount ?? 0,
+                  valueText: formatMoney(item.totalAmount),
+                }))}
+              />
+              <ReportBarList
+                title="产品加工贡献排行"
+                emptyText="当前条件暂无产品汇总"
+                items={(productRankQuery.data ?? []).slice(0, 8).map((item) => ({
+                  key: item.dimensionKey,
+                  label: item.dimensionName,
+                  meta: `${formatNumber(item.originalRollCount)} 卷 / ${formatKg(item.originalWeight)}`,
+                  value: item.processAmount || item.totalAmount || item.originalWeight || 0,
+                  valueText: item.processAmount ? formatMoney(item.processAmount) : formatKg(item.originalWeight),
+                }))}
+              />
+            </div>
+            <ReportTables
+              details={detailsQuery.data ?? []}
+              dimension={dimension}
+              dimensions={dimensionQuery.data ?? []}
+              loading={loading}
+              onDimensionChange={setDimension}
+              onRefresh={refresh}
             />
           </div>
-          <ReportTables customers={customers} losses={losses} machines={machines} monthly={monthly} />
-        </div>
-      </Spin>
-    </Card>
+        </Spin>
+      </Card>
+    </div>
   )
 }
 
-function currentMonthQuery(): ReportQuery {
+function defaultFilters(): ReportFilterValues {
   return {
-    dateFrom: dayjs().startOf('month').format('YYYY-MM-DD'),
-    dateTo: dayjs().format('YYYY-MM-DD'),
+    dimension: 'customer',
+    period: [dayjs().startOf('year'), dayjs()],
   }
 }
 
@@ -98,5 +143,19 @@ function toQuery(values: ReportFilterValues): ReportQuery {
     customerUuid: values.customerUuid,
     dateFrom: values.period?.[0]?.format('YYYY-MM-DD'),
     dateTo: values.period?.[1]?.format('YYYY-MM-DD'),
+    dimension: values.dimension,
+    isInvoice: values.isInvoice,
+    machineUuid: values.machineUuid,
+    mainStepType: values.mainStepType,
+    orderStatus: values.orderStatus,
+    paperName: values.paperName,
+    processMode: values.processMode,
+    settleType: values.settleType,
   }
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+  return `${(size / 1024 / 1024).toFixed(1)} MB`
 }

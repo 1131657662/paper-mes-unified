@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Button, Card } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
+import { TableToolbarHostProvider } from '../../components/biz/TableToolbarPortal'
 import type { ProcessOrder } from '../../types/processOrder'
 import ProcessOrderBatchToolbar, { type BatchActions } from './ProcessOrderBatchToolbar'
 import ProcessOrderQueueBar, { type QueueStatus } from './ProcessOrderQueueBar'
@@ -9,7 +11,6 @@ interface Props {
   selectedRows: ProcessOrder[]
   actions: BatchActions
   children: React.ReactNode
-  extra?: React.ReactNode
   search?: React.ReactNode
   onCreate: () => void
   onQuickStatusChange: (value: QueueStatus) => void
@@ -18,13 +19,14 @@ interface Props {
 export default function ProcessOrderListHeader({
   actions,
   children,
-  extra,
   onCreate,
   onQuickStatusChange,
   quickStatus,
   search,
   selectedRows,
 }: Props) {
+  const [toolsHost, setToolsHost] = useState<HTMLDivElement | null>(null)
+
   return (
     <Card
       title="加工单"
@@ -39,9 +41,11 @@ export default function ProcessOrderListHeader({
         <div className="process-order-shell__queue">
           <ProcessOrderQueueBar value={quickStatus} onChange={onQuickStatusChange} />
         </div>
-        {extra && <div className="process-order-shell__toolbar-tools">{extra}</div>}
+        <div className="process-order-shell__table-tools" ref={setToolsHost} />
       </div>
-      {children}
+      <TableToolbarHostProvider host={toolsHost}>
+        {children}
+      </TableToolbarHostProvider>
     </Card>
   )
 }

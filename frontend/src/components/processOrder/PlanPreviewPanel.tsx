@@ -1,5 +1,6 @@
 import { Descriptions, Empty, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import TooltipText from '../biz/TooltipText'
 import type { FinishPreviewVO, RewindFinishItemPreview, RewindSegmentDTO, RewindSegmentPreview } from '../../types/processOrder'
 
 interface Props {
@@ -22,7 +23,7 @@ const segColumns: ColumnsType<RewindSegmentPreview> = [
   { title: '重复', dataIndex: 'repeatCount', width: 55 },
   { title: '排布宽度', dataIndex: 'layoutWidth', width: 85, render: (v: number) => `${v}mm` },
   { title: '修边', dataIndex: 'trimWidth', width: 70, render: (v: number) => (v ? `${v}mm` : '-') },
-  { title: '汇总', dataIndex: 'summary', ellipsis: true },
+  { title: '汇总', dataIndex: 'summary', render: textCell },
 ]
 
 const finishColumns: ColumnsType<RewindFinishItemPreview> = [
@@ -34,7 +35,7 @@ const finishColumns: ColumnsType<RewindFinishItemPreview> = [
   { title: '预估重量', dataIndex: 'estimateWeight', width: 85, render: (v: number) => `${v?.toFixed(2)}kg` },
   { title: '修边宽度', dataIndex: 'trimWidth', width: 80, render: (v: number) => (v ? `${v}mm` : '-') },
   { title: '修边重量', dataIndex: 'trimWeight', width: 80, render: (v: number) => (v ? `${v.toFixed(2)}kg` : '-') },
-  { title: '来源', dataIndex: 'sourceSummary', ellipsis: true },
+  { title: '来源', dataIndex: 'sourceSummary', render: textCell },
 ]
 
 export default function PlanPreviewPanel({ preview, loading }: Props) {
@@ -86,4 +87,8 @@ export default function PlanPreviewPanel({ preview, loading }: Props) {
       />
     </div>
   )
+}
+
+function textCell(value?: string | number) {
+  return <TooltipText value={value} />
 }

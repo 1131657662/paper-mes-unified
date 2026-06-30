@@ -2,6 +2,7 @@ import { Alert, Button, Descriptions, Empty, Space, Table, Tag, Typography } fro
 import { ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import type { ReactNode } from 'react'
+import TooltipText from '../../../components/biz/TooltipText'
 import type {
   PlanPreviewVO,
   RewindFinishItemPreview,
@@ -22,7 +23,7 @@ const segmentColumns: ColumnsType<RewindSegmentPreview> = [
   { title: '重复', dataIndex: 'repeatCount', width: 58 },
   { title: '排布', dataIndex: 'layoutWidth', width: 84, render: (value) => value ? `${value}mm` : '-' },
   { title: '修边', dataIndex: 'trimWidth', width: 72, render: (value) => value ? `${value}mm` : '-' },
-  { title: '摘要', dataIndex: 'summary', width: 180, ellipsis: true },
+  { title: '摘要', dataIndex: 'summary', width: 180, render: textCell },
 ]
 
 const finishColumns: ColumnsType<RewindFinishItemPreview> = [
@@ -32,7 +33,7 @@ const finishColumns: ColumnsType<RewindFinishItemPreview> = [
   { title: '纸芯', dataIndex: 'finishCoreDiameter', width: 72, render: (value) => value ? `${value}mm` : '-' },
   { title: '预估重', dataIndex: 'estimateWeight', width: 92, render: (value) => `${Number(value ?? 0).toFixed(3)}kg` },
   { title: '修边重', dataIndex: 'trimWeight', width: 92, render: (value) => `${Number(value ?? 0).toFixed(3)}kg` },
-  { title: '来源', dataIndex: 'sourceSummary', width: 160, ellipsis: true },
+  { title: '来源', dataIndex: 'sourceSummary', width: 160, render: textCell },
 ]
 
 export default function PlanPreviewPanel({ preview, loading, onPreview }: Props) {
@@ -147,4 +148,8 @@ interface SectionProps {
   title: string
   count: number
   table: ReactNode
+}
+
+function textCell(value?: string | number) {
+  return <TooltipText value={value} />
 }

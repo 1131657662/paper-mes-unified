@@ -17,7 +17,7 @@ interface Props {
 const processOptions = Object.entries(PROCESS_MODE).map(([value, label]) => ({ value: Number(value), label }))
 const stepOptions = Object.entries(STEP_TYPE).map(([value, label]) => ({ value: Number(value), label }))
 const workbenchCardStyle = {
-  height: 'max(360px, calc(100vh - 400px))',
+  height: 'max(520px, calc(100vh - 310px))',
   display: 'flex',
   flexDirection: 'column',
 } as const

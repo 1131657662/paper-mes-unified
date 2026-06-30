@@ -35,7 +35,7 @@ export default function DashboardPage() {
         <div className="dashboard-page__content">
           <DashboardMetricGrid metrics={overview?.metrics} />
           <div className="dashboard-page__analysis-grid">
-            <DashboardTrend monthly={overview?.monthlyTrend ?? []} />
+            <DashboardTrend monthly={overview?.yearlyTrend ?? overview?.monthlyTrend ?? []} />
             <DashboardWorkbenchPanel
               onNavigate={(path) => navigate(path)}
               statusQueue={overview?.statusQueue ?? []}
@@ -57,8 +57,9 @@ export default function DashboardPage() {
             <DashboardRankList
               emptyText="本月暂无客户加工统计"
               items={overview?.customerRank ?? []}
+              yearlyItems={overview?.customerYearRank ?? []}
               mode="amount"
-              subtitle="本月完成加工单按金额排序。"
+              subtitle="按加工费金额排序，可切换月度和近一年。"
               title="客户加工金额排行"
             />
             <DashboardRankList

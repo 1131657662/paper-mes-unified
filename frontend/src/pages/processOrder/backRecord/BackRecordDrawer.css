@@ -7,8 +7,7 @@
 
 .back-record-page {
   display: flex;
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
   flex-direction: column;
   gap: 12px;
 }
@@ -138,8 +137,14 @@
 }
 
 .back-record-nav-item {
+  display: flex;
   width: 100%;
   height: auto;
+  min-height: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+  flex-direction: column;
+  gap: 5px;
   padding: 10px;
   margin-bottom: 6px;
   text-align: left;
@@ -148,11 +153,8 @@
 }
 
 .back-record-nav-item > span {
-  display: flex;
   width: 100%;
   min-width: 0;
-  flex-direction: column;
-  gap: 5px;
 }
 
 .back-record-nav-item--active {
@@ -163,6 +165,7 @@
 .back-record-nav-item__main,
 .back-record-nav-item__meta {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -180,6 +183,30 @@
   overflow: hidden;
   color: var(--mes-color-text-secondary);
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.back-record-nav-item .back-record-nav-item__identity {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 8px;
+  padding: 6px 8px;
+  background: #f8fafc;
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius-sm);
+}
+
+.back-record-nav-item .back-record-nav-item__identity span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -241,7 +268,7 @@
 }
 
 .back-record-roll-facts {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 10px;
 }
 
@@ -327,12 +354,15 @@
   flex-direction: column;
   gap: 10px;
   overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .back-record-finish-row {
   display: grid;
   grid-template-columns: minmax(170px, 210px) minmax(0, 1fr);
   gap: 12px;
+  width: max-content;
+  min-width: 100%;
   padding: 10px;
   background: var(--mes-color-panel);
   border: 1px solid var(--mes-color-border-light);
@@ -355,6 +385,7 @@
   display: grid;
   grid-template-columns: repeat(6, minmax(112px, 1fr));
   gap: 8px;
+  min-width: 760px;
 }
 
 .back-record-close {

@@ -1,4 +1,4 @@
-import type { AvailableFinishVO } from '../../../types/delivery'
+import type { AvailableFinishVO, DeliveryDetail } from '../../../types/delivery'
 
 export function formatKg(value?: number) {
   return `${(value ?? 0).toLocaleString('zh-CN', {
@@ -17,6 +17,15 @@ export function formatTon(value?: number) {
 export function finishSpecText(item: AvailableFinishVO) {
   const parts = [
     item.gramWeight ? `${item.gramWeight}g` : undefined,
+    item.finishWidth ? `${item.finishWidth}mm` : undefined,
+    item.finishDiameter ? `φ${item.finishDiameter}` : undefined,
+    item.finishCoreDiameter ? `芯${item.finishCoreDiameter}` : undefined,
+  ].filter(Boolean)
+  return parts.length ? parts.join(' / ') : '-'
+}
+
+export function deliveryDetailSpecText(item: DeliveryDetail) {
+  const parts = [
     item.finishWidth ? `${item.finishWidth}mm` : undefined,
     item.finishDiameter ? `φ${item.finishDiameter}` : undefined,
     item.finishCoreDiameter ? `芯${item.finishCoreDiameter}` : undefined,

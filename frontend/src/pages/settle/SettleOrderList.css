@@ -196,6 +196,14 @@
   background: #f7f9fc;
 }
 
+.settle-order-table .ant-table-thead > tr > th.settle-order-table__actions-cell {
+  right: 0 !important;
+}
+
+.settle-order-table .ant-table-thead > tr > th.ant-table-cell-scrollbar {
+  display: none;
+}
+
 .settle-panel .ant-pagination {
   margin-bottom: 0;
 }

@@ -136,8 +136,8 @@ function appendPool(items: BackRecordWorkItem[], detail: ProcessOrderDetailVO): 
   }]
 }
 
-function rollName(roll: OriginalRoll | undefined, seq: number): string {
-  return roll?.rollNo || roll?.extraNo || `母卷 ${seq}`
+function rollName(_roll: OriginalRoll | undefined, seq: number): string {
+  return `母卷 ${seq}`
 }
 
 function sourceText(roll: OriginalRoll): string

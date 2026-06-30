@@ -62,7 +62,7 @@ export default function ProcessStepFormModal({
       onCancel={onCancel}
       onOk={handleOk}
       confirmLoading={confirmLoading}
-      width={600}
+      width={640}
       destroyOnHidden
     >
       <Form form={form} layout="vertical" preserve={false}>

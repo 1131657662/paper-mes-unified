@@ -1,4 +1,5 @@
-import { Button, Progress, Space, Tag, Tooltip, Typography } from 'antd'
+import { Button, Progress, Space, Tag, Typography } from 'antd'
+import MesTooltip from '../../../components/biz/MesTooltip'
 import type { RewindLayoutItemPlanDTO, RewindSegmentPlanDTO } from '../../../types/processOrder'
 import { calcRewindWidthUsage, rewindWidthPolicy } from '../rewindWidthUsage'
 import './RewindWidthSummary.css'
@@ -55,14 +56,14 @@ function LayoutStrip({ items, originalWidth }: { items: RewindLayoutItemPlanDTO[
   return (
     <div className="rewind-width-summary__strip">
       {items.map((item, index) => (
-        <Tooltip key={`${item.width}-${index}`} title={labelForItem(item)}>
+        <MesTooltip key={`${item.width}-${index}`} title={labelForItem(item)}>
           <div
             className={item.itemType === 'TRIM' ? 'rewind-width-summary__strip-item--trim' : 'rewind-width-summary__strip-item'}
             style={{ width: `${Math.max(0, (item.width * (item.quantity ?? 1) / originalWidth) * 100)}%` }}
           >
             {item.width * (item.quantity ?? 1) / originalWidth > 0.08 ? item.width : ''}
           </div>
-        </Tooltip>
+        </MesTooltip>
       ))}
     </div>
   )

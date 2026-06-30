@@ -11,7 +11,7 @@ import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.service.FinishRollService;
-import com.paper.mes.processorder.statemachine.FinishRollNoGenerator;
+import com.paper.mes.processorder.service.RollNoSequenceService;
 import com.paper.mes.processorder.statemachine.FinishStatus;
 import com.paper.mes.processorder.statemachine.StateMachine;
 import lombok.RequiredArgsConstructor;
@@ -38,11 +38,11 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
     private static final int PLACEHOLDER_GRAM_WEIGHT = 0;
     private static final int PLACEHOLDER_FINISH_WIDTH = 0;
     /** 仅字母流水卷号（A-Y + 6位数字）参与最大值计算，排除直发母卷号等异形值。 */
-    private static final String LETTER_SEQ_REGEXP = "finish_roll_no REGEXP '^[A-Y][0-9]{6}$'";
     /** 唯一索引冲突时的重试次数，应对并发同时取到同一最大值。 */
     private static final int ALLOC_RETRY = 5;
 
     private final ProcessOrderMapper processOrderMapper;
+    private final RollNoSequenceService rollNoSequenceService;
 
     @Override
     public void changeFinishStatus(String uuid, Integer targetStatus) {
@@ -171,14 +171,7 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
 
     /** 全局下一字母流水卷号：取现有最大字母流水 +1，无则从 A000001 起。 */
     private String nextRollNo() {
-        FinishRoll max = getOne(new LambdaQueryWrapper<FinishRoll>()
-                .apply(LETTER_SEQ_REGEXP)
-                .orderByDesc(FinishRoll::getFinishRollNo)
-                .last("LIMIT 1"), false);
-        if (max == null || max.getFinishRollNo() == null) {
-            return FinishRollNoGenerator.encode(1);
-        }
-        return FinishRollNoGenerator.next(max.getFinishRollNo());
+        return rollNoSequenceService.nextFinishRollNo();
     }
 
     private FinishRoll newRoll(ProcessOrder order, int rowSort, int isSpare) {

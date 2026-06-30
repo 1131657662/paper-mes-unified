@@ -26,4 +26,5 @@ export interface WarehouseSaveDTO {
 /** 仓库列表查询入参。 */
 export interface WarehouseQuery extends PageQuery {
   keyword?: string
+  status?: number
 }

@@ -234,6 +234,7 @@ CREATE TABLE `biz_original_roll` (
   `damage_desc`        VARCHAR(255)  DEFAULT NULL            COMMENT '破损、水湿文字描述',
   `damage_images`      JSON          DEFAULT NULL            COMMENT '多图片路径数组',
   `process_mode`       TINYINT       NOT NULL DEFAULT 1      COMMENT '1标准加工 2现场定尺 3不加工直发',
+  `main_step_type`     TINYINT       DEFAULT NULL            COMMENT '主工艺类型：1锯纸 2复卷（标准加工和现场定尺必填）',
   `roll_status`        TINYINT       NOT NULL DEFAULT 1      COMMENT '1待加工 2加工中 3完成 4直发 5报废',
   `is_checked`         TINYINT       NOT NULL DEFAULT 0      COMMENT '0未复核 1车间线下复核完成',
   `check_user`         VARCHAR(50)   DEFAULT NULL            COMMENT '复核人',
@@ -261,6 +262,7 @@ CREATE TABLE `biz_original_roll` (
   KEY `idx_roll_no` (`roll_no`),
   KEY `idx_roll_status` (`roll_status`),
   KEY `idx_process_mode` (`process_mode`),
+  KEY `idx_main_step_type` (`main_step_type`),
   KEY `idx_row_sort` (`order_uuid`, `row_sort`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='原纸明细表（单卷维度）';
@@ -451,6 +453,8 @@ CREATE TABLE `biz_delivery_order` (
   `sign_time`           DATETIME      DEFAULT NULL            COMMENT '签收时间',
   `settle_block_action` TINYINT       NOT NULL DEFAULT 0      COMMENT '现结拦截结果 0无 1警告放行 2拦截',
   `delivery_status`     TINYINT       NOT NULL DEFAULT 1      COMMENT '1待出库 2已出库签收',
+  `snap_delivery`        JSON          DEFAULT NULL            COMMENT '出库确认快照JSON',
+  `snap_delivery_time`   DATETIME      DEFAULT NULL            COMMENT '出库确认快照时间',
   `remark`              VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
   `is_deleted`          TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
   `create_by`           VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
@@ -527,6 +531,8 @@ CREATE TABLE `biz_settle_order` (
   `unreceived_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '待收金额',
   `is_invoice`        TINYINT       NOT NULL DEFAULT 2      COMMENT '1开票 2不开票',
   `settle_status`     TINYINT       NOT NULL DEFAULT 1      COMMENT '1待结算 2部分收款 3全部结清',
+  `snap_bill`         JSON          DEFAULT NULL            COMMENT '结算单快照JSON',
+  `snap_bill_time`    DATETIME      DEFAULT NULL            COMMENT '结算单快照时间',
   `remark`            VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
   `is_deleted`        TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
   `create_by`         VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
@@ -588,6 +594,10 @@ CREATE TABLE `biz_receive_record` (
   `pay_method`     TINYINT       NOT NULL                COMMENT '1现金 2转账 3微信 4支付宝',
   `pay_no`         VARCHAR(100)  DEFAULT NULL            COMMENT '流水/凭证号',
   `operator`       VARCHAR(50)   DEFAULT NULL            COMMENT '收款登记人',
+  `record_status`  TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 2已撤销',
+  `cancel_time`    DATETIME      DEFAULT NULL            COMMENT '撤销时间',
+  `cancel_by`      VARCHAR(50)   DEFAULT NULL            COMMENT '撤销人',
+  `cancel_reason`  VARCHAR(255)  DEFAULT NULL            COMMENT '撤销原因',
   `remark`         VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
   `is_deleted`     TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
   `create_by`      VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
@@ -602,6 +612,7 @@ CREATE TABLE `biz_receive_record` (
   PRIMARY KEY (`uuid`),
   KEY `idx_settle_uuid` (`settle_uuid`),
   KEY `idx_receive_date` (`receive_date`),
+  KEY `idx_receive_record_status` (`record_status`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分次收款流水表';
 
@@ -699,14 +710,57 @@ CREATE TABLE `sys_user_session` (
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统用户会话表';
 
+-- -----------------------------------------------------------------------------
+-- 3.3.16 sys_no_rule 系统单号规则表
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `sys_no_rule`;
+CREATE TABLE `sys_no_rule` (
+  `uuid`          VARCHAR(36)  NOT NULL                COMMENT '主键UUID',
+  `biz_type`      VARCHAR(50)  NOT NULL                COMMENT '业务类型',
+  `rule_name`     VARCHAR(100) NOT NULL                COMMENT '规则名称',
+  `prefix`        VARCHAR(20)  NOT NULL                COMMENT '单号前缀',
+  `pattern_type`  TINYINT      NOT NULL DEFAULT 1      COMMENT '格式 1前缀+日期+序号 2前缀+序号',
+  `date_pattern`  VARCHAR(20)  DEFAULT 'yyyyMMdd'      COMMENT '日期格式 yyyyMMdd/yyyyMM/yyyy',
+  `serial_length` INT          NOT NULL DEFAULT 4      COMMENT '流水位数',
+  `reset_cycle`   TINYINT      NOT NULL DEFAULT 1      COMMENT '重置周期 0不重置 1按日 2按月 3按年',
+  `status`        TINYINT      NOT NULL DEFAULT 1      COMMENT '状态 1启用 0停用',
+  `remark`        VARCHAR(255) DEFAULT NULL            COMMENT '备注',
+  `is_deleted`    TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `create_by`     VARCHAR(50)  DEFAULT NULL            COMMENT '创建人',
+  `update_by`     VARCHAR(50)  DEFAULT NULL            COMMENT '更新人',
+  `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `version`       INT          NOT NULL DEFAULT 1      COMMENT '乐观锁版本号',
+  `ext_str1`      VARCHAR(255) DEFAULT NULL            COMMENT '扩展文本1',
+  `ext_str2`      VARCHAR(255) DEFAULT NULL            COMMENT '扩展文本2',
+  `ext_num1`      DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值1',
+  `ext_num2`      DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值2',
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_sys_no_rule_biz` (`biz_type`, `is_deleted`),
+  KEY `idx_sys_no_rule_status` (`status`),
+  KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统单号规则表';
+
+INSERT INTO `sys_no_rule`
+(`uuid`, `biz_type`, `rule_name`, `prefix`, `pattern_type`, `date_pattern`, `serial_length`, `reset_cycle`, `status`, `remark`)
+VALUES
+('no-rule-process-order', 'process_order', '加工单号', 'JG', 1, 'yyyyMMdd', 4, 1, 1, '默认加工单号：JG+日期+4位日流水'),
+('no-rule-delivery-order', 'delivery_order', '出库单号', 'CK', 1, 'yyyyMMdd', 4, 1, 1, '默认出库单号：CK+日期+4位日流水'),
+('no-rule-settle-order', 'settle_order', '结算单号', 'JS', 1, 'yyyyMMdd', 4, 1, 1, '默认结算单号：JS+日期+4位日流水'),
+('no-rule-finish-roll', 'finish_roll', '成品卷号', 'A', 2, 'yyyyMMdd', 6, 0, 1, '默认成品卷号：前缀+6位全局流水'),
+('no-rule-customer', 'customer', '客户编码', 'KH', 2, 'yyyyMMdd', 6, 0, 1, '默认客户编码：KH+6位全局流水'),
+('no-rule-paper', 'paper', '纸张编码', 'ZZ', 2, 'yyyyMMdd', 6, 0, 1, '默认纸张编码：ZZ+6位全局流水'),
+('no-rule-machine', 'machine', '机台编码', 'JT', 2, 'yyyyMMdd', 6, 0, 1, '默认机台编码：JT+6位全局流水'),
+('no-rule-warehouse', 'warehouse', '仓库编码', 'CKD', 2, 'yyyyMMdd', 6, 0, 1, '默认仓库编码：CKD+6位全局流水');
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================
--- 建表脚本结束  共 15 张表
+-- 建表脚本结束  共 16 张表
 --   基础档案 4: sys_customer / sys_paper / sys_machine / sys_warehouse
 --   加工核心 6: biz_process_order / biz_original_roll / biz_process_step /
 --               biz_finish_roll / biz_process_param / biz_finish_original_rel
 --   出库     2: biz_delivery_order / biz_delivery_detail
 --   结算收款 3: biz_settle_order / biz_settle_detail / biz_receive_record
---   系统辅助 3: sys_operation_log / sys_user / sys_user_session
+--   系统辅助 4: sys_operation_log / sys_user / sys_user_session / sys_no_rule
 -- =============================================================================

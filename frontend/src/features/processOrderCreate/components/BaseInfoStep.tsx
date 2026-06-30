@@ -1,8 +1,14 @@
-import { Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Space } from 'antd'
+import { Alert, Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Space } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import type { DraftOrderBaseDTO } from '../../../types/processOrder'
-import { IS_INVOICE, ORDER_SETTLE_TYPE, PRIORITY } from '../../../constants/processOrder'
+import {
+  DICT_TYPES,
+  invoiceFallbackOptions,
+  priorityFallbackOptions,
+  settleFallbackOptions,
+} from '../../systemConfig/configFallbacks'
+import { useNumberDictOptions } from '../../systemConfig/hooks/useRuntimeDictOptions'
 import type { ReferenceOption } from '../types'
 
 interface BaseInfoFormValues extends Omit<DraftOrderBaseDTO, 'orderDate' | 'expectFinishDate'> {
@@ -18,9 +24,6 @@ interface Props {
   onNext: (value: DraftOrderBaseDTO) => void
 }
 
-const options = (dict: Record<number, string>) =>
-  Object.entries(dict).map(([value, label]) => ({ value: Number(value), label }))
-
 function toDto(value: BaseInfoFormValues): DraftOrderBaseDTO {
   return {
     ...value,
@@ -32,7 +35,12 @@ function toDto(value: BaseInfoFormValues): DraftOrderBaseDTO {
 
 export default function BaseInfoStep({ customers, warehouses, initialValue, loading, onNext }: Props) {
   const [form] = Form.useForm<BaseInfoFormValues>()
+  const { options: priorityOptions } = useNumberDictOptions(DICT_TYPES.priority, priorityFallbackOptions)
+  const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
+  const { options: settleOptions } = useNumberDictOptions(DICT_TYPES.settleType, settleFallbackOptions)
+  const customerUuid = Form.useWatch('customerUuid', form)
   const settleType = Form.useWatch('settleType', form)
+  const selectedCustomer = customers.find((item) => item.value === customerUuid)
 
   const handleCustomerChange = (customerUuid: string) => {
     const customer = customers.find((item) => item.value === customerUuid)
@@ -61,6 +69,15 @@ export default function BaseInfoStep({ customers, warehouses, initialValue, load
         }}
         onFinish={(value) => onNext(toDto(value))}
       >
+        {selectedCustomer && (
+          <Alert
+            className="process-order-base-defaults"
+            type="info"
+            showIcon
+            message="已按客户档案带出默认结算与开票设置"
+            description={`默认${settleSummary(selectedCustomer)}，${invoiceSummary(selectedCustomer)}，税率 ${selectedCustomer.taxRate ?? 0}%。本单仍可在下方手动修改。`}
+          />
+        )}
         <Row gutter={16}>
           <Col span={6}>
             <Form.Item name="customerUuid" label="客户" rules={[{ required: true, message: '请选择客户' }]}>
@@ -85,7 +102,7 @@ export default function BaseInfoStep({ customers, warehouses, initialValue, load
           </Col>
           <Col span={6}>
             <Form.Item name="priority" label="优先级">
-              <Select options={options(PRIORITY)} />
+              <Select options={priorityOptions} />
             </Form.Item>
           </Col>
           <Col span={6}>
@@ -100,12 +117,12 @@ export default function BaseInfoStep({ customers, warehouses, initialValue, load
           </Col>
           <Col span={6}>
             <Form.Item name="isInvoice" label="是否开票">
-              <Select options={options(IS_INVOICE)} />
+              <Select options={invoiceOptions} />
             </Form.Item>
           </Col>
           <Col span={6}>
             <Form.Item name="settleType" label="结算方式">
-              <Select options={options(ORDER_SETTLE_TYPE)} />
+              <Select options={settleOptions} />
             </Form.Item>
           </Col>
           <Col span={6}>
@@ -138,4 +155,17 @@ export default function BaseInfoStep({ customers, warehouses, initialValue, load
       </Form>
     </Card>
   )
+}
+
+function settleSummary(customer: ReferenceOption) {
+  if (customer.settleType === 1) return '次结'
+  if (customer.settleType === 2) {
+    return customer.settleDay ? `月结 ${customer.settleDay}日` : '月结'
+  }
+  return '月结'
+}
+
+function invoiceSummary(customer: ReferenceOption) {
+  if (customer.defaultInvoice === 1) return '默认开票'
+  return '默认不开票'
 }

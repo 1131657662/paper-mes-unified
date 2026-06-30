@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Col, Divider, InputNumber, Row, Select, Space, Tag, Tooltip, Typography, message } from 'antd'
+import { Button, Col, Divider, InputNumber, Row, Select, Space, Tag, Typography, message } from 'antd'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { previewRewindPlan } from '../../api/processOrder'
+import MesTooltip from '../biz/MesTooltip'
 import LayoutBar from './LayoutBar'
 import PlanPreviewPanel from './PlanPreviewPanel'
 import type {
@@ -365,7 +366,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                     <Space wrap style={{ marginBottom: 12 }}>
                       <Tag color="blue">分段 {index + 1}</Tag>
                       {segments.length > 1 ? (
-                        <Tooltip title="该分段占母卷总直径/重量的比例，所有分段合计应为100%">
+                        <MesTooltip title="该分段占母卷总直径/重量的比例，所有分段合计应为100%">
                           <InputNumber
                             min={0}
                             max={100}
@@ -375,7 +376,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                             addonBefore="分段占比"
                             addonAfter="%"
                           />
-                        </Tooltip>
+                        </MesTooltip>
                       ) : (
                         <Tag color="default">单分段 100%</Tag>
                       )}

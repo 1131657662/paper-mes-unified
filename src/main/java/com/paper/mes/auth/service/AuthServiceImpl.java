@@ -9,6 +9,7 @@ import com.paper.mes.auth.entity.SysUser;
 import com.paper.mes.auth.entity.SysUserSession;
 import com.paper.mes.auth.mapper.SysUserMapper;
 import com.paper.mes.auth.mapper.SysUserSessionMapper;
+import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ResultCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -125,7 +125,7 @@ public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
                 .realName(user.getRealName())
                 .roleCode(user.getRoleCode())
                 .accessToken(token)
-                .permissions(resolvePermissions(user.getRoleCode()))
+                .permissions(Permissions.resolve(user.getRoleCode()))
                 .build();
     }
 
@@ -136,22 +136,6 @@ public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
                 .realName(user.getRealName())
                 .roleCode(user.getRoleCode())
                 .build();
-    }
-
-    private List<String> resolvePermissions(String roleCode) {
-        if ("admin".equals(roleCode)) {
-            return List.of("*");
-        }
-        if ("operator".equals(roleCode)) {
-            return List.of("order:view", "order:create", "order:back-record", "report:view");
-        }
-        if ("finance".equals(roleCode)) {
-            return List.of("settle:view", "settle:receive", "report:view");
-        }
-        if ("warehouse".equals(roleCode)) {
-            return List.of("delivery:view", "delivery:confirm", "order:view");
-        }
-        return List.of();
     }
 
     private boolean isEnabled(SysUser user) {

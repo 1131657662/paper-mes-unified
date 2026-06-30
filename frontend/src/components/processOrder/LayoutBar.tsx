@@ -1,5 +1,6 @@
-import { Tooltip, Typography } from 'antd'
+import { Typography } from 'antd'
 import type { RewindLayoutItemDTO } from '../../types/processOrder'
+import MesTooltip from '../biz/MesTooltip'
 
 interface Props {
   layoutItems: RewindLayoutItemDTO[]
@@ -26,7 +27,7 @@ export default function LayoutBar({ layoutItems, originalWidth }: Props) {
         const color = isFinish ? FINISH_COLOR : TRIM_COLOR
         const label = isFinish ? `成品 ${item.width}mm x${item.quantity ?? 1}` : `修边 ${item.width}mm`
         return (
-          <Tooltip key={index} title={label}>
+          <MesTooltip key={index} title={label}>
             <div
               style={{
                 width: `${pct}%`,
@@ -45,7 +46,7 @@ export default function LayoutBar({ layoutItems, originalWidth }: Props) {
             >
               {pct > 8 ? `${item.width}` : ''}
             </div>
-          </Tooltip>
+          </MesTooltip>
         )
       })}
     </div>

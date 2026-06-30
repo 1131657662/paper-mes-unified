@@ -1,5 +1,6 @@
 import { Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import TooltipText from '../../../components/biz/TooltipText'
 import type { SettleCandidateVO } from '../../../types/settle'
 import { formatKg, formatMoney, settleModeText } from '../utils/settleFormatters'
 
@@ -7,6 +8,7 @@ interface Props {
   data: SettleCandidateVO[]
   loading: boolean
   selectedRowKeys: React.Key[]
+  scrollY?: number | string
   onSelectionChange: (keys: React.Key[]) => void
 }
 
@@ -14,6 +16,7 @@ export default function SettleCandidateTable({
   data,
   loading,
   onSelectionChange,
+  scrollY = 'calc(100vh - 520px)',
   selectedRowKeys,
 }: Props) {
   return (
@@ -30,7 +33,7 @@ export default function SettleCandidateTable({
       onRow={(record) => ({
         onClick: () => toggleKey(record.orderUuid, selectedRowKeys, onSelectionChange),
       })}
-      scroll={{ x: 1080, y: 'calc(100vh - 520px)' }}
+      scroll={{ x: 1080, y: scrollY }}
     />
   )
 }
@@ -48,7 +51,7 @@ const columns: ColumnsType<SettleCandidateVO> = [
       </div>
     ),
   },
-  { title: '客户', dataIndex: 'customerName', width: 150, ellipsis: true },
+  { title: '客户', dataIndex: 'customerName', width: 150, render: textCell },
   {
     title: '结算方式',
     dataIndex: 'settleType',
@@ -86,6 +89,10 @@ const columns: ColumnsType<SettleCandidateVO> = [
   { title: '额外费', dataIndex: 'extraAmount', align: 'right', width: 105, render: (value) => formatMoney(value) },
   { title: '应收', dataIndex: 'totalAmount', align: 'right', width: 115, render: (value) => <Typography.Text strong>{formatMoney(value)}</Typography.Text> },
 ]
+
+function textCell(value?: string | number) {
+  return <TooltipText value={value} />
+}
 
 function toggleKey(
   key: string,

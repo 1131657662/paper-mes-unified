@@ -5,17 +5,20 @@ import lombok.Data;
 import java.time.LocalDate;
 
 /**
- * 报表通用查询入参：按制单日期范围与可选客户过滤。聚合结果不分页。
+ * 统计报表通用查询条件，按加工单制单日期过滤。
  */
 @Data
 public class ReportQuery {
 
-    /** 制单日期起（含），按 order_date 过滤 */
     private LocalDate dateFrom;
-
-    /** 制单日期止（含） */
     private LocalDate dateTo;
-
-    /** 可选：限定单个客户 */
     private String customerUuid;
+    private String paperName;
+    private Integer mainStepType;
+    private Integer processMode;
+    private String machineUuid;
+    private Integer settleType;
+    private Integer isInvoice;
+    private Integer orderStatus;
+    private String dimension;
 }

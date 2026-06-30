@@ -1,6 +1,8 @@
 package com.paper.mes.processorder.controller;
 
 import com.paper.mes.common.R;
+import com.paper.mes.auth.permission.Permissions;
+import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.processorder.dto.DraftOrderBaseDTO;
 import com.paper.mes.processorder.dto.DraftOrderVO;
 import com.paper.mes.processorder.dto.DraftProgressDTO;
@@ -29,17 +31,20 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/process-orders")
+@RequirePermission(Permissions.ORDER_CREATE)
 @RequiredArgsConstructor
 public class ProcessOrderDraftController {
 
     private final ProcessOrderDraftService draftService;
 
     @GetMapping("/drafts")
+    @RequirePermission(Permissions.ORDER_VIEW)
     public R<List<DraftSummaryVO>> listDrafts() {
         return R.success(draftService.listDrafts());
     }
 
     @GetMapping("/{orderUuid}/draft")
+    @RequirePermission(Permissions.ORDER_VIEW)
     public R<DraftOrderVO> getDraft(@PathVariable String orderUuid) {
         return R.success(draftService.getDraft(orderUuid));
     }

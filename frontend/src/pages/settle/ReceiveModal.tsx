@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { DatePicker, Form, Input, InputNumber, Modal, Radio, message } from 'antd'
+import { Button, DatePicker, Form, Input, InputNumber, Modal, Radio, message } from 'antd'
 import dayjs from 'dayjs'
+import type { Dayjs } from 'dayjs'
 import { receivePayment } from '../../api/settle'
 import type { ReceiveDTO } from '../../types/settle'
 
@@ -12,6 +13,15 @@ interface Props {
   onSuccess: () => void
 }
 
+interface ReceiveFormValues {
+  receiveAmount: number
+  payMethod: number
+  payNo?: string
+  operator?: string
+  receiveDate?: Dayjs
+  remark?: string
+}
+
 export default function ReceiveModal({
   settleUuid,
   unreceivedAmount,
@@ -19,8 +29,10 @@ export default function ReceiveModal({
   onClose,
   onSuccess,
 }: Props) {
-  const [form] = Form.useForm()
+  const [form] = Form.useForm<ReceiveFormValues>()
   const [submitting, setSubmitting] = useState(false)
+  const usableUnreceivedAmount = roundMoney(unreceivedAmount)
+  const canReuseUnreceived = usableUnreceivedAmount > 0
 
   useEffect(() => {
     if (!open) {
@@ -32,17 +44,17 @@ export default function ReceiveModal({
     const values = await form.validateFields()
 
     if (!settleUuid) {
-      message.error('结算单UUID不能为空')
+      message.error('结算单 UUID 不能为空')
       return
     }
 
     const dto: ReceiveDTO = {
       receiveAmount: values.receiveAmount,
       payMethod: values.payMethod,
-      payNo: values.payNo,
-      operator: values.operator,
-      receiveDate: values.receiveDate?.format('YYYY-MM-DD HH:mm:ss'),
-      remark: values.remark,
+      payNo: cleanText(values.payNo),
+      operator: cleanText(values.operator),
+      receiveDate: values.receiveDate?.format('YYYY-MM-DDTHH:mm:ss'),
+      remark: cleanText(values.remark),
     }
 
     setSubmitting(true)
@@ -53,6 +65,11 @@ export default function ReceiveModal({
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const fillUnreceivedAmount = () => {
+    if (!canReuseUnreceived) return
+    form.setFieldValue('receiveAmount', usableUnreceivedAmount)
   }
 
   return (
@@ -67,7 +84,10 @@ export default function ReceiveModal({
     >
       <div className="mes-modal-tip">
         <span>未收金额</span>
-        <strong>{unreceivedAmount}</strong>
+        <strong>{formatMoneyText(usableUnreceivedAmount)}</strong>
+        <Button size="small" type="link" disabled={!canReuseUnreceived} onClick={fillUnreceivedAmount}>
+          填入未收
+        </Button>
       </div>
       <Form className="mes-modal-form" form={form} layout="vertical">
         <Form.Item
@@ -75,13 +95,13 @@ export default function ReceiveModal({
           label="收款金额"
           rules={[
             { required: true, message: '请输入收款金额' },
-            { type: 'number', min: 0.01, message: '收款金额必须大于0' },
+            { type: 'number', min: 0.01, message: '收款金额必须大于 0' },
           ]}
         >
           <InputNumber
             style={{ width: '100%' }}
             placeholder="输入收款金额"
-            max={unreceivedAmount}
+            max={usableUnreceivedAmount}
             precision={2}
           />
         </Form.Item>
@@ -117,4 +137,17 @@ export default function ReceiveModal({
       </Form>
     </Modal>
   )
+}
+
+function roundMoney(value: number) {
+  return Math.round(Number(value || 0) * 100) / 100
+}
+
+function formatMoneyText(value: number) {
+  return value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function cleanText(value?: string) {
+  const text = value?.trim()
+  return text || undefined
 }

@@ -1,5 +1,12 @@
-import { Button, Progress, Space, Table, Tag, Typography } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { Button, Progress, Space, Tag, Typography } from 'antd'
+import { ProTable } from '@ant-design/pro-components'
+import type { ProColumns } from '@ant-design/pro-components'
+import type { ReactNode } from 'react'
+import type { TableRowSelection } from 'antd/es/table/interface'
+import TooltipText from '../../../components/biz/TooltipText'
+import { renderTableToolbarPortal } from '../../../components/biz/TableToolbarPortal'
+import { useTableColumnsState } from '../../../hooks/useTableColumnsState'
+import { useResizableTableColumns } from '../../../components/useResizableTableColumns'
 import { SETTLE_STATUS, SETTLE_TYPE } from '../../../constants/settle'
 import type { SettleOrder } from '../../../types/settle'
 import { formatMoney, formatPercent } from '../utils/settleFormatters'
@@ -7,11 +14,11 @@ import { formatMoney, formatPercent } from '../utils/settleFormatters'
 interface Props {
   data: SettleOrder[]
   loading: boolean
-  page: number
-  pageSize: number
-  total: number
+  onReload?: () => void
+  rowClassName?: (record: SettleOrder) => string
+  rowSelection?: TableRowSelection<SettleOrder>
   onDetail: (record: SettleOrder) => void
-  onPageChange: (page: number, pageSize: number) => void
+  onRow?: (record: SettleOrder) => React.HTMLAttributes<HTMLElement>
   onReceive: (record: SettleOrder) => void
 }
 
@@ -19,30 +26,40 @@ export default function SettleOrderTable({
   data,
   loading,
   onDetail,
-  onPageChange,
+  onReload,
+  onRow,
   onReceive,
-  page,
-  pageSize,
-  total,
+  rowClassName,
+  rowSelection,
 }: Props) {
+  const columns = buildColumns({ onDetail, onReceive })
+  const columnsState = useTableColumnsState('table-columns-settle-orders')
+  const resizable = useResizableTableColumns<SettleOrder, ProColumns<SettleOrder>>(columns, 'settle-orders')
+
   return (
-    <Table<SettleOrder>
-      className="mes-table-card"
+    <ProTable<SettleOrder>
+      className="settle-order-table mes-table-card"
       rowKey="uuid"
-      size="small"
       loading={loading}
-      columns={buildColumns({ onDetail, onReceive })}
+      columns={resizable.columns}
+      columnsState={columnsState}
+      components={resizable.components}
       dataSource={data}
-      pagination={{
-        current: page,
-        pageSize,
-        total,
-        showSizeChanger: true,
-        pageSizeOptions: [10, 20, 50, 100, 200],
-        showTotal: (value) => `共 ${value} 条`,
-        onChange: onPageChange,
-      }}
-      scroll={{ x: 1020, y: 'calc(100vh - 600px)' }}
+      pagination={false}
+      rowClassName={rowClassName}
+      rowSelection={rowSelection}
+      onRow={onRow}
+      bordered
+      cardProps={false}
+      headerTitle={false}
+      options={{ density: true, reload: onReload ? () => onReload() : true, setting: true }}
+      optionsRender={renderTableToolbarPortal}
+      search={false}
+      scroll={{ x: resizable.scrollX, y: '100%' }}
+      tableAlertRender={false}
+      tableAlertOptionRender={false}
+      tableLayout="fixed"
+      toolBarRender={() => []}
     />
   )
 }
@@ -50,7 +67,7 @@ export default function SettleOrderTable({
 function buildColumns(actions: {
   onDetail: (record: SettleOrder) => void
   onReceive: (record: SettleOrder) => void
-}): ColumnsType<SettleOrder> {
+}): ProColumns<SettleOrder>[] {
   return [
     {
       title: '结算单',
@@ -64,9 +81,9 @@ function buildColumns(actions: {
         </div>
       ),
     },
-    { title: '客户', dataIndex: 'customerName', width: 140, ellipsis: true },
+    { title: '客户', dataIndex: 'customerName', width: 140, render: (_, record) => textCell(record.customerName) },
     { title: '结算日期', dataIndex: 'settleDate', width: 110 },
-    { title: '应收', dataIndex: 'totalAmount', align: 'right', width: 110, render: (value) => formatMoney(value) },
+    { title: '应收', dataIndex: 'totalAmount', align: 'right', width: 110, render: (_, record) => formatMoney(record.totalAmount) },
     {
       title: '收款进度',
       dataIndex: 'receivedAmount',
@@ -85,14 +102,15 @@ function buildColumns(actions: {
       title: '状态',
       dataIndex: 'settleStatus',
       width: 105,
-      render: (value) => {
-        const status = SETTLE_STATUS[value]
+      render: (_, record) => {
+        const status = SETTLE_STATUS[record.settleStatus]
         return status ? <Tag className="mes-status-tag" color={status.color}>{status.text}</Tag> : '-'
       },
     },
     {
       title: '操作',
       key: 'actions',
+      className: 'settle-order-table__actions-cell',
       fixed: 'right',
       width: 150,
       render: (_, record) => (
@@ -109,4 +127,8 @@ function buildColumns(actions: {
       ),
     },
   ]
+}
+
+function textCell(value?: ReactNode) {
+  return <TooltipText value={value} />
 }

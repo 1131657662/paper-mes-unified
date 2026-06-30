@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Descriptions, Drawer, Spin, Table, Tag } from 'antd'
+import { Descriptions, Drawer, Spin, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { getSettleOrderDetail } from '../../api/settle'
+import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
 import type { SettleDetail, SettleDetailVO, ReceiveRecord } from '../../types/settle'
 import { SETTLE_STATUS, SETTLE_TYPE, PAY_METHOD, INVOICE_TYPE } from '../../constants/settle'
 
@@ -38,6 +39,7 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
     {
       title: '加工单号',
       dataIndex: 'orderNo',
+      fixed: 'left',
       width: 140,
     },
     {
@@ -66,6 +68,7 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
     {
       title: '收款时间',
       dataIndex: 'receiveDate',
+      fixed: 'left',
       width: 160,
     },
     {
@@ -104,7 +107,7 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
   return (
     <Drawer
       title="结算单详情"
-      width={900}
+      width={960}
       open={open}
       onClose={onClose}
       destroyOnClose
@@ -138,8 +141,8 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
                 <Descriptions.Item label="锯纸费">{order.sawAmount}</Descriptions.Item>
                 <Descriptions.Item label="复卷费">{order.rewindAmount}</Descriptions.Item>
                 <Descriptions.Item label="额外费用">{order.extraAmount}</Descriptions.Item>
-                <Descriptions.Item label="不含税金额">{order.amountNoTax}</Descriptions.Item>
-                <Descriptions.Item label="税额">{order.taxAmount}</Descriptions.Item>
+                <Descriptions.Item label="未税金额">{order.amountNoTax}</Descriptions.Item>
+                <Descriptions.Item label="开票加价">{order.taxAmount}</Descriptions.Item>
                 <Descriptions.Item label="应收总额">{order.totalAmount}</Descriptions.Item>
                 <Descriptions.Item label="已收金额">{order.receivedAmount}</Descriptions.Item>
                 <Descriptions.Item label="未收金额">{order.unreceivedAmount}</Descriptions.Item>
@@ -160,11 +163,12 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
                 </div>
               </div>
               <div className="mes-drawer-table">
-                <Table
+                <DocumentDetailTable
+                  storageKey="settle-detail-drawer-fees"
                   rowKey="uuid"
-                  size="small"
                   columns={detailColumns}
                   dataSource={detail.details}
+                  onReload={loadDetail}
                   pagination={false}
                   scroll={{ x: 'max-content' }}
                 />
@@ -179,11 +183,12 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
                 </div>
               </div>
               <div className="mes-drawer-table">
-                <Table
+                <DocumentDetailTable
+                  storageKey="settle-detail-drawer-receives"
                   rowKey="uuid"
-                  size="small"
                   columns={receiveColumns}
                   dataSource={detail.receives}
+                  onReload={loadDetail}
                   pagination={false}
                   scroll={{ x: 'max-content' }}
                 />
