@@ -5,7 +5,7 @@ import { PlusOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { pageConfigItems } from '../../api/systemConfig'
-import { mesPageSizeOptions, mesPaginationShowTotal } from '../../components/biz/MesPaginationBar'
+import { mesTablePagination } from '../../components/biz/MesPaginationBar'
 import TooltipText from '../../components/biz/TooltipText'
 import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
 import type { ConfigItem, ConfigItemSaveDTO, ConfigStatus } from '../../types/systemConfig'
@@ -64,12 +64,7 @@ export default function ConfigItemPanel() {
           return { data: res.records ?? [], total: res.total ?? 0, success: true }
         }}
         bordered
-        pagination={{
-          defaultPageSize: 20,
-          pageSizeOptions: mesPageSizeOptions,
-          showSizeChanger: true,
-          showTotal: mesPaginationShowTotal,
-        }}
+        pagination={mesTablePagination(20)}
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         scroll={MES_PRO_TABLE_SCROLL}
         options={{ density: true, reload: true, setting: true }}

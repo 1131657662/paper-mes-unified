@@ -3,7 +3,7 @@ import { CopyOutlined, DeleteOutlined, DownloadOutlined, PlusOutlined, UploadOut
 import type { ColumnType } from 'antd/es/table'
 import { useState } from 'react'
 import ResizableTable from '../../../components/ResizableTable'
-import { mesPageSizeOptions, mesPaginationShowTotal } from '../../../components/biz/MesPaginationBar'
+import { mesTablePagination } from '../../../components/biz/MesPaginationBar'
 import type { OriginalRollImportPreviewVO } from '../../../types/processOrder'
 import type { RollDraft } from '../types'
 import { newRollDraft, rollDraftFromDto, totalWeight } from '../draftMappers'
@@ -183,12 +183,7 @@ export default function RollInputStep({ rolls, loading, onChange, onImportPrevie
           className="mes-inline-pagination-table"
           size="small"
           rowKey={(record) => `${record.rowNumber}-${record.field}`}
-          pagination={{
-            defaultPageSize: 10,
-            showSizeChanger: true,
-            pageSizeOptions: mesPageSizeOptions,
-            showTotal: mesPaginationShowTotal,
-          }}
+          pagination={mesTablePagination(10)}
           columns={[
             { title: '行号', dataIndex: 'rowNumber', width: 70 },
             { title: '字段', dataIndex: 'field', width: 90 },

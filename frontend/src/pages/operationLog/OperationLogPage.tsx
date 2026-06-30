@@ -5,7 +5,7 @@ import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { useNavigate } from 'react-router-dom'
 import { getOperationLogs } from '../../api/operationLog'
-import { mesPageSizeOptions, mesPaginationShowTotal } from '../../components/biz/MesPaginationBar'
+import { mesTablePagination } from '../../components/biz/MesPaginationBar'
 import TooltipText from '../../components/biz/TooltipText'
 import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
 import type { OperationLog } from '../../types/operationLog'
@@ -98,13 +98,7 @@ export default function OperationLogPage() {
           return { data: res.records || [], total: res.total || 0, success: true }
         }}
         bordered
-        pagination={{
-          defaultPageSize: 20,
-          pageSizeOptions: mesPageSizeOptions,
-          showQuickJumper: true,
-          showSizeChanger: true,
-          showTotal: mesPaginationShowTotal,
-        }}
+        pagination={mesTablePagination(20)}
         scroll={MES_PRO_TABLE_SCROLL}
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         options={{ density: true, reload: true, setting: true }}

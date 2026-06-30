@@ -10,7 +10,7 @@ import {
   deleteWarehouse,
 } from '../../api/warehouse'
 import TooltipText from '../../components/biz/TooltipText'
-import { mesPageSizeOptions, mesPaginationShowTotal } from '../../components/biz/MesPaginationBar'
+import { mesTablePagination } from '../../components/biz/MesPaginationBar'
 import { MES_PRO_TABLE_SCROLL } from '../../components/biz/tableScroll'
 import { PERMISSIONS } from '../../constants/permissions'
 import { useHasPermission } from '../../stores/authStore'
@@ -100,12 +100,7 @@ export default function WarehouseList() {
         return { data: res.records ?? [], total: res.total ?? 0, success: true }
       }}
       bordered
-      pagination={{
-        defaultPageSize: 10,
-        showSizeChanger: true,
-        pageSizeOptions: mesPageSizeOptions,
-        showTotal: mesPaginationShowTotal,
-      }}
+      pagination={mesTablePagination(10)}
       search={{ labelWidth: 'auto' }}
       scroll={MES_PRO_TABLE_SCROLL}
     />

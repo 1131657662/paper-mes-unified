@@ -4,7 +4,7 @@ import type { ColumnType, ColumnsType, TableProps } from 'antd/es/table'
 import { useMemo } from 'react'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useResizableTableColumns } from '../useResizableTableColumns'
-import { mesPageSizeOptions, mesPaginationShowTotal } from './MesPaginationBar'
+import { mesTablePagination } from './MesPaginationBar'
 
 interface DocumentDetailTableProps<RecordType extends object>
   extends Omit<TableProps<RecordType>, 'bordered' | 'columns' | 'size'> {
@@ -39,13 +39,7 @@ export default function DocumentDetailTable<RecordType extends object>({
         defaultSize={defaultSize}
         headerTitle={false}
         options={{ density: true, reload: onReload ? () => onReload() : true, setting: true }}
-        pagination={pagination === false ? false : {
-          defaultPageSize: 10,
-          pageSizeOptions: mesPageSizeOptions,
-          showSizeChanger: true,
-          showTotal: mesPaginationShowTotal,
-          ...(typeof pagination === 'object' ? pagination : {}),
-        }}
+        pagination={pagination === false ? false : mesTablePagination(10, typeof pagination === 'object' ? pagination : undefined)}
         search={false}
         scroll={{ ...tableProps.scroll, x: tableProps.scroll?.x ?? resizable.scrollX }}
         tableAlertRender={false}

@@ -3,7 +3,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { useNavigate } from 'react-router-dom'
 import DocumentDetailTable from '../../../components/biz/DocumentDetailTable'
 import MesTooltip from '../../../components/biz/MesTooltip'
-import { mesPageSizeOptions, mesPaginationShowTotal } from '../../../components/biz/MesPaginationBar'
+import { mesTablePagination } from '../../../components/biz/MesPaginationBar'
 import TooltipText from '../../../components/biz/TooltipText'
 import type { ReportDetailVO, ReportDimension, ReportDimensionVO } from '../../../types/report'
 import ReportDimensionSummaryRow from './ReportDimensionSummaryRow'
@@ -77,12 +77,7 @@ export default function ReportTables({
               dataSource={details}
               loading={loading}
               onReload={onRefresh}
-              pagination={{
-                defaultPageSize: 20,
-                showSizeChanger: true,
-                pageSizeOptions: mesPageSizeOptions,
-                showTotal: mesPaginationShowTotal,
-              }}
+              pagination={mesTablePagination(20)}
               rowKey="orderUuid"
               scroll={{ x: 1884, y: 560 }}
               storageKey="report-order-details"

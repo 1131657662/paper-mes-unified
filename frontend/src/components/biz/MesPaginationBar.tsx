@@ -1,4 +1,5 @@
 import { Pagination, Select } from 'antd'
+import type { TablePaginationConfig } from 'antd/es/table'
 
 export const mesPageSizeOptions = [10, 20, 50, 100, 200, 500, 1000]
 
@@ -8,6 +9,19 @@ export function mesPaginationShowTotal(total: number) {
 
 export function mesPaginationTotalText(total: number) {
   return `，${mesPaginationShowTotal(total)}`
+}
+
+export function mesTablePagination(
+  defaultPageSize = 10,
+  overrides?: TablePaginationConfig,
+): TablePaginationConfig {
+  return {
+    defaultPageSize,
+    showSizeChanger: true,
+    pageSizeOptions: mesPageSizeOptions,
+    showTotal: mesPaginationShowTotal,
+    ...overrides,
+  }
 }
 
 interface Props {
