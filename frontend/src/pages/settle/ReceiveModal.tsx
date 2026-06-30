@@ -37,8 +37,14 @@ export default function ReceiveModal({
   useEffect(() => {
     if (!open) {
       form.resetFields()
+      return
     }
-  }, [open, form])
+    form.setFieldsValue({
+      payMethod: 2,
+      receiveAmount: canReuseUnreceived ? usableUnreceivedAmount : undefined,
+      receiveDate: dayjs(),
+    })
+  }, [canReuseUnreceived, form, open, usableUnreceivedAmount])
 
   const handleSubmit = async () => {
     const values = await form.validateFields()
