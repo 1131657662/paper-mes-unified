@@ -231,15 +231,14 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (customer == null) {
             throw new BusinessException(ErrorCode.E002, "客户不存在");
         }
-        LocalDateTime from = dto.getPeriodStart().atStartOfDay();
-        LocalDateTime to = dto.getPeriodEnd().atTime(23, 59, 59);
         List<ProcessOrder> orders = processOrderService.list(
                 new LambdaQueryWrapper<ProcessOrder>()
                         .eq(ProcessOrder::getCustomerUuid, dto.getCustomerUuid())
                         .eq(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED)
-                        .ge(ProcessOrder::getCreateTime, from)
-                        .le(ProcessOrder::getCreateTime, to)
-                        .orderByAsc(ProcessOrder::getCreateTime));
+                        .ge(ProcessOrder::getOrderDate, dto.getPeriodStart())
+                        .le(ProcessOrder::getOrderDate, dto.getPeriodEnd())
+                        .orderByAsc(ProcessOrder::getOrderDate)
+                        .orderByAsc(ProcessOrder::getOrderNo));
         if (orders.isEmpty()) {
             throw new BusinessException("该期间无可结算加工单");
         }
