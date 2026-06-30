@@ -242,8 +242,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (orders.isEmpty()) {
             throw new BusinessException("该期间无可结算加工单");
         }
-        businessLockService.lockProcessOrders(orders.stream().map(ProcessOrder::getUuid).toList());
-        orders = processOrderService.listByIds(orders.stream().map(ProcessOrder::getUuid).toList());
+        List<String> orderUuids = orders.stream().map(ProcessOrder::getUuid).toList();
+        businessLockService.lockProcessOrders(orderUuids);
+        orders = loadOrdersByUuid(orderUuids);
 
         String settleUuid = createFromOrders(new SettlementBuildContext(
                 orders,
