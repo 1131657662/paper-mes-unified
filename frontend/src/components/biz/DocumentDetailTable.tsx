@@ -1,5 +1,6 @@
 import { ProTable } from '@ant-design/pro-components'
-import type { ProColumns, ProTableProps } from '@ant-design/pro-components'
+import type { ProColumns } from '@ant-design/pro-components'
+import type { DensitySize } from '@ant-design/pro-table/es/components/ToolBar/DensityIcon'
 import type { ColumnType, ColumnsType, TableProps } from 'antd/es/table'
 import { useMemo } from 'react'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
@@ -9,7 +10,7 @@ import { mesTablePagination } from './MesPaginationBar'
 interface DocumentDetailTableProps<RecordType extends object>
   extends Omit<TableProps<RecordType>, 'bordered' | 'columns' | 'size'> {
   columns: ColumnsType<RecordType>
-  defaultSize?: ProTableProps<RecordType, any>['defaultSize']
+  defaultSize?: DensitySize
   onReload?: () => void
   storageKey: string
 }

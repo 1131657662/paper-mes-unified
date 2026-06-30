@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import type { ProTableProps } from '@ant-design/pro-components'
+import type { ColumnsState } from '@ant-design/pro-table/es/Store/Provide'
+
+type ColumnsStateMap = Record<string, ColumnsState>
+
+interface ColumnsStateConfig {
+  value: ColumnsStateMap
+  onChange: (value: ColumnsStateMap) => void
+}
 
 /**
  * ProTable 列配置持久化 Hook
@@ -8,11 +15,9 @@ import type { ProTableProps } from '@ant-design/pro-components'
  * @param storageKey - localStorage 的 key，建议格式：'table-columns-{pageName}'
  * @returns columnsState 配置对象，可直接传给 ProTable 的 columnsState 属性
  */
-export function useTableColumnsState(storageKey: string) {
-  const [columnsState, setColumnsState] = useState<
-    ProTableProps<any, any>['columnsState']
-  >(() => {
-    const onChange = (value: any) => {
+export function useTableColumnsState(storageKey: string): ColumnsStateConfig {
+  const [columnsState, setColumnsState] = useState<ColumnsStateConfig>(() => {
+    const onChange = (value: ColumnsStateMap) => {
       setColumnsState((prev) => ({ ...prev, value }))
       try {
         localStorage.setItem(storageKey, JSON.stringify(value))
@@ -24,7 +29,7 @@ export function useTableColumnsState(storageKey: string) {
     try {
       const saved = localStorage.getItem(storageKey)
       if (saved) {
-        const parsed = JSON.parse(saved)
+        const parsed = parseColumnsStateMap(saved)
         return {
           value: parsed,
           onChange,
@@ -41,4 +46,12 @@ export function useTableColumnsState(storageKey: string) {
   })
 
   return columnsState
+}
+
+function parseColumnsStateMap(value: string): ColumnsStateMap {
+  const parsed: unknown = JSON.parse(value)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {}
+  }
+  return parsed as ColumnsStateMap
 }

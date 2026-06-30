@@ -4,6 +4,7 @@ import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { pageCustomers } from '../../api/customer'
 import { getAvailableFinishes, createDeliveryOrder } from '../../api/delivery'
+import { BizError } from '../../api/request'
 import type { AvailableFinishVO, DeliveryCreateDTO } from '../../types/delivery'
 import { SOURCE_TYPE } from '../../constants/delivery'
 
@@ -107,8 +108,8 @@ export default function DeliveryCreateDrawer({ open, onClose, onSuccess }: Props
       await createDeliveryOrder(dto)
       message.success('出库单创建成功')
       onSuccess()
-    } catch (error: any) {
-      if (error.message && error.message.includes('次结客户存在未结清款项')) {
+    } catch (error: unknown) {
+      if (isSettleBlockError(error)) {
         Modal.confirm({
           title: '现结拦截',
           content: '该客户有未结清款项，是否授权放行出库？',
@@ -303,4 +304,8 @@ export default function DeliveryCreateDrawer({ open, onClose, onSuccess }: Props
       </div>
     </Drawer>
   )
+}
+
+function isSettleBlockError(error: unknown) {
+  return error instanceof BizError && error.message.includes('次结客户存在未结清款项')
 }
