@@ -274,11 +274,11 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         deliveryOrder.setTotalCount(picked.size());
         deliveryOrder.setTotalWeight(totalWeight);
-        save(deliveryOrder);
+        ConcurrencyGuard.requireUpdated(save(deliveryOrder));
 
         for (DeliveryDetail d : details) {
             d.setDeliveryUuid(deliveryOrder.getUuid());
-            deliveryDetailMapper.insert(d);
+            ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.insert(d));
         }
 
         if (blockAction == BLOCK_RELEASE) {
@@ -457,7 +457,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
         for (DeliveryDetail detail : appendDetails) {
             detail.setDeliveryUuid(order.getUuid());
-            deliveryDetailMapper.insert(detail);
+                ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.insert(detail));
         }
         refreshTotals(order);
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,

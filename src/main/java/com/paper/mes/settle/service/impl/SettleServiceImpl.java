@@ -329,7 +329,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         record.setOperator(operator);
         record.setRecordStatus(RECEIVE_STATUS_ACTIVE);
         record.setRemark(dto.getRemark());
-        receiveRecordMapper.insert(record);
+        ConcurrencyGuard.requireRowUpdated(receiveRecordMapper.insert(record));
 
         refreshReceiveState(settle);
 
@@ -904,7 +904,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         settle.setTaxAmount(amounts.tax());
         settle.setTotalAmount(amounts.total());
         settle.setUnreceivedAmount(amounts.total());
-        save(settle);
+        ConcurrencyGuard.requireUpdated(save(settle));
 
         for (SettleDetail detail : amounts.details()) {
             detail.setSettleUuid(settle.getUuid());
