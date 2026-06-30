@@ -53,7 +53,7 @@ public class ReportExportService {
                                  String dimension,
                                  CellStyle headerStyle) {
         header(sheet, headerStyle, "维度", "加工单", "原卷", "成品", "原纸kg", "成品kg", "损耗kg",
-                "损耗率%", "刀数", "锯纸费", "复卷费", "加工费", "附加费", "应收", "未收");
+                "损耗率%", "刀数", "锯纸费", "复卷费", "加工费", "附加费", "应收", "已收", "未收");
         int index = 1;
         for (ReportDimensionVO item : rows) {
             Row row = sheet.createRow(index++);
@@ -71,9 +71,10 @@ public class ReportExportService {
             row.createCell(11).setCellValue(num(item.getProcessAmount()));
             row.createCell(12).setCellValue(num(item.getExtraAmount()));
             row.createCell(13).setCellValue(num(item.getTotalAmount()));
-            row.createCell(14).setCellValue(num(item.getUnreceivedAmount()));
+            row.createCell(14).setCellValue(num(item.getReceivedAmount()));
+            row.createCell(15).setCellValue(num(item.getUnreceivedAmount()));
         }
-        autosize(sheet, 15);
+        autosize(sheet, 16);
     }
 
     private void writeDetails(Sheet sheet, List<ReportDetailVO> rows, CellStyle headerStyle) {

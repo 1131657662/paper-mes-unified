@@ -26,7 +26,8 @@ export default function ReportDimensionSummaryRow({ rows }: Props) {
         <Table.Summary.Cell index={11} align="right">{formatMoney(totals.processAmount)}</Table.Summary.Cell>
         <Table.Summary.Cell index={12} align="right">{formatMoney(totals.extraAmount)}</Table.Summary.Cell>
         <Table.Summary.Cell index={13} align="right">{formatMoney(totals.totalAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={14} align="right">{formatMoney(totals.unreceivedAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={14} align="right">{formatMoney(totals.receivedAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={15} align="right">{formatMoney(totals.unreceivedAmount)}</Table.Summary.Cell>
       </Table.Summary.Row>
     </Table.Summary>
   )
@@ -45,6 +46,7 @@ function sumDimensions(rows: ReportDimensionVO[]) {
     processAmount: acc.processAmount + Number(row.processAmount ?? 0),
     rewindAmount: acc.rewindAmount + Number(row.rewindAmount ?? 0),
     sawAmount: acc.sawAmount + Number(row.sawAmount ?? 0),
+    receivedAmount: acc.receivedAmount + Number(row.receivedAmount ?? 0),
     totalAmount: acc.totalAmount + Number(row.totalAmount ?? 0),
     unreceivedAmount: acc.unreceivedAmount + Number(row.unreceivedAmount ?? 0),
   }), emptyTotals())
@@ -68,6 +70,7 @@ function emptyTotals() {
     processAmount: 0,
     rewindAmount: 0,
     sawAmount: 0,
+    receivedAmount: 0,
     totalAmount: 0,
     unreceivedAmount: 0,
   }

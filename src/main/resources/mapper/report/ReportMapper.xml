@@ -166,75 +166,128 @@
                        COALESCE(SUM(d.sawAmount), 0) AS sawAmount,
                        COALESCE(SUM(d.rewindAmount), 0) AS rewindAmount,
                        COALESCE(SUM(d.processAmount), 0) AS processAmount,
-                       0 AS extraAmount,
-                       COALESCE(SUM(d.processAmount), 0) AS totalAmount,
-                       0 AS receivedAmount,
-                       0 AS unreceivedAmount
+                       COALESCE(SUM(d.extraAmount), 0) AS extraAmount,
+                       COALESCE(SUM(d.totalAmount), 0) AS totalAmount,
+                       COALESCE(SUM(d.receivedAmount), 0) AS receivedAmount,
+                       COALESCE(SUM(d.unreceivedAmount), 0) AS unreceivedAmount
                 FROM (
-                    SELECT r.uuid AS original_uuid,
-                           r.order_uuid,
-                           <choose>
-                               <when test="dimension == 'paper'">
-                                   r.paper_name AS dimensionKey,
-                                   r.paper_name AS dimensionName,
-                               </when>
-                               <when test="dimension == 'machine'">
-                                   COALESCE(r.machine_uuid, 'none') AS dimensionKey,
-                                   COALESCE(m.machine_name, '未分配机台') AS dimensionName,
-                               </when>
-                               <otherwise>
-                                   CASE
-                                       WHEN r.process_mode = 3 THEN 'direct'
-                                       WHEN r.main_step_type = 1 THEN 'saw'
-                                       WHEN r.main_step_type = 2 THEN 'rewind'
-                                       ELSE 'unset'
-                                   END AS dimensionKey,
-                                   CASE
-                                       WHEN r.process_mode = 3 THEN '直发'
-                                       WHEN r.main_step_type = 1 THEN '锯纸'
-                                       WHEN r.main_step_type = 2 THEN '复卷'
-                                       ELSE '未配置'
-                                   END AS dimensionName,
-                               </otherwise>
-                           </choose>
-                           COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0) AS originalWeight,
-                           COALESCE(r.total_loss_weight, 0) AS lossWeight,
-                           COALESCE(r.process_amount, 0) AS processAmount,
-                           COALESCE(step.knifeCount, 0) AS knifeCount,
-                           COALESCE(step.sawAmount, 0) AS sawAmount,
-                           COALESCE(step.rewindAmount, 0) AS rewindAmount,
-                           COALESCE(fin.finishRollCount, 0) AS finishRollCount,
-                           COALESCE(fin.finishWeight, 0) AS finishWeight
-                    FROM biz_original_roll r
-                    JOIN biz_process_order o ON o.uuid = r.order_uuid
-                    LEFT JOIN sys_machine m ON m.uuid = r.machine_uuid
-                    LEFT JOIN (
-                        SELECT original_uuid,
-                               SUM(COALESCE(knife_count, 0)) AS knifeCount,
-                               SUM(CASE WHEN step_type = 1 THEN COALESCE(step_amount, 0) ELSE 0 END) AS sawAmount,
-                               SUM(CASE WHEN step_type = 2 THEN COALESCE(step_amount, 0) ELSE 0 END) AS rewindAmount
-                        FROM biz_process_step
-                        WHERE is_deleted = 0
-                        GROUP BY original_uuid
-                    ) step ON step.original_uuid = r.uuid
-                    LEFT JOIN (
-                        SELECT rel.original_uuid,
-                               COUNT(DISTINCT f.uuid) AS finishRollCount,
-                               SUM(COALESCE(rel.share_weight, f.actual_weight, f.estimate_weight, 0)) AS finishWeight
-                        FROM biz_finish_original_rel rel
-                        JOIN biz_finish_roll f
-                          ON f.uuid = rel.finish_uuid
-                         AND f.is_deleted = 0
-                         AND COALESCE(f.is_spare, 0) = 0
-                         AND COALESCE(f.roll_no_status, 1) != 3
-                        WHERE rel.is_deleted = 0
-                        GROUP BY rel.original_uuid
-                    ) fin ON fin.original_uuid = r.uuid
-                    <where>
-                        r.is_deleted = 0
-                        AND <include refid="OrderFilters"/>
-                        <include refid="RollFilters"/>
-                    </where>
+                    SELECT rb.*,
+                           CASE WHEN rb.orderAmountBase > 0
+                                THEN rb.orderExtraAmount * rb.rollAmountBase / rb.orderAmountBase
+                                ELSE 0 END AS extraAmount,
+                           CASE WHEN rb.orderAmountBase > 0
+                                THEN rb.orderTotalAmount * rb.rollAmountBase / rb.orderAmountBase
+                                ELSE 0 END AS totalAmount,
+                           CASE WHEN rb.orderAmountBase > 0
+                                THEN rb.orderReceivedAmount * rb.rollAmountBase / rb.orderAmountBase
+                                ELSE 0 END AS receivedAmount,
+                           GREATEST(
+                               CASE WHEN rb.orderAmountBase > 0
+                                    THEN rb.orderTotalAmount * rb.rollAmountBase / rb.orderAmountBase
+                                    ELSE 0 END
+                               -
+                               CASE WHEN rb.orderAmountBase > 0
+                                    THEN rb.orderReceivedAmount * rb.rollAmountBase / rb.orderAmountBase
+                                    ELSE 0 END,
+                               0
+                           ) AS unreceivedAmount
+                    FROM (
+                        SELECT r.uuid AS original_uuid,
+                               r.order_uuid,
+                               <choose>
+                                   <when test="dimension == 'paper'">
+                                       r.paper_name AS dimensionKey,
+                                       r.paper_name AS dimensionName,
+                                   </when>
+                                   <when test="dimension == 'machine'">
+                                       COALESCE(r.machine_uuid, 'none') AS dimensionKey,
+                                       COALESCE(m.machine_name, '未分配机台') AS dimensionName,
+                                   </when>
+                                   <otherwise>
+                                       CASE
+                                           WHEN r.process_mode = 3 THEN 'direct'
+                                           WHEN r.main_step_type = 1 THEN 'saw'
+                                           WHEN r.main_step_type = 2 THEN 'rewind'
+                                           ELSE 'unset'
+                                       END AS dimensionKey,
+                                       CASE
+                                           WHEN r.process_mode = 3 THEN '直发'
+                                           WHEN r.main_step_type = 1 THEN '锯纸'
+                                           WHEN r.main_step_type = 2 THEN '复卷'
+                                           ELSE '未配置'
+                                       END AS dimensionName,
+                                   </otherwise>
+                               </choose>
+                               COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0) AS originalWeight,
+                               COALESCE(r.total_loss_weight, 0) AS lossWeight,
+                               COALESCE(r.process_amount, 0) AS processAmount,
+                               CASE
+                                   WHEN COALESCE(orderBase.orderProcessAmount, 0) > 0
+                                       THEN COALESCE(r.process_amount, 0)
+                                   WHEN COALESCE(orderBase.orderOriginalWeight, 0) > 0
+                                       THEN COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)
+                                   WHEN COALESCE(orderBase.orderRollCount, 0) > 0
+                                       THEN 1
+                                   ELSE 0
+                               END AS rollAmountBase,
+                               CASE
+                                   WHEN COALESCE(orderBase.orderProcessAmount, 0) > 0
+                                       THEN COALESCE(orderBase.orderProcessAmount, 0)
+                                   WHEN COALESCE(orderBase.orderOriginalWeight, 0) > 0
+                                       THEN COALESCE(orderBase.orderOriginalWeight, 0)
+                                   ELSE COALESCE(orderBase.orderRollCount, 0)
+                               END AS orderAmountBase,
+                               COALESCE(o.total_extra_amount, 0) AS orderExtraAmount,
+                               COALESCE(settle.billedAmount, o.total_amount, 0) AS orderTotalAmount,
+                               COALESCE(settle.receivedAmount, 0) AS orderReceivedAmount,
+                               COALESCE(step.knifeCount, 0) AS knifeCount,
+                               COALESCE(step.sawAmount, 0) AS sawAmount,
+                               COALESCE(step.rewindAmount, 0) AS rewindAmount,
+                               COALESCE(fin.finishRollCount, 0) AS finishRollCount,
+                               COALESCE(fin.finishWeight, 0) AS finishWeight
+                        FROM biz_original_roll r
+                        JOIN biz_process_order o ON o.uuid = r.order_uuid
+                        LEFT JOIN sys_machine m ON m.uuid = r.machine_uuid
+                        LEFT JOIN (
+                            SELECT order_uuid,
+                                   COUNT(*) AS orderRollCount,
+                                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS orderOriginalWeight,
+                                   SUM(COALESCE(process_amount, 0)) AS orderProcessAmount
+                            FROM biz_original_roll
+                            WHERE is_deleted = 0
+                            GROUP BY order_uuid
+                        ) orderBase ON orderBase.order_uuid = r.order_uuid
+                        LEFT JOIN (
+                            <include refid="SettleAllocationByOrder"/>
+                        ) settle ON settle.order_uuid = r.order_uuid
+                        LEFT JOIN (
+                            SELECT original_uuid,
+                                   SUM(COALESCE(knife_count, 0)) AS knifeCount,
+                                   SUM(CASE WHEN step_type = 1 THEN COALESCE(step_amount, 0) ELSE 0 END) AS sawAmount,
+                                   SUM(CASE WHEN step_type = 2 THEN COALESCE(step_amount, 0) ELSE 0 END) AS rewindAmount
+                            FROM biz_process_step
+                            WHERE is_deleted = 0
+                            GROUP BY original_uuid
+                        ) step ON step.original_uuid = r.uuid
+                        LEFT JOIN (
+                            SELECT rel.original_uuid,
+                                   COUNT(DISTINCT f.uuid) AS finishRollCount,
+                                   SUM(COALESCE(rel.share_weight, f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                            FROM biz_finish_original_rel rel
+                            JOIN biz_finish_roll f
+                              ON f.uuid = rel.finish_uuid
+                             AND f.is_deleted = 0
+                             AND COALESCE(f.is_spare, 0) = 0
+                             AND COALESCE(f.roll_no_status, 1) != 3
+                            WHERE rel.is_deleted = 0
+                            GROUP BY rel.original_uuid
+                        ) fin ON fin.original_uuid = r.uuid
+                        <where>
+                            r.is_deleted = 0
+                            AND <include refid="OrderFilters"/>
+                            <include refid="RollFilters"/>
+                        </where>
+                    ) rb
                 ) d
                 GROUP BY d.dimensionKey, d.dimensionName
                 ORDER BY totalAmount DESC, originalWeight DESC
