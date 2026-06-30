@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.system.config.dto.ConfigItemQuery;
@@ -90,7 +91,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
         item.setUuid(uuid);
         item.setVersion(version);
         item.setBuiltIn(builtIn);
-        updateById(item);
+        ConcurrencyGuard.requireUpdated(updateById(item));
         record(item, "编辑参数", "编辑系统参数：" + item.getConfigName());
     }
 
@@ -101,7 +102,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
         if (Integer.valueOf(1).equals(item.getBuiltIn())) {
             throw new BusinessException("内置系统参数不允许删除，可停用或调整参数值");
         }
-        removeById(uuid);
+        ConcurrencyGuard.requireUpdated(removeById(uuid));
         record(item, "删除参数", "删除系统参数：" + item.getConfigName());
     }
 

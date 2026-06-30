@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.system.config.dto.DictItemQuery;
@@ -11,7 +12,6 @@ import com.paper.mes.system.config.dto.DictItemSaveDTO;
 import com.paper.mes.system.config.entity.SysDictItem;
 import com.paper.mes.system.config.mapper.SysDictItemMapper;
 import com.paper.mes.system.config.service.SystemDictService;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -88,7 +88,7 @@ public class SystemDictServiceImpl extends ServiceImpl<SysDictItemMapper, SysDic
         item.setUuid(uuid);
         item.setVersion(version);
         item.setBuiltIn(builtIn);
-        updateById(item);
+        ConcurrencyGuard.requireUpdated(updateById(item));
         record(item, "编辑字典", "编辑字典项：" + item.getDictName() + "/" + item.getItemName());
     }
 
@@ -99,7 +99,7 @@ public class SystemDictServiceImpl extends ServiceImpl<SysDictItemMapper, SysDic
         if (Integer.valueOf(1).equals(item.getBuiltIn())) {
             throw new BusinessException("内置字典项不允许删除，可停用或调整排序");
         }
-        removeById(uuid);
+        ConcurrencyGuard.requireUpdated(removeById(uuid));
         record(item, "删除字典", "删除字典项：" + item.getDictName() + "/" + item.getItemName());
     }
 

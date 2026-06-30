@@ -487,7 +487,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 "出库改单移出明细：" + detail.getFinishRollNo());
     }
 
-    /** 出库单号：CK + yyyyMMdd + 当天日内 4 位流水。唯一索引兜底防并发重复。 */
+    /** 生成出库单号：由系统单号规则配置生成，唯一索引兜底防并发重复。 */
     private String nextDeliveryNo(LocalDate date) {
         return documentNoService.next(NoRuleBizType.DELIVERY_ORDER, date);
     }

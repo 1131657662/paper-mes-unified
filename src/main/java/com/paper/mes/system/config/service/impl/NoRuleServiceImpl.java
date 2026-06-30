@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.system.config.dto.NoRulePreviewVO;
@@ -86,7 +87,7 @@ public class NoRuleServiceImpl extends ServiceImpl<SysNoRuleMapper, SysNoRule> i
         applyDto(rule, dto);
         rule.setUuid(uuid);
         rule.setVersion(version);
-        updateById(rule);
+        ConcurrencyGuard.requireUpdated(updateById(rule));
         record(rule, "编辑单号规则");
     }
 

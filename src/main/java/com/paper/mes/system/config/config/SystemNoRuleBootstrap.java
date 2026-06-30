@@ -82,9 +82,21 @@ public class SystemNoRuleBootstrap implements ApplicationRunner {
         if (count != null && count > 0) {
             jdbcTemplate.update("""
                     UPDATE sys_no_rule
-                    SET rule_name = ?, remark = ?, update_by = 'system'
+                    SET rule_name = CASE
+                            WHEN rule_name IS NULL OR TRIM(rule_name) = '' THEN ?
+                            ELSE rule_name
+                        END,
+                        remark = CASE
+                            WHEN remark IS NULL OR TRIM(remark) = '' THEN ?
+                            ELSE remark
+                        END,
+                        update_by = 'system'
                     WHERE biz_type = ?
                       AND is_deleted = 0
+                      AND (
+                        rule_name IS NULL OR TRIM(rule_name) = ''
+                        OR remark IS NULL OR TRIM(remark) = ''
+                      )
                     """, ruleName, remark, bizType);
             return;
         }

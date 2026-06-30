@@ -1202,7 +1202,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         }
     }
 
-    /** 结算单号：JS + yyyyMMdd + 当天日内 4 位流水。唯一索引兜底防并发重复。 */
+    /** 生成结算单号：由系统单号规则配置生成，唯一索引兜底防并发重复。 */
     private String nextSettleNo(LocalDate date) {
         return documentNoService.next(NoRuleBizType.SETTLE_ORDER, date);
     }

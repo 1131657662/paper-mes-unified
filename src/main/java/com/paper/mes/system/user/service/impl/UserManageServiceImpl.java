@@ -9,6 +9,7 @@ import com.paper.mes.auth.entity.SysUser;
 import com.paper.mes.auth.mapper.SysUserMapper;
 import com.paper.mes.auth.service.PasswordService;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.common.ResultCode;
 import com.paper.mes.oplog.service.OperationLogService;
@@ -89,7 +90,7 @@ public class UserManageServiceImpl extends ServiceImpl<SysUserMapper, SysUser> i
         applySaveDto(user, dto);
         user.setUuid(uuid);
         user.setVersion(version);
-        updateById(user);
+        ConcurrencyGuard.requireUpdated(updateById(user));
         operationLogService.record(OperationLogService.BIZ_TYPE_USER, user.getUuid(), user.getUsername(),
                 OperationLogService.ACTION_USER_UPDATE, null, "编辑用户：" + user.getRealName());
     }
@@ -104,7 +105,7 @@ public class UserManageServiceImpl extends ServiceImpl<SysUserMapper, SysUser> i
             throw new BusinessException("不能停用当前登录账号");
         }
         user.setStatus(dto.getStatus());
-        updateById(user);
+        ConcurrencyGuard.requireUpdated(updateById(user));
         operationLogService.record(OperationLogService.BIZ_TYPE_USER, user.getUuid(), user.getUsername(),
                 OperationLogService.ACTION_USER_STATUS, null, statusRemark(dto.getStatus()));
     }
@@ -115,7 +116,7 @@ public class UserManageServiceImpl extends ServiceImpl<SysUserMapper, SysUser> i
         requireAdmin();
         SysUser user = findUser(uuid);
         user.setPasswordHash(passwordService.encode(dto.getPassword()));
-        updateById(user);
+        ConcurrencyGuard.requireUpdated(updateById(user));
         operationLogService.record(OperationLogService.BIZ_TYPE_USER, user.getUuid(), user.getUsername(),
                 OperationLogService.ACTION_PASSWORD_RESET, null, "重置登录密码");
     }

@@ -2777,10 +2777,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         return rolls.get(0).getRowSort() + 1;
     }
 
-    /**
-     * 生成加工单号：JG + yyyyMMdd + 当天日内 4 位流水。
-     * 唯一索引 uk_order_no 兜底防并发重复。
-     */
+    /** 生成加工单号：由系统单号规则配置生成，唯一索引 uk_order_no 兜底防并发重复。 */
     private String nextOrderNo(LocalDate orderDate) {
         return documentNoService.next(NoRuleBizType.PROCESS_ORDER, orderDate);
     }
