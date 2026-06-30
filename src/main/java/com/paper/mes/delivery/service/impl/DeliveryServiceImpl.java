@@ -1,11 +1,13 @@
 package com.paper.mes.delivery.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.auth.context.AuthContextHolder;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
@@ -341,8 +343,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                     || f.getFinishStatus() != FINISH_STATUS_IN_STOCK) {
                 throw new BusinessException("成品状态已变更，不可出库：" + d.getFinishRollNo());
             }
-            f.setFinishStatus(FINISH_STATUS_OUT);
-            ConcurrencyGuard.requireRowUpdated(finishRollMapper.updateById(f));
+            updateFinishStatus(d.getFinishUuid(), FINISH_STATUS_IN_STOCK, FINISH_STATUS_OUT);
         }
 
         order.setDeliveryStatus(DELIVERY_STATUS_OUT);
@@ -353,7 +354,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         order.setSnapDelivery(buildDeliverySnapshot(order, details));
         order.setSnapDeliveryTime(LocalDateTime.now());
-        ConcurrencyGuard.requireUpdated(updateById(order));
+        updateDeliveryForConfirm(order);
 
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                 order.getUuid(), order.getDeliveryNo(),
@@ -379,8 +380,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                     || finish.getFinishStatus() != FINISH_STATUS_OUT) {
                 throw new BusinessException("成品状态已变更，不可回退：" + detail.getFinishRollNo());
             }
-            finish.setFinishStatus(FINISH_STATUS_IN_STOCK);
-            ConcurrencyGuard.requireRowUpdated(finishRollMapper.updateById(finish));
+            updateFinishStatus(detail.getFinishUuid(), FINISH_STATUS_OUT, FINISH_STATUS_IN_STOCK);
         }
         order.setDeliveryStatus(DELIVERY_STATUS_PENDING);
         order.setSignUser(null);
@@ -388,7 +388,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         order.setSnapDelivery(null);
         order.setSnapDeliveryTime(null);
         order.setRemark(appendRemark(order.getRemark(), "回退出库：" + dto.getReason().trim()));
-        ConcurrencyGuard.requireUpdated(updateById(order));
+        updateDeliveryForRollback(order);
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                 order.getUuid(), order.getDeliveryNo(),
                 OperationLogService.ACTION_ROLLBACK, null,
@@ -1091,6 +1091,53 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         order.setTotalCount(details.size());
         order.setTotalWeight(totalWeight);
         ConcurrencyGuard.requireUpdated(updateById(order));
+    }
+
+    private void updateFinishStatus(String finishUuid, int fromStatus, int toStatus) {
+        ConcurrencyGuard.requireRowUpdated(finishRollMapper.update(null,
+                new LambdaUpdateWrapper<FinishRoll>()
+                        .eq(FinishRoll::getUuid, finishUuid)
+                        .eq(FinishRoll::getFinishStatus, fromStatus)
+                        .set(FinishRoll::getFinishStatus, toStatus)
+                        .set(FinishRoll::getUpdateTime, LocalDateTime.now())
+                        .set(FinishRoll::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
+    }
+
+    private void updateDeliveryForConfirm(DeliveryOrder order) {
+        ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null,
+                new LambdaUpdateWrapper<DeliveryOrder>()
+                        .eq(DeliveryOrder::getUuid, order.getUuid())
+                        .eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)
+                        .set(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_OUT)
+                        .set(DeliveryOrder::getSignUser, order.getSignUser())
+                        .set(DeliveryOrder::getSignTime, order.getSignTime())
+                        .set(DeliveryOrder::getRemark, order.getRemark())
+                        .set(DeliveryOrder::getSnapDelivery, order.getSnapDelivery())
+                        .set(DeliveryOrder::getSnapDeliveryTime, order.getSnapDeliveryTime())
+                        .set(DeliveryOrder::getUpdateTime, LocalDateTime.now())
+                        .set(DeliveryOrder::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
+    }
+
+    private void updateDeliveryForRollback(DeliveryOrder order) {
+        ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null,
+                new LambdaUpdateWrapper<DeliveryOrder>()
+                        .eq(DeliveryOrder::getUuid, order.getUuid())
+                        .eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_OUT)
+                        .set(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)
+                        .set(DeliveryOrder::getSignUser, null)
+                        .set(DeliveryOrder::getSignTime, null)
+                        .set(DeliveryOrder::getSnapDelivery, null)
+                        .set(DeliveryOrder::getSnapDeliveryTime, null)
+                        .set(DeliveryOrder::getRemark, order.getRemark())
+                        .set(DeliveryOrder::getUpdateTime, LocalDateTime.now())
+                        .set(DeliveryOrder::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
+    }
+
+    private String currentOperator() {
+        return AuthContextHolder.currentDisplayName();
     }
 
     private String contentDisposition(String filename) {
