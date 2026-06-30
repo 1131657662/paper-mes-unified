@@ -233,6 +233,7 @@
 
 .process-order-shell__actions {
   display: flex;
+  grid-area: actions;
   min-width: 0;
   align-items: center;
   gap: 8px;
@@ -245,12 +246,14 @@
 }
 
 .process-order-shell__queue {
+  grid-area: queue;
   min-width: 0;
   overflow: hidden;
 }
 
 .process-order-shell__table-tools {
   display: flex;
+  grid-area: tools;
   min-width: 96px;
   min-height: 34px;
   align-items: center;
@@ -360,7 +363,20 @@
   }
 
   .process-order-shell__toolbar {
-    grid-template-columns: minmax(190px, max-content) minmax(0, 1fr) minmax(96px, max-content);
+    grid-template-columns: minmax(0, 1fr) minmax(96px, max-content);
+    grid-template-areas:
+      'actions tools'
+      'queue queue';
+    gap: 8px 12px;
+  }
+
+  .process-order-queue {
+    justify-content: flex-start;
+    padding: 0;
+  }
+
+  .process-order-queue__tabs {
+    width: 100%;
   }
 }
 
@@ -371,6 +387,10 @@
 
   .process-order-shell__toolbar {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      'actions'
+      'queue'
+      'tools';
   }
 
   .mes-pagination {

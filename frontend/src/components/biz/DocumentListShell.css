@@ -43,6 +43,7 @@
 
 .document-list-shell__actions {
   display: flex;
+  grid-area: actions;
   min-width: 0;
   align-items: center;
   gap: 8px;
@@ -56,6 +57,7 @@
 
 .document-list-shell__queue {
   display: flex;
+  grid-area: queue;
   min-width: 0;
   justify-content: center;
   padding: 0 8px;
@@ -102,6 +104,7 @@
 
 .document-list-shell__tools {
   display: flex;
+  grid-area: tools;
   min-width: 96px;
   min-height: 34px;
   align-items: center;
@@ -270,15 +273,35 @@
   }
 
   .document-list-shell__toolbar {
-    grid-template-columns: minmax(190px, max-content) minmax(0, 1fr) minmax(96px, max-content);
+    grid-template-columns: minmax(0, 1fr) minmax(96px, max-content);
+    grid-template-areas:
+      'actions tools'
+      'queue queue';
+    gap: 8px 12px;
+  }
+
+  .document-list-shell__queue {
+    justify-content: flex-start;
+    padding: 0;
+  }
+
+  .document-list-shell__queue-tabs {
+    width: 100%;
   }
 }
 
 @media (max-width: 720px) {
   .document-searchbar__grid,
-  .document-searchbar__grid--six,
+  .document-searchbar__grid--six {
+    grid-template-columns: 1fr;
+  }
+
   .document-list-shell__toolbar {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      'actions'
+      'queue'
+      'tools';
   }
 
   .document-list-shell__tools {
