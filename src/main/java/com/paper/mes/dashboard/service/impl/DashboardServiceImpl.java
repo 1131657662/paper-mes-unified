@@ -42,7 +42,8 @@ public class DashboardServiceImpl implements DashboardService {
         todos.add(todo("issue", "待下发加工单", "确认打印快照后下发车间", countStatus(queue, 1), null, "info", "/process-orders"));
         todos.add(todo("record", "待回录加工单", "影响入库、出库和结算闭环", countStatus(queue, 3), null, "warning", "/process-orders"));
         todos.add(todo("stock", "成品待出库", "已入库但尚未出库的正式成品", metrics.getInStockFinishCount(), metrics.getInStockFinishWeight(), "success", "/delivery-orders"));
-        todos.add(todo("receive", "应收待跟进", "含已结算未收款和已完成待结算加工单", metrics.getReceivableCount(), metrics.getReceivableAmount(), "danger", "/settle-orders"));
+        todos.add(todo("receive", "已结算未收", "只统计已生成结算单但尚未收齐的应收款", metrics.getReceivableCount(), metrics.getReceivableAmount(), "danger", "/settle-orders"));
+        todos.add(todo("pending-settle", "待生成结算", "已完成但尚未生成结算单的加工金额", null, metrics.getPendingSettleAmount(), "warning", "/settle-orders"));
         return todos;
     }
 

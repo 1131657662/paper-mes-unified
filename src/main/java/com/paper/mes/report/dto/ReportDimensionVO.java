@@ -25,6 +25,8 @@ public class ReportDimensionVO {
     private BigDecimal processAmount;
     private BigDecimal extraAmount;
     private BigDecimal totalAmount;
+    private BigDecimal settledAmount;
+    private BigDecimal pendingSettleAmount;
     private BigDecimal receivedAmount;
     private BigDecimal unreceivedAmount;
 }

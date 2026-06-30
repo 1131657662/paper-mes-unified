@@ -43,8 +43,9 @@ public class ReportExportService {
         row(sheet, 5, "损耗kg", overview.getLossWeight(), "损耗率%", overview.getLossRatio());
         row(sheet, 6, "锯纸费", overview.getSawAmount(), "复卷费", overview.getRewindAmount());
         row(sheet, 7, "加工费", overview.getProcessAmount(), "附加费", overview.getExtraAmount());
-        row(sheet, 8, "应收合计", overview.getTotalAmount(), "已收金额", overview.getReceivedAmount());
-        row(sheet, 9, "未收金额", overview.getUnreceivedAmount(), "", "");
+        row(sheet, 8, "收入合计", overview.getTotalAmount(), "已结算金额", overview.getSettledAmount());
+        row(sheet, 9, "待结算金额", overview.getPendingSettleAmount(), "已收金额", overview.getReceivedAmount());
+        row(sheet, 10, "已结算未收", overview.getUnreceivedAmount(), "", "");
         autosize(sheet, 5);
     }
 
@@ -53,7 +54,8 @@ public class ReportExportService {
                                  String dimension,
                                  CellStyle headerStyle) {
         header(sheet, headerStyle, "维度", "加工单", "原卷", "成品", "原纸kg", "成品kg", "损耗kg",
-                "损耗率%", "刀数", "锯纸费", "复卷费", "加工费", "附加费", "应收", "已收", "未收");
+                "损耗率%", "刀数", "锯纸费", "复卷费", "加工费", "附加费", "收入合计",
+                "已结算", "待结算", "已收", "已结算未收");
         int index = 1;
         for (ReportDimensionVO item : rows) {
             Row row = sheet.createRow(index++);
@@ -71,16 +73,18 @@ public class ReportExportService {
             row.createCell(11).setCellValue(num(item.getProcessAmount()));
             row.createCell(12).setCellValue(num(item.getExtraAmount()));
             row.createCell(13).setCellValue(num(item.getTotalAmount()));
-            row.createCell(14).setCellValue(num(item.getReceivedAmount()));
-            row.createCell(15).setCellValue(num(item.getUnreceivedAmount()));
+            row.createCell(14).setCellValue(num(item.getSettledAmount()));
+            row.createCell(15).setCellValue(num(item.getPendingSettleAmount()));
+            row.createCell(16).setCellValue(num(item.getReceivedAmount()));
+            row.createCell(17).setCellValue(num(item.getUnreceivedAmount()));
         }
-        autosize(sheet, 16);
+        autosize(sheet, 18);
     }
 
     private void writeDetails(Sheet sheet, List<ReportDetailVO> rows, CellStyle headerStyle) {
         header(sheet, headerStyle, "加工单号", "日期", "客户", "纸品", "工艺", "状态", "结算",
                 "开票", "原卷", "成品", "原纸kg", "成品kg", "损耗kg", "损耗率%", "刀数",
-                "锯纸费", "复卷费", "加工费", "附加费", "应收", "已收", "未收");
+                "锯纸费", "复卷费", "加工费", "附加费", "收入合计", "已结算", "待结算", "已收", "已结算未收");
         int index = 1;
         for (ReportDetailVO item : rows) {
             Row row = sheet.createRow(index++);
@@ -104,10 +108,12 @@ public class ReportExportService {
             row.createCell(17).setCellValue(num(item.getProcessAmount()));
             row.createCell(18).setCellValue(num(item.getExtraAmount()));
             row.createCell(19).setCellValue(num(item.getTotalAmount()));
-            row.createCell(20).setCellValue(num(item.getReceivedAmount()));
-            row.createCell(21).setCellValue(num(item.getUnreceivedAmount()));
+            row.createCell(20).setCellValue(num(item.getSettledAmount()));
+            row.createCell(21).setCellValue(num(item.getPendingSettleAmount()));
+            row.createCell(22).setCellValue(num(item.getReceivedAmount()));
+            row.createCell(23).setCellValue(num(item.getUnreceivedAmount()));
         }
-        autosize(sheet, 22);
+        autosize(sheet, 24);
     }
 
     private void header(Sheet sheet, CellStyle style, String... labels) {

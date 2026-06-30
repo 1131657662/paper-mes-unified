@@ -102,8 +102,10 @@
                COALESCE(SUM(o.total_process_amount), 0) AS processAmount,
                COALESCE(SUM(o.total_extra_amount), 0) AS extraAmount,
                COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount,
+               COALESCE(SUM(settle.billedAmount), 0) AS settledAmount,
+               COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pendingSettleAmount,
                COALESCE(SUM(settle.receivedAmount), 0) AS receivedAmount,
-               COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, o.total_amount, 0)
+               COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
                    - COALESCE(settle.receivedAmount, 0), 0)), 0) AS unreceivedAmount
         FROM biz_process_order o
         LEFT JOIN (
@@ -168,6 +170,8 @@
                        COALESCE(SUM(d.processAmount), 0) AS processAmount,
                        COALESCE(SUM(d.extraAmount), 0) AS extraAmount,
                        COALESCE(SUM(d.totalAmount), 0) AS totalAmount,
+                       COALESCE(SUM(d.settledAmount), 0) AS settledAmount,
+                       COALESCE(SUM(d.pendingSettleAmount), 0) AS pendingSettleAmount,
                        COALESCE(SUM(d.receivedAmount), 0) AS receivedAmount,
                        COALESCE(SUM(d.unreceivedAmount), 0) AS unreceivedAmount
                 FROM (
@@ -179,11 +183,17 @@
                                 THEN rb.orderTotalAmount * rb.rollAmountBase / rb.orderAmountBase
                                 ELSE 0 END AS totalAmount,
                            CASE WHEN rb.orderAmountBase > 0
+                                THEN rb.orderSettledAmount * rb.rollAmountBase / rb.orderAmountBase
+                                ELSE 0 END AS settledAmount,
+                           CASE WHEN rb.orderAmountBase > 0
+                                THEN rb.orderPendingSettleAmount * rb.rollAmountBase / rb.orderAmountBase
+                                ELSE 0 END AS pendingSettleAmount,
+                           CASE WHEN rb.orderAmountBase > 0
                                 THEN rb.orderReceivedAmount * rb.rollAmountBase / rb.orderAmountBase
                                 ELSE 0 END AS receivedAmount,
                            GREATEST(
                                CASE WHEN rb.orderAmountBase > 0
-                                    THEN rb.orderTotalAmount * rb.rollAmountBase / rb.orderAmountBase
+                                    THEN rb.orderSettledAmount * rb.rollAmountBase / rb.orderAmountBase
                                     ELSE 0 END
                                -
                                CASE WHEN rb.orderAmountBase > 0
@@ -239,6 +249,8 @@
                                END AS orderAmountBase,
                                COALESCE(o.total_extra_amount, 0) AS orderExtraAmount,
                                COALESCE(settle.billedAmount, o.total_amount, 0) AS orderTotalAmount,
+                               COALESCE(settle.billedAmount, 0) AS orderSettledAmount,
+                               CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END AS orderPendingSettleAmount,
                                COALESCE(settle.receivedAmount, 0) AS orderReceivedAmount,
                                COALESCE(step.knifeCount, 0) AS knifeCount,
                                COALESCE(step.sawAmount, 0) AS sawAmount,
@@ -310,8 +322,10 @@
                        COALESCE(SUM(o.total_process_amount), 0) AS processAmount,
                        COALESCE(SUM(o.total_extra_amount), 0) AS extraAmount,
                        COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount,
+                       COALESCE(SUM(settle.billedAmount), 0) AS settledAmount,
+                       COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pendingSettleAmount,
                        COALESCE(SUM(settle.receivedAmount), 0) AS receivedAmount,
-                       COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, o.total_amount, 0)
+                       COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
                            - COALESCE(settle.receivedAmount, 0), 0)), 0) AS unreceivedAmount
                 FROM biz_process_order o
                 JOIN (
@@ -420,8 +434,10 @@
                COALESCE(o.total_process_amount, 0) AS processAmount,
                COALESCE(o.total_extra_amount, 0) AS extraAmount,
                COALESCE(settle.billedAmount, o.total_amount, 0) AS totalAmount,
+               COALESCE(settle.billedAmount, 0) AS settledAmount,
+               CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END AS pendingSettleAmount,
                COALESCE(settle.receivedAmount, 0) AS receivedAmount,
-               GREATEST(COALESCE(settle.billedAmount, o.total_amount, 0)
+               GREATEST(COALESCE(settle.billedAmount, 0)
                    - COALESCE(settle.receivedAmount, 0), 0) AS unreceivedAmount
         FROM biz_process_order o
         LEFT JOIN (

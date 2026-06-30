@@ -42,15 +42,16 @@ function InsightMessage({ item }: { item: Insight }) {
 }
 
 function buildInsights(overview?: ReportOverviewVO): Insight[] {
-  const total = Number(overview?.totalAmount ?? 0)
+  const settled = Number(overview?.settledAmount ?? 0)
   const unreceived = Number(overview?.unreceivedAmount ?? 0)
+  const pendingSettle = Number(overview?.pendingSettleAmount ?? 0)
   const lossRatio = Number(overview?.lossRatio ?? 0)
   const rewind = Number(overview?.rewindAmount ?? 0)
   const saw = Number(overview?.sawAmount ?? 0)
-  const unreceivedRatio = total > 0 ? (unreceived / total) * 100 : 0
+  const unreceivedRatio = settled > 0 ? (unreceived / settled) * 100 : 0
   return [
     {
-      detail: `未收 ${formatMoney(unreceived)}，占应收 ${formatPercent(unreceivedRatio)}`,
+      detail: `已结算未收 ${formatMoney(unreceived)}，占已结算 ${formatPercent(unreceivedRatio)}；待结算 ${formatMoney(pendingSettle)}`,
       tag: unreceivedRatio >= 35 ? '关注' : '回款',
       title: unreceivedRatio >= 35 ? '未收占比较高' : '回款压力可控',
       type: unreceivedRatio >= 35 ? 'warning' : 'success',

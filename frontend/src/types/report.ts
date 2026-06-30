@@ -36,6 +36,8 @@ export interface ReportOverviewVO {
   processAmount: number
   extraAmount: number
   totalAmount: number
+  settledAmount: number
+  pendingSettleAmount: number
   receivedAmount: number
   unreceivedAmount: number
 }
@@ -56,6 +58,8 @@ export interface ReportDimensionVO {
   processAmount: number
   extraAmount: number
   totalAmount: number
+  settledAmount: number
+  pendingSettleAmount: number
   receivedAmount: number
   unreceivedAmount: number
 }
@@ -82,6 +86,8 @@ export interface ReportDetailVO {
   processAmount: number
   extraAmount: number
   totalAmount: number
+  settledAmount: number
+  pendingSettleAmount: number
   receivedAmount: number
   unreceivedAmount: number
 }

@@ -40,7 +40,8 @@
                COALESCE(stock.inStockFinishCount, 0) AS inStockFinishCount,
                COALESCE(stock.inStockFinishWeight, 0) AS inStockFinishWeight,
                COALESCE(receivable.receivableCount, 0) AS receivableCount,
-               COALESCE(receivable.receivableAmount, 0) AS receivableAmount
+               COALESCE(receivable.receivableAmount, 0) AS receivableAmount,
+               COALESCE(receivable.pendingSettleAmount, 0) AS pendingSettleAmount
         FROM (
             SELECT COUNT(*) AS monthOrderCount,
                    COALESCE(SUM(orig.originalWeight), 0) AS monthOriginalWeight,
@@ -81,17 +82,19 @@
               AND finish_status = 2
         ) stock
         CROSS JOIN (
-            SELECT COUNT(*) AS receivableCount,
-                   COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, o.total_amount, 0)
-                       - COALESCE(settle.receivedAmount, 0), 0)), 0) AS receivableAmount
+            SELECT SUM(CASE WHEN settle.order_uuid IS NOT NULL
+                            AND GREATEST(COALESCE(settle.billedAmount, 0)
+                                - COALESCE(settle.receivedAmount, 0), 0) > 0
+                            THEN 1 ELSE 0 END) AS receivableCount,
+                   COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
+                       - COALESCE(settle.receivedAmount, 0), 0)), 0) AS receivableAmount,
+                   COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pendingSettleAmount
             FROM biz_process_order o
             LEFT JOIN (
                 <include refid="SettleAllocationByOrder"/>
             ) settle ON settle.order_uuid = o.uuid
             WHERE o.is_deleted = 0
               AND o.order_status &gt;= 4
-              AND GREATEST(COALESCE(settle.billedAmount, o.total_amount, 0)
-                  - COALESCE(settle.receivedAmount, 0), 0) > 0
         ) receivable
     </select>
 

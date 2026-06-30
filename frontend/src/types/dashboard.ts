@@ -21,6 +21,7 @@ export interface DashboardMetrics {
   inStockFinishWeight?: number
   receivableCount?: number
   receivableAmount?: number
+  pendingSettleAmount?: number
 }
 
 export interface DashboardStatus {

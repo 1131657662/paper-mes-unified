@@ -33,10 +33,10 @@ export default function DashboardMetricGrid({ metrics }: Props) {
     },
     {
       icon: <BankOutlined />,
-      label: '应收未收',
+      label: '已结算未收',
       main: formatMoney(metrics?.receivableAmount),
       sub: `${metrics?.receivableCount ?? 0} 单待跟进`,
-      tip: '含已结算未收款和已完成待结算加工单',
+      tip: `待结算 ${formatMoney(metrics?.pendingSettleAmount)}，与客户欠款分开统计`,
       tone: 'green',
     },
     {

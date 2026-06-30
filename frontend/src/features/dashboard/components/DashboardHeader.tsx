@@ -26,7 +26,7 @@ export default function DashboardHeader({ loading, metrics, onOpenReports, onRef
         <Fact label="待处理" value={`${sumTodoCount(todos)} 项`} />
         <Fact label="未闭环" value={`${sumQueueCount(statusQueue)} 单`} />
         <Fact label="本月原卷" value={formatKg(metrics?.monthOriginalWeight)} />
-        <Fact label="应收" value={formatMoney(metrics?.receivableAmount)} />
+        <Fact label="已结算未收" value={formatMoney(metrics?.receivableAmount)} />
       </div>
       <div className="dashboard-header__actions">
         <Button icon={<ReloadOutlined />} loading={loading} onClick={onRefresh}>刷新</Button>

@@ -26,8 +26,10 @@ export default function ReportDimensionSummaryRow({ rows }: Props) {
         <Table.Summary.Cell index={11} align="right">{formatMoney(totals.processAmount)}</Table.Summary.Cell>
         <Table.Summary.Cell index={12} align="right">{formatMoney(totals.extraAmount)}</Table.Summary.Cell>
         <Table.Summary.Cell index={13} align="right">{formatMoney(totals.totalAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={14} align="right">{formatMoney(totals.receivedAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={15} align="right">{formatMoney(totals.unreceivedAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={14} align="right">{formatMoney(totals.settledAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={15} align="right">{formatMoney(totals.pendingSettleAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={16} align="right">{formatMoney(totals.receivedAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={17} align="right">{formatMoney(totals.unreceivedAmount)}</Table.Summary.Cell>
       </Table.Summary.Row>
     </Table.Summary>
   )
@@ -43,10 +45,12 @@ function sumDimensions(rows: ReportDimensionVO[]) {
     orderCount: acc.orderCount + Number(row.orderCount ?? 0),
     originalRollCount: acc.originalRollCount + Number(row.originalRollCount ?? 0),
     originalWeight: acc.originalWeight + Number(row.originalWeight ?? 0),
+    pendingSettleAmount: acc.pendingSettleAmount + Number(row.pendingSettleAmount ?? 0),
     processAmount: acc.processAmount + Number(row.processAmount ?? 0),
     rewindAmount: acc.rewindAmount + Number(row.rewindAmount ?? 0),
     sawAmount: acc.sawAmount + Number(row.sawAmount ?? 0),
     receivedAmount: acc.receivedAmount + Number(row.receivedAmount ?? 0),
+    settledAmount: acc.settledAmount + Number(row.settledAmount ?? 0),
     totalAmount: acc.totalAmount + Number(row.totalAmount ?? 0),
     unreceivedAmount: acc.unreceivedAmount + Number(row.unreceivedAmount ?? 0),
   }), emptyTotals())
@@ -67,10 +71,12 @@ function emptyTotals() {
     orderCount: 0,
     originalRollCount: 0,
     originalWeight: 0,
+    pendingSettleAmount: 0,
     processAmount: 0,
     rewindAmount: 0,
     sawAmount: 0,
     receivedAmount: 0,
+    settledAmount: 0,
     totalAmount: 0,
     unreceivedAmount: 0,
   }
