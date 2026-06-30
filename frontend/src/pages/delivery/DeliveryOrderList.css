@@ -203,14 +203,6 @@
   background: #f7f9fc;
 }
 
-.delivery-order-table .ant-table-thead > tr > th.delivery-order-table__actions-cell {
-  right: 0 !important;
-}
-
-.delivery-order-table .ant-table-thead > tr > th.ant-table-cell-scrollbar {
-  display: none;
-}
-
 .delivery-panel .ant-pagination {
   margin-bottom: 0;
 }

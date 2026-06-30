@@ -495,6 +495,7 @@
 .app-shell__content .mes-table-options-portal {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-height: 30px;
 }
 
@@ -529,6 +530,26 @@
   justify-content: center;
   font-size: 14px;
   line-height: 1;
+}
+
+.app-shell__content .ant-table-thead > tr > th.ant-table-cell-fix-left,
+.app-shell__content .ant-table-thead > tr > th.ant-table-cell-fix-right {
+  z-index: 4;
+  background: #f7f9fc;
+}
+
+.app-shell__content .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
+.app-shell__content .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right {
+  background: #f8fbff;
+}
+
+.app-shell__content .ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-left,
+.app-shell__content .ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-right,
+.app-shell__content .document-table-row--selected > td.ant-table-cell-fix-left,
+.app-shell__content .document-table-row--selected > td.ant-table-cell-fix-right,
+.app-shell__content .process-order-list__row--selected > td.ant-table-cell-fix-left,
+.app-shell__content .process-order-list__row--selected > td.ant-table-cell-fix-right {
+  background: #f1f7ff !important;
 }
 
 .mes-pro-table-page .ant-table-pagination.ant-pagination {
