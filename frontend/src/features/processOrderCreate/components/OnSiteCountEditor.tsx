@@ -15,7 +15,7 @@ export default function OnSiteCountEditor({ plan, onChange }: Props) {
         type="info"
         showIcon
         message="现场定尺只预占成品卷号"
-        description="开单时填写预计成品件数；门幅、直径、重量由车间现场确认，后续回录时补齐。"
+        description="开单时填写预计成品件数；门幅、直径、重量由车间现场确认，并在回录时补齐。"
       />
       <div>
         <Typography.Text strong>预计成品件数</Typography.Text>

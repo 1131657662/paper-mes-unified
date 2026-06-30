@@ -206,7 +206,7 @@ export default function SettleDetailPage() {
             label="原因"
             rules={[{ required: true, message: '请输入原因' }]}
           >
-            <Input.TextArea rows={3} maxLength={255} showCount placeholder="请输入原因，便于后续追溯" />
+            <Input.TextArea rows={3} maxLength={255} showCount placeholder="请输入原因，便于业务追溯" />
           </Form.Item>
         </Form>
       </Modal>

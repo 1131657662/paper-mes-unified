@@ -54,7 +54,7 @@ export default function BackRecordChangeModal({
           />
           <ChangeCard
             title="现场追加工序"
-            description="例如主工艺复卷后，车间临时又锯掉水湿边；这类不重生成品号的追加工序可在回录时补记并参与计费。"
+            description="例如主工艺复卷后，车间又锯掉水湿边；这类不重生成品号的追加工序可在回录时补记并参与计费。"
             action={
               <Button type="primary" icon={<PlusOutlined />} onClick={onAddExtraStep}>
                 记录追加工序

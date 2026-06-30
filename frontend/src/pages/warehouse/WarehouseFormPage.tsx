@@ -46,7 +46,7 @@ export default function WarehouseFormPage({ mode }: Props) {
     <div className="document-module-page warehouse-profile-page">
       <MesPageHeader
         title={isEdit ? '编辑仓库档案' : '新增仓库档案'}
-        description="维护加工、成品和出库相关仓库资料。后续出库和库存视图会按这里的仓库名称与状态识别。"
+        description="维护加工、成品和出库相关仓库资料，出库和库存视图会按这里的仓库名称与状态识别。"
         onBack={() => navigate(backPath)}
         actions={(
           <Space>

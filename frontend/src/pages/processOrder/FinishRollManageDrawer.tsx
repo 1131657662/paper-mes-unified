@@ -375,13 +375,13 @@ export default function FinishRollManageDrawer({
               <InputNumber min={1} max={500} />
             </Form.Item>
             <Form.Item name="paperName" label="成品品名">
-              <Input placeholder="不填则用占位符'待定'" />
+              <Input placeholder="可留空，回录时补齐实际品名" />
             </Form.Item>
             <Form.Item name="gramWeight" label="克重 g/㎡">
-              <InputNumber min={1} placeholder="不填则0" />
+              <InputNumber min={1} placeholder="可留空，回录时补齐" />
             </Form.Item>
             <Form.Item name="finishWidth" label="门幅 mm">
-              <InputNumber min={1} placeholder="不填则0" />
+              <InputNumber min={1} placeholder="可留空，回录时补齐" />
             </Form.Item>
             <Form.Item name="finishDiameter" label="直径（英寸）">
               <InputNumber min={1} />

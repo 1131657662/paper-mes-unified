@@ -93,7 +93,7 @@ function IssueNotice({ isReprint, result }: { isReprint: boolean; result: PrintR
       type="info"
       showIcon
       message={isReprint ? '补打不会改变单据状态' : '首打将锁定下发快照并流转为加工中'}
-      description="请先核对下方车间加工单。正式保存后，后端会生成不可变下发快照，用于后续回录对账。"
+      description="请先核对下方车间加工单。正式保存后，后端会生成不可变下发快照，用于回录对账。"
     />
   )
 }

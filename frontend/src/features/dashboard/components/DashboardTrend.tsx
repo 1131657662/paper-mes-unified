@@ -37,7 +37,7 @@ export default function DashboardTrend({ monthly }: Props) {
         {!hasIncome && (
           <div className="dashboard-trend__empty">
             <strong>暂无近一年加工费收入</strong>
-            <span>完成结算或导入演示数据后，这里会自动形成月度收入曲线。</span>
+            <span>完成加工结算后，这里会自动形成月度收入曲线。</span>
           </div>
         )}
       </div>
