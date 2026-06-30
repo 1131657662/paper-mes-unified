@@ -3,6 +3,31 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.paper.mes.dashboard.mapper.DashboardMapper">
 
+    <sql id="SettleAllocationByOrder">
+        SELECT sd.order_uuid,
+               SUM(COALESCE(sd.order_amount, 0)) AS billedAmount,
+               SUM(CASE WHEN st.settleTotal > 0
+                        THEN COALESCE(rr.receivedAmount, 0) * COALESCE(sd.order_amount, 0) / st.settleTotal
+                        ELSE 0 END) AS receivedAmount
+        FROM biz_settle_detail sd
+        JOIN biz_settle_order so ON so.uuid = sd.settle_uuid AND so.is_deleted = 0
+        JOIN (
+            SELECT settle_uuid, SUM(COALESCE(order_amount, 0)) AS settleTotal
+            FROM biz_settle_detail
+            WHERE is_deleted = 0
+            GROUP BY settle_uuid
+        ) st ON st.settle_uuid = sd.settle_uuid
+        LEFT JOIN (
+            SELECT settle_uuid, SUM(COALESCE(receive_amount, 0)) AS receivedAmount
+            FROM biz_receive_record
+            WHERE is_deleted = 0
+              AND COALESCE(record_status, 1) = 1
+            GROUP BY settle_uuid
+        ) rr ON rr.settle_uuid = sd.settle_uuid
+        WHERE sd.is_deleted = 0
+        GROUP BY sd.order_uuid
+    </sql>
+
     <select id="metrics" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardMetricVO">
         SELECT COALESCE(monthly.monthOrderCount, 0) AS monthOrderCount,
                COALESCE(monthly.monthOriginalWeight, 0) AS monthOriginalWeight,
@@ -20,7 +45,7 @@
             SELECT COUNT(*) AS monthOrderCount,
                    COALESCE(SUM(orig.originalWeight), 0) AS monthOriginalWeight,
                    COALESCE(SUM(fin.finishWeight), 0) AS monthFinishWeight,
-                   COALESCE(SUM(o.total_amount), 0) AS monthAmount,
+                   COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS monthAmount,
                    COALESCE(SUM(orig.lossWeight), 0) AS monthLossWeight
             FROM biz_process_order o
             LEFT JOIN (
@@ -38,6 +63,9 @@
                 WHERE is_deleted = 0 AND COALESCE(is_spare, 0) = 0 AND COALESCE(roll_no_status, 1) != 3
                 GROUP BY order_uuid
             ) fin ON fin.order_uuid = o.uuid
+            LEFT JOIN (
+                <include refid="SettleAllocationByOrder"/>
+            ) settle ON settle.order_uuid = o.uuid
             WHERE o.is_deleted = 0
               AND o.order_status &gt;= 4
               AND o.order_date &gt;= #{monthStart}
@@ -54,10 +82,16 @@
         ) stock
         CROSS JOIN (
             SELECT COUNT(*) AS receivableCount,
-                   COALESCE(SUM(unreceived_amount), 0) AS receivableAmount
-            FROM biz_settle_order
-            WHERE is_deleted = 0
-              AND settle_status IN (1, 2)
+                   COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, o.total_amount, 0)
+                       - COALESCE(settle.receivedAmount, 0), 0)), 0) AS receivableAmount
+            FROM biz_process_order o
+            LEFT JOIN (
+                <include refid="SettleAllocationByOrder"/>
+            ) settle ON settle.order_uuid = o.uuid
+            WHERE o.is_deleted = 0
+              AND o.order_status &gt;= 4
+              AND GREATEST(COALESCE(settle.billedAmount, o.total_amount, 0)
+                  - COALESCE(settle.receivedAmount, 0), 0) > 0
         ) receivable
     </select>
 
@@ -93,7 +127,7 @@
                COUNT(*) AS orderCount,
                COALESCE(SUM(orig.originalWeight), 0) AS originalWeight,
                COALESCE(SUM(fin.finishWeight), 0) AS finishWeight,
-               COALESCE(SUM(o.total_amount), 0) AS amount
+               COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS amount
         FROM biz_process_order o
         LEFT JOIN (
             SELECT order_uuid,
@@ -109,6 +143,9 @@
             WHERE is_deleted = 0 AND COALESCE(is_spare, 0) = 0 AND COALESCE(roll_no_status, 1) != 3
             GROUP BY order_uuid
         ) fin ON fin.order_uuid = o.uuid
+        LEFT JOIN (
+            <include refid="SettleAllocationByOrder"/>
+        ) settle ON settle.order_uuid = o.uuid
         WHERE o.is_deleted = 0
           AND o.order_status &gt;= 4
           AND o.order_date &gt;= #{monthStart}
@@ -122,7 +159,7 @@
                o.customer_name AS name,
                COUNT(*) AS count,
                COALESCE(SUM(orig.originalWeight), 0) AS weight,
-               COALESCE(SUM(o.total_amount), 0) AS amount
+               COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS amount
         FROM biz_process_order o
         LEFT JOIN (
             SELECT order_uuid,
@@ -131,6 +168,9 @@
             WHERE is_deleted = 0
             GROUP BY order_uuid
         ) orig ON orig.order_uuid = o.uuid
+        LEFT JOIN (
+            <include refid="SettleAllocationByOrder"/>
+        ) settle ON settle.order_uuid = o.uuid
         WHERE o.is_deleted = 0
           AND o.order_status &gt;= 4
           AND o.order_date &gt;= #{monthStart}
@@ -145,7 +185,7 @@
                o.customer_name AS name,
                COUNT(*) AS count,
                COALESCE(SUM(orig.originalWeight), 0) AS weight,
-               COALESCE(SUM(o.total_amount), 0) AS amount
+               COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS amount
         FROM biz_process_order o
         LEFT JOIN (
             SELECT order_uuid,
@@ -154,6 +194,9 @@
             WHERE is_deleted = 0
             GROUP BY order_uuid
         ) orig ON orig.order_uuid = o.uuid
+        LEFT JOIN (
+            <include refid="SettleAllocationByOrder"/>
+        ) settle ON settle.order_uuid = o.uuid
         WHERE o.is_deleted = 0
           AND o.order_status &gt;= 4
           AND o.order_date &gt;= #{yearStart}

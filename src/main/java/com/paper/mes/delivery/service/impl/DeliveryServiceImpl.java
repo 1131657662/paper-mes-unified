@@ -293,7 +293,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         List<DeliveryDetail> details = deliveryDetails(uuid);
         DeliveryDetailVO vo = new DeliveryDetailVO();
-        vo.setOrder(order);
+        vo.setOrder(snapshotDeliveryOrder(order));
         List<DeliveryDetailItemVO> snapshotItems = readSnapshotDeliveryItems(order.getSnapDelivery());
         vo.setDetails(snapshotItems == null ? buildDetailItems(details) : snapshotItems);
         vo.setOperationLogs(loadOperationLogs(order));
@@ -567,6 +567,39 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
     }
 
+    private DeliveryOrder snapshotDeliveryOrder(DeliveryOrder order) {
+        JsonNode root = snapshotRoot(order.getSnapDelivery());
+        if (root == null) {
+            return order;
+        }
+        order.setDeliveryNo(textValue(root, "delivery_no", "deliveryNo", order.getDeliveryNo()));
+        order.setCustomerUuid(textValue(root, "customer_uuid", "customerUuid", order.getCustomerUuid()));
+        order.setCustomerName(textValue(root, "customer_name", "customerName", order.getCustomerName()));
+        order.setDeliveryDate(dateValue(root, "delivery_date", "deliveryDate", order.getDeliveryDate()));
+        order.setDeliveryStatus(intValue(root, "delivery_status", "deliveryStatus", order.getDeliveryStatus()));
+        order.setPickerName(textValue(root, "picker_name", "pickerName", order.getPickerName()));
+        order.setCarNo(textValue(root, "car_no", "carNo", order.getCarNo()));
+        order.setContainerNo(textValue(root, "container_no", "containerNo", order.getContainerNo()));
+        order.setSignUser(textValue(root, "sign_user", "signUser", order.getSignUser()));
+        order.setSignTime(dateTimeValue(root, "sign_time", "signTime", order.getSignTime()));
+        order.setSettleBlockAction(intValue(root, "settle_block_action", "settleBlockAction", order.getSettleBlockAction()));
+        order.setTotalCount(intValue(root, "total_count", "totalCount", order.getTotalCount()));
+        order.setTotalWeight(decimalValue(root, "total_weight", "totalWeight", order.getTotalWeight()));
+        order.setRemark(textValue(root, "remark", "remark", order.getRemark()));
+        return order;
+    }
+
+    private JsonNode snapshotRoot(String json) {
+        if (!StringUtils.hasText(json)) {
+            return null;
+        }
+        try {
+            return objectMapper.readTree(json);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     private JsonNode firstExisting(JsonNode root, String... names) {
         for (String name : names) {
             JsonNode node = root.get(name);
@@ -575,6 +608,84 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             }
         }
         return null;
+    }
+
+    private JsonNode field(JsonNode root, String snakeName, String camelName) {
+        JsonNode node = root.get(snakeName);
+        if (node == null || node.isNull()) {
+            node = root.get(camelName);
+        }
+        return node == null || node.isNull() ? null : node;
+    }
+
+    private String textValue(JsonNode root, String snakeName, String camelName, String fallback) {
+        JsonNode node = field(root, snakeName, camelName);
+        return node == null ? fallback : node.asText();
+    }
+
+    private Integer intValue(JsonNode root, String snakeName, String camelName, Integer fallback) {
+        JsonNode node = field(root, snakeName, camelName);
+        if (node == null) {
+            return fallback;
+        }
+        try {
+            return node.isNumber() ? node.asInt() : Integer.parseInt(node.asText());
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private BigDecimal decimalValue(JsonNode root, String snakeName, String camelName, BigDecimal fallback) {
+        JsonNode node = field(root, snakeName, camelName);
+        if (node == null) {
+            return fallback;
+        }
+        try {
+            return node.isNumber() ? node.decimalValue() : new BigDecimal(node.asText());
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private LocalDate dateValue(JsonNode root, String snakeName, String camelName, LocalDate fallback) {
+        JsonNode node = field(root, snakeName, camelName);
+        if (node == null) {
+            return fallback;
+        }
+        try {
+            if (node.isArray() && node.size() >= 3) {
+                return LocalDate.of(node.get(0).asInt(), node.get(1).asInt(), node.get(2).asInt());
+            }
+            String text = node.asText();
+            return StringUtils.hasText(text) ? LocalDate.parse(text.substring(0, Math.min(10, text.length()))) : fallback;
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private LocalDateTime dateTimeValue(JsonNode root, String snakeName, String camelName, LocalDateTime fallback) {
+        JsonNode node = field(root, snakeName, camelName);
+        if (node == null) {
+            return fallback;
+        }
+        try {
+            if (node.isArray() && node.size() >= 5) {
+                int second = node.size() >= 6 ? node.get(5).asInt() : 0;
+                return LocalDateTime.of(node.get(0).asInt(), node.get(1).asInt(), node.get(2).asInt(),
+                        node.get(3).asInt(), node.get(4).asInt(), second);
+            }
+            String text = node.asText();
+            if (!StringUtils.hasText(text)) {
+                return fallback;
+            }
+            text = text.replace(' ', 'T');
+            if (text.length() == 10) {
+                return LocalDate.parse(text).atStartOfDay();
+            }
+            return LocalDateTime.parse(text.substring(0, Math.min(19, text.length())));
+        } catch (Exception ignored) {
+            return fallback;
+        }
     }
 
     private String toJson(Object value) {

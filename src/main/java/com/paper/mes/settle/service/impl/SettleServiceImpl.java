@@ -266,22 +266,23 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (order == null) {
             throw new BusinessException(ErrorCode.E002, "结算单不存在");
         }
+        SettleOrder viewOrder = snapshotSettleOrder(order);
         List<SettleDetail> details = settleDetailMapper.selectList(
                 new LambdaQueryWrapper<SettleDetail>()
                         .eq(SettleDetail::getSettleUuid, uuid));
         List<SettleDetail> snapshotDetails = readSnapshotDetails(order.getSnapBill());
-        details = snapshotDetails == null ? normalizeDetailsForInvoiceView(order, details) : snapshotDetails;
-        applySettlementAmountView(order, details);
+        details = snapshotDetails == null ? normalizeDetailsForInvoiceView(viewOrder, details) : snapshotDetails;
+        applySettlementAmountView(viewOrder, details);
         List<ReceiveRecord> receives = receiveRecordMapper.selectList(
                 new LambdaQueryWrapper<ReceiveRecord>()
                         .eq(ReceiveRecord::getSettleUuid, uuid)
                         .orderByAsc(ReceiveRecord::getReceiveDate));
         SettleDetailVO vo = new SettleDetailVO();
-        vo.setOrder(order);
+        vo.setOrder(viewOrder);
         vo.setDetails(details);
         vo.setReceives(receives);
         List<SettlePrintLineVO> snapshotLines = readSnapshotPrintLines(order.getSnapBill());
-        vo.setPrintLines(snapshotLines == null ? buildPrintLines(order, details) : snapshotLines);
+        vo.setPrintLines(snapshotLines == null ? buildPrintLines(viewOrder, details) : snapshotLines);
         vo.setOperationLogs(loadOperationLogs(uuid));
         return vo;
     }
@@ -987,6 +988,47 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         }
     }
 
+    private SettleOrder snapshotSettleOrder(SettleOrder order) {
+        JsonNode root = snapshotRoot(order.getSnapBill());
+        if (root == null) {
+            return order;
+        }
+        SettleOrder view = new SettleOrder();
+        view.setUuid(order.getUuid());
+        view.setSettleNo(textValue(root, "settle_no", "settleNo", order.getSettleNo()));
+        view.setCustomerUuid(textValue(root, "customer_uuid", "customerUuid", order.getCustomerUuid()));
+        view.setCustomerName(textValue(root, "customer_name", "customerName", order.getCustomerName()));
+        view.setSettleType(intValue(root, "settle_type", "settleType", order.getSettleType()));
+        view.setSettleDate(dateValue(root, "settle_date", "settleDate", order.getSettleDate()));
+        view.setPeriodStart(dateValue(root, "period_start", "periodStart", order.getPeriodStart()));
+        view.setPeriodEnd(dateValue(root, "period_end", "periodEnd", order.getPeriodEnd()));
+        view.setIsInvoice(intValue(root, "is_invoice", "isInvoice", order.getIsInvoice()));
+        view.setSawAmount(decimalValue(root, "saw_amount", "sawAmount", order.getSawAmount()));
+        view.setRewindAmount(decimalValue(root, "rewind_amount", "rewindAmount", order.getRewindAmount()));
+        view.setExtraAmount(decimalValue(root, "extra_amount", "extraAmount", order.getExtraAmount()));
+        view.setAmountNoTax(decimalValue(root, "amount_no_tax", "amountNoTax", order.getAmountNoTax()));
+        view.setTaxAmount(decimalValue(root, "tax_amount", "taxAmount", order.getTaxAmount()));
+        view.setTotalAmount(decimalValue(root, "total_amount", "totalAmount", order.getTotalAmount()));
+        view.setReceivedAmount(order.getReceivedAmount());
+        view.setUnreceivedAmount(order.getUnreceivedAmount());
+        view.setSettleStatus(order.getSettleStatus());
+        view.setSnapBill(order.getSnapBill());
+        view.setSnapBillTime(order.getSnapBillTime());
+        view.setRemark(textValue(root, "remark", "remark", order.getRemark()));
+        return view;
+    }
+
+    private JsonNode snapshotRoot(String json) {
+        if (!StringUtils.hasText(json)) {
+            return null;
+        }
+        try {
+            return objectMapper.readTree(json);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     private JsonNode firstExisting(JsonNode root, String... names) {
         for (String name : names) {
             JsonNode node = root.get(name);
@@ -995,6 +1037,59 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             }
         }
         return null;
+    }
+
+    private JsonNode field(JsonNode root, String snakeName, String camelName) {
+        JsonNode node = root.get(snakeName);
+        if (node == null || node.isNull()) {
+            node = root.get(camelName);
+        }
+        return node == null || node.isNull() ? null : node;
+    }
+
+    private String textValue(JsonNode root, String snakeName, String camelName, String fallback) {
+        JsonNode node = field(root, snakeName, camelName);
+        return node == null ? fallback : node.asText();
+    }
+
+    private Integer intValue(JsonNode root, String snakeName, String camelName, Integer fallback) {
+        JsonNode node = field(root, snakeName, camelName);
+        if (node == null) {
+            return fallback;
+        }
+        try {
+            return node.isNumber() ? node.asInt() : Integer.parseInt(node.asText());
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private BigDecimal decimalValue(JsonNode root, String snakeName, String camelName, BigDecimal fallback) {
+        JsonNode node = field(root, snakeName, camelName);
+        if (node == null) {
+            return fallback;
+        }
+        try {
+            return node.isNumber() ? node.decimalValue() : new BigDecimal(node.asText());
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private LocalDate dateValue(JsonNode root, String snakeName, String camelName, LocalDate fallback) {
+        JsonNode node = field(root, snakeName, camelName);
+        if (node == null) {
+            return fallback;
+        }
+        try {
+            if (node.isArray() && node.size() >= 3) {
+                return LocalDate.of(node.get(0).asInt(), node.get(1).asInt(), node.get(2).asInt());
+            }
+            String text = node.asText();
+            return StringUtils.hasText(text) ? LocalDate.parse(text.substring(0, Math.min(10, text.length()))) : fallback;
+        } catch (Exception ignored) {
+            return fallback;
+        }
     }
 
     private String toJson(Object value) {

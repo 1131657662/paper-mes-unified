@@ -427,7 +427,7 @@
                COUNT(*) AS orderCount,
                COALESCE(SUM(orig.originalWeight), 0) / 1000 AS totalTon,
                COALESCE(SUM(step.totalKnife), 0) AS totalKnife,
-               COALESCE(SUM(o.total_amount), 0) AS totalAmount,
+               COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount,
                COALESCE(SUM(fin.finishWeight), 0) AS totalFinishWeight
         FROM biz_process_order o
         LEFT JOIN (
@@ -451,6 +451,9 @@
             WHERE is_deleted = 0 AND step_type = 1
             GROUP BY order_uuid
         ) step ON step.order_uuid = o.uuid
+        LEFT JOIN (
+            <include refid="SettleAllocationByOrder"/>
+        ) settle ON settle.order_uuid = o.uuid
         <where>
             o.is_deleted = 0 AND o.order_status &gt;= 4
             <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
@@ -467,7 +470,7 @@
                COUNT(*) AS orderCount,
                COALESCE(SUM(orig.originalWeight), 0) / 1000 AS totalTon,
                COALESCE(SUM(step.totalKnife), 0) AS totalKnife,
-               COALESCE(SUM(o.total_amount), 0) AS totalAmount
+               COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount
         FROM biz_process_order o
         LEFT JOIN (
             SELECT order_uuid,
@@ -483,6 +486,9 @@
             WHERE is_deleted = 0 AND step_type = 1
             GROUP BY order_uuid
         ) step ON step.order_uuid = o.uuid
+        LEFT JOIN (
+            <include refid="SettleAllocationByOrder"/>
+        ) settle ON settle.order_uuid = o.uuid
         <where>
             o.is_deleted = 0 AND o.order_status &gt;= 4
             <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
