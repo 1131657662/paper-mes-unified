@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Descriptions, Drawer, Spin, Tag } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
 import { getSettleOrderDetail } from '../../api/settle'
 import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
-import type { SettleDetail, SettleDetailVO, ReceiveRecord } from '../../types/settle'
-import { SETTLE_STATUS, SETTLE_TYPE, PAY_METHOD, INVOICE_TYPE } from '../../constants/settle'
+import type { SettleDetailVO } from '../../types/settle'
+import { SETTLE_STATUS, SETTLE_TYPE, INVOICE_TYPE } from '../../constants/settle'
+import { buildReceiveColumns, buildSettleDetailColumns } from './settleDetailColumns'
 
 interface Props {
   uuid: string | null
@@ -34,73 +34,6 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
       setLoading(false)
     }
   }
-
-  const detailColumns: ColumnsType<SettleDetail> = [
-    {
-      title: '加工单号',
-      dataIndex: 'orderNo',
-      fixed: 'left',
-      width: 140,
-    },
-    {
-      title: '锯纸费',
-      dataIndex: 'sawAmount',
-      width: 100,
-    },
-    {
-      title: '复卷费',
-      dataIndex: 'rewindAmount',
-      width: 100,
-    },
-    {
-      title: '额外费用',
-      dataIndex: 'extraAmount',
-      width: 100,
-    },
-    {
-      title: '本单金额',
-      dataIndex: 'orderAmount',
-      width: 100,
-    },
-  ]
-
-  const receiveColumns: ColumnsType<ReceiveRecord> = [
-    {
-      title: '收款时间',
-      dataIndex: 'receiveDate',
-      fixed: 'left',
-      width: 160,
-    },
-    {
-      title: '收款金额',
-      dataIndex: 'receiveAmount',
-      width: 100,
-    },
-    {
-      title: '收款方式',
-      dataIndex: 'payMethod',
-      width: 80,
-      render: (v) => PAY_METHOD[v] || '-',
-    },
-    {
-      title: '流水号',
-      dataIndex: 'payNo',
-      width: 120,
-      render: (v) => v || '-',
-    },
-    {
-      title: '经办人',
-      dataIndex: 'operator',
-      width: 80,
-      render: (v) => v || '-',
-    },
-    {
-      title: '备注',
-      dataIndex: 'remark',
-      width: 150,
-      render: (v) => v || '-',
-    },
-  ]
 
   const order = detail?.order
 
@@ -166,7 +99,7 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
                 <DocumentDetailTable
                   storageKey="settle-detail-drawer-fees"
                   rowKey="uuid"
-                  columns={detailColumns}
+                  columns={buildSettleDetailColumns()}
                   dataSource={detail.details}
                   onReload={loadDetail}
                   pagination={false}
@@ -186,7 +119,7 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
                 <DocumentDetailTable
                   storageKey="settle-detail-drawer-receives"
                   rowKey="uuid"
-                  columns={receiveColumns}
+                  columns={buildReceiveColumns()}
                   dataSource={detail.receives}
                   onReload={loadDetail}
                   pagination={false}

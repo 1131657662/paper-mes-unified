@@ -27,6 +27,7 @@ public class SettleExportService {
         writeHeader(sheet, headerStyle(workbook));
         writeLines(sheet, detail, subtotalStyle(workbook));
         autosize(sheet, 22);
+        SettleReceiveSheetWriter.write(workbook, detail);
         return workbook;
     }
 
@@ -37,8 +38,8 @@ public class SettleExportService {
         row(sheet, 1, "结算单号", order.getSettleNo(), "客户", order.getCustomerName());
         row(sheet, 2, "结算日期", text(order.getSettleDate()), "账期", periodText(order));
         row(sheet, 3, "开票", invoiceText(order.getIsInvoice()), "状态", statusText(order.getSettleStatus()));
-        row(sheet, 4, "应收合计", text(order.getTotalAmount()), "未收金额", text(order.getUnreceivedAmount()));
-        row(sheet, 5, "备注", order.getRemark(), "", "");
+        row(sheet, 4, "应收合计", text(order.getTotalAmount()), "已收金额", text(order.getReceivedAmount()));
+        row(sheet, 5, "未收金额", text(order.getUnreceivedAmount()), "备注", order.getRemark());
     }
 
     private void writeHeader(Sheet sheet, CellStyle style) {
