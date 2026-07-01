@@ -70,8 +70,8 @@ final class DeliverySnapshotItemReader {
             item.setOriginalSummary(text(itemNode, "original_summary"));
             item.setProcessModeText(text(itemNode, "process_mode_text"));
             item.setProcessSummary(text(itemNode, "process_summary"));
-            item.setOriginalItems(originalItems(itemNode.get("original_items")));
-            item.setProcessStepItems(processStepItems(itemNode.get("process_step_items")));
+            item.setOriginalItems(originalItems(firstExisting(itemNode, "original_items", "originalItems")));
+            item.setProcessStepItems(processStepItems(firstExisting(itemNode, "process_step_items", "processStepItems")));
             item.setRemark(text(itemNode, "remark"));
             item.setFinishRemark(text(itemNode, "finish_remark"));
             item.setActualRemark(text(itemNode, "actual_remark"));
@@ -88,19 +88,20 @@ final class DeliverySnapshotItemReader {
         for (JsonNode itemNode : node) {
             DeliveryDetailItemVO.OriginalSourceItem item = new DeliveryDetailItemVO.OriginalSourceItem();
             item.setUuid(text(itemNode, "uuid"));
-            item.setRowSort(integer(itemNode, "row_sort"));
-            item.setExtraNo(text(itemNode, "extra_no"));
-            item.setRollNo(text(itemNode, "roll_no"));
-            item.setPaperName(text(itemNode, "paper_name"));
-            item.setGramWeight(integer(itemNode, "gram_weight"));
-            item.setActualGramWeight(integer(itemNode, "actual_gram_weight"));
-            item.setOriginalWidth(integer(itemNode, "original_width"));
-            item.setActualWidth(integer(itemNode, "actual_width"));
-            item.setActualWeight(decimal(itemNode, "actual_weight"));
-            item.setTotalWeight(decimal(itemNode, "total_weight"));
-            item.setProcessMode(integer(itemNode, "process_mode"));
-            item.setMainStepType(integer(itemNode, "main_step_type"));
-            item.setMachineUuid(text(itemNode, "machine_uuid"));
+            item.setRowSort(integer(itemNode, "row_sort", "rowSort"));
+            item.setExtraNo(text(itemNode, "extra_no", "extraNo"));
+            item.setRollNo(text(itemNode, "roll_no", "rollNo"));
+            item.setPaperName(text(itemNode, "paper_name", "paperName"));
+            item.setGramWeight(integer(itemNode, "gram_weight", "gramWeight"));
+            item.setActualGramWeight(integer(itemNode, "actual_gram_weight", "actualGramWeight"));
+            item.setOriginalWidth(integer(itemNode, "original_width", "originalWidth"));
+            item.setActualWidth(integer(itemNode, "actual_width", "actualWidth"));
+            item.setActualWeight(decimal(itemNode, "actual_weight", "actualWeight"));
+            item.setTotalWeight(decimal(itemNode, "total_weight", "totalWeight"));
+            item.setProcessMode(integer(itemNode, "process_mode", "processMode"));
+            item.setMainStepType(integer(itemNode, "main_step_type", "mainStepType"));
+            item.setMachineUuid(text(itemNode, "machine_uuid", "machineUuid"));
+            item.setMachineName(text(itemNode, "machine_name", "machineName"));
             item.setOperator(text(itemNode, "operator"));
             item.setRemark(text(itemNode, "remark"));
             items.add(item);
@@ -116,16 +117,16 @@ final class DeliverySnapshotItemReader {
         for (JsonNode itemNode : node) {
             DeliveryDetailItemVO.ProcessStepItem item = new DeliveryDetailItemVO.ProcessStepItem();
             item.setUuid(text(itemNode, "uuid"));
-            item.setOriginalUuid(text(itemNode, "original_uuid"));
-            item.setStepSort(integer(itemNode, "step_sort"));
-            item.setStepType(integer(itemNode, "step_type"));
-            item.setStepName(text(itemNode, "step_name"));
-            item.setIsMain(integer(itemNode, "is_main"));
-            item.setKnifeCount(integer(itemNode, "knife_count"));
-            item.setProcessWeight(decimal(itemNode, "process_weight"));
-            item.setUnitPrice(decimal(itemNode, "unit_price"));
-            item.setStepAmount(decimal(itemNode, "step_amount"));
-            item.setLossWeight(decimal(itemNode, "loss_weight"));
+            item.setOriginalUuid(text(itemNode, "original_uuid", "originalUuid"));
+            item.setStepSort(integer(itemNode, "step_sort", "stepSort"));
+            item.setStepType(integer(itemNode, "step_type", "stepType"));
+            item.setStepName(text(itemNode, "step_name", "stepName"));
+            item.setIsMain(integer(itemNode, "is_main", "isMain"));
+            item.setKnifeCount(integer(itemNode, "knife_count", "knifeCount"));
+            item.setProcessWeight(decimal(itemNode, "process_weight", "processWeight"));
+            item.setUnitPrice(decimal(itemNode, "unit_price", "unitPrice"));
+            item.setStepAmount(decimal(itemNode, "step_amount", "stepAmount"));
+            item.setLossWeight(decimal(itemNode, "loss_weight", "lossWeight"));
             item.setOperator(text(itemNode, "operator"));
             item.setRemark(text(itemNode, "remark"));
             items.add(item);
@@ -150,12 +151,26 @@ final class DeliverySnapshotItemReader {
     }
 
     private static String text(JsonNode node, String fieldName) {
+        return text(node, fieldName, null);
+    }
+
+    private static String text(JsonNode node, String fieldName, String fallbackFieldName) {
         JsonNode value = node.get(fieldName);
+        if ((value == null || value.isNull()) && StringUtils.hasText(fallbackFieldName)) {
+            value = node.get(fallbackFieldName);
+        }
         return value == null || value.isNull() ? null : value.asText();
     }
 
     private static Integer integer(JsonNode node, String fieldName) {
+        return integer(node, fieldName, null);
+    }
+
+    private static Integer integer(JsonNode node, String fieldName, String fallbackFieldName) {
         JsonNode value = node.get(fieldName);
+        if ((value == null || value.isNull()) && StringUtils.hasText(fallbackFieldName)) {
+            value = node.get(fallbackFieldName);
+        }
         if (value == null || value.isNull()) {
             return null;
         }
@@ -167,7 +182,14 @@ final class DeliverySnapshotItemReader {
     }
 
     private static BigDecimal decimal(JsonNode node, String fieldName) {
+        return decimal(node, fieldName, null);
+    }
+
+    private static BigDecimal decimal(JsonNode node, String fieldName, String fallbackFieldName) {
         JsonNode value = node.get(fieldName);
+        if ((value == null || value.isNull()) && StringUtils.hasText(fallbackFieldName)) {
+            value = node.get(fallbackFieldName);
+        }
         if (value == null || value.isNull()) {
             return null;
         }

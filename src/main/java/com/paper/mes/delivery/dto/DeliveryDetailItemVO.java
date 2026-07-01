@@ -52,6 +52,7 @@ public class DeliveryDetailItemVO {
         private Integer processMode;
         private Integer mainStepType;
         private String machineUuid;
+        private String machineName;
         private String operator;
         private String remark;
     }

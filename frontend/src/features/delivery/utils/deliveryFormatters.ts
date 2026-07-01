@@ -69,6 +69,7 @@ function originalSourceText(item: DeliveryOriginalSourceItem) {
     item.actualGramWeight ? `${item.actualGramWeight}g` : item.gramWeight ? `${item.gramWeight}g` : undefined,
     item.actualWidth ? `${item.actualWidth}mm` : item.originalWidth ? `${item.originalWidth}mm` : undefined,
     weight != null ? formatKg(weight) : undefined,
+    item.machineName ? `机台${item.machineName}` : undefined,
   ].filter(Boolean)
   return `${label}｜${identity.length ? identity.join(' / ') : '无卷号'}｜${spec.join(' / ')}`
 }

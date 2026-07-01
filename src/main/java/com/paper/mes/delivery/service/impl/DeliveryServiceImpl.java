@@ -30,6 +30,8 @@ import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import com.paper.mes.delivery.service.DeliveryExportService;
 import com.paper.mes.delivery.service.DeliveryService;
+import com.paper.mes.machine.entity.Machine;
+import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.entity.OperationLog;
 import com.paper.mes.oplog.mapper.OperationLogMapper;
 import com.paper.mes.oplog.service.OperationLogService;
@@ -99,6 +101,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private final ProcessStepMapper processStepMapper;
     private final SettleDetailMapper settleDetailMapper;
     private final SettleOrderMapper settleOrderMapper;
+    private final MachineMapper machineMapper;
     private final CustomerService customerService;
     private final DeliveryExportService deliveryExportService;
     private final OperationLogMapper operationLogMapper;
@@ -572,8 +575,15 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             row.put("original_summary", item.getOriginalSummary());
             row.put("process_mode_text", item.getProcessModeText());
             row.put("process_summary", item.getProcessSummary());
-            row.put("original_items", item.getOriginalItems());
+            List<DeliveryDetailItemVO.OriginalSourceItem> originalItems =
+                    item.getOriginalItems() == null ? List.of() : item.getOriginalItems();
+            row.put("original_items", originalItems);
             row.put("process_step_items", item.getProcessStepItems());
+            row.put("machine_names", originalItems.stream()
+                    .map(DeliveryDetailItemVO.OriginalSourceItem::getMachineName)
+                    .filter(StringUtils::hasText)
+                    .distinct()
+                    .toList());
             row.put("remark", item.getRemark());
             row.put("finish_remark", item.getFinishRemark());
             row.put("actual_remark", item.getActualRemark());
@@ -870,6 +880,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         Map<String, OriginalRoll> originalByUuid = originalsByOrder.values().stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toMap(OriginalRoll::getUuid, Function.identity(), (left, right) -> left));
+        Map<String, String> machineNameByUuid = loadMachineNames(originalByUuid.values().stream().toList());
         Map<String, List<ProcessStep>> stepsByOriginal = loadStepsByOriginal(originalByUuid.keySet().stream().toList());
         List<FinishOriginalRel> rels = finishOriginalRelMapper.selectList(new LambdaQueryWrapper<FinishOriginalRel>()
                 .in(FinishOriginalRel::getFinishUuid, finishUuids));
@@ -890,7 +901,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             if (inferred) {
                 originals = inferOriginals(finish, originalsByOrder.getOrDefault(orderUuid, List.of()));
             }
-            result.put(detail.getFinishUuid(), buildSourceTrace(detail, finish, originals, stepsByOriginal, inferred));
+            result.put(detail.getFinishUuid(), buildSourceTrace(detail, finish, originals, stepsByOriginal,
+                    machineNameByUuid, inferred));
         }
         return result;
     }
@@ -931,8 +943,23 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 LinkedHashMap::new, Collectors.toList()));
     }
 
+    private Map<String, String> loadMachineNames(List<OriginalRoll> originals) {
+        List<String> machineUuids = originals.stream()
+                .map(OriginalRoll::getMachineUuid)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+        if (machineUuids.isEmpty()) {
+            return Map.of();
+        }
+        return machineMapper.selectBatchIds(machineUuids).stream()
+                .collect(Collectors.toMap(Machine::getUuid, machine -> text(machine.getMachineName()),
+                        (left, right) -> left));
+    }
+
     private SourceTrace buildSourceTrace(DeliveryDetail detail, FinishRoll finish, List<OriginalRoll> originals,
-                                         Map<String, List<ProcessStep>> stepsByOriginal, boolean inferred) {
+                                         Map<String, List<ProcessStep>> stepsByOriginal,
+                                         Map<String, String> machineNameByUuid, boolean inferred) {
         if (originals.isEmpty()) {
             return new SourceTrace(unlinkedSourceText(detail, finish), sourceTypeText(finish),
                     "来源关系未建立，无法定位母卷加工方案", List.of(), List.of());
@@ -945,7 +972,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 (inferred ? "推定来源：" : "") + originalSummary(originals),
                 processModeText(originals),
                 prefix + processSummary(steps, originals),
-                originalSourceItems(originals),
+                originalSourceItems(originals, machineNameByUuid),
                 processStepItems(steps));
     }
 
@@ -1075,11 +1102,13 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 + roll.getOriginalWidth() + "mm｜" + nz(weight) + "kg";
     }
 
-    private List<DeliveryDetailItemVO.OriginalSourceItem> originalSourceItems(List<OriginalRoll> originals) {
-        return originals.stream().map(this::originalSourceItem).toList();
+    private List<DeliveryDetailItemVO.OriginalSourceItem> originalSourceItems(
+            List<OriginalRoll> originals, Map<String, String> machineNameByUuid) {
+        return originals.stream().map(roll -> originalSourceItem(roll, machineNameByUuid)).toList();
     }
 
-    private DeliveryDetailItemVO.OriginalSourceItem originalSourceItem(OriginalRoll roll) {
+    private DeliveryDetailItemVO.OriginalSourceItem originalSourceItem(
+            OriginalRoll roll, Map<String, String> machineNameByUuid) {
         DeliveryDetailItemVO.OriginalSourceItem item = new DeliveryDetailItemVO.OriginalSourceItem();
         item.setUuid(roll.getUuid());
         item.setRowSort(roll.getRowSort());
@@ -1095,6 +1124,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         item.setProcessMode(roll.getProcessMode());
         item.setMainStepType(roll.getMainStepType());
         item.setMachineUuid(roll.getMachineUuid());
+        item.setMachineName(machineNameByUuid.get(roll.getMachineUuid()));
         item.setOperator(roll.getOperator());
         item.setRemark(roll.getRemark());
         return item;

@@ -68,7 +68,7 @@ public class DeliveryExportService {
             row.createCell(5).setCellValue(specText(item));
             row.createCell(6).setCellValue(text(item.getActualWeight()));
             row.createCell(7).setCellValue(text(item.getOutWeight()));
-            row.createCell(8).setCellValue(firstText(item.getOriginalSummary(), item.getOriginalRollNos()));
+            row.createCell(8).setCellValue(originalSnapshotText(item));
             row.createCell(9).setCellValue(text(item.getProcessModeText()));
             row.createCell(10).setCellValue(text(item.getProcessSummary()));
             row.createCell(11).setCellValue(sourceText(item.getSourceType()));
@@ -168,6 +168,30 @@ public class DeliveryExportService {
 
     private String firstText(String first, String second) {
         return first != null && !first.isBlank() ? first : text(second);
+    }
+
+    private String originalSnapshotText(DeliveryDetailItemVO item) {
+        if (item.getOriginalItems() != null && !item.getOriginalItems().isEmpty()) {
+            return item.getOriginalItems().stream()
+                    .map(this::originalSourceText)
+                    .reduce((left, right) -> left + "；" + right)
+                    .orElse("-");
+        }
+        return firstText(item.getOriginalSummary(), item.getOriginalRollNos());
+    }
+
+    private String originalSourceText(DeliveryDetailItemVO.OriginalSourceItem item) {
+        StringBuilder sb = new StringBuilder();
+        append(sb, item.getRowSort() == null ? "母卷" : "母卷" + item.getRowSort());
+        append(sb, item.getRollNo() == null ? null : "卷号" + item.getRollNo());
+        append(sb, item.getExtraNo() == null ? null : "编号" + item.getExtraNo());
+        append(sb, item.getPaperName());
+        append(sb, item.getGramWeight() == null ? null : item.getGramWeight() + "g");
+        append(sb, item.getOriginalWidth() == null ? null : item.getOriginalWidth() + "mm");
+        BigDecimal weight = item.getActualWeight() == null ? item.getTotalWeight() : item.getActualWeight();
+        append(sb, weight == null ? null : text(weight) + "kg");
+        append(sb, item.getMachineName() == null ? null : "机台" + item.getMachineName());
+        return sb.isEmpty() ? "-" : sb.toString();
     }
 
     private String text(BigDecimal value) {

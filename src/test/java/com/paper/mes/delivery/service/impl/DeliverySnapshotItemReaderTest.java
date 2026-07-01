@@ -39,7 +39,8 @@ class DeliverySnapshotItemReaderTest {
                           "paperName": "paper-a",
                           "gramWeight": 300,
                           "originalWidth": 2500,
-                          "actualWeight": 3255.000
+                          "actualWeight": 3255.000,
+                          "machineName": "复卷机1号"
                         }
                       ],
                       "processStepItems": [
@@ -69,6 +70,7 @@ class DeliverySnapshotItemReaderTest {
         assertEquals("950x2 + trim", item.getProcessSummary());
         assertEquals("checked", item.getActualRemark());
         assertEquals("R001", item.getOriginalItems().get(0).getRollNo());
+        assertEquals("复卷机1号", item.getOriginalItems().get(0).getMachineName());
         assertEquals("original-1", item.getProcessStepItems().get(0).getOriginalUuid());
         assertEquals(2, item.getProcessStepItems().get(0).getStepType());
         assertEquals(300, item.getGramWeight());
@@ -101,7 +103,8 @@ class DeliverySnapshotItemReaderTest {
                           "paper_name": "paper-b",
                           "gram_weight": 450,
                           "original_width": 2500,
-                          "actual_weight": 4100.000
+                          "actual_weight": 4100.000,
+                          "machine_name": "锯纸机2号"
                         }
                       ],
                       "process_step_items": [
@@ -131,6 +134,7 @@ class DeliverySnapshotItemReaderTest {
         assertEquals("1250x2", item.getProcessSummary());
         assertEquals("changed loading count", item.getActualRemark());
         assertEquals("R002", item.getOriginalItems().get(0).getRollNo());
+        assertEquals("锯纸机2号", item.getOriginalItems().get(0).getMachineName());
         assertEquals("step-2", item.getProcessStepItems().get(0).getUuid());
         assertEquals(2, item.getProcessStepItems().get(0).getKnifeCount());
         assertEquals(450, item.getGramWeight());

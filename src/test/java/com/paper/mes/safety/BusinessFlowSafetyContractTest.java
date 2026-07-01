@@ -95,6 +95,7 @@ class BusinessFlowSafetyContractTest {
                 "\"process_summary\"",
                 "\"original_items\"",
                 "\"process_step_items\"",
+                "\"machine_names\"",
                 "\"actual_remark\"");
         assertContainsAll(slice(source, "private String buildRollbackSnapshot", "private List<Map<String, Object>> buildDeliverySnapshotItems"),
                 "\"snapshot_type\"",

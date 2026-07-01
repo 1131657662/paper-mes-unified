@@ -63,6 +63,7 @@ export interface DeliveryOriginalSourceItem {
   processMode?: number
   mainStepType?: number
   machineUuid?: string
+  machineName?: string
   operator?: string
   remark?: string
 }
