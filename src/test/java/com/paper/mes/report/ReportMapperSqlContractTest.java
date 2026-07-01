@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReportMapperSqlContractTest {
@@ -25,6 +26,23 @@ class ReportMapperSqlContractTest {
         assertTrue(sql.contains("COALESCE(record_status, 1) = 1"));
         assertTrue(sql.contains("SUM(COALESCE(receive_amount, 0)) AS receivedAmount"));
         assertTrue(sql.contains("COALESCE(rr.receivedAmount, 0) * COALESCE(sd.order_amount, 0) / st.settleTotal"));
+    }
+
+    @Test
+    void settleAllocationSql_whenAllocatingReceivables_excludesDeletedSettleData() throws IOException {
+        String sql = settleAllocationSql("mapper/report/ReportMapper.xml");
+
+        assertTrue(sql.contains("JOIN biz_settle_order so ON so.uuid = sd.settle_uuid AND so.is_deleted = 0"));
+        assertTrue(sql.contains("FROM biz_settle_detail WHERE is_deleted = 0"));
+        assertTrue(sql.contains("WHERE sd.is_deleted = 0"));
+    }
+
+    @Test
+    void settleAllocationSql_whenCalculatingReceivables_usesReceiveLedgerNotCachedSettleAmount() throws IOException {
+        String sql = settleAllocationSql("mapper/report/ReportMapper.xml");
+
+        assertTrue(sql.contains("FROM biz_receive_record"));
+        assertFalse(sql.contains("so.received_amount"));
     }
 
     @Test
