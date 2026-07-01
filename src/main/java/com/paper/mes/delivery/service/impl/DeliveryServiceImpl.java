@@ -1078,6 +1078,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             return;
         }
         long settled = settleDetailMapper.selectCount(new LambdaQueryWrapper<SettleDetail>()
+                .eq(SettleDetail::getIsDeleted, 0)
                 .in(SettleDetail::getOrderUuid, orderUuids));
         if (settled > 0) {
             throw new BusinessException(ErrorCode.E004, "关联加工单已生成结算单，不可回退出库");

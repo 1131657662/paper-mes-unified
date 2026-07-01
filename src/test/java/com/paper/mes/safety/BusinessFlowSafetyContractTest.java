@@ -54,6 +54,8 @@ class BusinessFlowSafetyContractTest {
         assertContainsAll(slice(source, "public void removeDetail", "private String nextDeliveryNo"),
                 "businessLockService.lockDeliveryOrder(uuid);",
                 "order.getDeliveryStatus() != DELIVERY_STATUS_PENDING",
+                ".eq(DeliveryDetail::getUuid, detailUuid)",
+                ".eq(DeliveryDetail::getDeliveryUuid, uuid)",
                 "refreshTotals(order)");
         assertContainsAll(slice(source, "private void refreshTotals", "private void updateFinishStatus"),
                 ".eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)",
@@ -152,6 +154,9 @@ class BusinessFlowSafetyContractTest {
         assertContainsAll(slice(source, "private void updateSettleReceiveState", "private BigDecimal activeReceiveAmount"),
                 "wrapper.eq(SettleOrder::getSettleStatus, previousStatus)",
                 ".setSql(\"version = version + 1\")");
+        assertContainsAll(slice(source, "private BigDecimal activeReceiveAmount", "private List<SettleDetail> settleDetails"),
+                ".eq(ReceiveRecord::getIsDeleted, 0)",
+                ".eq(ReceiveRecord::getSettleUuid, settleUuid)");
     }
 
     @Test

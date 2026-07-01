@@ -276,12 +276,14 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         SettleOrder viewOrder = snapshotSettleOrder(order);
         List<SettleDetail> details = settleDetailMapper.selectList(
                 new LambdaQueryWrapper<SettleDetail>()
+                        .eq(SettleDetail::getIsDeleted, 0)
                         .eq(SettleDetail::getSettleUuid, uuid));
         List<SettleDetail> snapshotDetails = readSnapshotDetails(order.getSnapBill());
         details = snapshotDetails == null ? normalizeDetailsForInvoiceView(viewOrder, details) : snapshotDetails;
         applySettlementAmountView(viewOrder, details);
         List<ReceiveRecord> receives = receiveRecordMapper.selectList(
                 new LambdaQueryWrapper<ReceiveRecord>()
+                        .eq(ReceiveRecord::getIsDeleted, 0)
                         .eq(ReceiveRecord::getSettleUuid, uuid)
                         .orderByAsc(ReceiveRecord::getReceiveDate));
         SettleDetailVO vo = new SettleDetailVO();
@@ -484,6 +486,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         }
         List<String> settleUuids = records.stream().map(SettleOrder::getUuid).toList();
         List<SettleDetail> details = settleDetailMapper.selectList(new LambdaQueryWrapper<SettleDetail>()
+                .eq(SettleDetail::getIsDeleted, 0)
                 .in(SettleDetail::getSettleUuid, settleUuids));
         Map<String, List<SettleDetail>> detailsBySettle = new LinkedHashMap<>();
         for (SettleDetail detail : details) {
@@ -553,6 +556,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private BigDecimal activeReceiveAmount(String settleUuid) {
         List<ReceiveRecord> receives = receiveRecordMapper.selectList(
                 new LambdaQueryWrapper<ReceiveRecord>()
+                        .eq(ReceiveRecord::getIsDeleted, 0)
                         .eq(ReceiveRecord::getSettleUuid, settleUuid));
         BigDecimal total = BigDecimal.ZERO;
         for (ReceiveRecord record : receives) {
@@ -565,6 +569,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     private List<SettleDetail> settleDetails(String settleUuid) {
         return settleDetailMapper.selectList(new LambdaQueryWrapper<SettleDetail>()
+                .eq(SettleDetail::getIsDeleted, 0)
                 .eq(SettleDetail::getSettleUuid, settleUuid));
     }
 
@@ -1036,6 +1041,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     private void ensureOrderNotSettled(String orderUuid) {
         long count = settleDetailMapper.selectCount(new LambdaQueryWrapper<SettleDetail>()
+                .eq(SettleDetail::getIsDeleted, 0)
                 .eq(SettleDetail::getOrderUuid, orderUuid));
         if (count > 0) {
             throw new BusinessException(ErrorCode.E004, "加工单已生成结算单，不可重复结算");

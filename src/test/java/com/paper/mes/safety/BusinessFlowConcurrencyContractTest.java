@@ -34,6 +34,7 @@ class BusinessFlowConcurrencyContractTest {
 
         assertContainsAll(slice(source, "private void ensureOrdersNotSettled", "private String originalSummary"),
                 "settleDetailMapper.selectCount",
+                ".eq(SettleDetail::getIsDeleted, 0)",
                 ".in(SettleDetail::getOrderUuid, orderUuids)",
                 "throw new BusinessException(ErrorCode.E004, \"关联加工单已生成结算单，不可回退出库\")");
     }
@@ -59,11 +60,13 @@ class BusinessFlowConcurrencyContractTest {
         assertContainsAll(remove,
                 "businessLockService.lockDeliveryOrder(uuid);",
                 "order.getDeliveryStatus() == null || order.getDeliveryStatus() != DELIVERY_STATUS_PENDING",
-                "deliveryDetailMapper.deleteById(detailUuid)",
+                "deliveryDetailMapper.delete(new LambdaQueryWrapper<DeliveryDetail>()",
+                ".eq(DeliveryDetail::getUuid, detailUuid)",
+                ".eq(DeliveryDetail::getDeliveryUuid, uuid)",
                 "refreshTotals(order)");
         assertBefore(remove,
                 "order.getDeliveryStatus() == null || order.getDeliveryStatus() != DELIVERY_STATUS_PENDING",
-                "deliveryDetailMapper.deleteById(detailUuid)");
+                "deliveryDetailMapper.delete(new LambdaQueryWrapper<DeliveryDetail>()");
 
         assertContainsAll(slice(source, "private void refreshTotals", "private void updateFinishStatus"),
                 ".eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)",
@@ -96,6 +99,7 @@ class BusinessFlowConcurrencyContractTest {
                 "rollbackSettledProcessOrder(order.getUuid())");
 
         assertContainsAll(slice(source, "private BigDecimal activeReceiveAmount", "private List<SettleDetail> settleDetails"),
+                ".eq(ReceiveRecord::getIsDeleted, 0)",
                 "record.getRecordStatus() == null || record.getRecordStatus() == RECEIVE_STATUS_ACTIVE",
                 "total = total.add(nz(record.getReceiveAmount()))");
     }
