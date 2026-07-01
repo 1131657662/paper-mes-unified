@@ -59,8 +59,8 @@ export default function DashboardPage() {
               items={overview?.customerRank ?? []}
               yearlyItems={overview?.customerYearRank ?? []}
               mode="amount"
-              subtitle="按加工费金额排序，可切换月度和近一年。"
-              title="客户加工金额排行"
+              subtitle="按加工应收排序，可切换月度和近一年。"
+              title="客户加工应收排行"
             />
             <DashboardRankList
               emptyText="本月暂无机台产出统计"

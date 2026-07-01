@@ -155,10 +155,10 @@
                            ELSE 0 END), 0) AS totalAmount,
                        COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
                            THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
-                           ELSE 0 END), 0) AS settledAmount,
+                           ELSE 0 END), 0) AS settled_amount,
                        COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL AND amountScope.orderAmountBase > 0
                            THEN COALESCE(o.total_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
-                           ELSE 0 END), 0) AS pendingSettleAmount,
+                           ELSE 0 END), 0) AS pending_settle_amount,
                        COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
                            THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
                            ELSE 0 END), 0) AS receivedAmount,
@@ -176,8 +176,8 @@
                        COALESCE(SUM(o.total_process_amount), 0) AS processAmount,
                        COALESCE(SUM(o.total_extra_amount), 0) AS extraAmount,
                        COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount,
-                       COALESCE(SUM(settle.billedAmount), 0) AS settledAmount,
-                       COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pendingSettleAmount,
+                       COALESCE(SUM(settle.billedAmount), 0) AS settled_amount,
+                       COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pending_settle_amount,
                        COALESCE(SUM(settle.receivedAmount), 0) AS receivedAmount,
                        COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
                            - COALESCE(settle.receivedAmount, 0), 0)), 0) AS unreceivedAmount
@@ -247,8 +247,8 @@
                        COALESCE(SUM(d.processAmount), 0) AS processAmount,
                        COALESCE(SUM(d.extraAmount), 0) AS extraAmount,
                        COALESCE(SUM(d.totalAmount), 0) AS totalAmount,
-                       COALESCE(SUM(d.settledAmount), 0) AS settledAmount,
-                       COALESCE(SUM(d.pendingSettleAmount), 0) AS pendingSettleAmount,
+                       COALESCE(SUM(d.settled_amount), 0) AS settled_amount,
+                       COALESCE(SUM(d.pending_settle_amount), 0) AS pending_settle_amount,
                        COALESCE(SUM(d.receivedAmount), 0) AS receivedAmount,
                        COALESCE(SUM(d.unreceivedAmount), 0) AS unreceivedAmount
                 FROM (
@@ -261,10 +261,10 @@
                                 ELSE 0 END AS totalAmount,
                            CASE WHEN rb.orderAmountBase > 0
                                 THEN rb.orderSettledAmount * rb.rollAmountBase / rb.orderAmountBase
-                                ELSE 0 END AS settledAmount,
+                                ELSE 0 END AS settled_amount,
                            CASE WHEN rb.orderAmountBase > 0
                                 THEN rb.orderPendingSettleAmount * rb.rollAmountBase / rb.orderAmountBase
-                                ELSE 0 END AS pendingSettleAmount,
+                                ELSE 0 END AS pending_settle_amount,
                            CASE WHEN rb.orderAmountBase > 0
                                 THEN rb.orderReceivedAmount * rb.rollAmountBase / rb.orderAmountBase
                                 ELSE 0 END AS receivedAmount,
@@ -410,10 +410,10 @@
                                    ELSE 0 END), 0) AS totalAmount,
                                COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
                                    THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
-                                   ELSE 0 END), 0) AS settledAmount,
+                                   ELSE 0 END), 0) AS settled_amount,
                                COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL AND amountScope.orderAmountBase > 0
                                    THEN COALESCE(o.total_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
-                                   ELSE 0 END), 0) AS pendingSettleAmount,
+                                   ELSE 0 END), 0) AS pending_settle_amount,
                                COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
                                    THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
                                    ELSE 0 END), 0) AS receivedAmount,
@@ -431,8 +431,8 @@
                                COALESCE(SUM(o.total_process_amount), 0) AS processAmount,
                                COALESCE(SUM(o.total_extra_amount), 0) AS extraAmount,
                                COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount,
-                               COALESCE(SUM(settle.billedAmount), 0) AS settledAmount,
-                               COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pendingSettleAmount,
+                               COALESCE(SUM(settle.billedAmount), 0) AS settled_amount,
+                               COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pending_settle_amount,
                                COALESCE(SUM(settle.receivedAmount), 0) AS receivedAmount,
                                COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
                                    - COALESCE(settle.receivedAmount, 0), 0)), 0) AS unreceivedAmount
@@ -557,10 +557,10 @@
                            ELSE 0 END AS totalAmount,
                        CASE WHEN amountScope.orderAmountBase > 0
                            THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
-                           ELSE 0 END AS settledAmount,
+                           ELSE 0 END AS settled_amount,
                        CASE WHEN settle.order_uuid IS NULL AND amountScope.orderAmountBase > 0
                            THEN COALESCE(o.total_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
-                           ELSE 0 END AS pendingSettleAmount,
+                           ELSE 0 END AS pending_settle_amount,
                        CASE WHEN amountScope.orderAmountBase > 0
                            THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
                            ELSE 0 END AS receivedAmount,
@@ -578,8 +578,8 @@
                        COALESCE(o.total_process_amount, 0) AS processAmount,
                        COALESCE(o.total_extra_amount, 0) AS extraAmount,
                        COALESCE(settle.billedAmount, o.total_amount, 0) AS totalAmount,
-                       COALESCE(settle.billedAmount, 0) AS settledAmount,
-                       CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END AS pendingSettleAmount,
+                       COALESCE(settle.billedAmount, 0) AS settled_amount,
+                       CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END AS pending_settle_amount,
                        COALESCE(settle.receivedAmount, 0) AS receivedAmount,
                        GREATEST(COALESCE(settle.billedAmount, 0)
                            - COALESCE(settle.receivedAmount, 0), 0) AS unreceivedAmount

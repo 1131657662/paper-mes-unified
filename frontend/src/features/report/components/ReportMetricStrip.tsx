@@ -27,7 +27,7 @@ export default function ReportMetricStrip({ overview }: Props) {
       icon: <DollarOutlined />,
       main: formatMoney(overview?.totalAmount),
       sub: `加工费 ${formatMoney(overview?.processAmount)} / 附加 ${formatMoney(overview?.extraAmount)}`,
-      title: '加工收入',
+      title: '加工应收',
       tone: 'primary',
     },
     {
@@ -46,7 +46,7 @@ export default function ReportMetricStrip({ overview }: Props) {
     {
       icon: <AccountBookOutlined />,
       main: formatMoney(overview?.unreceivedAmount),
-      sub: `已收 ${formatMoney(overview?.receivedAmount)} / 待结算 ${formatMoney(overview?.pendingSettleAmount)}`,
+      sub: `有效已收 ${formatMoney(overview?.receivedAmount)} / 待结算应收 ${formatMoney(overview?.pendingSettleAmount)}`,
       title: '已结算未收',
       tone: 'danger',
     },

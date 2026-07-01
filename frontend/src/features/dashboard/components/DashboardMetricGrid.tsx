@@ -20,7 +20,7 @@ export default function DashboardMetricGrid({ metrics }: Props) {
       label: '本月完成加工',
       main: `${metrics?.monthOrderCount ?? 0} 单`,
       sub: `原卷 ${formatKg(metrics?.monthOriginalWeight)}`,
-      tip: `成品 ${formatKg(metrics?.monthFinishWeight)} / 加工费 ${formatMoney(metrics?.monthAmount)}`,
+      tip: `成品 ${formatKg(metrics?.monthFinishWeight)} / 加工应收 ${formatMoney(metrics?.monthAmount)}`,
       tone: 'blue',
     },
     {
@@ -36,7 +36,7 @@ export default function DashboardMetricGrid({ metrics }: Props) {
       label: '已结算未收',
       main: formatMoney(metrics?.receivableAmount),
       sub: `${metrics?.receivableCount ?? 0} 单待跟进`,
-      tip: `待结算 ${formatMoney(metrics?.pendingSettleAmount)}，与客户欠款分开统计`,
+      tip: `待结算应收 ${formatMoney(metrics?.pendingSettleAmount)}，与已结算未收分开统计`,
       tone: 'green',
     },
     {

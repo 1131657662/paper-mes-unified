@@ -94,7 +94,7 @@ export default function ReportPage() {
             <div className="report-workbench__grid">
               <ReportTrendPanel monthly={monthlyQuery.data ?? []} />
               <ReportBarList
-                title="客户加工金额排行"
+                title="客户加工应收排行"
                 emptyText="当前条件暂无客户汇总"
                 items={(customerRankQuery.data ?? []).slice(0, 8).map((item) => ({
                   key: item.dimensionKey,
@@ -105,7 +105,7 @@ export default function ReportPage() {
                 }))}
               />
               <ReportBarList
-                title="产品加工贡献排行"
+                title="产品工艺费贡献排行"
                 emptyText="当前条件暂无产品汇总"
                 items={(productRankQuery.data ?? []).slice(0, 8).map((item) => ({
                   key: item.dimensionKey,

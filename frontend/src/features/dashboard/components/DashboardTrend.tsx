@@ -13,14 +13,14 @@ export default function DashboardTrend({ monthly }: Props) {
   const totalAmount = displayMonthly.reduce((sum, item) => sum + Number(item.amount ?? 0), 0)
   const totalOrders = displayMonthly.reduce((sum, item) => sum + Number(item.orderCount ?? 0), 0)
   const points = buildPoints(displayMonthly, maxAmount)
-  const hasIncome = maxAmount > 0
+  const hasReceivable = maxAmount > 0
 
   return (
     <section className="dashboard-panel dashboard-trend">
-      <DashboardPanelHead title="分析概览" subtitle="近一年加工费收入走势，优先看月份波动和客户结算节奏。" />
+      <DashboardPanelHead title="分析概览" subtitle="近一年加工应收曲线，优先看月份波动和客户结算节奏。" />
       <div className="dashboard-trend__summary">
         <div>
-          <span>年度加工费</span>
+          <span>年度加工应收</span>
           <strong>{formatMoney(totalAmount)}</strong>
         </div>
         <div>
@@ -28,16 +28,16 @@ export default function DashboardTrend({ monthly }: Props) {
           <strong>{formatNumber(totalOrders)} 单</strong>
         </div>
         <div>
-          <span>月均加工费</span>
+          <span>月均加工应收</span>
           <strong>{formatMoney(totalAmount / 12)}</strong>
         </div>
       </div>
       <div className="dashboard-trend__line-chart">
-        <IncomeLineChart hasIncome={hasIncome} points={points} />
-        {!hasIncome && (
+        <ReceivableLineChart hasReceivable={hasReceivable} points={points} />
+        {!hasReceivable && (
           <div className="dashboard-trend__empty">
-            <strong>暂无近一年加工费收入</strong>
-            <span>完成加工结算后，这里会自动形成月度收入曲线。</span>
+            <strong>暂无近一年加工应收</strong>
+            <span>完成加工后，这里会自动形成月度应收曲线。</span>
           </div>
         )}
       </div>
@@ -50,14 +50,14 @@ export default function DashboardTrend({ monthly }: Props) {
   )
 }
 
-function IncomeLineChart({ hasIncome, points }: { hasIncome: boolean; points: ChartPoint[] }) {
+function ReceivableLineChart({ hasReceivable, points }: { hasReceivable: boolean; points: ChartPoint[] }) {
   const path = buildSmoothPath(points)
   const firstPoint = points[0]
   const lastPoint = points[points.length - 1]
   const areaPath = firstPoint && lastPoint ? `${path} L ${lastPoint.x} 196 L ${firstPoint.x} 196 Z` : ''
 
   return (
-    <svg className="dashboard-trend__svg" viewBox="0 0 640 220" role="img" aria-label="近一年加工费收入曲线">
+    <svg className="dashboard-trend__svg" viewBox="0 0 640 220" role="img" aria-label="近一年加工应收曲线">
       <defs>
         <linearGradient id="dashboard-income-fill" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor="#1677ff" stopOpacity="0.22" />
@@ -68,10 +68,10 @@ function IncomeLineChart({ hasIncome, points }: { hasIncome: boolean; points: Ch
         <line className="dashboard-trend__grid" key={index} x1="24" x2="616" y1={28 + index * 48} y2={28 + index * 48} />
       ))}
       <path className="dashboard-trend__area" d={areaPath} />
-      <path className={hasIncome ? 'dashboard-trend__line' : 'dashboard-trend__line dashboard-trend__line--empty'} d={path} />
+      <path className={hasReceivable ? 'dashboard-trend__line' : 'dashboard-trend__line dashboard-trend__line--empty'} d={path} />
       {points.map((point) => (
         <g key={point.month}>
-          <circle className={hasIncome ? 'dashboard-trend__dot' : 'dashboard-trend__dot dashboard-trend__dot--empty'} cx={point.x} cy={point.y} r="4.5" />
+          <circle className={hasReceivable ? 'dashboard-trend__dot' : 'dashboard-trend__dot dashboard-trend__dot--empty'} cx={point.x} cy={point.y} r="4.5" />
           {point.amount > 0 && (
             <text className="dashboard-trend__point-label" x={point.x} y={Math.max(18, point.y - 10)} textAnchor="middle">
               {shortMoney(point.amount)}

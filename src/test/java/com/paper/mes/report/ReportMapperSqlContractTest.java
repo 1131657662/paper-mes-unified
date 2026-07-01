@@ -52,6 +52,18 @@ class ReportMapperSqlContractTest {
         assertTrue(sql.contains("GREATEST(COALESCE(settle.billedAmount, 0)"));
         assertTrue(sql.contains("- COALESCE(settle.receivedAmount, 0), 0)"));
         assertTrue(sql.contains("CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END"));
+        assertFalse(sql.contains("GREATEST(COALESCE(settle.billedAmount, o.total_amount, 0)"));
+        assertFalse(sql.contains("COALESCE(settle.billedAmount, o.total_amount, 0)\n                           - COALESCE(settle.receivedAmount"));
+    }
+
+    @Test
+    void reportSql_whenMappingSettlementFields_usesUnderscoreAliases() throws IOException {
+        String sql = resourceText("mapper/report/ReportMapper.xml");
+
+        assertTrue(sql.contains("AS settled_amount"));
+        assertTrue(sql.contains("AS pending_settle_amount"));
+        assertFalse(sql.contains("AS settledAmount"));
+        assertFalse(sql.contains("AS pendingSettleAmount"));
     }
 
     @Test

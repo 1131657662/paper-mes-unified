@@ -50,7 +50,7 @@ export default function ReportTables({
         <div className="report-table-block">
           <div className="report-table-block__head">
             <strong>维度汇总</strong>
-            <span>按当前维度聚合费用、重量、损耗和未收款。</span>
+            <span>按当前维度聚合应收、重量、损耗和未收款。</span>
           </div>
           <div className="document-module-table">
             <DocumentDetailTable<ReportDimensionVO>
@@ -115,10 +115,10 @@ function dimensionColumns(dimension: ReportDimension): ColumnsType<ReportDimensi
     { title: '复卷费', dataIndex: 'rewindAmount', key: 'rewindAmount', width: 118, align: 'right', render: formatMoney },
     { title: '加工费', dataIndex: 'processAmount', key: 'processAmount', width: 118, align: 'right', render: formatMoney },
     { title: '附加费', dataIndex: 'extraAmount', key: 'extraAmount', width: 118, align: 'right', render: formatMoney },
-    { title: '收入合计', dataIndex: 'totalAmount', key: 'totalAmount', width: 128, align: 'right', render: formatMoney },
-    { title: '已结算', dataIndex: 'settledAmount', key: 'settledAmount', width: 124, align: 'right', render: formatMoney },
-    { title: '待结算', dataIndex: 'pendingSettleAmount', key: 'pendingSettleAmount', width: 124, align: 'right', render: formatMoney },
-    { title: '已收', dataIndex: 'receivedAmount', key: 'receivedAmount', width: 128, align: 'right', render: formatMoney },
+    { title: '应收合计', dataIndex: 'totalAmount', key: 'totalAmount', width: 128, align: 'right', render: formatMoney },
+    { title: '已结算应收', dataIndex: 'settledAmount', key: 'settledAmount', width: 132, align: 'right', render: formatMoney },
+    { title: '待结算应收', dataIndex: 'pendingSettleAmount', key: 'pendingSettleAmount', width: 132, align: 'right', render: formatMoney },
+    { title: '有效已收', dataIndex: 'receivedAmount', key: 'receivedAmount', width: 128, align: 'right', render: formatMoney },
     { title: '已结算未收', dataIndex: 'unreceivedAmount', key: 'unreceivedAmount', width: 128, align: 'right', render: formatMoney },
   ]
 }
@@ -144,10 +144,10 @@ function detailColumns(onOpenOrder: (uuid: string) => void): ColumnsType<ReportD
     { title: '复卷费', dataIndex: 'rewindAmount', key: 'rewindAmount', width: 116, align: 'right', render: formatMoney },
     { title: '加工费', dataIndex: 'processAmount', key: 'processAmount', width: 116, align: 'right', render: formatMoney },
     { title: '附加费', dataIndex: 'extraAmount', key: 'extraAmount', width: 116, align: 'right', render: formatMoney },
-    { title: '收入合计', dataIndex: 'totalAmount', key: 'totalAmount', width: 124, align: 'right', render: formatMoney },
-    { title: '已结算', dataIndex: 'settledAmount', key: 'settledAmount', width: 124, align: 'right', render: formatMoney },
-    { title: '待结算', dataIndex: 'pendingSettleAmount', key: 'pendingSettleAmount', width: 124, align: 'right', render: formatMoney },
-    { title: '已收', dataIndex: 'receivedAmount', key: 'receivedAmount', width: 124, align: 'right', render: formatMoney },
+    { title: '应收合计', dataIndex: 'totalAmount', key: 'totalAmount', width: 124, align: 'right', render: formatMoney },
+    { title: '已结算应收', dataIndex: 'settledAmount', key: 'settledAmount', width: 132, align: 'right', render: formatMoney },
+    { title: '待结算应收', dataIndex: 'pendingSettleAmount', key: 'pendingSettleAmount', width: 132, align: 'right', render: formatMoney },
+    { title: '有效已收', dataIndex: 'receivedAmount', key: 'receivedAmount', width: 124, align: 'right', render: formatMoney },
     { title: '已结算未收', dataIndex: 'unreceivedAmount', key: 'unreceivedAmount', width: 124, align: 'right', render: formatMoney },
   ]
 }

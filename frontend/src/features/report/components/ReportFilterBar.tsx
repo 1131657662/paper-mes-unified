@@ -42,7 +42,7 @@ export default function ReportFilterBar(props: Props) {
   return (
     <div className="report-header">
       <p className="report-header__description">
-        按客户、产品、工艺、机台、开票和结算方式分析加工收入、吨位、损耗与未收款。
+        按客户、产品、工艺、机台、开票和结算方式分析加工应收、吨位、损耗与未收款。
       </p>
       <div className="report-header__actions">
         <Button icon={<ReloadOutlined />} onClick={props.onRefresh}>

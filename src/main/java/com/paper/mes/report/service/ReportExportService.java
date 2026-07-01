@@ -43,8 +43,8 @@ public class ReportExportService {
         row(sheet, 5, "损耗kg", overview.getLossWeight(), "损耗率%", overview.getLossRatio());
         row(sheet, 6, "锯纸费", overview.getSawAmount(), "复卷费", overview.getRewindAmount());
         row(sheet, 7, "加工费", overview.getProcessAmount(), "附加费", overview.getExtraAmount());
-        row(sheet, 8, "收入合计", overview.getTotalAmount(), "已结算金额", overview.getSettledAmount());
-        row(sheet, 9, "待结算金额", overview.getPendingSettleAmount(), "已收金额", overview.getReceivedAmount());
+        row(sheet, 8, "应收合计", overview.getTotalAmount(), "已结算应收", overview.getSettledAmount());
+        row(sheet, 9, "待结算应收", overview.getPendingSettleAmount(), "有效已收", overview.getReceivedAmount());
         row(sheet, 10, "已结算未收", overview.getUnreceivedAmount(), "", "");
         autosize(sheet, 5);
     }
@@ -54,8 +54,8 @@ public class ReportExportService {
                                  String dimension,
                                  CellStyle headerStyle) {
         header(sheet, headerStyle, "维度", "加工单", "原卷", "成品", "原纸kg", "成品kg", "损耗kg",
-                "损耗率%", "刀数", "锯纸费", "复卷费", "加工费", "附加费", "收入合计",
-                "已结算", "待结算", "已收", "已结算未收");
+                "损耗率%", "刀数", "锯纸费", "复卷费", "加工费", "附加费", "应收合计",
+                "已结算应收", "待结算应收", "有效已收", "已结算未收");
         int index = 1;
         for (ReportDimensionVO item : rows) {
             Row row = sheet.createRow(index++);
@@ -84,7 +84,7 @@ public class ReportExportService {
     private void writeDetails(Sheet sheet, List<ReportDetailVO> rows, CellStyle headerStyle) {
         header(sheet, headerStyle, "加工单号", "日期", "客户", "纸品", "工艺", "状态", "结算",
                 "开票", "原卷", "成品", "原纸kg", "成品kg", "损耗kg", "损耗率%", "刀数",
-                "锯纸费", "复卷费", "加工费", "附加费", "收入合计", "已结算", "待结算", "已收", "已结算未收");
+                "锯纸费", "复卷费", "加工费", "附加费", "应收合计", "已结算应收", "待结算应收", "有效已收", "已结算未收");
         int index = 1;
         for (ReportDetailVO item : rows) {
             Row row = sheet.createRow(index++);
