@@ -671,10 +671,7 @@
             <include refid="SettleAllocationByOrder"/>
         ) settle ON settle.order_uuid = o.uuid
         <where>
-            o.is_deleted = 0 AND o.order_status &gt;= 4
-            <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
-            <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
-            <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
+            <include refid="OrderFilters"/>
         </where>
         GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
         ORDER BY month
@@ -706,10 +703,7 @@
             <include refid="SettleAllocationByOrder"/>
         ) settle ON settle.order_uuid = o.uuid
         <where>
-            o.is_deleted = 0 AND o.order_status &gt;= 4
-            <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
-            <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
-            <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
+            <include refid="OrderFilters"/>
         </where>
         GROUP BY o.customer_uuid, o.customer_name
         ORDER BY totalAmount DESC
@@ -726,9 +720,8 @@
           ON r.order_uuid = o.uuid AND o.is_deleted = 0 AND o.order_status &gt;= 4
         <where>
             r.is_deleted = 0
-            <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
-            <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
-            <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
+            AND <include refid="OrderFilters"/>
+            <include refid="RollFilters"/>
         </where>
         GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
         ORDER BY month
@@ -752,9 +745,8 @@
         ) sk ON sk.original_uuid = r.uuid
         <where>
             r.is_deleted = 0 AND r.machine_uuid IS NOT NULL
-            <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
-            <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
-            <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
+            AND <include refid="OrderFilters"/>
+            <include refid="RollFilters"/>
         </where>
         GROUP BY r.machine_uuid, m.machine_name
         ORDER BY totalOutputWeight DESC

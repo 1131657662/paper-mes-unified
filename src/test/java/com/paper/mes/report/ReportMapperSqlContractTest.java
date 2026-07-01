@@ -46,6 +46,26 @@ class ReportMapperSqlContractTest {
         assertTrue(sql.contains("COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase"));
     }
 
+    @Test
+    void legacyReportSummarySql_usesUnifiedOrderFilters() throws IOException {
+        String sql = resourceText("mapper/report/ReportMapper.xml");
+
+        assertTrue(slice(sql, "<select id=\"monthlySummary\"", "<select id=\"customerSummary\"")
+                .contains("<include refid=\"OrderFilters\"/>"));
+        assertTrue(slice(sql, "<select id=\"customerSummary\"", "<select id=\"lossAnalysis\"")
+                .contains("<include refid=\"OrderFilters\"/>"));
+    }
+
+    @Test
+    void rollLevelLegacyReportSql_usesRollFilters() throws IOException {
+        String sql = resourceText("mapper/report/ReportMapper.xml");
+
+        assertTrue(slice(sql, "<select id=\"lossAnalysis\"", "<select id=\"machineOutput\"")
+                .contains("<include refid=\"RollFilters\"/>"));
+        assertTrue(slice(sql, "<select id=\"machineOutput\"", "</mapper>")
+                .contains("<include refid=\"RollFilters\"/>"));
+    }
+
     private String settleAllocationSql(String resource) throws IOException {
         String sql = resourceText(resource);
         String start = "<sql id=\"SettleAllocationByOrder\">";
@@ -66,5 +86,13 @@ class ReportMapperSqlContractTest {
 
     private String normalize(String value) {
         return value.replaceAll("\\s+", " ").trim();
+    }
+
+    private String slice(String text, String start, String end) {
+        int startIndex = text.indexOf(start);
+        int endIndex = text.indexOf(end, startIndex + start.length());
+        assertTrue(startIndex >= 0, "Missing start: " + start);
+        assertTrue(endIndex >= 0, "Missing end: " + end);
+        return text.substring(startIndex, endIndex);
     }
 }
