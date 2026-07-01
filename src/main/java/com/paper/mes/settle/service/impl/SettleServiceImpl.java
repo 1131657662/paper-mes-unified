@@ -387,7 +387,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             if (order != null && order.getOrderStatus() != null && order.getOrderStatus() == ORDER_STATUS_SETTLED) {
                 rollbackSettledProcessOrder(order.getUuid());
             }
-            ConcurrencyGuard.requireRowUpdated(settleDetailMapper.deleteById(detail.getUuid()));
+            ConcurrencyGuard.requireRowUpdated(settleDetailMapper.delete(new LambdaQueryWrapper<SettleDetail>()
+                    .eq(SettleDetail::getUuid, detail.getUuid())
+                    .eq(SettleDetail::getSettleUuid, uuid)));
         }
         deleteSettleOrderForVoid(settle);
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,

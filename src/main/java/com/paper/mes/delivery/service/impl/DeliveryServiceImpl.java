@@ -485,7 +485,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         if (detail == null || !uuid.equals(detail.getDeliveryUuid())) {
             throw new BusinessException(ErrorCode.E002, "出库明细不存在");
         }
-        ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.deleteById(detailUuid));
+        ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.delete(new LambdaQueryWrapper<DeliveryDetail>()
+                .eq(DeliveryDetail::getUuid, detailUuid)
+                .eq(DeliveryDetail::getDeliveryUuid, uuid)));
         refreshTotals(order);
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                 order.getUuid(), order.getDeliveryNo(),
