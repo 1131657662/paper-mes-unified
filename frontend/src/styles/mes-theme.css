@@ -58,6 +58,13 @@
   padding-right: 4px;
 }
 
+.mes-route-loading {
+  display: grid;
+  min-height: 360px;
+  place-items: center;
+  color: var(--mes-color-text-secondary);
+}
+
 .mes-spin-fill,
 .mes-spin-fill > .ant-spin-container {
   height: 100%;
