@@ -1,7 +1,7 @@
 export const SETTLE_STATUS: Record<number, { text: string; color: string }> = {
-  1: { text: '待结算', color: 'warning' },
+  1: { text: '待收款', color: 'warning' },
   2: { text: '部分收款', color: 'processing' },
-  3: { text: '全部结清', color: 'success' },
+  3: { text: '已结清', color: 'success' },
 }
 
 export const SETTLE_TYPE: Record<number, string> = {

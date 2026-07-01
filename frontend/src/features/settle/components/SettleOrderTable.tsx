@@ -95,7 +95,7 @@ function buildColumns(actions: {
             percent={Number(formatPercent(record.receivedAmount ?? 0, record.totalAmount ?? 0).replace('%', ''))}
             size="small"
           />
-          <span>{formatMoney(record.receivedAmount)} / {formatMoney(record.unreceivedAmount)}未收</span>
+          <span>已收 {formatMoney(record.receivedAmount)} / 未收 {formatMoney(record.unreceivedAmount)}</span>
         </div>
       ),
     },

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Button, DatePicker, Form, Input, InputNumber, Modal, Radio, message } from 'antd'
 import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
-import { receivePayment } from '../../api/settle'
+import { useReceiveSettle } from '../../features/settle/hooks/useReceiveSettle'
 import { useAuthUser } from '../../stores/authStore'
 import type { ReceiveDTO } from '../../types/settle'
 
@@ -30,7 +30,7 @@ export default function ReceiveModal({
   onSuccess,
 }: Props) {
   const [form] = Form.useForm<ReceiveFormValues>()
-  const [submitting, setSubmitting] = useState(false)
+  const receiveMutation = useReceiveSettle()
   const user = useAuthUser()
   const usableUnreceivedAmount = roundMoney(unreceivedAmount)
   const canReuseUnreceived = usableUnreceivedAmount > 0
@@ -64,14 +64,9 @@ export default function ReceiveModal({
       remark: cleanText(values.remark),
     }
 
-    setSubmitting(true)
-    try {
-      await receivePayment(settleUuid, dto)
-      message.success('收款登记成功')
-      onSuccess()
-    } finally {
-      setSubmitting(false)
-    }
+    await receiveMutation.mutateAsync({ uuid: settleUuid, data: dto })
+    message.success('收款登记成功')
+    onSuccess()
   }
 
   const fillUnreceivedAmount = () => {
@@ -85,7 +80,7 @@ export default function ReceiveModal({
       open={open}
       onOk={handleSubmit}
       onCancel={onClose}
-      confirmLoading={submitting}
+      confirmLoading={receiveMutation.isPending}
       destroyOnHidden
       forceRender
     >
