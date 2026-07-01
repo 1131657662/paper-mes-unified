@@ -6,6 +6,7 @@ import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { useNavigate } from 'react-router-dom'
 import { pagePapers, deletePaper } from '../../api/paper'
+import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import TooltipText from '../../components/biz/TooltipText'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
@@ -94,6 +95,8 @@ export default function PaperList() {
       pagination={mesTablePagination(10)}
       search={{ labelWidth: 'auto' }}
       scroll={{ x: resizable.scrollX, y: '100%' }}
+      tableLayout="fixed"
+      options={mesProTableOptions()}
     />
   )
 }

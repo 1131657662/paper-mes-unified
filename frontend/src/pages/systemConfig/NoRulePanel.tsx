@@ -54,6 +54,7 @@ export default function NoRulePanel() {
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         scroll={{ x: resizable.scrollX, y: '100%' }}
         options={mesProTableOptions()}
+        tableLayout="fixed"
       />
       <NoRuleModal
         item={editing}

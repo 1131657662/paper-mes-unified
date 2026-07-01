@@ -9,6 +9,7 @@ import {
   pageCustomers,
   deleteCustomer,
 } from '../../api/customer'
+import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import TooltipText from '../../components/biz/TooltipText'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
@@ -134,6 +135,8 @@ export default function CustomerList() {
       pagination={mesTablePagination(10)}
       search={{ labelWidth: 'auto' }}
       scroll={{ x: resizable.scrollX, y: '100%' }}
+      tableLayout="fixed"
+      options={mesProTableOptions()}
     />
   )
 }

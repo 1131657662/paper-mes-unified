@@ -355,6 +355,17 @@
   background: #ffffff;
 }
 
+.process-order-table .ant-table-header {
+  flex: 0 0 auto;
+  overflow: hidden !important;
+  background: #f7f9fc;
+}
+
+.process-order-table .ant-table-header table,
+.process-order-table .ant-table-body table {
+  table-layout: fixed !important;
+}
+
 .process-order-table .ant-table-content > table {
   min-width: 100%;
 }

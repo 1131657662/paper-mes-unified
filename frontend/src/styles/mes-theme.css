@@ -477,6 +477,17 @@
   scrollbar-gutter: stable;
 }
 
+.mes-pro-table-page .ant-table-header {
+  flex: 0 0 auto;
+  overflow: hidden !important;
+  background: #f7f9fc;
+}
+
+.mes-pro-table-page .ant-table-header table,
+.mes-pro-table-page .ant-table-body table {
+  table-layout: fixed !important;
+}
+
 .mes-pro-table-page .ant-table-thead > tr > th {
   background: #f7f9fc;
   color: var(--mes-color-text-secondary);
@@ -583,8 +594,13 @@
 
 .app-shell__content .ant-table-thead > tr > th.ant-table-cell-fix-left,
 .app-shell__content .ant-table-thead > tr > th.ant-table-cell-fix-right {
-  z-index: 4;
+  z-index: 5;
   background: #f7f9fc;
+}
+
+.app-shell__content .ant-table-header .ant-table-cell-fix-left,
+.app-shell__content .ant-table-header .ant-table-cell-fix-right {
+  z-index: 6;
 }
 
 .app-shell__content .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,

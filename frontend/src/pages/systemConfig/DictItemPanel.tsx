@@ -74,6 +74,7 @@ export default function DictItemPanel() {
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         scroll={{ x: resizable.scrollX, y: '100%' }}
         options={mesProTableOptions()}
+        tableLayout="fixed"
       />
       <DictItemModal
         item={editing}

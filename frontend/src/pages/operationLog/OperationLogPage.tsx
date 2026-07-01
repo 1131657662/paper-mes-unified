@@ -106,6 +106,7 @@ export default function OperationLogPage() {
         scroll={{ x: resizable.scrollX, y: '100%' }}
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         options={mesProTableOptions()}
+        tableLayout="fixed"
         dateFormatter="string"
       />
 

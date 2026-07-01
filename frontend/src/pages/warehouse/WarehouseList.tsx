@@ -9,6 +9,7 @@ import {
   pageWarehouses,
   deleteWarehouse,
 } from '../../api/warehouse'
+import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import TooltipText from '../../components/biz/TooltipText'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
@@ -109,6 +110,8 @@ export default function WarehouseList() {
       pagination={mesTablePagination(10)}
       search={{ labelWidth: 'auto' }}
       scroll={{ x: resizable.scrollX, y: '100%' }}
+      tableLayout="fixed"
+      options={mesProTableOptions()}
     />
   )
 }

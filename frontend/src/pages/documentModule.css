@@ -82,6 +82,16 @@
   scrollbar-gutter: stable;
 }
 
+.document-detail-table .ant-table-header {
+  overflow: hidden !important;
+  background: #f7f9fc;
+}
+
+.document-detail-table .ant-table-header table,
+.document-detail-table .ant-table-body table {
+  table-layout: fixed !important;
+}
+
 .document-module-table .ant-table-thead > tr > th {
   background: #f7f9fc;
   color: var(--mes-color-text-secondary);
