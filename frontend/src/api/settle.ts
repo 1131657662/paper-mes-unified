@@ -12,6 +12,7 @@ import type {
   ReceiveDTO,
   SettleActionReasonDTO,
 } from '../types/settle'
+import { downloadFileFromResponse } from '../utils/downloadFile'
 
 export function getSettleOrderList(query: SettleQuery) {
   return request<PageResult<SettleOrder>>({
@@ -90,22 +91,5 @@ export async function exportSettleOrder(uuid: string) {
     method: 'get',
     responseType: 'blob',
   })
-  downloadBlob(response.data, filenameFromDisposition(response.headers['content-disposition']))
-}
-
-function downloadBlob(blob: Blob, filename?: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename || `结算单_${Date.now()}.xlsx`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
-}
-
-function filenameFromDisposition(disposition?: string) {
-  if (!disposition) return undefined
-  const match = disposition.match(/filename\*=UTF-8''([^;]+)/)
-  return match?.[1] ? decodeURIComponent(match[1]) : undefined
+  await downloadFileFromResponse(response, `结算单_${Date.now()}.xlsx`)
 }
