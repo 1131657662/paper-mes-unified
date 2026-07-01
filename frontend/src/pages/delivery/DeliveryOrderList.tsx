@@ -63,6 +63,7 @@ export default function DeliveryOrderList() {
 
   const handleConfirm = async (record: DeliveryOrder) => {
     const signUser = await askSignUser(record)
+    if (signUser === null) return
     await confirmMutation.mutateAsync({
       uuid: record.uuid,
       data: signUser ? { signUser } : undefined,
@@ -76,7 +77,8 @@ export default function DeliveryOrderList() {
       message.warning('请先选择待出库单据')
       return
     }
-    await confirmBatchSign(selectedPendingOrders.length)
+    const confirmed = await confirmBatchSign(selectedPendingOrders.length)
+    if (!confirmed) return
     for (const record of selectedPendingOrders) {
       await confirmMutation.mutateAsync({ uuid: record.uuid })
     }
@@ -106,6 +108,7 @@ export default function DeliveryOrderList() {
       return
     }
     const reason = await askRollbackReason(selectedSingle.deliveryNo)
+    if (!reason) return
     await rollbackDeliveryOrder(selectedSingle.uuid, { reason })
     message.success('已回退为待出库，可继续改单')
     rowSelection.clear()
@@ -248,7 +251,7 @@ function statusOptions() {
 
 function askSignUser(record: DeliveryOrder) {
   let signUser = ''
-  return new Promise<string>((resolve, reject) => {
+  return new Promise<string | null>((resolve) => {
     Modal.confirm({
       title: `确认签收 ${record.deliveryNo}`,
       content: (
@@ -265,27 +268,27 @@ function askSignUser(record: DeliveryOrder) {
       okText: '确认签收',
       cancelText: '取消',
       onOk: () => resolve(signUser.trim()),
-      onCancel: () => reject(new Error('cancel')),
+      onCancel: () => resolve(null),
     })
   })
 }
 
 function confirmBatchSign(count: number) {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<boolean>((resolve) => {
     Modal.confirm({
       title: `批量签收 ${count} 张出库单`,
       content: '确认后将逐张扣减所选出库单对应的成品库存。请确认这些单据均已完成司机签收。',
       okText: '确认签收',
       cancelText: '取消',
-      onOk: () => resolve(),
-      onCancel: () => reject(new Error('cancel')),
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
     })
   })
 }
 
 function askRollbackReason(deliveryNo: string) {
   let reason = ''
-  return new Promise<string>((resolve, reject) => {
+  return new Promise<string | null>((resolve) => {
     Modal.confirm({
       title: `回退出库 ${deliveryNo}`,
       content: (
@@ -311,7 +314,7 @@ function askRollbackReason(deliveryNo: string) {
         }
         resolve(value)
       },
-      onCancel: () => reject(new Error('cancel')),
+      onCancel: () => resolve(null),
     })
   })
 }
