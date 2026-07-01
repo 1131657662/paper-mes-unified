@@ -104,9 +104,119 @@ class ArchiveAutoCodeServiceTest {
         assertEquals("CKD000123", captor.getValue().getWarehouseCode());
     }
 
+    @Test
+    void updateCustomer_whenPayloadHasManualCode_keepsExistingCode() {
+        CustomerMapper mapper = mock(CustomerMapper.class);
+        when(mapper.selectById("customer-1")).thenReturn(customer("customer-1", "KH000123"));
+        when(mapper.updateById(any(Customer.class))).thenReturn(1);
+        CustomerServiceImpl service = new CustomerServiceImpl(mock(DocumentNoService.class));
+        ReflectionTestUtils.setField(service, "baseMapper", mapper);
+        CustomerSaveDTO dto = new CustomerSaveDTO();
+        dto.setCustomerCode("MANUAL");
+        dto.setCustomerName("更新客户");
+
+        service.update("customer-1", dto);
+
+        ArgumentCaptor<Customer> captor = ArgumentCaptor.forClass(Customer.class);
+        verify(mapper).updateById(captor.capture());
+        assertEquals("KH000123", captor.getValue().getCustomerCode());
+    }
+
+    @Test
+    void updatePaper_whenPayloadHasManualCode_keepsExistingCode() {
+        PaperMapper mapper = mock(PaperMapper.class);
+        when(mapper.selectById("paper-1")).thenReturn(paper("paper-1", "ZZ000123"));
+        when(mapper.updateById(any(Paper.class))).thenReturn(1);
+        PaperServiceImpl service = new PaperServiceImpl(mock(DocumentNoService.class));
+        ReflectionTestUtils.setField(service, "baseMapper", mapper);
+        PaperSaveDTO dto = new PaperSaveDTO();
+        dto.setPaperCode("MANUAL");
+        dto.setPaperName("更新纸张");
+
+        service.update("paper-1", dto);
+
+        ArgumentCaptor<Paper> captor = ArgumentCaptor.forClass(Paper.class);
+        verify(mapper).updateById(captor.capture());
+        assertEquals("ZZ000123", captor.getValue().getPaperCode());
+    }
+
+    @Test
+    void updateMachine_whenPayloadHasManualCode_keepsExistingCode() {
+        MachineMapper mapper = mock(MachineMapper.class);
+        when(mapper.selectById("machine-1")).thenReturn(machine("machine-1", "JT000123"));
+        when(mapper.updateById(any(Machine.class))).thenReturn(1);
+        MachineServiceImpl service = new MachineServiceImpl(mock(DocumentNoService.class));
+        ReflectionTestUtils.setField(service, "baseMapper", mapper);
+        MachineSaveDTO dto = new MachineSaveDTO();
+        dto.setMachineCode("MANUAL");
+        dto.setMachineName("更新机台");
+
+        service.update("machine-1", dto);
+
+        ArgumentCaptor<Machine> captor = ArgumentCaptor.forClass(Machine.class);
+        verify(mapper).updateById(captor.capture());
+        assertEquals("JT000123", captor.getValue().getMachineCode());
+    }
+
+    @Test
+    void updateWarehouse_whenPayloadHasManualCode_keepsExistingCode() {
+        WarehouseMapper mapper = mock(WarehouseMapper.class);
+        when(mapper.selectById("warehouse-1")).thenReturn(warehouse("warehouse-1", "CKD000123"));
+        when(mapper.updateById(any(Warehouse.class))).thenReturn(1);
+        WarehouseServiceImpl service = new WarehouseServiceImpl(mock(DocumentNoService.class));
+        ReflectionTestUtils.setField(service, "baseMapper", mapper);
+        WarehouseSaveDTO dto = new WarehouseSaveDTO();
+        dto.setWarehouseCode("MANUAL");
+        dto.setWarehouseName("更新仓库");
+
+        service.update("warehouse-1", dto);
+
+        ArgumentCaptor<Warehouse> captor = ArgumentCaptor.forClass(Warehouse.class);
+        verify(mapper).updateById(captor.capture());
+        assertEquals("CKD000123", captor.getValue().getWarehouseCode());
+    }
+
     private DocumentNoService mockNoService(String bizType, String code) {
         DocumentNoService noService = mock(DocumentNoService.class);
         when(noService.next(eq(bizType), any(LocalDate.class))).thenReturn(code);
         return noService;
+    }
+
+    private Customer customer(String uuid, String code) {
+        Customer customer = new Customer();
+        customer.setUuid(uuid);
+        customer.setCustomerCode(code);
+        customer.setCustomerName("existing");
+        customer.setVersion(1);
+        return customer;
+    }
+
+    private Paper paper(String uuid, String code) {
+        Paper paper = new Paper();
+        paper.setUuid(uuid);
+        paper.setPaperCode(code);
+        paper.setPaperName("existing");
+        paper.setVersion(1);
+        return paper;
+    }
+
+    private Machine machine(String uuid, String code) {
+        Machine machine = new Machine();
+        machine.setUuid(uuid);
+        machine.setMachineCode(code);
+        machine.setMachineName("existing");
+        machine.setStatus(1);
+        machine.setVersion(1);
+        return machine;
+    }
+
+    private Warehouse warehouse(String uuid, String code) {
+        Warehouse warehouse = new Warehouse();
+        warehouse.setUuid(uuid);
+        warehouse.setWarehouseCode(code);
+        warehouse.setWarehouseName("existing");
+        warehouse.setStatus(1);
+        warehouse.setVersion(1);
+        return warehouse;
     }
 }
