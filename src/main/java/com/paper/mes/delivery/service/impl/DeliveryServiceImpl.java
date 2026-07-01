@@ -1090,7 +1090,16 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         order.setTotalCount(details.size());
         order.setTotalWeight(totalWeight);
-        ConcurrencyGuard.requireUpdated(updateById(order));
+        ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null,
+                new LambdaUpdateWrapper<DeliveryOrder>()
+                        .eq(DeliveryOrder::getUuid, order.getUuid())
+                        .eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)
+                        .set(DeliveryOrder::getTotalCount, order.getTotalCount())
+                        .set(DeliveryOrder::getTotalWeight, order.getTotalWeight())
+                        .set(DeliveryOrder::getSettleBlockAction, order.getSettleBlockAction())
+                        .set(DeliveryOrder::getUpdateTime, LocalDateTime.now())
+                        .set(DeliveryOrder::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
     }
 
     private void updateFinishStatus(String finishUuid, int fromStatus, int toStatus) {

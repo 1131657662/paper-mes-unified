@@ -54,6 +54,11 @@ class BusinessFlowSafetyContractTest {
                 "businessLockService.lockDeliveryOrder(uuid);",
                 "order.getDeliveryStatus() != DELIVERY_STATUS_PENDING",
                 "refreshTotals(order)");
+        assertContainsAll(slice(source, "private void refreshTotals", "private void updateFinishStatus"),
+                ".eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)",
+                ".set(DeliveryOrder::getTotalCount, order.getTotalCount())",
+                ".set(DeliveryOrder::getTotalWeight, order.getTotalWeight())",
+                ".setSql(\"version = version + 1\")");
         assertContainsAll(slice(source, "private void updateDeliveryForRollback", "private String currentOperator"),
                 ".eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_OUT)",
                 ".set(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)",
