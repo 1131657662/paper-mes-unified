@@ -3,6 +3,7 @@ import { Button, DatePicker, Form, Input, InputNumber, Modal, Radio, message } f
 import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
 import { receivePayment } from '../../api/settle'
+import { useAuthUser } from '../../stores/authStore'
 import type { ReceiveDTO } from '../../types/settle'
 
 interface Props {
@@ -17,7 +18,6 @@ interface ReceiveFormValues {
   receiveAmount: number
   payMethod: number
   payNo?: string
-  operator?: string
   receiveDate?: Dayjs
   remark?: string
 }
@@ -31,8 +31,10 @@ export default function ReceiveModal({
 }: Props) {
   const [form] = Form.useForm<ReceiveFormValues>()
   const [submitting, setSubmitting] = useState(false)
+  const user = useAuthUser()
   const usableUnreceivedAmount = roundMoney(unreceivedAmount)
   const canReuseUnreceived = usableUnreceivedAmount > 0
+  const operatorName = user?.realName ?? user?.username ?? '当前登录账号'
 
   useEffect(() => {
     if (!open) {
@@ -58,7 +60,6 @@ export default function ReceiveModal({
       receiveAmount: values.receiveAmount,
       payMethod: values.payMethod,
       payNo: cleanText(values.payNo),
-      operator: cleanText(values.operator),
       receiveDate: values.receiveDate?.format('YYYY-MM-DDTHH:mm:ss'),
       remark: cleanText(values.remark),
     }
@@ -95,6 +96,11 @@ export default function ReceiveModal({
           填入未收
         </Button>
       </div>
+      <div className="mes-modal-tip mes-modal-tip--muted">
+        <span>经办人</span>
+        <strong>{operatorName}</strong>
+        <span>将按当前登录账号记录</span>
+      </div>
       <Form className="mes-modal-form" form={form} layout="vertical">
         <Form.Item
           name="receiveAmount"
@@ -127,10 +133,6 @@ export default function ReceiveModal({
 
         <Form.Item name="payNo" label="流水号">
           <Input placeholder="银行流水号或交易号" />
-        </Form.Item>
-
-        <Form.Item name="operator" label="经办人">
-          <Input placeholder="经办人姓名" />
         </Form.Item>
 
         <Form.Item name="receiveDate" label="收款时间" initialValue={dayjs()}>

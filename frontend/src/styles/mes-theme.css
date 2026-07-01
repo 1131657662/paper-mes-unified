@@ -290,6 +290,18 @@
   font-weight: 650;
 }
 
+.mes-modal-tip--muted {
+  justify-content: flex-start;
+  margin-top: -6px;
+  color: var(--mes-color-text-muted);
+  background: #fff;
+}
+
+.mes-modal-tip--muted strong {
+  color: var(--mes-color-text);
+  font-size: 14px;
+}
+
 .mes-page-header {
   display: flex;
   min-width: 0;
