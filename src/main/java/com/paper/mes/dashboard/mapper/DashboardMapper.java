@@ -27,5 +27,8 @@ public interface DashboardMapper {
     List<DashboardOverviewVO.DashboardRankVO> machineRank(@Param("monthStart") LocalDate monthStart,
                                                           @Param("today") LocalDate today);
 
+    List<DashboardOverviewVO.DashboardRankVO> machineYearRank(@Param("yearStart") LocalDate yearStart,
+                                                              @Param("today") LocalDate today);
+
     List<DashboardOverviewVO.DashboardRecentOrderVO> recentOrders();
 }

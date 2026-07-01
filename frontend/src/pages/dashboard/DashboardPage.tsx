@@ -66,8 +66,10 @@ export default function DashboardPage() {
             <DashboardRankList
               emptyText="本月暂无机台产出统计"
               items={overview?.machineRank ?? []}
+              yearlyItems={overview?.machineYearRank ?? []}
+              yearlyEmptyText="本年暂无机台产出统计"
               mode="weight"
-              subtitle="本月完成加工单按产出重量排序。"
+              subtitle="按完成加工单产出重量排序，可切换本月和本年。"
               title="机台产出排行"
             />
           </div>

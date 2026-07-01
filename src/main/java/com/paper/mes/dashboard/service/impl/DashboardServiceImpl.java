@@ -31,6 +31,7 @@ public class DashboardServiceImpl implements DashboardService {
         vo.setCustomerRank(dashboardMapper.customerRank(monthStart, today));
         vo.setCustomerYearRank(dashboardMapper.customerYearRank(yearStart, today));
         vo.setMachineRank(dashboardMapper.machineRank(monthStart, today));
+        vo.setMachineYearRank(dashboardMapper.machineYearRank(yearStart, today));
         vo.setRecentOrders(dashboardMapper.recentOrders());
         vo.setTodos(buildTodos(metrics, vo.getStatusQueue()));
         return vo;

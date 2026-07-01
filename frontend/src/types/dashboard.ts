@@ -6,6 +6,7 @@ export interface DashboardOverview {
   customerRank?: DashboardRank[]
   customerYearRank?: DashboardRank[]
   machineRank?: DashboardRank[]
+  machineYearRank?: DashboardRank[]
   todos?: DashboardTodo[]
   recentOrders?: DashboardRecentOrder[]
 }

@@ -15,6 +15,7 @@ public class DashboardOverviewVO {
     private List<DashboardRankVO> customerRank;
     private List<DashboardRankVO> customerYearRank;
     private List<DashboardRankVO> machineRank;
+    private List<DashboardRankVO> machineYearRank;
     private List<DashboardTodoVO> todos;
     private List<DashboardRecentOrderVO> recentOrders;
 

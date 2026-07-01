@@ -228,6 +228,25 @@
         LIMIT 6
     </select>
 
+    <select id="machineYearRank" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRankVO">
+        SELECT r.machine_uuid AS id,
+               m.machine_name AS name,
+               COUNT(*) AS count,
+               COALESCE(SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)), 0) AS weight,
+               COALESCE(SUM(r.process_amount), 0) AS amount
+        FROM biz_original_roll r
+        JOIN sys_machine m ON r.machine_uuid = m.uuid
+        JOIN biz_process_order o ON r.order_uuid = o.uuid AND o.is_deleted = 0
+        WHERE r.is_deleted = 0
+          AND r.machine_uuid IS NOT NULL
+          AND o.order_status &gt;= 4
+          AND o.order_date &gt;= #{yearStart}
+          AND o.order_date &lt;= #{today}
+        GROUP BY r.machine_uuid, m.machine_name
+        ORDER BY weight DESC
+        LIMIT 8
+    </select>
+
     <select id="recentOrders" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRecentOrderVO">
         SELECT o.uuid,
                o.order_no AS orderNo,
