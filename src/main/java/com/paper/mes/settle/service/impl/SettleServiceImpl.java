@@ -383,7 +383,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             }
             ConcurrencyGuard.requireRowUpdated(settleDetailMapper.deleteById(detail.getUuid()));
         }
-        ConcurrencyGuard.requireUpdated(removeById(uuid));
+        deleteSettleOrderForVoid(settle);
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,
                 settle.getUuid(), settle.getSettleNo(),
                 OperationLogService.ACTION_ROLLBACK, AuthContextHolder.currentDisplayName(),
@@ -1000,7 +1000,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         }
         settle.setSnapBill(buildSettleSnapshot(settle, amounts.details(), context.orders()));
         settle.setSnapBillTime(LocalDateTime.now());
-        ConcurrencyGuard.requireUpdated(updateById(settle));
+        updateSettleSnapshot(settle);
         return settle.getUuid();
     }
 
@@ -1028,6 +1028,29 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                         .set(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED)
                         .set(ProcessOrder::getUpdateTime, LocalDateTime.now())
                         .set(ProcessOrder::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
+    }
+
+    private void updateSettleSnapshot(SettleOrder settle) {
+        ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null,
+                new LambdaUpdateWrapper<SettleOrder>()
+                        .eq(SettleOrder::getUuid, settle.getUuid())
+                        .eq(SettleOrder::getSettleStatus, SETTLE_STATUS_PENDING)
+                        .set(SettleOrder::getSnapBill, settle.getSnapBill())
+                        .set(SettleOrder::getSnapBillTime, settle.getSnapBillTime())
+                        .set(SettleOrder::getUpdateTime, LocalDateTime.now())
+                        .set(SettleOrder::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
+    }
+
+    private void deleteSettleOrderForVoid(SettleOrder settle) {
+        ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null,
+                new LambdaUpdateWrapper<SettleOrder>()
+                        .eq(SettleOrder::getUuid, settle.getUuid())
+                        .eq(SettleOrder::getSettleStatus, settle.getSettleStatus())
+                        .set(SettleOrder::getIsDeleted, 1)
+                        .set(SettleOrder::getUpdateTime, LocalDateTime.now())
+                        .set(SettleOrder::getUpdateBy, currentOperator())
                         .setSql("version = version + 1")));
     }
 
