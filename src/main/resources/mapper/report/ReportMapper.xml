@@ -86,6 +86,48 @@
         GROUP BY sd.order_uuid
     </sql>
 
+    <sql id="RollScopedAmountJoin">
+        LEFT JOIN (
+            SELECT rb.order_uuid,
+                   SUM(rb.rollProcessAmount) AS scopedProcessAmount,
+                   SUM(rb.rollAmountBase) AS scopedAmountBase,
+                   MAX(rb.orderAmountBase) AS orderAmountBase
+            FROM (
+                SELECT r.order_uuid,
+                       COALESCE(r.process_amount, 0) AS rollProcessAmount,
+                       CASE
+                           WHEN COALESCE(orderBase.orderProcessAmount, 0) > 0
+                               THEN COALESCE(r.process_amount, 0)
+                           WHEN COALESCE(orderBase.orderOriginalWeight, 0) > 0
+                               THEN COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)
+                           WHEN COALESCE(orderBase.orderRollCount, 0) > 0
+                               THEN 1
+                           ELSE 0
+                       END AS rollAmountBase,
+                       CASE
+                           WHEN COALESCE(orderBase.orderProcessAmount, 0) > 0
+                               THEN COALESCE(orderBase.orderProcessAmount, 0)
+                           WHEN COALESCE(orderBase.orderOriginalWeight, 0) > 0
+                               THEN COALESCE(orderBase.orderOriginalWeight, 0)
+                           ELSE COALESCE(orderBase.orderRollCount, 0)
+                       END AS orderAmountBase
+                FROM biz_original_roll r
+                LEFT JOIN (
+                    SELECT order_uuid,
+                           COUNT(*) AS orderRollCount,
+                           SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS orderOriginalWeight,
+                           SUM(COALESCE(process_amount, 0)) AS orderProcessAmount
+                    FROM biz_original_roll
+                    WHERE is_deleted = 0
+                    GROUP BY order_uuid
+                ) orderBase ON orderBase.order_uuid = r.order_uuid
+                WHERE r.is_deleted = 0
+                <include refid="RollFilters"/>
+            ) rb
+            GROUP BY rb.order_uuid
+        ) amountScope ON amountScope.order_uuid = o.uuid
+    </sql>
+
     <select id="overview" resultType="com.paper.mes.report.dto.ReportOverviewVO">
         SELECT COUNT(o.uuid) AS orderCount,
                COALESCE(SUM(orig.originalRollCount), 0) AS originalRollCount,
@@ -99,14 +141,48 @@
                COALESCE(SUM(step.knifeCount), 0) AS knifeCount,
                COALESCE(SUM(step.sawAmount), 0) AS sawAmount,
                COALESCE(SUM(step.rewindAmount), 0) AS rewindAmount,
-               COALESCE(SUM(o.total_process_amount), 0) AS processAmount,
-               COALESCE(SUM(o.total_extra_amount), 0) AS extraAmount,
-               COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount,
-               COALESCE(SUM(settle.billedAmount), 0) AS settledAmount,
-               COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pendingSettleAmount,
-               COALESCE(SUM(settle.receivedAmount), 0) AS receivedAmount,
-               COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
-                   - COALESCE(settle.receivedAmount, 0), 0)), 0) AS unreceivedAmount
+               <choose>
+                   <when test="q.paperName != null and q.paperName != ''
+                       or q.mainStepType != null
+                       or q.processMode != null
+                       or q.machineUuid != null and q.machineUuid != ''">
+                       COALESCE(SUM(amountScope.scopedProcessAmount), 0) AS processAmount,
+                       COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(o.total_extra_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END), 0) AS extraAmount,
+                       COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(settle.billedAmount, o.total_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END), 0) AS totalAmount,
+                       COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END), 0) AS settledAmount,
+                       COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL AND amountScope.orderAmountBase > 0
+                           THEN COALESCE(o.total_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END), 0) AS pendingSettleAmount,
+                       COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END), 0) AS receivedAmount,
+                       COALESCE(SUM(GREATEST(
+                           CASE WHEN amountScope.orderAmountBase > 0
+                               THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                               ELSE 0 END
+                           -
+                           CASE WHEN amountScope.orderAmountBase > 0
+                               THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                               ELSE 0 END,
+                           0)), 0) AS unreceivedAmount
+                   </when>
+                   <otherwise>
+                       COALESCE(SUM(o.total_process_amount), 0) AS processAmount,
+                       COALESCE(SUM(o.total_extra_amount), 0) AS extraAmount,
+                       COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount,
+                       COALESCE(SUM(settle.billedAmount), 0) AS settledAmount,
+                       COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pendingSettleAmount,
+                       COALESCE(SUM(settle.receivedAmount), 0) AS receivedAmount,
+                       COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
+                           - COALESCE(settle.receivedAmount, 0), 0)), 0) AS unreceivedAmount
+                   </otherwise>
+               </choose>
         FROM biz_process_order o
         LEFT JOIN (
             SELECT r.order_uuid,
@@ -145,6 +221,7 @@
         LEFT JOIN (
             <include refid="SettleAllocationByOrder"/>
         ) settle ON settle.order_uuid = o.uuid
+        <include refid="RollScopedAmountJoin"/>
         <where>
             <include refid="OrderFilters"/>
         </where>
@@ -319,14 +396,48 @@
                        COALESCE(SUM(step.knifeCount), 0) AS knifeCount,
                        COALESCE(SUM(step.sawAmount), 0) AS sawAmount,
                        COALESCE(SUM(step.rewindAmount), 0) AS rewindAmount,
-                       COALESCE(SUM(o.total_process_amount), 0) AS processAmount,
-                       COALESCE(SUM(o.total_extra_amount), 0) AS extraAmount,
-                       COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount,
-                       COALESCE(SUM(settle.billedAmount), 0) AS settledAmount,
-                       COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pendingSettleAmount,
-                       COALESCE(SUM(settle.receivedAmount), 0) AS receivedAmount,
-                       COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
-                           - COALESCE(settle.receivedAmount, 0), 0)), 0) AS unreceivedAmount
+                       <choose>
+                           <when test="q.paperName != null and q.paperName != ''
+                               or q.mainStepType != null
+                               or q.processMode != null
+                               or q.machineUuid != null and q.machineUuid != ''">
+                               COALESCE(SUM(amountScope.scopedProcessAmount), 0) AS processAmount,
+                               COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                                   THEN COALESCE(o.total_extra_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                                   ELSE 0 END), 0) AS extraAmount,
+                               COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                                   THEN COALESCE(settle.billedAmount, o.total_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                                   ELSE 0 END), 0) AS totalAmount,
+                               COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                                   THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                                   ELSE 0 END), 0) AS settledAmount,
+                               COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL AND amountScope.orderAmountBase > 0
+                                   THEN COALESCE(o.total_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                                   ELSE 0 END), 0) AS pendingSettleAmount,
+                               COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                                   THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                                   ELSE 0 END), 0) AS receivedAmount,
+                               COALESCE(SUM(GREATEST(
+                                   CASE WHEN amountScope.orderAmountBase > 0
+                                       THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                                       ELSE 0 END
+                                   -
+                                   CASE WHEN amountScope.orderAmountBase > 0
+                                       THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                                       ELSE 0 END,
+                                   0)), 0) AS unreceivedAmount
+                           </when>
+                           <otherwise>
+                               COALESCE(SUM(o.total_process_amount), 0) AS processAmount,
+                               COALESCE(SUM(o.total_extra_amount), 0) AS extraAmount,
+                               COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount,
+                               COALESCE(SUM(settle.billedAmount), 0) AS settledAmount,
+                               COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pendingSettleAmount,
+                               COALESCE(SUM(settle.receivedAmount), 0) AS receivedAmount,
+                               COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
+                                   - COALESCE(settle.receivedAmount, 0), 0)), 0) AS unreceivedAmount
+                           </otherwise>
+                       </choose>
                 FROM biz_process_order o
                 JOIN (
                     SELECT oi.uuid AS order_uuid,
@@ -397,6 +508,7 @@
                 LEFT JOIN (
                     <include refid="SettleAllocationByOrder"/>
                 ) settle ON settle.order_uuid = o.uuid
+                <include refid="RollScopedAmountJoin"/>
                 <where>
                     <include refid="OrderFilters"/>
                 </where>
@@ -431,14 +543,48 @@
                COALESCE(step.knifeCount, 0) AS knifeCount,
                COALESCE(step.sawAmount, 0) AS sawAmount,
                COALESCE(step.rewindAmount, 0) AS rewindAmount,
-               COALESCE(o.total_process_amount, 0) AS processAmount,
-               COALESCE(o.total_extra_amount, 0) AS extraAmount,
-               COALESCE(settle.billedAmount, o.total_amount, 0) AS totalAmount,
-               COALESCE(settle.billedAmount, 0) AS settledAmount,
-               CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END AS pendingSettleAmount,
-               COALESCE(settle.receivedAmount, 0) AS receivedAmount,
-               GREATEST(COALESCE(settle.billedAmount, 0)
-                   - COALESCE(settle.receivedAmount, 0), 0) AS unreceivedAmount
+               <choose>
+                   <when test="q.paperName != null and q.paperName != ''
+                       or q.mainStepType != null
+                       or q.processMode != null
+                       or q.machineUuid != null and q.machineUuid != ''">
+                       COALESCE(amountScope.scopedProcessAmount, 0) AS processAmount,
+                       CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(o.total_extra_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END AS extraAmount,
+                       CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(settle.billedAmount, o.total_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END AS totalAmount,
+                       CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END AS settledAmount,
+                       CASE WHEN settle.order_uuid IS NULL AND amountScope.orderAmountBase > 0
+                           THEN COALESCE(o.total_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END AS pendingSettleAmount,
+                       CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END AS receivedAmount,
+                       GREATEST(
+                           CASE WHEN amountScope.orderAmountBase > 0
+                               THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                               ELSE 0 END
+                           -
+                           CASE WHEN amountScope.orderAmountBase > 0
+                               THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                               ELSE 0 END,
+                           0) AS unreceivedAmount
+                   </when>
+                   <otherwise>
+                       COALESCE(o.total_process_amount, 0) AS processAmount,
+                       COALESCE(o.total_extra_amount, 0) AS extraAmount,
+                       COALESCE(settle.billedAmount, o.total_amount, 0) AS totalAmount,
+                       COALESCE(settle.billedAmount, 0) AS settledAmount,
+                       CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END AS pendingSettleAmount,
+                       COALESCE(settle.receivedAmount, 0) AS receivedAmount,
+                       GREATEST(COALESCE(settle.billedAmount, 0)
+                           - COALESCE(settle.receivedAmount, 0), 0) AS unreceivedAmount
+                   </otherwise>
+               </choose>
         FROM biz_process_order o
         LEFT JOIN (
             SELECT r.order_uuid,
@@ -485,6 +631,7 @@
         LEFT JOIN (
             <include refid="SettleAllocationByOrder"/>
         ) settle ON settle.order_uuid = o.uuid
+        <include refid="RollScopedAmountJoin"/>
         <where>
             <include refid="OrderFilters"/>
         </where>

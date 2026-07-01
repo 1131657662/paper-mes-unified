@@ -36,6 +36,16 @@ class ReportMapperSqlContractTest {
         assertTrue(sql.contains("CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END"));
     }
 
+    @Test
+    void reportSql_whenRollFiltersApplied_allocatesAmountsByScopedRollBase() throws IOException {
+        String sql = resourceText("mapper/report/ReportMapper.xml");
+
+        assertTrue(sql.contains("<sql id=\"RollScopedAmountJoin\">"));
+        assertTrue(sql.contains("SUM(rb.rollAmountBase) AS scopedAmountBase"));
+        assertTrue(sql.contains("COALESCE(settle.billedAmount, o.total_amount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase"));
+        assertTrue(sql.contains("COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase"));
+    }
+
     private String settleAllocationSql(String resource) throws IOException {
         String sql = resourceText(resource);
         String start = "<sql id=\"SettleAllocationByOrder\">";
