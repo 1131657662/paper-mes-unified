@@ -461,7 +461,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
         for (DeliveryDetail detail : appendDetails) {
             detail.setDeliveryUuid(order.getUuid());
-                ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.insert(detail));
+            ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.insert(detail));
         }
         refreshTotals(order);
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
