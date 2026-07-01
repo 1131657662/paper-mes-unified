@@ -1,5 +1,6 @@
 package com.paper.mes.settle.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 
@@ -13,7 +14,7 @@ import java.util.List;
 public class SettleByOrdersDTO {
 
     @NotEmpty(message = "加工单不能为空")
-    private List<String> orderUuids;
+    private List<@NotBlank(message = "加工单uuid不能为空") String> orderUuids;
 
     private LocalDate periodStart;
     private LocalDate periodEnd;

@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -16,7 +17,7 @@ import java.util.List;
 @Data
 public class DeliveryCreateDTO {
 
-    @NotNull(message = "客户不能为空")
+    @NotBlank(message = "客户不能为空")
     private String customerUuid;
 
     @NotNull(message = "出库日期不能为空")
@@ -39,6 +40,7 @@ public class DeliveryCreateDTO {
         @NotBlank(message = "成品uuid不能为空")
         private String finishUuid;
         /** 本件出库重量，留空则取成品实际重量。 */
+        @Positive(message = "出库重量必须大于0")
         private BigDecimal outWeight;
         private String remark;
     }
