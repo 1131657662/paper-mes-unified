@@ -21,20 +21,42 @@ final class SettleAmountSnapshotReader {
     }
 
     static Amounts resolve(SettleOrder settle, List<SettleDetail> details, ObjectMapper objectMapper) {
+        Amounts detailAmounts = amountsFromDetails(details);
         JsonNode root = snapshotRoot(settle.getSnapBill(), objectMapper);
-        if (root != null) {
-            return new Amounts(
-                    money(decimalValue(root, "amount_no_tax", "amountNoTax", settle.getAmountNoTax())),
-                    money(decimalValue(root, "tax_amount", "taxAmount", settle.getTaxAmount())),
-                    money(decimalValue(root, "total_amount", "totalAmount", settle.getTotalAmount())));
+        if (root == null) {
+            return detailAmounts;
         }
+
+        BigDecimal noTax = firstNonNull(decimalValue(root, "amount_no_tax", "amountNoTax"), settle.getAmountNoTax());
+        BigDecimal tax = firstNonNull(decimalValue(root, "tax_amount", "taxAmount"), settle.getTaxAmount());
+        BigDecimal total = firstNonNull(decimalValue(root, "total_amount", "totalAmount"), settle.getTotalAmount());
+        return completeAmounts(noTax, tax, total, detailAmounts);
+    }
+
+    private static Amounts amountsFromDetails(List<SettleDetail> details) {
         BigDecimal noTax = BigDecimal.ZERO;
         BigDecimal total = BigDecimal.ZERO;
-        for (SettleDetail detail : details) {
+        for (SettleDetail detail : details == null ? List.<SettleDetail>of() : details) {
             noTax = noTax.add(detailBaseAmount(detail));
             total = total.add(nz(detail.getOrderAmount()));
         }
         return new Amounts(money(noTax), money(total.subtract(noTax)), money(total));
+    }
+
+    private static Amounts completeAmounts(BigDecimal noTax, BigDecimal tax, BigDecimal total, Amounts fallback) {
+        if (total == null && noTax != null && tax != null) {
+            total = noTax.add(tax);
+        }
+        if (tax == null && total != null && noTax != null) {
+            tax = total.subtract(noTax);
+        }
+        if (noTax == null && total != null && tax != null) {
+            noTax = total.subtract(tax);
+        }
+        return new Amounts(
+                money(firstNonNull(noTax, fallback.noTax())),
+                money(firstNonNull(tax, fallback.tax())),
+                money(firstNonNull(total, fallback.total())));
     }
 
     private static BigDecimal detailBaseAmount(SettleDetail detail) {
@@ -55,19 +77,23 @@ final class SettleAmountSnapshotReader {
         }
     }
 
-    private static BigDecimal decimalValue(JsonNode root, String snakeName, String camelName, BigDecimal fallback) {
+    private static BigDecimal decimalValue(JsonNode root, String snakeName, String camelName) {
         JsonNode node = root.get(snakeName);
         if (node == null || node.isNull()) {
             node = root.get(camelName);
         }
         if (node == null || node.isNull()) {
-            return fallback;
+            return null;
         }
         try {
             return node.isNumber() ? node.decimalValue() : new BigDecimal(node.asText());
         } catch (Exception ignored) {
-            return fallback;
+            return null;
         }
+    }
+
+    private static BigDecimal firstNonNull(BigDecimal value, BigDecimal fallback) {
+        return value == null ? fallback : value;
     }
 
     private static BigDecimal money(BigDecimal amount) {
