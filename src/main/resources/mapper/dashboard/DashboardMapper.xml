@@ -5,7 +5,15 @@
 
     <sql id="SettleAllocationByOrder">
         SELECT sd.order_uuid,
-               SUM(COALESCE(sd.order_amount, 0)) AS billedAmount,
+               SUM(CASE WHEN st.settleTotal > 0
+                        THEN COALESCE(
+                            CAST(JSON_UNQUOTE(JSON_EXTRACT(so.snap_bill, '$.total_amount')) AS DECIMAL(18, 2)),
+                            CAST(JSON_UNQUOTE(JSON_EXTRACT(so.snap_bill, '$.totalAmount')) AS DECIMAL(18, 2)),
+                            so.total_amount,
+                            st.settleTotal,
+                            0
+                        ) * COALESCE(sd.order_amount, 0) / st.settleTotal
+                        ELSE 0 END) AS billedAmount,
                SUM(CASE WHEN st.settleTotal > 0
                         THEN COALESCE(rr.receivedAmount, 0) * COALESCE(sd.order_amount, 0) / st.settleTotal
                         ELSE 0 END) AS receivedAmount
