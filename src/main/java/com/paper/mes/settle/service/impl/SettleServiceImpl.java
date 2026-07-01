@@ -67,9 +67,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -205,6 +207,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String createByOrders(SettleByOrdersDTO dto) {
+        ensureDistinctOrderUuids(dto.getOrderUuids());
         businessLockService.lockProcessOrders(dto.getOrderUuids());
         List<ProcessOrder> orders = loadOrdersByUuid(dto.getOrderUuids());
         String settleUuid = createFromOrders(new SettlementBuildContext(
@@ -309,6 +312,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (settle == null) {
             throw new BusinessException(ErrorCode.E002, "结算单不存在");
         }
+        ensureActiveSettle(settle);
         applySettlementAmountView(settle, normalizeDetailsForInvoiceView(settle, settleDetails(uuid)));
         if (settle.getUnreceivedAmount() != null && settle.getUnreceivedAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("结算单已结清，不可再收款");
@@ -345,6 +349,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         businessLockService.lockSettleOrder(uuid);
         businessLockService.lockReceiveRecord(receiveUuid);
         SettleOrder settle = requireSettle(uuid);
+        ensureActiveSettle(settle);
         ReceiveRecord record = receiveRecordMapper.selectById(receiveUuid);
         if (record == null || !uuid.equals(record.getSettleUuid())) {
             throw new BusinessException(ErrorCode.E002, "收款流水不存在");
@@ -371,6 +376,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     public void voidSettle(String uuid, SettleActionReasonDTO dto) {
         businessLockService.lockSettleOrder(uuid);
         SettleOrder settle = requireSettle(uuid);
+        ensureActiveSettle(settle);
         if (activeReceiveAmount(uuid).compareTo(BigDecimal.ZERO) > 0) {
             throw new BusinessException("已有有效收款，需先撤销收款后再作废结算单");
         }
@@ -1009,6 +1015,21 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 .eq(SettleDetail::getOrderUuid, orderUuid));
         if (count > 0) {
             throw new BusinessException(ErrorCode.E004, "加工单已生成结算单，不可重复结算");
+        }
+    }
+
+    private void ensureDistinctOrderUuids(List<String> orderUuids) {
+        Set<String> seen = new HashSet<>();
+        for (String orderUuid : orderUuids) {
+            if (!seen.add(orderUuid)) {
+                throw new BusinessException(ErrorCode.E004, "加工单重复勾选，不可重复结算");
+            }
+        }
+    }
+
+    private void ensureActiveSettle(SettleOrder settle) {
+        if (settle.getIsDeleted() != null && settle.getIsDeleted() == 1) {
+            throw new BusinessException(ErrorCode.E004, "结算单已作废，不可继续操作");
         }
     }
 
