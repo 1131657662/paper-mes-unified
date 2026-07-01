@@ -1,95 +1,35 @@
 import { Button, Space, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { INVOICE_TYPE, PAY_METHOD } from '../../constants/settle'
+import { PAY_METHOD } from '../../constants/settle'
 import TooltipText from '../../components/biz/TooltipText'
-import { formatKg, formatMoney } from '../../features/settle/utils/settleFormatters'
-import type { ReceiveRecord, SettleDetail, SettlePrintLine } from '../../types/settle'
+import { formatMoney } from '../../features/settle/utils/settleFormatters'
+import type { ReceiveRecord, SettleDetail } from '../../types/settle'
+
+export { settlePrintLineColumns } from './settlePrintLineColumns'
 
 export function buildSettleDetailColumns(extraFeeByOrder: Record<string, string> = {}): ColumnsType<SettleDetail> {
   return [
-  { title: '加工单号', dataIndex: 'orderNo', fixed: 'left', width: 150 },
-  { title: '锯纸费', dataIndex: 'sawAmount', align: 'right', width: 110, render: formatMoney },
-  { title: '复卷费', dataIndex: 'rewindAmount', align: 'right', width: 110, render: formatMoney },
-  {
-    title: '额外费用',
-    dataIndex: 'extraAmount',
-    align: 'right',
-    width: 190,
-    render: (value, record) => amountWithHint({ amount: value, hint: extraFeeByOrder[record.orderUuid] }),
-  },
-  {
-    title: '本单金额',
-    dataIndex: 'orderAmount',
-    align: 'right',
-    width: 120,
-    render: (value) => <Typography.Text strong>{formatMoney(value)}</Typography.Text>,
-  },
+    { title: '加工单号', dataIndex: 'orderNo', fixed: 'left', width: 150 },
+    { title: '锯纸费', dataIndex: 'sawAmount', align: 'right', width: 110, render: formatMoney },
+    { title: '复卷费', dataIndex: 'rewindAmount', align: 'right', width: 110, render: formatMoney },
+    {
+      title: '额外费用',
+      dataIndex: 'extraAmount',
+      align: 'right',
+      width: 190,
+      render: (value, record) => amountWithHint({ amount: value, hint: extraFeeByOrder[record.orderUuid] }),
+    },
+    {
+      title: '本单金额',
+      dataIndex: 'orderAmount',
+      align: 'right',
+      width: 120,
+      render: (value) => <Typography.Text strong>{formatMoney(value)}</Typography.Text>,
+    },
   ]
 }
 
 export const settleDetailColumns: ColumnsType<SettleDetail> = buildSettleDetailColumns()
-
-export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
-  { title: '加工单', dataIndex: 'orderNo', fixed: 'left', width: 145 },
-  { title: '原纸', dataIndex: 'originalLabel', fixed: 'left', width: 130 },
-  {
-    title: '品名/规格',
-    dataIndex: 'paperName',
-    width: 180,
-    render: (_, record) => (
-      <div className="settle-cell-stack mes-cell-stack">
-        <span>{record.paperName || '-'}</span>
-        <span>{record.gramWeight ? `${record.gramWeight}g` : '-'} / {record.originalWidth ? `${record.originalWidth}mm` : '-'}</span>
-      </div>
-    ),
-  },
-  { title: '原纸重量', dataIndex: 'originalWeight', align: 'right', width: 110, render: formatKg },
-  { title: '加工内容', dataIndex: 'processText', width: 120, render: textCell },
-  { title: '成品摘要', dataIndex: 'finishSummary', width: 210, render: textCell },
-  { title: '成品数', dataIndex: 'finishCount', align: 'right', width: 86 },
-  { title: '成品重量', dataIndex: 'finishWeight', align: 'right', width: 110, render: formatKg },
-  { title: '切边', dataIndex: 'trimWeight', align: 'right', width: 100, render: formatKg },
-  {
-    title: '锯纸单价',
-    dataIndex: 'sawUnitPrice',
-    align: 'right',
-    width: 130,
-    render: (_, record) => unitPriceCell({ invoicePrice: record.sawInvoiceUnitPrice, price: record.sawUnitPrice }),
-  },
-  { title: '锯纸费', dataIndex: 'sawAmount', align: 'right', width: 105, render: formatMoney },
-  {
-    title: '复卷单价',
-    dataIndex: 'rewindUnitPrice',
-    align: 'right',
-    width: 130,
-    render: (_, record) => unitPriceCell({
-      invoicePrice: record.rewindInvoiceUnitPrice,
-      price: record.rewindUnitPrice,
-    }),
-  },
-  { title: '复卷费', dataIndex: 'rewindAmount', align: 'right', width: 105, render: formatMoney },
-  { title: '加工费', dataIndex: 'processAmount', align: 'right', width: 110, render: formatMoney },
-  {
-    title: '额外费',
-    dataIndex: 'extraAmount',
-    align: 'right',
-    width: 180,
-    render: (_, record) => amountWithHint({ amount: record.extraAmount, hint: record.extraFeeSummary }),
-  },
-  {
-    title: '开票',
-    dataIndex: 'isInvoice',
-    width: 82,
-    render: (value) => <Tag className="mes-status-tag">{INVOICE_TYPE[value] || '-'}</Tag>,
-  },
-  {
-    title: '应收合计',
-    dataIndex: 'lineAmount',
-    align: 'right',
-    width: 120,
-    render: (value) => <Typography.Text strong>{formatMoney(value)}</Typography.Text>,
-  },
-]
 
 export const receiveColumns: ColumnsType<ReceiveRecord> = buildReceiveColumns()
 
@@ -160,21 +100,19 @@ function textCell(value?: string | number) {
   return <TooltipText value={value} />
 }
 
-function amountWithHint({ amount, hint }: { amount?: number; hint?: string }) {
+function amountWithHint({
+  amount,
+  formatter = formatMoney,
+  hint,
+}: {
+  amount?: number
+  formatter?: (value?: number) => string
+  hint?: string
+}) {
   return (
     <div className="document-money-stack">
-      <Typography.Text strong>{formatMoney(amount)}</Typography.Text>
+      <Typography.Text strong>{formatter(amount)}</Typography.Text>
       {hint && <span>{hint}</span>}
-    </div>
-  )
-}
-
-function unitPriceCell({ invoicePrice, price }: { invoicePrice?: number; price?: number }) {
-  const showInvoice = invoicePrice != null && invoicePrice !== price
-  return (
-    <div className="document-money-stack">
-      <Typography.Text>{formatMoney(price)}</Typography.Text>
-      {showInvoice && <span>开票价 {formatMoney(invoicePrice)}</span>}
     </div>
   )
 }

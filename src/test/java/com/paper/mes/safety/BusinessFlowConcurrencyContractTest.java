@@ -15,6 +15,8 @@ class BusinessFlowConcurrencyContractTest {
             "src/main/java/com/paper/mes/delivery/service/impl/DeliveryServiceImpl.java";
     private static final String SETTLE_SERVICE =
             "src/main/java/com/paper/mes/settle/service/impl/SettleServiceImpl.java";
+    private static final String DELIVERY_INTEGRITY_BOOTSTRAP =
+            "src/main/java/com/paper/mes/system/config/config/DeliveryIntegrityBootstrap.java";
 
     @Test
     void deliveryRollback_whenOrderIsSettled_blocksBeforeReturningStock() throws IOException {
@@ -52,7 +54,7 @@ class BusinessFlowConcurrencyContractTest {
                 "refreshTotals(order)");
         assertBefore(append,
                 "order.getDeliveryStatus() == null || order.getDeliveryStatus() != DELIVERY_STATUS_PENDING",
-                "deliveryDetailMapper.insert(detail)");
+                "insertDeliveryDetail(detail)");
 
         assertContainsAll(remove,
                 "businessLockService.lockDeliveryOrder(uuid);",
@@ -96,6 +98,23 @@ class BusinessFlowConcurrencyContractTest {
         assertContainsAll(slice(source, "private BigDecimal activeReceiveAmount", "private List<SettleDetail> settleDetails"),
                 "record.getRecordStatus() == null || record.getRecordStatus() == RECEIVE_STATUS_ACTIVE",
                 "total = total.add(nz(record.getReceiveAmount()))");
+    }
+
+    @Test
+    void deliveryDetailReservation_whenConcurrentCreate_usesUniqueActiveFinishGuard() throws IOException {
+        String source = source(DELIVERY_SERVICE);
+        String insert = slice(source, "private void insertDeliveryDetail", "private void validateOutWeight");
+        String bootstrap = source(DELIVERY_INTEGRITY_BOOTSTRAP);
+
+        assertContainsAll(insert,
+                "ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.insert(detail))",
+                "DuplicateKeyException",
+                "ErrorCode.E004");
+        assertContainsAll(bootstrap,
+                "normalizeDuplicateDeliveryDetails()",
+                "finish_uuid_active",
+                "uk_biz_delivery_detail_active_finish",
+                "ADD UNIQUE KEY `uk_biz_delivery_detail_active_finish` (`finish_uuid_active`)");
     }
 
     private String source(String relativePath) throws IOException {

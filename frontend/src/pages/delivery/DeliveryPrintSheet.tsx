@@ -1,5 +1,11 @@
 import type { DeliveryDetailVO } from '../../types/delivery'
-import { deliveryDetailSpecText, formatKg, formatTon } from '../../features/delivery/utils/deliveryFormatters'
+import {
+  deliveryDetailSpecText,
+  deliveryOriginalSnapshotText,
+  deliveryProcessSnapshotText,
+  formatKg,
+  formatTon,
+} from '../../features/delivery/utils/deliveryFormatters'
 import '../../pages/documentModule.css'
 
 interface Props {
@@ -59,9 +65,9 @@ export default function DeliveryPrintSheet({ detail }: Props) {
                   <td>{deliveryDetailSpecText(item)}</td>
                   <td>{formatKg(item.actualWeight)}</td>
                   <td>{formatKg(item.outWeight)}</td>
-                  <td>{item.originalSummary || item.originalRollNos || '-'}</td>
+                  <td>{deliveryOriginalSnapshotText(item)}</td>
                   <td>{item.processModeText || '-'}</td>
-                  <td>{item.processSummary || '-'}</td>
+                  <td>{deliveryProcessSnapshotText(item)}</td>
                   <td>{item.remark || item.actualRemark || '-'}</td>
                 </tr>
               ))}

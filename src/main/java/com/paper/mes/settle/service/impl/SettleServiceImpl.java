@@ -667,17 +667,27 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setOrderDate(order == null ? null : order.getOrderDate());
         line.setOriginalUuid(roll.getUuid());
         line.setOriginalLabel(originalLabel(roll));
+        line.setOriginalRollNo(roll.getRollNo());
+        line.setOriginalExtraNo(roll.getExtraNo());
         line.setPaperName(roll.getPaperName());
         line.setGramWeight(roll.getGramWeight());
+        line.setActualGramWeight(roll.getActualGramWeight());
         line.setOriginalWidth(roll.getOriginalWidth());
+        line.setActualWidth(roll.getActualWidth());
+        line.setOriginalDiameter(roll.getOriginalDiameter());
+        line.setCoreDiameter(roll.getCoreDiameter());
+        line.setOriginalLength(roll.getOriginalLength());
         line.setOriginalWeight(originalWeight(roll));
         line.setProcessMode(roll.getProcessMode());
         line.setMainStepType(roll.getMainStepType());
         line.setProcessText(processText(roll));
+        line.setProcessStepSummary(processStepSummary(steps));
         line.setFinishSummary(finishSummary(finishes));
+        line.setFinishDetailSummary(finishDetailSummary(finishes));
         line.setFinishCount(finishes.size());
         line.setFinishWeight(sumFinishWeight(finishes));
         line.setTrimWeight(sumTrimWeight(finishes));
+        line.setTrimSummary(trimSummary(finishes));
         line.setSawWeight(amounts.sawWeight());
         line.setRewindWeight(amounts.rewindWeight());
         line.setSawUnitPrice(amounts.sawUnitPrice());
@@ -689,6 +699,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setProcessAmount(amounts.processAmount());
         line.setExtraAmount(BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
         line.setTaxAmount(BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
+        line.setTaxRate(taxRate);
         line.setLineAmount(amounts.processAmount());
         line.setIsInvoice(settle.getIsInvoice());
         line.setRemark(roll.getRemark());
@@ -808,6 +819,42 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         return new LineAmounts(sawWeight, rewindWeight, sawUnitPrice, rewindUnitPrice, sawAmount, rewindAmount);
     }
 
+    private String processStepSummary(List<ProcessStep> steps) {
+        if (steps.isEmpty()) {
+            return "-";
+        }
+        return steps.stream()
+                .map(this::processStepText)
+                .distinct()
+                .reduce((left, right) -> left + "；" + right)
+                .orElse("-");
+    }
+
+    private String processStepText(ProcessStep step) {
+        String name = StringUtils.hasText(step.getStepName()) ? step.getStepName() : stepTypeText(step.getStepType());
+        List<String> parts = new ArrayList<>();
+        if (step.getKnifeCount() != null) {
+            parts.add(step.getKnifeCount() + "刀");
+        }
+        if (step.getProcessWeight() != null) {
+            parts.add(nz(step.getProcessWeight()) + "kg");
+        }
+        if (step.getUnitPrice() != null) {
+            parts.add("单价 " + moneyText(step.getUnitPrice()));
+        }
+        return parts.isEmpty() ? name : name + "（" + String.join(" / ", parts) + "）";
+    }
+
+    private String stepTypeText(Integer stepType) {
+        if (stepType != null && stepType == STEP_TYPE_SAW) {
+            return "锯纸";
+        }
+        if (stepType != null && stepType == STEP_TYPE_REWIND) {
+            return "复卷";
+        }
+        return "工序";
+    }
+
     private BigDecimal firstNonNull(BigDecimal current, BigDecimal next) {
         return current != null ? current : next;
     }
@@ -855,6 +902,45 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 .map(f -> f.getFinishRollNo() == null ? "-" : f.getFinishRollNo())
                 .reduce((a, b) -> a + "、" + b)
                 .orElse("-");
+    }
+
+    private String finishDetailSummary(List<FinishRoll> finishes) {
+        if (finishes.isEmpty()) {
+            return "-";
+        }
+        return finishes.stream()
+                .limit(12)
+                .map(this::finishDetailText)
+                .reduce((a, b) -> a + "；" + b)
+                .orElse("-");
+    }
+
+    private String finishDetailText(FinishRoll finish) {
+        List<String> spec = new ArrayList<>();
+        if (finish.getFinishWidth() != null) {
+            spec.add(finish.getFinishWidth() + "mm");
+        }
+        if (finish.getFinishDiameter() != null) {
+            spec.add("φ" + finish.getFinishDiameter());
+        }
+        if (finish.getActualWeight() != null) {
+            spec.add(nz(finish.getActualWeight()) + "kg");
+        }
+        String no = StringUtils.hasText(finish.getFinishRollNo()) ? finish.getFinishRollNo() : "-";
+        return spec.isEmpty() ? no : no + "（" + String.join(" / ", spec) + "）";
+    }
+
+    private String trimSummary(List<FinishRoll> finishes) {
+        int trimWidth = 0;
+        BigDecimal trimWeight = BigDecimal.ZERO;
+        for (FinishRoll finish : finishes) {
+            trimWidth += finish.getTrimWidthShare() == null ? 0 : finish.getTrimWidthShare();
+            trimWeight = trimWeight.add(nz(finish.getTrimWeightShare()));
+        }
+        if (trimWidth == 0 && trimWeight.signum() == 0) {
+            return "-";
+        }
+        return trimWidth + "mm / " + trimWeight + "kg";
     }
 
     private BigDecimal sumFinishWeight(List<FinishRoll> finishes) {

@@ -7,7 +7,13 @@ import { useDeliveryDetail } from '../../features/delivery/hooks/useDeliveryDeta
 import { useExportDelivery } from '../../features/delivery/hooks/useExportDelivery'
 import { useRemoveDeliveryDetail } from '../../features/delivery/hooks/useRemoveDeliveryDetail'
 import { useRollbackDelivery } from '../../features/delivery/hooks/useRollbackDelivery'
-import { deliveryDetailSpecText, formatKg, formatTon } from '../../features/delivery/utils/deliveryFormatters'
+import {
+  deliveryDetailSpecText,
+  deliveryOriginalSnapshotText,
+  deliveryProcessSnapshotText,
+  formatKg,
+  formatTon,
+} from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryDetail } from '../../types/delivery'
 
 interface Props {
@@ -111,7 +117,7 @@ export default function DeliveryDetailDrawer({ uuid, open, onChanged, onClose }:
                   dataSource={detail.details}
                   onReload={() => detailQuery.refetch()}
                   pagination={false}
-                  scroll={{ x: 1280 }}
+                  scroll={{ x: 1580 }}
                 />
               </div>
             </section>
@@ -146,7 +152,18 @@ function columns(
       width: 110,
       render: (value) => <SourceTag value={value} />,
     },
-    { title: '原纸卷号', dataIndex: 'originalRollNos', width: 170, render: textCell },
+    {
+      title: '原纸信息',
+      dataIndex: 'originalSummary',
+      width: 300,
+      render: (_, record) => textCell(deliveryOriginalSnapshotText(record)),
+    },
+    {
+      title: '工艺摘要',
+      dataIndex: 'processSummary',
+      width: 240,
+      render: (_, record) => textCell(deliveryProcessSnapshotText(record)),
+    },
     { title: '备注', dataIndex: 'remark', width: 150, render: textCell },
     { title: '回录备注', dataIndex: 'actualRemark', width: 150, render: textCell },
   ]

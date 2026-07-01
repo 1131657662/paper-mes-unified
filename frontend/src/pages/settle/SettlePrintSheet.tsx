@@ -1,6 +1,6 @@
 import { INVOICE_TYPE } from '../../constants/settle'
 import { formatKg, formatMoney, formatTon } from '../../features/settle/utils/settleFormatters'
-import type { SettleDetailVO } from '../../types/settle'
+import type { SettleDetailVO, SettlePrintLine } from '../../types/settle'
 import { buildSettleBillGroups, type SettleBillGroup } from './settleBillGroups'
 import '../documentModule.css'
 
@@ -78,13 +78,13 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
         <tbody>
           {group.lines.map((line) => (
             <tr key={`${line.orderUuid}-${line.originalUuid}`}>
-              <td>{line.originalLabel}</td>
-              <td>{line.paperName || '-'} / {line.gramWeight ? `${line.gramWeight}g` : '-'} / {line.originalWidth ? `${line.originalWidth}mm` : '-'}</td>
+              <td>{printOriginalLabel(line)}</td>
+              <td>{printOriginalSpec(line)}</td>
               <td>{formatKg(line.originalWeight)}</td>
-              <td>{line.processText || '-'}</td>
-              <td>{line.finishSummary || '-'}</td>
+              <td>{line.processStepSummary || line.processText || '-'}</td>
+              <td>{line.finishDetailSummary || line.finishSummary || '-'}</td>
               <td>{formatKg(line.finishWeight)}</td>
-              <td>{formatKg(line.trimWeight)}</td>
+              <td>{line.trimSummary || formatKg(line.trimWeight)}</td>
               <td><PrintUnitPrice price={line.sawUnitPrice} invoicePrice={line.sawInvoiceUnitPrice} amount={line.sawAmount} /></td>
               <td><PrintUnitPrice price={line.rewindUnitPrice} invoicePrice={line.rewindInvoiceUnitPrice} amount={line.rewindAmount} /></td>
               <td>
@@ -117,6 +117,27 @@ function PrintUnitPrice({ amount, invoicePrice, price }: { amount?: number; invo
       {showInvoice && <em>开票价 {formatMoney(invoicePrice)}</em>}
     </span>
   )
+}
+
+function printOriginalLabel(line: SettlePrintLine) {
+  const parts = [
+    line.originalLabel || '-',
+    line.originalRollNo ? `卷号${line.originalRollNo}` : undefined,
+    line.originalExtraNo ? `编号${line.originalExtraNo}` : undefined,
+  ].filter(Boolean)
+  return parts.join(' / ')
+}
+
+function printOriginalSpec(line: SettlePrintLine) {
+  const spec = [
+    line.paperName || '-',
+    line.actualGramWeight ? `${line.actualGramWeight}g` : line.gramWeight ? `${line.gramWeight}g` : '-',
+    line.actualWidth ? `${line.actualWidth}mm` : line.originalWidth ? `${line.originalWidth}mm` : '-',
+    line.originalDiameter ? `φ${line.originalDiameter}` : undefined,
+    line.coreDiameter ? `芯${line.coreDiameter}` : undefined,
+    line.originalLength ? `${line.originalLength}m` : undefined,
+  ].filter(Boolean)
+  return spec.join(' / ')
 }
 
 function PrintAmountWithHint({ amount, hint }: { amount?: number; hint?: string }) {

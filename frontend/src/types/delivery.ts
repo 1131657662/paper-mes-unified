@@ -41,9 +41,46 @@ export interface DeliveryDetail {
   originalSummary?: string
   processModeText?: string
   processSummary?: string
+  originalItems?: DeliveryOriginalSourceItem[]
+  processStepItems?: DeliveryProcessStepItem[]
   remark?: string
   finishRemark?: string
   actualRemark?: string
+}
+
+export interface DeliveryOriginalSourceItem {
+  uuid?: string
+  rowSort?: number
+  extraNo?: string
+  rollNo?: string
+  paperName?: string
+  gramWeight?: number
+  actualGramWeight?: number
+  originalWidth?: number
+  actualWidth?: number
+  actualWeight?: number
+  totalWeight?: number
+  processMode?: number
+  mainStepType?: number
+  machineUuid?: string
+  operator?: string
+  remark?: string
+}
+
+export interface DeliveryProcessStepItem {
+  uuid?: string
+  originalUuid?: string
+  stepSort?: number
+  stepType?: number
+  stepName?: string
+  isMain?: number
+  knifeCount?: number
+  processWeight?: number
+  unitPrice?: number
+  stepAmount?: number
+  lossWeight?: number
+  operator?: string
+  remark?: string
 }
 
 export interface AvailableFinishVO {

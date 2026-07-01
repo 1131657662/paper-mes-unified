@@ -70,9 +70,64 @@ final class DeliverySnapshotItemReader {
             item.setOriginalSummary(text(itemNode, "original_summary"));
             item.setProcessModeText(text(itemNode, "process_mode_text"));
             item.setProcessSummary(text(itemNode, "process_summary"));
+            item.setOriginalItems(originalItems(itemNode.get("original_items")));
+            item.setProcessStepItems(processStepItems(itemNode.get("process_step_items")));
             item.setRemark(text(itemNode, "remark"));
             item.setFinishRemark(text(itemNode, "finish_remark"));
             item.setActualRemark(text(itemNode, "actual_remark"));
+            items.add(item);
+        }
+        return items;
+    }
+
+    private static List<DeliveryDetailItemVO.OriginalSourceItem> originalItems(JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        List<DeliveryDetailItemVO.OriginalSourceItem> items = new ArrayList<>(node.size());
+        for (JsonNode itemNode : node) {
+            DeliveryDetailItemVO.OriginalSourceItem item = new DeliveryDetailItemVO.OriginalSourceItem();
+            item.setUuid(text(itemNode, "uuid"));
+            item.setRowSort(integer(itemNode, "row_sort"));
+            item.setExtraNo(text(itemNode, "extra_no"));
+            item.setRollNo(text(itemNode, "roll_no"));
+            item.setPaperName(text(itemNode, "paper_name"));
+            item.setGramWeight(integer(itemNode, "gram_weight"));
+            item.setActualGramWeight(integer(itemNode, "actual_gram_weight"));
+            item.setOriginalWidth(integer(itemNode, "original_width"));
+            item.setActualWidth(integer(itemNode, "actual_width"));
+            item.setActualWeight(decimal(itemNode, "actual_weight"));
+            item.setTotalWeight(decimal(itemNode, "total_weight"));
+            item.setProcessMode(integer(itemNode, "process_mode"));
+            item.setMainStepType(integer(itemNode, "main_step_type"));
+            item.setMachineUuid(text(itemNode, "machine_uuid"));
+            item.setOperator(text(itemNode, "operator"));
+            item.setRemark(text(itemNode, "remark"));
+            items.add(item);
+        }
+        return items;
+    }
+
+    private static List<DeliveryDetailItemVO.ProcessStepItem> processStepItems(JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        List<DeliveryDetailItemVO.ProcessStepItem> items = new ArrayList<>(node.size());
+        for (JsonNode itemNode : node) {
+            DeliveryDetailItemVO.ProcessStepItem item = new DeliveryDetailItemVO.ProcessStepItem();
+            item.setUuid(text(itemNode, "uuid"));
+            item.setOriginalUuid(text(itemNode, "original_uuid"));
+            item.setStepSort(integer(itemNode, "step_sort"));
+            item.setStepType(integer(itemNode, "step_type"));
+            item.setStepName(text(itemNode, "step_name"));
+            item.setIsMain(integer(itemNode, "is_main"));
+            item.setKnifeCount(integer(itemNode, "knife_count"));
+            item.setProcessWeight(decimal(itemNode, "process_weight"));
+            item.setUnitPrice(decimal(itemNode, "unit_price"));
+            item.setStepAmount(decimal(itemNode, "step_amount"));
+            item.setLossWeight(decimal(itemNode, "loss_weight"));
+            item.setOperator(text(itemNode, "operator"));
+            item.setRemark(text(itemNode, "remark"));
             items.add(item);
         }
         return items;

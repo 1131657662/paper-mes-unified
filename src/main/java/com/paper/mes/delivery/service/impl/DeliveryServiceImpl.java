@@ -51,6 +51,7 @@ import com.paper.mes.system.config.service.DocumentNoService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -278,7 +279,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
         for (DeliveryDetail d : details) {
             d.setDeliveryUuid(deliveryOrder.getUuid());
-            ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.insert(d));
+            insertDeliveryDetail(d);
         }
 
         if (blockAction == BLOCK_RELEASE) {
@@ -461,7 +462,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
         for (DeliveryDetail detail : appendDetails) {
             detail.setDeliveryUuid(order.getUuid());
-            ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.insert(detail));
+            insertDeliveryDetail(detail);
         }
         refreshTotals(order);
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
@@ -567,6 +568,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             row.put("original_summary", item.getOriginalSummary());
             row.put("process_mode_text", item.getProcessModeText());
             row.put("process_summary", item.getProcessSummary());
+            row.put("original_items", item.getOriginalItems());
+            row.put("process_step_items", item.getProcessStepItems());
             row.put("remark", item.getRemark());
             row.put("finish_remark", item.getFinishRemark());
             row.put("actual_remark", item.getActualRemark());
@@ -794,6 +797,14 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         return detail;
     }
 
+    private void insertDeliveryDetail(DeliveryDetail detail) {
+        try {
+            ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.insert(detail));
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException(ErrorCode.E004, "成品已被出库单占用，不可重复出库：" + detail.getFinishRollNo());
+        }
+    }
+
     private void validateOutWeight(FinishRoll finish, BigDecimal outWeight) {
         if (outWeight == null || outWeight.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("出库重量必须大于 0：" + finish.getFinishRollNo());
@@ -916,7 +927,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                                          Map<String, List<ProcessStep>> stepsByOriginal, boolean inferred) {
         if (originals.isEmpty()) {
             return new SourceTrace(unlinkedSourceText(detail, finish), sourceTypeText(finish),
-                    "来源关系未建立，无法定位母卷加工方案");
+                    "来源关系未建立，无法定位母卷加工方案", List.of(), List.of());
         }
         List<ProcessStep> steps = originals.stream()
                 .flatMap(original -> stepsByOriginal.getOrDefault(original.getUuid(), List.of()).stream())
@@ -925,7 +936,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         return new SourceTrace(
                 (inferred ? "推定来源：" : "") + originalSummary(originals),
                 processModeText(originals),
-                prefix + processSummary(steps, originals));
+                prefix + processSummary(steps, originals),
+                originalSourceItems(originals),
+                processStepItems(steps));
     }
 
     private List<OriginalRoll> inferOriginals(FinishRoll finish, List<OriginalRoll> originals) {
@@ -1012,6 +1025,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         vo.setOriginalSummary(trace == null ? null : trace.originalSummary());
         vo.setProcessModeText(trace == null ? null : trace.processModeText());
         vo.setProcessSummary(trace == null ? null : trace.processSummary());
+        vo.setOriginalItems(trace == null ? List.of() : trace.originalItems());
+        vo.setProcessStepItems(trace == null ? List.of() : trace.processStepItems());
         vo.setRemark(detail.getRemark());
         vo.setFinishRemark(finish == null ? null : finish.getRemark());
         vo.setActualRemark(finish == null ? null : finish.getActualRemark());
@@ -1050,6 +1065,31 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         BigDecimal weight = roll.getActualWeight() != null ? roll.getActualWeight() : roll.getTotalWeight();
         return label + "｜" + roll.getPaperName() + " / " + roll.getGramWeight() + "g / "
                 + roll.getOriginalWidth() + "mm｜" + nz(weight) + "kg";
+    }
+
+    private List<DeliveryDetailItemVO.OriginalSourceItem> originalSourceItems(List<OriginalRoll> originals) {
+        return originals.stream().map(this::originalSourceItem).toList();
+    }
+
+    private DeliveryDetailItemVO.OriginalSourceItem originalSourceItem(OriginalRoll roll) {
+        DeliveryDetailItemVO.OriginalSourceItem item = new DeliveryDetailItemVO.OriginalSourceItem();
+        item.setUuid(roll.getUuid());
+        item.setRowSort(roll.getRowSort());
+        item.setExtraNo(roll.getExtraNo());
+        item.setRollNo(roll.getRollNo());
+        item.setPaperName(roll.getPaperName());
+        item.setGramWeight(roll.getGramWeight());
+        item.setActualGramWeight(roll.getActualGramWeight());
+        item.setOriginalWidth(roll.getOriginalWidth());
+        item.setActualWidth(roll.getActualWidth());
+        item.setActualWeight(roll.getActualWeight());
+        item.setTotalWeight(roll.getTotalWeight());
+        item.setProcessMode(roll.getProcessMode());
+        item.setMainStepType(roll.getMainStepType());
+        item.setMachineUuid(roll.getMachineUuid());
+        item.setOperator(roll.getOperator());
+        item.setRemark(roll.getRemark());
+        return item;
     }
 
     private String processModeText(List<OriginalRoll> originals) {
@@ -1100,6 +1140,28 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             return "复卷 " + nz(step.getProcessWeight()) + "kg";
         }
         return StringUtils.hasText(step.getStepName()) ? step.getStepName() : "工序";
+    }
+
+    private List<DeliveryDetailItemVO.ProcessStepItem> processStepItems(List<ProcessStep> steps) {
+        return steps.stream().map(this::processStepItem).toList();
+    }
+
+    private DeliveryDetailItemVO.ProcessStepItem processStepItem(ProcessStep step) {
+        DeliveryDetailItemVO.ProcessStepItem item = new DeliveryDetailItemVO.ProcessStepItem();
+        item.setUuid(step.getUuid());
+        item.setOriginalUuid(step.getOriginalUuid());
+        item.setStepSort(step.getStepSort());
+        item.setStepType(step.getStepType());
+        item.setStepName(step.getStepName());
+        item.setIsMain(step.getIsMain());
+        item.setKnifeCount(step.getKnifeCount());
+        item.setProcessWeight(step.getProcessWeight());
+        item.setUnitPrice(step.getUnitPrice());
+        item.setStepAmount(step.getStepAmount());
+        item.setLossWeight(step.getLossWeight());
+        item.setOperator(step.getOperator());
+        item.setRemark(step.getRemark());
+        return item;
     }
 
     private String processModeText(Integer mode) {
@@ -1261,6 +1323,12 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         return List.of(log);
     }
 
-    private record SourceTrace(String originalSummary, String processModeText, String processSummary) {
+    private record SourceTrace(
+            String originalSummary,
+            String processModeText,
+            String processSummary,
+            List<DeliveryDetailItemVO.OriginalSourceItem> originalItems,
+            List<DeliveryDetailItemVO.ProcessStepItem> processStepItems
+    ) {
     }
 }

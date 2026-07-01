@@ -47,14 +47,24 @@ export interface SettlePrintLine {
   paperName?: string
   gramWeight?: number
   originalWidth?: number
+  originalRollNo?: string
+  originalExtraNo?: string
+  actualGramWeight?: number
+  actualWidth?: number
+  originalDiameter?: number
+  coreDiameter?: number
+  originalLength?: number
   originalWeight?: number
   processMode?: number
   mainStepType?: number
   processText?: string
+  processStepSummary?: string
   finishSummary?: string
+  finishDetailSummary?: string
   finishCount?: number
   finishWeight?: number
   trimWeight?: number
+  trimSummary?: string
   sawWeight?: number
   rewindWeight?: number
   sawUnitPrice?: number
@@ -66,6 +76,7 @@ export interface SettlePrintLine {
   processAmount?: number
   extraAmount?: number
   extraFeeSummary?: string
+  taxRate?: number
   taxAmount?: number
   lineAmount?: number
   isInvoice?: number

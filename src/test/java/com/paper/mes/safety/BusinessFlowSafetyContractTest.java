@@ -93,6 +93,8 @@ class BusinessFlowSafetyContractTest {
                 "\"original_summary\"",
                 "\"process_mode_text\"",
                 "\"process_summary\"",
+                "\"original_items\"",
+                "\"process_step_items\"",
                 "\"actual_remark\"");
         assertContainsAll(slice(source, "private String buildRollbackSnapshot", "private List<Map<String, Object>> buildDeliverySnapshotItems"),
                 "\"snapshot_type\"",
@@ -159,6 +161,8 @@ class BusinessFlowSafetyContractTest {
                 "private List<Map<String, Object>> buildSettleSnapshotDetails");
         String detailItems = slice(source, "private List<Map<String, Object>> buildSettleSnapshotDetails",
                 "private List<SettleDetail> readSnapshotDetails");
+        String printLineItems = slice(source, "private SettlePrintLineVO buildPrintLine",
+                "private void applyOrderAmountClosure");
 
         assertContainsAll(slice(source, "public void voidSettle", "private SettleDetail buildDetail"),
                 "businessLockService.lockSettleOrder(uuid);",
@@ -195,6 +199,18 @@ class BusinessFlowSafetyContractTest {
                 "\"extra_amount\"",
                 "\"order_amount\"",
                 "\"remark\"");
+        assertContainsAll(printLineItems,
+                "line.setOriginalRollNo",
+                "line.setOriginalExtraNo",
+                "line.setActualGramWeight",
+                "line.setActualWidth",
+                "line.setOriginalDiameter",
+                "line.setCoreDiameter",
+                "line.setOriginalLength",
+                "line.setProcessStepSummary",
+                "line.setFinishDetailSummary",
+                "line.setTrimSummary",
+                "line.setTaxRate");
     }
 
     @Test
