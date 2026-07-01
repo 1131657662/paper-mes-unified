@@ -304,6 +304,18 @@
   color: var(--mes-color-text);
 }
 
+.delivery-rollback-snapshot .ant-card-extra {
+  min-width: 0;
+}
+
+.delivery-rollback-snapshot__meta {
+  margin-bottom: 12px;
+}
+
+.delivery-rollback-snapshot__table {
+  margin-top: 12px;
+}
+
 .document-action-warning {
   margin: 0 0 12px;
   padding: 10px 12px;

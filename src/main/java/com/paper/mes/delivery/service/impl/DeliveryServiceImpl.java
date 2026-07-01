@@ -23,6 +23,7 @@ import com.paper.mes.delivery.dto.DeliveryDetailItemVO;
 import com.paper.mes.delivery.dto.DeliveryDetailVO;
 import com.paper.mes.delivery.dto.DeliveryQuery;
 import com.paper.mes.delivery.dto.DeliveryRollbackDTO;
+import com.paper.mes.delivery.dto.DeliveryRollbackSnapshotVO;
 import com.paper.mes.delivery.entity.DeliveryDetail;
 import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
@@ -302,6 +303,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         vo.setOrder(snapshotDeliveryOrder(order));
         List<DeliveryDetailItemVO> snapshotItems = readSnapshotDeliveryItems(order.getSnapDelivery());
         vo.setDetails(snapshotItems == null ? buildDetailItems(details) : snapshotItems);
+        vo.setRollbackSnapshot(readRollbackSnapshot(order.getSnapDelivery()));
         vo.setOperationLogs(loadOperationLogs(order));
         return vo;
     }
@@ -582,6 +584,10 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             return null;
         }
         return DeliverySnapshotItemReader.read(snapDelivery, objectMapper);
+    }
+
+    private DeliveryRollbackSnapshotVO readRollbackSnapshot(String snapDelivery) {
+        return DeliveryRollbackSnapshotReader.read(snapDelivery, objectMapper);
     }
 
     private DeliveryOrder snapshotDeliveryOrder(DeliveryOrder order) {

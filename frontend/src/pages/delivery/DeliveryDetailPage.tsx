@@ -15,6 +15,7 @@ import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryDetail, DeliveryOrder } from '../../types/delivery'
 import DeliveryAppendItemsModal from './DeliveryAppendItemsModal'
 import DeliveryPrintSheet from './DeliveryPrintSheet'
+import DeliveryRollbackSnapshotCard from './DeliveryRollbackSnapshotCard'
 import { buildDeliveryDetailColumns } from './deliveryDetailColumns'
 import '../documentModule.css'
 
@@ -137,6 +138,10 @@ export default function DeliveryDetailPage() {
                 />
               </div>
             </Card>
+
+            {detail.rollbackSnapshot && (
+              <DeliveryRollbackSnapshotCard snapshot={detail.rollbackSnapshot} />
+            )}
 
             <Card className="document-module-card" title="业务追踪">
               <DocumentAuditTimeline logs={detail.operationLogs ?? []} />

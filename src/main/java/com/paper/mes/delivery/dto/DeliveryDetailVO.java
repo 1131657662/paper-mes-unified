@@ -15,4 +15,5 @@ public class DeliveryDetailVO {
     private DeliveryOrder order;
     private List<DeliveryDetailItemVO> details;
     private List<OperationLog> operationLogs;
+    private DeliveryRollbackSnapshotVO rollbackSnapshot;
 }

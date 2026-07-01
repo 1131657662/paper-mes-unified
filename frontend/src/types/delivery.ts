@@ -107,6 +107,19 @@ export interface DeliveryDetailVO {
   order: DeliveryOrder
   details: DeliveryDetail[]
   operationLogs?: OperationLog[]
+  rollbackSnapshot?: DeliveryRollbackSnapshotVO
+}
+
+export interface DeliveryRollbackSnapshotVO {
+  deliveryNo?: string
+  rollbackReason?: string
+  rollbackOperator?: string
+  rollbackTime?: string
+  signUser?: string
+  signTime?: string
+  totalCount?: number
+  totalWeight?: number
+  details?: DeliveryDetail[]
 }
 
 export interface DeliveryCreateDTO {
