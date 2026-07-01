@@ -1019,20 +1019,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private List<SettleDetail> readSnapshotDetails(String snapBill) {
-        if (!StringUtils.hasText(snapBill)) {
-            return null;
-        }
-        try {
-            JsonNode root = objectMapper.readTree(snapBill);
-            JsonNode node = firstExisting(root, "detail_items", "detailItems");
-            if (node == null || !node.isArray()) {
-                return null;
-            }
-            return objectMapper.convertValue(node, new TypeReference<List<SettleDetail>>() {
-            });
-        } catch (Exception ignored) {
-            return null;
-        }
+        return SettleSnapshotDetailReader.read(snapBill, objectMapper);
     }
 
     private List<SettlePrintLineVO> readSnapshotPrintLines(String snapBill) {

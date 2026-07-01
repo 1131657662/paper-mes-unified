@@ -131,6 +131,11 @@ class BusinessFlowSafetyContractTest {
     @Test
     void settleVoidAndSnapshot_whenReversingSettle_keepsAuditBoundaries() throws IOException {
         String source = source(SETTLE_SERVICE);
+        String snapshot = slice(source, "private String buildSettleSnapshot", "private List<Map<String, Object>> buildSettleSnapshotOrders");
+        String sourceOrders = slice(source, "private List<Map<String, Object>> buildSettleSnapshotOrders",
+                "private List<Map<String, Object>> buildSettleSnapshotDetails");
+        String detailItems = slice(source, "private List<Map<String, Object>> buildSettleSnapshotDetails",
+                "private List<SettleDetail> readSnapshotDetails");
 
         assertContainsAll(slice(source, "public void voidSettle", "private SettleDetail buildDetail"),
                 "businessLockService.lockSettleOrder(uuid);",
@@ -141,13 +146,30 @@ class BusinessFlowSafetyContractTest {
                 ".eq(ProcessOrder::getOrderStatus, ORDER_STATUS_SETTLED)",
                 ".set(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED)",
                 ".setSql(\"version = version + 1\")");
-        assertContainsAll(slice(source, "private String buildSettleSnapshot", "private List<Map<String, Object>> buildSettleSnapshotOrders"),
+        assertContainsAll(snapshot,
                 "\"schema_version\"",
                 "\"source_orders\"",
                 "\"detail_items\"",
                 "\"details\"",
                 "\"print_line_items\"",
                 "\"print_lines\"");
+        assertContainsAll(sourceOrders,
+                "\"order_no\"",
+                "\"settle_type\"",
+                "\"is_invoice\"",
+                "\"tax_rate\"",
+                "\"process_amount_no_tax\"",
+                "\"process_amount_tax\"",
+                "\"extra_amount_no_tax\"",
+                "\"extra_amount_tax\"",
+                "\"total_amount\"");
+        assertContainsAll(detailItems,
+                "\"order_no\"",
+                "\"saw_amount\"",
+                "\"rewind_amount\"",
+                "\"extra_amount\"",
+                "\"order_amount\"",
+                "\"remark\"");
     }
 
     @Test
