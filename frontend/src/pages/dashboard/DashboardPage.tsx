@@ -58,8 +58,9 @@ export default function DashboardPage() {
               emptyText="本月暂无客户加工统计"
               items={overview?.customerRank ?? []}
               yearlyItems={overview?.customerYearRank ?? []}
+              yearlyEmptyText="本年暂无客户加工统计"
               mode="amount"
-              subtitle="按加工应收排序，可切换月度和近一年。"
+              subtitle="按加工应收排序，可切换本月和本年。"
               title="客户加工应收排行"
             />
             <DashboardRankList

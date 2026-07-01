@@ -21,7 +21,7 @@ public class DashboardServiceImpl implements DashboardService {
     public DashboardOverviewVO overview() {
         LocalDate today = LocalDate.now();
         LocalDate monthStart = today.withDayOfMonth(1);
-        LocalDate yearStart = today.minusMonths(11).withDayOfMonth(1);
+        LocalDate yearStart = today.withDayOfYear(1);
         DashboardOverviewVO vo = new DashboardOverviewVO();
         DashboardOverviewVO.DashboardMetricVO metrics = dashboardMapper.metrics(monthStart, today);
         vo.setMetrics(metrics);

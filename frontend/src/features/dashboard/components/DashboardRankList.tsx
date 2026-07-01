@@ -9,13 +9,15 @@ interface Props {
   mode: 'amount' | 'weight'
   items: DashboardRank[]
   yearlyItems?: DashboardRank[]
+  yearlyEmptyText?: string
   subtitle?: string
   title: string
 }
 
-export default function DashboardRankList({ emptyText, items, mode, subtitle, title, yearlyItems }: Props) {
+export default function DashboardRankList({ emptyText, items, mode, subtitle, title, yearlyEmptyText, yearlyItems }: Props) {
   const [range, setRange] = useState<RankRange>('month')
   const displayItems = range === 'year' && yearlyItems ? yearlyItems : items
+  const displayEmptyText = range === 'year' && yearlyItems ? yearlyEmptyText ?? emptyText : emptyText
   const max = Math.max(...displayItems.map((item) => rankValue(item, mode)), 0)
   const canSwitch = !!yearlyItems
 
@@ -24,9 +26,10 @@ export default function DashboardRankList({ emptyText, items, mode, subtitle, ti
       <DashboardPanelHead
         extra={canSwitch && (
           <Segmented
+            className="dashboard-rank__range"
             options={[
-              { label: '月排行', value: 'month' },
-              { label: '年排行', value: 'year' },
+              { label: '本月', value: 'month' },
+              { label: '本年', value: 'year' },
             ]}
             size="small"
             value={range}
@@ -38,7 +41,7 @@ export default function DashboardRankList({ emptyText, items, mode, subtitle, ti
       />
       <div className="dashboard-rank__list">
         {displayItems.length === 0 ? (
-          <Empty description={emptyText} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <Empty description={displayEmptyText} image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
           displayItems.map((item, index) => (
             <div className="dashboard-rank-row" key={item.id ?? item.name}>
