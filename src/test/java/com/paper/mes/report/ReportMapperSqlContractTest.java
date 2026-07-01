@@ -38,6 +38,13 @@ class ReportMapperSqlContractTest {
     }
 
     @Test
+    void settleAllocationSql_whenCalculatingReceivables_prefersCurrentSettleAmountBeforeSnapshotFallback() throws IOException {
+        String sql = settleAllocationSql("mapper/report/ReportMapper.xml");
+
+        assertTrue(sql.contains("COALESCE( so.total_amount, CAST(JSON_UNQUOTE(JSON_EXTRACT(so.snap_bill, '$.total_amount')) AS DECIMAL(18, 2)), CAST(JSON_UNQUOTE(JSON_EXTRACT(so.snap_bill, '$.totalAmount')) AS DECIMAL(18, 2)), st.settleTotal, 0 )"));
+    }
+
+    @Test
     void settleAllocationSql_whenCalculatingReceivables_usesReceiveLedgerNotCachedSettleAmount() throws IOException {
         String sql = settleAllocationSql("mapper/report/ReportMapper.xml");
 
