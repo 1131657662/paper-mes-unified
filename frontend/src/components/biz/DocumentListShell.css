@@ -35,6 +35,7 @@
   display: grid;
   min-width: 0;
   grid-template-columns: minmax(220px, max-content) minmax(180px, 1fr) minmax(96px, max-content);
+  grid-template-areas: 'actions queue tools';
   align-items: center;
   gap: 12px;
   min-height: 34px;
