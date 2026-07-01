@@ -13,7 +13,7 @@ import type { OperationLog } from '../../types/operationLog'
 import { ACTION_TYPES, BIZ_TYPES } from '../../constants/operationLog'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import OperationLogDetailDrawer from './OperationLogDetailDrawer'
-import { actionTag } from './operationLogDisplay'
+import { actionTag, logText } from './operationLogDisplay'
 import './OperationLogPage.css'
 
 const BIZ_ROUTE_PREFIX: Record<string, string> = {
@@ -54,8 +54,8 @@ export default function OperationLogPage() {
       valueEnum: ACTION_TYPES,
       render: (_, record) => actionTag(record.actionType),
     },
-    { title: '操作人', dataIndex: 'operator', width: 110 },
-    { title: '字段名', dataIndex: 'fieldName', width: 130, hideInSearch: true, render: textOrDash },
+    { title: '操作人', dataIndex: 'operator', width: 110, render: (_, record) => textCell(record.operator) },
+    { title: '字段名', dataIndex: 'fieldName', width: 130, hideInSearch: true, render: (_, record) => textCell(record.fieldName) },
     {
       title: '变更内容',
       dataIndex: 'change',
@@ -63,7 +63,7 @@ export default function OperationLogPage() {
       hideInSearch: true,
       render: (_, record) => <ChangeCell log={record} />,
     },
-    { title: '备注', dataIndex: 'remark', width: 220, hideInSearch: true, render: (text) => <TooltipText value={text} /> },
+    { title: '备注', dataIndex: 'remark', width: 220, hideInSearch: true, render: (_, record) => textCell(record.remark) },
     {
       title: '操作',
       key: 'actions',
@@ -122,11 +122,11 @@ function ChangeCell({ log }: { log: OperationLog }) {
     <div className="operation-log-change-cell">
       <span>
         <em>前</em>
-        <TooltipText value={log.oldValue} />
+        <TooltipText value={logText(log.oldValue)} />
       </span>
       <span>
         <em>后</em>
-        <TooltipText value={log.newValue} />
+        <TooltipText value={logText(log.newValue)} />
       </span>
     </div>
   )
@@ -135,15 +135,17 @@ function ChangeCell({ log }: { log: OperationLog }) {
 function bizNoCell(record: OperationLog, navigate: (path: string) => void) {
   if (!record.bizNo) return '-'
   const prefix = BIZ_ROUTE_PREFIX[record.bizType]
-  if (!prefix || !record.bizUuid) return <TooltipText value={record.bizNo} />
+  if (!prefix || !record.bizUuid) return <TooltipText value={logText(record.bizNo)} />
   return (
     <Button className="operation-log-biz-link" type="link" size="small" onClick={() => navigate(`${prefix}/${record.bizUuid}`)}>
-      {record.bizNo}
+      {logText(record.bizNo)}
     </Button>
   )
 }
 
-function textOrDash(text?: unknown) {
-  if (typeof text === 'string' || typeof text === 'number') return text
+function textCell(text?: unknown) {
+  if (typeof text === 'string' || typeof text === 'number') {
+    return <TooltipText value={logText(text)} />
+  }
   return '-'
 }

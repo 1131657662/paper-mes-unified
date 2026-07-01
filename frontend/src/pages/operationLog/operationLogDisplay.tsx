@@ -27,3 +27,39 @@ export function dateText(value?: string) {
   const date = dayjs(value)
   return date.isValid() ? date.format('YYYY-MM-DD HH:mm:ss') : value
 }
+
+export function logText(value?: string | number | null) {
+  if (value == null || value === '') return '-'
+  const text = String(value)
+  return looksMojibake(text) ? decodeMojibakeSegments(text) : text
+}
+
+function looksMojibake(text: string) {
+  return /[\u0080-\u00ffÃÂåæçèéäöü]/.test(text)
+}
+
+function decodeMojibakeSegments(text: string) {
+  return text.replace(/[\u0080-\u00ffÃÂåæçèéäöü]+/g, (segment) => decodeMojibakeSegment(segment))
+}
+
+function decodeMojibakeSegment(segment: string) {
+  try {
+    const bytes = Uint8Array.from(Array.from(segment, (char) => char.charCodeAt(0) & 0xff))
+    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    return shouldUseDecoded(decoded, segment) ? decoded : segment
+  } catch {
+    return segment
+  }
+}
+
+function shouldUseDecoded(decoded: string, source: string) {
+  return hasCjk(decoded) && replacementScore(decoded) < replacementScore(source)
+}
+
+function hasCjk(text: string) {
+  return /[\u4e00-\u9fff]/.test(text)
+}
+
+function replacementScore(text: string) {
+  return (text.match(/[�ÃÂåæçèé\u0080-\u00ff]/g) ?? []).length
+}
