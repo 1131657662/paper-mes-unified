@@ -28,13 +28,19 @@ class DocumentNoConcurrencyTest {
 
     @ParameterizedTest
     @CsvSource({
-            "process_order,JG,JG202607010001,JG202607010012",
-            "delivery_order,CK,CK202607010001,CK202607010012",
-            "settle_order,JS,JS202607010001,JS202607010012"
+            "process_order,JG,1,4,1,JG202607010001,JG202607010012",
+            "delivery_order,CK,1,4,1,CK202607010001,CK202607010012",
+            "settle_order,JS,1,4,1,JS202607010001,JS202607010012",
+            "finish_roll,A,2,6,0,A000001,A000012",
+            "customer,KH,2,6,0,KH000001,KH000012",
+            "paper,ZZ,2,6,0,ZZ000001,ZZ000012",
+            "machine,JT,2,6,0,JT000001,JT000012",
+            "warehouse,CKD,2,6,0,CKD000001,CKD000012"
     })
-    void next_whenBusinessDocumentsCreatedConcurrently_returnsUniqueConfiguredNos(
-            String bizType, String prefix, String firstNo, String lastNo) throws Exception {
-        DocumentNoService service = service(rule(bizType, prefix));
+    void next_whenBusinessDocumentsAndArchiveCodesCreatedConcurrently_returnsUniqueConfiguredNos(
+            String bizType, String prefix, int patternType, int serialLength, int resetCycle,
+            String firstNo, String lastNo) throws Exception {
+        DocumentNoService service = service(rule(bizType, prefix, patternType, serialLength, resetCycle));
 
         List<String> nos = concurrentNext(service, bizType);
 
@@ -66,14 +72,14 @@ class DocumentNoConcurrencyTest {
         return new DocumentNoService(noRuleService, new LockingJdbcTemplate());
     }
 
-    private SysNoRule rule(String bizType, String prefix) {
+    private SysNoRule rule(String bizType, String prefix, int patternType, int serialLength, int resetCycle) {
         SysNoRule rule = new SysNoRule();
         rule.setBizType(bizType);
         rule.setPrefix(prefix);
-        rule.setPatternType(1);
+        rule.setPatternType(patternType);
         rule.setDatePattern("yyyyMMdd");
-        rule.setSerialLength(4);
-        rule.setResetCycle(1);
+        rule.setSerialLength(serialLength);
+        rule.setResetCycle(resetCycle);
         return rule;
     }
 
