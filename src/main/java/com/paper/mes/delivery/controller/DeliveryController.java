@@ -67,7 +67,7 @@ public class DeliveryController {
     @PostMapping("/{uuid}/confirm")
     @RequirePermission(Permissions.DELIVERY_MANAGE)
     public R<Void> confirm(@PathVariable String uuid,
-                           @RequestBody(required = false) DeliveryConfirmDTO dto) {
+                           @Valid @RequestBody(required = false) DeliveryConfirmDTO dto) {
         deliveryService.confirm(uuid, dto == null ? new DeliveryConfirmDTO() : dto);
         return R.success();
     }
