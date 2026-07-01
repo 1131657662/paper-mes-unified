@@ -1,4 +1,5 @@
 import { pageCustomers } from '../../../api/customer'
+import { pageMachines } from '../../../api/machine'
 import {
   createProcessOrderDraft,
   getProcessOrderDraft,
@@ -26,6 +27,7 @@ import type {
 export const createOrderService = {
   customers: () => pageCustomers({ current: 1, size: 200 }),
   warehouses: () => pageWarehouses({ current: 1, size: 200 }),
+  machines: () => pageMachines({ current: 1, size: 500, status: 1 }),
   drafts: () => listProcessOrderDrafts(),
   draft: (uuid: string) => getProcessOrderDraft(uuid),
   createDraft: (dto: DraftOrderBaseDTO) => createProcessOrderDraft(dto),

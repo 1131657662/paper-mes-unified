@@ -1,5 +1,5 @@
 import type { AvailableFinishVO, DeliveryOrder } from '../../../types/delivery'
-import { formatKg, formatTon } from '../utils/deliveryFormatters'
+import { formatTon } from '../utils/deliveryFormatters'
 
 interface Props {
   orders: DeliveryOrder[]
@@ -16,7 +16,7 @@ export default function DeliveryMetricStrip({ orders, selectedFinishes, stock }:
   return (
     <div className="delivery-metrics mes-metrics">
       <Metric title="可出库存" main={`${stock.length} 卷`} sub={formatTon(stockWeight)} />
-      <Metric title="本次选择" main={`${selectedFinishes.length} 卷`} sub={formatKg(selectedWeight)} />
+      <Metric title="本次选择" main={`${selectedFinishes.length} 卷`} sub={formatTon(selectedWeight)} />
       <Metric title="待签收单" main={`${pendingOrders.length} 张`} sub={`${pendingCount(pendingOrders)} 卷`} />
       <Metric title="已出库单" main={`${shippedOrders.length} 张`} sub={`${pendingCount(shippedOrders)} 卷`} />
     </div>

@@ -2,7 +2,7 @@ import { Button, Tag } from 'antd'
 import { BarChartOutlined, ReloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import type { DashboardMetrics, DashboardStatus, DashboardTodo } from '../../../types/dashboard'
-import { formatKg, formatMoney } from '../../report/utils/reportFormatters'
+import { formatMoney, formatTonFromKg } from '../../report/utils/reportFormatters'
 
 interface Props {
   loading: boolean
@@ -25,7 +25,7 @@ export default function DashboardHeader({ loading, metrics, onOpenReports, onRef
       <div className="dashboard-header__facts">
         <Fact label="待处理" value={`${sumTodoCount(todos)} 项`} />
         <Fact label="未闭环" value={`${sumQueueCount(statusQueue)} 单`} />
-        <Fact label="本月原卷" value={formatKg(metrics?.monthOriginalWeight)} />
+        <Fact label="本月原卷" value={formatTonFromKg(metrics?.monthOriginalWeight)} />
         <Fact label="已结算未收" value={formatMoney(metrics?.receivableAmount)} />
       </div>
       <div className="dashboard-header__actions">

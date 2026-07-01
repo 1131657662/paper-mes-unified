@@ -14,6 +14,13 @@ export function formatKg(value?: number) {
   })}kg`
 }
 
+export function formatTon(value?: number) {
+  return `${((value ?? 0) / 1000).toLocaleString('zh-CN', {
+    maximumFractionDigits: 3,
+    minimumFractionDigits: 3,
+  })}t`
+}
+
 export function formatPercent(value: number, total: number) {
   if (total <= 0) return '0%'
   return `${Math.round((value / total) * 100)}%`

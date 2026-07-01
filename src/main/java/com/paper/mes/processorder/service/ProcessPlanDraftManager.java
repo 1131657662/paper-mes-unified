@@ -169,6 +169,7 @@ public class ProcessPlanDraftManager {
     private void updateRollProcess(OriginalRoll roll, ProcessPlanDTO plan) {
         roll.setProcessMode(plan.getProcessMode());
         roll.setMainStepType(plan.getMainStepType());
+        roll.setMachineUuid(plan.getMachineUuid());
         rollMapper.updateById(roll);
     }
 

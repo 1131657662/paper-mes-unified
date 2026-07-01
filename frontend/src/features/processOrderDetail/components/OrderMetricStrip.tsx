@@ -2,7 +2,6 @@ import { StatisticCard } from '@ant-design/pro-components'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import {
   buildDetailMetrics,
-  formatKg,
   formatMoney,
   formatTon,
 } from '../orderDetailUtils'
@@ -19,7 +18,7 @@ export default function OrderMetricStrip({ detail }: Props) {
     {
       label: '母卷',
       value: `${metrics.rollCount} 卷`,
-      hint: formatKg(metrics.totalOriginalWeight),
+      hint: formatTon(metrics.totalOriginalWeight),
     },
     {
       label: '成品',

@@ -2,7 +2,7 @@ import { Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import TooltipText from '../../../components/biz/TooltipText'
 import type { SettleCandidateVO } from '../../../types/settle'
-import { formatKg, formatMoney, settleModeText } from '../utils/settleFormatters'
+import { formatMoney, formatTon, settleModeText } from '../utils/settleFormatters'
 
 interface Props {
   data: SettleCandidateVO[]
@@ -75,7 +75,7 @@ const columns: ColumnsType<SettleCandidateVO> = [
     render: (_, record) => (
       <div className="settle-cell-stack mes-cell-stack">
         <span>{record.originalRollCount ?? 0} 卷</span>
-        <span>{formatKg(record.originalRollWeight)}</span>
+        <span>{formatTon(record.originalRollWeight)}</span>
       </div>
     ),
   },
@@ -86,7 +86,7 @@ const columns: ColumnsType<SettleCandidateVO> = [
     render: (_, record) => (
       <div className="settle-cell-stack mes-cell-stack">
         <span>{record.finishRollCount ?? 0} 卷</span>
-        <span>{formatKg(record.finishRollWeight)}</span>
+        <span>{formatTon(record.finishRollWeight)}</span>
       </div>
     ),
   },

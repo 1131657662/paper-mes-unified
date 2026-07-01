@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { Spin } from 'antd'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
@@ -6,38 +6,39 @@ import AuthGuard from './AuthGuard'
 import BasicLayout from '../layout/BasicLayout'
 import PermissionGuard from '../components/PermissionGuard'
 import { PERMISSIONS } from '../constants/permissions'
-
-const BackRecordPage = lazy(() => import('../pages/processOrder/BackRecordPage'))
-const ConfigFinishPage = lazy(() => import('../pages/processOrder/ConfigFinishPage'))
-const CreateOrderPage = lazy(() => import('../pages/processOrder/CreateOrderPage'))
-const CustomerDetailPage = lazy(() => import('../pages/customer/CustomerDetailPage'))
-const CustomerFormPage = lazy(() => import('../pages/customer/CustomerFormPage'))
-const CustomerList = lazy(() => import('../pages/customer/CustomerList'))
-const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage'))
-const DeliveryCreatePage = lazy(() => import('../pages/delivery/DeliveryCreatePage'))
-const DeliveryDetailPage = lazy(() => import('../pages/delivery/DeliveryDetailPage'))
-const DeliveryOrderList = lazy(() => import('../pages/delivery/DeliveryOrderList'))
-const LoginPage = lazy(() => import('../pages/login/LoginPage'))
-const MachineDetailPage = lazy(() => import('../pages/machine/MachineDetailPage'))
-const MachineFormPage = lazy(() => import('../pages/machine/MachineFormPage'))
-const MachineList = lazy(() => import('../pages/machine/MachineList'))
-const OperationLogPage = lazy(() => import('../pages/operationLog/OperationLogPage'))
-const OrderDetailPage = lazy(() => import('../pages/processOrder/OrderDetailPage'))
-const PaperDetailPage = lazy(() => import('../pages/paper/PaperDetailPage'))
-const PaperFormPage = lazy(() => import('../pages/paper/PaperFormPage'))
-const PaperList = lazy(() => import('../pages/paper/PaperList'))
-const ProcessOrderList = lazy(() => import('../pages/processOrder/ProcessOrderList'))
-const ReportPage = lazy(() => import('../pages/report/ReportPage'))
-const SettleCreatePage = lazy(() => import('../pages/settle/SettleCreatePage'))
-const SettleDetailPage = lazy(() => import('../pages/settle/SettleDetailPage'))
-const SettleOrderList = lazy(() => import('../pages/settle/SettleOrderList'))
-const SystemConfigPage = lazy(() => import('../pages/systemConfig/SystemConfigPage'))
-const UserDetailPage = lazy(() => import('../pages/user/UserDetailPage'))
-const UserFormPage = lazy(() => import('../pages/user/UserFormPage'))
-const UserList = lazy(() => import('../pages/user/UserList'))
-const WarehouseDetailPage = lazy(() => import('../pages/warehouse/WarehouseDetailPage'))
-const WarehouseFormPage = lazy(() => import('../pages/warehouse/WarehouseFormPage'))
-const WarehouseList = lazy(() => import('../pages/warehouse/WarehouseList'))
+import {
+  BackRecordPage,
+  ConfigFinishPage,
+  CreateOrderPage,
+  CustomerDetailPage,
+  CustomerFormPage,
+  CustomerList,
+  DashboardPage,
+  DeliveryCreatePage,
+  DeliveryDetailPage,
+  DeliveryOrderList,
+  LoginPage,
+  MachineDetailPage,
+  MachineFormPage,
+  MachineList,
+  OperationLogPage,
+  OrderDetailPage,
+  PaperDetailPage,
+  PaperFormPage,
+  PaperList,
+  ProcessOrderList,
+  ReportPage,
+  SettleCreatePage,
+  SettleDetailPage,
+  SettleOrderList,
+  SystemConfigPage,
+  UserDetailPage,
+  UserFormPage,
+  UserList,
+  WarehouseDetailPage,
+  WarehouseFormPage,
+  WarehouseList,
+} from './lazyPages'
 
 function guarded(element: ReactNode, permissions: string[]) {
   return <PermissionGuard permissions={permissions}>{element}</PermissionGuard>
@@ -45,7 +46,7 @@ function guarded(element: ReactNode, permissions: string[]) {
 
 function lazyPage(element: ReactNode) {
   return (
-    <Suspense fallback={<RouteLoading />}>
+    <Suspense fallback={routeLoading()}>
       {element}
     </Suspense>
   )
@@ -55,10 +56,11 @@ function guardedPage(element: ReactNode, permissions: string[]) {
   return guarded(lazyPage(element), permissions)
 }
 
-function RouteLoading() {
+function routeLoading() {
   return (
     <div className="mes-route-loading">
-      <Spin tip="页面加载中" />
+      <Spin />
+      <span>页面加载中...</span>
     </div>
   )
 }

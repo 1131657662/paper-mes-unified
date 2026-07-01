@@ -1,7 +1,7 @@
 import { Empty, Segmented } from 'antd'
 import { useState } from 'react'
 import type { DashboardRank } from '../../../types/dashboard'
-import { formatKg, formatMoney } from '../../report/utils/reportFormatters'
+import { formatMoney, formatTonFromKg } from '../../report/utils/reportFormatters'
 import DashboardPanelHead from './DashboardPanelHead'
 
 interface Props {
@@ -48,12 +48,12 @@ export default function DashboardRankList({ emptyText, items, mode, subtitle, ti
               <span className={`dashboard-rank-row__index dashboard-rank-row__index--${index < 3 ? 'hot' : 'normal'}`}>{index + 1}</span>
               <div className="dashboard-rank-row__label">
                 <strong>{item.name ?? '-'}</strong>
-                <span>{item.count ?? 0} 单 / {formatKg(item.weight)}</span>
+                <span>{item.count ?? 0} 单 / {formatTonFromKg(item.weight)}</span>
                 <div className="dashboard-rank-row__track">
                   <i style={{ width: `${barWidth(rankValue(item, mode), max)}%` }} />
                 </div>
               </div>
-              <b>{mode === 'amount' ? formatMoney(item.amount) : formatKg(item.weight)}</b>
+              <b>{mode === 'amount' ? formatMoney(item.amount) : formatTonFromKg(item.weight)}</b>
             </div>
           ))
         )}

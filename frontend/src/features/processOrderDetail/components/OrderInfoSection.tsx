@@ -3,7 +3,7 @@ import { Tag } from 'antd'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import { IS_INVOICE, ORDER_STATUS, PRIORITY } from '../../../constants/processOrder'
 import { dict } from '../../../components/processOrder/shared/detailHelpers'
-import { buildDetailMetrics, formatKg, formatMoney } from '../orderDetailUtils'
+import { buildDetailMetrics, formatMoney, formatTon } from '../orderDetailUtils'
 
 interface Props {
   detail?: ProcessOrderDetailVO
@@ -34,7 +34,7 @@ export default function OrderInfoSection({ detail }: Props) {
           <InfoItem label="状态" value={status ? <Tag color={status.color}>{status.text}</Tag> : '-'} />
           <InfoItem label="开票" value={dict(IS_INVOICE, order?.isInvoice)} />
           <InfoItem label="打印" value={order?.printStatus === 1 ? `已打印 ${order.printCount ?? 1} 次` : '未打印'} />
-          <InfoItem label="原纸合计" value={formatKg(metrics.totalOriginalWeight)} />
+          <InfoItem label="原纸合计" value={formatTon(metrics.totalOriginalWeight)} />
           <InfoItem label="加工费" value={formatMoney(order?.totalProcessAmount)} />
           <InfoItem label="附加费" value={formatMoney(order?.totalExtraAmount)} />
           <InfoItem label="总金额" value={formatMoney(order?.totalAmount)} />

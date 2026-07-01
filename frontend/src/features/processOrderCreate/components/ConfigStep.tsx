@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Card, Empty, Space, message } from 'antd'
+import type { Machine } from '../../../types/machine'
 import type { PlanPreviewVO, ProcessPlanDTO } from '../../../types/processOrder'
 import { defaultPlanForRoll } from '../draftMappers'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
@@ -18,6 +19,7 @@ const workbenchCardStyle = {
 interface Props {
   defaultSpareCount?: number
   orderUuid?: string
+  machines: Machine[]
   rolls: RollDraft[]
   selectedId?: string
   plans: Record<string, ProcessPlanDTO>
@@ -35,6 +37,7 @@ interface Props {
 export default function ConfigStep({
   defaultSpareCount = 0,
   orderUuid,
+  machines,
   rolls,
   selectedId,
   plans,
@@ -99,6 +102,7 @@ export default function ConfigStep({
 
   const rollList = (
     <WorkbenchRollList
+      machines={machines}
       rolls={rolls}
       selectedId={selected?.localId}
       checkedIds={checkedIds}
@@ -116,6 +120,7 @@ export default function ConfigStep({
     <ProcessPlanEditor
       roll={selected}
       rolls={rolls}
+      machines={machines}
       plan={selectedPlan}
       defaultSpareCount={defaultSpareCount}
       onChange={(plan) => onPlanChange(selected.localId, plan)}

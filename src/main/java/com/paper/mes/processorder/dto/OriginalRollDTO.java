@@ -43,6 +43,7 @@ public class OriginalRollDTO {
     private Integer processMode;
     /** 主工艺类型：1锯纸 2复卷 */
     private Integer mainStepType;
+    private String machineUuid;
 
     private String remark;
 }

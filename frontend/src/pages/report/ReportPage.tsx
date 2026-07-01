@@ -15,7 +15,7 @@ import { useReportDetails } from '../../features/report/hooks/useReportDetails'
 import { useReportDimensions } from '../../features/report/hooks/useReportDimensions'
 import { useReportOverview } from '../../features/report/hooks/useReportOverview'
 import { useReportMachines, useReportPapers } from '../../features/report/hooks/useReportReferenceData'
-import { formatKg, formatMoney, formatNumber } from '../../features/report/utils/reportFormatters'
+import { formatMoney, formatNumber, formatTonFromKg } from '../../features/report/utils/reportFormatters'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import type { ReportDimension, ReportQuery } from '../../types/report'
 import '../documentModule.css'
@@ -99,7 +99,7 @@ export default function ReportPage() {
                 items={(customerRankQuery.data ?? []).slice(0, 8).map((item) => ({
                   key: item.dimensionKey,
                   label: item.dimensionName,
-                  meta: `${formatNumber(item.orderCount)} 单 / ${formatKg(item.originalWeight)}`,
+                  meta: `${formatNumber(item.orderCount)} 单 / ${formatTonFromKg(item.originalWeight)}`,
                   value: item.totalAmount ?? 0,
                   valueText: formatMoney(item.totalAmount),
                 }))}
@@ -110,9 +110,9 @@ export default function ReportPage() {
                 items={(productRankQuery.data ?? []).slice(0, 8).map((item) => ({
                   key: item.dimensionKey,
                   label: item.dimensionName,
-                  meta: `${formatNumber(item.originalRollCount)} 卷 / ${formatKg(item.originalWeight)}`,
+                  meta: `${formatNumber(item.originalRollCount)} 卷 / ${formatTonFromKg(item.originalWeight)}`,
                   value: item.processAmount || item.totalAmount || item.originalWeight || 0,
-                  valueText: item.processAmount ? formatMoney(item.processAmount) : formatKg(item.originalWeight),
+                  valueText: item.processAmount ? formatMoney(item.processAmount) : formatTonFromKg(item.originalWeight),
                 }))}
               />
             </div>

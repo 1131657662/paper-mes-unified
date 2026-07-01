@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
-import { Resizable } from 'react-resizable'
 import type { ResizeCallbackData } from 'react-resizable'
-
-type ColumnWidths = Record<string, number>
+import ResizableHeaderCell from './ResizableHeaderCell'
+import {
+  loadResizableTableWidths,
+  resizableColumnMaxWidth,
+  resizableColumnMinWidth,
+  saveResizableTableWidths,
+} from './resizableTableStorage'
 
 interface ResizableColumn<RecordType> {
   dataIndex?: unknown
@@ -13,20 +17,12 @@ interface ResizableColumn<RecordType> {
   width?: number | string
 }
 
-interface ResizableHeaderCellProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
-  width?: number
-  onResize?: (event: React.SyntheticEvent, data: ResizeCallbackData) => void
-}
-
-const minWidth = 60
-const maxWidth = 520
-
 export function useResizableTableColumns<
   RecordType,
   ColumnType,
 >(columns: ColumnType[], storageKey: string) {
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
-  const [widths, setWidths] = useState<ColumnWidths>(() => loadWidths(storageKey))
+  const [widths, setWidths] = useState(() => loadResizableTableWidths(storageKey))
 
   useEffect(() => {
     const reset = (event: Event) => {
@@ -51,11 +47,14 @@ export function useResizableTableColumns<
           ...resizableColumn.onHeaderCell?.(record, index),
           width,
           onResize: (_event: React.SyntheticEvent, data: ResizeCallbackData) => {
-            const nextWidth = Math.max(minWidth, Math.min(maxWidth, Math.round(data.size.width)))
+            const nextWidth = Math.max(
+              resizableColumnMinWidth,
+              Math.min(resizableColumnMaxWidth, Math.round(data.size.width)),
+            )
             setWidths((prev) => {
               const next = { ...prev, [key]: nextWidth }
               clearTimeout(saveTimer.current)
-              saveTimer.current = setTimeout(() => saveWidths(storageKey, next), 250)
+              saveTimer.current = setTimeout(() => saveResizableTableWidths(storageKey, next), 250)
               return next
             })
           },
@@ -76,29 +75,6 @@ export function useResizableTableColumns<
   }
 }
 
-export function resetResizableTableWidths(storageKey: string) {
-  localStorage.removeItem(widthStorageKey(storageKey))
-  window.dispatchEvent(new CustomEvent('resizable-table-reset', { detail: { storageKey } }))
-}
-
-function ResizableHeaderCell({ onResize, width, ...restProps }: ResizableHeaderCellProps) {
-  if (!width || !onResize) return <th {...restProps} />
-
-  return (
-    <Resizable
-      width={width}
-      height={0}
-      minConstraints={[minWidth, 0]}
-      maxConstraints={[maxWidth, 0]}
-      handle={<span className="resizable-col-handle" onClick={(event) => event.stopPropagation()} />}
-      onResize={onResize}
-      draggableOpts={{ enableUserSelectHack: false }}
-    >
-      <th {...restProps} />
-    </Resizable>
-  )
-}
-
 function columnKey<RecordType>(column: ResizableColumn<RecordType>) {
   if (column.key != null) return String(column.key)
   if (Array.isArray(column.dataIndex)) return column.dataIndex.join('.')
@@ -108,22 +84,4 @@ function columnKey<RecordType>(column: ResizableColumn<RecordType>) {
 
 function numericWidth(width: number | string | undefined) {
   return typeof width === 'number' ? width : undefined
-}
-
-function loadWidths(storageKey: string): ColumnWidths {
-  const raw = localStorage.getItem(widthStorageKey(storageKey))
-  if (!raw) return {}
-  try {
-    return JSON.parse(raw) as ColumnWidths
-  } catch {
-    return {}
-  }
-}
-
-function saveWidths(storageKey: string, widths: ColumnWidths) {
-  localStorage.setItem(widthStorageKey(storageKey), JSON.stringify(widths))
-}
-
-function widthStorageKey(storageKey: string) {
-  return `table_cols_${storageKey}`
 }

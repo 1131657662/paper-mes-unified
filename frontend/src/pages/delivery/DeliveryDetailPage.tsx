@@ -11,7 +11,7 @@ import { useDeliveryDetail } from '../../features/delivery/hooks/useDeliveryDeta
 import { useExportDelivery } from '../../features/delivery/hooks/useExportDelivery'
 import { useRemoveDeliveryDetail } from '../../features/delivery/hooks/useRemoveDeliveryDetail'
 import { useRollbackDelivery } from '../../features/delivery/hooks/useRollbackDelivery'
-import { formatKg } from '../../features/delivery/utils/deliveryFormatters'
+import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryDetail, DeliveryOrder } from '../../types/delivery'
 import DeliveryAppendItemsModal from './DeliveryAppendItemsModal'
 import DeliveryPrintSheet from './DeliveryPrintSheet'
@@ -105,7 +105,7 @@ export default function DeliveryDetailPage() {
                 <Descriptions.Item label="客户">{detail.order.customerName}</Descriptions.Item>
                 <Descriptions.Item label="出库日期">{detail.order.deliveryDate}</Descriptions.Item>
                 <Descriptions.Item label="出库统计">
-                  {detail.order.totalCount} 卷 / {formatKg(detail.order.totalWeight)}
+                  {detail.order.totalCount} 卷 / {formatTon(detail.order.totalWeight)}
                 </Descriptions.Item>
                 <Descriptions.Item label="提货人">{detail.order.pickerName || '-'}</Descriptions.Item>
                 <Descriptions.Item label="车牌号">{detail.order.carNo || '-'}</Descriptions.Item>
@@ -175,7 +175,7 @@ function DeliveryOverview({ order }: { order: DeliveryOrder }) {
     },
     {
       label: '出库重量',
-      value: formatKg(order.totalWeight),
+      value: formatTon(order.totalWeight),
     },
     {
       hint: order.signTime || '司机签收后扣减库存',

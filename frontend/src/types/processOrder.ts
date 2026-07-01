@@ -215,6 +215,7 @@ export interface OriginalRollDTO {
   processMode?: number
   /** 主工艺类型：1锯纸 2复卷 */
   mainStepType?: number
+  machineUuid?: string
   remark?: string
 }
 
@@ -344,6 +345,7 @@ export interface RewindSegmentPlanDTO {
 export interface ProcessPlanDTO {
   processMode: number
   mainStepType?: number
+  machineUuid?: string
   spareCount?: number
   rewindMode?: number
   knifeCount?: number

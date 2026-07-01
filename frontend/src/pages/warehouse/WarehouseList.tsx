@@ -10,7 +10,7 @@ import {
   deleteWarehouse,
 } from '../../api/warehouse'
 import TooltipText from '../../components/biz/TooltipText'
-import { mesTablePagination } from '../../components/biz/MesPaginationBar'
+import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import { PERMISSIONS } from '../../constants/permissions'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'

@@ -15,6 +15,7 @@ public class ProcessPlanDTO {
     private Integer processMode;
 
     private Integer mainStepType;
+    private String machineUuid;
 
     @Min(value = 0, message = "备用号数量不能小于0")
     private Integer spareCount;

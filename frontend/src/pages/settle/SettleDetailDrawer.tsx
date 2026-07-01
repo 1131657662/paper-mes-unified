@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Descriptions, Drawer, Spin, Tag } from 'antd'
 import { getSettleOrderDetail } from '../../api/settle'
 import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
@@ -16,15 +16,7 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [detail, setDetail] = useState<SettleDetailVO | null>(null)
 
-  useEffect(() => {
-    if (open && uuid) {
-      loadDetail()
-    } else {
-      setDetail(null)
-    }
-  }, [open, uuid])
-
-  const loadDetail = async () => {
+  const loadDetail = useCallback(async () => {
     if (!uuid) return
     setLoading(true)
     try {
@@ -33,7 +25,15 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [uuid])
+
+  useEffect(() => {
+    if (open && uuid) {
+      loadDetail()
+    } else {
+      setDetail(null)
+    }
+  }, [loadDetail, open, uuid])
 
   const order = detail?.order
 

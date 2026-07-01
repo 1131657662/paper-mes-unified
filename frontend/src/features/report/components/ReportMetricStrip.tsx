@@ -9,7 +9,7 @@ import {
 import { StatisticCard } from '@ant-design/pro-components'
 import type { ReactNode } from 'react'
 import type { ReportOverviewVO } from '../../../types/report'
-import { formatKg, formatMoney, formatNumber, formatPercent, formatTonFromKg } from '../utils/reportFormatters'
+import { formatMoney, formatNumber, formatPercent, formatTonFromKg } from '../utils/reportFormatters'
 
 interface Props {
   overview?: ReportOverviewVO
@@ -33,12 +33,12 @@ export default function ReportMetricStrip({ overview }: Props) {
     {
       icon: <BarChartOutlined />,
       main: formatTonFromKg(overview?.originalWeight),
-      sub: `成品 ${formatKg(overview?.finishWeight)}`,
+      sub: `成品 ${formatTonFromKg(overview?.finishWeight)}`,
       title: '生产吨位',
     },
     {
       icon: <ScissorOutlined />,
-      main: formatKg(overview?.lossWeight),
+      main: formatTonFromKg(overview?.lossWeight),
       sub: formatPercent(overview?.lossRatio),
       title: '损耗表现',
       tone: 'warning',

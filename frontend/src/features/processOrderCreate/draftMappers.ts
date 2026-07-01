@@ -38,6 +38,7 @@ export function toRollDto(roll: RollDraft): OriginalRollDTO {
     damageDesc: roll.damageDesc,
     processMode: roll.processMode,
     mainStepType: roll.processMode === 3 ? undefined : roll.mainStepType,
+    machineUuid: roll.processMode === 3 ? undefined : roll.machineUuid,
     remark: roll.remark,
   }
 }
@@ -62,6 +63,7 @@ export function toOriginalRoll(roll: RollDraft): OriginalRoll {
     damageDesc: roll.damageDesc,
     processMode: roll.processMode,
     mainStepType: roll.mainStepType,
+    machineUuid: roll.machineUuid,
     remark: roll.remark,
   }
 }
@@ -90,6 +92,7 @@ export function rollDraftFromOriginal(roll: OriginalRoll): RollDraft {
     damageDesc: roll.damageDesc,
     processMode: roll.processMode ?? 1,
     mainStepType: roll.processMode === 3 ? undefined : roll.mainStepType ?? 2,
+    machineUuid: roll.machineUuid,
     remark: roll.remark,
     uuid: roll.uuid,
     localId: roll.uuid,
@@ -142,6 +145,7 @@ export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions 
     return {
       processMode: 2,
       mainStepType,
+      machineUuid: roll.machineUuid,
       rewindMode: mainStepType === 2 ? 2 : undefined,
       knifeCount: mainStepType === 1 ? 0 : undefined,
       unitPrice: mainStepType === 1 ? 1.5 : 200,
@@ -154,6 +158,7 @@ export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions 
     return {
       processMode: roll.processMode ?? 1,
       mainStepType: 1,
+      machineUuid: roll.machineUuid,
       knifeCount: 0,
       unitPrice: 1.5,
       spareCount,
@@ -163,6 +168,7 @@ export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions 
   return {
     processMode: roll.processMode ?? 1,
     mainStepType: 2,
+    machineUuid: roll.machineUuid,
     rewindMode: 2,
     unitPrice: 200,
     spareCount,

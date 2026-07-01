@@ -7,7 +7,7 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons'
 import type { DashboardMetrics } from '../../../types/dashboard'
-import { formatKg, formatMoney, formatPercent } from '../../report/utils/reportFormatters'
+import { formatMoney, formatPercent, formatTonFromKg } from '../../report/utils/reportFormatters'
 
 interface Props {
   metrics?: DashboardMetrics
@@ -19,15 +19,15 @@ export default function DashboardMetricGrid({ metrics }: Props) {
       icon: <ThunderboltOutlined />,
       label: '本月完成加工',
       main: `${metrics?.monthOrderCount ?? 0} 单`,
-      sub: `原卷 ${formatKg(metrics?.monthOriginalWeight)}`,
-      tip: `成品 ${formatKg(metrics?.monthFinishWeight)} / 加工应收 ${formatMoney(metrics?.monthAmount)}`,
+      sub: `原卷 ${formatTonFromKg(metrics?.monthOriginalWeight)}`,
+      tip: `成品 ${formatTonFromKg(metrics?.monthFinishWeight)} / 加工应收 ${formatMoney(metrics?.monthAmount)}`,
       tone: 'blue',
     },
     {
       icon: <InboxOutlined />,
       label: '成品库存',
       main: `${metrics?.inStockFinishCount ?? 0} 卷`,
-      sub: `${formatKg(metrics?.inStockFinishWeight)} 可出库`,
+      sub: `${formatTonFromKg(metrics?.inStockFinishWeight)} 可出库`,
       tip: '已入库、未出库的正式成品',
       tone: 'cyan',
     },
@@ -43,7 +43,7 @@ export default function DashboardMetricGrid({ metrics }: Props) {
       icon: <AlertOutlined />,
       label: '本月损耗',
       main: formatPercent(metrics?.monthLossRatio),
-      sub: `${formatKg(metrics?.monthLossWeight)} 损耗重量`,
+      sub: `${formatTonFromKg(metrics?.monthLossWeight)} 损耗重量`,
       tip: '来自回录闭合后的损耗统计',
       tone: 'orange',
     },

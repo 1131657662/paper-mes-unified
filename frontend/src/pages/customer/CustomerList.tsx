@@ -10,7 +10,7 @@ import {
   deleteCustomer,
 } from '../../api/customer'
 import TooltipText from '../../components/biz/TooltipText'
-import { mesTablePagination } from '../../components/biz/MesPaginationBar'
+import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import { PERMISSIONS } from '../../constants/permissions'
 import { DICT_TYPES, invoiceFallbackOptions, settleFallbackOptions } from '../../features/systemConfig/configFallbacks'

@@ -6,7 +6,7 @@ import {
   PrinterOutlined,
 } from '@ant-design/icons'
 import type { DashboardStatus } from '../../../types/dashboard'
-import { formatKg } from '../../report/utils/reportFormatters'
+import { formatTonFromKg } from '../../report/utils/reportFormatters'
 import DashboardPanelHead from './DashboardPanelHead'
 
 interface Props {
@@ -35,7 +35,7 @@ export default function DashboardWorkQueue({ items, onOpenOrders }: Props) {
             <div className="dashboard-work-queue__body">
               <span>{item.statusName ?? '未知状态'}</span>
               <strong>{item.orderCount ?? 0} 单</strong>
-              <em>{formatKg(item.originalWeight)} 原卷</em>
+              <em>{formatTonFromKg(item.originalWeight)} 原卷</em>
               <i style={{ width: `${((item.orderCount ?? 0) / max) * 100}%` }} />
             </div>
           </button>

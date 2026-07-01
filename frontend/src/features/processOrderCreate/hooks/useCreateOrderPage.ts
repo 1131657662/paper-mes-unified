@@ -3,13 +3,14 @@ import { message } from 'antd'
 import type { DraftOrderBaseDTO, OriginalRollImportPreviewVO, PlanPreviewVO, ProcessOrderSubmitVO, ProcessPlanDTO } from '../../../types/processOrder'
 import { hydrateDraftState, isRollReadyForSave, plansForRolls, plansFromBatch, previewsFromBatch, rebasePlanForRoll } from '../createOrderState'
 import { attachSavedUuids, defaultPlanForRoll, newRollDraft, normalizeBaseInfo, toRollDto } from '../draftMappers'
+import { applyDefaultMachineToPlan, applyDefaultMachinesToRolls } from '../machineDefaults'
 import { mergedSourceUuidSet } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
 import { useCreateDraft } from './useCreateDraft'
 import { useGetDraft } from './useGetDraft'
 import { useImportPreview } from './useImportPreview'
 import { usePreviewPlan } from './usePreviewPlan'
-import { useCustomers, useWarehouses } from './useReferenceData'
+import { useCustomers, useMachines, useWarehouses } from './useReferenceData'
 import { useReplaceRolls } from './useReplaceRolls'
 import { useSaveBaseInfo } from './useSaveBaseInfo'
 import { useSavePlan } from './useSavePlan'
@@ -35,6 +36,8 @@ export function useCreateOrderPage(draftUuid?: string) {
   const { data: draft, isLoading: loadingDraft } = useGetDraft(draftUuid)
   const { data: customerPage } = useCustomers()
   const { data: warehousePage } = useWarehouses()
+  const { data: machinePage } = useMachines()
+  const machines = machinePage?.records ?? []
   const { value: defaultSpareCount } = useNumberConfigValue(CONFIG_KEYS.spareRollNoCount, 0)
   const { mutateAsync: createDraft, isPending: creatingDraft } = useCreateDraft()
   const { mutateAsync: saveBaseInfo, isPending: savingBase } = useSaveBaseInfo()
@@ -80,8 +83,9 @@ export function useCreateOrderPage(draftUuid?: string) {
       message.warning('请补全品名和单重')
       return
     }
-    const uuids = await replaceRolls({ uuid: orderUuid, rolls: rolls.map(toRollDto) })
-    const savedRolls = attachSavedUuids(rolls, uuids)
+    const rollsWithMachines = applyDefaultMachinesToRolls(rolls, machines)
+    const uuids = await replaceRolls({ uuid: orderUuid, rolls: rollsWithMachines.map(toRollDto) })
+    const savedRolls = attachSavedUuids(rollsWithMachines, uuids)
     setRolls(savedRolls)
     setPlans(plansForRolls(savedRolls, {}, { spareCount: defaultSpareCount }))
     setPreviews({})
@@ -90,10 +94,12 @@ export function useCreateOrderPage(draftUuid?: string) {
   }
 
   const handleProcessNext = async () => {
+    const rollsWithMachines = applyDefaultMachinesToRolls(rolls, machines)
+    setRolls(rollsWithMachines)
     await Promise.all(
-      rolls.filter((roll) => roll.uuid).map((roll) => updateRoll({ rollUuid: roll.uuid!, dto: toRollDto(roll) })),
+      rollsWithMachines.filter((roll) => roll.uuid).map((roll) => updateRoll({ rollUuid: roll.uuid!, dto: toRollDto(roll) })),
     )
-    setPlans(plansForRolls(rolls, plans, { spareCount: defaultSpareCount }))
+    setPlans(plansForRolls(rollsWithMachines, plans, { spareCount: defaultSpareCount }))
     setPreviews({})
     await moveToStep(3)
   }
@@ -112,7 +118,7 @@ export function useCreateOrderPage(draftUuid?: string) {
 
   const saveRollPlan = async (roll: RollDraft, plan: ProcessPlanDTO, notify = false) => {
     if (!orderUuid || !roll.uuid) return
-    const nextPlan = rebasePlanForRoll(plan, roll)
+    const nextPlan = applyDefaultMachineToPlan(rebasePlanForRoll(plan, roll), machines)
     const preview = await savePlan({
       orderUuid,
       rollUuid: roll.uuid,
@@ -125,7 +131,7 @@ export function useCreateOrderPage(draftUuid?: string) {
 
   const handlePreviewPlan = async (roll: RollDraft, plan: ProcessPlanDTO) => {
     if (!orderUuid || !roll.uuid) return
-    const nextPlan = rebasePlanForRoll(plan, roll)
+    const nextPlan = applyDefaultMachineToPlan(rebasePlanForRoll(plan, roll), machines)
     const preview = await previewPlan({
       orderUuid,
       request: { originalUuid: roll.uuid, plan: nextPlan },
@@ -141,11 +147,12 @@ export function useCreateOrderPage(draftUuid?: string) {
   const handleSavePlanBatch = async (targetRolls: RollDraft[], plan: ProcessPlanDTO) => {
     if (!orderUuid) return
     const savedRolls = targetRolls.filter((roll) => roll.uuid)
+    const batchPlan = applyDefaultMachineToPlan(plan, machines)
     const result = await savePlanBatch({
       orderUuid,
-      dto: { originalUuids: savedRolls.map((roll) => roll.uuid!), plan },
+      dto: { originalUuids: savedRolls.map((roll) => roll.uuid!), plan: batchPlan },
     })
-    setPlans((prev) => ({ ...prev, ...plansFromBatch(savedRolls, plan) }))
+    setPlans((prev) => ({ ...prev, ...plansFromBatch(savedRolls, batchPlan) }))
     setPreviews((prev) => ({ ...prev, ...previewsFromBatch(savedRolls, result) }))
     message.success(`已应用到 ${savedRolls.length} 卷母卷`)
   }
@@ -179,6 +186,7 @@ export function useCreateOrderPage(draftUuid?: string) {
     submitResult,
     customerOptions: toCustomerOptions(customerPage?.records ?? []),
     warehouseOptions: toOptions(warehousePage?.records ?? [], 'warehouseName'),
+    machines,
     creatingDraft,
     savingBase,
     savingRolls: savingRolls || importingRolls,

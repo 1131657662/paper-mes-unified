@@ -9,7 +9,7 @@ interface Props {
   onFinish?: (values: MachineSaveDTO) => void
 }
 
-export const machineFormDefaults: Partial<MachineSaveDTO> = {
+const machineFormDefaults: Partial<MachineSaveDTO> = {
   status: 1,
 }
 

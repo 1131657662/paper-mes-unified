@@ -266,5 +266,3 @@ export default function ProductionFlowTable({ productions, compact }: Props) {
     />
   )
 }
-
-export { buildDisplayRows }

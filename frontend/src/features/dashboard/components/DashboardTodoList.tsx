@@ -1,7 +1,7 @@
 import { ArrowRightOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { Empty } from 'antd'
 import type { DashboardTodo } from '../../../types/dashboard'
-import { formatKg, formatMoney } from '../../report/utils/reportFormatters'
+import { formatMoney, formatTonFromKg } from '../../report/utils/reportFormatters'
 import DashboardPanelHead from './DashboardPanelHead'
 
 interface Props {
@@ -40,7 +40,7 @@ function todoIcon(level?: string) {
 }
 
 function valueText(item: DashboardTodo) {
-  if (item.key === 'stock') return formatKg(item.amount)
+  if (item.key === 'stock') return formatTonFromKg(item.amount)
   if (item.key === 'receive') return formatMoney(item.amount)
   return '项'
 }

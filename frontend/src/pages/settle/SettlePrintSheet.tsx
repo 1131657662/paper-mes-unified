@@ -1,5 +1,5 @@
 import { INVOICE_TYPE } from '../../constants/settle'
-import { formatKg, formatMoney } from '../../features/settle/utils/settleFormatters'
+import { formatKg, formatMoney, formatTon } from '../../features/settle/utils/settleFormatters'
 import type { SettleDetailVO } from '../../types/settle'
 import { buildSettleBillGroups, type SettleBillGroup } from './settleBillGroups'
 import '../documentModule.css'
@@ -55,8 +55,8 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
       <div className="document-print-group__head">
         <strong>{group.orderNo}</strong>
         {group.orderDate && <span>日期：{group.orderDate}</span>}
-        <span>原纸：{group.lines.length} 卷 / {formatKg(group.originalWeight)}</span>
-        <span>成品：{group.finishCount} 卷 / {formatKg(group.finishWeight)}</span>
+        <span>原纸：{group.lines.length} 卷 / {formatTon(group.originalWeight)}</span>
+        <span>成品：{group.finishCount} 卷 / {formatTon(group.finishWeight)}</span>
         <span>合计：{formatMoney(group.lineAmount)}</span>
       </div>
       <table className="document-print-table document-print-table--settle">
@@ -95,10 +95,10 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
           ))}
           <tr className="document-print-table__subtotal">
             <td colSpan={2}>加工单小计</td>
-            <td>{formatKg(group.originalWeight)}</td>
+            <td>{formatTon(group.originalWeight)}</td>
             <td colSpan={2}>加工费 {formatMoney(group.processAmount)}</td>
-            <td>{formatKg(group.finishWeight)}</td>
-            <td>{formatKg(group.trimWeight)}</td>
+            <td>{formatTon(group.finishWeight)}</td>
+            <td>{formatTon(group.trimWeight)}</td>
             <td colSpan={2}>额外费 {formatMoney(group.extraAmount)}{group.extraFeeSummary ? `（${group.extraFeeSummary}）` : ''}</td>
             <td>开票价已计入应收</td>
             <td>{formatMoney(group.lineAmount)}</td>

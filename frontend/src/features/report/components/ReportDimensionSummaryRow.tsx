@@ -1,6 +1,6 @@
 import { Table } from 'antd'
 import type { ReportDimensionVO } from '../../../types/report'
-import { formatKg, formatMoney, formatNumber, formatPercent } from '../utils/reportFormatters'
+import { formatMoney, formatNumber, formatPercent, formatTonFromKg } from '../utils/reportFormatters'
 
 interface Props {
   rows: ReportDimensionVO[]
@@ -16,9 +16,9 @@ export default function ReportDimensionSummaryRow({ rows }: Props) {
         <Table.Summary.Cell index={1} align="right">{formatNumber(totals.orderCount)}</Table.Summary.Cell>
         <Table.Summary.Cell index={2} align="right">{formatNumber(totals.originalRollCount)}</Table.Summary.Cell>
         <Table.Summary.Cell index={3} align="right">{formatNumber(totals.finishRollCount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={4} align="right">{formatKg(totals.originalWeight)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={5} align="right">{formatKg(totals.finishWeight)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={6} align="right">{formatKg(totals.lossWeight)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={4} align="right">{formatTonFromKg(totals.originalWeight)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={5} align="right">{formatTonFromKg(totals.finishWeight)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={6} align="right">{formatTonFromKg(totals.lossWeight)}</Table.Summary.Cell>
         <Table.Summary.Cell index={7} align="right">{formatPercent(totals.lossRatio)}</Table.Summary.Cell>
         <Table.Summary.Cell index={8} align="right">{formatNumber(totals.knifeCount)}</Table.Summary.Cell>
         <Table.Summary.Cell index={9} align="right">{formatMoney(totals.sawAmount)}</Table.Summary.Cell>

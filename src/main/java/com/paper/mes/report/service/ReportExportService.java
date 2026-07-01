@@ -12,6 +12,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 /**
@@ -39,8 +40,8 @@ public class ReportExportService {
         title.getCell(0).setCellStyle(titleStyle);
         row(sheet, 2, "加工单数", overview.getOrderCount(), "原卷数", overview.getOriginalRollCount());
         row(sheet, 3, "成品卷数", overview.getFinishRollCount(), "刀数", overview.getKnifeCount());
-        row(sheet, 4, "原纸重量kg", overview.getOriginalWeight(), "成品重量kg", overview.getFinishWeight());
-        row(sheet, 5, "损耗kg", overview.getLossWeight(), "损耗率%", overview.getLossRatio());
+        row(sheet, 4, "原纸吨位", ton(overview.getOriginalWeight()), "成品吨位", ton(overview.getFinishWeight()));
+        row(sheet, 5, "损耗吨位", ton(overview.getLossWeight()), "损耗率%", overview.getLossRatio());
         row(sheet, 6, "锯纸费", overview.getSawAmount(), "复卷费", overview.getRewindAmount());
         row(sheet, 7, "加工费", overview.getProcessAmount(), "附加费", overview.getExtraAmount());
         row(sheet, 8, "应收合计", overview.getTotalAmount(), "已结算应收", overview.getSettledAmount());
@@ -53,7 +54,7 @@ public class ReportExportService {
                                  List<ReportDimensionVO> rows,
                                  String dimension,
                                  CellStyle headerStyle) {
-        header(sheet, headerStyle, "维度", "加工单", "原卷", "成品", "原纸kg", "成品kg", "损耗kg",
+        header(sheet, headerStyle, "维度", "加工单", "原卷", "成品", "原纸吨位", "成品吨位", "损耗吨位",
                 "损耗率%", "刀数", "锯纸费", "复卷费", "加工费", "附加费", "应收合计",
                 "已结算应收", "待结算应收", "有效已收", "已结算未收");
         int index = 1;
@@ -63,9 +64,9 @@ public class ReportExportService {
             row.createCell(1).setCellValue(num(item.getOrderCount()));
             row.createCell(2).setCellValue(num(item.getOriginalRollCount()));
             row.createCell(3).setCellValue(num(item.getFinishRollCount()));
-            row.createCell(4).setCellValue(num(item.getOriginalWeight()));
-            row.createCell(5).setCellValue(num(item.getFinishWeight()));
-            row.createCell(6).setCellValue(num(item.getLossWeight()));
+            row.createCell(4).setCellValue(numTon(item.getOriginalWeight()));
+            row.createCell(5).setCellValue(numTon(item.getFinishWeight()));
+            row.createCell(6).setCellValue(numTon(item.getLossWeight()));
             row.createCell(7).setCellValue(num(item.getLossRatio()));
             row.createCell(8).setCellValue(num(item.getKnifeCount()));
             row.createCell(9).setCellValue(num(item.getSawAmount()));
@@ -83,7 +84,7 @@ public class ReportExportService {
 
     private void writeDetails(Sheet sheet, List<ReportDetailVO> rows, CellStyle headerStyle) {
         header(sheet, headerStyle, "加工单号", "日期", "客户", "纸品", "工艺", "状态", "结算",
-                "开票", "原卷", "成品", "原纸kg", "成品kg", "损耗kg", "损耗率%", "刀数",
+                "开票", "原卷", "成品", "原纸吨位", "成品吨位", "损耗吨位", "损耗率%", "刀数",
                 "锯纸费", "复卷费", "加工费", "附加费", "应收合计", "已结算应收", "待结算应收", "有效已收", "已结算未收");
         int index = 1;
         for (ReportDetailVO item : rows) {
@@ -98,9 +99,9 @@ public class ReportExportService {
             row.createCell(7).setCellValue(invoiceText(item.getIsInvoice()));
             row.createCell(8).setCellValue(num(item.getOriginalRollCount()));
             row.createCell(9).setCellValue(num(item.getFinishRollCount()));
-            row.createCell(10).setCellValue(num(item.getOriginalWeight()));
-            row.createCell(11).setCellValue(num(item.getFinishWeight()));
-            row.createCell(12).setCellValue(num(item.getLossWeight()));
+            row.createCell(10).setCellValue(numTon(item.getOriginalWeight()));
+            row.createCell(11).setCellValue(numTon(item.getFinishWeight()));
+            row.createCell(12).setCellValue(numTon(item.getLossWeight()));
             row.createCell(13).setCellValue(num(item.getLossRatio()));
             row.createCell(14).setCellValue(num(item.getKnifeCount()));
             row.createCell(15).setCellValue(num(item.getSawAmount()));
@@ -208,6 +209,14 @@ public class ReportExportService {
 
     private double num(BigDecimal value) {
         return value == null ? 0 : value.doubleValue();
+    }
+
+    private BigDecimal ton(BigDecimal kg) {
+        return kg == null ? BigDecimal.ZERO : kg.divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
+    }
+
+    private double numTon(BigDecimal kg) {
+        return ton(kg).doubleValue();
     }
 
     private double num(Long value) {

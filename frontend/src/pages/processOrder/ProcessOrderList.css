@@ -126,6 +126,11 @@
   gap: 8px;
 }
 
+.process-order-batchbar .ant-space {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
 .process-order-resize-handle {
   position: absolute;
   top: 0;
@@ -223,22 +228,29 @@
 
 .process-order-shell__toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, max-content) minmax(180px, 1fr) minmax(96px, max-content);
-  min-height: 34px;
-  margin-bottom: 8px;
   min-width: 0;
+  min-height: 36px;
+  grid-template-areas: 'actions queue tools';
+  grid-template-columns: minmax(360px, max-content) minmax(260px, 1fr) minmax(96px, max-content);
   align-items: center;
   gap: 12px;
+  margin-bottom: 8px;
 }
 
 .process-order-shell__actions {
   display: flex;
   grid-area: actions;
   min-width: 0;
+  min-height: 34px;
   align-items: center;
   gap: 8px;
-  overflow-x: auto;
+  overflow: hidden;
   scrollbar-width: none;
+}
+
+.process-order-shell__actions > .ant-btn,
+.process-order-batchbar .ant-btn {
+  flex: 0 0 auto;
 }
 
 .process-order-shell__actions::-webkit-scrollbar {
@@ -248,6 +260,7 @@
 .process-order-shell__queue {
   grid-area: queue;
   min-width: 0;
+  min-height: 34px;
   overflow: hidden;
 }
 
@@ -256,9 +269,14 @@
   grid-area: tools;
   min-width: 96px;
   min-height: 34px;
+  align-self: center;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.process-order-shell__table-tools .mes-table-options-portal {
+  height: 30px;
 }
 
 .process-order-table .ant-table-row {
@@ -340,7 +358,7 @@
   min-width: 100%;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1120px) {
   .process-order-searchbar__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -350,11 +368,15 @@
   }
 
   .process-order-shell__toolbar {
-    grid-template-columns: minmax(0, 1fr) minmax(96px, max-content);
     grid-template-areas:
       'actions tools'
       'queue queue';
+    grid-template-columns: minmax(0, 1fr) minmax(96px, max-content);
     gap: 8px 12px;
+  }
+
+  .process-order-shell__actions {
+    overflow-x: auto;
   }
 
   .process-order-queue {
@@ -373,11 +395,15 @@
   }
 
   .process-order-shell__toolbar {
-    grid-template-columns: 1fr;
     grid-template-areas:
       'actions'
       'queue'
       'tools';
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .process-order-shell__table-tools {
+    justify-content: flex-start;
   }
 
   .mes-pagination {

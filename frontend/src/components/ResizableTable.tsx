@@ -1,15 +1,13 @@
 import { Table } from 'antd'
 import type { ColumnType, TableProps } from 'antd/es/table'
 import TooltipText from './biz/TooltipText'
-import { resetResizableTableWidths, useResizableTableColumns } from './useResizableTableColumns'
+import { useResizableTableColumns } from './useResizableTableColumns'
 import './ResizableTable.css'
 
 interface ResizableTableProps<RecordType> extends Omit<TableProps<RecordType>, 'columns'> {
   storageKey: string
   columns: ColumnType<RecordType>[]
 }
-
-export { resetResizableTableWidths }
 
 function wrapText<RecordType>(column: ColumnType<RecordType>): ColumnType<RecordType> {
   if (!column.ellipsis) return column

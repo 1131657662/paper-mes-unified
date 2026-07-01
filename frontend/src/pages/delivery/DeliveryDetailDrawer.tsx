@@ -7,7 +7,7 @@ import { useDeliveryDetail } from '../../features/delivery/hooks/useDeliveryDeta
 import { useExportDelivery } from '../../features/delivery/hooks/useExportDelivery'
 import { useRemoveDeliveryDetail } from '../../features/delivery/hooks/useRemoveDeliveryDetail'
 import { useRollbackDelivery } from '../../features/delivery/hooks/useRollbackDelivery'
-import { deliveryDetailSpecText, formatKg } from '../../features/delivery/utils/deliveryFormatters'
+import { deliveryDetailSpecText, formatKg, formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryDetail } from '../../types/delivery'
 
 interface Props {
@@ -79,7 +79,7 @@ export default function DeliveryDetailDrawer({ uuid, open, onChanged, onClose }:
                 </Descriptions.Item>
                 <Descriptions.Item label="出库日期">{order.deliveryDate}</Descriptions.Item>
                 <Descriptions.Item label="总件数">{order.totalCount}</Descriptions.Item>
-                <Descriptions.Item label="总重量">{formatKg(order.totalWeight)}</Descriptions.Item>
+                <Descriptions.Item label="总重量">{formatTon(order.totalWeight)}</Descriptions.Item>
                 <Descriptions.Item label="提货人">{order.pickerName || '-'}</Descriptions.Item>
                 <Descriptions.Item label="车牌号">{order.carNo || '-'}</Descriptions.Item>
                 <Descriptions.Item label="柜号">{order.containerNo || '-'}</Descriptions.Item>

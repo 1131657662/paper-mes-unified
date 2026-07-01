@@ -66,6 +66,7 @@ export function plansForRolls(
 export function rebasePlanForRoll(plan: ProcessPlanDTO, roll: RollDraft): ProcessPlanDTO {
   const next: ProcessPlanDTO = {
     ...plan,
+    machineUuid: plan.machineUuid ?? roll.machineUuid,
     finishSpecs: plan.finishSpecs?.map((spec) => ({
       ...spec,
       layers: spec.layers?.map((layer) => ({ ...layer })),

@@ -1,7 +1,7 @@
 import { Collapse, Empty, Typography } from 'antd'
 import type { ColumnGroupType, ColumnType, ColumnsType } from 'antd/es/table'
 import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
-import { formatKg, formatMoney } from '../../features/settle/utils/settleFormatters'
+import { formatMoney, formatTon } from '../../features/settle/utils/settleFormatters'
 import type { SettlePrintLine } from '../../types/settle'
 import { buildSettleBillGroups, type SettleBillGroup } from './settleBillGroups'
 import { settlePrintLineColumns } from './settleDetailColumns'
@@ -45,9 +45,9 @@ function GroupHeader({ group }: { group: SettleBillGroup }) {
         <Typography.Text strong>{group.orderNo}</Typography.Text>
         {group.orderDate && <span>{group.orderDate}</span>}
       </div>
-      <Metric label="原纸" value={`${group.lines.length} 卷 / ${formatKg(group.originalWeight)}`} />
-      <Metric label="成品" value={`${group.finishCount} 卷 / ${formatKg(group.finishWeight)}`} />
-      <Metric label="切边" value={formatKg(group.trimWeight)} />
+      <Metric label="原纸" value={`${group.lines.length} 卷 / ${formatTon(group.originalWeight)}`} />
+      <Metric label="成品" value={`${group.finishCount} 卷 / ${formatTon(group.finishWeight)}`} />
+      <Metric label="切边" value={formatTon(group.trimWeight)} />
       <Metric label="加工费" value={formatMoney(group.processAmount)} />
       <Metric label="额外费" value={formatMoney(group.extraAmount)} hint={group.extraFeeSummary} />
       <strong>应收 {formatMoney(group.lineAmount)}</strong>

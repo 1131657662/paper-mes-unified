@@ -1,5 +1,5 @@
 import type { DeliveryDetailVO } from '../../types/delivery'
-import { deliveryDetailSpecText, formatKg } from '../../features/delivery/utils/deliveryFormatters'
+import { deliveryDetailSpecText, formatKg, formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import '../../pages/documentModule.css'
 
 interface Props {
@@ -23,7 +23,7 @@ export default function DeliveryPrintSheet({ detail }: Props) {
           </div>
           <div className="document-print-sheet__summary">
             <span>{order.totalCount} 卷</span>
-            <span>{formatKg(order.totalWeight)}</span>
+            <span>{formatTon(order.totalWeight)}</span>
             <span>车牌：{order.carNo || '-'}</span>
             <span>柜号：{order.containerNo || '-'}</span>
           </div>

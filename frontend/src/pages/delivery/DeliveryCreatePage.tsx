@@ -6,7 +6,7 @@ import MesPageHeader from '../../components/layout/MesPageHeader'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import { useAvailableFinishes } from '../../features/delivery/hooks/useAvailableFinishes'
 import { useCreateDelivery } from '../../features/delivery/hooks/useCreateDelivery'
-import { formatKg } from '../../features/delivery/utils/deliveryFormatters'
+import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryCreateDTO } from '../../types/delivery'
 import DeliveryCreateTable, { type DeliveryLineEdit } from './DeliveryCreateTable'
 import '../documentModule.css'
@@ -168,7 +168,7 @@ function SelectedSummary({ count, weight }: { count: number; weight: number }) {
   return (
     <div className="document-module-summary">
       <span>已选 <strong>{count}</strong> 卷</span>
-      <span>合计 <strong>{formatKg(weight)}</strong></span>
+      <span>合计 <strong>{formatTon(weight)}</strong></span>
     </div>
   )
 }

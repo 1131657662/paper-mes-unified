@@ -69,6 +69,7 @@ function CreateOrderContent({ draftUuid }: { draftUuid?: string }) {
         )}
         {state.current === 2 && (
           <ProcessModeStep
+            machines={state.machines}
             rolls={state.rolls}
             selectedId={state.selectedId}
             loading={state.updatingRolls}
@@ -82,6 +83,7 @@ function CreateOrderContent({ draftUuid }: { draftUuid?: string }) {
           <ConfigStep
             defaultSpareCount={state.defaultSpareCount}
             orderUuid={state.orderUuid}
+            machines={state.machines}
             rolls={state.rolls}
             selectedId={state.selectedId}
             plans={state.plans}

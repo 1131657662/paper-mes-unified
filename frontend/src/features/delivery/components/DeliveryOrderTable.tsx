@@ -5,12 +5,12 @@ import type { ReactNode } from 'react'
 import type { TableRowSelection } from 'antd/es/table/interface'
 import TooltipText from '../../../components/biz/TooltipText'
 import { mesProTableOptions } from '../../../components/biz/mesProTableOptions'
-import { renderTableToolbarPortal } from '../../../components/biz/TableToolbarPortal'
+import { renderTableToolbarPortal } from '../../../components/biz/tableToolbarPortalUtils'
 import { useTableColumnsState } from '../../../hooks/useTableColumnsState'
 import { useResizableTableColumns } from '../../../components/useResizableTableColumns'
 import type { DeliveryOrder } from '../../../types/delivery'
 import { DELIVERY_STATUS, SETTLE_BLOCK_ACTION } from '../../../constants/delivery'
-import { formatKg } from '../utils/deliveryFormatters'
+import { formatTon } from '../utils/deliveryFormatters'
 
 interface Props {
   data: DeliveryOrder[]
@@ -86,7 +86,7 @@ function buildColumns(actions: {
       render: (_, record) => (
         <div className="delivery-cell-stack mes-cell-stack">
           <span>{record.totalCount} 卷</span>
-          <span>{formatKg(record.totalWeight)}</span>
+          <span>{formatTon(record.totalWeight)}</span>
         </div>
       ),
     },

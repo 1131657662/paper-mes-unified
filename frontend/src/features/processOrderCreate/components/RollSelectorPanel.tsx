@@ -1,15 +1,17 @@
 import { Badge, List, Tag, Typography } from 'antd'
 import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
+import type { Machine } from '../../../types/machine'
 import type { RollDraft } from '../types'
 
 interface Props {
+  machines: Machine[]
   rolls: RollDraft[]
   selectedId?: string
   configuredIds?: string[]
   onSelect: (localId: string) => void
 }
 
-export default function RollSelectorPanel({ rolls, selectedId, configuredIds = [], onSelect }: Props) {
+export default function RollSelectorPanel({ machines, rolls, selectedId, configuredIds = [], onSelect }: Props) {
   return (
     <List
       size="small"
@@ -37,6 +39,7 @@ export default function RollSelectorPanel({ rolls, selectedId, configuredIds = [
               <div style={{ marginTop: 6 }}>
                 <Tag color={roll.processMode === 3 ? 'default' : 'blue'}>{PROCESS_MODE[roll.processMode ?? 1]}</Tag>
                 {roll.processMode !== 3 && <Tag color="green">{STEP_TYPE[roll.mainStepType ?? 2]}</Tag>}
+                {roll.processMode !== 3 && <Tag color={roll.machineUuid ? 'cyan' : 'default'}>{machineName(roll.machineUuid, machines)}</Tag>}
               </div>
             </div>
           </List.Item>
@@ -44,4 +47,9 @@ export default function RollSelectorPanel({ rolls, selectedId, configuredIds = [
       }}
     />
   )
+}
+
+function machineName(machineUuid: string | undefined, machines: Machine[]) {
+  if (!machineUuid) return '未选机台'
+  return machines.find((machine) => machine.uuid === machineUuid)?.machineName ?? '未知机台'
 }

@@ -4,7 +4,7 @@ import { Button, Form, Input, InputNumber, Modal, Select, Tag, message } from 'a
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { pageNoRules, previewNoRule } from '../../api/systemConfig'
-import { mesTablePagination } from '../../components/biz/MesPaginationBar'
+import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import TooltipText from '../../components/biz/TooltipText'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'

@@ -22,7 +22,3 @@ export function TableToolbarPortal({ children }: { children: ReactNode }) {
   if (!host) return <>{children}</>
   return createPortal(<div className="mes-table-options-portal">{children}</div>, host)
 }
-
-export function renderTableToolbarPortal(_: unknown, defaultDom: ReactNode[]) {
-  return [<TableToolbarPortal key="table-toolbar-options">{defaultDom}</TableToolbarPortal>]
-}

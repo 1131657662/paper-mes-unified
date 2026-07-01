@@ -15,7 +15,7 @@ export function buildSettleDetailColumns(extraFeeByOrder: Record<string, string>
     dataIndex: 'extraAmount',
     align: 'right',
     width: 190,
-    render: (value, record) => <AmountWithHint amount={value} hint={extraFeeByOrder[record.orderUuid]} />,
+    render: (value, record) => amountWithHint({ amount: value, hint: extraFeeByOrder[record.orderUuid] }),
   },
   {
     title: '本单金额',
@@ -54,9 +54,7 @@ export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
     dataIndex: 'sawUnitPrice',
     align: 'right',
     width: 130,
-    render: (_, record) => (
-      <UnitPriceCell invoicePrice={record.sawInvoiceUnitPrice} price={record.sawUnitPrice} />
-    ),
+    render: (_, record) => unitPriceCell({ invoicePrice: record.sawInvoiceUnitPrice, price: record.sawUnitPrice }),
   },
   { title: '锯纸费', dataIndex: 'sawAmount', align: 'right', width: 105, render: formatMoney },
   {
@@ -64,9 +62,10 @@ export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
     dataIndex: 'rewindUnitPrice',
     align: 'right',
     width: 130,
-    render: (_, record) => (
-      <UnitPriceCell invoicePrice={record.rewindInvoiceUnitPrice} price={record.rewindUnitPrice} />
-    ),
+    render: (_, record) => unitPriceCell({
+      invoicePrice: record.rewindInvoiceUnitPrice,
+      price: record.rewindUnitPrice,
+    }),
   },
   { title: '复卷费', dataIndex: 'rewindAmount', align: 'right', width: 105, render: formatMoney },
   { title: '加工费', dataIndex: 'processAmount', align: 'right', width: 110, render: formatMoney },
@@ -75,7 +74,7 @@ export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
     dataIndex: 'extraAmount',
     align: 'right',
     width: 180,
-    render: (_, record) => <AmountWithHint amount={record.extraAmount} hint={record.extraFeeSummary} />,
+    render: (_, record) => amountWithHint({ amount: record.extraAmount, hint: record.extraFeeSummary }),
   },
   {
     title: '开票',
@@ -161,7 +160,7 @@ function textCell(value?: string | number) {
   return <TooltipText value={value} />
 }
 
-function AmountWithHint({ amount, hint }: { amount?: number; hint?: string }) {
+function amountWithHint({ amount, hint }: { amount?: number; hint?: string }) {
   return (
     <div className="document-money-stack">
       <Typography.Text strong>{formatMoney(amount)}</Typography.Text>
@@ -170,7 +169,7 @@ function AmountWithHint({ amount, hint }: { amount?: number; hint?: string }) {
   )
 }
 
-function UnitPriceCell({ invoicePrice, price }: { invoicePrice?: number; price?: number }) {
+function unitPriceCell({ invoicePrice, price }: { invoicePrice?: number; price?: number }) {
   const showInvoice = invoicePrice != null && invoicePrice !== price
   return (
     <div className="document-money-stack">

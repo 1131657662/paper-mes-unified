@@ -8,3 +8,7 @@ export function useCustomers() {
 export function useWarehouses() {
   return useQuery(queries.createOrder.warehouses)
 }
+
+export function useMachines() {
+  return useQuery(queries.createOrder.machines)
+}

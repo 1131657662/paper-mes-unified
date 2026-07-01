@@ -3,7 +3,7 @@ import { CopyOutlined, DeleteOutlined, DownloadOutlined, PlusOutlined, UploadOut
 import type { ColumnType } from 'antd/es/table'
 import { useState } from 'react'
 import ResizableTable from '../../../components/ResizableTable'
-import { mesTablePagination } from '../../../components/biz/MesPaginationBar'
+import { mesTablePagination } from '../../../components/biz/mesPaginationUtils'
 import type { OriginalRollImportPreviewVO } from '../../../types/processOrder'
 import type { RollDraft } from '../types'
 import { newRollDraft, rollDraftFromDto, totalWeight } from '../draftMappers'

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal, message } from 'antd'
 import { useAppendDeliveryDetails } from '../../features/delivery/hooks/useAppendDeliveryDetails'
 import { useAvailableFinishes } from '../../features/delivery/hooks/useAvailableFinishes'
-import { formatKg } from '../../features/delivery/utils/deliveryFormatters'
+import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { AvailableFinishVO } from '../../types/delivery'
 import DeliveryCreateTable, { type DeliveryLineEdit } from './DeliveryCreateTable'
 
@@ -77,7 +77,7 @@ export default function DeliveryAppendItemsModal({
           <span>客户 <strong>{customerName || '-'}</strong></span>
           <span>可选 <strong>{finishes.length}</strong> 卷</span>
           <span>已选 <strong>{selectedFinishes.length}</strong> 卷</span>
-          <span>合计 <strong>{formatKg(selectedWeight(selectedFinishes, lineEdits))}</strong></span>
+          <span>合计 <strong>{formatTon(selectedWeight(selectedFinishes, lineEdits))}</strong></span>
         </div>
         <div className="document-module-table">
           <DeliveryCreateTable

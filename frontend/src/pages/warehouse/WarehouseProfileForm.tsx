@@ -9,7 +9,7 @@ interface Props {
   onFinish?: (values: WarehouseSaveDTO) => void
 }
 
-export const warehouseFormDefaults: Partial<WarehouseSaveDTO> = {
+const warehouseFormDefaults: Partial<WarehouseSaveDTO> = {
   status: 1,
 }
 

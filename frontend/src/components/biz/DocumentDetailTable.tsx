@@ -5,7 +5,7 @@ import type { ColumnType, ColumnsType, TableProps } from 'antd/es/table'
 import { useMemo } from 'react'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useResizableTableColumns } from '../useResizableTableColumns'
-import { mesTablePagination } from './MesPaginationBar'
+import { mesTablePagination } from './mesPaginationUtils'
 import { mesProTableOptions } from './mesProTableOptions'
 
 interface DocumentDetailTableProps<RecordType extends object>

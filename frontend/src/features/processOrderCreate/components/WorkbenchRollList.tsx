@@ -1,11 +1,13 @@
 import { Button, Checkbox, List, Space, Tag, Typography } from 'antd'
 import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
+import type { Machine } from '../../../types/machine'
 import type { PlanPreviewVO } from '../../../types/processOrder'
 import { rollPreviewStatus } from '../previewStatusUtils'
 import type { MergedSourceLock } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
 
 interface Props {
+  machines: Machine[]
   rolls: RollDraft[]
   selectedId?: string
   checkedIds: string[]
@@ -19,6 +21,7 @@ interface Props {
 }
 
 export default function WorkbenchRollList({
+  machines,
   rolls,
   selectedId,
   checkedIds,
@@ -76,6 +79,7 @@ export default function WorkbenchRollList({
                     {PROCESS_MODE[roll.processMode ?? 1]}
                   </Tag>
                   {roll.processMode !== 3 && <Tag color="green">{STEP_TYPE[roll.mainStepType ?? 2]}</Tag>}
+                  {roll.processMode !== 3 && <Tag color={roll.machineUuid ? 'cyan' : 'default'}>{machineName(roll.machineUuid, machines)}</Tag>}
                   <Tag color={status.color}>{status.label}</Tag>
                 </div>
               </div>
@@ -85,4 +89,9 @@ export default function WorkbenchRollList({
       />
     </div>
   )
+}
+
+function machineName(machineUuid: string | undefined, machines: Machine[]) {
+  if (!machineUuid) return '未选机台'
+  return machines.find((machine) => machine.uuid === machineUuid)?.machineName ?? '未知机台'
 }

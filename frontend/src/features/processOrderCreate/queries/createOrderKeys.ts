@@ -10,6 +10,10 @@ export const createOrderKeys = createQueryKeys('createOrder', {
     queryKey: null,
     queryFn: () => createOrderService.warehouses(),
   },
+  machines: {
+    queryKey: null,
+    queryFn: () => createOrderService.machines(),
+  },
   drafts: {
     queryKey: null,
     queryFn: () => createOrderService.drafts(),

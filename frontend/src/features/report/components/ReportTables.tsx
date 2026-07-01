@@ -3,15 +3,15 @@ import type { ColumnsType } from 'antd/es/table'
 import { useNavigate } from 'react-router-dom'
 import DocumentDetailTable from '../../../components/biz/DocumentDetailTable'
 import MesTooltip from '../../../components/biz/MesTooltip'
-import { mesTablePagination } from '../../../components/biz/MesPaginationBar'
+import { mesTablePagination } from '../../../components/biz/mesPaginationUtils'
 import TooltipText from '../../../components/biz/TooltipText'
 import type { ReportDetailVO, ReportDimension, ReportDimensionVO } from '../../../types/report'
 import ReportDimensionSummaryRow from './ReportDimensionSummaryRow'
 import {
-  formatKg,
   formatMoney,
   formatNumber,
   formatPercent,
+  formatTonFromKg,
 } from '../utils/reportFormatters'
 
 interface Props {
@@ -106,9 +106,9 @@ function dimensionColumns(dimension: ReportDimension): ColumnsType<ReportDimensi
     { title: '加工单', dataIndex: 'orderCount', key: 'orderCount', width: 96, align: 'right', render: countCell('单') },
     { title: '原卷', dataIndex: 'originalRollCount', key: 'originalRollCount', width: 88, align: 'right', render: countCell('卷') },
     { title: '成品', dataIndex: 'finishRollCount', key: 'finishRollCount', width: 88, align: 'right', render: countCell('卷') },
-    { title: '原纸重量', dataIndex: 'originalWeight', key: 'originalWeight', width: 128, align: 'right', render: formatKg },
-    { title: '成品重量', dataIndex: 'finishWeight', key: 'finishWeight', width: 128, align: 'right', render: formatKg },
-    { title: '损耗', dataIndex: 'lossWeight', key: 'lossWeight', width: 120, align: 'right', render: formatKg },
+    { title: '原纸吨位', dataIndex: 'originalWeight', key: 'originalWeight', width: 128, align: 'right', render: formatTonFromKg },
+    { title: '成品吨位', dataIndex: 'finishWeight', key: 'finishWeight', width: 128, align: 'right', render: formatTonFromKg },
+    { title: '损耗吨位', dataIndex: 'lossWeight', key: 'lossWeight', width: 120, align: 'right', render: formatTonFromKg },
     { title: '损耗率', dataIndex: 'lossRatio', key: 'lossRatio', width: 98, align: 'right', render: formatPercent },
     { title: '刀数', dataIndex: 'knifeCount', key: 'knifeCount', width: 88, align: 'right', render: numberCell },
     { title: '锯纸费', dataIndex: 'sawAmount', key: 'sawAmount', width: 118, align: 'right', render: formatMoney },
@@ -135,9 +135,9 @@ function detailColumns(onOpenOrder: (uuid: string) => void): ColumnsType<ReportD
     { title: '开票', dataIndex: 'isInvoice', key: 'isInvoice', width: 92, render: invoiceCell },
     { title: '原卷', dataIndex: 'originalRollCount', key: 'originalRollCount', width: 88, align: 'right', render: countCell('卷') },
     { title: '成品', dataIndex: 'finishRollCount', key: 'finishRollCount', width: 88, align: 'right', render: countCell('卷') },
-    { title: '原纸重量', dataIndex: 'originalWeight', key: 'originalWeight', width: 128, align: 'right', render: formatKg },
-    { title: '成品重量', dataIndex: 'finishWeight', key: 'finishWeight', width: 128, align: 'right', render: formatKg },
-    { title: '损耗', dataIndex: 'lossWeight', key: 'lossWeight', width: 118, align: 'right', render: formatKg },
+    { title: '原纸吨位', dataIndex: 'originalWeight', key: 'originalWeight', width: 128, align: 'right', render: formatTonFromKg },
+    { title: '成品吨位', dataIndex: 'finishWeight', key: 'finishWeight', width: 128, align: 'right', render: formatTonFromKg },
+    { title: '损耗吨位', dataIndex: 'lossWeight', key: 'lossWeight', width: 118, align: 'right', render: formatTonFromKg },
     { title: '损耗率', dataIndex: 'lossRatio', key: 'lossRatio', width: 98, align: 'right', render: formatPercent },
     { title: '刀数', dataIndex: 'knifeCount', key: 'knifeCount', width: 88, align: 'right', render: numberCell },
     { title: '锯纸费', dataIndex: 'sawAmount', key: 'sawAmount', width: 116, align: 'right', render: formatMoney },

@@ -11,7 +11,7 @@ interface Props {
   onFinish?: (values: CustomerSaveDTO) => void
 }
 
-export const customerFormDefaults: Partial<CustomerSaveDTO> = {
+const customerFormDefaults: Partial<CustomerSaveDTO> = {
   defaultInvoice: 2,
   priceIncludeTax: 2,
   settleType: 2,

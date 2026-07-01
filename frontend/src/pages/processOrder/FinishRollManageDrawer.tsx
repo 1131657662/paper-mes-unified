@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
   Button,
@@ -60,6 +60,17 @@ export default function FinishRollManageDrawer({
   const [spareForm] = Form.useForm()
   const [spareSubmitting, setSpareSubmitting] = useState(false)
 
+  const loadDetail = useCallback(async () => {
+    if (!orderUuid) return
+    setLoading(true)
+    try {
+      const res = await getProcessOrder(orderUuid)
+      setDetail(res)
+    } finally {
+      setLoading(false)
+    }
+  }, [orderUuid])
+
   useEffect(() => {
     if (open && orderUuid) {
       loadDetail()
@@ -70,18 +81,7 @@ export default function FinishRollManageDrawer({
       setFilterSource(undefined)
       setSelectedRowKeys([])
     }
-  }, [open, orderUuid])
-
-  const loadDetail = async () => {
-    if (!orderUuid) return
-    setLoading(true)
-    try {
-      const res = await getProcessOrder(orderUuid)
-      setDetail(res)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [loadDetail, open, orderUuid])
 
   const handleBatchGenerate = async () => {
     const values = await batchForm.validateFields()

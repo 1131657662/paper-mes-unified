@@ -1,7 +1,7 @@
 import { Button, Empty, Tag } from 'antd'
 import { ORDER_STATUS, PRIORITY } from '../../../constants/processOrder'
 import type { DashboardRecentOrder } from '../../../types/dashboard'
-import { formatKg } from '../../report/utils/reportFormatters'
+import { formatTonFromKg } from '../../report/utils/reportFormatters'
 import DashboardPanelHead from './DashboardPanelHead'
 
 interface Props {
@@ -28,7 +28,7 @@ export default function DashboardOrderList({ loading, onOpenOrder, onOpenOrders,
               <div className="dashboard-order-row__main">
                 <strong>{order.orderNo ?? '-'}</strong>
                 <span>{order.customerName ?? '未设置客户'} · {order.orderDate ?? '-'}</span>
-                <em>原卷 {formatKg(order.originalWeight)} / 成品 {formatKg(order.finishWeight)}</em>
+                <em>原卷 {formatTonFromKg(order.originalWeight)} / 成品 {formatTonFromKg(order.finishWeight)}</em>
               </div>
               <div className="dashboard-order-row__meta">
                 <Tag color={ORDER_STATUS[order.orderStatus ?? 0]?.color}>{ORDER_STATUS[order.orderStatus ?? 0]?.text}</Tag>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, Card, Checkbox, List, Space, Spin, Tag, Typography, message } from 'antd'
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons'
@@ -73,7 +73,7 @@ export default function ConfigFinishPage() {
   const [currentConfig, setCurrentConfig] = useState<FinishConfigSaveDTO | null>(null)
   const [configsByRollUuid, setConfigsByRollUuid] = useState<Record<string, FinishConfigSaveDTO>>({})
 
-  const fetchDetail = (resetConfigs = true) => {
+  const fetchDetail = useCallback((resetConfigs = true) => {
     if (!uuid) return
     setLoading(true)
     getProcessOrder(uuid)
@@ -86,13 +86,13 @@ export default function ConfigFinishPage() {
         }
       })
       .finally(() => setLoading(false))
-  }
+  }, [uuid])
 
   useEffect(() => {
     if (uuid) {
       fetchDetail()
     }
-  }, [uuid])
+  }, [fetchDetail, uuid])
 
   const originalRolls = detail?.originalRolls ?? []
   const rollProductions = detail?.rollProductions ?? []

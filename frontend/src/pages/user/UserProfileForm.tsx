@@ -9,7 +9,7 @@ interface Props {
   onFinish?: (values: UserSaveDTO) => void
 }
 
-export const userFormDefaults: Partial<UserSaveDTO> = {
+const userFormDefaults: Partial<UserSaveDTO> = {
   roleCode: 'operator',
   status: 1,
 }
