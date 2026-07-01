@@ -474,6 +474,7 @@
   min-height: 0;
   flex: 1 1 0;
   overflow: auto !important;
+  scrollbar-gutter: stable;
 }
 
 .mes-pro-table-page .ant-table-thead > tr > th {
@@ -775,6 +776,10 @@
   background: #f7f9fc;
   color: var(--mes-color-text-secondary);
   font-weight: 650;
+}
+
+.mes-table-card .ant-table-body {
+  scrollbar-gutter: stable;
 }
 
 .mes-pagination {

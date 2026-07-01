@@ -14,6 +14,7 @@ interface ResizableColumn<RecordType> {
   hideInTable?: boolean
   key?: React.Key
   onHeaderCell?: (record: RecordType, index?: number) => React.HTMLAttributes<HTMLElement>
+  valueType?: unknown
   width?: number | string
 }
 
@@ -37,8 +38,9 @@ export function useResizableTableColumns<
     return columns.map((column) => {
       const resizableColumn = column as ResizableColumn<RecordType>
       const key = columnKey(resizableColumn)
-      const width = key ? widths[key] ?? numericWidth(resizableColumn.width) : numericWidth(resizableColumn.width)
+      const width = resolvedWidth(resizableColumn, key, widths[key ?? ''])
       if (!key || !width || resizableColumn.hideInTable) return column
+      if (isActionColumn(resizableColumn, key)) return { ...column, width } as ColumnType
 
       return {
         ...column,
@@ -84,4 +86,18 @@ function columnKey<RecordType>(column: ResizableColumn<RecordType>) {
 
 function numericWidth(width: number | string | undefined) {
   return typeof width === 'number' ? width : undefined
+}
+
+function resolvedWidth<RecordType>(
+  column: ResizableColumn<RecordType>,
+  key: string | undefined,
+  savedWidth: number | undefined,
+) {
+  const baseWidth = numericWidth(column.width)
+  if (key && isActionColumn(column, key)) return baseWidth
+  return savedWidth ?? baseWidth
+}
+
+function isActionColumn<RecordType>(column: ResizableColumn<RecordType>, key: string) {
+  return key === 'actions' || key === 'operation' || column.valueType === 'option'
 }

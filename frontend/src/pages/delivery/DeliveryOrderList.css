@@ -184,6 +184,7 @@
   min-height: 0;
   flex: 1 1 0;
   overflow: auto !important;
+  scrollbar-gutter: stable;
 }
 
 .delivery-panel .ant-table-body {
