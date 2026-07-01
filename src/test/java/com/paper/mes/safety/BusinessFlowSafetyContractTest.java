@@ -105,6 +105,9 @@ class BusinessFlowSafetyContractTest {
         assertContainsAll(slice(source, "private List<ProcessOrder> loadOrdersByUuid", "private Customer resolveSingleCustomer"),
                 "validateFinishedOrder(order)",
                 "ordered.add(byUuid.get(uuid))");
+        assertContainsAll(slice(source, "private void insertSettleDetail", "private void rollbackSettledProcessOrder"),
+                "ConcurrencyGuard.requireRowUpdated(settleDetailMapper.insert(detail))",
+                "DuplicateKeyException");
     }
 
     @Test

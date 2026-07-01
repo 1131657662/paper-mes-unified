@@ -929,7 +929,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     private void insertSettleDetail(SettleDetail detail) {
         try {
-            settleDetailMapper.insert(detail);
+            ConcurrencyGuard.requireRowUpdated(settleDetailMapper.insert(detail));
         } catch (DuplicateKeyException e) {
             throw new BusinessException(ErrorCode.E004, "加工单已生成结算单，不可重复结算");
         }
