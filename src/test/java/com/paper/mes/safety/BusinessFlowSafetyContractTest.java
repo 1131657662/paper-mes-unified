@@ -161,6 +161,8 @@ class BusinessFlowSafetyContractTest {
                 "\"details\"",
                 "\"print_line_items\"",
                 "\"print_lines\"");
+        assertContainsAll(slice(source, "private List<SettlePrintLineVO> readSnapshotPrintLines", "private SettleOrder snapshotSettleOrder"),
+                "SettleSnapshotPrintLineReader.read(snapBill, objectMapper)");
         assertContainsAll(sourceOrders,
                 "\"order_no\"",
                 "\"settle_type\"",

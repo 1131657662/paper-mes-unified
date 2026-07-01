@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.auth.context.AuthContextHolder;
@@ -1023,20 +1022,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private List<SettlePrintLineVO> readSnapshotPrintLines(String snapBill) {
-        if (!StringUtils.hasText(snapBill)) {
-            return null;
-        }
-        try {
-            JsonNode root = objectMapper.readTree(snapBill);
-            JsonNode node = firstExisting(root, "print_line_items", "printLineItems", "print_lines", "printLines");
-            if (node == null || !node.isArray()) {
-                return null;
-            }
-            return objectMapper.convertValue(node, new TypeReference<List<SettlePrintLineVO>>() {
-            });
-        } catch (Exception ignored) {
-            return null;
-        }
+        return SettleSnapshotPrintLineReader.read(snapBill, objectMapper);
     }
 
     private SettleOrder snapshotSettleOrder(SettleOrder order) {
