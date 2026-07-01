@@ -45,6 +45,7 @@ class BusinessFlowSafetyContractTest {
                 "businessLockService.lockDeliveryOrder(uuid);",
                 "businessLockService.lockProcessOrders",
                 "businessLockService.lockFinishRolls",
+                "buildRollbackSnapshot(order, rollbackReason, rollbackOperator, rollbackTime)",
                 "updateDeliveryForRollback(order)");
         assertContainsAll(slice(source, "public void appendDetails", "public void removeDetail"),
                 "businessLockService.lockDeliveryOrder(uuid);",
@@ -62,6 +63,7 @@ class BusinessFlowSafetyContractTest {
         assertContainsAll(slice(source, "private void updateDeliveryForRollback", "private String currentOperator"),
                 ".eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_OUT)",
                 ".set(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)",
+                ".set(DeliveryOrder::getSnapDelivery, order.getSnapDelivery())",
                 ".setSql(\"version = version + 1\")");
     }
 
@@ -92,6 +94,19 @@ class BusinessFlowSafetyContractTest {
                 "\"process_mode_text\"",
                 "\"process_summary\"",
                 "\"actual_remark\"");
+        assertContainsAll(slice(source, "private String buildRollbackSnapshot", "private List<Map<String, Object>> buildDeliverySnapshotItems"),
+                "\"snapshot_type\"",
+                "\"delivery_rollback\"",
+                "\"rollback_reason\"",
+                "\"rollback_operator\"",
+                "\"rollback_time\"",
+                "\"previous_confirm_snapshot\"");
+        assertContainsAll(slice(source, "private List<DeliveryDetailItemVO> readSnapshotDeliveryItems", "private DeliveryOrder snapshotDeliveryOrder"),
+                "isRollbackSnapshot(snapDelivery)",
+                "return null");
+        assertContainsAll(slice(source, "private DeliveryOrder snapshotDeliveryOrder", "private DeliveryOrder copyDeliveryOrder"),
+                "isSnapshotType(root, \"delivery_rollback\")",
+                "return view");
     }
 
     @Test

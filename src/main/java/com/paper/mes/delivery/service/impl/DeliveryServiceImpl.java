@@ -382,17 +382,21 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             }
             updateFinishStatus(detail.getFinishUuid(), FINISH_STATUS_OUT, FINISH_STATUS_IN_STOCK);
         }
+        String rollbackReason = dto.getReason().trim();
+        String rollbackOperator = currentOperator();
+        LocalDateTime rollbackTime = LocalDateTime.now();
+        String rollbackSnapshot = buildRollbackSnapshot(order, rollbackReason, rollbackOperator, rollbackTime);
         order.setDeliveryStatus(DELIVERY_STATUS_PENDING);
         order.setSignUser(null);
         order.setSignTime(null);
-        order.setSnapDelivery(null);
-        order.setSnapDeliveryTime(null);
-        order.setRemark(appendRemark(order.getRemark(), "回退出库：" + dto.getReason().trim()));
+        order.setSnapDelivery(rollbackSnapshot);
+        order.setSnapDeliveryTime(rollbackTime);
+        order.setRemark(appendRemark(order.getRemark(), "回退出库：" + rollbackReason));
         updateDeliveryForRollback(order);
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                 order.getUuid(), order.getDeliveryNo(),
                 OperationLogService.ACTION_ROLLBACK, null,
-                "回退出库签收：" + dto.getReason().trim());
+                "回退出库签收：" + rollbackReason);
     }
 
     @Override
@@ -524,6 +528,23 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         return toJson(snap);
     }
 
+    private String buildRollbackSnapshot(DeliveryOrder order, String reason, String operator, LocalDateTime rollbackTime) {
+        Map<String, Object> snap = new LinkedHashMap<>();
+        snap.put("schema_version", "1.1");
+        snap.put("snapshot_type", "delivery_rollback");
+        snap.put("delivery_uuid", order.getUuid());
+        snap.put("delivery_no", order.getDeliveryNo());
+        snap.put("customer_uuid", order.getCustomerUuid());
+        snap.put("customer_name", order.getCustomerName());
+        snap.put("delivery_status_before", order.getDeliveryStatus());
+        snap.put("delivery_status_after", DELIVERY_STATUS_PENDING);
+        snap.put("rollback_reason", reason);
+        snap.put("rollback_operator", operator);
+        snap.put("rollback_time", rollbackTime);
+        snap.put("previous_confirm_snapshot", snapshotAsObject(order.getSnapDelivery()));
+        return toJson(snap);
+    }
+
     private List<Map<String, Object>> buildDeliverySnapshotItems(List<DeliveryDetailItemVO> items) {
         return items.stream().map(item -> {
             Map<String, Object> row = new LinkedHashMap<>();
@@ -554,6 +575,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     private List<DeliveryDetailItemVO> readSnapshotDeliveryItems(String snapDelivery) {
+        if (isRollbackSnapshot(snapDelivery)) {
+            return null;
+        }
         return DeliverySnapshotItemReader.read(snapDelivery, objectMapper);
     }
 
@@ -561,6 +585,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         DeliveryOrder view = copyDeliveryOrder(order);
         JsonNode root = snapshotRoot(order.getSnapDelivery());
         if (root == null) {
+            return view;
+        }
+        if (isSnapshotType(root, "delivery_rollback")) {
             return view;
         }
         view.setDeliveryNo(textValue(root, "delivery_no", "deliveryNo", order.getDeliveryNo()));
@@ -613,6 +640,27 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private boolean isRollbackSnapshot(String json) {
+        JsonNode root = snapshotRoot(json);
+        return root != null && isSnapshotType(root, "delivery_rollback");
+    }
+
+    private boolean isSnapshotType(JsonNode root, String type) {
+        JsonNode node = root.get("snapshot_type");
+        if (node == null || node.isNull()) {
+            node = root.get("snapshotType");
+        }
+        return node != null && type.equals(node.asText());
+    }
+
+    private Object snapshotAsObject(String json) {
+        JsonNode root = snapshotRoot(json);
+        if (root == null) {
+            return null;
+        }
+        return objectMapper.convertValue(root, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
     }
 
     private JsonNode firstExisting(JsonNode root, String... names) {
@@ -1137,8 +1185,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                         .set(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)
                         .set(DeliveryOrder::getSignUser, null)
                         .set(DeliveryOrder::getSignTime, null)
-                        .set(DeliveryOrder::getSnapDelivery, null)
-                        .set(DeliveryOrder::getSnapDeliveryTime, null)
+                        .set(DeliveryOrder::getSnapDelivery, order.getSnapDelivery())
+                        .set(DeliveryOrder::getSnapDeliveryTime, order.getSnapDeliveryTime())
                         .set(DeliveryOrder::getRemark, order.getRemark())
                         .set(DeliveryOrder::getUpdateTime, LocalDateTime.now())
                         .set(DeliveryOrder::getUpdateBy, currentOperator())
