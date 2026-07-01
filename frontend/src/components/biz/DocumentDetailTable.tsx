@@ -12,13 +12,17 @@ interface DocumentDetailTableProps<RecordType extends object>
   extends Omit<TableProps<RecordType>, 'bordered' | 'columns' | 'size'> {
   columns: ColumnsType<RecordType>
   defaultSize?: DensitySize
+  defaultScrollY?: number | string
   onReload?: () => void
   storageKey: string
 }
 
+const DEFAULT_DETAIL_SCROLL_Y = 420
+
 export default function DocumentDetailTable<RecordType extends object>({
   columns,
   defaultSize = 'small',
+  defaultScrollY = DEFAULT_DETAIL_SCROLL_Y,
   onReload,
   pagination,
   storageKey,
@@ -43,7 +47,11 @@ export default function DocumentDetailTable<RecordType extends object>({
         options={mesProTableOptions(onReload)}
         pagination={pagination === false ? false : mesTablePagination(10, typeof pagination === 'object' ? pagination : undefined)}
         search={false}
-        scroll={{ ...tableProps.scroll, x: tableProps.scroll?.x ?? resizable.scrollX }}
+        scroll={{
+          ...tableProps.scroll,
+          x: tableProps.scroll?.x ?? resizable.scrollX,
+          y: tableProps.scroll?.y ?? defaultScrollY,
+        }}
         tableAlertRender={false}
         tableAlertOptionRender={false}
         tableLayout="fixed"

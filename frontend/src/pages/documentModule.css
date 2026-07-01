@@ -70,9 +70,16 @@
 }
 
 .document-detail-table .ant-table-wrapper {
-  border: 1px solid var(--mes-color-border);
   border-radius: var(--mes-radius);
   overflow: hidden;
+}
+
+.document-detail-table .ant-table-container {
+  border-radius: 0 0 var(--mes-radius) var(--mes-radius);
+}
+
+.document-detail-table .ant-table-body {
+  scrollbar-gutter: stable;
 }
 
 .document-module-table .ant-table-thead > tr > th {
