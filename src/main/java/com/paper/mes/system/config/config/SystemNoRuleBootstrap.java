@@ -7,6 +7,10 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -74,20 +78,15 @@ public class SystemNoRuleBootstrap implements ApplicationRunner {
     private void seedRule(String uuid, String bizType, String ruleName, String prefix,
                           int patternType, String datePattern, int serialLength,
                           int resetCycle, String remark) {
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM sys_no_rule WHERE biz_type=? AND is_deleted=0",
-                Integer.class,
-                bizType
-        );
-        if (count != null && count > 0) {
-            jdbcTemplate.update("""
-                    UPDATE sys_no_rule
-                    SET rule_name = ?,
-                        remark = ?,
-                        update_by = 'system'
-                    WHERE biz_type = ?
-                      AND is_deleted = 0
-                    """, ruleName, remark, bizType);
+        List<RuleText> existing = jdbcTemplate.query("""
+                SELECT rule_name, remark
+                FROM sys_no_rule
+                WHERE biz_type=?
+                  AND is_deleted=0
+                LIMIT 1
+                """, (rs, rowNum) -> new RuleText(rs.getString("rule_name"), rs.getString("remark")), bizType);
+        if (!existing.isEmpty()) {
+            repairRuleTextIfNeeded(existing.get(0), bizType, ruleName, remark);
             return;
         }
         jdbcTemplate.update("""
@@ -97,5 +96,45 @@ public class SystemNoRuleBootstrap implements ApplicationRunner {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 'system', 'system')
                 """, uuid, bizType, ruleName, prefix, patternType, datePattern,
                 serialLength, resetCycle, remark);
+    }
+
+    private void repairRuleTextIfNeeded(RuleText existing, String bizType, String ruleName, String remark) {
+        String nextRuleName = shouldRepairText(existing.ruleName()) ? ruleName : existing.ruleName();
+        String nextRemark = shouldRepairText(existing.remark()) ? remark : existing.remark();
+        if (Objects.equals(nextRuleName, existing.ruleName()) && Objects.equals(nextRemark, existing.remark())) {
+            return;
+        }
+        jdbcTemplate.update("""
+                UPDATE sys_no_rule
+                SET rule_name = ?,
+                    remark = ?,
+                    update_by = 'system'
+                WHERE biz_type = ?
+                  AND is_deleted = 0
+                """, nextRuleName, nextRemark, bizType);
+    }
+
+    private boolean shouldRepairText(String value) {
+        if (!StringUtils.hasText(value)) {
+            return true;
+        }
+        return value.contains("�")
+                || value.contains("锟")
+                || value.contains("Ã")
+                || value.contains("Â")
+                || value.contains("æ")
+                || value.contains("å")
+                || value.contains("ç")
+                || suspiciousChineseCount(value) >= 2;
+    }
+
+    private long suspiciousChineseCount(String value) {
+        return List.of("瀹", "绾", "鏈", "浠", "鍦", "彴", "簱", "鍙", "涓", "缂", "栫", "爜")
+                .stream()
+                .filter(value::contains)
+                .count();
+    }
+
+    private record RuleText(String ruleName, String remark) {
     }
 }
