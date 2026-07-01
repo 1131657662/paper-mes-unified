@@ -50,7 +50,7 @@ export default function ReportTables({
         <div className="report-table-block">
           <div className="report-table-block__head">
             <strong>维度汇总</strong>
-            <span>按当前维度聚合应收、重量、损耗和未收款。</span>
+            <span>应收按加工单日期归属，已收仅统计有效收款流水。</span>
           </div>
           <div className="document-module-table">
             <DocumentDetailTable<ReportDimensionVO>

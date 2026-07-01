@@ -10,7 +10,10 @@
                         THEN COALESCE(rr.receivedAmount, 0) * COALESCE(sd.order_amount, 0) / st.settleTotal
                         ELSE 0 END) AS receivedAmount
         FROM biz_settle_detail sd
-        JOIN biz_settle_order so ON so.uuid = sd.settle_uuid AND so.is_deleted = 0
+        JOIN biz_settle_order so
+          ON so.uuid = sd.settle_uuid
+         AND so.is_deleted = 0
+         AND COALESCE(so.settle_status, 1) IN (1, 2, 3)
         JOIN (
             SELECT settle_uuid, SUM(COALESCE(order_amount, 0)) AS settleTotal
             FROM biz_settle_detail

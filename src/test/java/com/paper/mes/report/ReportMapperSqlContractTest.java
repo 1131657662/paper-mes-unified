@@ -29,10 +29,10 @@ class ReportMapperSqlContractTest {
     }
 
     @Test
-    void settleAllocationSql_whenAllocatingReceivables_excludesDeletedSettleData() throws IOException {
+    void settleAllocationSql_whenAllocatingReceivables_excludesDeletedAndInactiveSettleData() throws IOException {
         String sql = settleAllocationSql("mapper/report/ReportMapper.xml");
 
-        assertTrue(sql.contains("JOIN biz_settle_order so ON so.uuid = sd.settle_uuid AND so.is_deleted = 0"));
+        assertTrue(sql.contains("JOIN biz_settle_order so ON so.uuid = sd.settle_uuid AND so.is_deleted = 0 AND COALESCE(so.settle_status, 1) IN (1, 2, 3)"));
         assertTrue(sql.contains("FROM biz_settle_detail WHERE is_deleted = 0"));
         assertTrue(sql.contains("WHERE sd.is_deleted = 0"));
     }

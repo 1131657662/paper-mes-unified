@@ -46,7 +46,7 @@ export default function ReportMetricStrip({ overview }: Props) {
     {
       icon: <AccountBookOutlined />,
       main: formatMoney(overview?.unreceivedAmount),
-      sub: `有效已收 ${formatMoney(overview?.receivedAmount)} / 待结算应收 ${formatMoney(overview?.pendingSettleAmount)}`,
+      sub: `有效已收 ${formatMoney(overview?.receivedAmount)} / 待结算 ${formatMoney(overview?.pendingSettleAmount)}`,
       title: '已结算未收',
       tone: 'danger',
     },
