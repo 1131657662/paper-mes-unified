@@ -74,6 +74,24 @@ class BusinessFlowConcurrencyContractTest {
     }
 
     @Test
+    void deliveryConfirmAndRollback_whenSubmittedRepeatedly_useStatusGuardedUpdates() throws IOException {
+        String source = source(DELIVERY_SERVICE);
+
+        assertContainsAll(slice(source, "private void updateDeliveryForConfirm", "private void updateDeliveryForRollback"),
+                "ConcurrencyGuard.requireRowUpdated",
+                ".eq(DeliveryOrder::getUuid, order.getUuid())",
+                ".eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)",
+                ".set(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_OUT)",
+                ".setSql(\"version = version + 1\")");
+        assertContainsAll(slice(source, "private void updateDeliveryForRollback", "private String currentOperator"),
+                "ConcurrencyGuard.requireRowUpdated",
+                ".eq(DeliveryOrder::getUuid, order.getUuid())",
+                ".eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_OUT)",
+                ".set(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)",
+                ".setSql(\"version = version + 1\")");
+    }
+
+    @Test
     void settleReceiveAndVoid_whenMoneyChanges_useActiveLedgerAndLocks() throws IOException {
         String source = source(SETTLE_SERVICE);
         String receive = slice(source, "public void receive", "public void cancelReceive");
@@ -102,6 +120,23 @@ class BusinessFlowConcurrencyContractTest {
                 ".eq(ReceiveRecord::getIsDeleted, 0)",
                 "record.getRecordStatus() == null || record.getRecordStatus() == RECEIVE_STATUS_ACTIVE",
                 "total = total.add(nz(record.getReceiveAmount()))");
+    }
+
+    @Test
+    void settleVoid_whenSubmittedRepeatedly_usesStatusGuardAndDeletesOnlyOwnDetails() throws IOException {
+        String source = source(SETTLE_SERVICE);
+
+        assertContainsAll(slice(source, "public void voidSettle", "private SettleDetail buildDetail"),
+                "settleDetailMapper.delete(new LambdaQueryWrapper<SettleDetail>()",
+                ".eq(SettleDetail::getUuid, detail.getUuid())",
+                ".eq(SettleDetail::getSettleUuid, uuid)",
+                "deleteSettleOrderForVoid(settle)");
+        assertContainsAll(slice(source, "private void deleteSettleOrderForVoid", "private String buildSettleSnapshot"),
+                "ConcurrencyGuard.requireRowUpdated",
+                ".eq(SettleOrder::getUuid, settle.getUuid())",
+                ".eq(SettleOrder::getSettleStatus, settle.getSettleStatus())",
+                ".set(SettleOrder::getIsDeleted, 1)",
+                ".setSql(\"version = version + 1\")");
     }
 
     @Test
