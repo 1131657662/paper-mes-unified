@@ -81,7 +81,7 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
               <td>{printOriginalLabel(line)}</td>
               <td>{printOriginalSpec(line)}</td>
               <td>{formatKg(line.originalWeight)}</td>
-              <td>{line.processStepSummary || line.processText || '-'}</td>
+              <td>{printProcessText(line)}</td>
               <td>{line.finishDetailSummary || line.finishSummary || '-'}</td>
               <td>{formatKg(line.finishWeight)}</td>
               <td>{line.trimSummary || formatKg(line.trimWeight)}</td>
@@ -138,6 +138,11 @@ function printOriginalSpec(line: SettlePrintLine) {
     line.originalLength ? `${line.originalLength}m` : undefined,
   ].filter(Boolean)
   return spec.join(' / ')
+}
+
+function printProcessText(line: SettlePrintLine) {
+  const process = line.processStepSummary || line.processText || '-'
+  return line.machineName ? `${process} / 机台${line.machineName}` : process
 }
 
 function PrintAmountWithHint({ amount, hint }: { amount?: number; hint?: string }) {

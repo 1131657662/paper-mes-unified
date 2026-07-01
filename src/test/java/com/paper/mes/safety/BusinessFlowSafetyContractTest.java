@@ -211,6 +211,8 @@ class BusinessFlowSafetyContractTest {
                 "line.setProcessStepSummary",
                 "line.setFinishDetailSummary",
                 "line.setTrimSummary",
+                "line.setMachineUuid",
+                "line.setMachineName",
                 "line.setTaxRate");
     }
 

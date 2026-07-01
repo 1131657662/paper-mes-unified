@@ -57,6 +57,8 @@ export interface SettlePrintLine {
   originalWeight?: number
   processMode?: number
   mainStepType?: number
+  machineUuid?: string
+  machineName?: string
   processText?: string
   processStepSummary?: string
   finishSummary?: string

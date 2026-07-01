@@ -26,7 +26,7 @@ public class SettleExportService {
         writeSummary(sheet, detail.getOrder(), titleStyle(workbook));
         writeHeader(sheet, headerStyle(workbook));
         writeLines(sheet, detail, subtotalStyle(workbook));
-        autosize(sheet, 22);
+        autosize(sheet, 23);
         SettleReceiveSheetWriter.write(workbook, detail);
         return workbook;
     }
@@ -53,6 +53,8 @@ public class SettleExportService {
             row.createCell(i).setCellValue(labels[i]);
             row.getCell(i).setCellStyle(style);
         }
+        row.createCell(22).setCellValue("机台");
+        row.getCell(22).setCellStyle(style);
     }
 
     private void writeLines(Sheet sheet, SettleDetailVO detail, CellStyle subtotalStyle) {
@@ -91,6 +93,7 @@ public class SettleExportService {
             row.createCell(19).setCellValue(text(line.getExtraFeeSummary()));
             row.createCell(20).setCellValue(invoiceText(line.getIsInvoice()));
             row.createCell(21).setCellValue(text(line.getLineAmount()));
+            row.createCell(22).setCellValue(text(line.getMachineName()));
             subtotal.add(line);
         }
         if (currentOrderKey != null) {
@@ -133,7 +136,7 @@ public class SettleExportService {
         row.createCell(17).setCellValue(text(subtotal.processAmount));
         row.createCell(18).setCellValue(text(subtotal.extraAmount));
         row.createCell(21).setCellValue(text(subtotal.lineAmount));
-        for (int i = 0; i <= 21; i++) {
+        for (int i = 0; i <= 22; i++) {
             if (row.getCell(i) == null) {
                 row.createCell(i);
             }

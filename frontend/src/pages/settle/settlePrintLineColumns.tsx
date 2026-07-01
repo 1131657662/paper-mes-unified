@@ -35,7 +35,7 @@ export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
     title: '加工内容',
     dataIndex: 'processText',
     width: 220,
-    render: (_, record) => textCell(record.processStepSummary || record.processText),
+    render: (_, record) => processCell(record),
   },
   {
     title: '成品摘要',
@@ -96,6 +96,15 @@ export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
 
 function textCell(value?: string | number) {
   return <TooltipText value={value} />
+}
+
+function processCell(record: SettlePrintLine) {
+  return (
+    <div className="settle-cell-stack mes-cell-stack">
+      <TooltipText value={record.processStepSummary || record.processText} />
+      {record.machineName && <span>机台 {record.machineName}</span>}
+    </div>
+  )
 }
 
 function amountWithHint({

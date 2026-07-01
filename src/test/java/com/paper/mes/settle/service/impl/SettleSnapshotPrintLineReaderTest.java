@@ -39,6 +39,8 @@ class SettleSnapshotPrintLineReaderTest {
                       "coreDiameter": 76,
                       "originalLength": 6000,
                       "originalWeight": 3255.000,
+                      "machineUuid": "machine-1",
+                      "machineName": "锯纸机1号",
                       "processText": "锯纸+复卷",
                       "processStepSummary": "锯纸（2刀 / 单价 200.00）",
                       "finishSummary": "A000001、A000002",
@@ -81,6 +83,8 @@ class SettleSnapshotPrintLineReaderTest {
         assertEquals(1300, line.getOriginalDiameter());
         assertEquals(76, line.getCoreDiameter());
         assertEquals(6000, line.getOriginalLength());
+        assertEquals("machine-1", line.getMachineUuid());
+        assertEquals("锯纸机1号", line.getMachineName());
         assertEquals("锯纸+复卷", line.getProcessText());
         assertEquals("锯纸（2刀 / 单价 200.00）", line.getProcessStepSummary());
         assertEquals("A000001、A000002", line.getFinishSummary());
@@ -120,6 +124,8 @@ class SettleSnapshotPrintLineReaderTest {
                       "original_weight": 2874.000,
                       "process_mode": 1,
                       "main_step_type": 2,
+                      "machine_uuid": "machine-2",
+                      "machine_name": "复卷机2号",
                       "process_text": "复卷",
                       "process_step_summary": "复卷（2874.000kg / 单价 180.00）",
                       "finish_summary": "A000010、A000011",
@@ -168,6 +174,8 @@ class SettleSnapshotPrintLineReaderTest {
         assertEquals(1200, line.getOriginalDiameter());
         assertEquals(76, line.getCoreDiameter());
         assertEquals(5800, line.getOriginalLength());
+        assertEquals("machine-2", line.getMachineUuid());
+        assertEquals("复卷机2号", line.getMachineName());
         assertEquals("复卷（2874.000kg / 单价 180.00）", line.getProcessStepSummary());
         assertEquals("A000010（940mm / 1400.000kg）", line.getFinishDetailSummary());
         assertEquals("80mm / 40.000kg", line.getTrimSummary());

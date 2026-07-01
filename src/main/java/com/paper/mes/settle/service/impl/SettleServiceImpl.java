@@ -15,6 +15,8 @@ import com.paper.mes.common.PageResult;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.service.CustomerService;
+import com.paper.mes.machine.entity.Machine;
+import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.entity.OperationLog;
 import com.paper.mes.oplog.mapper.OperationLogMapper;
 import com.paper.mes.oplog.service.OperationLogService;
@@ -102,6 +104,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private final ProcessStepMapper processStepMapper;
     private final ProcessOrderService processOrderService;
     private final CustomerService customerService;
+    private final MachineMapper machineMapper;
     private final OperationLogMapper operationLogMapper;
     private final OperationLogService operationLogService;
     private final SettleCandidateStatsLoader statsLoader;
@@ -595,6 +598,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
         Map<String, List<ProcessStep>> stepsByOriginal = groupStepsByOriginal(steps);
         Map<String, List<FinishRoll>> finishesByOriginal = groupFinishesByOriginal(finishes, rels, rolls);
+        Map<String, String> machineNameByUuid = loadMachineNames(rolls);
         Map<String, SettleDetail> detailByOrderUuid = new LinkedHashMap<>();
         for (SettleDetail detail : details) {
             detailByOrderUuid.put(detail.getOrderUuid(), detail);
@@ -605,7 +609,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             ProcessOrder order = orderByUuid.get(roll.getOrderUuid());
             SettlePrintLineVO line = buildPrintLine(settle, order, customer, roll,
                     stepsByOriginal.getOrDefault(roll.getUuid(), List.of()),
-                    finishesByOriginal.getOrDefault(roll.getUuid(), List.of()));
+                    finishesByOriginal.getOrDefault(roll.getUuid(), List.of()), machineNameByUuid);
             linesByOrderUuid.computeIfAbsent(roll.getOrderUuid(), k -> new ArrayList<>()).add(line);
         }
         List<SettlePrintLineVO> lines = new ArrayList<>(rolls.size());
@@ -664,8 +668,24 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         return new ArrayList<>(unique.values());
     }
 
+    private Map<String, String> loadMachineNames(List<OriginalRoll> rolls) {
+        List<String> machineUuids = rolls.stream()
+                .map(OriginalRoll::getMachineUuid)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+        if (machineUuids.isEmpty()) {
+            return Map.of();
+        }
+        return machineMapper.selectBatchIds(machineUuids).stream()
+                .collect(java.util.stream.Collectors.toMap(Machine::getUuid,
+                        machine -> machine.getMachineName() == null ? "" : machine.getMachineName(),
+                        (left, right) -> left));
+    }
+
     private SettlePrintLineVO buildPrintLine(SettleOrder settle, ProcessOrder order, Customer customer, OriginalRoll roll,
-                                             List<ProcessStep> steps, List<FinishRoll> finishes) {
+                                             List<ProcessStep> steps, List<FinishRoll> finishes,
+                                             Map<String, String> machineNameByUuid) {
         LineAmounts amounts = lineAmounts(steps);
         BigDecimal taxRate = taxRateOf(order, customer);
         SettlePrintLineVO line = new SettlePrintLineVO();
@@ -688,6 +708,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setOriginalWeight(originalWeight(roll));
         line.setProcessMode(roll.getProcessMode());
         line.setMainStepType(roll.getMainStepType());
+        line.setMachineUuid(roll.getMachineUuid());
+        line.setMachineName(machineNameByUuid.get(roll.getMachineUuid()));
         line.setProcessText(processText(roll));
         line.setProcessStepSummary(processStepSummary(steps));
         line.setFinishSummary(finishSummary(finishes));

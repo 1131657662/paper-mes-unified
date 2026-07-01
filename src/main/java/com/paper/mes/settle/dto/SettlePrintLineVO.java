@@ -30,6 +30,8 @@ public class SettlePrintLineVO {
     private BigDecimal originalWeight;
     private Integer processMode;
     private Integer mainStepType;
+    private String machineUuid;
+    private String machineName;
     private String processText;
     private String processStepSummary;
     private String finishSummary;

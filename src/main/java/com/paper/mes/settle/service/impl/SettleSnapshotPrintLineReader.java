@@ -80,6 +80,8 @@ final class SettleSnapshotPrintLineReader {
             line.setOriginalWeight(decimal(itemNode, "original_weight"));
             line.setProcessMode(integer(itemNode, "process_mode"));
             line.setMainStepType(integer(itemNode, "main_step_type"));
+            line.setMachineUuid(text(itemNode, "machine_uuid"));
+            line.setMachineName(text(itemNode, "machine_name"));
             line.setProcessText(text(itemNode, "process_text"));
             line.setProcessStepSummary(text(itemNode, "process_step_summary"));
             line.setFinishSummary(text(itemNode, "finish_summary"));
