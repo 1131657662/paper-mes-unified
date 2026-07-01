@@ -1108,7 +1108,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private String buildSettleSnapshot(SettleOrder settle, List<SettleDetail> details, List<ProcessOrder> orders) {
         List<SettlePrintLineVO> printLines = buildPrintLines(settle, details);
         Map<String, Object> snap = new LinkedHashMap<>();
-        snap.put("schema_version", "1.1");
+        snap.put("schema_version", "1.2");
         snap.put("snapshot_type", "settle_bill");
         snap.put("settle_uuid", settle.getUuid());
         snap.put("settle_no", settle.getSettleNo());
@@ -1147,6 +1147,11 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             row.put("settle_type", order.getSettleType());
             row.put("is_invoice", order.getIsInvoice());
             row.put("tax_rate", order.getTaxRate());
+            row.put("urgent_fee", order.getUrgentFee());
+            row.put("pallet_fee", order.getPalletFee());
+            row.put("loading_fee", order.getLoadingFee());
+            row.put("freight_fee", order.getFreightFee());
+            row.put("other_fee", order.getOtherFee());
             row.put("total_original_weight", order.getTotalOriginalWeight());
             row.put("total_finish_weight", order.getTotalFinishWeight());
             row.put("process_amount_no_tax", order.getProcessAmountNoTax());
