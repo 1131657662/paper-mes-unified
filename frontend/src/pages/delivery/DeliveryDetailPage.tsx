@@ -51,7 +51,8 @@ export default function DeliveryDetailPage() {
 
   const handleRollback = async () => {
     if (!uuid || !order) return
-    const reason = await askRollbackReason(order.deliveryNo)
+    const reason = await askRollbackReason(order.deliveryNo).catch(() => null)
+    if (!reason) return
     await rollbackMutation.mutateAsync({ uuid, data: { reason } })
     message.success('已回退为待出库，可继续改单')
     detailQuery.refetch()
@@ -59,7 +60,8 @@ export default function DeliveryDetailPage() {
 
   const handleRemove = async (record: DeliveryDetail) => {
     if (!uuid) return
-    await confirmRemove(record.finishRollNo)
+    const confirmed = await confirmRemove(record.finishRollNo)
+    if (!confirmed) return
     await removeDetailMutation.mutateAsync({ uuid, detailUuid: record.uuid })
     message.success('已从本张出库单移出')
     detailQuery.refetch()
@@ -247,15 +249,15 @@ function askRollbackReason(deliveryNo: string) {
 }
 
 function confirmRemove(finishRollNo: string) {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<boolean>((resolve) => {
     Modal.confirm({
       title: '移出出库明细',
       content: `确认将 ${finishRollNo || '该成品卷'} 从本张待出库单中移出？移出后可重新勾选出库。`,
       okText: '移出',
       okButtonProps: { danger: true },
       cancelText: '取消',
-      onOk: () => resolve(),
-      onCancel: () => reject(new Error('cancel')),
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
     })
   })
 }
