@@ -65,9 +65,9 @@
         SELECT sd.order_uuid,
                SUM(CASE WHEN st.settleTotal > 0
                         THEN COALESCE(
+                            so.total_amount,
                             CAST(JSON_UNQUOTE(JSON_EXTRACT(so.snap_bill, '$.total_amount')) AS DECIMAL(18, 2)),
                             CAST(JSON_UNQUOTE(JSON_EXTRACT(so.snap_bill, '$.totalAmount')) AS DECIMAL(18, 2)),
-                            so.total_amount,
                             st.settleTotal,
                             0
                         ) * COALESCE(sd.order_amount, 0) / st.settleTotal
