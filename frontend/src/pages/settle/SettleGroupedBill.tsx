@@ -50,7 +50,6 @@ function GroupHeader({ group }: { group: SettleBillGroup }) {
       <Metric label="切边" value={formatKg(group.trimWeight)} />
       <Metric label="加工费" value={formatMoney(group.processAmount)} />
       <Metric label="额外费" value={formatMoney(group.extraAmount)} hint={group.extraFeeSummary} />
-      <Metric label="开票加价" value={formatMoney(group.taxAmount)} />
       <strong>应收 {formatMoney(group.lineAmount)}</strong>
     </div>
   )

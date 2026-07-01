@@ -142,7 +142,7 @@ export default function SettleDetailDrawer({ uuid, open, onClose }: Props) {
                 <Descriptions.Item label="复卷费">{order.rewindAmount}</Descriptions.Item>
                 <Descriptions.Item label="额外费用">{order.extraAmount}</Descriptions.Item>
                 <Descriptions.Item label="未税金额">{order.amountNoTax}</Descriptions.Item>
-                <Descriptions.Item label="开票加价">{order.taxAmount}</Descriptions.Item>
+                <Descriptions.Item label="税点加价">{order.taxAmount}</Descriptions.Item>
                 <Descriptions.Item label="应收总额">{order.totalAmount}</Descriptions.Item>
                 <Descriptions.Item label="已收金额">{order.receivedAmount}</Descriptions.Item>
                 <Descriptions.Item label="未收金额">{order.unreceivedAmount}</Descriptions.Item>

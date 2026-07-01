@@ -11,7 +11,6 @@ export interface SettleBillGroup {
   orderNo: string
   originalWeight: number
   processAmount: number
-  taxAmount: number
   trimWeight: number
   lines: SettlePrintLine[]
 }
@@ -29,7 +28,6 @@ export function buildSettleBillGroups(lines: SettlePrintLine[]) {
     group.processAmount += line.processAmount ?? 0
     group.extraAmount += line.extraAmount ?? 0
     group.extraFeeSummary ||= line.extraFeeSummary
-    group.taxAmount += line.taxAmount ?? 0
     group.lineAmount += line.lineAmount ?? 0
     map.set(key, group)
   }
@@ -48,7 +46,6 @@ function emptyGroup(key: string, line: SettlePrintLine): SettleBillGroup {
     orderNo: line.orderNo || key,
     originalWeight: 0,
     processAmount: 0,
-    taxAmount: 0,
     trimWeight: 0,
     lines: [],
   }

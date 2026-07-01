@@ -72,7 +72,6 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
             <th>锯纸单价/金额</th>
             <th>复卷单价/金额</th>
             <th>额外费</th>
-            <th>开票加价</th>
             <th>应收合计</th>
           </tr>
         </thead>
@@ -91,7 +90,6 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
               <td>
                 <PrintAmountWithHint amount={line.extraAmount} hint={line.extraFeeSummary} />
               </td>
-              <td>{formatMoney(line.taxAmount)}</td>
               <td>{formatMoney(line.lineAmount)}</td>
             </tr>
           ))}
@@ -102,8 +100,7 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
             <td>{formatKg(group.finishWeight)}</td>
             <td>{formatKg(group.trimWeight)}</td>
             <td colSpan={2}>额外费 {formatMoney(group.extraAmount)}{group.extraFeeSummary ? `（${group.extraFeeSummary}）` : ''}</td>
-            <td>-</td>
-            <td>开票加价 {formatMoney(group.taxAmount)}</td>
+            <td>开票价已计入应收</td>
             <td>{formatMoney(group.lineAmount)}</td>
           </tr>
         </tbody>

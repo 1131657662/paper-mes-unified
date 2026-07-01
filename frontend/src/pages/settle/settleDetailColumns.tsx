@@ -77,7 +77,6 @@ export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
     width: 180,
     render: (_, record) => <AmountWithHint amount={record.extraAmount} hint={record.extraFeeSummary} />,
   },
-  { title: '开票加价', dataIndex: 'taxAmount', align: 'right', width: 110, render: formatMoney },
   {
     title: '开票',
     dataIndex: 'isInvoice',
@@ -176,7 +175,7 @@ function UnitPriceCell({ invoicePrice, price }: { invoicePrice?: number; price?:
   return (
     <div className="document-money-stack">
       <Typography.Text>{formatMoney(price)}</Typography.Text>
-      {showInvoice && <span>开票 {formatMoney(invoicePrice)}</span>}
+      {showInvoice && <span>开票价 {formatMoney(invoicePrice)}</span>}
     </div>
   )
 }

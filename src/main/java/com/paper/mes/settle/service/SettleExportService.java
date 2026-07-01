@@ -26,7 +26,7 @@ public class SettleExportService {
         writeSummary(sheet, detail.getOrder(), titleStyle(workbook));
         writeHeader(sheet, headerStyle(workbook));
         writeLines(sheet, detail, subtotalStyle(workbook));
-        autosize(sheet, 23);
+        autosize(sheet, 22);
         return workbook;
     }
 
@@ -46,7 +46,7 @@ public class SettleExportService {
         String[] labels = {
                 "序号", "加工单", "日期", "原纸", "品名", "克重", "门幅", "原纸重量kg",
                 "加工内容", "成品摘要", "成品数", "成品重量kg", "切边kg", "锯纸单价",
-                "锯纸费", "复卷单价", "复卷费", "加工费", "额外费", "额外费说明", "开票加价", "开票", "应收合计"
+                "锯纸费", "复卷单价", "复卷费", "加工费", "额外费", "额外费说明", "开票", "应收合计"
         };
         for (int i = 0; i < labels.length; i++) {
             row.createCell(i).setCellValue(labels[i]);
@@ -88,9 +88,8 @@ public class SettleExportService {
             row.createCell(17).setCellValue(text(line.getProcessAmount()));
             row.createCell(18).setCellValue(text(line.getExtraAmount()));
             row.createCell(19).setCellValue(text(line.getExtraFeeSummary()));
-            row.createCell(20).setCellValue(text(line.getTaxAmount()));
-            row.createCell(21).setCellValue(invoiceText(line.getIsInvoice()));
-            row.createCell(22).setCellValue(text(line.getLineAmount()));
+            row.createCell(20).setCellValue(invoiceText(line.getIsInvoice()));
+            row.createCell(21).setCellValue(text(line.getLineAmount()));
             subtotal.add(line);
         }
         if (currentOrderKey != null) {
@@ -132,9 +131,8 @@ public class SettleExportService {
         row.createCell(12).setCellValue(text(subtotal.trimWeight));
         row.createCell(17).setCellValue(text(subtotal.processAmount));
         row.createCell(18).setCellValue(text(subtotal.extraAmount));
-        row.createCell(20).setCellValue(text(subtotal.taxAmount));
-        row.createCell(22).setCellValue(text(subtotal.lineAmount));
-        for (int i = 0; i <= 22; i++) {
+        row.createCell(21).setCellValue(text(subtotal.lineAmount));
+        for (int i = 0; i <= 21; i++) {
             if (row.getCell(i) == null) {
                 row.createCell(i);
             }
@@ -217,7 +215,6 @@ public class SettleExportService {
         private BigDecimal trimWeight = BigDecimal.ZERO;
         private BigDecimal processAmount = BigDecimal.ZERO;
         private BigDecimal extraAmount = BigDecimal.ZERO;
-        private BigDecimal taxAmount = BigDecimal.ZERO;
         private BigDecimal lineAmount = BigDecimal.ZERO;
 
         private void add(SettlePrintLineVO line) {
@@ -228,7 +225,6 @@ public class SettleExportService {
             trimWeight = trimWeight.add(nz(line.getTrimWeight()));
             processAmount = processAmount.add(nz(line.getProcessAmount()));
             extraAmount = extraAmount.add(nz(line.getExtraAmount()));
-            taxAmount = taxAmount.add(nz(line.getTaxAmount()));
             lineAmount = lineAmount.add(nz(line.getLineAmount()));
         }
 

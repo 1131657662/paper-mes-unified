@@ -26,15 +26,15 @@ class SettleExportServiceTest {
         assertEquals("成品摘要", text(sheet.getRow(7).getCell(9)));
         assertEquals("锯纸单价", text(sheet.getRow(7).getCell(13)));
         assertEquals("额外费说明", text(sheet.getRow(7).getCell(19)));
-        assertEquals("开票加价", text(sheet.getRow(7).getCell(20)));
-        assertEquals("应收合计", text(sheet.getRow(7).getCell(22)));
+        assertEquals("开票", text(sheet.getRow(7).getCell(20)));
+        assertEquals("应收合计", text(sheet.getRow(7).getCell(21)));
         assertEquals("母卷1", text(sheet.getRow(8).getCell(3)));
         assertEquals("锯纸+复卷", text(sheet.getRow(8).getCell(8)));
         assertEquals("A000001、A000002", text(sheet.getRow(8).getCell(9)));
         assertEquals("200（开票价 212）", text(sheet.getRow(8).getCell(13)));
         assertEquals("装卸费 80.00；运费 30.00", text(sheet.getRow(8).getCell(19)));
-        assertEquals("66", text(sheet.getRow(8).getCell(20)));
-        assertEquals("1176", text(sheet.getRow(8).getCell(22)));
+        assertEquals("开票", text(sheet.getRow(8).getCell(20)));
+        assertEquals("1176", text(sheet.getRow(8).getCell(21)));
     }
 
     private SettleDetailVO detail() {
