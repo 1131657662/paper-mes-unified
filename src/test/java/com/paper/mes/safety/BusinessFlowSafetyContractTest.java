@@ -62,8 +62,11 @@ class BusinessFlowSafetyContractTest {
 
     @Test
     void deliverySnapshot_whenGenerated_keepsTraceableFields() throws IOException {
-        String snapshot = slice(source(DELIVERY_SERVICE),
+        String source = source(DELIVERY_SERVICE);
+        String snapshot = slice(source,
                 "private String buildDeliverySnapshot", "private List<Map<String, Object>> buildDeliverySnapshotItems");
+        String detailSnapshot = slice(source,
+                "private List<Map<String, Object>> buildDeliverySnapshotItems", "private List<DeliveryDetailItemVO>");
 
         assertContainsAll(snapshot,
                 "\"schema_version\"",
@@ -73,6 +76,17 @@ class BusinessFlowSafetyContractTest {
                 "\"car_no\"",
                 "\"detail_items\"",
                 "\"details\"");
+        assertContainsAll(detailSnapshot,
+                "\"order_no\"",
+                "\"paper_name\"",
+                "\"gram_weight\"",
+                "\"finish_width\"",
+                "\"actual_weight\"",
+                "\"out_weight\"",
+                "\"original_summary\"",
+                "\"process_mode_text\"",
+                "\"process_summary\"",
+                "\"actual_remark\"");
     }
 
     @Test
