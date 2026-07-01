@@ -266,7 +266,8 @@ body,
 .app-shell__content--edge-scroll {
   display: block;
   margin: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 16px;
   scrollbar-gutter: stable;
 }

@@ -894,6 +894,31 @@
   border-color: var(--mes-color-border);
 }
 
+.dashboard-metrics,
+.document-amount-overview,
+.order-detail-metrics,
+.report-metrics {
+  align-items: stretch;
+  min-width: 0;
+}
+
+.dashboard-metrics > .ant-pro-card-body,
+.document-amount-overview > .ant-pro-card-body,
+.order-detail-metrics > .ant-pro-card-body,
+.report-metrics > .ant-pro-card-body {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-metrics .ant-pro-card-col,
+.document-amount-overview .ant-pro-card-col,
+.order-detail-metrics .ant-pro-card-col,
+.report-metrics .ant-pro-card-col {
+  min-width: 0;
+}
+
 .mes-drawer-body {
   min-height: 0;
   padding: 14px;
