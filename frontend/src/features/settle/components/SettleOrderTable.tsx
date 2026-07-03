@@ -13,6 +13,7 @@ import type { SettleOrder } from '../../../types/settle'
 import { formatMoney, formatPercent } from '../utils/settleFormatters'
 
 interface Props {
+  canReceiveSettle?: boolean
   data: SettleOrder[]
   loading: boolean
   onReload?: () => void
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export default function SettleOrderTable({
+  canReceiveSettle = false,
   data,
   loading,
   onDetail,
@@ -33,7 +35,7 @@ export default function SettleOrderTable({
   rowClassName,
   rowSelection,
 }: Props) {
-  const columns = buildColumns({ onDetail, onReceive })
+  const columns = buildColumns({ canReceiveSettle, onDetail, onReceive })
   const columnsState = useTableColumnsState('table-columns-settle-orders')
   const resizable = useResizableTableColumns<SettleOrder, ProColumns<SettleOrder>>(columns, 'settle-orders')
 
@@ -66,6 +68,7 @@ export default function SettleOrderTable({
 }
 
 function buildColumns(actions: {
+  canReceiveSettle: boolean
   onDetail: (record: SettleOrder) => void
   onReceive: (record: SettleOrder) => void
 }): ProColumns<SettleOrder>[] {
@@ -119,7 +122,7 @@ function buildColumns(actions: {
           <Button type="link" size="small" onClick={() => actions.onDetail(record)}>
             详情
           </Button>
-          {record.settleStatus !== 3 && (
+          {actions.canReceiveSettle && record.settleStatus !== 3 && (
             <Button type="link" size="small" onClick={() => actions.onReceive(record)}>
               收款
             </Button>

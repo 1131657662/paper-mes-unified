@@ -6,11 +6,13 @@ import { useNavigate } from 'react-router-dom'
 import DocumentListShell from '../../components/biz/DocumentListShell'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import { useDocumentRowSelection } from '../../components/biz/useDocumentRowSelection'
+import { PERMISSIONS } from '../../constants/permissions'
 import { SETTLE_STATUS, SETTLE_TYPE } from '../../constants/settle'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import SettleOrderTable from '../../features/settle/components/SettleOrderTable'
 import { useSettleOrders } from '../../features/settle/hooks/useSettleOrders'
 import { useConfiguredPageSize } from '../../features/systemConfig/hooks/useConfiguredPageSize'
+import { useHasPermission } from '../../stores/authStore'
 import type { SettleOrder, SettleQuery } from '../../types/settle'
 import ReceiveModal from './ReceiveModal'
 import './SettleOrderList.css'
@@ -34,6 +36,8 @@ export default function SettleOrderList() {
   const [pageSize, setPageSize] = useConfiguredPageSize(20)
   const [filters, setFilters] = useState<SettleQuery>({})
   const [receiveRecord, setReceiveRecord] = useState<SettleOrder | null>(null)
+  const canManageSettle = useHasPermission(PERMISSIONS.settleManage)
+  const canReceiveSettle = useHasPermission(PERMISSIONS.settleReceive)
   const rowSelection = useDocumentRowSelection<SettleOrder>()
   const query = { ...filters, current: page, settleStatus: settleStatus(queueFilter, filters), size: pageSize }
   const ordersQuery = useSettleOrders(query)
@@ -61,6 +65,7 @@ export default function SettleOrderList() {
   }
 
   const handleReceiveSelected = () => {
+    if (!canReceiveSettle) return
     if (selectedReceivable.length !== 1) {
       message.warning('请选择一张未结清结算单登记收款')
       return
@@ -78,6 +83,7 @@ export default function SettleOrderList() {
     <DocumentListShell
       title="结算管理"
       createText="新建结算单"
+      canCreate={canManageSettle}
       queue={queueFilter}
       queueOptions={[
         { label: '全部', value: 'all' },
@@ -94,7 +100,7 @@ export default function SettleOrderList() {
           onSearch={handleSearch}
         />
       )}
-      leftActions={(
+      leftActions={canReceiveSettle && (
         <Button
           icon={<WalletOutlined />}
           disabled={selectedReceivable.length !== 1}
@@ -112,6 +118,7 @@ export default function SettleOrderList() {
     >
       <div className="document-page-table">
         <SettleOrderTable
+          canReceiveSettle={canReceiveSettle}
           data={orders}
           loading={ordersQuery.isLoading || ordersQuery.isFetching}
           onReload={() => ordersQuery.refetch()}

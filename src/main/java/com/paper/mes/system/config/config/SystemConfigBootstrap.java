@@ -100,6 +100,7 @@ public class SystemConfigBootstrap implements ApplicationRunner {
         seedConfig("cfg-print-title", "print", "print.processOrderTitle", "加工单打印标题", "车间加工单", "string", null, 10, "打印模板页眉标题");
         seedConfig("cfg-page-size", "ui", "ui.defaultPageSize", "默认每页条数", "20", "number", "条", 10, "列表默认分页条数");
         seedConfig("cfg-company-name", "print", "print.companyName", "公司名称", "纸品加工 MES", "string", null, 20, "出库单、结算单和打印页展示");
+        seedConfig("cfg-delivery-cash-block-mode", "delivery", "delivery.cashSettleBlockMode", "次结出库拦截模式", "1", "number", null, 10, "0关闭拦截，1警告放行，2强制拦截");
     }
 
     private void seedDict(String uuid, String dictType, String dictName, String itemCode,

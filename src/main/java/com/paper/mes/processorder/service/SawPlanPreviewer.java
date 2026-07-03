@@ -55,6 +55,20 @@ public class SawPlanPreviewer {
         return finishes;
     }
 
+    public List<FinishConfigSpecDTO> saveSpecs(List<FinishConfigSpecDTO> specs, OriginalRoll roll) {
+        ProcessPlanDTO plan = new ProcessPlanDTO();
+        plan.setProcessMode(roll.getProcessMode());
+        plan.setMainStepType(1);
+        plan.setSpareCount(0);
+        plan.setFinishSpecs(specs);
+        List<FinishPreviewVO.FinishItemPreview> previews = preview(plan, roll).getFinishes();
+        List<FinishConfigSpecDTO> result = new ArrayList<>(previews.size());
+        for (FinishPreviewVO.FinishItemPreview item : previews) {
+            result.add(toSaveSpec(item));
+        }
+        return result;
+    }
+
     public int knifeCount(List<FinishConfigSpecDTO> specs, int trimWidth) {
         int finishCount = finishCount(specs);
         if (finishCount <= 0) {
@@ -70,6 +84,17 @@ public class SawPlanPreviewer {
         vo.setMainStepType(plan.getMainStepType());
         vo.setSpareCount(plan.getSpareCount() == null ? 0 : plan.getSpareCount());
         return vo;
+    }
+
+    private FinishConfigSpecDTO toSaveSpec(FinishPreviewVO.FinishItemPreview item) {
+        FinishConfigSpecDTO spec = new FinishConfigSpecDTO();
+        spec.setItemType(ITEM_FINISH);
+        spec.setCount(1);
+        spec.setFinishWidth(item.getFinishWidth());
+        spec.setFinishDiameter(item.getFinishDiameter());
+        spec.setFinishCoreDiameter(item.getFinishCoreDiameter());
+        spec.setEstimateWeight(item.getEstimateWeight());
+        return spec;
     }
 
     private boolean validWidth(PlanPreviewVO vo, int originalWidth, int finishWidth, int trimWidth) {

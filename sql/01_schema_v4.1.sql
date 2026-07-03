@@ -178,13 +178,16 @@ CREATE TABLE `biz_process_order` (
   `total_step_count`      INT           NOT NULL DEFAULT 1      COMMENT '工序总道数',
   `has_extra_step`        TINYINT       NOT NULL DEFAULT 0      COMMENT '0无追加工序 1有追加',
   `actual_total_knife`    INT           DEFAULT 0               COMMENT '全单据实际总刀数',
-  `order_status`          TINYINT       NOT NULL DEFAULT 1      COMMENT '1待下发 2加工中 3待回录 4已完成 5已结算',
+  `order_status`          TINYINT       NOT NULL DEFAULT 1      COMMENT '0草稿 1待下发 2加工中 3待回录 4已完成 5已结算 6已作废',
   `print_status`          TINYINT       NOT NULL DEFAULT 0      COMMENT '0未打印 1已打印',
   `print_count`           INT           NOT NULL DEFAULT 0      COMMENT '打印次数',
   `last_print_time`       DATETIME      DEFAULT NULL            COMMENT '末次打印时间',
   `last_print_user`       VARCHAR(50)   DEFAULT NULL            COMMENT '打印人',
   `back_record_time`      DATETIME      DEFAULT NULL            COMMENT '回录完成时间',
   `back_record_user`      VARCHAR(50)   DEFAULT NULL            COMMENT '回录操作员',
+  `void_time`             DATETIME      DEFAULT NULL            COMMENT '作废时间',
+  `void_user`             VARCHAR(50)   DEFAULT NULL            COMMENT '作废人',
+  `void_reason`           VARCHAR(255)  DEFAULT NULL            COMMENT '作废原因',
   `is_mix_process`        TINYINT       NOT NULL DEFAULT 0      COMMENT '【V4.1】0单一工艺 1混合锯纸+复卷',
   `snap_print`            JSON          DEFAULT NULL            COMMENT '【V4.1】下发快照JSON，根节点必含 schema_version:1.0',
   `snap_finish`           JSON          DEFAULT NULL            COMMENT '【V4.1】完成快照JSON，根节点必含 schema_version:1.0',
@@ -264,6 +267,7 @@ CREATE TABLE `biz_original_roll` (
   KEY `idx_process_mode` (`process_mode`),
   KEY `idx_main_step_type` (`main_step_type`),
   KEY `idx_row_sort` (`order_uuid`, `row_sort`),
+  KEY `idx_original_roll_machine_uuid` (`machine_uuid`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='原纸明细表（单卷维度）';
 
@@ -275,6 +279,10 @@ CREATE TABLE `biz_process_step` (
   `uuid`           VARCHAR(36)   NOT NULL                COMMENT '工序ID',
   `order_uuid`     VARCHAR(36)   NOT NULL                COMMENT '关联加工单',
   `original_uuid`  VARCHAR(36)   NOT NULL                COMMENT '关联对应原纸单卷',
+  `input_type`     TINYINT       NOT NULL DEFAULT 1      COMMENT '输入来源：1原纸 2上一阶段产出',
+  `input_output_uuid` VARCHAR(36) DEFAULT NULL           COMMENT '输入阶段产出UUID，input_type=2时使用',
+  `stage_level`    INT           NOT NULL DEFAULT 1      COMMENT '工艺阶段层级：1第一道 2第二道',
+  `parent_step_uuid` VARCHAR(36) DEFAULT NULL            COMMENT '上一阶段工序UUID',
   `step_sort`      INT           NOT NULL DEFAULT 1      COMMENT '工序排序号',
   `step_type`      TINYINT       NOT NULL                COMMENT '1锯纸 2复卷（工艺唯一判断字段）',
   `step_name`      VARCHAR(50)   DEFAULT NULL            COMMENT '工序自定义名称',
@@ -299,9 +307,90 @@ CREATE TABLE `biz_process_step` (
   PRIMARY KEY (`uuid`),
   KEY `idx_order_uuid` (`order_uuid`),
   KEY `idx_original_uuid` (`original_uuid`),
+  KEY `idx_input_output_uuid` (`input_output_uuid`),
+  KEY `idx_parent_step_uuid` (`parent_step_uuid`),
   KEY `idx_step_type` (`step_type`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工序明细表（工艺唯一来源）';
+
+-- -----------------------------------------------------------------------------
+-- 3.3.4.1 biz_process_stage_output 工艺阶段产出表
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `biz_process_stage_output`;
+CREATE TABLE `biz_process_stage_output` (
+  `uuid`                 VARCHAR(36)   NOT NULL                COMMENT '阶段产出主键',
+  `order_uuid`           VARCHAR(36)   NOT NULL                COMMENT '关联加工单',
+  `original_uuid`        VARCHAR(36)   NOT NULL                COMMENT '根母卷UUID',
+  `step_uuid`            VARCHAR(36)   NOT NULL                COMMENT '产出所属工序',
+  `parent_output_uuid`   VARCHAR(36)   DEFAULT NULL            COMMENT '上一阶段产出UUID',
+  `stage_level`          INT           NOT NULL DEFAULT 1      COMMENT '工艺阶段层级',
+  `output_sort`          INT           NOT NULL DEFAULT 1      COMMENT '阶段内产出排序',
+  `output_type`          TINYINT       NOT NULL DEFAULT 2      COMMENT '1中间产出 2最终产出',
+  `output_status`        TINYINT       NOT NULL DEFAULT 1      COMMENT '1计划 2已被下道消耗 3已生成成品卷 4作废',
+  `output_no`            VARCHAR(50)   DEFAULT NULL            COMMENT '阶段产出临时编号',
+  `finish_roll_uuid`     VARCHAR(36)   DEFAULT NULL            COMMENT '最终产出生成的成品卷UUID',
+  `paper_name`           VARCHAR(100)  DEFAULT NULL            COMMENT '产出品名',
+  `gram_weight`          INT           DEFAULT NULL            COMMENT '产出克重 g/㎡',
+  `finish_width`         INT           DEFAULT NULL            COMMENT '产出门幅 mm',
+  `finish_diameter`      INT           DEFAULT NULL            COMMENT '产出直径 英寸',
+  `finish_core_diameter` INT           DEFAULT NULL            COMMENT '产出纸芯 英寸',
+  `estimate_weight`      DECIMAL(10,3) DEFAULT NULL            COMMENT '预估重量 kg',
+  `actual_weight`        DECIMAL(10,3) DEFAULT NULL            COMMENT '实际重量 kg',
+  `source_step_type`     TINYINT       DEFAULT NULL            COMMENT '产出来源工艺：1锯纸 2复卷',
+  `source_summary`       VARCHAR(255)  DEFAULT NULL            COMMENT '来源摘要',
+  `remark`               VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
+  `is_deleted`           TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `create_by`            VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
+  `update_by`            VARCHAR(50)   DEFAULT NULL            COMMENT '更新人',
+  `create_time`          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time`          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `version`              INT           NOT NULL DEFAULT 1      COMMENT '乐观锁版本号',
+  `ext_str1`             VARCHAR(255)  DEFAULT NULL            COMMENT '扩展文本1',
+  `ext_str2`             VARCHAR(255)  DEFAULT NULL            COMMENT '扩展文本2',
+  `ext_num1`             DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值1',
+  `ext_num2`             DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值2',
+  PRIMARY KEY (`uuid`),
+  KEY `idx_order_uuid` (`order_uuid`),
+  KEY `idx_original_uuid` (`original_uuid`),
+  KEY `idx_step_uuid` (`step_uuid`),
+  KEY `idx_parent_output_uuid` (`parent_output_uuid`),
+  KEY `idx_finish_roll_uuid` (`finish_roll_uuid`),
+  KEY `idx_output_type` (`output_type`),
+  KEY `idx_output_status` (`output_status`),
+  KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工艺阶段产出表';
+
+-- -----------------------------------------------------------------------------
+-- 3.3.4.2 biz_process_stage_input_rel 工艺阶段输入关联表
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `biz_process_stage_input_rel`;
+CREATE TABLE `biz_process_stage_input_rel` (
+  `uuid`              VARCHAR(36)   NOT NULL                COMMENT '阶段输入关联主键',
+  `order_uuid`        VARCHAR(36)   NOT NULL                COMMENT '关联加工单',
+  `original_uuid`     VARCHAR(36)   NOT NULL                COMMENT '根母卷UUID',
+  `step_uuid`         VARCHAR(36)   NOT NULL                COMMENT '消费这些阶段产出的工序UUID',
+  `input_output_uuid` VARCHAR(36)   NOT NULL                COMMENT '被消费的阶段产出UUID',
+  `source_step_uuid`  VARCHAR(36)   DEFAULT NULL            COMMENT '阶段产出来源工序UUID',
+  `input_sort`        INT           NOT NULL DEFAULT 1      COMMENT '本工序输入顺序',
+  `stage_level`       INT           NOT NULL DEFAULT 1      COMMENT '消费工序所在阶段层级',
+  `is_deleted`        TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `create_by`         VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
+  `update_by`         VARCHAR(50)   DEFAULT NULL            COMMENT '更新人',
+  `create_time`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `version`           INT           NOT NULL DEFAULT 1      COMMENT '乐观锁版本号',
+  `ext_str1`          VARCHAR(255)  DEFAULT NULL            COMMENT '扩展文本1',
+  `ext_str2`          VARCHAR(255)  DEFAULT NULL            COMMENT '扩展文本2',
+  `ext_num1`          DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值1',
+  `ext_num2`          DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值2',
+  PRIMARY KEY (`uuid`),
+  KEY `idx_order_uuid` (`order_uuid`),
+  KEY `idx_original_uuid` (`original_uuid`),
+  KEY `idx_step_uuid` (`step_uuid`),
+  KEY `idx_input_output_uuid` (`input_output_uuid`),
+  KEY `idx_source_step_uuid` (`source_step_uuid`),
+  KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工艺阶段输入关联表';
 
 -- -----------------------------------------------------------------------------
 -- 3.3.5 biz_finish_roll 成品明细表（全局唯一卷号）
@@ -326,6 +415,7 @@ CREATE TABLE `biz_finish_roll` (
   `estimate_weight_snap` DECIMAL(10,3) DEFAULT NULL            COMMENT '打印下发时预估重量快照 kg',
   `estimate_weight`      DECIMAL(10,3) DEFAULT NULL            COMMENT '当前系统理论预估重量 kg',
   `actual_weight`        DECIMAL(10,3) DEFAULT NULL            COMMENT '车间实际成品重量 kg',
+  `remaining_weight`     DECIMAL(10,3) DEFAULT NULL            COMMENT '剩余可出库重量 kg，NULL按actual_weight兼容旧数据',
   `diameter_ratio`       DECIMAL(5,2)  DEFAULT NULL            COMMENT '直径分卷重量占比%',
   `trim_width_share`     INT           DEFAULT NULL            COMMENT '分摊修边宽度 mm',
   `trim_weight_share`    DECIMAL(10,3) DEFAULT NULL            COMMENT '分摊修边重量 kg',
@@ -486,8 +576,13 @@ CREATE TABLE `biz_delivery_detail` (
   `finish_roll_no` VARCHAR(20)   DEFAULT NULL            COMMENT '冗余成品卷号',
   `paper_name`     VARCHAR(100)  DEFAULT NULL            COMMENT '冗余品名',
   `out_weight`     DECIMAL(10,3) NOT NULL                COMMENT '本件出库重量 kg',
+  `stock_lock_status` TINYINT    NOT NULL DEFAULT 1      COMMENT '库存占用状态：1待出库占用 0历史明细不占用',
   `remark`         VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
   `is_deleted`     TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `finish_uuid_active` VARCHAR(36)
+    GENERATED ALWAYS AS (
+      CASE WHEN `is_deleted` = 0 AND `stock_lock_status` = 1 THEN NULLIF(TRIM(`finish_uuid`), '') ELSE NULL END
+    ) STORED COMMENT 'active stock lock finish roll',
   `create_by`      VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
   `update_by`      VARCHAR(50)   DEFAULT NULL            COMMENT '更新人',
   `create_time`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -498,9 +593,11 @@ CREATE TABLE `biz_delivery_detail` (
   `ext_num1`       DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值1',
   `ext_num2`       DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_biz_delivery_detail_active_finish` (`finish_uuid_active`),
   KEY `idx_delivery_uuid` (`delivery_uuid`),
   KEY `idx_finish_uuid` (`finish_uuid`),
   KEY `idx_order_uuid` (`order_uuid`),
+  KEY `idx_stock_lock_status` (`stock_lock_status`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='出库成品明细表';
 
@@ -756,10 +853,12 @@ VALUES
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================
--- 建表脚本结束  共 16 张表
+-- 建表脚本结束  共 18 张表
 --   基础档案 4: sys_customer / sys_paper / sys_machine / sys_warehouse
---   加工核心 6: biz_process_order / biz_original_roll / biz_process_step /
---               biz_finish_roll / biz_process_param / biz_finish_original_rel
+--   加工核心 8: biz_process_order / biz_original_roll / biz_process_step /
+--               biz_process_stage_output / biz_process_stage_input_rel /
+--               biz_finish_roll / biz_process_param /
+--               biz_finish_original_rel
 --   出库     2: biz_delivery_order / biz_delivery_detail
 --   结算收款 3: biz_settle_order / biz_settle_detail / biz_receive_record
 --   系统辅助 4: sys_operation_log / sys_user / sys_user_session / sys_no_rule

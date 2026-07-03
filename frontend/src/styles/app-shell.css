@@ -251,6 +251,17 @@ body,
   color: #0958d9;
 }
 
+.app-shell__offline {
+  flex: 0 0 auto;
+  border-inline: 0;
+  border-radius: 0;
+}
+
+.app-shell__offline .ant-alert-message {
+  color: #713f12;
+  font-size: 13px;
+}
+
 .app-shell__content {
   display: flex;
   min-height: 0;

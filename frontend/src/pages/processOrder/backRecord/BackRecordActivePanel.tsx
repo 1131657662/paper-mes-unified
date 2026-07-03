@@ -1,20 +1,23 @@
 import { Alert, Button, Form, Input, InputNumber, Space, Tag, Typography } from 'antd'
-import { ArrowRightOutlined, CopyOutlined, SwapOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, ArrowRightOutlined, CopyOutlined, SwapOutlined } from '@ant-design/icons'
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import { buildConditionText, buildLayoutText } from '../../../components/processOrder/shared/detailHelpers'
 import { formatKg } from '../../../features/processOrderDetail/orderDetailUtils'
+import type { ProcessStep } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import BackRecordFinishEntryList from './BackRecordFinishEntryList'
+import { focusNextBackRecordField } from './backRecordKeyboard'
 import { processLines } from './backRecordWorkbenchUtils'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 
 interface Props {
   item: BackRecordWorkItem
   onNext: () => void
+  onPrevious: () => void
   onProcessChange: (item: BackRecordWorkItem) => void
 }
 
-export default function BackRecordActivePanel({ item, onNext, onProcessChange }: Props) {
+export default function BackRecordActivePanel({ item, onNext, onPrevious, onProcessChange }: Props) {
   const form = Form.useFormInstance<BackRecordFormValues>()
 
   return (
@@ -27,13 +30,14 @@ export default function BackRecordActivePanel({ item, onNext, onProcessChange }:
         <Space wrap>
           {item.isMergeGroup && <Tag color="geekblue">多母卷</Tag>}
           <Tag color={item.sourceMode === 'linked' ? 'success' : 'warning'}>{sourceLabel(item.sourceMode)}</Tag>
+          <Button icon={<ArrowLeftOutlined />} onClick={onPrevious}>上一项</Button>
           <Button icon={<ArrowRightOutlined />} onClick={onNext}>下一项</Button>
         </Space>
       </div>
 
-      {item.kind === 'roll' && <RollActualPanel item={item} form={form} />}
-      <ProcessPanel item={item} onProcessChange={onProcessChange} />
-      <BackRecordFinishEntryList item={item} />
+      {item.kind === 'roll' && <RollActualPanel item={item} form={form} onFieldExhausted={onNext} />}
+      <ProcessPanel item={item} onFieldExhausted={onNext} onProcessChange={onProcessChange} />
+      <BackRecordFinishEntryList item={item} onFieldExhausted={onNext} />
     </main>
   )
 }
@@ -41,9 +45,11 @@ export default function BackRecordActivePanel({ item, onNext, onProcessChange }:
 function RollActualPanel({
   item,
   form,
+  onFieldExhausted,
 }: {
   item: BackRecordWorkItem
   form: ReturnType<typeof Form.useForm<BackRecordFormValues>>[0]
+  onFieldExhausted: () => void
 }) {
   const roll = item.roll
   if (!roll) return null
@@ -71,16 +77,16 @@ function RollActualPanel({
       </div>
       <div className="back-record-input-grid">
         <Form.Item name={['rolls', roll.uuid, 'actualGramWeight']} label="实测克重">
-          <InputNumber min={1} placeholder="g" addonAfter="g" />
+          <InputNumber data-back-record-field="true" min={1} placeholder="g" addonAfter="g" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['rolls', roll.uuid, 'actualWidth']} label="实测门幅">
-          <InputNumber min={1} placeholder="mm" addonAfter="mm" />
+          <InputNumber data-back-record-field="true" min={1} placeholder="mm" addonAfter="mm" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['rolls', roll.uuid, 'actualWeight']} label="复称重量" rules={[{ required: true, message: '必填' }]}>
-          <InputNumber min={0.001} placeholder="kg" addonAfter="kg" />
+          <InputNumber data-back-record-field="true" min={0.001} placeholder="kg" addonAfter="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['rolls', roll.uuid, 'remark']} label="复核说明">
-          <Input placeholder="破损、水湿、复称差异" />
+          <Input data-back-record-field="true" placeholder="破损、水湿、复称差异" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
       </div>
     </section>
@@ -89,12 +95,15 @@ function RollActualPanel({
 
 function ProcessPanel({
   item,
+  onFieldExhausted,
   onProcessChange,
 }: {
   item: BackRecordWorkItem
+  onFieldExhausted: () => void
   onProcessChange: (item: BackRecordWorkItem) => void
 }) {
   const production = item.production
+  const steps = processSteps(item)
 
   return (
     <section className="back-record-panel">
@@ -129,7 +138,26 @@ function ProcessPanel({
           </div>
         ))}
       </div>
+      {steps.length > 0 && <StepLossEditor steps={steps} onFieldExhausted={onFieldExhausted} />}
     </section>
+  )
+}
+
+function StepLossEditor({
+  steps,
+  onFieldExhausted,
+}: {
+  steps: ProcessStep[]
+  onFieldExhausted: () => void
+}) {
+  return (
+    <div className="back-record-step-loss-grid">
+      {steps.map((step) => (
+        <Form.Item key={step.uuid} name={['steps', step.uuid, 'lossWeight']} label={`${stepLabel(step)}损耗`}>
+          <InputNumber data-back-record-field="true" min={0} precision={3} placeholder="kg" addonAfter="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
+        </Form.Item>
+      ))}
+    </div>
   )
 }
 
@@ -149,6 +177,18 @@ function Fact({ label, value }: { label: string; value?: string }) {
       <strong>{value || '-'}</strong>
     </div>
   )
+}
+
+function processSteps(item: BackRecordWorkItem): ProcessStep[] {
+  const productions = item.rollProductions.length ? item.rollProductions : item.production ? [item.production] : []
+  const steps = productions.flatMap((production) => production.steps ?? [])
+  return Array.from(new Map(steps.map((step) => [step.uuid, step])).values())
+    .sort((a, b) => (a.stageLevel ?? a.stepSort ?? 0) - (b.stageLevel ?? b.stepSort ?? 0))
+}
+
+function stepLabel(step: ProcessStep) {
+  const stage = step.stageLevel ? `第${step.stageLevel}道` : `工序${step.stepSort ?? ''}`
+  return `${stage}${step.stepName ? ` ${step.stepName}` : ''}`
 }
 
 function sourceLabel(mode: BackRecordWorkItem['sourceMode']) {

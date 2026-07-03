@@ -28,6 +28,7 @@ class DeliverySnapshotItemReaderTest {
                       "gramWeight": 300,
                       "finishWidth": 950,
                       "actualWeight": 121.000,
+                      "remainingWeight": 0.500,
                       "outWeight": 120.500,
                       "originalSummary": "roll-1 / 2500mm / 3255kg",
                       "processModeText": "rewind",
@@ -76,6 +77,7 @@ class DeliverySnapshotItemReaderTest {
         assertEquals(300, item.getGramWeight());
         assertEquals(950, item.getFinishWidth());
         assertEquals(0, new BigDecimal("121.000").compareTo(item.getActualWeight()));
+        assertEquals(0, new BigDecimal("0.500").compareTo(item.getRemainingWeight()));
         assertEquals(0, new BigDecimal("120.500").compareTo(item.getOutWeight()));
     }
 
@@ -92,6 +94,7 @@ class DeliverySnapshotItemReaderTest {
                       "gram_weight": 450,
                       "finish_width": 1250,
                       "actual_weight": 89.000,
+                      "remaining_weight": 1.000,
                       "out_weight": 88.000,
                       "original_summary": "roll-2 / 2500mm / 4100kg",
                       "process_mode_text": "saw",
@@ -140,6 +143,7 @@ class DeliverySnapshotItemReaderTest {
         assertEquals(450, item.getGramWeight());
         assertEquals(1250, item.getFinishWidth());
         assertEquals(0, new BigDecimal("89.000").compareTo(item.getActualWeight()));
+        assertEquals(0, new BigDecimal("1.000").compareTo(item.getRemainingWeight()));
         assertEquals(0, new BigDecimal("88.000").compareTo(item.getOutWeight()));
     }
 

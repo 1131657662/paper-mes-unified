@@ -1,7 +1,7 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Popconfirm, Tag, message } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { useNavigate } from 'react-router-dom'
@@ -13,7 +13,8 @@ import { useResizableTableColumns } from '../../components/useResizableTableColu
 import { PERMISSIONS } from '../../constants/permissions'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useHasPermission } from '../../stores/authStore'
-import type { Machine } from '../../types/machine'
+import type { Machine, MachineQuery } from '../../types/machine'
+import { datedCsvFilename, exportRowsToCsv } from '../../utils/exportCsv'
 
 /** 机台类型字典：1 锯纸 / 2 复卷 / 3 通用。 */
 const MACHINE_TYPE: Record<number, string> = { 1: '锯纸', 2: '复卷', 3: '通用' }
@@ -22,14 +23,31 @@ const STATUS: Record<number, string> = { 1: '启用', 2: '停用' }
 
 export default function MachineList() {
   const actionRef = useRef<ActionType>(null)
+  const latestQueryRef = useRef<MachineQuery>({})
   const navigate = useNavigate()
   const canManageBase = useHasPermission(PERMISSIONS.baseManage)
   const columnsState = useTableColumnsState('table-columns-machines')
+  const [exporting, setExporting] = useState(false)
 
   const handleDelete = async (record: Machine) => {
     await deleteMachine(record.uuid)
     message.success('删除成功')
     actionRef.current?.reload()
+  }
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const res = await pageMachines({ ...latestQueryRef.current, current: 1, size: 10000 })
+      const result = exportRowsToCsv({
+        columns: machineExportColumns(),
+        filename: datedCsvFilename('机台档案'),
+        rows: res.records ?? [],
+      })
+      message.success(`已导出 ${result.filename}`)
+    } finally {
+      setExporting(false)
+    }
   }
 
   const columns: ProColumns<Machine>[] = [
@@ -101,18 +119,25 @@ export default function MachineList() {
       columnsState={columnsState}
       components={resizable.components}
       headerTitle="机台档案"
-      toolBarRender={() => canManageBase ? [
-        <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/machines/create')}>
-          新增机台
+      toolBarRender={() => [
+        <Button key="export" icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
+          导出
         </Button>,
-      ] : []}
+        canManageBase && (
+          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/machines/create')}>
+            新增机台
+          </Button>
+        ),
+      ].filter(Boolean)}
       request={async (params) => {
-        const res = await pageMachines({
+        const query = {
           current: params.current,
           size: params.pageSize,
           keyword: params.machineCode || params.machineName,
           status: params.status,
-        })
+        }
+        latestQueryRef.current = query
+        const res = await pageMachines(query)
         return { data: res.records ?? [], total: res.total ?? 0, success: true }
       }}
       bordered
@@ -127,4 +152,15 @@ export default function MachineList() {
 
 function textCell(value?: ReactNode) {
   return <TooltipText value={value} />
+}
+
+function machineExportColumns() {
+  return [
+    { header: '机台编码', value: (row: Machine) => row.machineCode },
+    { header: '机台名称', value: (row: Machine) => row.machineName },
+    { header: '类型', value: (row: Machine) => row.machineType ? MACHINE_TYPE[row.machineType] ?? '-' : '-' },
+    { header: '状态', value: (row: Machine) => row.status ? STATUS[row.status] ?? '-' : '-' },
+    { header: '备注', value: (row: Machine) => row.remark },
+    { header: '创建时间', value: (row: Machine) => row.createTime },
+  ]
 }

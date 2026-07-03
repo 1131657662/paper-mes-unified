@@ -9,6 +9,7 @@ import {
   groupFinishes,
   REWIND_MODE,
 } from './shared/detailHelpers'
+import { formatKg, formatTon } from '../../utils/numberFormatters'
 
 const { Text } = Typography
 
@@ -25,7 +26,7 @@ interface FinishRow {
 const finishCols: ColumnsType<FinishRow> = [
   { title: '门幅', dataIndex: 'finishWidth', width: 80, render: (v: number) => fmt(v, 'mm') },
   { title: '数量', dataIndex: 'count', width: 60 },
-  { title: '预估重', dataIndex: 'totalEstimate', width: 90, render: (v: number) => (v > 0 ? `${v.toFixed(2)} kg` : '-') },
+  { title: '预估重', dataIndex: 'totalEstimate', width: 90, render: (v: number) => (v > 0 ? formatKg(v) : '-') },
 ]
 
 export default function ExpandedProductionRow({ row }: Props) {
@@ -113,7 +114,7 @@ export default function ExpandedProductionRow({ row }: Props) {
           />
           {(trim > 0 || trimWeight > 0) && (
             <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>
-              修边: {trim}mm{trimWeight > 0 ? ` · ${trimWeight.toFixed(2)} kg` : ''}
+              修边: {trim}mm{trimWeight > 0 ? ` · ${formatKg(trimWeight)}` : ''}
             </Text>
           )}
         </>
@@ -126,7 +127,7 @@ export default function ExpandedProductionRow({ row }: Props) {
             追加工序:{' '}
             {additionalSteps.map((s) => {
               const parts = [s.stepName || '工序']
-              if (s.processWeight != null) parts.push(`${s.processWeight.toFixed(3)}吨`)
+              if (s.processWeight != null) parts.push(formatTon(s.processWeight))
               if (s.knifeCount != null && s.stepType === 1) parts.push(`${s.knifeCount}刀`)
               return parts.join(' ')
             }).join(' | ')}

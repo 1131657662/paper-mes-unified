@@ -2,6 +2,10 @@ package com.paper.mes.safety;
 
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
+import com.paper.mes.processorder.dto.BackRecordDTO;
+import com.paper.mes.processorder.dto.BackRecordRollDTO;
+import com.paper.mes.processorder.dto.BackRecordStepDTO;
+import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
 import com.paper.mes.settle.dto.SettleByOrdersDTO;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -52,6 +56,28 @@ class DocumentDtoValidationTest {
         dto.setOrderUuids(List.of(" "));
 
         assertTrue(validateMessages(dto).contains("加工单uuid不能为空"));
+    }
+
+    @Test
+    void backRecordStep_whenLossWeightNegative_reportsValidationError() {
+        BackRecordDTO dto = new BackRecordDTO();
+        BackRecordRollDTO roll = new BackRecordRollDTO();
+        BackRecordStepDTO step = new BackRecordStepDTO();
+        roll.setUuid("roll-1");
+        step.setUuid("step-1");
+        step.setLossWeight(new BigDecimal("-0.001"));
+        dto.setRolls(List.of(roll));
+        dto.setSteps(List.of(step));
+
+        assertTrue(validateMessages(dto).contains("工序损耗不能为负数"));
+    }
+
+    @Test
+    void processOrderVoid_whenReasonBlank_reportsValidationError() {
+        ProcessOrderVoidDTO dto = new ProcessOrderVoidDTO();
+        dto.setReason(" ");
+
+        assertTrue(validateMessages(dto).contains("作废原因不能为空"));
     }
 
     private Set<String> validateMessages(Object dto) {

@@ -25,11 +25,14 @@ class BusinessFlowSafetyContractTest {
         assertContainsAll(slice(source, "public void confirm", "public void rollback"),
                 "businessLockService.lockDeliveryOrder(uuid);",
                 "businessLockService.lockFinishRolls",
-                "updateFinishStatus",
+                "confirmFinishStock",
+                "updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED)",
                 "buildDeliverySnapshot",
                 "updateDeliveryForConfirm(order)");
-        assertContainsAll(slice(source, "private void updateFinishStatus", "private void updateDeliveryForConfirm"),
-                ".eq(FinishRoll::getFinishStatus, fromStatus)",
+        assertContainsAll(slice(source, "private void confirmFinishStock", "private void updateDeliveryForConfirm"),
+                "DeliveryStockPolicy.remainingAfterConfirm",
+                ".eq(FinishRoll::getFinishStatus, FINISH_STATUS_IN_STOCK)",
+                ".set(FinishRoll::getRemainingWeight, remaining)",
                 ".setSql(\"version = version + 1\")");
         assertContainsAll(slice(source, "private void updateDeliveryForConfirm", "private void updateDeliveryForRollback"),
                 ".eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)",
@@ -46,6 +49,8 @@ class BusinessFlowSafetyContractTest {
                 "businessLockService.lockProcessOrders",
                 "businessLockService.lockFinishRolls",
                 "buildRollbackSnapshot(order, rollbackReason, rollbackOperator, rollbackTime)",
+                "rollbackFinishStock",
+                "updateDetailStockLocks(details, STOCK_LOCK_RELEASED, STOCK_LOCK_ACTIVE)",
                 "updateDeliveryForRollback(order)");
         assertContainsAll(slice(source, "public void appendDetails", "public void removeDetail"),
                 "businessLockService.lockDeliveryOrder(uuid);",
@@ -91,6 +96,7 @@ class BusinessFlowSafetyContractTest {
                 "\"gram_weight\"",
                 "\"finish_width\"",
                 "\"actual_weight\"",
+                "\"remaining_weight\"",
                 "\"out_weight\"",
                 "\"original_summary\"",
                 "\"process_mode_text\"",
@@ -133,6 +139,30 @@ class BusinessFlowSafetyContractTest {
         assertContainsAll(slice(source, "private void insertSettleDetail", "private void rollbackSettledProcessOrder"),
                 "ConcurrencyGuard.requireRowUpdated(settleDetailMapper.insert(detail))",
                 "DuplicateKeyException");
+        assertContainsAll(slice(source, "private String createFromOrders", "private void ensureOrderNotSettled"),
+                "applyReceiveState(settle, amounts.total(), BigDecimal.ZERO)");
+    }
+
+    @Test
+    void settleAmounts_whenBuiltFromProcessOrder_useLockedProcessOrderAmounts() throws IOException {
+        String source = source(SETTLE_SERVICE);
+
+        assertContainsAll(slice(source, "private SettleDetail buildDetail",
+                        "private List<SettleDetail> normalizeDetailsForInvoiceView"),
+                "d.setOrderAmount(settleOrderAmount(order, fallbackAmount))");
+        assertContainsAll(slice(source, "private SettleDetail normalizedDetail",
+                        "private void applySettlementAmountView"),
+                "detail.setOrderAmount(settleOrderAmount(order, fallbackAmount))");
+        assertContainsAll(slice(source, "private SettlementAmounts sumAmounts",
+                        "private BigDecimal detailBaseAmount"),
+                "noTax = noTax.add(settleNoTaxAmount(order, baseAmount))",
+                "tax = tax.add(settleTaxAmount(order, fallbackTax))",
+                "total = total.add(detail.getOrderAmount())");
+        assertContainsAll(slice(source, "private BigDecimal settleOrderAmount",
+                        "private BigDecimal detailBaseAmount"),
+                "order.getTotalAmount()",
+                "order.getTotalAmountNoTax()",
+                "order.getTotalAmountTax()");
     }
 
     @Test
@@ -154,6 +184,10 @@ class BusinessFlowSafetyContractTest {
         assertContainsAll(slice(source, "private void updateSettleReceiveState", "private BigDecimal activeReceiveAmount"),
                 "wrapper.eq(SettleOrder::getSettleStatus, previousStatus)",
                 ".setSql(\"version = version + 1\")");
+        assertContainsAll(slice(source, "private void refreshReceiveState", "private void updateReceiveRecordForCancel"),
+                "applyReceiveState(settle, total, received)");
+        assertContainsAll(slice(source, "private void applyReceiveState", "private void updateReceiveRecordForCancel"),
+                "SettleReceiveStatusResolver.resolve(totalAmount, receivedAmount)");
         assertContainsAll(slice(source, "private BigDecimal activeReceiveAmount", "private List<SettleDetail> settleDetails"),
                 ".eq(ReceiveRecord::getIsDeleted, 0)",
                 ".eq(ReceiveRecord::getSettleUuid, settleUuid)");

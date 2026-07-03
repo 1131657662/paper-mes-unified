@@ -1,7 +1,7 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Popconfirm, Tag, message } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { useNavigate } from 'react-router-dom'
@@ -18,15 +18,18 @@ import { DICT_TYPES, invoiceFallbackOptions, settleFallbackOptions } from '../..
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useHasPermission } from '../../stores/authStore'
-import type { Customer } from '../../types/customer'
+import type { Customer, CustomerQuery } from '../../types/customer'
+import { datedCsvFilename, exportRowsToCsv } from '../../utils/exportCsv'
 
 const PRICE_TAX_TYPE: Record<number, string> = { 1: '含税价', 2: '未税价' }
 
 export default function CustomerList() {
   const actionRef = useRef<ActionType>(null)
+  const latestQueryRef = useRef<CustomerQuery>({})
   const navigate = useNavigate()
   const canManageBase = useHasPermission(PERMISSIONS.baseManage)
   const columnsState = useTableColumnsState('table-columns-customers')
+  const [exporting, setExporting] = useState(false)
   const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
   const { options: settleOptions } = useNumberDictOptions(DICT_TYPES.settleType, settleFallbackOptions)
 
@@ -34,6 +37,21 @@ export default function CustomerList() {
     await deleteCustomer(record.uuid)
     message.success('删除成功')
     actionRef.current?.reload()
+  }
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const res = await pageCustomers({ ...latestQueryRef.current, current: 1, size: 10000 })
+      const result = exportRowsToCsv({
+        columns: customerExportColumns(settleOptions, invoiceOptions),
+        filename: datedCsvFilename('客户档案'),
+        rows: res.records ?? [],
+      })
+      message.success(`已导出 ${result.filename}`)
+    } finally {
+      setExporting(false)
+    }
   }
 
   const columns: ProColumns<Customer>[] = [
@@ -118,17 +136,24 @@ export default function CustomerList() {
       columnsState={columnsState}
       components={resizable.components}
       headerTitle="客户管理"
-      toolBarRender={() => canManageBase ? [
-        <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/customers/create')}>
-          新增客户
+      toolBarRender={() => [
+        <Button key="export" icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
+          导出
         </Button>,
-      ] : []}
+        canManageBase && (
+          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/customers/create')}>
+            新增客户
+          </Button>
+        ),
+      ].filter(Boolean)}
       request={async (params) => {
-        const res = await pageCustomers({
+        const query = {
           current: params.current,
           size: params.pageSize,
           keyword: params.customerCode || params.customerName,
-        })
+        }
+        latestQueryRef.current = query
+        const res = await pageCustomers(query)
         return { data: res.records ?? [], total: res.total ?? 0, success: true }
       }}
       bordered
@@ -170,4 +195,24 @@ function priceCell(customer: Customer) {
       <em>{taxType}</em>
     </div>
   )
+}
+
+function customerExportColumns(
+  settleOptions: Array<{ label: string; value: number | string }> | undefined,
+  invoiceOptions: Array<{ label: string; value: number | string }> | undefined,
+) {
+  return [
+    { header: '客户编码', value: (row: Customer) => row.customerCode },
+    { header: '客户名称', value: (row: Customer) => row.customerName },
+    { header: '联系人', value: (row: Customer) => row.contact },
+    { header: '电话', value: (row: Customer) => row.phone },
+    { header: '结算方式', value: (row: Customer) => settleText(row, settleOptions) },
+    { header: '锯纸单价', value: (row: Customer) => row.sawPrice },
+    { header: '复卷单价', value: (row: Customer) => row.rewindPrice },
+    { header: '默认开票', value: (row: Customer) => optionLabel(invoiceOptions, row.defaultInvoice) },
+    { header: '税率', value: (row: Customer) => row.taxRate },
+    { header: '送货地址', value: (row: Customer) => row.deliveryAddress },
+    { header: '备注', value: (row: Customer) => row.remark },
+    { header: '创建时间', value: (row: Customer) => row.createTime },
+  ]
 }

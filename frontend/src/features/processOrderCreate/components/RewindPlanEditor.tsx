@@ -1,5 +1,6 @@
 import { Button, Card, InputNumber, Select, Space } from 'antd'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import MesTooltip from '../../../components/biz/MesTooltip'
 import type {
   ProcessPlanDTO,
   RewindLayoutItemPlanDTO,
@@ -10,6 +11,8 @@ import { appendRemainingTrim } from '../rewindWidthUsage'
 import type { RollDraft } from '../types'
 import RewindWidthSummary from './RewindWidthSummary'
 import { RewindSourceEditor, RewindSourceUsageSummary } from './RewindSourceEditor'
+import RewindLayerEditor from './RewindLayerEditor'
+import './CreateOrderEditors.css'
 
 interface Props {
   plan: ProcessPlanDTO
@@ -32,11 +35,11 @@ export default function RewindPlanEditor({ plan, roll, rolls, onChange }: Props)
   const updateSegments = (next: RewindSegmentPlanDTO[]) => onChange({ ...plan, segments: next })
 
   return (
-    <Space direction="vertical" style={{ width: '100%' }} size={12}>
+    <Space className="create-editor-stack" direction="vertical" size={12}>
       <Select
         value={plan.rewindMode ?? 2}
         options={modeOptions}
-        style={{ width: 180 }}
+        className="create-editor-mode-select"
         onChange={(value) => onChange(planWithMode(plan, roll, value))}
       />
       {(plan.rewindMode ?? 2) === 5 && <RewindSourceUsageSummary segments={segments} sourceOptions={sourceOptions} />}
@@ -62,8 +65,16 @@ export default function RewindPlanEditor({ plan, roll, rolls, onChange }: Props)
 
 function SegmentCard({ index, mode, roll, rolls, segment, sourceOptions, onChange, onDelete }: SegmentProps) {
   return (
-    <Card size="small" title={`分段 ${index + 1}`} extra={<Button danger size="small" icon={<DeleteOutlined />} onClick={onDelete} />}>
-      <Space wrap style={{ marginBottom: 8 }}>
+    <Card
+      size="small"
+      title={`分段 ${index + 1}`}
+      extra={(
+        <MesTooltip title="删除分段">
+          <Button danger aria-label="删除复卷分段" size="small" icon={<DeleteOutlined />} onClick={onDelete} />
+        </MesTooltip>
+      )}
+    >
+      <Space wrap className="create-editor-row-gap">
         <InputNumber addonBefore="比例" min={0.01} value={segment.segmentRatio ?? 1} onChange={(value) => onChange({ ...segment, segmentRatio: value ?? 1 })} />
         <InputNumber addonBefore="直径" min={0} value={segment.targetDiameter} onChange={(value) => onChange({ ...segment, targetDiameter: value ?? undefined })} />
         <InputNumber addonBefore="纸芯" min={0} value={segment.finishCoreDiameter} onChange={(value) => onChange({ ...segment, finishCoreDiameter: value ?? undefined })} />
@@ -75,7 +86,7 @@ function SegmentCard({ index, mode, roll, rolls, segment, sourceOptions, onChang
         segment={segment}
         onFillTrim={() => onChange(appendRemainingTrim(segment, roll.originalWidth))}
       />
-      {mode !== 2 && <LayoutItemsEditor segment={segment} onChange={onChange} />}
+      {mode !== 2 && <LayoutItemsEditor mode={mode} segment={segment} onChange={onChange} />}
       {mode === 5 && <RewindSourceEditor segment={segment} roll={roll} rolls={rolls} sourceOptions={sourceOptions} onChange={onChange} />}
     </Card>
   )
@@ -92,17 +103,35 @@ interface SegmentProps {
   onDelete: () => void
 }
 
-function LayoutItemsEditor({ segment, onChange }: { segment: RewindSegmentPlanDTO; onChange: (segment: RewindSegmentPlanDTO) => void }) {
+function LayoutItemsEditor({ mode, segment, onChange }: LayoutItemsEditorProps) {
   const items = segment.layoutItems ?? []
   const update = (next: RewindLayoutItemPlanDTO[]) => onChange({ ...segment, layoutItems: next })
   return (
-    <Space direction="vertical" style={{ width: '100%' }}>
+    <Space className="create-editor-stack" direction="vertical">
       {items.map((item, index) => (
-        <Space key={index} wrap>
-          <Select value={item.itemType ?? 'FINISH'} style={{ width: 100 }} options={[{ label: '成品', value: 'FINISH' }, { label: '修边', value: 'TRIM' }]} onChange={(value) => update(patchItem(items, index, { itemType: value }))} />
-          <InputNumber addonBefore="门幅" min={1} value={item.width} onChange={(value) => update(patchItem(items, index, { width: value ?? 1 }))} />
-          <InputNumber addonBefore="数量" min={1} value={item.quantity ?? 1} onChange={(value) => update(patchItem(items, index, { quantity: value ?? 1 }))} />
-          <Button danger size="small" icon={<DeleteOutlined />} onClick={() => update(items.filter((_, itemIndex) => itemIndex !== index))} />
+        <Space key={index} className="create-editor-stack" direction="vertical">
+          <Space wrap>
+            <Select value={item.itemType ?? 'FINISH'} className="create-editor-kind-select" options={[{ label: '成品', value: 'FINISH' }, { label: '修边', value: 'TRIM' }]} onChange={(value) => update(patchItem(items, index, { itemType: value }))} />
+            <InputNumber addonBefore="门幅" min={1} value={item.width} onChange={(value) => update(patchItem(items, index, { width: value ?? 1 }))} />
+            <InputNumber addonBefore="数量" min={1} value={item.quantity ?? 1} onChange={(value) => update(patchItem(items, index, { quantity: value ?? 1 }))} />
+            <MesTooltip title="删除排布">
+              <Button
+                danger
+                aria-label="删除复卷排布"
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={() => update(items.filter((_, itemIndex) => itemIndex !== index))}
+              />
+            </MesTooltip>
+          </Space>
+          {mode === 4 && (item.itemType ?? 'FINISH') === 'FINISH' && (
+            <RewindLayerEditor
+              item={item}
+              defaultCoreDiameter={segment.finishCoreDiameter}
+              defaultOutDiameter={segment.targetDiameter}
+              onChange={(next) => update(patchItem(items, index, next))}
+            />
+          )}
         </Space>
       ))}
       <Button size="small" icon={<PlusOutlined />} onClick={() => update([...items, { width: 500, quantity: 1, itemType: 'FINISH' }])}>
@@ -110,6 +139,12 @@ function LayoutItemsEditor({ segment, onChange }: { segment: RewindSegmentPlanDT
       </Button>
     </Space>
   )
+}
+
+interface LayoutItemsEditorProps {
+  mode: number
+  segment: RewindSegmentPlanDTO
+  onChange: (segment: RewindSegmentPlanDTO) => void
 }
 
 function defaultSegment(roll: RollDraft, sort = 1): RewindSegmentPlanDTO {
@@ -125,12 +160,27 @@ function defaultSegment(roll: RollDraft, sort = 1): RewindSegmentPlanDTO {
 }
 
 function planWithMode(plan: ProcessPlanDTO, roll: RollDraft, rewindMode: number): ProcessPlanDTO {
+  if (rewindMode === 4) {
+    return { ...plan, rewindMode, segments: layeredSegments(plan.segments?.length ? plan.segments : [defaultSegment(roll)], roll) }
+  }
   if (rewindMode !== 2) return { ...plan, rewindMode }
   const segments = (plan.segments?.length ? plan.segments : [defaultSegment(roll)]).map((segment) => ({
     ...segment,
     layoutItems: [{ width: roll.originalWidth ?? 1, quantity: 1, itemType: 'FINISH' as const }],
   }))
   return { ...plan, rewindMode, segments }
+}
+
+function layeredSegments(segments: RewindSegmentPlanDTO[], roll: RollDraft) {
+  return segments.map((segment) => ({
+    ...segment,
+    layoutItems: (segment.layoutItems?.length ? segment.layoutItems : defaultSegment(roll).layoutItems)?.map((item) => (
+      item.itemType === 'TRIM' || item.layers?.length ? item : {
+        ...item,
+        layers: [{ outDiameter: segment.targetDiameter ?? roll.originalDiameter, coreDiameter: segment.finishCoreDiameter ?? roll.coreDiameter ?? 3 }],
+      }
+    )),
+  }))
 }
 
 function patchSegment(segments: RewindSegmentPlanDTO[], index: number, next: RewindSegmentPlanDTO) {

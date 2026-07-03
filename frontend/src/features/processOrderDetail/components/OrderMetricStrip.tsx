@@ -12,7 +12,6 @@ interface Props {
 
 export default function OrderMetricStrip({ detail }: Props) {
   const metrics = buildDetailMetrics(detail)
-  const finishWeight = metrics.totalActualWeight || metrics.totalEstimateWeight
 
   const items = [
     {
@@ -23,7 +22,7 @@ export default function OrderMetricStrip({ detail }: Props) {
     {
       label: '成品',
       value: `${metrics.finishCount} 件`,
-      hint: metrics.spareCount > 0 ? `备用 ${metrics.spareCount} 件` : formatTon(finishWeight),
+      hint: finishWeightHint(metrics),
     },
     {
       label: '加工',
@@ -53,4 +52,11 @@ export default function OrderMetricStrip({ detail }: Props) {
       ))}
     </StatisticCard.Group>
   )
+}
+
+function finishWeightHint(metrics: ReturnType<typeof buildDetailMetrics>) {
+  const parts = [`预估 ${formatTon(metrics.totalEstimateWeight)}`]
+  if (metrics.totalActualWeight > 0) parts.push(`实际 ${formatTon(metrics.totalActualWeight)}`)
+  if (metrics.spareCount > 0) parts.push(`备用 ${metrics.spareCount} 件`)
+  return parts.join(' / ')
 }

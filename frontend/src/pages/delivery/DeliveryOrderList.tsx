@@ -6,18 +6,22 @@ import { useNavigate } from 'react-router-dom'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import DocumentListShell from '../../components/biz/DocumentListShell'
 import { useDocumentRowSelection } from '../../components/biz/useDocumentRowSelection'
-import { DELIVERY_STATUS } from '../../constants/delivery'
+import { DELIVERY_STATUS, SETTLE_BLOCK_ACTION } from '../../constants/delivery'
+import { PERMISSIONS } from '../../constants/permissions'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import DeliveryOrderTable from '../../features/delivery/components/DeliveryOrderTable'
 import { useConfirmDelivery } from '../../features/delivery/hooks/useConfirmDelivery'
 import { useDeliveryOrders } from '../../features/delivery/hooks/useDeliveryOrders'
 import { useConfiguredPageSize } from '../../features/systemConfig/hooks/useConfiguredPageSize'
-import { exportDeliveryOrder } from '../../api/delivery'
-import { rollbackDeliveryOrder } from '../../api/delivery'
+import { exportDeliveryOrder, getDeliveryOrderList, rollbackDeliveryOrder } from '../../api/delivery'
+import { useHasPermission } from '../../stores/authStore'
 import type { DeliveryOrder, DeliveryQuery } from '../../types/delivery'
+import { datedCsvFilename, exportRowsToCsv } from '../../utils/exportCsv'
+import { formatTonFromKg } from '../../utils/numberFormatters'
 import './DeliveryOrderList.css'
 
 type QueueFilter = 'all' | 'pending' | 'done'
+const EXPORT_PAGE_SIZE = 10000
 
 interface SearchFormValues {
   customerUuid?: string
@@ -35,6 +39,9 @@ export default function DeliveryOrderList() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useConfiguredPageSize(20)
   const [filters, setFilters] = useState<DeliveryQuery>({})
+  const [exportingList, setExportingList] = useState(false)
+  const [rollingBackSelected, setRollingBackSelected] = useState(false)
+  const canManageDelivery = useHasPermission(PERMISSIONS.deliveryManage)
   const rowSelection = useDocumentRowSelection<DeliveryOrder>()
   const query = { ...filters, current: page, deliveryStatus: deliveryStatus(queueFilter, filters), size: pageSize }
   const ordersQuery = useDeliveryOrders(query)
@@ -62,6 +69,7 @@ export default function DeliveryOrderList() {
   }
 
   const handleConfirm = async (record: DeliveryOrder) => {
+    if (!canManageDelivery) return
     const signUser = await askSignUser(record)
     if (signUser === null) return
     await confirmMutation.mutateAsync({
@@ -73,6 +81,7 @@ export default function DeliveryOrderList() {
   }
 
   const handleBatchConfirm = async () => {
+    if (!canManageDelivery) return
     if (selectedPendingOrders.length === 0) {
       message.warning('请先选择待出库单据')
       return
@@ -99,20 +108,49 @@ export default function DeliveryOrderList() {
       message.warning('请选择一张出库单导出')
       return
     }
-    await exportDeliveryOrder(selectedSingle.uuid)
+    await exportDeliveryOrder({
+      documentNo: selectedSingle.deliveryNo,
+      uuid: selectedSingle.uuid,
+    })
+  }
+
+  const handleExportList = async () => {
+    setExportingList(true)
+    try {
+      const res = await getDeliveryOrderList(buildExportQuery(filters, queueFilter))
+      const rows = res.records ?? []
+      if (rows.length === 0) {
+        message.warning('当前筛选条件下暂无可导出的出库单')
+        return
+      }
+      const result = exportRowsToCsv({
+        columns: deliveryExportColumns(),
+        filename: datedCsvFilename('出库对账'),
+        rows,
+      })
+      message.success(`已导出 ${result.filename}`)
+    } finally {
+      setExportingList(false)
+    }
   }
 
   const handleRollbackSelected = async () => {
+    if (!canManageDelivery) return
     if (!selectedSingle || selectedSingle.deliveryStatus !== 2) {
       message.warning('请选择一张已出库单回退')
       return
     }
     const reason = await askRollbackReason(selectedSingle.deliveryNo)
     if (!reason) return
-    await rollbackDeliveryOrder(selectedSingle.uuid, { reason })
-    message.success('已回退为待出库，可继续改单')
-    rowSelection.clear()
-    ordersQuery.refetch()
+    setRollingBackSelected(true)
+    try {
+      await rollbackDeliveryOrder(selectedSingle.uuid, { reason })
+      message.success('已回退为待出库，可继续改单')
+      rowSelection.clear()
+      ordersQuery.refetch()
+    } finally {
+      setRollingBackSelected(false)
+    }
   }
 
   const handlePageChange = (nextPage: number, nextPageSize: number) => {
@@ -125,6 +163,7 @@ export default function DeliveryOrderList() {
     <DocumentListShell
       title="出库管理"
       createText="新建出库单"
+      canCreate={canManageDelivery}
       queue={queueFilter}
       queueOptions={[
         { label: '全部', value: 'all' },
@@ -142,24 +181,30 @@ export default function DeliveryOrderList() {
       )}
       leftActions={(
         <>
-          <Button
-            icon={<CheckOutlined />}
-            disabled={selectedPendingOrders.length === 0}
-            loading={confirmMutation.isPending}
-            onClick={handleBatchConfirm}
-          >
-            批量签收
-          </Button>
+          {canManageDelivery && (
+            <Button
+              icon={<CheckOutlined />}
+              disabled={selectedPendingOrders.length === 0}
+              loading={confirmMutation.isPending}
+              onClick={handleBatchConfirm}
+            >
+              批量签收
+            </Button>
+          )}
           <Button icon={<PrinterOutlined />} disabled={!selectedSingle} onClick={handlePrintSelected}>打印出库单</Button>
           <Button icon={<DownloadOutlined />} disabled={!selectedSingle} onClick={handleExportSelected}>导出 Excel</Button>
-          <Button
-            danger
-            icon={<RollbackOutlined />}
-            disabled={!selectedSingle || selectedSingle.deliveryStatus !== 2}
-            onClick={handleRollbackSelected}
-          >
-            回退出库
-          </Button>
+          <Button icon={<DownloadOutlined />} loading={exportingList} onClick={handleExportList}>导出对账</Button>
+          {canManageDelivery && (
+            <Button
+              danger
+              icon={<RollbackOutlined />}
+              disabled={!selectedSingle || selectedSingle.deliveryStatus !== 2}
+              loading={rollingBackSelected}
+              onClick={handleRollbackSelected}
+            >
+              回退出库
+            </Button>
+          )}
         </>
       )}
       onCreate={() => navigate('/delivery-orders/create')}
@@ -171,6 +216,7 @@ export default function DeliveryOrderList() {
     >
       <div className="document-page-table">
         <DeliveryOrderTable
+          canManageDelivery={canManageDelivery}
           data={orders}
           loading={ordersQuery.isLoading || ordersQuery.isFetching}
           onReload={() => ordersQuery.refetch()}
@@ -247,6 +293,44 @@ function statusOptions() {
     label: item.text,
     value: Number(value),
   }))
+}
+
+function buildExportQuery(filters: DeliveryQuery, filter: QueueFilter): DeliveryQuery {
+  return {
+    ...filters,
+    current: 1,
+    deliveryStatus: deliveryStatus(filter, filters),
+    size: EXPORT_PAGE_SIZE,
+  }
+}
+
+function statusText(status?: number) {
+  if (status == null) return '-'
+  return DELIVERY_STATUS[status]?.text ?? String(status)
+}
+
+function settleBlockText(action?: number) {
+  if (action == null) return '-'
+  return SETTLE_BLOCK_ACTION[action] ?? String(action)
+}
+
+function deliveryExportColumns() {
+  return [
+    { header: '出库单号', value: (row: DeliveryOrder) => row.deliveryNo },
+    { header: '客户', value: (row: DeliveryOrder) => row.customerName },
+    { header: '出库日期', value: (row: DeliveryOrder) => row.deliveryDate },
+    { header: '卷数', value: (row: DeliveryOrder) => row.totalCount },
+    { header: '出库吨位', value: (row: DeliveryOrder) => formatTonFromKg(row.totalWeight) },
+    { header: '提货人', value: (row: DeliveryOrder) => row.pickerName },
+    { header: '车牌', value: (row: DeliveryOrder) => row.carNo },
+    { header: '柜号', value: (row: DeliveryOrder) => row.containerNo },
+    { header: '状态', value: (row: DeliveryOrder) => statusText(row.deliveryStatus) },
+    { header: '结算拦截', value: (row: DeliveryOrder) => settleBlockText(row.settleBlockAction) },
+    { header: '签收人', value: (row: DeliveryOrder) => row.signUser },
+    { header: '签收时间', value: (row: DeliveryOrder) => row.signTime },
+    { header: '备注', value: (row: DeliveryOrder) => row.remark },
+    { header: '创建时间', value: (row: DeliveryOrder) => row.createTime },
+  ]
 }
 
 function askSignUser(record: DeliveryOrder) {

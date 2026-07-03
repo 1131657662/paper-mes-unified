@@ -45,5 +45,8 @@ public class RewindPlanPreviewDTO {
         private Integer quantity;
 
         private String itemType;
+
+        @Valid
+        private List<FinishConfigSpecDTO.FinishLayerDTO> layers;
     }
 }

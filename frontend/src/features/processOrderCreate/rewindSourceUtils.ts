@@ -1,4 +1,5 @@
 import type { RewindSourcePlanDTO } from '../../types/processOrder'
+import { formatKg } from '../../utils/numberFormatters'
 import type { RollDraft } from './types'
 
 export interface SourceRollOption {
@@ -84,6 +85,6 @@ function roundRatio(value: number): number {
 function sourceRollLabel(roll: RollDraft, index: number): string {
   const identity = roll.rollNo || roll.extraNo || '无卷号'
   const spec = `${roll.paperName || '-'} / ${roll.gramWeight ?? '-'}g / ${roll.originalWidth ?? '-'}mm`
-  const weight = `${rollTotalWeight(roll).toFixed(3)}kg`
+  const weight = formatKg(rollTotalWeight(roll))
   return `母卷${index + 1}｜${identity}｜${spec}｜${weight}`
 }

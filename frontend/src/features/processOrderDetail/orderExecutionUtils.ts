@@ -43,5 +43,6 @@ function buildStatusHint(detail?: ProcessOrderDetailVO): string {
   if (status === 3) return '等待录入车间实测重量，回录通过后生成完成快照。'
   if (status === 4) return '加工已完成，可以出库、结算，并查看下发与完成差异。'
   if (status === 5) return '单据已结算，金额和关键生产数据应保持锁定。'
+  if (status === 6) return '单据已作废，不再参与生产、出库、结算和报表统计。'
   return '草稿或未知状态，请先完成新建加工单提交。'
 }

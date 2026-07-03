@@ -1,27 +1,34 @@
-import { Space, Tag, Typography } from 'antd'
+import { Button, Tag } from 'antd'
+import { DownloadOutlined } from '@ant-design/icons'
 import MesPageHeader from '../../../components/layout/MesPageHeader'
 import type { ProcessOrder } from '../../../types/processOrder'
 import { IS_INVOICE, ORDER_STATUS, PRIORITY } from '../../../constants/processOrder'
 import { dict } from '../../../components/processOrder/shared/detailHelpers'
 
-const { Text } = Typography
-
 interface Props {
+  exporting?: boolean
   order?: ProcessOrder
   onBack?: () => void
+  onExport?: () => void
 }
 
-export default function OrderDetailHeader({ order, onBack }: Props) {
+export default function OrderDetailHeader({ exporting, order, onBack, onExport }: Props) {
   const status = order?.orderStatus != null ? ORDER_STATUS[order.orderStatus] : undefined
+  const printText = order?.printStatus === 1 ? `已打印 ${order.printCount ?? 1} 次` : '未打印'
 
   return (
     <MesPageHeader
       actions={(
-        <Space className="order-detail-hero__actions">
-          <Text type="secondary">
-            {order?.printStatus === 1 ? `已打印 ${order.printCount ?? 1} 次` : '未打印'}
-          </Text>
-        </Space>
+        <Button
+          type="primary"
+          aria-label="导出加工单资料"
+          icon={<DownloadOutlined />}
+          loading={exporting}
+          disabled={!order}
+          onClick={onExport}
+        >
+          导出资料
+        </Button>
       )}
       className="order-detail-hero"
       onBack={onBack}
@@ -29,6 +36,7 @@ export default function OrderDetailHeader({ order, onBack }: Props) {
         <>
           {status && <Tag color={status.color}>{status.text}</Tag>}
           {order?.isMixProcess === 1 && <Tag color="purple">混合工艺</Tag>}
+          <Tag color={order?.printStatus === 1 ? 'green' : 'default'}>{printText}</Tag>
         </>
       )}
       title={order?.orderNo ?? '加工单详情'}

@@ -4,64 +4,69 @@ import {
   buildConditionText,
   buildLayoutText,
   calcTrimWidth,
-  fmt,
   groupFinishes,
   rewindModeLabel,
 } from '../../../components/processOrder/shared/detailHelpers'
-import type { FinishProductionVO, RollProductionVO } from '../../../types/processOrder'
-import { PROCESS_MODE, ROLL_STATUS } from '../../../constants/processOrder'
-import { formatKg } from '../orderDetailUtils'
+import { PROCESS_MODE } from '../../../constants/processOrder'
+import type { RollProductionVO } from '../../../types/processOrder'
+import { formatKg, sumProductionEstimateWeight } from '../orderDetailUtils'
+import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
+import ProductionFinishColumn from './ProductionFinishColumn'
+import ProductionRollSourceColumn from './ProductionRollSourceColumn'
+import ProductionRouteOutputs from './ProductionRouteOutputs'
 
 interface Props {
+  canAppendRoute?: boolean
+  canEditPending?: boolean
+  canEditRemark?: boolean
+  onConfigureRoute?: (target: ProcessRouteConfigTarget) => void
+  onEditRollRemark?: (roll: RollProductionVO) => void
   row: DisplayRow
 }
 
-export default function ProductionRollCard({ row }: Props) {
+export default function ProductionRollCard({
+  canAppendRoute,
+  canEditPending,
+  canEditRemark,
+  onConfigureRoute,
+  onEditRollRemark,
+  row,
+}: Props) {
   const trimWidth = calcTrimWidth(row.mainProduction)
   const trimWeight = sumFinishValue(row.finishes, 'trimWeightShare')
   const spareCount = row.finishes.filter((f) => f.isSpare === 1).length
   const finishCount = row.finishes.filter((f) => f.isSpare !== 1).length
+  const originalUuid = resolveOriginalUuid(row)
 
   return (
     <div className="production-roll">
-      <RollSourceColumn row={row} />
-      <PlanColumn row={row} trimWidth={trimWidth} trimWeight={trimWeight} />
-      <FinishColumn
-        groups={groupFinishes(row.finishes)}
+      <div className="production-roll__summary">
+        <ProductionRollSourceColumn
+          canEditPending={canEditPending}
+          canEditRemark={canEditRemark}
+          onConfigureRoute={onConfigureRoute}
+          onEditRollRemark={onEditRollRemark}
+          originalUuid={originalUuid}
+          row={row}
+        />
+        <PlanColumn row={row} trimWidth={trimWidth} trimWeight={trimWeight} />
+        <ProductionFinishColumn
+          estimateWeight={sumProductionEstimateWeight(row.mainProduction)}
+          groups={groupFinishes(row.finishes)}
+          finishes={row.finishes}
+          finishCount={finishCount}
+          production={row.mainProduction}
+          spareCount={spareCount}
+        />
+      </div>
+      <ProductionRouteOutputs
+        canAppendRoute={canAppendRoute}
         finishes={row.finishes}
-        finishCount={finishCount}
-        spareCount={spareCount}
+        onConfigureRoute={onConfigureRoute}
+        originalUuid={originalUuid}
+        outputs={row.mainProduction.stageOutputs}
+        production={row.mainProduction}
       />
-    </div>
-  )
-}
-
-function RollSourceColumn({ row }: Props) {
-  const production = row.mainProduction
-  const title = row.isMergeGroup ? `合并复卷 ${row.rollProductions.length} 卷` : rollName(production, row.seq)
-
-  return (
-    <div>
-      <div className="production-roll__head">
-        <span className="production-roll__title">{title}</span>
-        {row.isMergeGroup && <Tag color="geekblue">多母卷</Tag>}
-        <Tag>{ROLL_STATUS[production.rollStatus ?? 1] ?? '-'}</Tag>
-      </div>
-      <div className="production-roll__line">
-        {production.paperName || '-'} / {fmt(production.gramWeight, 'g')} / {fmt(production.originalWidth, 'mm')}
-      </div>
-      <div className="production-roll__line">
-        来料 {formatKg((production.rollWeight ?? 0) * (production.pieceNum ?? 1))}
-      </div>
-      {row.isMergeGroup && (
-        <div className="production-roll__group production-roll__spaced">
-          {row.rollProductions.map((source, index) => (
-            <span className="production-pill production-pill--source" key={source.originalUuid ?? index}>
-              {rollName(source, index + 1)}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -88,7 +93,7 @@ function PlanColumn({ row, trimWidth, trimWeight }: Props & { trimWidth: number;
       {(trimWidth > 0 || trimWeight > 0) && (
         <div className="production-roll__line">
           修边 {trimWidth > 0 ? `${trimWidth}mm` : '-'}
-          {trimWeight > 0 ? ` / ${trimWeight.toFixed(2)} kg` : ''}
+          {trimWeight > 0 ? ` / ${formatKg(trimWeight)}` : ''}
         </div>
       )}
       <AdditionalSteps row={row} />
@@ -96,43 +101,8 @@ function PlanColumn({ row, trimWidth, trimWeight }: Props & { trimWidth: number;
   )
 }
 
-function FinishColumn({
-  groups,
-  finishes,
-  finishCount,
-  spareCount,
-}: {
-  groups: ReturnType<typeof groupFinishes>
-  finishes: FinishProductionVO[]
-  finishCount: number
-  spareCount: number
-}) {
-  const rollNos = finishes.filter((f) => f.isSpare !== 1).slice(0, 6)
-  const sources = collectSources(finishes)
-
-  return (
-    <div>
-      <div className="production-roll__head">
-        <span className="production-roll__title">成品 {finishCount} 件</span>
-        {spareCount > 0 && <Tag color="orange">备用 {spareCount}</Tag>}
-      </div>
-      <div className="production-roll__line">
-        预估重量：{formatKg(sumFinishValue(finishes, 'estimateWeight'))}
-      </div>
-      <div className="production-roll__group production-roll__spaced">
-        {groups.map((group) => (
-          <span className="production-pill" key={group.width}>{group.width}mm × {group.count}</span>
-        ))}
-      </div>
-      {rollNos.length > 0 && (
-        <div className="production-roll__line production-roll__spaced">
-          卷号：{rollNos.map((f) => f.finishRollNo).join('、')}
-          {finishCount > rollNos.length ? ` 等 ${finishCount} 件` : ''}
-        </div>
-      )}
-      {sources.length > 1 && <SourcePills sources={sources} />}
-    </div>
-  )
+function resolveOriginalUuid(row: DisplayRow) {
+  return row.mainProduction.originalUuid || row.originalUuids[0]
 }
 
 function PlanHead({ label, color }: { label: string; color: string }) {
@@ -155,37 +125,6 @@ function AdditionalSteps({ row }: Props) {
   )
 }
 
-function SourcePills({ sources }: { sources: Array<{ key: string; label: string; ratio: number }> }) {
-  return (
-    <div className="production-roll__group production-roll__spaced">
-      {sources.map((source) => (
-        <span className="production-pill production-pill--source" key={source.key}>
-          {source.label} {source.ratio}%
-        </span>
-      ))}
-    </div>
-  )
-}
-
-function rollName(production: RollProductionVO, seq: number): string {
-  return production.rollNo || production.extraNo || `母卷 ${seq}`
-}
-
-function sumFinishValue(finishes: FinishProductionVO[], key: 'estimateWeight' | 'trimWeightShare'): number {
+function sumFinishValue(finishes: DisplayRow['finishes'], key: 'trimWeightShare'): number {
   return finishes.reduce((sum, finish) => sum + (finish[key] ?? 0), 0)
-}
-
-function collectSources(finishes: FinishProductionVO[]) {
-  const map = new Map<string, { key: string; label: string; ratio: number }>()
-  for (const finish of finishes) {
-    for (const source of finish.sources ?? []) {
-      if (!source.originalUuid || map.has(source.originalUuid)) continue
-      map.set(source.originalUuid, {
-        key: source.originalUuid,
-        label: source.rollNo || source.paperName || source.originalUuid,
-        ratio: source.shareRatio ?? 0,
-      })
-    }
-  }
-  return Array.from(map.values())
 }

@@ -1,8 +1,11 @@
 package com.paper.mes.processorder.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 public class RewindLayoutItemPlanDTO {
@@ -16,4 +19,7 @@ public class RewindLayoutItemPlanDTO {
 
     /** FINISH成品，TRIM修边。 */
     private String itemType;
+
+    @Valid
+    private List<FinishConfigSpecDTO.FinishLayerDTO> layers;
 }

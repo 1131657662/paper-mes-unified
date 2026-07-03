@@ -1,4 +1,4 @@
-import { Alert, Button, Popconfirm, Space, Tag } from 'antd'
+import { Alert, Button, Space, Tag } from 'antd'
 import {
   CalculatorOutlined,
   DiffOutlined,
@@ -6,6 +6,7 @@ import {
   PrinterOutlined,
   RollbackOutlined,
   SendOutlined,
+  StopOutlined,
 } from '@ant-design/icons'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import { ORDER_STATUS } from '../../../constants/processOrder'
@@ -17,15 +18,17 @@ interface ExecutionActions {
   onSnapshotDiff: () => void
   onManageRolls: () => void
   onEditDraft: () => void
-  onChangeStatus: (targetStatus: number) => void
+  onChangeStatus: (targetStatus: number, title: string) => void
   onCalcFee: () => void
   onGoDelivery: () => void
   onGoSettle: () => void
+  onVoidOrder: () => void
 }
 
 interface ExecutionLoading {
   changingStatus?: boolean
   calculatingFee?: boolean
+  voidingOrder?: boolean
 }
 
 interface Props {
@@ -76,11 +79,14 @@ function PrimaryAction({
   }
   if (status === 2) {
     return (
-      <Popconfirm title="确认车间已完成加工，转入待回录？" onConfirm={() => actions.onChangeStatus(3)}>
-        <Button type="primary" icon={<SendOutlined />} loading={loading.changingStatus}>
-          转待回录
-        </Button>
-      </Popconfirm>
+      <Button
+        type="primary"
+        icon={<SendOutlined />}
+        loading={loading.changingStatus}
+        onClick={() => actions.onChangeStatus(3, '确认车间已完成加工，转入待回录？')}
+      >
+        转待回录
+      </Button>
     )
   }
   if (status === 3) {
@@ -134,18 +140,58 @@ function SecondaryActions({
           重算计费
         </Button>
       )}
-      {status >= 4 && (
+      {(status === 4 || status === 5) && (
         <Button icon={<DiffOutlined />} onClick={actions.onSnapshotDiff}>快照差异</Button>
       )}
       {status === 3 && (
-        <Popconfirm title="确认回退到待下发？会清理完成快照和回录信息。" onConfirm={() => actions.onChangeStatus(1)}>
-          <Button icon={<RollbackOutlined />}>回退待下发</Button>
-        </Popconfirm>
+        <Button
+          danger
+          icon={<RollbackOutlined />}
+          loading={loading.changingStatus}
+          onClick={() => actions.onChangeStatus(1, '确认回退到待下发？会清理完成快照和回录信息。')}
+        >
+          回退待下发
+        </Button>
       )}
       {status === 4 && (
-        <Popconfirm title="确认回退到待回录？" onConfirm={() => actions.onChangeStatus(3)}>
-          <Button icon={<RollbackOutlined />}>回退待回录</Button>
-        </Popconfirm>
+        <Button
+          danger
+          icon={<RollbackOutlined />}
+          loading={loading.changingStatus}
+          onClick={() => actions.onChangeStatus(3, '确认回退到待回录？')}
+        >
+          回退待回录
+        </Button>
+      )}
+      {status === 1 && (
+        <Button
+          danger
+          icon={<RollbackOutlined />}
+          loading={loading.changingStatus}
+          onClick={() => actions.onChangeStatus(0, '确认回退到草稿继续编辑？已生成的工序、成品号和打印快照会失效。')}
+        >
+          回退编辑
+        </Button>
+      )}
+      {status === 2 && (
+        <Button
+          danger
+          icon={<RollbackOutlined />}
+          loading={loading.changingStatus}
+          onClick={() => actions.onChangeStatus(1, '确认回退到待下发？已打印快照会失效，需要重新打印下发。')}
+        >
+          回退待下发
+        </Button>
+      )}
+      {(status === 0 || status === 1 || status === 2) && (
+        <Button
+          danger
+          icon={<StopOutlined />}
+          loading={loading.voidingOrder}
+          onClick={actions.onVoidOrder}
+        >
+          作废加工单
+        </Button>
       )}
     </Space>
   )

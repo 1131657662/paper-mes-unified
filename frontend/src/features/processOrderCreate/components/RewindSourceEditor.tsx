@@ -1,6 +1,7 @@
 import { Button, InputNumber, Select, Space, Tag, Typography } from 'antd'
 import TooltipText from '../../../components/biz/TooltipText'
 import type { RewindSegmentPlanDTO, RewindSourcePlanDTO } from '../../../types/processOrder'
+import { formatKg } from '../../../utils/numberFormatters'
 import {
   consumptionSources,
   equalConsumptionSources,
@@ -36,7 +37,7 @@ export function RewindSourceUsageSummary({ segments, sourceOptions }: UsageSumma
       <Space wrap style={{ marginTop: 8, display: 'flex' }}>
         {rows.map((row) => (
           <Tag key={row.originalUuid} color={tagColor(row.status)}>
-            {row.label}：已用 {row.consumeRatio}% / 剩余 {row.remainingRatio}% / {row.consumeWeight.toFixed(3)}kg
+            {row.label}：已用 {row.consumeRatio}% / 剩余 {row.remainingRatio}% / {formatKg(row.consumeWeight)}
           </Tag>
         ))}
       </Space>
@@ -53,7 +54,7 @@ export function RewindSourceEditor({ segment, roll, rolls, sourceOptions, onChan
   return (
     <Space direction="vertical" style={{ width: '100%', marginTop: 12 }}>
       <Space wrap>
-        <Tag color="blue">本段消耗：{segmentConsumedWeight(sources, sourceOptions).toFixed(3)} kg</Tag>
+        <Tag color="blue">本段消耗：{formatKg(segmentConsumedWeight(sources, sourceOptions))}</Tag>
         <Typography.Text type="secondary">输入每卷在整套合并方案中的消耗比例，后端按重量换算本段组成。</Typography.Text>
       </Space>
       <Select

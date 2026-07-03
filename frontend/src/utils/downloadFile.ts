@@ -44,7 +44,7 @@ async function throwIfErrorBlob(blob: Blob, headers: Record<string, string>) {
   throw new Error(body.message || '导出失败，接口未返回文件')
 }
 
-function downloadBlob(blob: Blob, filename: string) {
+export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

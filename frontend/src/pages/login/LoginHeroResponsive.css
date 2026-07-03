@@ -1,0 +1,111 @@
+@media (min-width: 1300px) and (max-width: 1599px) {
+  .login-hero__visual {
+    bottom: 18px;
+    height: 50%;
+  }
+}
+
+@media (max-width: 1180px) {
+  .login-hero__content {
+    padding: 44px;
+  }
+
+  .login-hero__copy {
+    width: min(520px, 80%);
+    margin-top: 58px;
+  }
+
+  .login-hero__copy h1 {
+    font-size: 40px;
+  }
+
+  .login-hero__features {
+    max-width: 250px;
+  }
+
+  .login-hero__visual {
+    right: 8px;
+    bottom: 10px;
+    width: 72%;
+    height: 52%;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 921px) {
+  .login-hero__content {
+    padding-top: 34px;
+    padding-bottom: 30px;
+  }
+
+  .login-hero__copy {
+    margin-top: 46px;
+  }
+
+  .login-hero__copy h1 {
+    font-size: clamp(38px, 3.8vw, 54px);
+  }
+
+  .login-hero__features {
+    gap: 13px;
+    margin-top: 28px;
+  }
+
+  .login-hero__visual {
+    max-height: 62%;
+  }
+}
+
+@media (max-width: 920px) {
+  .login-hero {
+    min-height: 720px;
+  }
+
+  .login-hero__content {
+    padding: 32px;
+  }
+
+  .login-hero__copy {
+    width: min(620px, 100%);
+    margin-top: 54px;
+  }
+
+  .login-hero__features {
+    position: relative;
+    z-index: 4;
+  }
+
+  .login-hero__visual {
+    right: -8%;
+    bottom: 12px;
+    width: 88%;
+    height: 46%;
+    opacity: .55;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-hero {
+    min-height: 660px;
+  }
+
+  .login-hero__content {
+    padding: 24px;
+  }
+
+  .login-hero__brand-mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .login-hero__copy {
+    margin-top: 42px;
+  }
+
+  .login-hero__copy h1 {
+    font-size: 34px;
+  }
+
+  .login-hero__copy p {
+    font-size: 13px;
+  }
+}

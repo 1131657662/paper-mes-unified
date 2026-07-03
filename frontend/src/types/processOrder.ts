@@ -37,9 +37,11 @@ export interface ProcessOrder {
   originalRollWeight?: number
   finishRollCount?: number
   finishRollWeight?: number
+  estimateFinishWeight?: number
+  actualFinishWeight?: number
   spareRollCount?: number
   actualTotalKnife?: number
-  /** 0草稿 1待下发 2加工中 3待回录 4已完成 5已结算 */
+  /** 0草稿 1待下发 2加工中 3待回录 4已完成 5已结算 6已作废 */
   orderStatus?: number
   /** 0未打印 1已打印 */
   printStatus?: number
@@ -48,6 +50,9 @@ export interface ProcessOrder {
   isMixProcess?: number
   remark?: string
   remarkLong?: string
+  voidTime?: string
+  voidUser?: string
+  voidReason?: string
   createTime?: string
   updateTime?: string
 }
@@ -116,6 +121,11 @@ export interface FinishRoll {
 export interface ProcessStep {
   uuid: string
   originalUuid?: string
+  /** 1原纸 2上一阶段产出 */
+  inputType?: number
+  inputOutputUuid?: string
+  stageLevel?: number
+  parentStepUuid?: string
   stepSort?: number
   /** 1锯纸 2复卷 */
   stepType?: number
@@ -126,6 +136,7 @@ export interface ProcessStep {
   processWeight?: number
   unitPrice?: number
   stepAmount?: number
+  lossWeight?: number
   operator?: string
   remark?: string
 }
@@ -143,6 +154,7 @@ export interface FinishProductionVO {
   uuid: string
   finishRollNo?: string
   rowSort?: number
+  rollNoStatus?: number
   isSpare?: number
   sourceType?: number
   paperName?: string
@@ -155,6 +167,26 @@ export interface FinishProductionVO {
   trimWeightShare?: number
   finishStatus?: number
   sources?: FinishSourceVO[]
+}
+
+export interface StageOutputVO {
+  uuid: string
+  outputNo?: string
+  finishRollUuid?: string
+  parentOutputUuid?: string
+  stageLevel?: number
+  outputSort?: number
+  outputType?: number
+  outputStatus?: number
+  paperName?: string
+  gramWeight?: number
+  finishWidth?: number
+  finishDiameter?: number
+  finishCoreDiameter?: number
+  estimateWeight?: number
+  actualWeight?: number
+  sourceStepType?: number
+  sourceSummary?: string
 }
 
 export interface RewindParamVO {
@@ -173,6 +205,7 @@ export interface RollProductionVO {
   extraNo?: string
   batchNo?: string
   rollNo?: string
+  damageDesc?: string
   paperName?: string
   gramWeight?: number
   originalWidth?: number
@@ -182,7 +215,9 @@ export interface RollProductionVO {
   processMode?: number
   mainStepType?: number
   rollStatus?: number
+  remark?: string
   steps?: ProcessStep[]
+  stageOutputs?: StageOutputVO[]
   rewindParams?: RewindParamVO[]
   finishes?: FinishProductionVO[]
 }
@@ -264,6 +299,7 @@ export interface RewindLayoutItemDTO {
   width: number
   quantity?: number
   itemType?: 'FINISH' | 'TRIM'
+  layers?: FinishLayerDTO[]
 }
 
 export interface RewindSegmentDTO {
@@ -302,6 +338,7 @@ export interface RewindFinishItemPreview {
   trimWidth?: number
   trimWeight?: number
   sourceSummary?: string
+  layers?: FinishLayerDTO[]
 }
 
 export interface FinishPreviewVO {
@@ -330,6 +367,7 @@ export interface RewindLayoutItemPlanDTO {
   width: number
   quantity?: number
   itemType?: 'FINISH' | 'TRIM'
+  layers?: FinishLayerDTO[]
 }
 
 export interface RewindSegmentPlanDTO {
@@ -380,6 +418,68 @@ export interface PlanPreviewVO {
   errors?: string[]
   segments?: RewindSegmentPreview[]
   finishes?: RewindFinishItemPreview[]
+}
+
+export interface ProcessRouteOutputDTO {
+  outputKey?: string
+  outputType?: number
+  count?: number
+  paperName?: string
+  gramWeight?: number
+  finishWidth?: number
+  finishDiameter?: number
+  finishCoreDiameter?: number
+  estimateWeight?: number
+  remark?: string
+}
+
+export interface ProcessRouteStageDTO {
+  stageLevel: number
+  inputOutputKeys?: string[]
+  stepType: number
+  stepName?: string
+  knifeCount?: number
+  processWeight?: number
+  unitPrice?: number
+  outputs?: ProcessRouteOutputDTO[]
+}
+
+export interface ProcessRoutePreviewDTO {
+  originalUuid: string
+  stages: ProcessRouteStageDTO[]
+}
+
+export interface ProcessRouteStageLineVO {
+  stageLevel?: number
+  stepType?: number
+  stepName?: string
+  inputOutputKeys?: string[]
+  knifeCount?: number
+  processWeight?: number
+  unitPrice?: number
+  stepAmount?: number
+}
+
+export interface ProcessRouteOutputVO {
+  outputKey?: string
+  stageLevel?: number
+  outputSort?: number
+  outputType?: number
+  consumedByNextStage?: boolean
+  paperName?: string
+  gramWeight?: number
+  finishWidth?: number
+  finishDiameter?: number
+  finishCoreDiameter?: number
+  estimateWeight?: number
+  remark?: string
+}
+
+export interface ProcessRoutePreviewVO {
+  originalUuid?: string
+  totalAmount?: number
+  stages?: ProcessRouteStageLineVO[]
+  outputs?: ProcessRouteOutputVO[]
 }
 
 export interface ProcessConfigDraftVO {
@@ -489,6 +589,25 @@ export interface ProcessOrderSubmitVO {
 /** 通用状态变更入参。 */
 export interface StatusChangeDTO {
   targetStatus: number
+  reason?: string
+}
+
+/** 加工单作废入参。 */
+export interface ProcessOrderVoidDTO {
+  reason: string
+}
+
+/** 主单备注轻量编辑入参。 */
+export interface ProcessOrderRemarkDTO {
+  remark?: string
+  remarkLong?: string
+}
+
+/** 原纸明细备注类字段轻量编辑入参。 */
+export interface OriginalRollRemarkDTO {
+  batchNo?: string
+  damageDesc?: string
+  remark?: string
 }
 
 /** 打印入参，与后端 PrintDTO 对应（首打可不传，补打需 reason）。 */
@@ -602,6 +721,12 @@ export interface BackRecordFinishDTO {
   actualRemark?: string
 }
 
+/** 工序损耗回录入参。 */
+export interface BackRecordStepDTO {
+  uuid: string
+  lossWeight?: number
+}
+
 /** 整单回录入参。 */
 export interface BackRecordDTO {
   operator?: string
@@ -609,6 +734,7 @@ export interface BackRecordDTO {
   releaseReason?: string
   rolls: BackRecordRollDTO[]
   finishes?: BackRecordFinishDTO[]
+  steps?: BackRecordStepDTO[]
 }
 
 /** 单卷闭合校验结论（实际为整单聚合）。 */

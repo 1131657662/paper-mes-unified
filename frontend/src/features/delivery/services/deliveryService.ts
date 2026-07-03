@@ -16,6 +16,7 @@ import type {
   DeliveryQuery,
   DeliveryRollbackDTO,
 } from '../../../types/delivery'
+import type { DocumentExportInput } from '../../../utils/documentExport'
 
 export const deliveryService = {
   appendDetails: (params: { uuid: string; data: DeliveryAppendItemsDTO }) =>
@@ -25,7 +26,7 @@ export const deliveryService = {
   confirm: (params: { uuid: string; data?: DeliveryConfirmDTO }) =>
     confirmDeliveryOrder(params.uuid, params.data),
   detail: (uuid: string) => getDeliveryOrderDetail(uuid),
-  export: (uuid: string) => exportDeliveryOrder(uuid),
+  export: (params: DocumentExportInput) => exportDeliveryOrder(params),
   list: (query: DeliveryQuery) => getDeliveryOrderList(query),
   removeDetail: (params: { uuid: string; detailUuid: string }) =>
     removeDeliveryDetail(params.uuid, params.detailUuid),

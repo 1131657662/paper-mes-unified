@@ -15,11 +15,13 @@ interface Props {
 }
 
 export default function OrderStatusProgress({ order }: Props) {
-  const current = Math.max(0, Math.min(order?.orderStatus ?? 0, items.length - 1))
+  const isVoided = order?.orderStatus === 6
+  const stepItems = isVoided ? [...items, { title: '已作废' }] : items
+  const current = isVoided ? stepItems.length - 1 : Math.max(0, Math.min(order?.orderStatus ?? 0, items.length - 1))
 
   return (
     <div className="order-detail-progress">
-      <Steps size="small" current={current} items={items} />
+      <Steps size="small" current={current} status={isVoided ? 'error' : undefined} items={stepItems} />
     </div>
   )
 }

@@ -283,8 +283,13 @@
   cursor: default;
 }
 
-.process-order-table .process-order-list__row--selected > td {
-  background: #f1f7ff;
+.process-order-table .ant-table-tbody > tr.process-order-list__row--selected > td,
+.process-order-table .ant-table-tbody > tr.process-order-list__row--selected > td.ant-table-cell-fix-left,
+.process-order-table .ant-table-tbody > tr.process-order-list__row--selected > td.ant-table-cell-fix-right,
+.process-order-table .ant-table-tbody > tr.process-order-list__row--selected:hover > td,
+.process-order-table .ant-table-tbody > tr.process-order-list__row--selected:hover > td.ant-table-cell-fix-left,
+.process-order-table .ant-table-tbody > tr.process-order-list__row--selected:hover > td.ant-table-cell-fix-right {
+  background: #f1f7ff !important;
 }
 
 .process-order-table,

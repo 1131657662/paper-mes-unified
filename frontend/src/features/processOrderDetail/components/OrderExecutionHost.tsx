@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { message } from 'antd'
+import { Input, Modal, message } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
@@ -8,6 +8,8 @@ import SnapshotDiffModal from '../../../pages/processOrder/SnapshotDiffModal'
 import { queries } from '../../../queries'
 import { useCalcProcessOrderFee } from '../hooks/useCalcProcessOrderFee'
 import { useChangeOrderStatus } from '../hooks/useChangeOrderStatus'
+import { useVoidProcessOrder } from '../hooks/useVoidProcessOrder'
+import { confirmOrderStatusChange, isRollbackStatusChange } from '../confirmOrderStatusChange'
 import OrderExecutionPanel from './OrderExecutionPanel'
 import PrintIssueDrawer from './PrintIssueDrawer'
 
@@ -24,6 +26,7 @@ export default function OrderExecutionHost({ detail }: Props) {
   const [manageRollOpen, setManageRollOpen] = useState(false)
   const { mutateAsync: changeStatus, isPending: isChangingStatus } = useChangeOrderStatus()
   const { mutateAsync: calcFee, isPending: isCalculatingFee } = useCalcProcessOrderFee(orderUuid)
+  const { mutateAsync: voidOrder, isPending: isVoidingOrder } = useVoidProcessOrder()
 
   if (!detail || !orderUuid) return null
 
@@ -33,14 +36,61 @@ export default function OrderExecutionHost({ detail }: Props) {
     })
   }
 
-  const handleChangeStatus = async (targetStatus: number) => {
-    await changeStatus({ orderUuid, targetStatus })
+  const handleChangeStatus = async (targetStatus: number, reason?: string) => {
+    await changeStatus({ orderUuid, reason, targetStatus })
     message.success('状态已更新')
+    if (targetStatus === 0) {
+      navigate(`/process-orders/create?draft=${orderUuid}`)
+    }
+  }
+
+  const handleConfirmStatus = (targetStatus: number, title: string) => {
+    const currentStatus = detail.order.orderStatus ?? 0
+    const requireReason = isRollbackStatusChange(currentStatus, targetStatus)
+    confirmOrderStatusChange({
+      title,
+      orderNo: detail.order.orderNo,
+      okText: requireReason ? '确认回退' : '确认',
+      danger: requireReason,
+      requireReason,
+      reasonPlaceholder: '请填写回退原因，例如：客户改单、现场方案调整、备注补充',
+      onConfirm: (reason) => handleChangeStatus(targetStatus, reason),
+    })
   }
 
   const handleCalcFee = async () => {
     const result = await calcFee()
     message.success(`计费已更新，总额 ¥${result.totalAmount ?? 0}`)
+  }
+
+  const handleVoidOrder = () => {
+    let reason = ''
+    Modal.confirm({
+      title: '作废加工单',
+      content: (
+        <Input.TextArea
+          autoSize={{ minRows: 3, maxRows: 5 }}
+          maxLength={255}
+          placeholder="请填写作废原因"
+          showCount
+          onChange={(event) => {
+            reason = event.target.value
+          }}
+        />
+      ),
+      okButtonProps: { danger: true },
+      okText: '确认作废',
+      cancelText: '取消',
+      onOk: async () => {
+        const trimmed = reason.trim()
+        if (!trimmed) {
+          message.warning('请填写作废原因')
+          throw new Error('作废原因不能为空')
+        }
+        await voidOrder({ orderUuid, reason: trimmed })
+        message.success('加工单已作废')
+      },
+    })
   }
 
   return (
@@ -53,14 +103,16 @@ export default function OrderExecutionHost({ detail }: Props) {
           onSnapshotDiff: () => setDiffOpen(true),
           onManageRolls: () => setManageRollOpen(true),
           onEditDraft: () => navigate(`/process-orders/create?draft=${orderUuid}`),
-          onChangeStatus: handleChangeStatus,
+          onChangeStatus: handleConfirmStatus,
           onCalcFee: handleCalcFee,
           onGoDelivery: () => navigate('/delivery-orders'),
           onGoSettle: () => navigate('/settle-orders'),
+          onVoidOrder: handleVoidOrder,
         }}
         loading={{
           changingStatus: isChangingStatus,
           calculatingFee: isCalculatingFee,
+          voidingOrder: isVoidingOrder,
         }}
       />
 

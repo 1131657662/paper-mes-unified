@@ -165,6 +165,7 @@ public class ProcessPlanMapper {
             dto.setWidth(item.getWidth());
             dto.setQuantity(item.getQuantity());
             dto.setItemType(item.getItemType());
+            dto.setLayers(item.getLayers());
             result.add(dto);
         }
         return result;
@@ -180,6 +181,7 @@ public class ProcessPlanMapper {
             dto.setWidth(item.getWidth());
             dto.setQuantity(item.getQuantity());
             dto.setItemType(item.getItemType());
+            dto.setLayers(item.getLayers());
             result.add(dto);
         }
         return result;

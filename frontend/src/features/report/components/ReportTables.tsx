@@ -5,6 +5,7 @@ import DocumentDetailTable from '../../../components/biz/DocumentDetailTable'
 import MesTooltip from '../../../components/biz/MesTooltip'
 import { mesTablePagination } from '../../../components/biz/mesPaginationUtils'
 import TooltipText from '../../../components/biz/TooltipText'
+import { ORDER_STATUS } from '../../../constants/processOrder'
 import type { ReportDetailVO, ReportDimension, ReportDimensionVO } from '../../../types/report'
 import ReportDimensionSummaryRow from './ReportDimensionSummaryRow'
 import {
@@ -50,7 +51,7 @@ export default function ReportTables({
         <div className="report-table-block">
           <div className="report-table-block__head">
             <strong>维度汇总</strong>
-            <span>应收按加工单日期归属，已收仅统计有效收款流水。</span>
+            <span>应收按加工单制单日期归属，已收仅统计有效收款流水。</span>
           </div>
           <div className="document-module-table">
             <DocumentDetailTable<ReportDimensionVO>
@@ -126,7 +127,7 @@ function dimensionColumns(dimension: ReportDimension): ColumnsType<ReportDimensi
 function detailColumns(onOpenOrder: (uuid: string) => void): ColumnsType<ReportDetailVO> {
   return [
     { title: '加工单号', dataIndex: 'orderNo', key: 'orderNo', width: 156, fixed: 'left', render: (_, record) => orderLinkCell(record, onOpenOrder) },
-    { title: '日期', dataIndex: 'orderDate', key: 'orderDate', width: 108 },
+    { title: '制单日期', dataIndex: 'orderDate', key: 'orderDate', width: 108 },
     { title: '客户', dataIndex: 'customerName', key: 'customerName', width: 170, render: textCell },
     { title: '纸品规格', dataIndex: 'paperSummary', key: 'paperSummary', width: 260, render: textCell },
     { title: '工艺', dataIndex: 'processSummary', key: 'processSummary', width: 140, render: tagTextCell },
@@ -193,7 +194,7 @@ function numberCell(value?: number) {
 }
 
 function statusCell(value?: number) {
-  const item = statusMap[value ?? -1]
+  const item = ORDER_STATUS[value ?? -1]
   return <Tag color={item?.color ?? 'default'}>{item?.text ?? '-'}</Tag>
 }
 
@@ -217,13 +218,4 @@ function dimensionTitle(dimension: ReportDimension) {
     status: '状态',
   }
   return titles[dimension]
-}
-
-const statusMap: Record<number, { text: string; color: string }> = {
-  0: { text: '草稿', color: 'default' },
-  1: { text: '待下发', color: 'blue' },
-  2: { text: '加工中', color: 'processing' },
-  3: { text: '待回录', color: 'warning' },
-  4: { text: '已完成', color: 'success' },
-  5: { text: '已结算', color: 'cyan' },
 }

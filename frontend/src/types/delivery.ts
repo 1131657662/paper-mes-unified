@@ -34,6 +34,7 @@ export interface DeliveryDetail {
   finishDiameter?: number
   finishCoreDiameter?: number
   actualWeight?: number
+  remainingWeight?: number
   outWeight: number
   sourceType?: number
   finishStatus?: number
@@ -96,6 +97,7 @@ export interface AvailableFinishVO {
   finishDiameter?: number
   finishCoreDiameter?: number
   actualWeight: number
+  remainingWeight?: number
   sourceType: number
   finishStatus: number
   settleType?: number

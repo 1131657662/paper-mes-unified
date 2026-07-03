@@ -11,17 +11,25 @@ import com.paper.mes.processorder.dto.FinishConfigSaveDTO;
 import com.paper.mes.processorder.dto.FinishConfigSaveVO;
 import com.paper.mes.processorder.dto.FinishPreviewVO;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
+import com.paper.mes.processorder.dto.OriginalRollRemarkDTO;
 import com.paper.mes.processorder.dto.PrintDTO;
 import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
+import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
+import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
+import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
+import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.dto.ProcessStepDTO;
 import com.paper.mes.processorder.dto.RewindPlanPreviewDTO;
 import com.paper.mes.processorder.dto.SnapshotDiffVO;
 import com.paper.mes.processorder.dto.StatusChangeDTO;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.ProcessRouteAppendService;
+import com.paper.mes.processorder.service.ProcessRouteSaveService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -43,6 +51,8 @@ import java.util.List;
 public class ProcessOrderController {
 
     private final ProcessOrderService processOrderService;
+    private final ProcessRouteSaveService processRouteSaveService;
+    private final ProcessRouteAppendService processRouteAppendService;
 
     @GetMapping
     @RequirePermission(Permissions.ORDER_VIEW)
@@ -54,6 +64,12 @@ public class ProcessOrderController {
     @RequirePermission(Permissions.ORDER_VIEW)
     public R<ProcessOrderDetailVO> detail(@PathVariable String uuid) {
         return R.success(processOrderService.getDetail(uuid));
+    }
+
+    @GetMapping("/{uuid}/export")
+    @RequirePermission(Permissions.ORDER_VIEW)
+    public void export(@PathVariable String uuid, HttpServletResponse response) {
+        processOrderService.exportDetail(uuid, response);
     }
 
     @PostMapping
@@ -69,11 +85,27 @@ public class ProcessOrderController {
         return R.success(processOrderService.addRoll(orderUuid, dto));
     }
 
+    @PutMapping("/{uuid}/remarks")
+    @RequirePermission(Permissions.ORDER_CREATE)
+    public R<Void> updateOrderRemark(@PathVariable String uuid,
+                                     @Valid @RequestBody ProcessOrderRemarkDTO dto) {
+        processOrderService.updateOrderRemark(uuid, dto);
+        return R.success();
+    }
+
     @PutMapping("/rolls/{rollUuid}")
     @RequirePermission(Permissions.ORDER_CREATE)
     public R<Void> updateRoll(@PathVariable String rollUuid,
                               @Valid @RequestBody OriginalRollDTO dto) {
         processOrderService.updateRoll(rollUuid, dto);
+        return R.success();
+    }
+
+    @PutMapping("/rolls/{rollUuid}/remarks")
+    @RequirePermission(Permissions.ORDER_CREATE)
+    public R<Void> updateRollRemark(@PathVariable String rollUuid,
+                                    @Valid @RequestBody OriginalRollRemarkDTO dto) {
+        processOrderService.updateRollRemark(rollUuid, dto);
         return R.success();
     }
 
@@ -104,7 +136,15 @@ public class ProcessOrderController {
     @RequirePermission(Permissions.ORDER_MANAGE)
     public R<Void> changeStatus(@PathVariable String uuid,
                                 @Valid @RequestBody StatusChangeDTO dto) {
-        processOrderService.changeStatus(uuid, dto.getTargetStatus());
+        processOrderService.changeStatus(uuid, dto.getTargetStatus(), dto.getReason());
+        return R.success();
+    }
+
+    @PutMapping("/{uuid}/void")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<Void> voidOrder(@PathVariable String uuid,
+                             @Valid @RequestBody ProcessOrderVoidDTO dto) {
+        processOrderService.voidOrder(uuid, dto);
         return R.success();
     }
 
@@ -141,6 +181,38 @@ public class ProcessOrderController {
     @RequirePermission(Permissions.ORDER_VIEW)
     public R<SnapshotDiffVO> snapshotDiff(@PathVariable String uuid) {
         return R.success(processOrderService.snapshotDiff(uuid));
+    }
+
+    /** 待下发单据后续工艺预览：用于已有加工单在首道产物基础上继续加工。 */
+    @PostMapping("/{orderUuid}/route-preview")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<ProcessRoutePreviewVO> previewProcessRouteForPending(@PathVariable String orderUuid,
+                                                                  @Valid @RequestBody ProcessRoutePreviewDTO dto) {
+        return R.success(processRouteSaveService.preview(orderUuid, dto));
+    }
+
+    /** 待下发单据后续工艺保存：替换该母卷未下发方案，重建阶段产出与最终成品号。 */
+    @PostMapping("/{orderUuid}/route-config")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<ProcessRoutePreviewVO> saveProcessRoute(@PathVariable String orderUuid,
+                                                     @Valid @RequestBody ProcessRoutePreviewDTO dto) {
+        return R.success(processRouteSaveService.save(orderUuid, dto));
+    }
+
+    /** 追加后续链式工艺预览：只从已有阶段产物继续加工，不重建旧路线。 */
+    @PostMapping("/{orderUuid}/route-append-preview")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<ProcessRoutePreviewVO> previewAppendProcessRoute(@PathVariable String orderUuid,
+                                                              @Valid @RequestBody ProcessRoutePreviewDTO dto) {
+        return R.success(processRouteAppendService.preview(orderUuid, dto));
+    }
+
+    /** 保存追加后续链式工艺：新增工序、阶段产物和最终成品号，不清理已有工艺。 */
+    @PostMapping("/{orderUuid}/route-append")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<ProcessRoutePreviewVO> saveAppendProcessRoute(@PathVariable String orderUuid,
+                                                           @Valid @RequestBody ProcessRoutePreviewDTO dto) {
+        return R.success(processRouteAppendService.save(orderUuid, dto));
     }
 
     /** 破损图片多图上传并绑定原纸（P2-4）：返回合并后的完整图片 URL 列表。 */

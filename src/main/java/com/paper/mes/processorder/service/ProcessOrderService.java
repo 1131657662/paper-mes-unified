@@ -9,15 +9,19 @@ import com.paper.mes.processorder.dto.FinishConfigSaveDTO;
 import com.paper.mes.processorder.dto.FinishConfigSaveVO;
 import com.paper.mes.processorder.dto.FinishPreviewVO;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
+import com.paper.mes.processorder.dto.OriginalRollRemarkDTO;
 import com.paper.mes.processorder.dto.PrintDTO;
 import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
+import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
+import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
 import com.paper.mes.processorder.dto.ProcessStepDTO;
 import com.paper.mes.processorder.dto.RewindPlanPreviewDTO;
 import com.paper.mes.processorder.dto.SnapshotDiffVO;
 import com.paper.mes.processorder.entity.ProcessOrder;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -28,13 +32,22 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
 
     ProcessOrderDetailVO getDetail(String uuid);
 
+    /** 导出加工单详情资料 Excel。 */
+    void exportDetail(String uuid, HttpServletResponse response);
+
     String create(ProcessOrderCreateDTO dto);
 
     /** 向已有加工单追加一条原纸明细，返回新明细 uuid。 */
     String addRoll(String orderUuid, OriginalRollDTO dto);
 
+    /** 轻量修改主单备注，不改动客户、日期、金额、状态等核心字段。 */
+    void updateOrderRemark(String uuid, ProcessOrderRemarkDTO dto);
+
     /** 修改一条原纸明细。 */
     void updateRoll(String rollUuid, OriginalRollDTO dto);
+
+    /** 轻量修改原纸明细备注类字段，不改动规格、重量、工艺等核心字段。 */
+    void updateRollRemark(String rollUuid, OriginalRollRemarkDTO dto);
 
     /** 软删除一条原纸明细。 */
     void deleteRoll(String rollUuid);
@@ -46,7 +59,10 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
     FinishPreviewVO previewRewindPlan(String orderUuid, String rollUuid, RewindPlanPreviewDTO dto);
 
     /** 加工单状态流转（状态机校验合法性，乐观锁更新）。 */
-    void changeStatus(String uuid, Integer targetStatus);
+    void changeStatus(String uuid, Integer targetStatus, String reason);
+
+    /** 整单作废：仅草稿/待下发可操作，必须记录原因。 */
+    void voidOrder(String uuid, ProcessOrderVoidDTO dto);
 
     /** 原纸单卷状态流转。 */
     void changeRollStatus(String rollUuid, Integer targetStatus);

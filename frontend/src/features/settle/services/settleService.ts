@@ -15,12 +15,13 @@ import type {
   SettleCandidateQuery,
   SettleQuery,
 } from '../../../types/settle'
+import type { DocumentExportInput } from '../../../utils/documentExport'
 
 export const settleService = {
   candidates: (query: SettleCandidateQuery) => getSettleCandidates(query),
   createByOrders: (data: SettleByOrdersDTO) => createSettleByOrders(data),
   detail: (uuid: string) => getSettleOrderDetail(uuid),
-  export: (uuid: string) => exportSettleOrder(uuid),
+  export: (params: DocumentExportInput) => exportSettleOrder(params),
   list: (query: SettleQuery) => getSettleOrderList(query),
   receive: (params: { uuid: string; data: ReceiveDTO }) => receivePayment(params.uuid, params.data),
   cancelReceive: (params: { uuid: string; receiveUuid: string; data: SettleActionReasonDTO }) =>

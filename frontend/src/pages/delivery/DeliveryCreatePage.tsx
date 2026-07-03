@@ -6,8 +6,8 @@ import MesPageHeader from '../../components/layout/MesPageHeader'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import { useAvailableFinishes } from '../../features/delivery/hooks/useAvailableFinishes'
 import { useCreateDelivery } from '../../features/delivery/hooks/useCreateDelivery'
-import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
-import type { DeliveryCreateDTO } from '../../types/delivery'
+import { availableFinishWeight, formatTon } from '../../features/delivery/utils/deliveryFormatters'
+import type { AvailableFinishVO, DeliveryCreateDTO } from '../../types/delivery'
 import DeliveryCreateTable, { type DeliveryLineEdit } from './DeliveryCreateTable'
 import '../documentModule.css'
 
@@ -137,7 +137,7 @@ export default function DeliveryCreatePage() {
 
 function buildCreateDTO(
   values: DeliveryCreateForm,
-  selectedFinishes: { finishUuid: string; actualWeight: number }[],
+  selectedFinishes: AvailableFinishVO[],
   lineEdits: Record<string, DeliveryLineEdit>,
   forceRelease: boolean,
 ): DeliveryCreateDTO {
@@ -158,10 +158,10 @@ function buildCreateDTO(
 }
 
 function selectedWeight(
-  items: { finishUuid: string; actualWeight: number }[],
+  items: AvailableFinishVO[],
   edits: Record<string, DeliveryLineEdit>,
 ) {
-  return items.reduce((total, item) => total + (edits[item.finishUuid]?.outWeight ?? item.actualWeight), 0)
+  return items.reduce((total, item) => total + (edits[item.finishUuid]?.outWeight ?? availableFinishWeight(item)), 0)
 }
 
 function SelectedSummary({ count, weight }: { count: number; weight: number }) {

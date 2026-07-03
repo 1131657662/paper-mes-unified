@@ -8,6 +8,7 @@ import type {
   RewindFinishItemPreview,
   RewindSegmentPreview,
 } from '../../../types/processOrder'
+import { formatKg } from '../../../utils/numberFormatters'
 import './PlanPreviewPanel.css'
 
 interface Props {
@@ -31,8 +32,8 @@ const finishColumns: ColumnsType<RewindFinishItemPreview> = [
   { title: '门幅', dataIndex: 'finishWidth', width: 72, render: (value) => `${value ?? 0}mm` },
   { title: '直径', dataIndex: 'finishDiameter', width: 76, render: (value) => value ? `${value}mm` : '-' },
   { title: '纸芯', dataIndex: 'finishCoreDiameter', width: 72, render: (value) => value ? `${value}mm` : '-' },
-  { title: '预估重', dataIndex: 'estimateWeight', width: 92, render: (value) => `${Number(value ?? 0).toFixed(3)}kg` },
-  { title: '修边重', dataIndex: 'trimWeight', width: 92, render: (value) => `${Number(value ?? 0).toFixed(3)}kg` },
+  { title: '预估重', dataIndex: 'estimateWeight', width: 92, render: (value) => formatKg(Number(value ?? 0)) },
+  { title: '修边重', dataIndex: 'trimWeight', width: 92, render: (value) => formatKg(Number(value ?? 0)) },
   { title: '来源', dataIndex: 'sourceSummary', width: 160, render: textCell },
 ]
 
@@ -98,8 +99,8 @@ function PreviewStats({ preview }: { preview: PlanPreviewVO }) {
       <Descriptions.Item label="成品">{preview.finishCount ?? 0}</Descriptions.Item>
       <Descriptions.Item label="修边">{preview.trimCount ?? 0}</Descriptions.Item>
       <Descriptions.Item label="备用">{preview.spareCount ?? 0}</Descriptions.Item>
-      <Descriptions.Item label="成品重">{Number(preview.totalEstimateWeight ?? 0).toFixed(3)}kg</Descriptions.Item>
-      <Descriptions.Item label="修边重">{Number(preview.totalTrimWeight ?? 0).toFixed(3)}kg</Descriptions.Item>
+      <Descriptions.Item label="成品重">{formatKg(preview.totalEstimateWeight)}</Descriptions.Item>
+      <Descriptions.Item label="修边重">{formatKg(preview.totalTrimWeight)}</Descriptions.Item>
     </Descriptions>
   )
 }

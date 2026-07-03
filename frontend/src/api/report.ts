@@ -1,15 +1,24 @@
 import request, { rawRequest } from './request'
 import type {
   ReportQuery,
-  MonthlyReportVO,
-  CustomerReportVO,
-  LossReportVO,
-  MachineReportVO,
   ReportDetailVO,
   ReportDimensionVO,
+  ReportDimension,
   ReportOverviewVO,
 } from '../types/report'
 import { downloadFileFromResponse } from '../utils/downloadFile'
+import { readableExportFilename } from '../utils/documentExport'
+
+const REPORT_DIMENSION_NAME: Record<ReportDimension, string> = {
+  month: '月份',
+  customer: '客户',
+  paper: '纸张',
+  process: '工艺',
+  machine: '机台',
+  invoice: '开票',
+  settleType: '结算',
+  status: '状态',
+}
 
 export interface ReportExportResult {
   filename: string
@@ -47,37 +56,23 @@ export async function exportReport(query: ReportQuery): Promise<ReportExportResu
     params: query,
     responseType: 'blob',
   })
-  return downloadFileFromResponse(response, `统计报表_${Date.now()}.xlsx`)
+  return downloadFileFromResponse(response, readableExportFilename('统计报表', reportFilenameSuffix(query)))
 }
 
-export function getMonthlyReport(query: ReportQuery) {
-  return request<MonthlyReportVO[]>({
-    url: '/api/reports/monthly',
-    method: 'get',
-    params: query,
-  })
+function reportFilenameSuffix(query: ReportQuery) {
+  const dimension = query.dimension ? REPORT_DIMENSION_NAME[query.dimension] : '汇总'
+  return `${dimension}_${reportPeriod(query)}`
 }
 
-export function getCustomerReport(query: ReportQuery) {
-  return request<CustomerReportVO[]>({
-    url: '/api/reports/customer',
-    method: 'get',
-    params: query,
-  })
+function reportPeriod(query: ReportQuery) {
+  const from = compactDate(query.dateFrom)
+  const to = compactDate(query.dateTo)
+  if (from && to) return `${from}-${to}`
+  if (from) return `${from}起`
+  if (to) return `截至${to}`
+  return compactDate(new Date().toISOString()) ?? '当前'
 }
 
-export function getLossReport(query: ReportQuery) {
-  return request<LossReportVO[]>({
-    url: '/api/reports/loss',
-    method: 'get',
-    params: query,
-  })
-}
-
-export function getMachineReport(query: ReportQuery) {
-  return request<MachineReportVO[]>({
-    url: '/api/reports/machine',
-    method: 'get',
-    params: query,
-  })
+function compactDate(value?: string) {
+  return value?.slice(0, 10).replaceAll('-', '')
 }

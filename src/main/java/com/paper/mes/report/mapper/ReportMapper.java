@@ -1,9 +1,5 @@
 package com.paper.mes.report.mapper;
 
-import com.paper.mes.report.dto.CustomerReportVO;
-import com.paper.mes.report.dto.LossReportVO;
-import com.paper.mes.report.dto.MachineReportVO;
-import com.paper.mes.report.dto.MonthlyReportVO;
 import com.paper.mes.report.dto.ReportDetailVO;
 import com.paper.mes.report.dto.ReportDimensionVO;
 import com.paper.mes.report.dto.ReportOverviewVO;
@@ -25,12 +21,4 @@ public interface ReportMapper {
                                              @Param("dimension") String dimension);
 
     List<ReportDetailVO> detailRows(@Param("q") ReportQuery q);
-
-    List<MonthlyReportVO> monthlySummary(@Param("q") ReportQuery q);
-
-    List<CustomerReportVO> customerSummary(@Param("q") ReportQuery q);
-
-    List<LossReportVO> lossAnalysis(@Param("q") ReportQuery q);
-
-    List<MachineReportVO> machineOutput(@Param("q") ReportQuery q);
 }

@@ -5,7 +5,7 @@ import BackRecordSummaryPanel from './BackRecordSummaryPanel'
 import BackRecordWorkbench from './BackRecordWorkbench'
 import { useBackRecordWorkspace } from './useBackRecordWorkspace'
 import type { BackRecordFormValues } from './backRecordUtils'
-import './BackRecordDrawer.css'
+import './BackRecordWorkspace.css'
 
 interface Props {
   uuid?: string | null

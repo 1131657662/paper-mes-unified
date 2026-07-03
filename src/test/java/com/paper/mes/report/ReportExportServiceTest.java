@@ -29,6 +29,7 @@ class ReportExportServiceTest {
             assertEquals("有效已收", overview.getRow(9).getCell(3).getStringCellValue());
             assertEquals("应收合计", dimension.getRow(0).getCell(13).getStringCellValue());
             assertEquals("有效已收", dimension.getRow(0).getCell(16).getStringCellValue());
+            assertEquals("制单日期", details.getRow(0).getCell(1).getStringCellValue());
             assertEquals("应收合计", details.getRow(0).getCell(19).getStringCellValue());
             assertEquals("有效已收", details.getRow(0).getCell(22).getStringCellValue());
         }

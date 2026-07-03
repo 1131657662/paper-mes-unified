@@ -41,5 +41,6 @@ public class FinishPreviewVO {
         private Integer trimWidth;
         private BigDecimal trimWeight;
         private String sourceSummary;
+        private List<FinishConfigSpecDTO.FinishLayerDTO> layers;
     }
 }

@@ -1,4 +1,4 @@
-import { Alert, Button, Modal, Popconfirm, Space, Typography } from 'antd'
+import { Alert, Button, Modal, Space, Typography } from 'antd'
 import { PlusOutlined, RollbackOutlined } from '@ant-design/icons'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
@@ -65,16 +65,15 @@ export default function BackRecordChangeModal({
             title="主方案改动"
             description="例如复卷改锯纸、成品规格/数量变化、改门幅+改直径变成只改门幅；这些会影响卷号、来源、快照和计费。"
             action={
-              <Popconfirm
-                title="确认回退到待下发？"
-                description="回退后需要重新配置工艺并再次下发，避免回录数据和打印快照不一致。"
-                onConfirm={onRollbackToConfig}
+              <Button
+                danger
+                icon={<RollbackOutlined />}
+                loading={rollingBack}
                 disabled={!canRollback}
+                onClick={onRollbackToConfig}
               >
-                <Button danger icon={<RollbackOutlined />} loading={rollingBack} disabled={!canRollback}>
-                  回退待下发重配
-                </Button>
-              </Popconfirm>
+                回退待下发重配
+              </Button>
             }
           />
         </div>

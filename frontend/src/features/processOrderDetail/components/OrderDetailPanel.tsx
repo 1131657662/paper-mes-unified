@@ -7,7 +7,9 @@ import { useAddProcessStep } from '../hooks/useAddProcessStep'
 import { useDeleteProcessStep } from '../hooks/useDeleteProcessStep'
 import { useProcessOrderDetail } from '../hooks/useProcessOrderDetail'
 import { useUpdateProcessStep } from '../hooks/useUpdateProcessStep'
+import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import OrderDetailView from './OrderDetailView'
+import ProcessRouteConfigDrawer from './ProcessRouteConfigDrawer'
 
 interface Props {
   uuid?: string | null
@@ -23,6 +25,8 @@ export default function OrderDetailPanel({
   onBack,
 }: Props) {
   const [stepFormOpen, setStepFormOpen] = useState(false)
+  const [routeConfigOpen, setRouteConfigOpen] = useState(false)
+  const [routeConfigTarget, setRouteConfigTarget] = useState<ProcessRouteConfigTarget>({ mode: 'replace' })
   const [editingStep, setEditingStep] = useState<ProcessStep | null>(null)
   const { data: detail, isLoading: isLoadingDetail } = useProcessOrderDetail(uuid ?? undefined, { enabled })
   const { mutateAsync: addStep } = useAddProcessStep()
@@ -43,6 +47,11 @@ export default function OrderDetailPanel({
     if (!uuid) return
     await deleteStep({ orderUuid: uuid, stepUuid })
     message.success('删除工序成功')
+  }
+
+  const handleConfigureRoute = (target: ProcessRouteConfigTarget) => {
+    setRouteConfigTarget(target)
+    setRouteConfigOpen(true)
   }
 
   const handleStepFormOk = async (values: ProcessStepDTO, stepUuid?: string) => {
@@ -68,6 +77,7 @@ export default function OrderDetailPanel({
           mode={mode}
           onBack={onBack}
           onAddStep={handleAdd}
+          onConfigureRoute={handleConfigureRoute}
           onEditStep={handleEdit}
           onDeleteStep={handleDelete}
         />
@@ -83,6 +93,16 @@ export default function OrderDetailPanel({
         }}
         onOk={handleStepFormOk}
       />
+      {routeConfigOpen && (
+        <ProcessRouteConfigDrawer
+          open={routeConfigOpen}
+          detail={detail}
+          mode={routeConfigTarget.mode}
+          initialOriginalUuid={routeConfigTarget.originalUuid}
+          initialOutputKey={routeConfigTarget.outputKey}
+          onClose={() => setRouteConfigOpen(false)}
+        />
+      )}
     </Spin>
   )
 }

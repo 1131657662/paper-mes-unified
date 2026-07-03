@@ -1,0 +1,174 @@
+import type { Edge, Node } from '@xyflow/react'
+import type { RollProductionVO } from '../../types/processOrder'
+import { formatKg } from './orderDetailUtils'
+import type { RouteNode } from './productionRouteTree'
+import type { ProcessRouteConfigTarget } from './routeConfigTypes'
+
+export interface ProductionFlowNodeData extends Record<string, unknown> {
+  appendable?: boolean
+  kind: 'source' | 'output'
+  lines: string[]
+  onConfigureRoute?: (target: ProcessRouteConfigTarget) => void
+  originalUuid?: string
+  outputKey?: string
+  reconfigurable?: boolean
+  stageText?: string
+  statusColor?: string
+  statusText?: string
+  title: string
+}
+
+export type ProductionFlowNode = Node<ProductionFlowNodeData, 'productionRoute'>
+export type ProductionFlowEdge = Edge<Record<string, unknown>, 'smoothstep'>
+
+export interface ProductionRouteFlowOptions {
+  canAppendRoute?: boolean
+  onConfigureRoute?: (target: ProcessRouteConfigTarget) => void
+  originalUuid?: string
+  production: RollProductionVO
+  roots: RouteNode[]
+}
+
+export interface ProductionRouteFlowModel {
+  edges: ProductionFlowEdge[]
+  height: number
+  nodes: ProductionFlowNode[]
+}
+
+interface PositionedRouteNode {
+  children: PositionedRouteNode[]
+  node: RouteNode
+  x: number
+  y: number
+}
+
+const SOURCE_ID = 'source'
+const LEVEL_GAP = 330
+const NODE_HEIGHT = 92
+const NODE_WIDTH = 248
+const ROW_GAP = 122
+const TOP_PADDING = 48
+
+export function buildProductionRouteFlow(options: ProductionRouteFlowOptions): ProductionRouteFlowModel {
+  const { production, roots } = options
+  const positionedRoots = layoutRoots(roots)
+  const routeNodes = positionedRoots.flatMap((root) => flattenRouteNode(root, options))
+  const sourceY = sourceCenterY(positionedRoots)
+  const nodes = [sourceNode(production, sourceY), ...routeNodes]
+  const edges = positionedRoots.flatMap((root) => routeEdges(root, SOURCE_ID))
+  const maxY = Math.max(sourceY, ...positionedRoots.map(maxNodeY))
+
+  return {
+    nodes,
+    edges,
+    height: Math.max(220, maxY + NODE_HEIGHT + TOP_PADDING),
+  }
+}
+
+function layoutRoots(roots: RouteNode[]): PositionedRouteNode[] {
+  let cursor = TOP_PADDING
+  return roots.map((root) => {
+    const result = layoutNode(root, 1, cursor)
+    cursor = result.nextY
+    return result.positioned
+  })
+}
+
+function layoutNode(node: RouteNode, depth: number, startY: number): { nextY: number; positioned: PositionedRouteNode } {
+  if (node.children.length === 0) {
+    return {
+      nextY: startY + ROW_GAP,
+      positioned: { children: [], node, x: depth * LEVEL_GAP, y: startY },
+    }
+  }
+
+  let cursor = startY
+  const children = node.children.map((child) => {
+    const result = layoutNode(child, depth + 1, cursor)
+    cursor = result.nextY
+    return result.positioned
+  })
+  return {
+    nextY: cursor,
+    positioned: { children, node, x: depth * LEVEL_GAP, y: midpoint(children) },
+  }
+}
+
+function flattenRouteNode(item: PositionedRouteNode, options: ProductionRouteFlowOptions): ProductionFlowNode[] {
+  const node = outputNode(item, options)
+  return [node, ...item.children.flatMap((child) => flattenRouteNode(child, options))]
+}
+
+function sourceNode(production: RollProductionVO, y: number): ProductionFlowNode {
+  return {
+    id: SOURCE_ID,
+    type: 'productionRoute',
+    position: { x: 0, y: y - NODE_HEIGHT / 2 },
+    data: {
+      kind: 'source',
+      title: production.rollNo || production.extraNo || production.paperName || '母卷',
+      lines: [sourceSpec(production), `来料 ${formatKg((production.rollWeight ?? 0) * (production.pieceNum ?? 1))}`],
+      statusText: '原卷',
+      statusColor: 'blue',
+    },
+    style: { width: NODE_WIDTH },
+  }
+}
+
+function outputNode(item: PositionedRouteNode, options: ProductionRouteFlowOptions): ProductionFlowNode {
+  const { canAppendRoute, onConfigureRoute, originalUuid } = options
+  const actionable = Boolean(canAppendRoute && originalUuid && item.node.outputKey)
+  const appendable = actionable && item.node.appendable
+  return {
+    id: item.node.key,
+    type: 'productionRoute',
+    position: { x: item.x, y: item.y - NODE_HEIGHT / 2 },
+    data: {
+      appendable,
+      kind: 'output',
+      lines: item.node.weight == null ? [item.node.meta] : [item.node.meta, `预估 ${formatKg(item.node.weight)}`],
+      onConfigureRoute,
+      originalUuid,
+      outputKey: item.node.outputKey,
+      reconfigurable: actionable && !item.node.appendable,
+      stageText: `第${item.node.level}道`,
+      statusColor: item.node.statusColor,
+      statusText: item.node.statusText,
+      title: item.node.title,
+    },
+    style: { width: NODE_WIDTH },
+  }
+}
+
+function routeEdges(item: PositionedRouteNode, parentId: string): ProductionFlowEdge[] {
+  const currentEdge: ProductionFlowEdge = {
+    id: `${parentId}-${item.node.key}`,
+    source: parentId,
+    target: item.node.key,
+    type: 'smoothstep',
+    label: item.node.processLabel,
+    labelBgBorderRadius: 10,
+    labelBgPadding: [8, 4],
+    labelBgStyle: { fill: '#eff6ff', fillOpacity: 0.96 },
+    labelStyle: { fill: '#0958d9', fontSize: 12, fontWeight: 650 },
+    style: { stroke: '#93c5fd', strokeWidth: 1.5 },
+  }
+  return [currentEdge, ...item.children.flatMap((child) => routeEdges(child, item.node.key))]
+}
+
+function sourceCenterY(roots: PositionedRouteNode[]) {
+  if (roots.length === 0) return TOP_PADDING
+  return midpoint(roots)
+}
+
+function midpoint(nodes: PositionedRouteNode[]) {
+  return (nodes[0].y + nodes[nodes.length - 1].y) / 2
+}
+
+function maxNodeY(node: PositionedRouteNode): number {
+  return Math.max(node.y, ...node.children.map(maxNodeY))
+}
+
+function sourceSpec(production: RollProductionVO) {
+  return `${production.paperName || '-'} / ${production.gramWeight ?? '-'}g / ${production.originalWidth ?? '-'}mm`
+}

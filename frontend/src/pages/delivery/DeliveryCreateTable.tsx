@@ -1,7 +1,12 @@
 import { Input, InputNumber, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { SOURCE_TYPE } from '../../constants/delivery'
-import { finishSpecText, formatKg, settleText } from '../../features/delivery/utils/deliveryFormatters'
+import {
+  availableFinishWeight,
+  finishSpecText,
+  formatKg,
+  settleText,
+} from '../../features/delivery/utils/deliveryFormatters'
 import type { AvailableFinishVO } from '../../types/delivery'
 
 export interface DeliveryLineEdit {
@@ -39,7 +44,7 @@ export default function DeliveryCreateTable({
       onRow={(record) => ({
         onClick: () => toggleKey(record.finishUuid, selectedRowKeys, onSelectionChange),
       })}
-      scroll={{ x: 1180, y: 460 }}
+      scroll={{ x: 1220, y: 460 }}
     />
   )
 }
@@ -78,22 +83,37 @@ function buildColumns(
         </div>
       ),
     },
-    { title: '件重', dataIndex: 'actualWeight', align: 'right', width: 110, render: formatKg },
+    {
+      title: '重量',
+      dataIndex: 'actualWeight',
+      align: 'right',
+      width: 140,
+      render: (_, record) => (
+        <div className="delivery-cell-stack mes-cell-stack">
+          <Typography.Text>{formatKg(record.actualWeight)}</Typography.Text>
+          <span>可出库 {formatKg(availableFinishWeight(record))}</span>
+        </div>
+      ),
+    },
     {
       title: '出库重量',
       dataIndex: 'outWeight',
       width: 130,
-      render: (_, record) => (
-        <InputNumber
-          min={0}
-          max={record.actualWeight}
-          precision={3}
-          value={edits[record.finishUuid]?.outWeight ?? record.actualWeight}
-          onChange={(value) => onEditChange(record.finishUuid, { outWeight: value ?? 0 })}
-          onClick={(event) => event.stopPropagation()}
-          style={{ width: '100%' }}
-        />
-      ),
+      render: (_, record) => {
+        const maxWeight = availableFinishWeight(record)
+        return (
+          <InputNumber
+            min={0}
+            max={maxWeight}
+            precision={3}
+            disabled={record.sourceType === 2}
+            value={edits[record.finishUuid]?.outWeight ?? maxWeight}
+            onChange={(value) => onEditChange(record.finishUuid, { outWeight: value ?? 0 })}
+            onClick={(event) => event.stopPropagation()}
+            style={{ width: '100%' }}
+          />
+        )
+      },
     },
     {
       title: '来源',

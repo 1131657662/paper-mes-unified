@@ -7,6 +7,7 @@ import {
   NumberOutlined,
   PrinterOutlined,
   RollbackOutlined,
+  StopOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import MesTooltip from '../../components/biz/MesTooltip'
@@ -17,12 +18,13 @@ type MenuItems = NonNullable<MenuProps['items']>
 export interface BatchActions {
   onBackRecord: (uuid: string) => void
   onCalcFee: (record: ProcessOrder) => Promise<void>
-  onChangeStatus: (record: ProcessOrder, target: number) => Promise<void>
+  onChangeStatus: (record: ProcessOrder, target: number, title: string) => void
   onGoDelivery: () => void
   onGoSettle: () => void
   onManageRolls: (uuid: string) => void
   onPrint: (record: ProcessOrder) => void
   onSnapshotDiff: (uuid: string) => void
+  onVoidOrder: (record: ProcessOrder) => Promise<void>
 }
 
 interface Props {
@@ -81,11 +83,14 @@ function buildMoreItems(record: ProcessOrder | undefined, actions: BatchActions)
   const status = record.orderStatus ?? 0
   const items: MenuItems = []
   if (status === 2) items.push(item('to-record', '转待回录', () => confirmStatus(record, 3, '确认车间已完成加工，转入待回录？', actions)))
-  if (status >= 4) items.push(item('snapshot', '查看快照差异', () => actions.onSnapshotDiff(record.uuid), <DiffOutlined />))
+  if (status === 4 || status === 5) items.push(item('snapshot', '查看快照差异', () => actions.onSnapshotDiff(record.uuid), <DiffOutlined />))
   if (status === 4) items.push(item('delivery', '创建出库', actions.onGoDelivery, <InboxOutlined />))
   if (status === 4) items.push(item('settle', '生成结算', actions.onGoSettle))
+  if (status === 1) items.push(item('rollback-draft', '回退草稿编辑', () => confirmStatus(record, 0, '确认回退到草稿继续编辑？已生成的工序、成品号和打印快照会失效。', actions), <RollbackOutlined />, true))
+  if (status === 2) items.push(item('rollback-pending-from-processing', '回退待下发', () => confirmStatus(record, 1, '确认回退到待下发？已打印快照会失效，需要重新打印下发。', actions), <RollbackOutlined />, true))
   if (status === 3) items.push(item('rollback-pending', '回退待下发', () => confirmStatus(record, 1, '确认回退到待下发？会清理完成快照和回录信息。', actions), <RollbackOutlined />, true))
   if (status === 4) items.push(item('rollback-record', '回退待回录', () => confirmStatus(record, 3, '确认回退到待回录？', actions), <RollbackOutlined />, true))
+  if (status === 0 || status === 1 || status === 2) items.push(item('void-order', '作废加工单', () => actions.onVoidOrder(record), <StopOutlined />, true))
   return items
 }
 
@@ -94,7 +99,8 @@ function item(key: string, label: string, onClick: () => void, icon?: React.Reac
 }
 
 function canPrint(record?: ProcessOrder) {
-  return record != null && (record.orderStatus ?? 0) >= 1
+  const status = record?.orderStatus ?? 0
+  return record != null && status >= 1 && status !== 6
 }
 
 function canManageRolls(record?: ProcessOrder) {
@@ -116,9 +122,5 @@ function confirmFee(record: ProcessOrder, actions: BatchActions) {
 }
 
 function confirmStatus(record: ProcessOrder, targetStatus: number, title: string, actions: BatchActions) {
-  Modal.confirm({
-    title,
-    content: record.orderNo,
-    onOk: () => actions.onChangeStatus(record, targetStatus),
-  })
+  actions.onChangeStatus(record, targetStatus, title)
 }

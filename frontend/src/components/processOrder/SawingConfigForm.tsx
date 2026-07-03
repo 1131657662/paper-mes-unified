@@ -7,6 +7,7 @@ import type { FinishConfigSaveDTO, FinishConfigSpecDTO, OriginalRoll } from '../
 interface Props {
   roll: OriginalRoll
   processMode: number
+  config?: FinishConfigSaveDTO
   onChange: (config: FinishConfigSaveDTO) => void
 }
 
@@ -24,13 +25,11 @@ const toDtoSpecs = (specs: FinishSpec[]): FinishConfigSpecDTO[] =>
     estimateWeight: spec.estimateWeight,
   }))
 
-export default function SawingConfigForm({ roll, processMode, onChange }: Props) {
-  const [finishSpecs, setFinishSpecs] = useState<FinishSpec[]>([
-    { key: '1', finishWidth: 400, count: 1, estimateWeight: 0 },
-  ])
-  const [knifeCount, setKnifeCount] = useState(0)
-  const [unitPrice, setUnitPrice] = useState(1.5)
-  const [spareCount, setSpareCount] = useState(0)
+export default function SawingConfigForm({ roll, processMode, config, onChange }: Props) {
+  const [finishSpecs, setFinishSpecs] = useState<FinishSpec[]>(initialFinishSpecs(config))
+  const [knifeCount, setKnifeCount] = useState(config?.knifeCount ?? 0)
+  const [unitPrice, setUnitPrice] = useState<number | undefined>(config?.unitPrice)
+  const [spareCount, setSpareCount] = useState(config?.spareCount ?? 0)
 
   const isStandardMode = processMode === 1
   const isOnSiteMode = processMode === 2
@@ -248,7 +247,7 @@ export default function SawingConfigForm({ roll, processMode, onChange }: Props)
             <div>
               <Typography.Text strong>预估加工费：</Typography.Text>
               <Typography.Text mark style={{ marginLeft: 8 }}>
-                {(knifeCount * unitPrice).toFixed(2)} 元
+                {(knifeCount * (unitPrice ?? 0)).toFixed(2)} 元
               </Typography.Text>
             </div>
           </Space>
@@ -312,4 +311,17 @@ export default function SawingConfigForm({ roll, processMode, onChange }: Props)
       )}
     </div>
   )
+}
+
+function initialFinishSpecs(config?: FinishConfigSaveDTO): FinishSpec[] {
+  const specs = config?.finishSpecs?.length ? config.finishSpecs : undefined
+  if (!specs) {
+    return [{ key: '1', finishWidth: 400, count: 1, estimateWeight: 0 }]
+  }
+  return specs.map((spec, index) => ({
+    key: String(index + 1),
+    finishWidth: spec.finishWidth ?? 400,
+    count: spec.count ?? 1,
+    estimateWeight: spec.estimateWeight ?? 0,
+  }))
 }

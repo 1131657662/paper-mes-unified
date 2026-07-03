@@ -13,6 +13,11 @@ import type {
   SettleActionReasonDTO,
 } from '../types/settle'
 import { downloadFileFromResponse } from '../utils/downloadFile'
+import {
+  normalizeDocumentExportInput,
+  readableExportFilename,
+  type DocumentExportInput,
+} from '../utils/documentExport'
 
 export function getSettleOrderList(query: SettleQuery) {
   return request<PageResult<SettleOrder>>({
@@ -85,11 +90,12 @@ export function voidSettleOrder(uuid: string, data: SettleActionReasonDTO) {
   })
 }
 
-export async function exportSettleOrder(uuid: string) {
+export async function exportSettleOrder(input: DocumentExportInput) {
+  const { documentNo, uuid } = normalizeDocumentExportInput(input)
   const response = await rawRequest.request<Blob, { data: Blob; headers: Record<string, string> }>({
     url: `/api/settle-orders/${uuid}/export`,
     method: 'get',
     responseType: 'blob',
   })
-  await downloadFileFromResponse(response, `结算单_${Date.now()}.xlsx`)
+  await downloadFileFromResponse(response, readableExportFilename('结算单', documentNo))
 }

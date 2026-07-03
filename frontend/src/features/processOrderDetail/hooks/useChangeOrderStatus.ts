@@ -5,14 +5,15 @@ import { queries } from '../../../queries'
 interface ChangeStatusParams {
   orderUuid: string
   targetStatus: number
+  reason?: string
 }
 
 export function useChangeOrderStatus() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ orderUuid, targetStatus }: ChangeStatusParams) =>
-      changeOrderStatus(orderUuid, { targetStatus }),
+    mutationFn: ({ orderUuid, reason, targetStatus }: ChangeStatusParams) =>
+      changeOrderStatus(orderUuid, { reason, targetStatus }),
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({
         queryKey: queries.processOrderDetail.detail(variables.orderUuid).queryKey,

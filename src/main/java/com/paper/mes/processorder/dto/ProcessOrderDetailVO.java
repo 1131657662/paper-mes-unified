@@ -32,6 +32,7 @@ public class ProcessOrderDetailVO {
         private String extraNo;
         private String batchNo;
         private String rollNo;
+        private String damageDesc;
         private String paperName;
         private Integer gramWeight;
         private Integer originalWidth;
@@ -41,9 +42,32 @@ public class ProcessOrderDetailVO {
         private Integer processMode;
         private Integer mainStepType;
         private Integer rollStatus;
+        private String remark;
         private List<ProcessStep> steps;
+        private List<StageOutputVO> stageOutputs;
         private List<RewindParamVO> rewindParams;
         private List<FinishProductionVO> finishes;
+    }
+
+    @Data
+    public static class StageOutputVO {
+        private String uuid;
+        private String outputNo;
+        private String finishRollUuid;
+        private String parentOutputUuid;
+        private Integer stageLevel;
+        private Integer outputSort;
+        private Integer outputType;
+        private Integer outputStatus;
+        private String paperName;
+        private Integer gramWeight;
+        private Integer finishWidth;
+        private Integer finishDiameter;
+        private Integer finishCoreDiameter;
+        private BigDecimal estimateWeight;
+        private BigDecimal actualWeight;
+        private Integer sourceStepType;
+        private String sourceSummary;
     }
 
     @Data
@@ -63,6 +87,7 @@ public class ProcessOrderDetailVO {
         private String uuid;
         private String finishRollNo;
         private Integer rowSort;
+        private Integer rollNoStatus;
         private Integer isSpare;
         private Integer sourceType;
         private String paperName;

@@ -1,24 +1,20 @@
 import type { SettleCandidateVO } from '../../../types/settle'
+import {
+  formatKg as formatWeightKg,
+  formatMoney as formatCurrency,
+  formatTonFromKg,
+} from '../../../utils/numberFormatters'
 
 export function formatMoney(value?: number) {
-  return `¥${(value ?? 0).toLocaleString('zh-CN', {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-  })}`
+  return formatCurrency(value)
 }
 
 export function formatKg(value?: number) {
-  return `${(value ?? 0).toLocaleString('zh-CN', {
-    maximumFractionDigits: 3,
-    minimumFractionDigits: 3,
-  })}kg`
+  return formatWeightKg(value)
 }
 
 export function formatTon(value?: number) {
-  return `${((value ?? 0) / 1000).toLocaleString('zh-CN', {
-    maximumFractionDigits: 3,
-    minimumFractionDigits: 3,
-  })}t`
+  return formatTonFromKg(value)
 }
 
 export function formatPercent(value: number, total: number) {

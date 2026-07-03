@@ -3,10 +3,13 @@ import { CopyOutlined, DeleteOutlined, DownloadOutlined, PlusOutlined, UploadOut
 import type { ColumnType } from 'antd/es/table'
 import { useState } from 'react'
 import ResizableTable from '../../../components/ResizableTable'
+import MesTooltip from '../../../components/biz/MesTooltip'
 import { mesTablePagination } from '../../../components/biz/mesPaginationUtils'
 import type { OriginalRollImportPreviewVO } from '../../../types/processOrder'
+import { formatKg } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
 import { newRollDraft, rollDraftFromDto, totalWeight } from '../draftMappers'
+import './CreateOrderEditors.css'
 
 interface Props {
   rolls: RollDraft[]
@@ -115,8 +118,24 @@ export default function RollInputStep({ rolls, loading, onChange, onImportPrevie
       width: 88,
       render: (_, roll) => (
         <Space>
-          <Button icon={<CopyOutlined />} size="small" onClick={() => onChange([...rolls, newRollDraft(roll)])} />
-          <Button danger icon={<DeleteOutlined />} size="small" disabled={rolls.length <= 1} onClick={() => onChange(rolls.filter((item) => item.localId !== roll.localId))} />
+          <MesTooltip title="复制原纸">
+            <Button
+              aria-label="复制原纸"
+              icon={<CopyOutlined />}
+              size="small"
+              onClick={() => onChange([...rolls, newRollDraft(roll)])}
+            />
+          </MesTooltip>
+          <MesTooltip title={rolls.length <= 1 ? '至少保留一条原纸' : '删除原纸'}>
+            <Button
+              danger
+              aria-label="删除原纸"
+              icon={<DeleteOutlined />}
+              size="small"
+              disabled={rolls.length <= 1}
+              onClick={() => onChange(rolls.filter((item) => item.localId !== roll.localId))}
+            />
+          </MesTooltip>
         </Space>
       ),
     },
@@ -160,8 +179,8 @@ export default function RollInputStep({ rolls, loading, onChange, onImportPrevie
         }
       >
         <ResizableTable storageKey="unified_order_rolls" rowKey="localId" size="small" pagination={false} columns={columns} dataSource={rolls} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
-          <Typography.Text strong>合计：{rolls.length} 卷 / {totalWeight(rolls).toFixed(3)} kg</Typography.Text>
+        <div className="create-editor-footer">
+          <Typography.Text strong>合计：{rolls.length} 卷 / {formatKg(totalWeight(rolls))}</Typography.Text>
           <Space>
             <Button onClick={onPrev}>上一步</Button>
             <Button type="primary" loading={loading} onClick={onNext}>下一步：加工方式</Button>

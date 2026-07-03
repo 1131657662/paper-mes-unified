@@ -15,7 +15,6 @@ import com.paper.mes.processorder.dto.DraftSummaryVO;
 import com.paper.mes.processorder.dto.FinishConfigSaveDTO;
 import com.paper.mes.processorder.dto.FinishConfigSaveVO;
 import com.paper.mes.processorder.dto.FinishConfigSpecDTO;
-import com.paper.mes.processorder.dto.FinishPreviewVO;
 import com.paper.mes.processorder.dto.OriginalRollImportPreviewVO;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
 import com.paper.mes.processorder.dto.PlanPreviewVO;
@@ -252,47 +251,6 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
                 .eq(ProcessConfigDraft::getOrderUuid, orderUuid));
         originalRollMapper.delete(new LambdaQueryWrapper<OriginalRoll>()
                 .eq(OriginalRoll::getOrderUuid, orderUuid));
-    }
-
-    private void updateRollProcessFields(OriginalRoll roll, FinishConfigSaveDTO dto) {
-        roll.setProcessMode(dto.getProcessMode());
-        roll.setMainStepType(dto.getMainStepType());
-        originalRollMapper.updateById(roll);
-    }
-
-    private String previewJson(String orderUuid, String rollUuid, FinishConfigSaveDTO dto) {
-        if (dto.getMainStepType() == null || dto.getMainStepType() != FeeCalculator.STEP_TYPE_REWIND) {
-            return null;
-        }
-        if (dto.getRewindSegments() == null || dto.getRewindSegments().isEmpty()) {
-            return null;
-        }
-        RewindPlanPreviewDTO previewDto = new RewindPlanPreviewDTO();
-        previewDto.setRewindMode(dto.getRewindMode());
-        previewDto.setSpareCount(dto.getSpareCount());
-        previewDto.setSegments(dto.getRewindSegments());
-        FinishPreviewVO preview = processOrderService.previewRewindPlan(orderUuid, rollUuid, previewDto);
-        return toJson(preview);
-    }
-
-    private void upsertDraft(String orderUuid, String rollUuid, FinishConfigSaveDTO dto, String previewJson) {
-        ProcessConfigDraft draft = selectDraft(orderUuid, rollUuid);
-        if (draft == null) {
-            draft = new ProcessConfigDraft();
-            draft.setOrderUuid(orderUuid);
-            draft.setOriginalUuid(rollUuid);
-        }
-        draft.setProcessMode(dto.getProcessMode());
-        draft.setMainStepType(dto.getMainStepType());
-        draft.setConfigJson(toJson(dto));
-        draft.setPreviewJson(previewJson);
-        draft.setConfigStatus(1);
-        draft.setLastError(null);
-        if (draft.getUuid() == null) {
-            draftMapper.insert(draft);
-        } else {
-            draftMapper.updateById(draft);
-        }
     }
 
     private ProcessConfigDraft selectDraft(String orderUuid, String rollUuid) {

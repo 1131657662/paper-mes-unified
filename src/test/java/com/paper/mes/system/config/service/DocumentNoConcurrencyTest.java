@@ -115,6 +115,18 @@ class DocumentNoConcurrencyTest {
             return requiredType.cast(0L);
         }
 
+        @Override
+        public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
+            if (sql.contains("FROM biz_finish_roll")) {
+                return List.of();
+            }
+            Long value = sequences.get((String) args[0]);
+            if (value == null) {
+                return List.of();
+            }
+            return List.of(elementType.cast(value));
+        }
+
         private void lock(String key) {
             ReentrantLock lock = locks.computeIfAbsent(key, ignored -> new ReentrantLock());
             lock.lock();

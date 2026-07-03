@@ -12,54 +12,22 @@
     overflow: visible !important;
   }
 
-  body * {
-    visibility: hidden !important;
-  }
-
-  .ant-drawer,
-  .ant-drawer *,
-  .print-issue-drawer-root,
-  .print-issue-drawer-root * {
-    visibility: visible !important;
-  }
-
-  .ant-alert,
-  .ant-drawer-header,
-  .ant-drawer-mask,
-  .print-issue__screen-only,
-  .print-issue__reason {
+  body > *:not(.print-issue-print-root) {
     display: none !important;
   }
 
-  .ant-drawer,
-  .ant-drawer-content-wrapper,
-  .ant-drawer-content,
-  .ant-drawer-wrapper-body,
-  .ant-drawer-body {
-    position: static !important;
-    inset: auto !important;
-    width: auto !important;
-    height: auto !important;
-    max-width: none !important;
-    overflow: visible !important;
-    transform: none !important;
-    box-shadow: none !important;
-  }
-
-  .ant-drawer-body {
-    padding: 0 !important;
-  }
-
-  .print-issue__content,
-  .print-issue__sheet-frame {
+  .print-issue-print-root {
     display: block !important;
+    width: 100% !important;
+    background: #fff !important;
   }
 
   .print-preview-sheet {
-    position: static;
     width: auto;
     max-width: none;
     padding: 0;
+    color: #111827;
+    background: #fff;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -87,6 +55,27 @@
   .print-preview-sheet__footer {
     gap: 2mm 4mm;
     font-size: 9pt;
+  }
+
+  .print-preview-sheet__remark-block {
+    grid-template-columns: 18mm minmax(0, 1fr);
+    gap: 2.5mm;
+    margin-top: 3mm;
+    padding: 2.2mm 2.6mm;
+    border-width: 0.8pt;
+    border-left-width: 3pt;
+    border-radius: 2mm;
+    background: #fff8e6 !important;
+  }
+
+  .print-preview-sheet__remark-label {
+    padding: 1mm 1.5mm;
+    font-size: 8.5pt;
+  }
+
+  .print-preview-sheet__remark-text {
+    font-size: 10pt;
+    line-height: 1.45;
   }
 
   .print-preview-table {
@@ -126,14 +115,17 @@
     height: 8mm;
   }
 
+  .print-preview-table--production tbody tr,
+  .print-preview-table--production tbody td {
+    height: var(--production-row-height);
+  }
+
   .print-preview-sheet__roll-cell {
     width: auto;
   }
 
   .print-preview-sheet__roll-cell span,
-  .print-preview-sheet__roll-cell strong,
-  .print-preview-sheet__roll-repeat span,
-  .print-preview-sheet__roll-repeat strong {
+  .print-preview-sheet__roll-cell strong {
     line-height: 1.35;
   }
 

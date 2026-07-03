@@ -13,7 +13,7 @@ public class ProcessOrderQuery {
     /** 关键字：命中加工单号或客户名 */
     private String keyword;
 
-    /** 订单状态 1待下发 2加工中 3待回录 4已完成 5已结算 */
+    /** 订单状态 0草稿 1待下发 2加工中 3待回录 4已完成 5已结算 6已作废 */
     private Integer orderStatus;
 
     /** 客户UUID */

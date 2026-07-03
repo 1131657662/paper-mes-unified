@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal, message } from 'antd'
 import { useAppendDeliveryDetails } from '../../features/delivery/hooks/useAppendDeliveryDetails'
 import { useAvailableFinishes } from '../../features/delivery/hooks/useAvailableFinishes'
-import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
+import { availableFinishWeight, formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { AvailableFinishVO } from '../../types/delivery'
 import DeliveryCreateTable, { type DeliveryLineEdit } from './DeliveryCreateTable'
 
@@ -110,7 +110,7 @@ function buildAppendDTO(
 }
 
 function selectedWeight(items: AvailableFinishVO[], edits: Record<string, DeliveryLineEdit>) {
-  return items.reduce((total, item) => total + (edits[item.finishUuid]?.outWeight ?? item.actualWeight), 0)
+  return items.reduce((total, item) => total + (edits[item.finishUuid]?.outWeight ?? availableFinishWeight(item)), 0)
 }
 
 function confirmCashRelease() {

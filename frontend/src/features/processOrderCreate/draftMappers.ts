@@ -148,7 +148,7 @@ export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions 
       machineUuid: roll.machineUuid,
       rewindMode: mainStepType === 2 ? 2 : undefined,
       knifeCount: mainStepType === 1 ? 0 : undefined,
-      unitPrice: mainStepType === 1 ? 1.5 : 200,
+      unitPrice: defaultUnitPrice(mainStepType, options),
       spareCount,
       finishSpecs: [{ itemType: 'FINISH', count: 1, finishWidth: 0, estimateWeight: 0 }],
       segments: [],
@@ -160,7 +160,7 @@ export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions 
       mainStepType: 1,
       machineUuid: roll.machineUuid,
       knifeCount: 0,
-      unitPrice: 1.5,
+      unitPrice: defaultUnitPrice(1, options),
       spareCount,
       finishSpecs: [{ itemType: 'FINISH', count: 1, finishWidth: Math.max(1, roll.originalWidth - 100), estimateWeight: 0 }],
     }
@@ -170,7 +170,7 @@ export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions 
     mainStepType: 2,
     machineUuid: roll.machineUuid,
     rewindMode: 2,
-    unitPrice: 200,
+    unitPrice: defaultUnitPrice(2, options),
     spareCount,
     finishSpecs: [],
     segments: [
@@ -218,4 +218,33 @@ export function defaultConfigForRoll(roll: RollDraft, options: DefaultPlanOption
 
 export interface DefaultPlanOptions {
   spareCount?: number
+  sawPrice?: number
+  rewindPrice?: number
+}
+
+const LEGACY_SAW_UNIT_PRICE = 1.5
+const LEGACY_REWIND_UNIT_PRICE = 200
+
+export function applyLegacyPlanPriceDefaults(
+  plan: ProcessPlanDTO,
+  options: DefaultPlanOptions = {},
+): ProcessPlanDTO {
+  const unitPrice = defaultUnitPrice(plan.mainStepType, options)
+  if (unitPrice == null || !isLegacyDefaultUnitPrice(plan.mainStepType, plan.unitPrice)) {
+    return plan
+  }
+  return { ...plan, unitPrice }
+}
+
+function defaultUnitPrice(mainStepType: number | undefined, options: DefaultPlanOptions) {
+  if (mainStepType === 1) return options.sawPrice
+  if (mainStepType === 2) return options.rewindPrice
+  return undefined
+}
+
+function isLegacyDefaultUnitPrice(mainStepType: number | undefined, unitPrice: number | undefined) {
+  if (unitPrice == null) return true
+  if (mainStepType === 1) return unitPrice === LEGACY_SAW_UNIT_PRICE
+  if (mainStepType === 2) return unitPrice === LEGACY_REWIND_UNIT_PRICE
+  return false
 }

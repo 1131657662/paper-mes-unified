@@ -63,6 +63,7 @@ final class DeliverySnapshotItemReader {
             item.setFinishDiameter(integer(itemNode, "finish_diameter"));
             item.setFinishCoreDiameter(integer(itemNode, "finish_core_diameter"));
             item.setActualWeight(decimal(itemNode, "actual_weight"));
+            item.setRemainingWeight(decimal(itemNode, "remaining_weight", "remainingWeight"));
             item.setOutWeight(decimal(itemNode, "out_weight"));
             item.setSourceType(integer(itemNode, "source_type"));
             item.setFinishStatus(integer(itemNode, "finish_status"));

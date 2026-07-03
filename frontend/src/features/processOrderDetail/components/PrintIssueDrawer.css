@@ -14,3 +14,7 @@
 .print-issue__result {
   margin-top: 8px;
 }
+
+.print-issue-print-root {
+  display: none;
+}

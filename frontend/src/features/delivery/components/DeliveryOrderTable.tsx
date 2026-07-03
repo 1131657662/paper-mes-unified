@@ -13,6 +13,7 @@ import { DELIVERY_STATUS, SETTLE_BLOCK_ACTION } from '../../../constants/deliver
 import { formatTon } from '../utils/deliveryFormatters'
 
 interface Props {
+  canManageDelivery?: boolean
   data: DeliveryOrder[]
   loading: boolean
   onReload?: () => void
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export default function DeliveryOrderTable({
+  canManageDelivery = false,
   data,
   loading,
   onConfirm,
@@ -33,7 +35,7 @@ export default function DeliveryOrderTable({
   rowClassName,
   rowSelection,
 }: Props) {
-  const columns = buildColumns({ onConfirm, onDetail })
+  const columns = buildColumns({ canManageDelivery, onConfirm, onDetail })
   const columnsState = useTableColumnsState('table-columns-delivery-orders')
   const resizable = useResizableTableColumns<DeliveryOrder, ProColumns<DeliveryOrder>>(columns, 'delivery-orders')
 
@@ -66,6 +68,7 @@ export default function DeliveryOrderTable({
 }
 
 function buildColumns(actions: {
+  canManageDelivery: boolean
   onConfirm: (record: DeliveryOrder) => void
   onDetail: (record: DeliveryOrder) => void
 }): ProColumns<DeliveryOrder>[] {
@@ -120,7 +123,7 @@ function buildColumns(actions: {
           <Button type="link" size="small" onClick={() => actions.onDetail(record)}>
             详情
           </Button>
-          {record.deliveryStatus === 1 && (
+          {actions.canManageDelivery && record.deliveryStatus === 1 && (
             <Button type="link" size="small" onClick={() => actions.onConfirm(record)}>
               签收
             </Button>

@@ -1,5 +1,6 @@
 import { Alert, Tag, Typography } from 'antd'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
+import { formatKg } from '../../../utils/numberFormatters'
 import type { BackRecordFormValues } from './backRecordUtils'
 import { buildBackRecordMetrics } from './backRecordUtils'
 
@@ -15,9 +16,10 @@ export default function BackRecordSummaryPanel({ detail, values }: Props) {
   return (
     <div className="back-record-summary">
       <div className="back-record-summary__metrics">
-        <Metric label="原纸复称" value={`${metrics.originalActualTotal.toFixed(3)} kg`} />
-        <Metric label="成品实重" value={`${metrics.finishActualTotal.toFixed(3)} kg`} />
-        <Metric label="报废/损耗" value={`${metrics.scrapTotal.toFixed(3)} kg`} />
+        <Metric label="原纸复称" value={formatKg(metrics.originalActualTotal)} />
+        <Metric label="成品实重" value={formatKg(metrics.finishActualTotal)} />
+        <Metric label="工序损耗" value={formatKg(metrics.lossTotal)} />
+        <Metric label="报废重量" value={formatKg(metrics.scrapTotal)} />
         <Metric label="直发卷" value={`${metrics.directShipCount} 卷`} />
         <StatusTag missingCount={missingCount} />
       </div>
@@ -30,7 +32,7 @@ export default function BackRecordSummaryPanel({ detail, values }: Props) {
         />
       )}
       <Typography.Text type="secondary" className="back-record-summary__hint">
-        闭合以原纸复称重量为基准，后端会按母卷逐卷校验；偏差超过 5% 需要授权放行。
+        闭合以原纸复称重量为基准，后端会按母卷逐卷校验倒挤尾差；偏差超过 5% 需要授权放行。
       </Typography.Text>
     </div>
   )

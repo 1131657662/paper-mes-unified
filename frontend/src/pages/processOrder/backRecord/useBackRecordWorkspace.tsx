@@ -6,6 +6,7 @@ import { useAddProcessStep } from '../../../features/processOrderDetail/hooks/us
 import { useBackRecordProcessOrder } from '../../../features/processOrderDetail/hooks/useBackRecordProcessOrder'
 import { useChangeOrderStatus } from '../../../features/processOrderDetail/hooks/useChangeOrderStatus'
 import { useProcessOrderDetail } from '../../../features/processOrderDetail/hooks/useProcessOrderDetail'
+import { confirmOrderStatusChange } from '../../../features/processOrderDetail/confirmOrderStatusChange'
 import BackRecordWorkspaceModals from './BackRecordWorkspaceModals'
 import {
   buildBackRecordDTO,
@@ -108,11 +109,21 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
 
   const rollbackToConfig = async () => {
     if (!uuid) return
-    await changeStatusMutation.mutateAsync({ orderUuid: uuid, targetStatus: 1 })
-    message.success('已回退到待下发，请重新配置工艺后再下发')
-    setChangeOpen(false)
-    onSuccess()
-    onClose()
+    confirmOrderStatusChange({
+      title: '确认回退到待下发重配？',
+      orderNo: detailQuery.data?.order.orderNo,
+      okText: '确认回退',
+      danger: true,
+      requireReason: true,
+      reasonPlaceholder: '请填写回退原因，例如：现场主方案变更、规格调整',
+      onConfirm: async (reason) => {
+        await changeStatusMutation.mutateAsync({ orderUuid: uuid, reason, targetStatus: 1 })
+        message.success('已回退到待下发，请重新配置工艺后再下发')
+        setChangeOpen(false)
+        onSuccess()
+        onClose()
+      },
+    })
   }
 
   return {
@@ -147,7 +158,8 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
 function useBackRecordFormValues(form: ReturnType<typeof Form.useForm<BackRecordFormValues>>[0]) {
   const rolls = Form.useWatch('rolls', form)
   const finishes = Form.useWatch('finishes', form)
-  return { rolls, finishes }
+  const steps = Form.useWatch('steps', form)
+  return { finishes, rolls, steps }
 }
 
 function mergeBackRecordValues(
@@ -159,5 +171,6 @@ function mergeBackRecordValues(
     ...watched,
     finishes: { ...fallback.finishes, ...watched.finishes },
     rolls: { ...fallback.rolls, ...watched.rolls },
+    steps: { ...fallback.steps, ...watched.steps },
   }
 }

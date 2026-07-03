@@ -74,6 +74,19 @@ class ReportMapperSqlContractTest {
     }
 
     @Test
+    void reportAndDashboard_whenDefaultingCompletedScope_excludeVoidedOrders() throws IOException {
+        String reportSql = resourceText("mapper/report/ReportMapper.xml");
+        String dashboardSql = resourceText("mapper/dashboard/DashboardMapper.xml");
+
+        assertFalse(reportSql.contains("o.order_status &gt;= 4"));
+        assertFalse(dashboardSql.contains("o.order_status &gt;= 4"));
+        assertTrue(reportSql.contains("AND o.order_status IN (4, 5)"));
+        assertTrue(dashboardSql.contains("AND o.order_status IN (4, 5)"));
+        assertTrue(reportSql.contains("WHEN 6 THEN '已作废'"));
+        assertTrue(dashboardSql.contains("WHEN 6 THEN '已作废'"));
+    }
+
+    @Test
     void reportSql_whenRollFiltersApplied_allocatesAmountsByScopedRollBase() throws IOException {
         String sql = resourceText("mapper/report/ReportMapper.xml");
 
@@ -84,23 +97,44 @@ class ReportMapperSqlContractTest {
     }
 
     @Test
-    void legacyReportSummarySql_usesUnifiedOrderFilters() throws IOException {
+    void reportSql_whenShadowLegacyEndpointsRemoved_hasOnlyUnifiedReportQueries() throws IOException {
         String sql = resourceText("mapper/report/ReportMapper.xml");
+        String controller = sourceText("src/main/java/com/paper/mes/report/controller/ReportController.java");
 
-        assertTrue(slice(sql, "<select id=\"monthlySummary\"", "<select id=\"customerSummary\"")
-                .contains("<include refid=\"OrderFilters\"/>"));
-        assertTrue(slice(sql, "<select id=\"customerSummary\"", "<select id=\"lossAnalysis\"")
-                .contains("<include refid=\"OrderFilters\"/>"));
+        assertFalse(sql.contains("<select id=\"monthlySummary\""));
+        assertFalse(sql.contains("<select id=\"customerSummary\""));
+        assertFalse(sql.contains("<select id=\"lossAnalysis\""));
+        assertFalse(sql.contains("<select id=\"machineOutput\""));
+        assertFalse(controller.contains("@GetMapping(\"/monthly\")"));
+        assertFalse(controller.contains("@GetMapping(\"/customer\")"));
+        assertFalse(controller.contains("@GetMapping(\"/loss\")"));
+        assertFalse(controller.contains("@GetMapping(\"/machine\")"));
     }
 
     @Test
-    void rollLevelLegacyReportSql_usesRollFilters() throws IOException {
+    void reportSql_whenCountingProcessingWeights_excludesDirectShipOriginals() throws IOException {
         String sql = resourceText("mapper/report/ReportMapper.xml");
 
-        assertTrue(slice(sql, "<select id=\"lossAnalysis\"", "<select id=\"machineOutput\"")
-                .contains("<include refid=\"RollFilters\"/>"));
-        assertTrue(slice(sql, "<select id=\"machineOutput\"", "</mapper>")
-                .contains("<include refid=\"RollFilters\"/>"));
+        assertEquals(4, count(sql, "COALESCE(r.process_mode, 0) != 3"));
+        assertEquals(2, count(sql, "COALESCE(process_mode, 0) != 3"));
+    }
+
+    @Test
+    void reportSql_whenCountingFinishWeights_excludesScrappedFinishes() throws IOException {
+        String sql = resourceText("mapper/report/ReportMapper.xml");
+
+        assertEquals(3, count(sql, "COALESCE(f.finish_status, 0) != 4"));
+        assertEquals(0, count(sql, "COALESCE(finish_status, 0) != 4"));
+    }
+
+    @Test
+    void dashboardSql_whenCountingProcessingStats_usesSameDirectAndScrapFilters() throws IOException {
+        String sql = resourceText("mapper/dashboard/DashboardMapper.xml");
+
+        assertEquals(6, count(sql, "COALESCE(process_mode, 0) != 3"));
+        assertEquals(2, count(sql, "COALESCE(r.process_mode, 0) != 3"));
+        assertEquals(3, count(sql, "COALESCE(finish_status, 0) != 4"));
+        assertFalse(settleAllocationSql("mapper/dashboard/DashboardMapper.xml").contains("process_mode"));
     }
 
     private String settleAllocationSql(String resource) throws IOException {
@@ -121,8 +155,16 @@ class ReportMapperSqlContractTest {
         }
     }
 
+    private String sourceText(String relativePath) throws IOException {
+        return java.nio.file.Files.readString(java.nio.file.Path.of(relativePath), StandardCharsets.UTF_8);
+    }
+
     private String normalize(String value) {
         return value.replaceAll("\\s+", " ").trim();
+    }
+
+    private long count(String text, String pattern) {
+        return (text.length() - text.replace(pattern, "").length()) / pattern.length();
     }
 
     private String slice(String text, String start, String end) {

@@ -4,19 +4,22 @@ import type {
   DeliveryOriginalSourceItem,
   DeliveryProcessStepItem,
 } from '../../../types/delivery'
+import {
+  formatKg as formatWeightKg,
+  formatNumber,
+  formatTonFromKg,
+} from '../../../utils/numberFormatters'
 
 export function formatKg(value?: number) {
-  return `${(value ?? 0).toLocaleString('zh-CN', {
-    maximumFractionDigits: 3,
-    minimumFractionDigits: 3,
-  })}kg`
+  return formatWeightKg(value)
 }
 
 export function formatTon(value?: number) {
-  return `${((value ?? 0) / 1000).toLocaleString('zh-CN', {
-    maximumFractionDigits: 3,
-    minimumFractionDigits: 3,
-  })}t`
+  return formatTonFromKg(value)
+}
+
+export function availableFinishWeight(item: Pick<AvailableFinishVO, 'actualWeight' | 'remainingWeight'>) {
+  return item.remainingWeight ?? item.actualWeight ?? 0
 }
 
 export function finishSpecText(item: AvailableFinishVO) {
@@ -78,15 +81,8 @@ function processStepText(item: DeliveryProcessStepItem) {
   const parts = [
     item.knifeCount ? `${item.knifeCount}刀` : undefined,
     item.processWeight != null ? formatKg(item.processWeight) : undefined,
-    item.unitPrice != null ? `单价${formatNumber(item.unitPrice)}` : undefined,
+    item.unitPrice != null ? `单价${formatNumber(item.unitPrice, 2)}` : undefined,
     item.lossWeight != null ? `损耗${formatKg(item.lossWeight)}` : undefined,
   ].filter(Boolean)
   return `${item.stepName || '加工'}${parts.length ? `（${parts.join(' / ')}）` : ''}`
-}
-
-function formatNumber(value: number) {
-  return value.toLocaleString('zh-CN', {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-  })
 }

@@ -14,6 +14,7 @@ import ExpandedProductionRow from './ExpandedProductionRow'
 import TooltipText from '../biz/TooltipText'
 import type { RollProductionVO } from '../../types/processOrder'
 import { ROLL_STATUS } from '../../constants/processOrder'
+import { formatTonFromKg } from '../../utils/numberFormatters'
 
 const { Text } = Typography
 
@@ -108,7 +109,7 @@ const fullColumns: ColumnsType<DisplayRow> = [
           <Text>{totalCount}件</Text>
           {totalWeight > 0 && (
             <Text type="secondary" style={{ fontSize: 11 }}>
-              {(totalWeight / 1000).toFixed(3)}t
+              {formatTonFromKg(totalWeight)}
             </Text>
           )}
         </Space>
@@ -182,7 +183,7 @@ const compactColumns: ColumnsType<DisplayRow> = [
         <Space direction="vertical" size={0}>
           <Text style={{ fontSize: 11 }}>{totalCount}件</Text>
           {totalWeight > 0 && (
-            <Text type="secondary" style={{ fontSize: 10 }}>{(totalWeight / 1000).toFixed(2)}t</Text>
+            <Text type="secondary" style={{ fontSize: 10 }}>{formatTonFromKg(totalWeight)}</Text>
           )}
         </Space>
       )
@@ -253,7 +254,7 @@ export default function ProductionFlowTable({ productions, compact }: Props) {
                     {totalFinishCount}件
                     {totalEstimateWeight > 0 && (
                       <Text type="secondary" style={{ fontSize: 11, marginLeft: 4 }}>
-                        {(totalEstimateWeight / 1000).toFixed(3)}t
+                        {formatTonFromKg(totalEstimateWeight)}
                       </Text>
                     )}
                   </Text>

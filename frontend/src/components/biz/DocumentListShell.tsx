@@ -14,6 +14,7 @@ interface Props<T extends string> {
   createText: string
   queue: T
   queueOptions: QueueOption<T>[]
+  canCreate?: boolean
   children: React.ReactNode
   extra?: React.ReactNode
   leftActions?: React.ReactNode
@@ -23,6 +24,7 @@ interface Props<T extends string> {
 }
 
 export default function DocumentListShell<T extends string>({
+  canCreate = true,
   children,
   createText,
   extra,
@@ -41,7 +43,7 @@ export default function DocumentListShell<T extends string>({
       {search && <div className="document-list-shell__search">{search}</div>}
       <div className="document-list-shell__toolbar">
         <div className="document-list-shell__actions">
-          <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>{createText}</Button>
+          {canCreate && <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>{createText}</Button>}
           {leftActions}
         </div>
         <div className="document-list-shell__queue">

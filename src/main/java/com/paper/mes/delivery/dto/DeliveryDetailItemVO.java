@@ -23,6 +23,7 @@ public class DeliveryDetailItemVO {
     private Integer finishDiameter;
     private Integer finishCoreDiameter;
     private BigDecimal actualWeight;
+    private BigDecimal remainingWeight;
     private BigDecimal outWeight;
     private Integer sourceType;
     private Integer finishStatus;

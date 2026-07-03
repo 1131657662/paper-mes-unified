@@ -1,9 +1,11 @@
 import { Button, InputNumber, Progress, Select, Space, Table, Tag, Typography } from 'antd'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
+import MesTooltip from '../../../components/biz/MesTooltip'
 import type { FinishConfigSpecDTO, ProcessPlanDTO } from '../../../types/processOrder'
 import type { RollDraft } from '../types'
 import { calcSawPlanStats, isTrimSpec, normalizeSawSpecs } from '../sawPlanUtils'
+import './CreateOrderEditors.css'
 
 interface Props {
   plan: ProcessPlanDTO
@@ -25,7 +27,7 @@ export default function SawPlanEditor({ plan, roll, onChange }: Props) {
   }
 
   return (
-    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+    <Space className="create-editor-stack" direction="vertical" size={12}>
       <SawSummary originalWidth={roll.originalWidth ?? 0} stats={stats} />
       <Space wrap>
         <Button icon={<PlusOutlined />} onClick={() => updateSpecs([...specs, newSpec('FINISH')])}>
@@ -53,7 +55,7 @@ export default function SawPlanEditor({ plan, roll, onChange }: Props) {
 function SawSummary({ originalWidth, stats }: { originalWidth: number; stats: ReturnType<typeof calcSawPlanStats> }) {
   const overflow = stats.remainingWidth < 0
   return (
-    <Space direction="vertical" size={6} style={{ width: '100%' }}>
+    <Space className="create-editor-stack" direction="vertical" size={6}>
       <Space wrap>
         <Tag color="blue">自动刀数：{stats.knifeCount}</Tag>
         <Tag color="green">成品：{stats.finishCount} 件</Tag>
@@ -79,7 +81,7 @@ function columns(
         <Select
           value={spec.itemType ?? 'FINISH'}
           options={itemTypeOptions}
-          style={{ width: 82 }}
+          className="create-editor-kind-select--compact"
           onChange={(value) => updateSpecs(patchSpec(specs, index, typePatch(spec, value)))}
         />
       ),
@@ -120,7 +122,15 @@ function columns(
       title: '操作',
       width: 72,
       render: (_, __, index) => (
-        <Button danger size="small" icon={<DeleteOutlined />} onClick={() => updateSpecs(specs.filter((_, itemIndex) => itemIndex !== index))} />
+        <MesTooltip title="删除规格">
+          <Button
+            danger
+            aria-label="删除锯纸规格"
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => updateSpecs(specs.filter((_, itemIndex) => itemIndex !== index))}
+          />
+        </MesTooltip>
       ),
     },
   ]

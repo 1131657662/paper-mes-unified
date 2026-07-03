@@ -1,7 +1,7 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Popconfirm, Tag, message } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { useNavigate } from 'react-router-dom'
@@ -16,21 +16,39 @@ import { useResizableTableColumns } from '../../components/useResizableTableColu
 import { PERMISSIONS } from '../../constants/permissions'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useHasPermission } from '../../stores/authStore'
-import type { Warehouse } from '../../types/warehouse'
+import type { Warehouse, WarehouseQuery } from '../../types/warehouse'
+import { datedCsvFilename, exportRowsToCsv } from '../../utils/exportCsv'
 
 /** 状态字典：1 启用 / 2 停用。 */
 const STATUS: Record<number, string> = { 1: '启用', 2: '停用' }
 
 export default function WarehouseList() {
   const actionRef = useRef<ActionType>(null)
+  const latestQueryRef = useRef<WarehouseQuery>({})
   const navigate = useNavigate()
   const canManageBase = useHasPermission(PERMISSIONS.baseManage)
   const columnsState = useTableColumnsState('table-columns-warehouses')
+  const [exporting, setExporting] = useState(false)
 
   const handleDelete = async (record: Warehouse) => {
     await deleteWarehouse(record.uuid)
     message.success('删除成功')
     actionRef.current?.reload()
+  }
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const res = await pageWarehouses({ ...latestQueryRef.current, current: 1, size: 10000 })
+      const result = exportRowsToCsv({
+        columns: warehouseExportColumns(),
+        filename: datedCsvFilename('仓库档案'),
+        rows: res.records ?? [],
+      })
+      message.success(`已导出 ${result.filename}`)
+    } finally {
+      setExporting(false)
+    }
   }
 
   const columns: ProColumns<Warehouse>[] = [
@@ -92,18 +110,25 @@ export default function WarehouseList() {
       columnsState={columnsState}
       components={resizable.components}
       headerTitle="仓库档案"
-      toolBarRender={() => canManageBase ? [
-        <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/warehouses/create')}>
-          新增仓库
+      toolBarRender={() => [
+        <Button key="export" icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
+          导出
         </Button>,
-      ] : []}
+        canManageBase && (
+          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/warehouses/create')}>
+            新增仓库
+          </Button>
+        ),
+      ].filter(Boolean)}
       request={async (params) => {
-        const res = await pageWarehouses({
+        const query = {
           current: params.current,
           size: params.pageSize,
           keyword: params.warehouseCode || params.warehouseName,
           status: params.status,
-        })
+        }
+        latestQueryRef.current = query
+        const res = await pageWarehouses(query)
         return { data: res.records ?? [], total: res.total ?? 0, success: true }
       }}
       bordered
@@ -118,4 +143,15 @@ export default function WarehouseList() {
 
 function textCell(value?: ReactNode) {
   return <TooltipText value={value} />
+}
+
+function warehouseExportColumns() {
+  return [
+    { header: '仓库编码', value: (row: Warehouse) => row.warehouseCode },
+    { header: '仓库名称', value: (row: Warehouse) => row.warehouseName },
+    { header: '库位', value: (row: Warehouse) => row.location },
+    { header: '状态', value: (row: Warehouse) => row.status ? STATUS[row.status] ?? '-' : '-' },
+    { header: '备注', value: (row: Warehouse) => row.remark },
+    { header: '创建时间', value: (row: Warehouse) => row.createTime },
+  ]
 }

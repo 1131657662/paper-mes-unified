@@ -40,6 +40,7 @@ function TimelineItem({ order }: { order: DashboardRecentOrder }) {
 function timelineColor(status?: number) {
   if (status === 3) return 'orange'
   if (status === 4 || status === 5) return 'green'
+  if (status === 6) return 'gray'
   if (status === 2) return 'blue'
   return 'gray'
 }

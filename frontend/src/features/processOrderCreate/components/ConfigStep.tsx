@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Card, Empty, Space, message } from 'antd'
+import { Button, Card, Empty, Space, Table, Tag, message } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
 import type { Machine } from '../../../types/machine'
 import type { PlanPreviewVO, ProcessPlanDTO } from '../../../types/processOrder'
-import { defaultPlanForRoll } from '../draftMappers'
+import { formatKg } from '../../../utils/numberFormatters'
+import { defaultPlanForRoll, type DefaultPlanOptions } from '../draftMappers'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
 import PlanPreviewPanel from './PlanPreviewPanel'
@@ -18,6 +20,7 @@ const workbenchCardStyle = {
 
 interface Props {
   defaultSpareCount?: number
+  defaultPlanOptions?: DefaultPlanOptions
   orderUuid?: string
   machines: Machine[]
   rolls: RollDraft[]
@@ -36,6 +39,7 @@ interface Props {
 
 export default function ConfigStep({
   defaultSpareCount = 0,
+  defaultPlanOptions,
   orderUuid,
   machines,
   rolls,
@@ -52,10 +56,12 @@ export default function ConfigStep({
   onNext,
 }: Props) {
   const lockedRolls = mergedSourceLocks(rolls, plans)
+  const configurableRolls = rolls.filter((roll) => roll.processMode !== 3 && !lockedRolls[roll.localId])
   const selected = rolls.find((roll) => roll.localId === selectedId && !lockedRolls[roll.localId])
     ?? rolls.find((roll) => roll.processMode !== 3 && !lockedRolls[roll.localId])
   const [checkedIds, setCheckedIds] = useState<string[]>(selected ? [selected.localId] : [])
-  const selectedPlan = selected ? plans[selected.localId] ?? defaultPlanForRoll(selected, { spareCount: defaultSpareCount }) : undefined
+  const planDefaults = defaultPlanOptions ?? { spareCount: defaultSpareCount }
+  const selectedPlan = selected ? plans[selected.localId] ?? defaultPlanForRoll(selected, planDefaults) : undefined
   useAutoPlanPreview({ orderUuid, selected, selectedPlan, onPreviewPlan })
 
   const toggle = (localId: string, checked: boolean) => {
@@ -100,6 +106,17 @@ export default function ConfigStep({
     await onSavePlanBatch(targets, selectedPlan)
   }
 
+  if (rolls.length > 0 && configurableRolls.length === 0) {
+    return (
+      <LightConfigStep
+        lockedRolls={lockedRolls}
+        onNext={onNext}
+        onPrev={onPrev}
+        rolls={rolls}
+      />
+    )
+  }
+
   const rollList = (
     <WorkbenchRollList
       machines={machines}
@@ -123,6 +140,7 @@ export default function ConfigStep({
       machines={machines}
       plan={selectedPlan}
       defaultSpareCount={defaultSpareCount}
+      defaultPlanOptions={planDefaults}
       onChange={(plan) => onPlanChange(selected.localId, plan)}
     />
   ) : (
@@ -169,6 +187,69 @@ export default function ConfigStep({
       return prev.includes(localId) ? prev.filter((id) => id !== localId) : [localId]
     })
   }
+}
+
+function LightConfigStep({
+  lockedRolls,
+  onNext,
+  onPrev,
+  rolls,
+}: {
+  lockedRolls: ReturnType<typeof mergedSourceLocks>
+  onNext: () => void
+  onPrev: () => void
+  rolls: RollDraft[]
+}) {
+  return (
+    <Card title="无需单独配置的母卷" className="config-light-step">
+      <Table
+        size="small"
+        rowKey="localId"
+        pagination={false}
+        columns={lightColumns(lockedRolls)}
+        dataSource={rolls}
+        scroll={{ x: 760 }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        <Space wrap>
+          <Button onClick={onPrev}>上一步</Button>
+          <Button type="primary" onClick={onNext}>下一步：预览确认</Button>
+        </Space>
+      </div>
+    </Card>
+  )
+}
+
+function lightColumns(lockedRolls: ReturnType<typeof mergedSourceLocks>): ColumnsType<RollDraft> {
+  return [
+    { title: '母卷', width: 170, render: (_, roll) => rollNoText(roll) },
+    { title: '品名', dataIndex: 'paperName', width: 130 },
+    { title: '规格', width: 150, render: (_, roll) => `${roll.gramWeight ?? '-'}g / ${roll.originalWidth ?? '-'}mm` },
+    { title: '重量', width: 120, align: 'right', render: (_, roll) => formatKg(rollTotalWeight(roll)) },
+    { title: '处理方式', width: 140, render: (_, roll) => lightRollStatus(roll, lockedRolls) },
+    { title: '说明', width: 220, render: (_, roll) => lightRollHint(roll, lockedRolls) },
+  ]
+}
+
+function lightRollStatus(roll: RollDraft, lockedRolls: ReturnType<typeof mergedSourceLocks>) {
+  if (lockedRolls[roll.localId]) return <Tag color="blue">合并来源</Tag>
+  if (roll.processMode === 3) return <Tag color="green">直发</Tag>
+  return <Tag>无需配置</Tag>
+}
+
+function lightRollHint(roll: RollDraft, lockedRolls: ReturnType<typeof mergedSourceLocks>) {
+  const lock = lockedRolls[roll.localId]
+  if (lock) return `已由 ${lock.ownerLabel} 合并配置`
+  if (roll.processMode === 3) return '回录阶段沿用母卷信息生成直发成品'
+  return '-'
+}
+
+function rollNoText(roll: RollDraft) {
+  return [roll.rollNo, roll.extraNo].filter(Boolean).join(' / ') || roll.paperName || '未编号母卷'
+}
+
+function rollTotalWeight(roll: RollDraft) {
+  return Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)
 }
 
 function useAutoPlanPreview({ orderUuid, selected, selectedPlan, onPreviewPlan }: AutoPreviewOptions) {

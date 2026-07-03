@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BusinessFlowConcurrencyContractTest {
@@ -15,6 +16,8 @@ class BusinessFlowConcurrencyContractTest {
             "src/main/java/com/paper/mes/delivery/service/impl/DeliveryServiceImpl.java";
     private static final String SETTLE_SERVICE =
             "src/main/java/com/paper/mes/settle/service/impl/SettleServiceImpl.java";
+    private static final String PROCESS_ORDER_SERVICE =
+            "src/main/java/com/paper/mes/processorder/service/impl/ProcessOrderServiceImpl.java";
     private static final String DELIVERY_INTEGRITY_BOOTSTRAP =
             "src/main/java/com/paper/mes/system/config/config/DeliveryIntegrityBootstrap.java";
 
@@ -27,10 +30,11 @@ class BusinessFlowConcurrencyContractTest {
                 "businessLockService.lockProcessOrders",
                 "businessLockService.lockFinishRolls",
                 "ensureOrdersNotSettled(details)",
-                "updateFinishStatus(detail.getFinishUuid(), FINISH_STATUS_OUT, FINISH_STATUS_IN_STOCK)");
+                "rollbackFinishStock(finish, detail)",
+                "updateDetailStockLocks(details, STOCK_LOCK_RELEASED, STOCK_LOCK_ACTIVE)");
         assertBefore(rollback,
                 "ensureOrdersNotSettled(details)",
-                "updateFinishStatus(detail.getFinishUuid(), FINISH_STATUS_OUT, FINISH_STATUS_IN_STOCK)");
+                "rollbackFinishStock(finish, detail)");
 
         assertContainsAll(slice(source, "private void ensureOrdersNotSettled", "private String originalSummary"),
                 "settleDetailMapper.selectCount",
@@ -89,6 +93,70 @@ class BusinessFlowConcurrencyContractTest {
                 ".eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_OUT)",
                 ".set(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)",
                 ".setSql(\"version = version + 1\")");
+    }
+
+    @Test
+    void processOrderVoid_whenSubmitted_usesLockReasonAndStatusGuard() throws IOException {
+        String source = source(PROCESS_ORDER_SERVICE);
+
+        assertContainsAll(slice(source, "public void voidOrder", "private void validateVoidOrder"),
+                "businessLockService.lockProcessOrders(List.of(uuid));",
+                "validateVoidOrder(order);",
+                "markOrderVoided(order, dto.getReason().trim());");
+        assertContainsAll(slice(source, "private void validateVoidOrder", "private void markOrderVoided"),
+                "!List.of(STATUS_DRAFT, STATUS_PENDING, STATUS_PROCESSING).contains(status)",
+                "ensureOrderNotReferencedBySettle",
+                "ensureOrderHasNoDeliveryDetail",
+                "ensureOrderHasNoOutboundFinish",
+                "ensureNoBackRecordData");
+        assertContainsAll(slice(source, "private void markOrderVoided", "private void ensureOrderNotReferencedBySettle"),
+                ".in(ProcessOrder::getOrderStatus, List.of(STATUS_DRAFT, STATUS_PENDING, STATUS_PROCESSING))",
+                ".set(ProcessOrder::getOrderStatus, STATUS_VOIDED)",
+                ".set(ProcessOrder::getVoidReason, reason)",
+                ".setSql(\"version = version + 1\")",
+                "OperationLogService.ACTION_VOID_ORDER");
+    }
+
+    @Test
+    void processOrderRollback_whenSubmitted_requiresReasonLocksAndBlocksDownstreamDocuments() throws IOException {
+        String source = source(PROCESS_ORDER_SERVICE);
+
+        assertContainsAll(slice(source, "public void changeStatus", "public void voidOrder"),
+                "businessLockService.lockProcessOrders(List.of(uuid));",
+                "String rollbackReason = requireRollbackReason(reason);",
+                "validateRollback(order, from, to);",
+                "cleanupDataOnRollback(order, from, to);",
+                "OperationLogService.ACTION_ROLLBACK");
+        assertContainsAll(slice(source, "private void validateRollback", "private void cleanupDataOnRollback"),
+                "ensureOrderNotReferencedBySettle",
+                "ensureOrderHasNoDeliveryDetail",
+                "FINISH_STATUS_OUT",
+                "ensureNoBackRecordData(order)");
+        assertContainsAll(slice(source, "private void cleanupDataOnRollback", "public void changeRollStatus"),
+                "from == OrderStatus.PENDING && to == OrderStatus.DRAFT",
+                "clearGeneratedProductionData(order)",
+                "from == OrderStatus.PROCESSING && to == OrderStatus.PENDING",
+                "resetIssueAndBackRecordFields(order)");
+    }
+
+    @Test
+    void processOrderRemark_whenFinishedBeforeSettlement_allowsSafeRemarkEdits() throws IOException {
+        String source = source(PROCESS_ORDER_SERVICE);
+        String editableRule = slice(source, "private void validateRemarkEditable", "private void recordFieldIfChanged");
+
+        assertContainsAll(editableRule, "STATUS_SETTLED", "STATUS_VOIDED");
+        assertFalse(editableRule.contains("STATUS_FINISHED"), "已完成未结算的加工单应允许直接修改备注");
+    }
+
+    @Test
+    void deliveryAvailable_whenListingFinishes_acceptsOnlyCompletedProcessOrders() throws IOException {
+        String source = source(DELIVERY_SERVICE);
+
+        assertContainsAll(slice(source, "public List<AvailableFinishVO> listAvailable", "public String create"),
+                ".in(ProcessOrder::getOrderStatus, List.of(ORDER_STATUS_FINISHED, ORDER_STATUS_SETTLED))");
+        assertContainsAll(slice(source, "public String create", "public DeliveryDetailVO getDetail"),
+                "if (!canDeliveryProcessOrder(order))",
+                "throw new BusinessException(\"加工单非可出库状态：\" + order.getOrderNo())");
     }
 
     @Test
@@ -151,6 +219,7 @@ class BusinessFlowConcurrencyContractTest {
                 "ErrorCode.E004");
         assertContainsAll(bootstrap,
                 "normalizeDuplicateDeliveryDetails()",
+                "stock_lock_status",
                 "finish_uuid_active",
                 "uk_biz_delivery_detail_active_finish",
                 "ADD UNIQUE KEY `uk_biz_delivery_detail_active_finish` (`finish_uuid_active`)");

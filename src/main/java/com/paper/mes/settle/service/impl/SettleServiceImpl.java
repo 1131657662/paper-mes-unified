@@ -49,6 +49,7 @@ import com.paper.mes.settle.mapper.SettleDetailMapper;
 import com.paper.mes.settle.mapper.SettleOrderMapper;
 import com.paper.mes.settle.service.SettleCandidateStatsLoader;
 import com.paper.mes.settle.service.SettleExportService;
+import com.paper.mes.settle.service.SettleReceiveStatusResolver;
 import com.paper.mes.settle.service.SettleService;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
@@ -87,8 +88,6 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private static final int SETTLE_TYPE_BY_MONTH = 2;
 
     private static final int SETTLE_STATUS_PENDING = 1;
-    private static final int SETTLE_STATUS_PARTIAL = 2;
-    private static final int SETTLE_STATUS_CLEARED = 3;
     private static final int RECEIVE_STATUS_ACTIVE = 1;
     private static final int RECEIVE_STATUS_CANCELLED = 2;
 
@@ -424,7 +423,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         d.setSawAmount(saw);
         d.setRewindAmount(rewind);
         d.setExtraAmount(nz(order.getTotalExtraAmount()));
-        d.setOrderAmount(invoiceTotal(detailBaseAmount(d), isInvoice, taxRateOf(order, customer)));
+        BigDecimal fallbackAmount = invoiceTotal(detailBaseAmount(d), isInvoice, taxRateOf(order, customer));
+        d.setOrderAmount(settleOrderAmount(order, fallbackAmount));
         return d;
     }
 
@@ -455,7 +455,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         detail.setSawAmount(source.getSawAmount());
         detail.setRewindAmount(source.getRewindAmount());
         detail.setExtraAmount(source.getExtraAmount());
-        detail.setOrderAmount(invoiceTotal(detailBaseAmount(detail), isInvoice, taxRateOf(order, customer)));
+        BigDecimal fallbackAmount = invoiceTotal(detailBaseAmount(detail), isInvoice, taxRateOf(order, customer));
+        detail.setOrderAmount(settleOrderAmount(order, fallbackAmount));
         detail.setRemark(source.getRemark());
         return detail;
     }
@@ -467,9 +468,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         settle.setTaxAmount(amounts.tax());
         settle.setTotalAmount(amounts.total());
         BigDecimal received = activeReceiveAmount(settle.getUuid());
-        settle.setReceivedAmount(received);
-        settle.setUnreceivedAmount(amounts.total().subtract(received)
-                .max(BigDecimal.ZERO).setScale(MONEY_SCALE, RoundingMode.HALF_UP));
+        applyReceiveState(settle, amounts.total(), received);
     }
 
     private SettleOrder requireSettle(String uuid) {
@@ -503,17 +502,16 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         applySettlementAmountView(settle, normalizeDetailsForInvoiceView(settle, settleDetails(settle.getUuid())));
         BigDecimal received = nz(settle.getReceivedAmount());
         BigDecimal total = nz(settle.getTotalAmount());
-        BigDecimal unreceived = total.subtract(received);
-        settle.setReceivedAmount(received);
-        settle.setUnreceivedAmount(unreceived.max(BigDecimal.ZERO));
-        if (received.compareTo(BigDecimal.ZERO) <= 0) {
-            settle.setSettleStatus(SETTLE_STATUS_PENDING);
-        } else if (received.compareTo(total) >= 0) {
-            settle.setSettleStatus(SETTLE_STATUS_CLEARED);
-        } else {
-            settle.setSettleStatus(SETTLE_STATUS_PARTIAL);
-        }
+        applyReceiveState(settle, total, received);
         updateSettleReceiveState(settle, previousStatus);
+    }
+
+    private void applyReceiveState(SettleOrder settle, BigDecimal totalAmount, BigDecimal receivedAmount) {
+        SettleReceiveStatusResolver.State state =
+                SettleReceiveStatusResolver.resolve(totalAmount, receivedAmount);
+        settle.setReceivedAmount(state.receivedAmount());
+        settle.setUnreceivedAmount(state.unreceivedAmount());
+        settle.setSettleStatus(state.status());
     }
 
     private void updateReceiveRecordForCancel(ReceiveRecord record) {
@@ -1013,8 +1011,6 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         settle.setPeriodStart(context.periodStart());
         settle.setPeriodEnd(context.periodEnd());
         settle.setIsInvoice(resolveInvoice(context, customer));
-        settle.setSettleStatus(SETTLE_STATUS_PENDING);
-        settle.setReceivedAmount(BigDecimal.ZERO);
         settle.setRemark(context.remark());
 
         SettlementAmounts amounts = sumAmounts(context.orders(), settle.getIsInvoice(), customer);
@@ -1024,14 +1020,14 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         settle.setAmountNoTax(amounts.noTax());
         settle.setTaxAmount(amounts.tax());
         settle.setTotalAmount(amounts.total());
-        settle.setUnreceivedAmount(amounts.total());
+        applyReceiveState(settle, amounts.total(), BigDecimal.ZERO);
         ConcurrencyGuard.requireUpdated(save(settle));
 
         for (SettleDetail detail : amounts.details()) {
             detail.setSettleUuid(settle.getUuid());
             ensureOrderNotSettled(detail.getOrderUuid());
             insertSettleDetail(detail);
-            processOrderService.changeStatus(detail.getOrderUuid(), ORDER_STATUS_SETTLED);
+            processOrderService.changeStatus(detail.getOrderUuid(), ORDER_STATUS_SETTLED, null);
         }
         settle.setSnapBill(buildSettleSnapshot(settle, amounts.details(), context.orders()));
         settle.setSnapBillTime(LocalDateTime.now());
@@ -1360,11 +1356,33 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             rewind = rewind.add(detail.getRewindAmount());
             extra = extra.add(detail.getExtraAmount());
             BigDecimal baseAmount = detailBaseAmount(detail);
-            noTax = noTax.add(baseAmount);
-            tax = tax.add(invoiceIncrease(baseAmount, isInvoice, taxRateOf(order, customer)));
+            BigDecimal fallbackTax = invoiceIncrease(baseAmount, isInvoice, taxRateOf(order, customer));
+            noTax = noTax.add(settleNoTaxAmount(order, baseAmount));
+            tax = tax.add(settleTaxAmount(order, fallbackTax));
             total = total.add(detail.getOrderAmount());
         }
         return new SettlementAmounts(saw, rewind, extra, noTax, tax, total, details);
+    }
+
+    private BigDecimal settleOrderAmount(ProcessOrder order, BigDecimal fallbackAmount) {
+        if (order != null && order.getTotalAmount() != null) {
+            return money(order.getTotalAmount());
+        }
+        return money(fallbackAmount);
+    }
+
+    private BigDecimal settleNoTaxAmount(ProcessOrder order, BigDecimal fallbackAmount) {
+        if (order != null && order.getTotalAmountNoTax() != null) {
+            return money(order.getTotalAmountNoTax());
+        }
+        return money(fallbackAmount);
+    }
+
+    private BigDecimal settleTaxAmount(ProcessOrder order, BigDecimal fallbackAmount) {
+        if (order != null && order.getTotalAmountTax() != null) {
+            return money(order.getTotalAmountTax());
+        }
+        return money(fallbackAmount);
     }
 
     private BigDecimal detailBaseAmount(SettleDetail detail) {
@@ -1422,6 +1440,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     private static BigDecimal nz(BigDecimal v) {
         return v != null ? v : BigDecimal.ZERO;
+    }
+
+    private static BigDecimal money(BigDecimal v) {
+        return nz(v).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
     private record SettlementBuildContext(

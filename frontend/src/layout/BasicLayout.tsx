@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Avatar, Dropdown, Layout, Menu, Space, Tag } from 'antd'
+import { Alert, Avatar, Dropdown, Layout, Menu, Space, Tag } from 'antd'
 import type { MenuProps } from 'antd'
 import {
   ExportOutlined,
@@ -22,6 +22,7 @@ import PageTabs from './PageTabs'
 import { selectedMenuKey } from '../router/routeMeta'
 import { useAuthActions, useAuthUser } from '../stores/authStore'
 import { PERMISSIONS } from '../constants/permissions'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { hasAnyPermission } from '../utils/permission'
 import '../styles/app-shell.css'
 
@@ -35,6 +36,7 @@ export default function BasicLayout() {
   const contentRef = useRef<HTMLElement | null>(null)
   const user = useAuthUser()
   const { signOut } = useAuthActions()
+  const isOnline = useOnlineStatus()
   const menuItems = buildMenuItems(user?.permissions)
   const contentClassName = [
     'app-shell__content',
@@ -93,6 +95,15 @@ export default function BasicLayout() {
           </Dropdown>
         </Header>
         <PageTabs />
+        {!isOnline && (
+          <Alert
+            className="app-shell__offline"
+            banner
+            showIcon
+            type="warning"
+            message="当前网络已断开，页面数据可能无法保存或刷新，请检查网络连接。"
+          />
+        )}
         <Content ref={contentRef} className={contentClassName}>
           <Outlet />
         </Content>

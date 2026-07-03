@@ -8,7 +8,7 @@ interface Props {
   onChange: (value: QueueStatus) => void
 }
 
-export type QueueStatus = 'all' | '0' | '1' | '2' | '3' | '4'
+export type QueueStatus = 'all' | '0' | '1' | '2' | '3' | '4' | '6'
 
 const queueOptions: QueueOption[] = [
   { label: '全部', value: 'all' },
@@ -17,6 +17,7 @@ const queueOptions: QueueOption[] = [
   { label: '加工中', value: '2' },
   { label: '待回录', value: '3' },
   { label: '已完成', value: '4' },
+  { label: '已作废', value: '6' },
 ]
 
 export default function ProcessOrderQueueBar({ value, onChange }: Props) {

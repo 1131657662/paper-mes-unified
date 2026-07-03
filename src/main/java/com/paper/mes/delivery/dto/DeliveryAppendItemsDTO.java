@@ -15,7 +15,7 @@ import java.util.List;
 @Data
 public class DeliveryAppendItemsDTO {
 
-    /** 现结客户存在未结清款项时，true 警告放行。 */
+    /** 现结客户存在未结清款项时，前端确认后传 true；后端默认按配置警告放行或强制拦截。 */
     private boolean forceRelease;
 
     @NotEmpty(message = "追加成品不能为空")

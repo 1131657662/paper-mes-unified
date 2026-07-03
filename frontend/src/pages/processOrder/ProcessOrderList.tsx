@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { message } from 'antd'
+import { Input, Modal, message } from 'antd'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType } from '@ant-design/pro-components'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
@@ -9,6 +9,7 @@ import {
   pageProcessOrders,
   changeOrderStatus,
   calcProcessOrderFee,
+  voidProcessOrder,
 } from '../../api/processOrder'
 import type { ProcessOrder } from '../../types/processOrder'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
@@ -18,6 +19,7 @@ import ProcessOrderListHeader from './ProcessOrderListHeader'
 import ProcessOrderListDialogs from './ProcessOrderListDialogs'
 import ProcessOrderPaginationBar from './ProcessOrderPaginationBar'
 import ProcessOrderSearchBar, { type ProcessOrderSearchFilters } from './ProcessOrderSearchBar'
+import { confirmOrderStatusChange, isRollbackStatusChange } from '../../features/processOrderDetail/confirmOrderStatusChange'
 import type { QueueStatus } from './ProcessOrderQueueBar'
 import { useProcessOrderCustomerEnum } from './useProcessOrderCustomerEnum'
 import { useResizableProcessColumns } from './useResizableProcessColumns'
@@ -43,11 +45,28 @@ export default function ProcessOrderList() {
     navigate(`/process-orders/${uuid}`)
   }
 
-  const handleTransition = async (record: ProcessOrder, target: number) => {
-    await changeOrderStatus(record.uuid, { targetStatus: target })
+  const handleTransition = async (record: ProcessOrder, target: number, reason?: string) => {
+    await changeOrderStatus(record.uuid, { reason, targetStatus: target })
     message.success('状态已更新')
     rowSelection.clear()
     actionRef.current?.reload()
+    if (target === 0) {
+      navigate(`/process-orders/create?draft=${record.uuid}`)
+    }
+  }
+
+  const confirmTransition = (record: ProcessOrder, target: number, title: string) => {
+    const currentStatus = record.orderStatus ?? 0
+    const requireReason = isRollbackStatusChange(currentStatus, target)
+    confirmOrderStatusChange({
+      title,
+      orderNo: record.orderNo,
+      okText: requireReason ? '确认回退' : '确认',
+      danger: requireReason,
+      requireReason,
+      reasonPlaceholder: '请填写回退原因，例如：客户改单、现场方案调整、下发前补充信息',
+      onConfirm: (reason) => handleTransition(record, target, reason),
+    })
   }
 
   const openPrint = (record: ProcessOrder) => {
@@ -66,6 +85,38 @@ export default function ProcessOrderList() {
     const res = await calcProcessOrderFee(record.uuid)
     message.success(`计费完成，总额 ¥${res.totalAmount ?? 0}`)
     actionRef.current?.reload()
+  }
+
+  const handleVoidOrder = async (record: ProcessOrder) => {
+    let reason = ''
+    Modal.confirm({
+      title: '作废加工单',
+      content: (
+        <Input.TextArea
+          autoSize={{ minRows: 3, maxRows: 5 }}
+          maxLength={255}
+          placeholder="请填写作废原因"
+          showCount
+          onChange={(event) => {
+            reason = event.target.value
+          }}
+        />
+      ),
+      okButtonProps: { danger: true },
+      okText: '确认作废',
+      cancelText: '取消',
+      onOk: async () => {
+        const trimmed = reason.trim()
+        if (!trimmed) {
+          message.warning('请填写作废原因')
+          throw new Error('作废原因不能为空')
+        }
+        await voidProcessOrder(record.uuid, { reason: trimmed })
+        message.success('加工单已作废')
+        rowSelection.clear()
+        actionRef.current?.reload()
+      },
+    })
   }
 
   const handleQuickStatusChange = (value: QueueStatus) => {
@@ -89,7 +140,7 @@ export default function ProcessOrderList() {
     customerEnum,
     onBackRecord: openRecord,
     onCalcFee: handleCalcFee,
-    onChangeStatus: handleTransition,
+    onChangeStatus: confirmTransition,
     onDetail: openDetail,
     onEditDraft: (uuid) => navigate(`/process-orders/create?draft=${uuid}`),
     onGoDelivery: () => navigate('/delivery-orders'),
@@ -97,17 +148,19 @@ export default function ProcessOrderList() {
     onManageRolls: dialogs.openManageRoll,
     onPrint: openPrint,
     onSnapshotDiff: dialogs.openDiff,
+    onVoidOrder: handleVoidOrder,
   })
   const resizableTable = useResizableProcessColumns(columns)
   const batchActions: BatchActions = {
     onBackRecord: openRecord,
     onCalcFee: handleCalcFee,
-    onChangeStatus: handleTransition,
+    onChangeStatus: confirmTransition,
     onGoDelivery: () => navigate('/delivery-orders'),
     onGoSettle: () => navigate('/settle-orders'),
     onManageRolls: dialogs.openManageRoll,
     onPrint: openPrint,
     onSnapshotDiff: dialogs.openDiff,
+    onVoidOrder: handleVoidOrder,
   }
 
   return (

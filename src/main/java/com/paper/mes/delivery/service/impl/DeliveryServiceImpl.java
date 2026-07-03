@@ -28,7 +28,9 @@ import com.paper.mes.delivery.entity.DeliveryDetail;
 import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
+import com.paper.mes.delivery.service.DeliveryCashSettlementGuard;
 import com.paper.mes.delivery.service.DeliveryExportService;
+import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
 import com.paper.mes.delivery.service.DeliveryService;
 import com.paper.mes.machine.entity.Machine;
 import com.paper.mes.machine.mapper.MachineMapper;
@@ -46,9 +48,7 @@ import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.settle.entity.SettleDetail;
-import com.paper.mes.settle.entity.SettleOrder;
 import com.paper.mes.settle.mapper.SettleDetailMapper;
-import com.paper.mes.settle.mapper.SettleOrderMapper;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -68,6 +68,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -84,14 +85,12 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private static final int FINISH_STATUS_OUT = 3;
     private static final int DELIVERY_STATUS_PENDING = 1;
     private static final int DELIVERY_STATUS_OUT = 2;
+    private static final int STOCK_LOCK_RELEASED = 0;
+    private static final int STOCK_LOCK_ACTIVE = 1;
+    private static final int ORDER_STATUS_FINISHED = 4;
+    private static final int ORDER_STATUS_SETTLED = 5;
 
     private static final int SETTLE_TYPE_CASH = 1;
-    private static final int SETTLE_STATUS_PENDING = 1;
-    private static final int SETTLE_STATUS_PARTIAL = 2;
-
-    private static final int BLOCK_NONE = 0;
-    private static final int BLOCK_RELEASE = 1;
-    private static final int BLOCK_REJECT = 2;
 
     private final DeliveryDetailMapper deliveryDetailMapper;
     private final FinishRollMapper finishRollMapper;
@@ -100,9 +99,10 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private final ProcessOrderMapper processOrderMapper;
     private final ProcessStepMapper processStepMapper;
     private final SettleDetailMapper settleDetailMapper;
-    private final SettleOrderMapper settleOrderMapper;
     private final MachineMapper machineMapper;
     private final CustomerService customerService;
+    private final DeliveryCashSettlementGuard cashSettlementGuard;
+    private final DeliverySettlementBlockPolicy settlementBlockPolicy;
     private final DeliveryExportService deliveryExportService;
     private final OperationLogMapper operationLogMapper;
     private final OperationLogService operationLogService;
@@ -143,7 +143,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         // 该客户全部加工单 → uuid→单号映射。
         List<ProcessOrder> orders = processOrderMapper.selectList(
                 new LambdaQueryWrapper<ProcessOrder>()
-                        .eq(ProcessOrder::getCustomerUuid, customerUuid));
+                        .eq(ProcessOrder::getCustomerUuid, customerUuid)
+                        .in(ProcessOrder::getOrderStatus, List.of(ORDER_STATUS_FINISHED, ORDER_STATUS_SETTLED)));
         if (orders.isEmpty()) {
             return new ArrayList<>();
         }
@@ -154,7 +155,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             orderByUuid.put(o.getUuid(), o);
         }
         List<String> lockedFinishUuids = pendingDeliveryFinishUuids();
-        boolean settlementRisk = hasUnsettledCash(customerUuid);
+        Set<String> settlementRiskOrderUuids = cashSettlementGuard.unsettledCashOrderUuids(
+                cashOrderUuids(orderByUuid.values()));
         LambdaQueryWrapper<FinishRoll> finishWrapper = new LambdaQueryWrapper<FinishRoll>()
                 .in(FinishRoll::getOrderUuid, orderNoByUuid.keySet())
                 .eq(FinishRoll::getFinishStatus, FINISH_STATUS_IN_STOCK)
@@ -167,6 +169,10 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 finishWrapper);
         List<AvailableFinishVO> list = new ArrayList<>(finishes.size());
         for (FinishRoll f : finishes) {
+            BigDecimal availableWeight = DeliveryStockPolicy.availableWeight(f);
+            if (availableWeight.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
             AvailableFinishVO vo = new AvailableFinishVO();
             vo.setFinishUuid(f.getUuid());
             vo.setFinishRollNo(f.getFinishRollNo());
@@ -185,10 +191,10 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             vo.setFinishDiameter(f.getFinishDiameter());
             vo.setFinishCoreDiameter(f.getFinishCoreDiameter());
             vo.setActualWeight(f.getActualWeight());
+            vo.setRemainingWeight(availableWeight);
             vo.setSourceType(f.getSourceType());
             vo.setFinishStatus(f.getFinishStatus());
-            vo.setSettlementRisk(settlementRisk && vo.getSettleType() != null
-                    && vo.getSettleType() == SETTLE_TYPE_CASH);
+            vo.setSettlementRisk(settlementRiskOrderUuids.contains(f.getOrderUuid()));
             list.add(vo);
         }
         return list;
@@ -210,7 +216,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         Map<String, String> orderNoCache = new LinkedHashMap<>();
         List<String> lockedFinishUuids = pendingDeliveryFinishUuids();
         Set<String> requestFinishUuids = new HashSet<>();
-        boolean hasCashOrder = false;
+        Set<String> cashOrderUuids = new LinkedHashSet<>();
         for (DeliveryCreateDTO.Item item : dto.getItems()) {
             if (!requestFinishUuids.add(item.getFinishUuid())) {
                 throw new BusinessException("出库成品重复：" + item.getFinishUuid());
@@ -229,21 +235,19 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             if (order == null || !dto.getCustomerUuid().equals(order.getCustomerUuid())) {
                 throw new BusinessException("成品不属于该客户：" + f.getFinishRollNo());
             }
+            if (!canDeliveryProcessOrder(order)) {
+                throw new BusinessException("加工单非可出库状态：" + order.getOrderNo());
+            }
             if (order.getSettleType() != null && order.getSettleType() == SETTLE_TYPE_CASH) {
-                hasCashOrder = true;
+                cashOrderUuids.add(order.getUuid());
             }
             orderNoCache.put(f.getOrderUuid(), order.getOrderNo());
             picked.add(f);
         }
 
         // 现结拦截：以加工单结算快照为准，避免客户档案后续调整影响历史单据。
-        int blockAction = BLOCK_NONE;
-        if (hasCashOrder && hasUnsettledCash(dto.getCustomerUuid())) {
-            if (!dto.isForceRelease()) {
-                throw new BusinessException("次结加工单存在未结清款项，禁止出库");
-            }
-            blockAction = BLOCK_RELEASE;
-        }
+        int blockAction = settlementBlockPolicy.resolveAction(
+                cashSettlementGuard.hasUnsettledCashOrders(cashOrderUuids), dto.isForceRelease(), "出库");
 
         LocalDate date = dto.getDeliveryDate();
         DeliveryOrder deliveryOrder = new DeliveryOrder();
@@ -264,7 +268,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             FinishRoll f = picked.get(i);
             DeliveryCreateDTO.Item item = dto.getItems().get(i);
             BigDecimal outWeight = item.getOutWeight() != null ? item.getOutWeight()
-                    : (f.getActualWeight() != null ? f.getActualWeight() : BigDecimal.ZERO);
+                    : DeliveryStockPolicy.availableWeight(f);
             validateOutWeight(f, outWeight);
             totalWeight = totalWeight.add(outWeight);
 
@@ -286,7 +290,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             insertDeliveryDetail(d);
         }
 
-        if (blockAction == BLOCK_RELEASE) {
+        if (blockAction == DeliverySettlementBlockPolicy.ACTION_RELEASE) {
             operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                     deliveryOrder.getUuid(), deliveryOrder.getDeliveryNo(),
                     OperationLogService.ACTION_DELIVERY_RELEASE, null,
@@ -342,15 +346,16 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             throw new BusinessException("出库单没有明细，不可确认");
         }
         businessLockService.lockFinishRolls(details.stream().map(DeliveryDetail::getFinishUuid).toList());
-        // 逐件扣库存：成品须仍为已入库(2)，置为已出库(3)。
+        // 逐件扣库存：扣完才置为已出库，未扣完继续保留可出库余额。
         for (DeliveryDetail d : details) {
             FinishRoll f = finishRollMapper.selectById(d.getFinishUuid());
             if (f == null || f.getFinishStatus() == null
                     || f.getFinishStatus() != FINISH_STATUS_IN_STOCK) {
                 throw new BusinessException("成品状态已变更，不可出库：" + d.getFinishRollNo());
             }
-            updateFinishStatus(d.getFinishUuid(), FINISH_STATUS_IN_STOCK, FINISH_STATUS_OUT);
+            confirmFinishStock(f, d);
         }
+        updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED);
 
         order.setDeliveryStatus(DELIVERY_STATUS_OUT);
         order.setSignUser(dto == null ? null : dto.getSignUser());
@@ -382,12 +387,12 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         ensureOrdersNotSettled(details);
         for (DeliveryDetail detail : details) {
             FinishRoll finish = finishRollMapper.selectById(detail.getFinishUuid());
-            if (finish == null || finish.getFinishStatus() == null
-                    || finish.getFinishStatus() != FINISH_STATUS_OUT) {
+            if (!isReturnableFinish(finish)) {
                 throw new BusinessException("成品状态已变更，不可回退：" + detail.getFinishRollNo());
             }
-            updateFinishStatus(detail.getFinishUuid(), FINISH_STATUS_OUT, FINISH_STATUS_IN_STOCK);
+            rollbackFinishStock(finish, detail);
         }
+        updateDetailStockLocks(details, STOCK_LOCK_RELEASED, STOCK_LOCK_ACTIVE);
         String rollbackReason = dto.getReason().trim();
         String rollbackOperator = currentOperator();
         LocalDateTime rollbackTime = LocalDateTime.now();
@@ -424,7 +429,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 .collect(Collectors.toSet());
         Set<String> requestFinishUuids = new HashSet<>();
         List<String> lockedFinishUuids = pendingDeliveryFinishUuids();
-        boolean hasCashOrder = false;
+        Set<String> cashOrderUuids = new LinkedHashSet<>();
         List<DeliveryDetail> appendDetails = new ArrayList<>(dto.getItems().size());
 
         for (DeliveryAppendItemsDTO.Item item : dto.getItems()) {
@@ -449,16 +454,15 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 throw new BusinessException("成品不属于该出库单客户：" + finish.getFinishRollNo());
             }
             if (processOrder.getSettleType() != null && processOrder.getSettleType() == SETTLE_TYPE_CASH) {
-                hasCashOrder = true;
+                cashOrderUuids.add(processOrder.getUuid());
             }
             appendDetails.add(buildDeliveryDetail(finish, item));
         }
 
-        if (hasCashOrder && hasUnsettledCash(order.getCustomerUuid())) {
-            if (!dto.isForceRelease()) {
-                throw new BusinessException("次结加工单存在未结清款项，禁止追加出库");
-            }
-            order.setSettleBlockAction(BLOCK_RELEASE);
+        int blockAction = settlementBlockPolicy.resolveAction(
+                cashSettlementGuard.hasUnsettledCashOrders(cashOrderUuids), dto.isForceRelease(), "追加出库");
+        if (blockAction == DeliverySettlementBlockPolicy.ACTION_RELEASE) {
+            order.setSettleBlockAction(DeliverySettlementBlockPolicy.ACTION_RELEASE);
             operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                     order.getUuid(), order.getDeliveryNo(),
                     OperationLogService.ACTION_DELIVERY_RELEASE, null,
@@ -568,6 +572,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             row.put("finish_diameter", item.getFinishDiameter());
             row.put("finish_core_diameter", item.getFinishCoreDiameter());
             row.put("actual_weight", item.getActualWeight());
+            row.put("remaining_weight", item.getRemainingWeight());
             row.put("out_weight", item.getOutWeight());
             row.put("source_type", item.getSourceType());
             row.put("finish_status", item.getFinishStatus());
@@ -803,7 +808,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
     private DeliveryDetail buildDeliveryDetail(FinishRoll finish, DeliveryAppendItemsDTO.Item item) {
         BigDecimal outWeight = item.getOutWeight() != null ? item.getOutWeight()
-                : (finish.getActualWeight() != null ? finish.getActualWeight() : BigDecimal.ZERO);
+                : DeliveryStockPolicy.availableWeight(finish);
         validateOutWeight(finish, outWeight);
         DeliveryDetail detail = new DeliveryDetail();
         detail.setFinishUuid(finish.getUuid());
@@ -816,6 +821,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     private void insertDeliveryDetail(DeliveryDetail detail) {
+        detail.setStockLockStatus(STOCK_LOCK_ACTIVE);
         try {
             ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.insert(detail));
         } catch (DuplicateKeyException e) {
@@ -824,14 +830,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     private void validateOutWeight(FinishRoll finish, BigDecimal outWeight) {
-        if (outWeight == null || outWeight.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException("出库重量必须大于 0：" + finish.getFinishRollNo());
-        }
-        BigDecimal actualWeight = finish.getActualWeight();
-        if (actualWeight != null && actualWeight.compareTo(BigDecimal.ZERO) > 0
-                && outWeight.compareTo(actualWeight) > 0) {
-            throw new BusinessException("出库重量不能大于件重：" + finish.getFinishRollNo());
-        }
+        DeliveryStockPolicy.validateOutWeight(finish, outWeight);
     }
 
     private Map<String, FinishRoll> loadFinishByUuid(List<DeliveryDetail> details) {
@@ -1053,6 +1052,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         vo.setFinishDiameter(finish == null ? null : finish.getFinishDiameter());
         vo.setFinishCoreDiameter(finish == null ? null : finish.getFinishCoreDiameter());
         vo.setActualWeight(finish == null ? null : finish.getActualWeight());
+        vo.setRemainingWeight(finish == null ? null : DeliveryStockPolicy.availableWeight(finish));
         vo.setOutWeight(detail.getOutWeight());
         vo.setSourceType(finish == null ? null : finish.getSourceType());
         vo.setFinishStatus(finish == null ? null : finish.getFinishStatus());
@@ -1066,6 +1066,21 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         vo.setFinishRemark(finish == null ? null : finish.getRemark());
         vo.setActualRemark(finish == null ? null : finish.getActualRemark());
         return vo;
+    }
+
+    private Set<String> cashOrderUuids(Iterable<ProcessOrder> orders) {
+        Set<String> orderUuids = new LinkedHashSet<>();
+        for (ProcessOrder order : orders) {
+            if (order.getSettleType() != null && order.getSettleType() == SETTLE_TYPE_CASH) {
+                orderUuids.add(order.getUuid());
+            }
+        }
+        return orderUuids;
+    }
+
+    private boolean canDeliveryProcessOrder(ProcessOrder order) {
+        Integer status = order.getOrderStatus();
+        return status != null && (status == ORDER_STATUS_FINISHED || status == ORDER_STATUS_SETTLED);
     }
 
     private void ensureOrdersNotSettled(List<DeliveryDetail> details) {
@@ -1262,6 +1277,60 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                         .setSql("version = version + 1")));
     }
 
+    private void confirmFinishStock(FinishRoll finish, DeliveryDetail detail) {
+        BigDecimal remaining = DeliveryStockPolicy.remainingAfterConfirm(finish, detail.getOutWeight());
+        int nextStatus = remaining.compareTo(BigDecimal.ZERO) > 0 ? FINISH_STATUS_IN_STOCK : FINISH_STATUS_OUT;
+        ConcurrencyGuard.requireRowUpdated(finishRollMapper.update(null,
+                new LambdaUpdateWrapper<FinishRoll>()
+                        .eq(FinishRoll::getUuid, finish.getUuid())
+                        .eq(FinishRoll::getFinishStatus, FINISH_STATUS_IN_STOCK)
+                        .set(FinishRoll::getRemainingWeight, remaining)
+                        .set(FinishRoll::getFinishStatus, nextStatus)
+                        .set(FinishRoll::getUpdateTime, LocalDateTime.now())
+                        .set(FinishRoll::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
+    }
+
+    private void rollbackFinishStock(FinishRoll finish, DeliveryDetail detail) {
+        BigDecimal remaining = DeliveryStockPolicy.remainingAfterRollback(finish, detail.getOutWeight());
+        ConcurrencyGuard.requireRowUpdated(finishRollMapper.update(null,
+                new LambdaUpdateWrapper<FinishRoll>()
+                        .eq(FinishRoll::getUuid, finish.getUuid())
+                        .eq(FinishRoll::getFinishStatus, finish.getFinishStatus())
+                        .set(FinishRoll::getRemainingWeight, remaining)
+                        .set(FinishRoll::getFinishStatus, FINISH_STATUS_IN_STOCK)
+                        .set(FinishRoll::getUpdateTime, LocalDateTime.now())
+                        .set(FinishRoll::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
+    }
+
+    private boolean isReturnableFinish(FinishRoll finish) {
+        return finish != null && finish.getFinishStatus() != null
+                && (finish.getFinishStatus() == FINISH_STATUS_IN_STOCK
+                || finish.getFinishStatus() == FINISH_STATUS_OUT);
+    }
+
+    private void updateDetailStockLocks(List<DeliveryDetail> details, int fromStatus, int toStatus) {
+        List<String> detailUuids = details.stream().map(DeliveryDetail::getUuid).toList();
+        if (detailUuids.isEmpty()) {
+            return;
+        }
+        try {
+            int updated = deliveryDetailMapper.update(null, new LambdaUpdateWrapper<DeliveryDetail>()
+                    .in(DeliveryDetail::getUuid, detailUuids)
+                    .eq(DeliveryDetail::getStockLockStatus, fromStatus)
+                    .set(DeliveryDetail::getStockLockStatus, toStatus)
+                    .set(DeliveryDetail::getUpdateTime, LocalDateTime.now())
+                    .set(DeliveryDetail::getUpdateBy, currentOperator())
+                    .setSql("version = version + 1"));
+            if (updated != detailUuids.size()) {
+                throw new BusinessException(ErrorCode.E004, "出库明细库存占用状态已变化，请刷新后重试");
+            }
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException(ErrorCode.E004, "成品已被其他待出库单占用，不可回退");
+        }
+    }
+
     private void updateDeliveryForConfirm(DeliveryOrder order) {
         ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null,
                 new LambdaUpdateWrapper<DeliveryOrder>()
@@ -1315,24 +1384,10 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         return value == null ? BigDecimal.ZERO : value;
     }
 
-    private boolean hasUnsettledCash(String customerUuid) {
-        long unsettled = settleOrderMapper.selectCount(
-                new LambdaQueryWrapper<SettleOrder>()
-                        .eq(SettleOrder::getCustomerUuid, customerUuid)
-                        .in(SettleOrder::getSettleStatus, SETTLE_STATUS_PENDING, SETTLE_STATUS_PARTIAL));
-        return unsettled > 0;
-    }
-
     private List<String> pendingDeliveryFinishUuids() {
-        List<DeliveryOrder> pendingOrders = list(new LambdaQueryWrapper<DeliveryOrder>()
-                .eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING));
-        if (pendingOrders.isEmpty()) {
-            return List.of();
-        }
-        List<String> deliveryUuids = pendingOrders.stream().map(DeliveryOrder::getUuid).toList();
         List<DeliveryDetail> details = deliveryDetailMapper.selectList(
                 new LambdaQueryWrapper<DeliveryDetail>()
-                        .in(DeliveryDetail::getDeliveryUuid, deliveryUuids));
+                        .eq(DeliveryDetail::getStockLockStatus, STOCK_LOCK_ACTIVE));
         return details.stream().map(DeliveryDetail::getFinishUuid).toList();
     }
 

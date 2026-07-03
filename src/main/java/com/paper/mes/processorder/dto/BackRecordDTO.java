@@ -33,4 +33,7 @@ public class BackRecordDTO {
 
     @Valid
     private List<BackRecordFinishDTO> finishes;
+
+    @Valid
+    private List<BackRecordStepDTO> steps;
 }

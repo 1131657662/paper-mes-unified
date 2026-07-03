@@ -1,11 +1,12 @@
-/** 加工单状态字典：1待下发 2加工中 3待回录 4已完成 5已结算。 */
+/** 加工单状态字典：0草稿 1待下发 2加工中 3待回录 4已完成 5已结算 6已作废。 */
 export const ORDER_STATUS: Record<number, { text: string; color: string }> = {
   0: { text: '草稿', color: 'default' },
-  1: { text: '待下发', color: 'default' },
+  1: { text: '待下发', color: 'orange' },
   2: { text: '加工中', color: 'processing' },
-  3: { text: '待回录', color: 'warning' },
+  3: { text: '待回录', color: 'red' },
   4: { text: '已完成', color: 'success' },
-  5: { text: '已结算', color: 'cyan' },
+  5: { text: '已结算', color: 'default' },
+  6: { text: '已作废', color: 'default' },
 }
 
 /** 优先级字典：1普通 2加急 3特急。 */
@@ -46,22 +47,25 @@ export const STEP_TYPE: Record<number, string> = { 1: '锯纸', 2: '复卷' }
 
 /**
  * 加工单状态机合法流转目标（来自后端 OrderStatus）。
- * 1→2；2→3；3→4或3→1(回退)；4→5或4→3(回退)；5终态。
+ * 1→2或1→0(回退)；2→3或2→1(回退)；3→4或3→1(回退)；4→5或4→3(回退)；5终态。
  */
 export const ORDER_STATUS_TRANSITIONS: Record<number, number[]> = {
   0: [1],
-  1: [2],
-  2: [3],
+  1: [2, 0],
+  2: [3, 1],
   3: [4, 1],
   4: [5, 3],
   5: [],
+  6: [],
 }
 
 /** from→to 的流转动作文案，驱动操作列按钮。 */
 export const TRANSITION_LABEL: Record<string, string> = {
   '0-1': '提交',
   '1-2': '下发',
+  '1-0': '回退草稿',
   '2-3': '转待回录',
+  '2-1': '回退待下发',
   '3-4': '完成回录',
   '3-1': '回退待下发',
   '4-5': '结算',

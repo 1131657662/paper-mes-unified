@@ -1,6 +1,7 @@
 import { Button, Tag, Typography } from 'antd'
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import { formatKg } from '../../../features/processOrderDetail/orderDetailUtils'
+import { formatOptionalKg } from '../../../utils/numberFormatters'
 import type { OriginalRoll } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import { buildWorkItemMetrics, workItemStatus } from './backRecordWorkbenchUtils'
@@ -75,7 +76,7 @@ function RollNavItem({
         <span>{mode}</span>
         {item.roll && <span>{formatKg((item.roll.rollWeight ?? 0) * (item.roll.pieceNum ?? 1))}</span>}
         <span>{item.finishes.filter(({ finish }) => finish.isSpare !== 1).length} 件成品</span>
-        {shouldShowDiff && metrics.diff != null && <span>差 {metrics.diff.toFixed(3)}kg</span>}
+        {shouldShowDiff && metrics.diff != null && <span>差 {formatOptionalKg(metrics.diff)}</span>}
       </span>
     </Button>
   )

@@ -7,7 +7,7 @@
         o.is_deleted = 0
         <choose>
             <when test="q.orderStatus != null">AND o.order_status = #{q.orderStatus}</when>
-            <otherwise>AND o.order_status &gt;= 4</otherwise>
+            <otherwise>AND o.order_status IN (4, 5)</otherwise>
         </choose>
         <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
         <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
@@ -130,9 +130,11 @@
                            SUM(COALESCE(process_amount, 0)) AS orderProcessAmount
                     FROM biz_original_roll
                     WHERE is_deleted = 0
+                      AND COALESCE(process_mode, 0) != 3
                     GROUP BY order_uuid
                 ) orderBase ON orderBase.order_uuid = r.order_uuid
                 WHERE r.is_deleted = 0
+                  AND COALESCE(r.process_mode, 0) != 3
                 <include refid="RollFilters"/>
             ) rb
             GROUP BY rb.order_uuid
@@ -202,6 +204,7 @@
                    SUM(COALESCE(r.total_loss_weight, 0)) AS lossWeight
             FROM biz_original_roll r
             WHERE r.is_deleted = 0
+              AND COALESCE(r.process_mode, 0) != 3
             <include refid="RollFilters"/>
             GROUP BY r.order_uuid
         ) orig ON orig.order_uuid = o.uuid
@@ -213,6 +216,7 @@
             WHERE f.is_deleted = 0
               AND COALESCE(f.is_spare, 0) = 0
               AND COALESCE(f.roll_no_status, 1) != 3
+              AND COALESCE(f.finish_status, 0) != 4
               <if test="q.paperName != null and q.paperName != ''">
                   AND f.paper_name LIKE CONCAT('%', #{q.paperName}, '%')
               </if>
@@ -355,6 +359,7 @@
                                    SUM(COALESCE(process_amount, 0)) AS orderProcessAmount
                             FROM biz_original_roll
                             WHERE is_deleted = 0
+                              AND COALESCE(process_mode, 0) != 3
                             GROUP BY order_uuid
                         ) orderBase ON orderBase.order_uuid = r.order_uuid
                         LEFT JOIN (
@@ -379,11 +384,13 @@
                              AND f.is_deleted = 0
                              AND COALESCE(f.is_spare, 0) = 0
                              AND COALESCE(f.roll_no_status, 1) != 3
+                             AND COALESCE(f.finish_status, 0) != 4
                             WHERE rel.is_deleted = 0
                             GROUP BY rel.original_uuid
                         ) fin ON fin.original_uuid = r.uuid
                         <where>
                             r.is_deleted = 0
+                            AND COALESCE(r.process_mode, 0) != 3
                             AND <include refid="OrderFilters"/>
                             <include refid="RollFilters"/>
                         </where>
@@ -474,6 +481,7 @@
                                        WHEN 3 THEN '待回录'
                                        WHEN 4 THEN '已完成'
                                        WHEN 5 THEN '已结算'
+                                       WHEN 6 THEN '已作废'
                                        ELSE CAST(oi.order_status AS CHAR)
                                    END AS dimensionName
                                </when>
@@ -492,6 +500,7 @@
                            SUM(COALESCE(r.total_loss_weight, 0)) AS lossWeight
                     FROM biz_original_roll r
                     WHERE r.is_deleted = 0
+                      AND COALESCE(r.process_mode, 0) != 3
                     <include refid="RollFilters"/>
                     GROUP BY r.order_uuid
                 ) orig ON orig.order_uuid = o.uuid
@@ -503,6 +512,7 @@
                     WHERE f.is_deleted = 0
                       AND COALESCE(f.is_spare, 0) = 0
                       AND COALESCE(f.roll_no_status, 1) != 3
+                      AND COALESCE(f.finish_status, 0) != 4
                     GROUP BY f.order_uuid
                 ) fin ON fin.order_uuid = o.uuid
                 LEFT JOIN (
@@ -647,120 +657,6 @@
             <include refid="OrderFilters"/>
         </where>
         ORDER BY o.order_date DESC, o.order_no DESC
-    </select>
-
-    <select id="monthlySummary" resultType="com.paper.mes.report.dto.MonthlyReportVO">
-        SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month,
-               COUNT(*) AS orderCount,
-               COALESCE(SUM(orig.originalWeight), 0) / 1000 AS totalTon,
-               COALESCE(SUM(step.totalKnife), 0) AS totalKnife,
-               COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount,
-               COALESCE(SUM(fin.finishWeight), 0) AS totalFinishWeight
-        FROM biz_process_order o
-        LEFT JOIN (
-            SELECT order_uuid,
-                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
-            FROM biz_original_roll
-            WHERE is_deleted = 0
-            GROUP BY order_uuid
-        ) orig ON orig.order_uuid = o.uuid
-        LEFT JOIN (
-            SELECT order_uuid,
-                   SUM(COALESCE(actual_weight, estimate_weight, 0)) AS finishWeight
-            FROM biz_finish_roll
-            WHERE is_deleted = 0 AND COALESCE(is_spare, 0) = 0 AND COALESCE(roll_no_status, 1) != 3
-            GROUP BY order_uuid
-        ) fin ON fin.order_uuid = o.uuid
-        LEFT JOIN (
-            SELECT order_uuid,
-                   SUM(COALESCE(knife_count, 0)) AS totalKnife
-            FROM biz_process_step
-            WHERE is_deleted = 0 AND step_type = 1
-            GROUP BY order_uuid
-        ) step ON step.order_uuid = o.uuid
-        LEFT JOIN (
-            <include refid="SettleAllocationByOrder"/>
-        ) settle ON settle.order_uuid = o.uuid
-        <where>
-            <include refid="OrderFilters"/>
-        </where>
-        GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
-        ORDER BY month
-    </select>
-
-    <select id="customerSummary" resultType="com.paper.mes.report.dto.CustomerReportVO">
-        SELECT o.customer_uuid AS customerUuid,
-               o.customer_name AS customerName,
-               COUNT(*) AS orderCount,
-               COALESCE(SUM(orig.originalWeight), 0) / 1000 AS totalTon,
-               COALESCE(SUM(step.totalKnife), 0) AS totalKnife,
-               COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS totalAmount
-        FROM biz_process_order o
-        LEFT JOIN (
-            SELECT order_uuid,
-                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
-            FROM biz_original_roll
-            WHERE is_deleted = 0
-            GROUP BY order_uuid
-        ) orig ON orig.order_uuid = o.uuid
-        LEFT JOIN (
-            SELECT order_uuid,
-                   SUM(COALESCE(knife_count, 0)) AS totalKnife
-            FROM biz_process_step
-            WHERE is_deleted = 0 AND step_type = 1
-            GROUP BY order_uuid
-        ) step ON step.order_uuid = o.uuid
-        LEFT JOIN (
-            <include refid="SettleAllocationByOrder"/>
-        ) settle ON settle.order_uuid = o.uuid
-        <where>
-            <include refid="OrderFilters"/>
-        </where>
-        GROUP BY o.customer_uuid, o.customer_name
-        ORDER BY totalAmount DESC
-    </select>
-
-    <select id="lossAnalysis" resultType="com.paper.mes.report.dto.LossReportVO">
-        SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month,
-               COUNT(*) AS rollCount,
-               COALESCE(SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)), 0) AS totalOriginalWeight,
-               COALESCE(SUM(r.total_loss_weight), 0) AS totalLossWeight,
-               COALESCE(AVG(r.total_loss_ratio), 0) AS avgLossRatio
-        FROM biz_original_roll r
-        JOIN biz_process_order o
-          ON r.order_uuid = o.uuid AND o.is_deleted = 0 AND o.order_status &gt;= 4
-        <where>
-            r.is_deleted = 0
-            AND <include refid="OrderFilters"/>
-            <include refid="RollFilters"/>
-        </where>
-        GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
-        ORDER BY month
-    </select>
-
-    <select id="machineOutput" resultType="com.paper.mes.report.dto.MachineReportVO">
-        SELECT r.machine_uuid AS machineUuid,
-               m.machine_name AS machineName,
-               COUNT(*) AS rollCount,
-               COALESCE(SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)), 0) AS totalOutputWeight,
-               COALESCE(SUM(sk.kc), 0) AS totalKnife,
-               COALESCE(SUM(r.total_loss_weight), 0) AS totalLossWeight
-        FROM biz_original_roll r
-        JOIN sys_machine m ON r.machine_uuid = m.uuid
-        JOIN biz_process_order o ON r.order_uuid = o.uuid AND o.is_deleted = 0 AND o.order_status &gt;= 4
-        LEFT JOIN (
-            SELECT original_uuid, SUM(knife_count) AS kc
-            FROM biz_process_step
-            WHERE step_type = 1 AND is_deleted = 0
-            GROUP BY original_uuid
-        ) sk ON sk.original_uuid = r.uuid
-        <where>
-            r.is_deleted = 0 AND r.machine_uuid IS NOT NULL
-            AND <include refid="OrderFilters"/>
-            <include refid="RollFilters"/>
-        </where>
-        GROUP BY r.machine_uuid, m.machine_name
-        ORDER BY totalOutputWeight DESC
     </select>
 
 </mapper>

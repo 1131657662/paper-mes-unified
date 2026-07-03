@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Empty } from 'antd'
+import { useState, type KeyboardEvent } from 'react'
+import { Empty, message } from 'antd'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import BackRecordActivePanel from './BackRecordActivePanel'
 import BackRecordClosurePanel from './BackRecordClosurePanel'
 import BackRecordRollNavigator from './BackRecordRollNavigator'
+import { focusFirstBackRecordField } from './backRecordKeyboard'
 import { buildBackRecordWorkbench } from './backRecordWorkbenchUtils'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 
@@ -22,20 +23,47 @@ export default function BackRecordWorkbench({ detail, values, onProcessChange }:
   if (!activeItem) return <Empty description="暂无可回录母卷" />
 
   const activeIndex = workbench.items.findIndex((item) => item.key === activeItem.key)
+  const selectIndex = (index: number) => {
+    const target = workbench.items[index]
+    if (!target) return
+    setActiveKey(target.key)
+    window.setTimeout(focusFirstBackRecordField, 0)
+  }
+  const goPrevious = () => {
+    if (activeIndex <= 0) {
+      message.info('已经是第一项')
+      return
+    }
+    selectIndex(activeIndex - 1)
+  }
   const goNext = () => {
-    const next = workbench.items[activeIndex + 1] ?? workbench.items[0]
-    setActiveKey(next.key)
+    if (activeIndex >= workbench.items.length - 1) {
+      message.info('已经是最后一项')
+      return
+    }
+    selectIndex(activeIndex + 1)
+  }
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      goPrevious()
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      goNext()
+    }
   }
 
   return (
-    <div className="back-record-workbench">
+    <div className="back-record-workbench" onKeyDown={handleKeyDown}>
       <BackRecordRollNavigator
         items={workbench.items}
         activeKey={activeItem.key}
         values={values}
         onSelect={setActiveKey}
       />
-      <BackRecordActivePanel item={activeItem} onNext={goNext} onProcessChange={onProcessChange} />
+      <BackRecordActivePanel item={activeItem} onNext={goNext} onPrevious={goPrevious} onProcessChange={onProcessChange} />
       <BackRecordClosurePanel item={activeItem} items={workbench.items} values={values} />
     </div>
   )

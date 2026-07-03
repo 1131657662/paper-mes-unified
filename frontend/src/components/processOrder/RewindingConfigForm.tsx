@@ -5,7 +5,7 @@ import { previewRewindPlan } from '../../api/processOrder'
 import MesTooltip from '../biz/MesTooltip'
 import TooltipText from '../biz/TooltipText'
 import LayoutBar from './LayoutBar'
-import PlanPreviewPanel from './PlanPreviewPanel'
+import FinishConfigPlanPreviewPanel from './FinishConfigPlanPreviewPanel'
 import type {
   FinishConfigSaveDTO,
   FinishConfigSpecDTO,
@@ -15,6 +15,7 @@ import type {
   RewindPlanPreviewDTO,
   RewindSegmentDTO,
 } from '../../types/processOrder'
+import { formatTon } from '../../utils/numberFormatters'
 
 interface Props {
   orderUuid: string
@@ -105,6 +106,7 @@ const buildSegmentFromDto = (
       width: item.width,
       quantity: item.quantity ?? 1,
       itemType: item.itemType ?? 'FINISH',
+      layers: item.layers?.map((layer) => ({ ...layer })),
     }))
     : [defaultLayoutItem(rewindMode === 2 ? originalWidth : Math.floor(originalWidth / 2) || 500)],
 })
@@ -129,7 +131,12 @@ const toPreviewDto = (rewindMode: number, spareCount: number, segments: SegmentF
     segmentRatio: segments.length === 1 ? 1 : (segment.segmentRatio ?? 0) / 100,
     targetDiameter: toInch(segment.targetDiameter),
     sources: sources.map(({ originalUuid, shareRatio }) => ({ originalUuid, shareRatio })),
-    layoutItems: layoutItems.map(({ key: _itemKey, ...item }) => item),
+    layoutItems: layoutItems.map(({ key: _itemKey, ...item }) => ({
+      ...item,
+      layers: rewindMode === 4 && item.itemType !== 'TRIM'
+        ? item.layers?.length ? item.layers : [{ outDiameter: toInch(segment.targetDiameter), coreDiameter: segment.finishCoreDiameter }]
+        : item.layers,
+    })),
   })),
 })
 
@@ -141,6 +148,7 @@ const toFinishSpecs = (preview: FinishPreviewVO | null, segments: SegmentForm[])
       finishDiameter: finish.finishDiameter,
       finishCoreDiameter: finish.finishCoreDiameter,
       estimateWeight: finish.estimateWeight,
+      layers: finish.layers,
     }))
   }
 
@@ -163,7 +171,7 @@ const toFinishSpecs = (preview: FinishPreviewVO | null, segments: SegmentForm[])
 export default function RewindingConfigForm({ orderUuid, roll, originalRolls, processMode, config, onChange }: Props) {
   const [rewindMode, setRewindMode] = useState(config?.rewindMode ?? 2)
   const [segments, setSegments] = useState<SegmentForm[]>(buildInitialSegments(roll, config))
-  const [unitPrice, setUnitPrice] = useState(config?.unitPrice ?? 200)
+  const [unitPrice, setUnitPrice] = useState<number | undefined>(config?.unitPrice)
   const [spareCount, setSpareCount] = useState(config?.spareCount ?? 0)
   const [preview, setPreview] = useState<FinishPreviewVO | null>(null)
   const [previewing, setPreviewing] = useState(false)
@@ -172,7 +180,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
   const isStandardMode = processMode === 1
   const isOnSiteMode = processMode === 2
   const totalFinishCount = preview?.finishCount ?? toFinishSpecs(null, segments).length
-  const tonnage = (((roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)) / 1000).toFixed(3)
+  const tonnage = formatTon(((roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)) / 1000)
   const sourceRollOptions = originalRolls.map((sourceRoll, index) => ({
     label: `原纸${index + 1} ${sourceRoll.rollNo || sourceRoll.paperName || ''}`,
     value: sourceRoll.uuid,
@@ -544,14 +552,14 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                   addonBefore="备用卷号"
                   addonAfter="个"
                 />
-                <Typography.Text type="secondary">母卷吨位：{tonnage} 吨</Typography.Text>
+                <Typography.Text type="secondary">母卷吨位：{tonnage}</Typography.Text>
               </Space>
             </Space>
           </Col>
 
           <Col span={10}>
             <div style={{ border: '1px solid #f0f0f0', borderRadius: 6, padding: 12, minHeight: 420 }}>
-              <PlanPreviewPanel
+              <FinishConfigPlanPreviewPanel
                 segments={previewSegments}
                 originalWidth={roll.originalWidth}
                 preview={preview}

@@ -2,7 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { message } from 'antd'
 import type { DraftOrderBaseDTO, OriginalRollImportPreviewVO, PlanPreviewVO, ProcessOrderSubmitVO, ProcessPlanDTO } from '../../../types/processOrder'
 import { hydrateDraftState, isRollReadyForSave, plansForRolls, plansFromBatch, previewsFromBatch, rebasePlanForRoll } from '../createOrderState'
-import { attachSavedUuids, defaultPlanForRoll, newRollDraft, normalizeBaseInfo, toRollDto } from '../draftMappers'
+import {
+  applyLegacyPlanPriceDefaults,
+  attachSavedUuids,
+  defaultPlanForRoll,
+  newRollDraft,
+  normalizeBaseInfo,
+  toRollDto,
+} from '../draftMappers'
 import { applyDefaultMachineToPlan, applyDefaultMachinesToRolls } from '../machineDefaults'
 import { mergedSourceUuidSet } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
@@ -37,8 +44,15 @@ export function useCreateOrderPage(draftUuid?: string) {
   const { data: customerPage } = useCustomers()
   const { data: warehousePage } = useWarehouses()
   const { data: machinePage } = useMachines()
+  const customers = customerPage?.records ?? []
+  const selectedCustomer = customers.find((item) => item.uuid === baseInfo?.customerUuid)
   const machines = machinePage?.records ?? []
   const { value: defaultSpareCount } = useNumberConfigValue(CONFIG_KEYS.spareRollNoCount, 0)
+  const defaultPlanOptions = {
+    spareCount: defaultSpareCount,
+    sawPrice: selectedCustomer?.sawPrice,
+    rewindPrice: selectedCustomer?.rewindPrice,
+  }
   const { mutateAsync: createDraft, isPending: creatingDraft } = useCreateDraft()
   const { mutateAsync: saveBaseInfo, isPending: savingBase } = useSaveBaseInfo()
   const { mutateAsync: saveProgress } = useSaveProgress()
@@ -87,7 +101,7 @@ export function useCreateOrderPage(draftUuid?: string) {
     const uuids = await replaceRolls({ uuid: orderUuid, rolls: rollsWithMachines.map(toRollDto) })
     const savedRolls = attachSavedUuids(rollsWithMachines, uuids)
     setRolls(savedRolls)
-    setPlans(plansForRolls(savedRolls, {}, { spareCount: defaultSpareCount }))
+    setPlans(plansForRolls(savedRolls, {}, defaultPlanOptions))
     setPreviews({})
     setSelectedId(savedRolls[0]?.localId)
     await moveToStep(2)
@@ -99,7 +113,7 @@ export function useCreateOrderPage(draftUuid?: string) {
     await Promise.all(
       rollsWithMachines.filter((roll) => roll.uuid).map((roll) => updateRoll({ rollUuid: roll.uuid!, dto: toRollDto(roll) })),
     )
-    setPlans(plansForRolls(rollsWithMachines, plans, { spareCount: defaultSpareCount }))
+    setPlans(plansForRolls(rollsWithMachines, plans, defaultPlanOptions))
     setPreviews({})
     await moveToStep(3)
   }
@@ -118,7 +132,8 @@ export function useCreateOrderPage(draftUuid?: string) {
 
   const saveRollPlan = async (roll: RollDraft, plan: ProcessPlanDTO, notify = false) => {
     if (!orderUuid || !roll.uuid) return
-    const nextPlan = applyDefaultMachineToPlan(rebasePlanForRoll(plan, roll), machines)
+    const pricedPlan = applyLegacyPlanPriceDefaults(plan, defaultPlanOptions)
+    const nextPlan = applyDefaultMachineToPlan(rebasePlanForRoll(pricedPlan, roll), machines)
     const preview = await savePlan({
       orderUuid,
       rollUuid: roll.uuid,
@@ -131,7 +146,8 @@ export function useCreateOrderPage(draftUuid?: string) {
 
   const handlePreviewPlan = async (roll: RollDraft, plan: ProcessPlanDTO) => {
     if (!orderUuid || !roll.uuid) return
-    const nextPlan = applyDefaultMachineToPlan(rebasePlanForRoll(plan, roll), machines)
+    const pricedPlan = applyLegacyPlanPriceDefaults(plan, defaultPlanOptions)
+    const nextPlan = applyDefaultMachineToPlan(rebasePlanForRoll(pricedPlan, roll), machines)
     const preview = await previewPlan({
       orderUuid,
       request: { originalUuid: roll.uuid, plan: nextPlan },
@@ -147,7 +163,7 @@ export function useCreateOrderPage(draftUuid?: string) {
   const handleSavePlanBatch = async (targetRolls: RollDraft[], plan: ProcessPlanDTO) => {
     if (!orderUuid) return
     const savedRolls = targetRolls.filter((roll) => roll.uuid)
-    const batchPlan = applyDefaultMachineToPlan(plan, machines)
+    const batchPlan = applyDefaultMachineToPlan(applyLegacyPlanPriceDefaults(plan, defaultPlanOptions), machines)
     const result = await savePlanBatch({
       orderUuid,
       dto: { originalUuids: savedRolls.map((roll) => roll.uuid!), plan: batchPlan },
@@ -161,7 +177,7 @@ export function useCreateOrderPage(draftUuid?: string) {
     const mergedSourceUuids = mergedSourceUuidSet(rolls, plans)
     for (const roll of rolls.filter((item) => item.processMode !== 3)) {
       if (roll.uuid && mergedSourceUuids.has(roll.uuid)) continue
-      await saveRollPlan(roll, plans[roll.localId] ?? defaultPlanForRoll(roll, { spareCount: defaultSpareCount }))
+      await saveRollPlan(roll, plans[roll.localId] ?? defaultPlanForRoll(roll, defaultPlanOptions))
     }
     await moveToStep(4)
   }
@@ -177,6 +193,7 @@ export function useCreateOrderPage(draftUuid?: string) {
     baseInfo,
     current,
     defaultSpareCount,
+    defaultPlanOptions,
     loadingDraft,
     orderUuid,
     plans,
@@ -184,7 +201,7 @@ export function useCreateOrderPage(draftUuid?: string) {
     rolls,
     selectedId: selectedId ?? rolls[0]?.localId,
     submitResult,
-    customerOptions: toCustomerOptions(customerPage?.records ?? []),
+    customerOptions: toCustomerOptions(customers),
     warehouseOptions: toOptions(warehousePage?.records ?? [], 'warehouseName'),
     machines,
     creatingDraft,

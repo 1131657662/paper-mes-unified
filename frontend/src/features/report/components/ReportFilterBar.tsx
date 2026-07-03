@@ -58,7 +58,7 @@ export default function ReportFilterBar(props: Props) {
         layout="vertical"
         onFinish={props.onSubmit}
       >
-        <Form.Item label="统计周期" name="period">
+        <Form.Item label="统计周期（制单日期）" name="period">
           <RangePicker allowClear={false} />
         </Form.Item>
         <Form.Item label="汇总维度" name="dimension">
@@ -144,4 +144,5 @@ const statusOptions = [
   { value: 3, label: '待回录' },
   { value: 4, label: '已完成' },
   { value: 5, label: '已结算' },
+  { value: 6, label: '已作废' },
 ]

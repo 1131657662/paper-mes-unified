@@ -83,7 +83,7 @@ public class ReportExportService {
     }
 
     private void writeDetails(Sheet sheet, List<ReportDetailVO> rows, CellStyle headerStyle) {
-        header(sheet, headerStyle, "加工单号", "日期", "客户", "纸品", "工艺", "状态", "结算",
+        header(sheet, headerStyle, "加工单号", "制单日期", "客户", "纸品", "工艺", "状态", "结算",
                 "开票", "原卷", "成品", "原纸吨位", "成品吨位", "损耗吨位", "损耗率%", "刀数",
                 "锯纸费", "复卷费", "加工费", "附加费", "应收合计", "已结算应收", "待结算应收", "有效已收", "已结算未收");
         int index = 1;

@@ -5,6 +5,7 @@ import type {
   ProcessPlanDTO,
 } from '../../types/processOrder'
 import {
+  applyLegacyPlanPriceDefaults,
   baseInfoFromOrder,
   defaultPlanForRoll,
   newRollDraft,
@@ -57,8 +58,8 @@ export function plansForRolls(
   return rolls.reduce<Record<string, ProcessPlanDTO>>((next, roll) => {
     const existing = currentPlans[roll.localId]
     next[roll.localId] = planMatchesRoll(existing, roll)
-      ? rebasePlanForRoll(existing, roll)
-      : defaultPlanForRoll(roll, { spareCount: options.spareCount })
+      ? rebasePlanForRoll(applyLegacyPlanPriceDefaults(existing, options), roll)
+      : defaultPlanForRoll(roll, options)
     return next
   }, {})
 }
@@ -113,4 +114,6 @@ function planMatchesRoll(plan: ProcessPlanDTO | undefined, roll: RollDraft) {
 
 interface PlansForRollsOptions {
   spareCount?: number
+  sawPrice?: number
+  rewindPrice?: number
 }

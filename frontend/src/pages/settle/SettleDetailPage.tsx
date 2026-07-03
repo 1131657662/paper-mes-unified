@@ -4,6 +4,7 @@ import { DeleteOutlined, DownloadOutlined, PrinterOutlined, WalletOutlined } fro
 import { useNavigate, useParams } from 'react-router-dom'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
+import { PERMISSIONS } from '../../constants/permissions'
 import { INVOICE_TYPE, SETTLE_STATUS, SETTLE_TYPE } from '../../constants/settle'
 import { useCancelReceive } from '../../features/settle/hooks/useCancelReceive'
 import { useExportSettle } from '../../features/settle/hooks/useExportSettle'
@@ -17,6 +18,7 @@ import SettleGroupedBill from './SettleGroupedBill'
 import SettlePrintSheet from './SettlePrintSheet'
 import { buildReceiveColumns, buildSettleDetailColumns } from './settleDetailColumns'
 import { useRef, useState } from 'react'
+import { useHasPermission } from '../../stores/authStore'
 import '../documentModule.css'
 
 export default function SettleDetailPage() {
@@ -25,6 +27,8 @@ export default function SettleDetailPage() {
   const [actionForm] = Form.useForm<{ reason: string }>()
   const [actionTarget, setActionTarget] = useState<SettleActionTarget | null>(null)
   const [receiveOpen, setReceiveOpen] = useState(false)
+  const canManageSettle = useHasPermission(PERMISSIONS.settleManage)
+  const canReceiveSettle = useHasPermission(PERMISSIONS.settleReceive)
   const printPreviewRef = useRef<HTMLDivElement>(null)
   const detailQuery = useSettleDetail(uuid)
   const cancelReceiveMutation = useCancelReceive()
@@ -36,11 +40,16 @@ export default function SettleDetailPage() {
   const hasActiveReceive = (detail?.receives ?? []).some((record) => record.recordStatus !== 2)
   const receiveTableColumns = buildReceiveColumns({
     cancelLoading: cancelReceiveMutation.isPending,
-    onCancelReceive: openCancelReceive,
+    onCancelReceive: canReceiveSettle ? openCancelReceive : undefined,
   })
 
   const handleExport = async () => {
-    if (uuid) await exportMutation.mutateAsync(uuid)
+    if (uuid) {
+      await exportMutation.mutateAsync({
+        documentNo: order?.settleNo,
+        uuid,
+      })
+    }
   }
 
   const handlePrint = () => {
@@ -52,6 +61,7 @@ export default function SettleDetailPage() {
     const values = await actionForm.validateFields()
     if (!uuid || !actionTarget) return
     if (actionTarget.type === 'cancelReceive') {
+      if (!canReceiveSettle) return
       await cancelReceiveMutation.mutateAsync({
         uuid,
         receiveUuid: actionTarget.record.uuid,
@@ -60,6 +70,7 @@ export default function SettleDetailPage() {
       message.success('收款已撤销')
       detailQuery.refetch()
     } else {
+      if (!canManageSettle) return
       await voidSettleMutation.mutateAsync({ uuid, data: values })
       message.success('结算单已作废')
       navigate('/settle-orders')
@@ -69,11 +80,13 @@ export default function SettleDetailPage() {
   }
 
   function openCancelReceive(record: ReceiveRecord) {
+    if (!canReceiveSettle) return
     actionForm.resetFields()
     setActionTarget({ type: 'cancelReceive', record })
   }
 
   function openVoidSettle() {
+    if (!canManageSettle) return
     actionForm.resetFields()
     setActionTarget({ type: 'voidSettle' })
   }
@@ -91,12 +104,12 @@ export default function SettleDetailPage() {
             <Button icon={<DownloadOutlined />} loading={exportMutation.isPending} onClick={handleExport}>
               导出 Excel
             </Button>
-            {!hasActiveReceive && (
+            {canManageSettle && !hasActiveReceive && (
               <Button danger icon={<DeleteOutlined />} onClick={openVoidSettle}>
                 作废结算单
               </Button>
             )}
-            {order.settleStatus !== 3 && (
+            {canReceiveSettle && order.settleStatus !== 3 && (
               <Button type="primary" icon={<WalletOutlined />} onClick={() => setReceiveOpen(true)}>
                 登记收款
               </Button>

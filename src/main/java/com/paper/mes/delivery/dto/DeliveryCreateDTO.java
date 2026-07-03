@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 出库单创建入参。勾选客户已入库成品合并出库；forceRelease 用于现结客户未结清时警告放行。
+ * 出库单创建入参。勾选客户已入库成品合并出库；forceRelease 保留给前端风险确认留痕。
  */
 @Data
 public class DeliveryCreateDTO {
@@ -28,7 +28,7 @@ public class DeliveryCreateDTO {
     private String containerNo;
     private String remark;
 
-    /** 现结客户存在未结清款项时，true 警告放行，false（默认）拦截。 */
+    /** 现结客户存在未结清款项时，前端确认后传 true；后端默认按配置警告放行或强制拦截。 */
     private boolean forceRelease;
 
     @NotEmpty(message = "出库成品不能为空")

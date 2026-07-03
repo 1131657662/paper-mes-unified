@@ -1,4 +1,5 @@
 import type { FinishProductionVO, RollProductionVO } from '../../../types/processOrder'
+import { formatKg, formatTon } from '../../../utils/numberFormatters'
 import type { FinishGroup } from './types'
 
 /* ---------- 通用格式化 ---------- */
@@ -16,7 +17,7 @@ export const REWIND_MODE: Record<number, string> = {
 }
 
 export const fmt = (v?: number, suffix = '') => (v == null ? '-' : `${v}${suffix}`)
-export const fmtKg = (v?: number) => fmt(v, 'kg')
+export const fmtKg = (v?: number) => (v == null ? '-' : formatKg(v))
 export const toDisplayDiameterMm = (value?: number) =>
   value == null ? undefined : value > 0 && value < 100 ? Math.round(value * 25.4) : value
 export const fmtDiameter = (value?: number, prefix = '') => {
@@ -105,7 +106,7 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
     const totalCount = groups.reduce((s, g) => s + g.count, 0)
     const totalWeight = groups.reduce((s, g) => s + g.totalEstimate, 0)
     if (totalCount > 0) {
-      const weightStr = totalWeight > 0 ? `，共 ${(totalWeight / 1000).toFixed(3)}吨` : ''
+      const weightStr = totalWeight > 0 ? `，共 ${formatTon(totalWeight / 1000)}` : ''
       mainDetails.push(`预估产成品 ${totalCount}件${weightStr}`)
     }
   }
@@ -148,7 +149,7 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
     const totalCount = groups.reduce((s, g) => s + g.count, 0) + spareCount
     const totalWeight = groups.reduce((s, g) => s + g.totalEstimate, 0)
     if (totalCount > 0) {
-      const weightStr = totalWeight > 0 ? `，共 ${(totalWeight / 1000).toFixed(3)}吨` : ''
+      const weightStr = totalWeight > 0 ? `，共 ${formatTon(totalWeight / 1000)}` : ''
       mainDetails.push(`预估产成品 ${totalCount}件${weightStr}`)
     }
   }
@@ -170,7 +171,7 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
       details.push(`切 ${step.knifeCount}刀`)
     }
     if (step.processWeight != null) {
-      details.push(`加工吨位 ${step.processWeight.toFixed(3)}吨`)
+      details.push(`加工吨位 ${formatTon(step.processWeight)}`)
     }
     if (step.unitPrice != null) {
       details.push(`单价 ¥${step.unitPrice}${step.stepType === 1 ? '/刀' : '/吨'}`)

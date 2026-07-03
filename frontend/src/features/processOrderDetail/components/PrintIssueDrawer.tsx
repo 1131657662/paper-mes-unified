@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Alert, Button, Descriptions, Drawer, Form, Input, Space, Tag, message } from 'antd'
 import { PrinterOutlined, SendOutlined } from '@ant-design/icons'
 import type { PrintResultVO, ProcessOrderDetailVO } from '../../../types/processOrder'
@@ -28,52 +29,81 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: P
   }
 
   return (
-    <Drawer
-      title={isReprint ? '补打加工单' : '打印预览并下发'}
-      rootClassName="print-issue-drawer-root"
-      className="print-issue-drawer"
-      width="88vw"
-      open={open}
-      onClose={onClose}
-      destroyOnHidden
-      extra={
-        <Space>
-          <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-            浏览器打印
-          </Button>
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            loading={isPrinting}
-            disabled={!!result}
-            onClick={handleIssue}
-          >
-            {isReprint ? '确认补打' : '确认下发'}
-          </Button>
-        </Space>
-      }
-    >
-      <div className="print-issue__content">
-        <div className="print-issue__screen-only">
-          <IssueNotice isReprint={isReprint} result={result} />
-        </div>
-        {isReprint && !result && (
-          <Form form={form} layout="vertical" className="print-issue__reason print-issue__screen-only">
-            <Form.Item
-              name="reason"
-              label="补打原因"
-              rules={[{ required: true, message: '补打必须填写原因' }]}
-            >
-              <Input.TextArea rows={2} placeholder="例如：车间单据污损，需要重新打印" />
-            </Form.Item>
-          </Form>
-        )}
-        <div className="print-issue__sheet-frame">
-          <PrintPreviewSheet detail={detail} />
-        </div>
-      </div>
-    </Drawer>
+    <>
+      <Drawer
+        title={isReprint ? '补打加工单' : '打印预览并下发'}
+        rootClassName="print-issue-drawer-root"
+        className="print-issue-drawer"
+        width="88vw"
+        open={open}
+        onClose={onClose}
+        destroyOnHidden
+        extra={<PrintActions isPrinting={isPrinting} isReprint={isReprint} result={result} onIssue={handleIssue} />}
+      >
+        <PrintDrawerContent detail={detail} form={form} isReprint={isReprint} result={result} />
+      </Drawer>
+      {open && createPortal(<PrintOnlySheet detail={detail} />, document.body)}
+    </>
   )
+}
+
+function PrintActions({ isPrinting, isReprint, result, onIssue }: ActionProps) {
+  return (
+    <Space>
+      <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+        浏览器打印
+      </Button>
+      <Button type="primary" icon={<SendOutlined />} loading={isPrinting} disabled={!!result} onClick={onIssue}>
+        {isReprint ? '确认补打' : '确认下发'}
+      </Button>
+    </Space>
+  )
+}
+
+function PrintDrawerContent({ detail, form, isReprint, result }: ContentProps) {
+  return (
+    <div className="print-issue__content">
+      <div className="print-issue__screen-only">
+        <IssueNotice isReprint={isReprint} result={result} />
+      </div>
+      {isReprint && !result && <ReprintReasonForm form={form} />}
+      <div className="print-issue__sheet-frame">
+        <PrintPreviewSheet detail={detail} />
+      </div>
+    </div>
+  )
+}
+
+function ReprintReasonForm({ form }: { form: ReturnType<typeof Form.useForm>[0] }) {
+  return (
+    <Form form={form} layout="vertical" className="print-issue__reason print-issue__screen-only">
+      <Form.Item name="reason" label="补打原因" rules={[{ required: true, message: '补打必须填写原因' }]}>
+        <Input.TextArea rows={2} placeholder="例如：车间单据污损，需要重新打印" />
+      </Form.Item>
+    </Form>
+  )
+}
+
+function PrintOnlySheet({ detail }: { detail: ProcessOrderDetailVO }) {
+  return (
+    <div className="print-issue-print-root">
+      <PrintPreviewSheet detail={detail} />
+    </div>
+  )
+}
+
+interface ActionProps {
+  isPrinting: boolean
+  isReprint: boolean
+  result: PrintResultVO | null
+  onIssue: () => void
+}
+
+interface ContentProps {
+  detail: ProcessOrderDetailVO
+  form: ReturnType<typeof Form.useForm>[0]
+  isReprint: boolean
+  result: PrintResultVO | null
 }
 
 function IssueNotice({ isReprint, result }: { isReprint: boolean; result: PrintResultVO | null }) {

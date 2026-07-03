@@ -22,6 +22,11 @@ public class ProcessStep extends BaseEntity {
 
     private String orderUuid;
     private String originalUuid;
+    /** 1原纸 2上一阶段产出 */
+    private Integer inputType;
+    private String inputOutputUuid;
+    private Integer stageLevel;
+    private String parentStepUuid;
     private Integer stepSort;
     /** 1锯纸 2复卷 */
     private Integer stepType;

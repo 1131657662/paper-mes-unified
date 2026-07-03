@@ -17,7 +17,6 @@ const buildDefaultConfig = (roll: OriginalRoll): FinishConfigSaveDTO => {
       processMode,
       mainStepType,
       knifeCount: 0,
-      unitPrice: 1.5,
       spareCount: 0,
       finishSpecs: [{ count: 1, finishWidth: processMode === 2 ? 0 : 400, estimateWeight: 0 }],
     }
@@ -28,7 +27,6 @@ const buildDefaultConfig = (roll: OriginalRoll): FinishConfigSaveDTO => {
       processMode,
       mainStepType,
       rewindMode: 1,
-      unitPrice: 200,
       spareCount: 0,
       finishSpecs: [
         {

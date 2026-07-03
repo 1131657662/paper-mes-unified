@@ -26,5 +26,7 @@ public class DeliveryDetail extends BaseEntity {
     private String finishRollNo;
     private String paperName;
     private BigDecimal outWeight;
+    /** 1占用待出库库存 0历史明细不占用 */
+    private Integer stockLockStatus;
     private String remark;
 }

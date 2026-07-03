@@ -6,6 +6,7 @@ import type { RollDraft } from '../types'
 import { totalWeight } from '../draftMappers'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
 import { rollPreviewStatus } from '../previewStatusUtils'
+import { formatKg } from '../../../utils/numberFormatters'
 import SubmitSuccessPanel from './SubmitSuccessPanel'
 
 interface Props {
@@ -40,7 +41,7 @@ export default function PreviewStep({
   const columns: ColumnsType<RollDraft> = [
     { title: '母卷', width: 150, render: (_, roll) => roll.rollNo || roll.paperName || '-' },
     { title: '原纸规格', width: 160, render: (_, roll) => `${roll.gramWeight}g / ${roll.originalWidth}mm` },
-    { title: '重量', width: 120, render: (_, roll) => `${(Number(roll.rollWeight) * (roll.pieceNum ?? 1)).toFixed(3)} kg` },
+    { title: '重量', width: 120, render: (_, roll) => formatKg(Number(roll.rollWeight) * (roll.pieceNum ?? 1)) },
     { title: '加工方式', width: 110, render: (_, roll) => <Tag>{PROCESS_MODE[roll.processMode ?? 1]}</Tag> },
     {
       title: '主工艺',
@@ -62,7 +63,7 @@ export default function PreviewStep({
     <Card title="预览确认">
       <Descriptions bordered size="small" column={3} style={{ marginBottom: 16 }}>
         <Descriptions.Item label="原纸卷数">{rolls.length}</Descriptions.Item>
-        <Descriptions.Item label="来料总重">{totalWeight(rolls).toFixed(3)} kg</Descriptions.Item>
+        <Descriptions.Item label="来料总重">{formatKg(totalWeight(rolls))}</Descriptions.Item>
         <Descriptions.Item label="预计正式号">{estimateFinishCount(previews)}</Descriptions.Item>
       </Descriptions>
       {!submitResult && blockers.length > 0 && (
@@ -138,7 +139,7 @@ function RollPreview({ roll, plan, preview, lock }: RollPreviewProps) {
         columns={[
           { title: '段', dataIndex: 'segmentSort' },
           { title: '门幅', dataIndex: 'finishWidth', render: (value) => `${value ?? 0}mm` },
-          { title: '预估重量', dataIndex: 'estimateWeight', render: (value) => `${Number(value ?? 0).toFixed(3)}kg` },
+          { title: '预估重量', dataIndex: 'estimateWeight', render: (value) => formatKg(Number(value ?? 0)) },
           { title: '来源', dataIndex: 'sourceSummary' },
         ]}
         dataSource={preview?.finishes ?? []}

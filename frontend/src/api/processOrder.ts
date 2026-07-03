@@ -1,5 +1,11 @@
-import request from './request'
+import request, { rawRequest } from './request'
 import type { PageResult } from '../types/common'
+import { downloadFileFromResponse } from '../utils/downloadFile'
+import {
+  normalizeDocumentExportInput,
+  readableExportFilename,
+  type DocumentExportInput,
+} from '../utils/documentExport'
 import type {
   BackRecordDTO,
   BackRecordResultVO,
@@ -15,6 +21,7 @@ import type {
   OriginalRollImportPreviewVO,
   OriginalRollBatchSaveDTO,
   OriginalRollDTO,
+  OriginalRollRemarkDTO,
   PlanPreviewVO,
   PrintDTO,
   PrintResultVO,
@@ -23,9 +30,13 @@ import type {
   ProcessOrderCreateDTO,
   ProcessOrderDetailVO,
   ProcessOrderQuery,
+  ProcessOrderRemarkDTO,
+  ProcessOrderVoidDTO,
   ProcessOrderSubmitVO,
   ProcessPlanBatchSaveDTO,
   ProcessPlanPreviewRequestDTO,
+  ProcessRoutePreviewDTO,
+  ProcessRoutePreviewVO,
   RewindPlanPreviewDTO,
   SnapshotDiffVO,
   SpareRollAppendDTO,
@@ -46,6 +57,16 @@ export function getProcessOrder(uuid: string) {
     url: `/api/process-orders/${uuid}`,
     method: 'get',
   })
+}
+
+export async function exportProcessOrderDetail(input: DocumentExportInput) {
+  const { documentNo, uuid } = normalizeDocumentExportInput(input)
+  const response = await rawRequest.request<Blob, { data: Blob; headers: Record<string, string> }>({
+    url: `/api/process-orders/${uuid}/export`,
+    method: 'get',
+    responseType: 'blob',
+  })
+  await downloadFileFromResponse(response, readableExportFilename('加工单资料', documentNo))
 }
 
 export function createProcessOrder(dto: ProcessOrderCreateDTO) {
@@ -98,6 +119,14 @@ export function updateOriginalRoll(rollUuid: string, dto: OriginalRollDTO) {
   return request<void>({ url: `/api/process-orders/rolls/${rollUuid}`, method: 'put', data: dto })
 }
 
+export function updateProcessOrderRemark(uuid: string, dto: ProcessOrderRemarkDTO) {
+  return request<void>({ url: `/api/process-orders/${uuid}/remarks`, method: 'put', data: dto })
+}
+
+export function updateOriginalRollRemark(rollUuid: string, dto: OriginalRollRemarkDTO) {
+  return request<void>({ url: `/api/process-orders/rolls/${rollUuid}/remarks`, method: 'put', data: dto })
+}
+
 export function saveProcessConfigDraft(
   orderUuid: string,
   rollUuid: string,
@@ -113,6 +142,46 @@ export function saveProcessConfigDraft(
 export function previewProcessPlan(orderUuid: string, dto: ProcessPlanPreviewRequestDTO) {
   return request<PlanPreviewVO>({
     url: `/api/process-orders/${orderUuid}/rolls/plan-preview`,
+    method: 'post',
+    data: dto,
+  })
+}
+
+export function previewProcessRoute(orderUuid: string, dto: ProcessRoutePreviewDTO) {
+  return request<ProcessRoutePreviewVO>({
+    url: `/api/process-orders/${orderUuid}/rolls/route-preview`,
+    method: 'post',
+    data: dto,
+  })
+}
+
+export function previewPendingProcessRoute(orderUuid: string, dto: ProcessRoutePreviewDTO) {
+  return request<ProcessRoutePreviewVO>({
+    url: `/api/process-orders/${orderUuid}/route-preview`,
+    method: 'post',
+    data: dto,
+  })
+}
+
+export function savePendingProcessRoute(orderUuid: string, dto: ProcessRoutePreviewDTO) {
+  return request<ProcessRoutePreviewVO>({
+    url: `/api/process-orders/${orderUuid}/route-config`,
+    method: 'post',
+    data: dto,
+  })
+}
+
+export function previewAppendProcessRoute(orderUuid: string, dto: ProcessRoutePreviewDTO) {
+  return request<ProcessRoutePreviewVO>({
+    url: `/api/process-orders/${orderUuid}/route-append-preview`,
+    method: 'post',
+    data: dto,
+  })
+}
+
+export function saveAppendProcessRoute(orderUuid: string, dto: ProcessRoutePreviewDTO) {
+  return request<ProcessRoutePreviewVO>({
+    url: `/api/process-orders/${orderUuid}/route-append`,
     method: 'post',
     data: dto,
   })
@@ -144,6 +213,14 @@ export function submitProcessOrderDraft(uuid: string) {
 export function changeOrderStatus(uuid: string, dto: StatusChangeDTO) {
   return request<void>({
     url: `/api/process-orders/${uuid}/status`,
+    method: 'put',
+    data: dto,
+  })
+}
+
+export function voidProcessOrder(uuid: string, dto: ProcessOrderVoidDTO) {
+  return request<void>({
+    url: `/api/process-orders/${uuid}/void`,
     method: 'put',
     data: dto,
   })

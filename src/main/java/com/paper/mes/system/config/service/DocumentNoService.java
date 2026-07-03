@@ -84,6 +84,9 @@ public class DocumentNoService {
     }
 
     private String format(SysNoRule rule, LocalDate bizDate, long sequence) {
+        if (NoRuleBizType.FINISH_ROLL.equals(rule.getBizType())) {
+            return FinishRollNoFormatter.format(rule, sequence);
+        }
         String prefix = rule.getPrefix() == null ? "" : rule.getPrefix();
         String serial = String.format("%0" + rule.getSerialLength() + "d", sequence);
         if (rule.getPatternType() != null && rule.getPatternType() == PATTERN_PREFIX_DATE_SERIAL) {
@@ -93,6 +96,9 @@ public class DocumentNoService {
     }
 
     private long maxPersistedValue(SysNoRule rule, LocalDate bizDate) {
+        if (NoRuleBizType.FINISH_ROLL.equals(rule.getBizType())) {
+            return maxPersistedFinishRollValue(rule);
+        }
         NoColumn column = noColumn(rule.getBizType());
         if (column == null) {
             return 0L;
@@ -116,6 +122,16 @@ public class DocumentNoService {
                 head,
                 regexp);
         return max == null ? 0L : max;
+    }
+
+    private long maxPersistedFinishRollValue(SysNoRule rule) {
+        List<String> values = jdbcTemplate.queryForList("""
+                SELECT finish_roll_no
+                FROM biz_finish_roll
+                WHERE is_deleted = 0
+                  AND finish_roll_no REGEXP ?
+                """, String.class, FinishRollNoFormatter.regexp());
+        return FinishRollNoFormatter.maxPersistedValue(rule, values);
     }
 
     private NoColumn noColumn(String bizType) {

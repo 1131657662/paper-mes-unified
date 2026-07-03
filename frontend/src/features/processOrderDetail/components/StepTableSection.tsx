@@ -3,28 +3,47 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import type { ProcessOrderDetailVO, ProcessStep } from '../../../types/processOrder'
 import { STEP_TYPE } from '../../../constants/processOrder'
+import MesTooltip from '../../../components/biz/MesTooltip'
 import { dict } from '../../../components/processOrder/shared/detailHelpers'
 import { formatMoney, formatNumber } from '../orderDetailUtils'
+import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 
 interface Props {
   detail?: ProcessOrderDetailVO
   onAdd: () => void
+  onConfigureRoute: (target: ProcessRouteConfigTarget) => void
   onEdit: (step: ProcessStep) => void
   onDelete: (stepUuid: string) => void
 }
 
-export default function StepTableSection({ detail, onAdd, onEdit, onDelete }: Props) {
-  const canAdd = detail?.order.orderStatus === 1
+export default function StepTableSection({ detail, onAdd, onConfigureRoute, onEdit, onDelete }: Props) {
+  const status = detail?.order.orderStatus
+  const canEditPending = status === 1
+  const canAppendRoute = status === 1 || status === 3
   const columns = buildColumns({ detail, onEdit, onDelete })
 
   return (
     <section className="order-detail-section">
       <div className="order-detail-section__header">
         <h2 className="order-detail-section__title">工序与费用</h2>
-        {canAdd && (
-          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={onAdd}>
-            新增工序
-          </Button>
+        {(canEditPending || canAppendRoute) && (
+          <Space size={8}>
+            {canEditPending && (
+              <Button size="small" onClick={() => onConfigureRoute({ mode: 'replace' })}>
+                重配整卷工艺
+              </Button>
+            )}
+            {canAppendRoute && (
+              <Button size="small" type="primary" onClick={() => onConfigureRoute({ mode: 'append' })}>
+                选择产物追加工艺
+              </Button>
+            )}
+            {canEditPending && (
+              <Button size="small" icon={<PlusOutlined />} onClick={onAdd}>
+                新增费用工序
+              </Button>
+            )}
+          </Space>
         )}
       </div>
       <div className="order-detail-section__body order-detail-table-wrap">
@@ -60,6 +79,7 @@ function buildColumns(options: {
         </Space>
       ),
     },
+    { title: '阶段/输入', width: 110, render: (_, step) => routeStageLabel(step) },
     { title: '名称', dataIndex: 'stepName', width: 120, render: textOrDash },
     { title: '所属母卷', width: 160, render: (_, step) => rollLabel(options.detail, step) },
     { title: '刀数', dataIndex: 'knifeCount', width: 80, align: 'right', render: numberOrDash },
@@ -85,9 +105,19 @@ function renderActions(options: {
 
   return (
     <Space size={4}>
-      <Button type="text" size="small" icon={<EditOutlined />} onClick={() => options.onEdit(options.step)} />
+      <MesTooltip title="编辑工序">
+        <Button
+          aria-label="编辑工序"
+          type="text"
+          size="small"
+          icon={<EditOutlined />}
+          onClick={() => options.onEdit(options.step)}
+        />
+      </MesTooltip>
       <Popconfirm title="确认删除该工序？" onConfirm={() => options.onDelete(options.step.uuid)}>
-        <Button danger type="text" size="small" icon={<DeleteOutlined />} />
+        <MesTooltip title="删除工序">
+          <Button danger aria-label="删除工序" type="text" size="small" icon={<DeleteOutlined />} />
+        </MesTooltip>
       </Popconfirm>
     </Space>
   )
@@ -96,6 +126,12 @@ function renderActions(options: {
 function rollLabel(detail: ProcessOrderDetailVO | undefined, step: ProcessStep): string {
   const roll = detail?.originalRolls?.find((item) => item.uuid === step.originalUuid)
   return roll?.rollNo || roll?.extraNo || roll?.paperName || step.originalUuid || '-'
+}
+
+function routeStageLabel(step: ProcessStep): string {
+  const stage = step.stageLevel ?? 1
+  const input = step.inputType === 2 ? '阶段产出' : '原纸'
+  return `第${stage}道 / ${input}`
 }
 
 function textOrDash(value?: string): string {

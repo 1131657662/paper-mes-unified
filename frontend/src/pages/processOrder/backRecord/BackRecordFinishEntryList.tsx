@@ -5,14 +5,16 @@ import { DICT_TYPES, abnormalFallbackOptions } from '../../../features/systemCon
 import { useDictOptions } from '../../../features/systemConfig/hooks/useRuntimeDictOptions'
 import type { FinishRoll } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
+import { focusNextBackRecordField } from './backRecordKeyboard'
 import type { BackRecordWorkItem, WorkbenchFinish } from './backRecordWorkbenchTypes'
 import { theoreticalItemFinishValues } from './backRecordTheoryFill'
 
 interface Props {
   item: BackRecordWorkItem
+  onFieldExhausted: () => void
 }
 
-export default function BackRecordFinishEntryList({ item }: Props) {
+export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Props) {
   const form = Form.useFormInstance<BackRecordFormValues>()
   const { options: abnormalTypeOptions } = useDictOptions(DICT_TYPES.abnormalType, abnormalFallbackOptions)
 
@@ -35,14 +37,29 @@ export default function BackRecordFinishEntryList({ item }: Props) {
         <Alert showIcon type="info" message="当前母卷没有已绑定成品。直发卷会在提交回录时由后端生成出库用记录。" />
       ) : (
         <div className="back-record-finish-list">
-          {item.finishes.map((entry) => <FinishEntryRow key={entry.finish.uuid} abnormalTypeOptions={abnormalTypeOptions} entry={entry} />)}
+          {item.finishes.map((entry) => (
+            <FinishEntryRow
+              key={entry.finish.uuid}
+              abnormalTypeOptions={abnormalTypeOptions}
+              entry={entry}
+              onFieldExhausted={onFieldExhausted}
+            />
+          ))}
         </div>
       )}
     </section>
   )
 }
 
-function FinishEntryRow({ abnormalTypeOptions, entry }: { abnormalTypeOptions: Array<{ label: string; value: number | string }>; entry: WorkbenchFinish }) {
+function FinishEntryRow({
+  abnormalTypeOptions,
+  entry,
+  onFieldExhausted,
+}: {
+  abnormalTypeOptions: Array<{ label: string; value: number | string }>
+  entry: WorkbenchFinish
+  onFieldExhausted: () => void
+}) {
   const finish = entry.finish
 
   return (
@@ -65,10 +82,10 @@ function FinishEntryRow({ abnormalTypeOptions, entry }: { abnormalTypeOptions: A
             { type: 'number', min: 0.001, message: '需大于0' },
           ]}
         >
-          <InputNumber min={0} placeholder={finish.isSpare === 1 ? '未用留空' : 'kg'} addonAfter="kg" />
+          <InputNumber data-back-record-field="true" min={0} placeholder={finish.isSpare === 1 ? '未用留空' : 'kg'} addonAfter="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['finishes', finish.uuid, 'scrapWeight']} label="报废/损耗">
-          <InputNumber min={0} placeholder="kg" addonAfter="kg" />
+          <InputNumber data-back-record-field="true" min={0} placeholder="kg" addonAfter="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['finishes', finish.uuid, 'isRemain']} label="属性">
           <Select options={remainOptions} />
@@ -80,7 +97,7 @@ function FinishEntryRow({ abnormalTypeOptions, entry }: { abnormalTypeOptions: A
           <Select allowClear options={abnormalTypeOptions} placeholder="请选择" />
         </Form.Item>
         <Form.Item name={['finishes', finish.uuid, 'actualRemark']} label="备注">
-          <Input placeholder="车间说明" />
+          <Input data-back-record-field="true" placeholder="车间说明" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
       </div>
     </div>

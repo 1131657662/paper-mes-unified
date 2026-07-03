@@ -82,6 +82,7 @@ function CreateOrderContent({ draftUuid }: { draftUuid?: string }) {
         {state.current === 3 && (
           <ConfigStep
             defaultSpareCount={state.defaultSpareCount}
+            defaultPlanOptions={state.defaultPlanOptions}
             orderUuid={state.orderUuid}
             machines={state.machines}
             rolls={state.rolls}

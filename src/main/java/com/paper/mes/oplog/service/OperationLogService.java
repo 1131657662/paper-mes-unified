@@ -19,6 +19,7 @@ public class OperationLogService {
     public static final String ACTION_REPRINT = "补打";
     public static final String ACTION_BACK_RECORD = "回录";
     public static final String ACTION_VOID_ROLL_NO = "作废卷号";
+    public static final String ACTION_VOID_ORDER = "作废加工单";
     public static final String ACTION_OVER_TOLERANCE_RELEASE = "超差放行";
     public static final String ACTION_DELIVERY_CONFIRM = "出库确认";
     public static final String ACTION_DELIVERY_RELEASE = "出库放行";

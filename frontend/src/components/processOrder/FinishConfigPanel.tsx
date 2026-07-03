@@ -36,7 +36,7 @@ export default function FinishConfigPanel({
 
     if (processMode === 1 || processMode === 2) {
       if (mainStepType === 1) {
-        return <SawingConfigForm roll={roll} processMode={processMode} onChange={onConfigChange} />
+        return <SawingConfigForm roll={roll} processMode={processMode} config={config} onChange={onConfigChange} />
       }
       if (mainStepType === 2) {
         return (

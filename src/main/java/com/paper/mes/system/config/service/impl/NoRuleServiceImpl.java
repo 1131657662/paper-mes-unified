@@ -14,20 +14,17 @@ import com.paper.mes.system.config.entity.SysNoRule;
 import com.paper.mes.system.config.mapper.SysNoRuleMapper;
 import com.paper.mes.system.config.service.DocumentNoService;
 import com.paper.mes.system.config.service.NoRuleService;
+import com.paper.mes.system.config.service.NoRuleValidator;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
-import java.util.Set;
-import java.util.regex.Pattern;
 
 @Service
 public class NoRuleServiceImpl extends ServiceImpl<SysNoRuleMapper, SysNoRule> implements NoRuleService {
 
-    private static final Pattern PREFIX_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
-    private static final Set<String> DATE_PATTERNS = Set.of("yyyyMMdd", "yyyyMM", "yyyy");
     private static final int STATUS_ENABLED = 1;
 
     private final OperationLogService operationLogService;
@@ -138,25 +135,11 @@ public class NoRuleServiceImpl extends ServiceImpl<SysNoRuleMapper, SysNoRule> i
     }
 
     private String normalizeDatePattern(String pattern) {
-        return StringUtils.hasText(pattern) ? pattern.trim() : "yyyyMMdd";
+        return NoRuleValidator.normalizeDatePattern(pattern);
     }
 
     private void validateRule(SysNoRule rule) {
-        if (!StringUtils.hasText(rule.getPrefix()) || !PREFIX_PATTERN.matcher(rule.getPrefix()).matches()) {
-            throw new BusinessException("单号前缀只能包含字母、数字、下划线或横线");
-        }
-        if (rule.getPatternType() == null || (rule.getPatternType() != 1 && rule.getPatternType() != 2)) {
-            throw new BusinessException("单号格式类型不正确");
-        }
-        if (!DATE_PATTERNS.contains(normalizeDatePattern(rule.getDatePattern()))) {
-            throw new BusinessException("日期格式仅支持 yyyyMMdd、yyyyMM、yyyy");
-        }
-        if (rule.getSerialLength() == null || rule.getSerialLength() < 3 || rule.getSerialLength() > 10) {
-            throw new BusinessException("流水位数必须在 3 到 10 之间");
-        }
-        if (rule.getResetCycle() == null || rule.getResetCycle() < 0 || rule.getResetCycle() > 3) {
-            throw new BusinessException("重置周期不正确");
-        }
+        NoRuleValidator.validate(rule);
     }
 
     private void ensureUnique(String bizType, String excludeUuid) {

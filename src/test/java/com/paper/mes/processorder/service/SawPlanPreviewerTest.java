@@ -55,6 +55,19 @@ class SawPlanPreviewerTest {
         assertEquals(800, finishes.getFirst().getFinishWidth());
     }
 
+    @Test
+    void saveSpecs_expandsFinishRowsWithEstimateWeight() {
+        List<FinishConfigSpecDTO> finishes = previewer.saveSpecs(List.of(
+                spec("FINISH", 950, 2),
+                spec("TRIM", 100, 1)
+        ), roll(2000, "1000"));
+
+        assertEquals(2, finishes.size());
+        assertEquals(1, finishes.getFirst().getCount());
+        assertEquals(new BigDecimal("475.000"), finishes.getFirst().getEstimateWeight());
+        assertEquals(new BigDecimal("475.000"), finishes.get(1).getEstimateWeight());
+    }
+
     private ProcessPlanDTO plan(List<FinishConfigSpecDTO> specs) {
         ProcessPlanDTO plan = new ProcessPlanDTO();
         plan.setProcessMode(1);

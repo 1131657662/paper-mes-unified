@@ -11,6 +11,11 @@ import type {
   DeliveryRollbackDTO,
 } from '../types/delivery'
 import { downloadFileFromResponse } from '../utils/downloadFile'
+import {
+  normalizeDocumentExportInput,
+  readableExportFilename,
+  type DocumentExportInput,
+} from '../utils/documentExport'
 
 export function getDeliveryOrderList(query: DeliveryQuery) {
   return request<PageResult<DeliveryOrder>>({
@@ -74,11 +79,12 @@ export function removeDeliveryDetail(uuid: string, detailUuid: string) {
   })
 }
 
-export async function exportDeliveryOrder(uuid: string) {
+export async function exportDeliveryOrder(input: DocumentExportInput) {
+  const { documentNo, uuid } = normalizeDocumentExportInput(input)
   const response = await rawRequest.request<Blob, { data: Blob; headers: Record<string, string> }>({
     url: `/api/delivery-orders/${uuid}/export`,
     method: 'get',
     responseType: 'blob',
   })
-  await downloadFileFromResponse(response, `出库单_${Date.now()}.xlsx`)
+  await downloadFileFromResponse(response, readableExportFilename('出库单', documentNo))
 }

@@ -2,7 +2,7 @@ import { Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { AvailableFinishVO } from '../../../types/delivery'
 import { SOURCE_TYPE } from '../../../constants/delivery'
-import { finishSpecText, formatKg, settleText } from '../utils/deliveryFormatters'
+import { availableFinishWeight, finishSpecText, formatKg, settleText } from '../utils/deliveryFormatters'
 
 interface Props {
   data: AvailableFinishVO[]
@@ -31,7 +31,7 @@ export default function AvailableFinishTable({
       onRow={(record) => ({
         onClick: () => toggleKey(record.finishUuid, selectedRowKeys, onSelectionChange),
       })}
-      scroll={{ x: 980, y: 'calc(100vh - 510px)' }}
+      scroll={{ x: 1010, y: 'calc(100vh - 510px)' }}
     />
   )
 }
@@ -70,8 +70,13 @@ const columns: ColumnsType<AvailableFinishVO> = [
     title: '重量',
     dataIndex: 'actualWeight',
     align: 'right',
-    width: 110,
-    render: (value) => formatKg(value),
+    width: 140,
+    render: (_, record) => (
+      <div className="delivery-cell-stack mes-cell-stack">
+        <Typography.Text>{formatKg(record.actualWeight)}</Typography.Text>
+        <span>可出库 {formatKg(availableFinishWeight(record))}</span>
+      </div>
+    ),
   },
   {
     title: '来源',

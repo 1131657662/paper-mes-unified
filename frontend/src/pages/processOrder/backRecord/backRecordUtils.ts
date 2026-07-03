@@ -3,8 +3,10 @@ import type {
   BackRecordFinishDTO,
   BackRecordResultVO,
   BackRecordRollDTO,
+  BackRecordStepDTO,
   FinishRoll,
   OriginalRoll,
+  ProcessStep,
   ProcessOrderDetailVO,
 } from '../../../types/processOrder'
 
@@ -24,10 +26,15 @@ export interface FinishRecordValues {
   actualRemark?: string
 }
 
+export interface StepRecordValues {
+  lossWeight?: number
+}
+
 export interface BackRecordFormValues {
   operator?: string
   rolls?: Record<string, RollRecordValues>
   finishes?: Record<string, FinishRecordValues>
+  steps?: Record<string, StepRecordValues>
 }
 
 export interface BackRecordMetrics {
@@ -36,6 +43,7 @@ export interface BackRecordMetrics {
   directShipCount: number
   originalActualTotal: number
   finishActualTotal: number
+  lossTotal: number
   scrapTotal: number
   missingRollWeight: number
   missingOfficialFinishWeight: number
@@ -55,6 +63,7 @@ export function initialBackRecordValues(detail: ProcessOrderDetailVO): BackRecor
     operator: '',
     rolls: Object.fromEntries(detail.originalRolls.map((roll) => [roll.uuid, rollValues(roll)])),
     finishes: Object.fromEntries(activeFinishRolls(detail).map((finish) => [finish.uuid, finishValues(finish)])),
+    steps: Object.fromEntries(detail.steps.map((step) => [step.uuid, stepValues(step)])),
   }
 }
 
@@ -70,6 +79,7 @@ export function buildBackRecordDTO(
     releaseReason: authorization?.releaseReason,
     rolls: detail.originalRolls.map((roll) => toRollDTO(roll, values.rolls?.[roll.uuid])),
     finishes: finishes.length > 0 ? finishes : undefined,
+    steps: detail.steps.map((step) => toStepDTO(step, values.steps?.[step.uuid])),
   }
 }
 
@@ -105,6 +115,7 @@ export function buildBackRecordMetrics(
     directShipCount: rolls.filter((roll) => roll.processMode === 3).length,
     originalActualTotal: sum(rolls.map((roll) => values.rolls?.[roll.uuid]?.actualWeight ?? roll.actualWeight)),
     finishActualTotal: sum(finishes.map((finish) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight)),
+    lossTotal: sum((detail?.steps ?? []).map((step) => values.steps?.[step.uuid]?.lossWeight ?? step.lossWeight)),
     scrapTotal: sum(finishes.map((finish) => values.finishes?.[finish.uuid]?.scrapWeight ?? finish.scrapWeight)),
     missingRollWeight: rolls.filter((roll) => !positive(values.rolls?.[roll.uuid]?.actualWeight ?? roll.actualWeight)).length,
     missingOfficialFinishWeight: finishes.filter((finish) => finish.isSpare !== 1 && !positive(values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight)).length,
@@ -138,6 +149,12 @@ function finishValues(finish: FinishRoll): FinishRecordValues {
   }
 }
 
+function stepValues(step: ProcessStep): StepRecordValues {
+  return {
+    lossWeight: step.lossWeight,
+  }
+}
+
 function toRollDTO(roll: OriginalRoll, values?: RollRecordValues): BackRecordRollDTO {
   return {
     uuid: roll.uuid,
@@ -157,6 +174,13 @@ function toFinishDTO(finish: FinishRoll, values?: FinishRecordValues): BackRecor
     isAbnormal: values?.isAbnormal,
     ...(values?.abnormalType ? { abnormalType: values.abnormalType } : {}),
     ...(values?.actualRemark ? { actualRemark: values.actualRemark } : {}),
+  }
+}
+
+function toStepDTO(step: ProcessStep, values?: StepRecordValues): BackRecordStepDTO {
+  return {
+    uuid: step.uuid,
+    lossWeight: values?.lossWeight,
   }
 }
 

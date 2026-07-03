@@ -11,7 +11,7 @@ interface ColumnOptions {
   customerEnum: Record<string, { text: string }>
   onBackRecord: (uuid: string) => void
   onCalcFee: (record: ProcessOrder) => Promise<void>
-  onChangeStatus: (record: ProcessOrder, target: number) => Promise<void>
+  onChangeStatus: (record: ProcessOrder, target: number, title: string) => void
   onDetail: (uuid: string) => void
   onEditDraft: (uuid: string) => void
   onGoDelivery: () => void
@@ -19,6 +19,7 @@ interface ColumnOptions {
   onManageRolls: (uuid: string) => void
   onPrint: (record: ProcessOrder) => void
   onSnapshotDiff: (uuid: string) => void
+  onVoidOrder: (record: ProcessOrder) => Promise<void>
 }
 
 const statusValueEnum = Object.fromEntries(
@@ -42,9 +43,9 @@ export function buildProcessOrderColumns(options: ColumnOptions): ProColumns<Pro
     { title: '结算/开票', dataIndex: 'billing', width: 122, hideInSearch: true, render: (_, record) => <BillingCell record={record} /> },
     { title: '状态', dataIndex: 'orderStatus', width: 98, valueType: 'select', valueEnum: statusValueEnum, render: (_, record) => renderStatus(record) },
     { title: '下发', dataIndex: 'printStatus', width: 98, hideInSearch: true, render: (_, record) => renderPrintStatus(record) },
-    { title: '生产统计', dataIndex: 'productionSummary', width: 230, hideInSearch: true, render: (_, record) => <ProductionSummary record={record} /> },
+    { title: '生产统计', dataIndex: 'productionSummary', width: 252, hideInSearch: true, render: (_, record) => <ProductionSummary record={record} /> },
     { title: '费用', dataIndex: 'totalAmount', width: 116, hideInSearch: true, render: (_, record) => renderMoney(record.totalAmount) },
-    { title: '操作', key: 'actions', valueType: 'option', width: 148, fixed: 'right', render: (_, record) => <ProcessOrderRowActions record={record} {...options} /> },
+    { title: '操作', key: 'actions', valueType: 'option', width: 136, fixed: 'right', render: (_, record) => <ProcessOrderRowActions record={record} {...options} /> },
   ]
 }
 

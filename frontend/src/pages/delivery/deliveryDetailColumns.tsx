@@ -11,6 +11,7 @@ import {
 import type { DeliveryDetail } from '../../types/delivery'
 
 export function buildDeliveryDetailColumns(options: {
+  canRemove?: boolean
   deliveryStatus?: number
   onRemove: (record: DeliveryDetail) => void
 }): ColumnsType<DeliveryDetail> {
@@ -28,6 +29,7 @@ export function buildDeliveryDetailColumns(options: {
     { title: '规格', key: 'spec', width: 155, render: (_, record) => deliveryDetailSpecText(record) },
     { title: '件重', dataIndex: 'actualWeight', align: 'right', width: 110, render: formatKg },
     { title: '出库重量', dataIndex: 'outWeight', align: 'right', width: 110, render: formatKg },
+    { title: '剩余可出库', dataIndex: 'remainingWeight', align: 'right', width: 120, render: formatKg },
     {
       title: '原纸信息',
       dataIndex: 'originalSummary',
@@ -55,7 +57,7 @@ export function buildDeliveryDetailColumns(options: {
     { title: '回录备注', dataIndex: 'actualRemark', width: 150, render: textCell },
   ]
 
-  if (options.deliveryStatus === 1) {
+  if (options.canRemove && options.deliveryStatus === 1) {
     columns.push({
       title: '操作',
       key: 'actions',

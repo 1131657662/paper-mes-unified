@@ -1,5 +1,6 @@
 package com.paper.mes.system.config.service;
 
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.entity.SysNoRule;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -101,6 +103,48 @@ class DocumentNoServiceTest {
         assertTrue(nos.contains("A000012"));
     }
 
+    @Test
+    void preview_whenFinishRollSequenceOverflowsLetter_carriesToNextAllowedLetter() {
+        SysNoRule rule = rule(NoRuleBizType.FINISH_ROLL, "A", 2, 6, 0);
+        DocumentNoService service = service(rule);
+
+        assertEquals("A000001", service.preview(rule, BIZ_DATE, 1L));
+        assertEquals("A999999", service.preview(rule, BIZ_DATE, 999_999L));
+        assertEquals("B000001", service.preview(rule, BIZ_DATE, 1_000_000L));
+    }
+
+    @Test
+    void preview_whenFinishRollLetterReachesExcludedLetters_skipsIOLZ() {
+        DocumentNoService service = service(rule(NoRuleBizType.FINISH_ROLL, "A", 2, 6, 0));
+
+        assertEquals("J000001", service.preview(rule(NoRuleBizType.FINISH_ROLL, "H", 2, 6, 0),
+                BIZ_DATE, 1_000_000L));
+        assertEquals("M000001", service.preview(rule(NoRuleBizType.FINISH_ROLL, "K", 2, 6, 0),
+                BIZ_DATE, 1_000_000L));
+        assertEquals("P000001", service.preview(rule(NoRuleBizType.FINISH_ROLL, "N", 2, 6, 0),
+                BIZ_DATE, 1_000_000L));
+    }
+
+    @Test
+    void preview_whenFinishRollLetterRangeExhausted_throwsBusinessException() {
+        SysNoRule rule = rule(NoRuleBizType.FINISH_ROLL, "Y", 2, 6, 0);
+        DocumentNoService service = service(rule);
+
+        assertThrows(BusinessException.class, () -> service.preview(rule, BIZ_DATE, 1_000_000L));
+    }
+
+    @Test
+    void next_whenPersistedFinishRollReachedLetterLimit_continuesWithNextAllowedLetter() {
+        FakeJdbcTemplate jdbcTemplate = new FakeJdbcTemplate();
+        jdbcTemplate.setPersistedFinishRollNos(List.of("A999999"));
+        DocumentNoService service = service(rule(NoRuleBizType.FINISH_ROLL, "A", 2, 6, 0), jdbcTemplate);
+
+        String no = service.next(NoRuleBizType.FINISH_ROLL, BIZ_DATE);
+
+        assertEquals("B000001", no);
+        assertEquals(1_000_000L, jdbcTemplate.current(NoRuleBizType.FINISH_ROLL));
+    }
+
     private DocumentNoService service(SysNoRule rule) {
         return service(rule, new FakeJdbcTemplate());
     }
@@ -126,10 +170,15 @@ class DocumentNoServiceTest {
         private final Map<String, Long> sequences = new ConcurrentHashMap<>();
         private final Map<String, ReentrantLock> locks = new ConcurrentHashMap<>();
         private final ThreadLocal<String> lockedKey = new ThreadLocal<>();
+        private List<String> persistedFinishRollNos = List.of();
         private long maxPersistedValue;
 
         void setMaxPersistedValue(long maxPersistedValue) {
             this.maxPersistedValue = maxPersistedValue;
+        }
+
+        void setPersistedFinishRollNos(List<String> persistedFinishRollNos) {
+            this.persistedFinishRollNos = persistedFinishRollNos;
         }
 
         long current(String key) {
@@ -153,6 +202,9 @@ class DocumentNoServiceTest {
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
+            if (sql.contains("FROM biz_finish_roll")) {
+                return persistedFinishRollNos.stream().map(elementType::cast).toList();
+            }
             Long value = sequences.get((String) args[0]);
             if (value == null) {
                 return List.of();

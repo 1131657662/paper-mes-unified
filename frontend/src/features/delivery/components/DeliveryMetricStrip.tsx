@@ -1,5 +1,5 @@
 import type { AvailableFinishVO, DeliveryOrder } from '../../../types/delivery'
-import { formatTon } from '../utils/deliveryFormatters'
+import { availableFinishWeight, formatTon } from '../utils/deliveryFormatters'
 
 interface Props {
   orders: DeliveryOrder[]
@@ -8,8 +8,8 @@ interface Props {
 }
 
 export default function DeliveryMetricStrip({ orders, selectedFinishes, stock }: Props) {
-  const stockWeight = stock.reduce((sum, item) => sum + (item.actualWeight ?? 0), 0)
-  const selectedWeight = selectedFinishes.reduce((sum, item) => sum + (item.actualWeight ?? 0), 0)
+  const stockWeight = stock.reduce((sum, item) => sum + availableFinishWeight(item), 0)
+  const selectedWeight = selectedFinishes.reduce((sum, item) => sum + availableFinishWeight(item), 0)
   const pendingOrders = orders.filter((item) => item.deliveryStatus === 1)
   const shippedOrders = orders.filter((item) => item.deliveryStatus === 2)
 

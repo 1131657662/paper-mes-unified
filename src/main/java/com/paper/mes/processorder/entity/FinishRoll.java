@@ -41,6 +41,7 @@ public class FinishRoll extends BaseEntity {
     private BigDecimal estimateWeightSnap;
     private BigDecimal estimateWeight;
     private BigDecimal actualWeight;
+    private BigDecimal remainingWeight;
     private BigDecimal diameterRatio;
     private Integer trimWidthShare;
     private BigDecimal trimWeightShare;

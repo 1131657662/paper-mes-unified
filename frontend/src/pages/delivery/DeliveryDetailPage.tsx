@@ -4,6 +4,7 @@ import { StatisticCard } from '@ant-design/pro-components'
 import { DownloadOutlined, PlusOutlined, PrinterOutlined, RollbackOutlined } from '@ant-design/icons'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { DELIVERY_STATUS, SETTLE_BLOCK_ACTION } from '../../constants/delivery'
+import { PERMISSIONS } from '../../constants/permissions'
 import DocumentAuditTimeline from '../../components/biz/DocumentAuditTimeline'
 import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
 import MesPageHeader from '../../components/layout/MesPageHeader'
@@ -17,6 +18,7 @@ import DeliveryAppendItemsModal from './DeliveryAppendItemsModal'
 import DeliveryPrintSheet from './DeliveryPrintSheet'
 import DeliveryRollbackSnapshotCard from './DeliveryRollbackSnapshotCard'
 import { buildDeliveryDetailColumns } from './deliveryDetailColumns'
+import { useHasPermission } from '../../stores/authStore'
 import '../documentModule.css'
 
 export default function DeliveryDetailPage() {
@@ -24,6 +26,7 @@ export default function DeliveryDetailPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const [appendOpen, setAppendOpen] = useState(false)
+  const canManageDelivery = useHasPermission(PERMISSIONS.deliveryManage)
   const autoPrintDoneRef = useRef(false)
   const printPreviewRef = useRef<HTMLDivElement>(null)
   const detailQuery = useDeliveryDetail(uuid)
@@ -42,7 +45,12 @@ export default function DeliveryDetailPage() {
   }, [detail, shouldAutoPrint])
 
   const handleExport = async () => {
-    if (uuid) await exportMutation.mutateAsync(uuid)
+    if (uuid) {
+      await exportMutation.mutateAsync({
+        documentNo: order?.deliveryNo,
+        uuid,
+      })
+    }
   }
 
   const handlePrint = () => {
@@ -51,6 +59,7 @@ export default function DeliveryDetailPage() {
   }
 
   const handleRollback = async () => {
+    if (!canManageDelivery) return
     if (!uuid || !order) return
     const reason = await askRollbackReason(order.deliveryNo).catch(() => null)
     if (!reason) return
@@ -60,6 +69,7 @@ export default function DeliveryDetailPage() {
   }
 
   const handleRemove = async (record: DeliveryDetail) => {
+    if (!canManageDelivery) return
     if (!uuid) return
     const confirmed = await confirmRemove(record.finishRollNo)
     if (!confirmed) return
@@ -77,7 +87,7 @@ export default function DeliveryDetailPage() {
         tags={order && <DeliveryStatusTag status={order.deliveryStatus} />}
         actions={order && (
           <Space wrap>
-            {order.deliveryStatus === 1 && (
+            {canManageDelivery && order.deliveryStatus === 1 && (
               <Button icon={<PlusOutlined />} onClick={() => setAppendOpen(true)}>
                 添加出库卷
               </Button>
@@ -86,7 +96,7 @@ export default function DeliveryDetailPage() {
             <Button icon={<DownloadOutlined />} loading={exportMutation.isPending} onClick={handleExport}>
               导出 Excel
             </Button>
-            {order.deliveryStatus === 2 && (
+            {canManageDelivery && order.deliveryStatus === 2 && (
               <Button danger icon={<RollbackOutlined />} loading={rollbackMutation.isPending} onClick={handleRollback}>
                 回退出库
               </Button>
@@ -128,6 +138,7 @@ export default function DeliveryDetailPage() {
                   storageKey="delivery-detail-items"
                   rowKey="uuid"
                   columns={buildDeliveryDetailColumns({
+                    canRemove: canManageDelivery,
                     deliveryStatus: detail.order.deliveryStatus,
                     onRemove: handleRemove,
                   })}

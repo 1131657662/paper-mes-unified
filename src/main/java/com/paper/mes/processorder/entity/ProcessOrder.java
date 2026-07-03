@@ -68,7 +68,7 @@ public class ProcessOrder extends BaseEntity {
     private Integer hasExtraStep;
     private Integer actualTotalKnife;
 
-    /** 1待下发 2加工中 3待回录 4已完成 5已结算 */
+    /** 0草稿 1待下发 2加工中 3待回录 4已完成 5已结算 6已作废 */
     private Integer orderStatus;
     /** 0未打印 1已打印 */
     private Integer printStatus;
@@ -77,6 +77,9 @@ public class ProcessOrder extends BaseEntity {
     private String lastPrintUser;
     private LocalDateTime backRecordTime;
     private String backRecordUser;
+    private LocalDateTime voidTime;
+    private String voidUser;
+    private String voidReason;
 
     /** 0单一工艺 1混合锯纸+复卷 */
     private Integer isMixProcess;
@@ -98,6 +101,10 @@ public class ProcessOrder extends BaseEntity {
     private Integer finishRollCount;
     @TableField(exist = false)
     private BigDecimal finishRollWeight;
+    @TableField(exist = false)
+    private BigDecimal estimateFinishWeight;
+    @TableField(exist = false)
+    private BigDecimal actualFinishWeight;
     @TableField(exist = false)
     private Integer spareRollCount;
 }

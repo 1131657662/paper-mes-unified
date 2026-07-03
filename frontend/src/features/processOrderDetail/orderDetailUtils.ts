@@ -1,10 +1,17 @@
 import type {
   FinishRoll,
+  FinishProductionVO,
   OriginalRoll,
   ProcessOrder,
   ProcessOrderDetailVO,
   RollProductionVO,
 } from '../../types/processOrder'
+import {
+  formatNumber as formatSharedNumber,
+  formatOptionalKg,
+  formatOptionalMoney,
+  formatOptionalTonFromKg,
+} from '../../utils/numberFormatters'
 
 export interface DetailMetrics {
   rollCount: number
@@ -28,7 +35,7 @@ export function buildDetailMetrics(detail?: ProcessOrderDetailVO): DetailMetrics
     finishCount: countOfficialFinishes(finishes),
     spareCount: finishes.filter((f) => f.isSpare === 1 && f.rollNoStatus !== 3).length,
     totalOriginalWeight: sumOriginalWeight(rolls),
-    totalEstimateWeight: sumFinishes(finishes, 'estimateWeight'),
+    totalEstimateWeight: sumEstimateWeight(detail),
     totalActualWeight: sumFinishes(finishes, 'actualWeight'),
     knifeCount: sumKnifeCount(productions),
     stepCount: detail?.steps?.length ?? 0,
@@ -36,26 +43,44 @@ export function buildDetailMetrics(detail?: ProcessOrderDetailVO): DetailMetrics
   }
 }
 
+export function resolveFinishEstimateWeight(
+  finish: FinishProductionVO,
+  finishes: FinishProductionVO[],
+  production: RollProductionVO,
+): number | undefined {
+  if (finish.estimateWeight != null && finish.estimateWeight > 0) return finish.estimateWeight
+  const officialFinishes = finishes.filter((item) => item.isSpare !== 1)
+  if (!officialFinishes.length || finish.isSpare === 1) return undefined
+  const availableWeight = productionAvailableWeight(production, officialFinishes)
+  if (availableWeight <= 0) return undefined
+  const widthBasis = officialFinishes.reduce((sum, item) => sum + (item.finishWidth ?? 0), 0)
+  if (widthBasis > 0 && finish.finishWidth) {
+    return roundWeight((availableWeight * finish.finishWidth) / widthBasis)
+  }
+  return roundWeight(availableWeight / officialFinishes.length)
+}
+
+export function sumProductionEstimateWeight(production: RollProductionVO): number {
+  const finishes = production.finishes ?? []
+  return finishes.reduce((sum, finish) => {
+    return sum + (resolveFinishEstimateWeight(finish, finishes, production) ?? 0)
+  }, 0)
+}
+
 export function formatKg(value?: number): string {
-  if (!value) return '-'
-  return `${formatNumber(value, 3)} kg`
+  return formatOptionalKg(value)
 }
 
 export function formatTon(value?: number): string {
-  if (!value) return '-'
-  return `${formatNumber(value / 1000, 3)} t`
+  return formatOptionalTonFromKg(value)
 }
 
 export function formatMoney(value?: number): string {
-  if (value == null) return '-'
-  return `¥${formatNumber(value, 2)}`
+  return formatOptionalMoney(value)
 }
 
 export function formatNumber(value: number, digits = 0): string {
-  return new Intl.NumberFormat('zh-CN', {
-    maximumFractionDigits: digits,
-    minimumFractionDigits: digits,
-  }).format(value)
+  return formatSharedNumber(value, digits)
 }
 
 function countOfficialFinishes(finishes: FinishRoll[]): number {
@@ -74,6 +99,24 @@ function sumFinishes(finishes: FinishRoll[], key: 'estimateWeight' | 'actualWeig
     if (finish.isSpare === 1 || finish.rollNoStatus === 3) return sum
     return sum + (finish[key] ?? 0)
   }, 0)
+}
+
+function sumEstimateWeight(detail?: ProcessOrderDetailVO): number {
+  const explicit = sumFinishes(detail?.finishRolls ?? [], 'estimateWeight')
+  const fallback = (detail?.rollProductions ?? []).reduce((sum, production) => {
+    return sum + sumProductionEstimateWeight(production)
+  }, 0)
+  return Math.max(explicit, fallback)
+}
+
+function productionAvailableWeight(production: RollProductionVO, finishes: FinishProductionVO[]): number {
+  const totalWeight = (production.rollWeight ?? 0) * (production.pieceNum ?? 1)
+  const trimWeight = finishes.reduce((sum, finish) => sum + (finish.trimWeightShare ?? 0), 0)
+  return Math.max(0, totalWeight - trimWeight)
+}
+
+function roundWeight(value: number): number {
+  return Number(value.toFixed(3))
 }
 
 function sumKnifeCount(productions: RollProductionVO[]): number {

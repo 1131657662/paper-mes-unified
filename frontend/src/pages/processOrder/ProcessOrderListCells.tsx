@@ -1,5 +1,6 @@
 import { Tag, Typography } from 'antd'
 import type { ProcessOrder } from '../../types/processOrder'
+import { formatTonFromKg } from '../../utils/numberFormatters'
 
 export function OrderNoCell({ record }: { record: ProcessOrder }) {
   return (
@@ -12,12 +13,14 @@ export function OrderNoCell({ record }: { record: ProcessOrder }) {
 
 export function ProductionSummary({ record }: { record: ProcessOrder }) {
   const originalWeight = record.originalRollWeight ?? record.totalOriginalWeight
-  const finishWeight = record.finishRollWeight ?? record.totalFinishWeight
+  const estimateWeight = record.estimateFinishWeight ?? estimateFallback(record)
+  const actualWeight = record.actualFinishWeight ?? record.totalFinishWeight
 
   return (
     <div className="process-order-list__summary">
       <span>原卷 {record.originalRollCount ?? 0} 卷 / {formatTon(originalWeight)}</span>
-      <span>成品 {record.finishRollCount ?? 0} 卷 / {formatTon(finishWeight)}</span>
+      <span>成品 {record.finishRollCount ?? 0} 卷 / 预估 {formatTon(estimateWeight)}</span>
+      {hasWeight(actualWeight) && <span>实际 {formatTon(actualWeight)}</span>}
       {record.actualTotalKnife != null && record.actualTotalKnife > 0 && <span>锯纸 {record.actualTotalKnife} 刀</span>}
       {record.spareRollCount != null && record.spareRollCount > 0 && <span>备用 {record.spareRollCount} 个</span>}
     </div>
@@ -49,15 +52,16 @@ export function PriorityPill({ value }: { value?: number }) {
 }
 
 function formatTon(value?: number) {
-  if (value == null || value === 0) return '0.000t'
-  return `${formatNumber(value / 1000, 3)}t`
+  return formatTonFromKg(value)
 }
 
-function formatNumber(value: number, digits: number) {
-  return value.toLocaleString('zh-CN', {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  })
+function estimateFallback(record: ProcessOrder) {
+  if (record.actualFinishWeight || record.totalFinishWeight) return undefined
+  return record.finishRollWeight
+}
+
+function hasWeight(value?: number) {
+  return value != null && value > 0
 }
 
 function settleText(settleType?: number, settleDay?: number) {

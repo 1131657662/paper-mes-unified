@@ -8,6 +8,7 @@ import type { BackRecordWorkItem, BackRecordWorkbenchData, WorkbenchFinish } fro
 export interface WorkItemMetrics {
   rollActual?: number
   finishActual: number
+  loss: number
   scrap: number
   missingRoll: boolean
   missingFinishes: number
@@ -29,13 +30,15 @@ export function buildWorkItemMetrics(
   const rollActual = item.roll ? values.rolls?.[item.roll.uuid]?.actualWeight ?? item.roll.actualWeight : undefined
   const official = item.finishes.filter(({ finish }) => finish.isSpare !== 1)
   const finishActual = sum(official.map(({ finish }) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight))
+  const loss = sum(processSteps(item).map((step) => values.steps?.[step.uuid]?.lossWeight ?? step.lossWeight))
   const scrap = sum(item.finishes.map(({ finish }) => values.finishes?.[finish.uuid]?.scrapWeight ?? finish.scrapWeight))
   const missingFinishes = official.filter(({ finish }) => !positive(values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight)).length
-  const diff = rollActual == null ? undefined : rollActual - finishActual - scrap
+  const diff = rollActual == null ? undefined : rollActual - finishActual - loss - scrap
 
   return {
     rollActual,
     finishActual,
+    loss,
     scrap,
     missingRoll: item.kind === 'roll' && !positive(rollActual),
     missingFinishes,
@@ -155,4 +158,9 @@ function sum(values: Array<number | undefined>): number {
 
 function positive(value?: number) {
   return value != null && value > 0
+}
+
+function processSteps(item: BackRecordWorkItem) {
+  const productions = item.rollProductions.length ? item.rollProductions : item.production ? [item.production] : []
+  return Array.from(new Map(productions.flatMap((production) => production.steps ?? []).map((step) => [step.uuid, step])).values())
 }

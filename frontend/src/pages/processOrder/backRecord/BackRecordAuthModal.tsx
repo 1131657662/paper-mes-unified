@@ -22,10 +22,10 @@ export default function BackRecordAuthModal({ open, form, onCancel, onSubmit }: 
       forceRender
     >
       <Alert
+        className="back-record-auth-alert"
         showIcon
         type="error"
         message="重量偏差超过 5%，需授权放行并写入操作日志。"
-        style={{ marginBottom: 16 }}
       />
       <Form form={form} layout="vertical">
         <Form.Item name="operator" label="放行人" rules={[{ required: true, message: '放行人必填' }]}>

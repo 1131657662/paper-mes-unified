@@ -148,9 +148,6 @@ public class OriginalRollImportParser {
         if (dto.getOriginalWidth() == null || dto.getOriginalWidth() <= 0) {
             addError(preview, rowNumber, "门幅", "门幅必须大于0", raw);
         }
-        if (!StringUtils.hasText(dto.getRollNo())) {
-            addError(preview, rowNumber, "卷号", "卷号不能为空", raw);
-        }
         if (dto.getRollWeight() == null || dto.getRollWeight().signum() <= 0) {
             addError(preview, rowNumber, "单重", "单重必须大于0", raw);
         }
