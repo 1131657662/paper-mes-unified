@@ -89,7 +89,11 @@ function CreateOrderContent({ draftUuid }: { draftUuid?: string }) {
             selectedId={state.selectedId}
             plans={state.plans}
             previews={state.previews}
+            routePreviews={state.routePreviews}
             saving={state.savingWorkbench}
+            onOpenRouteDesigner={(roll) => {
+              if (state.orderUuid && roll.uuid) navigate(`/process-orders/create/${state.orderUuid}/routes/${roll.uuid}`)
+            }}
             onSelect={state.setSelectedId}
             onPlanChange={state.handlePlanChange}
             onPreviewPlan={state.handlePreviewPlan}
@@ -104,6 +108,7 @@ function CreateOrderContent({ draftUuid }: { draftUuid?: string }) {
             rolls={state.rolls}
             plans={state.plans}
             previews={state.previews}
+            routePreviews={state.routePreviews}
             submitting={state.submitting}
             submitResult={state.submitResult}
             onBackToList={() => navigate('/process-orders')}

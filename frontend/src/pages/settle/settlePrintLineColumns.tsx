@@ -4,6 +4,7 @@ import TooltipText from '../../components/biz/TooltipText'
 import { INVOICE_TYPE } from '../../constants/settle'
 import { formatKg, formatMoney } from '../../features/settle/utils/settleFormatters'
 import type { SettlePrintLine } from '../../types/settle'
+import { SettleFeeSourceCell } from './SettleFeeLinesView'
 
 export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
   { title: '加工单', dataIndex: 'orderNo', fixed: 'left', width: 145 },
@@ -31,12 +32,7 @@ export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
     ),
   },
   { title: '原纸重量', dataIndex: 'originalWeight', align: 'right', width: 110, render: formatKg },
-  {
-    title: '加工内容',
-    dataIndex: 'processText',
-    width: 220,
-    render: (_, record) => processCell(record),
-  },
+  { title: '加工内容', dataIndex: 'processText', width: 220, render: (_, record) => processCell(record) },
   {
     title: '成品摘要',
     dataIndex: 'finishSummary',
@@ -65,13 +61,11 @@ export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
     dataIndex: 'rewindUnitPrice',
     align: 'right',
     width: 130,
-    render: (_, record) => unitPriceCell({
-      invoicePrice: record.rewindInvoiceUnitPrice,
-      price: record.rewindUnitPrice,
-    }),
+    render: (_, record) => unitPriceCell({ invoicePrice: record.rewindInvoiceUnitPrice, price: record.rewindUnitPrice }),
   },
   { title: '复卷费', dataIndex: 'rewindAmount', align: 'right', width: 105, render: formatMoney },
   { title: '加工费', dataIndex: 'processAmount', align: 'right', width: 110, render: formatMoney },
+  { title: '费用来源', dataIndex: 'feeLines', width: 300, render: (_, record) => <SettleFeeSourceCell feeLines={record.feeLines} /> },
   {
     title: '额外费',
     dataIndex: 'extraAmount',
@@ -79,12 +73,7 @@ export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
     width: 180,
     render: (_, record) => amountWithHint({ amount: record.extraAmount, hint: record.extraFeeSummary }),
   },
-  {
-    title: '开票',
-    dataIndex: 'isInvoice',
-    width: 96,
-    render: (value, record) => invoiceCell(value, record.taxRate),
-  },
+  { title: '开票', dataIndex: 'isInvoice', width: 96, render: (value, record) => invoiceCell(value, record.taxRate) },
   {
     title: '应收合计',
     dataIndex: 'lineAmount',
@@ -145,8 +134,8 @@ function originalSpec(record: SettlePrintLine) {
   const parts = [
     record.actualGramWeight ? `${record.actualGramWeight}g` : record.gramWeight ? `${record.gramWeight}g` : undefined,
     record.actualWidth ? `${record.actualWidth}mm` : record.originalWidth ? `${record.originalWidth}mm` : undefined,
-    record.originalDiameter ? `φ${record.originalDiameter}` : undefined,
-    record.coreDiameter ? `芯${record.coreDiameter}` : undefined,
+    record.originalDiameter ? `直径${record.originalDiameter}` : undefined,
+    record.coreDiameter ? `纸芯${record.coreDiameter}` : undefined,
     record.originalLength ? `${record.originalLength}m` : undefined,
   ].filter(Boolean)
   return parts.length ? parts.join(' / ') : '-'

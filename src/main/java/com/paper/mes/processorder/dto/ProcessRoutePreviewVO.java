@@ -21,6 +21,8 @@ public class ProcessRoutePreviewVO {
         private Integer stageLevel;
         private Integer stepType;
         private String stepName;
+        private String machineUuid;
+        private String machineName;
         private List<String> inputOutputKeys;
         private Integer knifeCount;
         private BigDecimal processWeight;

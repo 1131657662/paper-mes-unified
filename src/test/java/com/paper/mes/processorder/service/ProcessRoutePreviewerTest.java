@@ -66,6 +66,25 @@ class ProcessRoutePreviewerTest {
     }
 
     @Test
+    void preview_whenStageOutputsExceedSourceWeight_throwsBusinessException() {
+        ProcessRoutePreviewDTO dto = sawThenRewindRoute();
+        dto.getStages().get(1).setOutputs(List.of(output("too-heavy", new BigDecimal("600.000"))));
+
+        assertThrows(BusinessException.class, () -> previewer.preview(roll(), dto));
+    }
+
+    @Test
+    void preview_whenStageProducesDuplicateOutputKeys_throwsBusinessException() {
+        ProcessRoutePreviewDTO dto = sawThenRewindRoute();
+        dto.getStages().get(0).setOutputs(List.of(
+                output("same-key", new BigDecimal("450.000")),
+                output("same-key", new BigDecimal("550.000"))
+        ));
+
+        assertThrows(BusinessException.class, () -> previewer.preview(roll(), dto));
+    }
+
+    @Test
     void preview_whenRewindConsumesTwoOutputs_chargesCombinedWeight() {
         ProcessRoutePreviewVO preview = previewer.preview(roll(), sawThenRewindBothOutputsRoute());
 

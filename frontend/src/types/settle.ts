@@ -17,6 +17,8 @@ export interface SettleOrder {
   taxAmount: number
   totalAmount: number
   receivedAmount: number
+  cashReceivedAmount?: number
+  scrapOffsetAmount?: number
   unreceivedAmount: number
   isInvoice: number
   settleStatus: number
@@ -83,6 +85,24 @@ export interface SettlePrintLine {
   lineAmount?: number
   isInvoice?: number
   remark?: string
+  feeLines?: SettleFeeLine[]
+}
+
+export interface SettleFeeLine {
+  feeType: 'saw' | 'rewind' | 'extra' | 'tax' | string
+  feeName: string
+  stageLevel?: number
+  sourceText?: string
+  outputText?: string
+  quantity?: number
+  quantityUnit?: string
+  unitPrice?: number
+  amountNoTax?: number
+  taxRate?: number
+  taxAmount?: number
+  amountTax?: number
+  formulaText?: string
+  remark?: string
 }
 
 export interface ReceiveRecord {
@@ -90,7 +110,12 @@ export interface ReceiveRecord {
   settleUuid: string
   receiveDate: string
   receiveAmount: number
-  payMethod: number
+  cashAmount?: number
+  scrapOffsetAmount?: number
+  scrapWeight?: number
+  scrapUnitPrice?: number
+  receiveType?: number
+  payMethod?: number
   payNo?: string
   operator?: string
   recordStatus?: number
@@ -159,8 +184,11 @@ export interface SettleByMonthDTO {
 }
 
 export interface ReceiveDTO {
-  receiveAmount: number
-  payMethod: number
+  receiveAmount?: number
+  cashAmount?: number
+  scrapOffsetAmount?: number
+  scrapWeight?: number
+  payMethod?: number
   payNo?: string
   operator?: string
   receiveDate?: string

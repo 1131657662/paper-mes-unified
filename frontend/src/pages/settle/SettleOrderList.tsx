@@ -1,13 +1,11 @@
 import { useState } from 'react'
-import { Button, DatePicker, Form, Input, Select, message } from 'antd'
-import { ReloadOutlined, SearchOutlined, WalletOutlined } from '@ant-design/icons'
-import type { Dayjs } from 'dayjs'
+import { Button, Form, message } from 'antd'
+import { WalletOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import DocumentListShell from '../../components/biz/DocumentListShell'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import { useDocumentRowSelection } from '../../components/biz/useDocumentRowSelection'
 import { PERMISSIONS } from '../../constants/permissions'
-import { SETTLE_STATUS, SETTLE_TYPE } from '../../constants/settle'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import SettleOrderTable from '../../features/settle/components/SettleOrderTable'
 import { useSettleOrders } from '../../features/settle/hooks/useSettleOrders'
@@ -15,20 +13,13 @@ import { useConfiguredPageSize } from '../../features/systemConfig/hooks/useConf
 import { useHasPermission } from '../../stores/authStore'
 import type { SettleOrder, SettleQuery } from '../../types/settle'
 import ReceiveModal from './ReceiveModal'
+import SettleSearchBar, { type SettleSearchFormValues } from './SettleSearchBar'
 import './SettleOrderList.css'
 
 type QueueFilter = 'all' | 'pending' | 'partial' | 'paid'
 
-interface SearchFormValues {
-  customerUuid?: string
-  dateRange?: [Dayjs, Dayjs] | null
-  keyword?: string
-  settleStatus?: number
-  settleType?: number
-}
-
 export default function SettleOrderList() {
-  const [form] = Form.useForm<SearchFormValues>()
+  const [form] = Form.useForm<SettleSearchFormValues>()
   const navigate = useNavigate()
   const customersQuery = useCustomers()
   const [queueFilter, setQueueFilter] = useState<QueueFilter>('all')
@@ -44,7 +35,7 @@ export default function SettleOrderList() {
   const orders = ordersQuery.data?.records ?? []
   const selectedReceivable = rowSelection.selectedRows.filter((record) => record.settleStatus !== 3)
 
-  const handleSearch = (values: SearchFormValues) => {
+  const handleSearch = (values: SettleSearchFormValues) => {
     setFilters({
       customerUuid: values.customerUuid,
       dateFrom: values.dateRange?.[0]?.format('YYYY-MM-DD'),
@@ -73,12 +64,6 @@ export default function SettleOrderList() {
     setReceiveRecord(selectedReceivable[0])
   }
 
-  const handlePageChange = (nextPage: number, nextPageSize: number) => {
-    setPage(nextPage)
-    setPageSize(nextPageSize)
-    rowSelection.clear()
-  }
-
   return (
     <DocumentListShell
       title="结算管理"
@@ -101,11 +86,7 @@ export default function SettleOrderList() {
         />
       )}
       leftActions={canReceiveSettle && (
-        <Button
-          icon={<WalletOutlined />}
-          disabled={selectedReceivable.length !== 1}
-          onClick={handleReceiveSelected}
-        >
+        <Button icon={<WalletOutlined />} disabled={selectedReceivable.length !== 1} onClick={handleReceiveSelected}>
           登记收款
         </Button>
       )}
@@ -133,9 +114,12 @@ export default function SettleOrderList() {
         current={page}
         pageSize={pageSize}
         total={ordersQuery.data?.total ?? 0}
-        onChange={handlePageChange}
+        onChange={(nextPage, nextPageSize) => {
+          setPage(nextPage)
+          setPageSize(nextPageSize)
+          rowSelection.clear()
+        }}
       />
-
       <ReceiveModal
         settleUuid={receiveRecord?.uuid ?? null}
         unreceivedAmount={receiveRecord?.unreceivedAmount ?? 0}
@@ -151,71 +135,10 @@ export default function SettleOrderList() {
   )
 }
 
-function SettleSearchBar({
-  customers,
-  form,
-  loadingCustomers,
-  onReset,
-  onSearch,
-}: {
-  customers: { customerName: string; uuid: string }[]
-  form: ReturnType<typeof Form.useForm<SearchFormValues>>[0]
-  loadingCustomers: boolean
-  onReset: () => void
-  onSearch: (values: SearchFormValues) => void
-}) {
-  return (
-    <Form form={form} layout="vertical" className="document-searchbar" onFinish={onSearch}>
-      <div className="document-searchbar__grid document-searchbar__grid--six">
-        <Form.Item name="keyword" label="结算单号/客户">
-          <Input allowClear placeholder="输入单号、客户或备注" />
-        </Form.Item>
-        <Form.Item name="customerUuid" label="客户">
-          <Select
-            allowClear
-            showSearch
-            loading={loadingCustomers}
-            placeholder="全部客户"
-            options={customers.map((item) => ({ label: item.customerName, value: item.uuid }))}
-            optionFilterProp="label"
-          />
-        </Form.Item>
-        <Form.Item name="dateRange" label="结算日期">
-          <DatePicker.RangePicker style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item name="settleStatus" label="状态">
-          <Select allowClear placeholder="全部状态" options={statusOptions()} />
-        </Form.Item>
-        <Form.Item name="settleType" label="类型">
-          <Select allowClear placeholder="全部类型" options={typeOptions()} />
-        </Form.Item>
-        <div className="document-searchbar__actions">
-          <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>查询</Button>
-          <Button icon={<ReloadOutlined />} onClick={onReset}>重置</Button>
-        </div>
-      </div>
-    </Form>
-  )
-}
-
 function settleStatus(filter: QueueFilter, filters: SettleQuery) {
   if (filters.settleStatus) return filters.settleStatus
   if (filter === 'pending') return 1
   if (filter === 'partial') return 2
   if (filter === 'paid') return 3
   return undefined
-}
-
-function statusOptions() {
-  return Object.entries(SETTLE_STATUS).map(([value, item]) => ({
-    label: item.text,
-    value: Number(value),
-  }))
-}
-
-function typeOptions() {
-  return Object.entries(SETTLE_TYPE).map(([value, label]) => ({
-    label,
-    value: Number(value),
-  }))
 }

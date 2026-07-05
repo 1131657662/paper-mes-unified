@@ -300,6 +300,37 @@
   white-space: normal;
 }
 
+.settle-fee-lines {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settle-fee-line {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 5px;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.settle-fee-line > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settle-fee-line strong {
+  color: var(--mes-color-text);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .document-module-summary {
   display: flex;
   min-width: 0;
@@ -585,6 +616,30 @@
   color: #526579;
   font-size: 10px;
   font-weight: 400;
+}
+
+.settle-fee-lines--print {
+  margin-top: 1mm;
+  padding-top: 1mm;
+  border-top: .6pt dashed #9aa7b5;
+}
+
+.settle-fee-lines--print .settle-fee-line {
+  display: block;
+  color: #111827;
+  font-size: 7.5pt;
+}
+
+.settle-fee-lines--print b,
+.settle-fee-lines--print span,
+.settle-fee-lines--print em {
+  display: inline;
+  font-style: normal;
+}
+
+.settle-fee-lines--print b::after,
+.settle-fee-lines--print span::after {
+  content: ' ';
 }
 
 .document-print-sheet__footer {

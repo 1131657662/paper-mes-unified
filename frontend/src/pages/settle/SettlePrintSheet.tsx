@@ -2,6 +2,7 @@ import { INVOICE_TYPE } from '../../constants/settle'
 import { formatKg, formatMoney, formatTon } from '../../features/settle/utils/settleFormatters'
 import type { SettleDetailVO, SettlePrintLine } from '../../types/settle'
 import { buildSettleBillGroups, type SettleBillGroup } from './settleBillGroups'
+import { SettleFeeSourcePrint } from './SettleFeeLinesView'
 import '../documentModule.css'
 
 interface Props {
@@ -27,7 +28,9 @@ export default function SettlePrintSheet({ detail }: Props) {
           </div>
           <div className="document-print-sheet__summary">
             <span>应收：{formatMoney(order.totalAmount)}</span>
-            <span>已收：{formatMoney(order.receivedAmount)}</span>
+            <span>已结清：{formatMoney(order.receivedAmount)}</span>
+            <span>现金：{formatMoney(order.cashReceivedAmount)}</span>
+            <span>废纸：{formatMoney(order.scrapOffsetAmount)}</span>
             <span>未收：{formatMoney(order.unreceivedAmount)}</span>
           </div>
         </header>
@@ -76,23 +79,7 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
           </tr>
         </thead>
         <tbody>
-          {group.lines.map((line) => (
-            <tr key={`${line.orderUuid}-${line.originalUuid}`}>
-              <td>{printOriginalLabel(line)}</td>
-              <td>{printOriginalSpec(line)}</td>
-              <td>{formatKg(line.originalWeight)}</td>
-              <td>{printProcessText(line)}</td>
-              <td>{line.finishDetailSummary || line.finishSummary || '-'}</td>
-              <td>{formatKg(line.finishWeight)}</td>
-              <td>{line.trimSummary || formatKg(line.trimWeight)}</td>
-              <td><PrintUnitPrice price={line.sawUnitPrice} invoicePrice={line.sawInvoiceUnitPrice} amount={line.sawAmount} /></td>
-              <td><PrintUnitPrice price={line.rewindUnitPrice} invoicePrice={line.rewindInvoiceUnitPrice} amount={line.rewindAmount} /></td>
-              <td>
-                <PrintAmountWithHint amount={line.extraAmount} hint={line.extraFeeSummary} />
-              </td>
-              <td>{formatMoney(line.lineAmount)}</td>
-            </tr>
-          ))}
+          {group.lines.map((line) => <PrintLine line={line} key={`${line.orderUuid}-${line.originalUuid}`} />)}
           <tr className="document-print-table__subtotal">
             <td colSpan={2}>加工单小计</td>
             <td>{formatTon(group.originalWeight)}</td>
@@ -109,6 +96,24 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
   )
 }
 
+function PrintLine({ line }: { line: SettlePrintLine }) {
+  return (
+    <tr>
+      <td>{printOriginalLabel(line)}</td>
+      <td>{printOriginalSpec(line)}</td>
+      <td>{formatKg(line.originalWeight)}</td>
+      <td>{printProcessText(line)}<SettleFeeSourcePrint feeLines={line.feeLines} /></td>
+      <td>{line.finishDetailSummary || line.finishSummary || '-'}</td>
+      <td>{formatKg(line.finishWeight)}</td>
+      <td>{line.trimSummary || formatKg(line.trimWeight)}</td>
+      <td><PrintUnitPrice price={line.sawUnitPrice} invoicePrice={line.sawInvoiceUnitPrice} amount={line.sawAmount} /></td>
+      <td><PrintUnitPrice price={line.rewindUnitPrice} invoicePrice={line.rewindInvoiceUnitPrice} amount={line.rewindAmount} /></td>
+      <td><PrintAmountWithHint amount={line.extraAmount} hint={line.extraFeeSummary} /></td>
+      <td>{formatMoney(line.lineAmount)}</td>
+    </tr>
+  )
+}
+
 function PrintUnitPrice({ amount, invoicePrice, price }: { amount?: number; invoicePrice?: number; price?: number }) {
   const showInvoice = invoicePrice != null && invoicePrice !== price
   return (
@@ -120,24 +125,22 @@ function PrintUnitPrice({ amount, invoicePrice, price }: { amount?: number; invo
 }
 
 function printOriginalLabel(line: SettlePrintLine) {
-  const parts = [
-    line.originalLabel || '-',
-    line.originalRollNo ? `卷号${line.originalRollNo}` : undefined,
-    line.originalExtraNo ? `编号${line.originalExtraNo}` : undefined,
-  ].filter(Boolean)
-  return parts.join(' / ')
+  return [line.originalLabel || '-', line.originalRollNo && `卷号${line.originalRollNo}`, line.originalExtraNo && `编号${line.originalExtraNo}`]
+    .filter(Boolean)
+    .join(' / ')
 }
 
 function printOriginalSpec(line: SettlePrintLine) {
-  const spec = [
+  const gram = line.actualGramWeight ? `${line.actualGramWeight}g` : line.gramWeight ? `${line.gramWeight}g` : '-'
+  const width = line.actualWidth ? `${line.actualWidth}mm` : line.originalWidth ? `${line.originalWidth}mm` : '-'
+  return [
     line.paperName || '-',
-    line.actualGramWeight ? `${line.actualGramWeight}g` : line.gramWeight ? `${line.gramWeight}g` : '-',
-    line.actualWidth ? `${line.actualWidth}mm` : line.originalWidth ? `${line.originalWidth}mm` : '-',
-    line.originalDiameter ? `φ${line.originalDiameter}` : undefined,
-    line.coreDiameter ? `芯${line.coreDiameter}` : undefined,
-    line.originalLength ? `${line.originalLength}m` : undefined,
-  ].filter(Boolean)
-  return spec.join(' / ')
+    gram,
+    width,
+    line.originalDiameter && `直径${line.originalDiameter}`,
+    line.coreDiameter && `纸芯${line.coreDiameter}`,
+    line.originalLength && `${line.originalLength}m`,
+  ].filter(Boolean).join(' / ')
 }
 
 function printProcessText(line: SettlePrintLine) {

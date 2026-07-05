@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { message } from 'antd'
-import type { DraftOrderBaseDTO, OriginalRollImportPreviewVO, PlanPreviewVO, ProcessOrderSubmitVO, ProcessPlanDTO } from '../../../types/processOrder'
+import type { DraftOrderBaseDTO, OriginalRollImportPreviewVO, PlanPreviewVO, ProcessOrderSubmitVO, ProcessPlanDTO, ProcessRoutePreviewDTO, ProcessRoutePreviewVO } from '../../../types/processOrder'
 import { hydrateDraftState, isRollReadyForSave, plansForRolls, plansFromBatch, previewsFromBatch, rebasePlanForRoll } from '../createOrderState'
 import {
   applyLegacyPlanPriceDefaults,
@@ -38,6 +38,8 @@ export function useCreateOrderPage(draftUuid?: string) {
   const [selectedId, setSelectedId] = useState<string>()
   const [plans, setPlans] = useState<Record<string, ProcessPlanDTO>>({})
   const [previews, setPreviews] = useState<Record<string, PlanPreviewVO>>({})
+  const [routes, setRoutes] = useState<Record<string, ProcessRoutePreviewDTO>>({})
+  const [routePreviews, setRoutePreviews] = useState<Record<string, ProcessRoutePreviewVO>>({})
   const [submitResult, setSubmitResult] = useState<ProcessOrderSubmitVO>()
 
   const { data: draft, isLoading: loadingDraft } = useGetDraft(draftUuid)
@@ -72,9 +74,18 @@ export function useCreateOrderPage(draftUuid?: string) {
     setRolls(state.rolls)
     setPlans(state.plans)
     setPreviews(state.previews)
+    setRoutes(state.routes)
+    setRoutePreviews(state.routePreviews)
     setSelectedId(state.selectedId)
     setCurrent(state.current)
     hydratedDraftUuid.current = draftUuid
+  }, [draft, draftUuid])
+
+  useEffect(() => {
+    if (!draftUuid || !draft || hydratedDraftUuid.current !== draftUuid) return
+    const state = hydrateDraftState(draft)
+    setRoutes(state.routes)
+    setRoutePreviews(state.routePreviews)
   }, [draft, draftUuid])
 
   const moveToStep = async (nextStep: number, uuid = orderUuid) => {
@@ -103,6 +114,8 @@ export function useCreateOrderPage(draftUuid?: string) {
     setRolls(savedRolls)
     setPlans(plansForRolls(savedRolls, {}, defaultPlanOptions))
     setPreviews({})
+    setRoutes({})
+    setRoutePreviews({})
     setSelectedId(savedRolls[0]?.localId)
     await moveToStep(2)
   }
@@ -176,6 +189,7 @@ export function useCreateOrderPage(draftUuid?: string) {
   const handleConfigNext = async () => {
     const mergedSourceUuids = mergedSourceUuidSet(rolls, plans)
     for (const roll of rolls.filter((item) => item.processMode !== 3)) {
+      if (roll.uuid && routes[roll.uuid]) continue
       if (roll.uuid && mergedSourceUuids.has(roll.uuid)) continue
       await saveRollPlan(roll, plans[roll.localId] ?? defaultPlanForRoll(roll, defaultPlanOptions))
     }
@@ -198,6 +212,8 @@ export function useCreateOrderPage(draftUuid?: string) {
     orderUuid,
     plans,
     previews,
+    routePreviews,
+    routes,
     rolls,
     selectedId: selectedId ?? rolls[0]?.localId,
     submitResult,

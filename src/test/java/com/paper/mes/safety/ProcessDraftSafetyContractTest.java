@@ -28,7 +28,10 @@ class ProcessDraftSafetyContractTest {
         assertContainsAll(slice(draftService, "private ProcessOrderSubmitVO generateFinishConfigs",
                         "private Set<String> coveredByMultiSourceDrafts"),
                 "processOrderService.saveFinishConfig(",
-                "readConfig(drafts.get(roll.getUuid()))");
+                "routeDraftManager.submit(order, roll, draft)",
+                "readConfig(draft)");
+        assertContainsAll(draftService,
+                "routeDraftManager.isRouteDraft(draft)");
 
         assertTrue(!draftService.contains("private String previewJson("),
                 "draft service must not keep a second preview JSON path");

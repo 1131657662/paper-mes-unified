@@ -36,7 +36,7 @@ export default function DashboardMetricGrid({ metrics }: Props) {
       label: '已结算未收',
       main: formatMoney(metrics?.receivableAmount),
       sub: `${metrics?.receivableCount ?? 0} 单待跟进`,
-      tip: `待结算应收 ${formatMoney(metrics?.pendingSettleAmount)}，与已结算未收分开统计`,
+      tip: `现金 ${formatMoney(metrics?.cashReceivedAmount)} / 废纸 ${formatMoney(metrics?.scrapOffsetAmount)}`,
       tone: 'green',
     },
     {
@@ -44,7 +44,7 @@ export default function DashboardMetricGrid({ metrics }: Props) {
       label: '本月损耗',
       main: formatPercent(metrics?.monthLossRatio),
       sub: `${formatTonFromKg(metrics?.monthLossWeight)} 损耗重量`,
-      tip: '来自回录闭合后的损耗统计',
+      tip: `待结算应收 ${formatMoney(metrics?.pendingSettleAmount)}，不与已结算未收混算`,
       tone: 'orange',
     },
   ]

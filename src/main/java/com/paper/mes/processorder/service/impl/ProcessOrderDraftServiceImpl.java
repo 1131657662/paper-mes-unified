@@ -13,7 +13,6 @@ import com.paper.mes.processorder.dto.DraftOrderVO;
 import com.paper.mes.processorder.dto.DraftOrderBaseDTO;
 import com.paper.mes.processorder.dto.DraftSummaryVO;
 import com.paper.mes.processorder.dto.FinishConfigSaveDTO;
-import com.paper.mes.processorder.dto.FinishConfigSaveVO;
 import com.paper.mes.processorder.dto.FinishConfigSpecDTO;
 import com.paper.mes.processorder.dto.OriginalRollImportPreviewVO;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
@@ -36,6 +35,7 @@ import com.paper.mes.processorder.service.ProcessPlanDraftManager;
 import com.paper.mes.processorder.service.ProcessPlanMapper;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.ProcessRouteDraftManager;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
 import lombok.RequiredArgsConstructor;
@@ -73,6 +73,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     private final ProcessOrderService processOrderService;
     private final DraftOrderReader draftOrderReader;
     private final ProcessPlanDraftManager planDraftManager;
+    private final ProcessRouteDraftManager routeDraftManager;
     private final ProcessPlanMapper processPlanMapper;
     private final OriginalRollImportParser importParser;
     private final ObjectMapper objectMapper;
@@ -295,7 +296,6 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
 
     private ProcessOrderSubmitVO generateFinishConfigs(ProcessOrder order, List<OriginalRoll> rolls,
                                                        Map<String, ProcessConfigDraft> drafts) {
-        ProcessOrderSubmitVO vo = submittedShell(order);
         Set<String> coveredRolls = coveredByMultiSourceDrafts(drafts);
         for (OriginalRoll roll : rolls) {
             if (roll.getProcessMode() != null && roll.getProcessMode() == PROCESS_MODE_DIRECT) {
@@ -304,18 +304,24 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
             if (coveredRolls.contains(roll.getUuid())) {
                 continue;
             }
-            FinishConfigSaveVO saved = processOrderService.saveFinishConfig(
-                    order.getUuid(), roll.getUuid(), readConfig(drafts.get(roll.getUuid())));
-            vo.getFinishRollNos().addAll(saved.getFinishRollNos());
-            vo.getSpareRollNos().addAll(saved.getSpareRollNos());
+            ProcessConfigDraft draft = drafts.get(roll.getUuid());
+            if (routeDraftManager.isRouteDraft(draft)) {
+                routeDraftManager.submit(order, roll, draft);
+                continue;
+            }
+            processOrderService.saveFinishConfig(order.getUuid(), roll.getUuid(), readConfig(draft));
         }
-        return vo;
+        processOrderService.calcFee(order.getUuid());
+        return submittedResult(order);
     }
 
     private Set<String> coveredByMultiSourceDrafts(Map<String, ProcessConfigDraft> drafts) {
         Set<String> covered = new LinkedHashSet<>();
         for (ProcessConfigDraft draft : drafts.values()) {
             if (draft.getConfigStatus() == null || draft.getConfigStatus() != 1) {
+                continue;
+            }
+            if (routeDraftManager.isRouteDraft(draft)) {
                 continue;
             }
             FinishConfigSaveDTO config = readConfig(draft);

@@ -13,6 +13,8 @@ import com.paper.mes.processorder.dto.FinishPreviewVO;
 import com.paper.mes.processorder.dto.PlanPreviewVO;
 import com.paper.mes.processorder.dto.ProcessConfigDraftVO;
 import com.paper.mes.processorder.dto.ProcessPlanDTO;
+import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
+import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessConfigDraft;
 import com.paper.mes.processorder.entity.ProcessOrder;
@@ -111,16 +113,50 @@ public class DraftOrderReader {
     }
 
     private ProcessConfigDraftVO configVo(ProcessConfigDraft draft) {
-        ProcessPlanDTO plan = readPlan(draft);
         ProcessConfigDraftVO vo = new ProcessConfigDraftVO();
         vo.setOriginalUuid(draft.getOriginalUuid());
         vo.setProcessMode(draft.getProcessMode());
         vo.setMainStepType(draft.getMainStepType());
         vo.setConfigStatus(draft.getConfigStatus());
         vo.setLastError(draft.getLastError());
+        if (isRouteDraft(draft)) {
+            vo.setConfigType(ProcessRouteDraftManager.CONFIG_TYPE_ROUTE);
+            vo.setRoute(readRoute(draft));
+            vo.setRoutePreview(readRoutePreview(draft));
+            return vo;
+        }
+        ProcessPlanDTO plan = readPlan(draft);
+        vo.setConfigType(ProcessRouteDraftManager.CONFIG_TYPE_SINGLE);
         vo.setPlan(plan);
         vo.setPreview(readPreview(draft, plan));
         return vo;
+    }
+
+    private boolean isRouteDraft(ProcessConfigDraft draft) {
+        try {
+            return objectMapper.readTree(draft.getConfigJson()).has("stages");
+        } catch (JsonProcessingException e) {
+            throw new BusinessException("工艺配置草稿解析失败");
+        }
+    }
+
+    private ProcessRoutePreviewDTO readRoute(ProcessConfigDraft draft) {
+        try {
+            return objectMapper.readValue(draft.getConfigJson(), ProcessRoutePreviewDTO.class);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException("链式工艺草稿解析失败");
+        }
+    }
+
+    private ProcessRoutePreviewVO readRoutePreview(ProcessConfigDraft draft) {
+        if (draft.getPreviewJson() == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(draft.getPreviewJson(), ProcessRoutePreviewVO.class);
+        } catch (JsonProcessingException e) {
+            return null;
+        }
     }
 
     private ProcessPlanDTO readPlan(ProcessConfigDraft draft) {

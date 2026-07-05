@@ -286,6 +286,8 @@ CREATE TABLE `biz_process_step` (
   `step_sort`      INT           NOT NULL DEFAULT 1      COMMENT '工序排序号',
   `step_type`      TINYINT       NOT NULL                COMMENT '1锯纸 2复卷（工艺唯一判断字段）',
   `step_name`      VARCHAR(50)   DEFAULT NULL            COMMENT '工序自定义名称',
+  `machine_uuid`   VARCHAR(36)   DEFAULT NULL            COMMENT '工序加工机台',
+  `machine_name_snap` VARCHAR(100) DEFAULT NULL           COMMENT '工序机台名称快照',
   `is_main`        TINYINT       NOT NULL DEFAULT 1      COMMENT '1本卷主工艺 0车间追加工序',
   `knife_count`    INT           DEFAULT 0               COMMENT '锯纸专用：实际加工刀数',
   `process_weight` DECIMAL(10,3) DEFAULT NULL            COMMENT '复卷专用：加工吨位',
@@ -309,6 +311,7 @@ CREATE TABLE `biz_process_step` (
   KEY `idx_original_uuid` (`original_uuid`),
   KEY `idx_input_output_uuid` (`input_output_uuid`),
   KEY `idx_parent_step_uuid` (`parent_step_uuid`),
+  KEY `idx_process_step_machine_uuid` (`machine_uuid`),
   KEY `idx_step_type` (`step_type`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工序明细表（工艺唯一来源）';
@@ -624,7 +627,9 @@ CREATE TABLE `biz_settle_order` (
   `amount_no_tax`     DECIMAL(12,2) DEFAULT 0.00            COMMENT '不含税金额',
   `tax_amount`        DECIMAL(12,2) DEFAULT 0.00            COMMENT '税额',
   `total_amount`      DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '应收总金额（取整）',
-  `received_amount`   DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '已收金额',
+  `received_amount`   DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '已结清金额',
+  `cash_received_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '现金实收金额',
+  `scrap_offset_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '废纸抵扣金额',
   `unreceived_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '待收金额',
   `is_invoice`        TINYINT       NOT NULL DEFAULT 2      COMMENT '1开票 2不开票',
   `settle_status`     TINYINT       NOT NULL DEFAULT 1      COMMENT '1待结算 2部分收款 3全部结清',
@@ -687,8 +692,13 @@ CREATE TABLE `biz_receive_record` (
   `uuid`           VARCHAR(36)   NOT NULL                COMMENT '收款流水主键',
   `settle_uuid`    VARCHAR(36)   NOT NULL                COMMENT '关联结算单',
   `receive_date`   DATETIME      NOT NULL                COMMENT '收款时间',
-  `receive_amount` DECIMAL(12,2) NOT NULL                COMMENT '本次收款金额',
-  `pay_method`     TINYINT       NOT NULL                COMMENT '1现金 2转账 3微信 4支付宝',
+  `receive_amount` DECIMAL(12,2) NOT NULL                COMMENT '本次结清金额',
+  `cash_amount`    DECIMAL(12,2) NOT NULL DEFAULT 0.00   COMMENT '现金实收金额',
+  `scrap_offset_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '废纸抵扣金额',
+  `scrap_weight`   DECIMAL(12,3) NOT NULL DEFAULT 0.000  COMMENT '废纸抵扣重量kg',
+  `scrap_unit_price` DECIMAL(12,4) NOT NULL DEFAULT 0.0000 COMMENT '废纸抵扣折算单价',
+  `receive_type`   TINYINT       NOT NULL DEFAULT 1      COMMENT '1普通收款 2废纸抵扣 3混合收款',
+  `pay_method`     TINYINT       DEFAULT NULL            COMMENT '1现金 2转账 3微信 4支付宝；纯废纸抵扣可为空',
   `pay_no`         VARCHAR(100)  DEFAULT NULL            COMMENT '流水/凭证号',
   `operator`       VARCHAR(50)   DEFAULT NULL            COMMENT '收款登记人',
   `record_status`  TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 2已撤销',
@@ -710,6 +720,7 @@ CREATE TABLE `biz_receive_record` (
   KEY `idx_settle_uuid` (`settle_uuid`),
   KEY `idx_receive_date` (`receive_date`),
   KEY `idx_receive_record_status` (`record_status`),
+  KEY `idx_receive_record_type` (`receive_type`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分次收款流水表';
 

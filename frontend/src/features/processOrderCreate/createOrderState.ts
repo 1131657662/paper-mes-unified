@@ -3,6 +3,8 @@ import type {
   DraftOrderVO,
   PlanPreviewVO,
   ProcessPlanDTO,
+  ProcessRoutePreviewDTO,
+  ProcessRoutePreviewVO,
 } from '../../types/processOrder'
 import {
   applyLegacyPlanPriceDefaults,
@@ -19,6 +21,8 @@ export interface HydratedCreateOrderState {
   rolls: RollDraft[]
   plans: Record<string, ProcessPlanDTO>
   previews: Record<string, PlanPreviewVO>
+  routePreviews: Record<string, ProcessRoutePreviewVO>
+  routes: Record<string, ProcessRoutePreviewDTO>
   selectedId?: string
   current: number
 }
@@ -28,9 +32,16 @@ export function hydrateDraftState(draft: DraftOrderVO): HydratedCreateOrderState
   const safeRolls = rolls.length ? rolls : [newRollDraft()]
   const plans: Record<string, ProcessPlanDTO> = {}
   const previews: Record<string, PlanPreviewVO> = {}
+  const routes: Record<string, ProcessRoutePreviewDTO> = {}
+  const routePreviews: Record<string, ProcessRoutePreviewVO> = {}
 
   for (const config of draft.configs ?? []) {
     if (!config.originalUuid) continue
+    if (config.configType === 'routePlan' && config.route) {
+      routes[config.originalUuid] = config.route
+      if (config.routePreview) routePreviews[config.originalUuid] = config.routePreview
+      continue
+    }
     if (config.plan) plans[config.originalUuid] = config.plan
     if (config.preview) previews[config.originalUuid] = config.preview
   }
@@ -45,6 +56,8 @@ export function hydrateDraftState(draft: DraftOrderVO): HydratedCreateOrderState
     rolls: safeRolls,
     plans,
     previews,
+    routePreviews,
+    routes,
     selectedId: safeRolls[0]?.localId,
     current: draft.currentStep ?? 0,
   }

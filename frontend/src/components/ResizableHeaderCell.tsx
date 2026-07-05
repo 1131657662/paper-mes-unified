@@ -5,6 +5,7 @@ import {
   resizableColumnMaxWidth,
   resizableColumnMinWidth,
 } from './resizableTableStorage'
+import './ResizableTable.css'
 
 interface ResizableHeaderCellProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   width?: number
@@ -18,6 +19,8 @@ export default function ResizableHeaderCell({
 }: ResizableHeaderCellProps) {
   if (!width || !onResize) return <th {...restProps} />
 
+  const className = ['resizable-col-cell', restProps.className].filter(Boolean).join(' ')
+
   return (
     <Resizable
       width={width}
@@ -28,7 +31,7 @@ export default function ResizableHeaderCell({
       onResize={onResize}
       draggableOpts={{ enableUserSelectHack: false }}
     >
-      <th {...restProps} />
+      <th {...restProps} className={className} />
     </Resizable>
   )
 }

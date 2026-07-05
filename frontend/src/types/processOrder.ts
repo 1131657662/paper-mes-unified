@@ -280,6 +280,7 @@ export interface FinishConfigSpecDTO {
 export interface FinishConfigSaveDTO {
   processMode: number
   mainStepType?: number
+  machineUuid?: string
   spareCount?: number
   rewindMode?: number
   knifeCount?: number
@@ -438,9 +439,11 @@ export interface ProcessRouteStageDTO {
   inputOutputKeys?: string[]
   stepType: number
   stepName?: string
+  machineUuid?: string
   knifeCount?: number
   processWeight?: number
   unitPrice?: number
+  plan?: ProcessPlanDTO
   outputs?: ProcessRouteOutputDTO[]
 }
 
@@ -488,8 +491,11 @@ export interface ProcessConfigDraftVO {
   mainStepType?: number
   configStatus?: number
   lastError?: string
+  configType?: 'singlePlan' | 'routePlan'
   plan?: ProcessPlanDTO
   preview?: PlanPreviewVO
+  route?: ProcessRoutePreviewDTO
+  routePreview?: ProcessRoutePreviewVO
 }
 
 export interface DraftOrderVO {

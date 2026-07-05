@@ -23,21 +23,21 @@ export default function PageTabs() {
   const tabsRef = useRef<HTMLDivElement>(null)
   const [scrollState, setScrollState] = useState<TabScrollState>(emptyScrollState)
   const tabState = usePageTabs(location.pathname)
-  const actions = createPageTabActions({ activePath: location.pathname, navigate, ...tabState })
+  const { activePath, ...pageTabState } = tabState
+  const actions = createPageTabActions({ activePath, navigate, ...pageTabState })
   const activeMenuItems = createMenuItems({
-    activePath: location.pathname,
-    currentPath: location.pathname,
+    activePath,
+    currentPath: activePath,
     tabs: tabState.tabs,
   })
   const shellClassName = scrollState.canScroll ? 'app-shell__tabs app-shell__tabs--scrollable' : 'app-shell__tabs'
 
   useEffect(() => {
     return watchTabScrollState(tabsRef.current, setScrollState)
-  }, [location.pathname, tabState.tabs.length])
+  }, [activePath, tabState.tabs.length])
 
   const handleScroll = (deltaX: number) => {
-    scrollTabs(tabsRef.current, deltaX)
-    requestAnimationFrame(() => setScrollState(readTabScrollState(tabsRef.current)))
+    scrollTabs(tabsRef.current, deltaX, () => setScrollState(readTabScrollState(tabsRef.current)))
   }
 
   return (
@@ -47,11 +47,11 @@ export default function PageTabs() {
       )}
       <div className="app-shell__tabs-center">
         <Tabs
-          activeKey={location.pathname}
+          activeKey={activePath}
           className="app-shell__tabs-control"
           hideAdd
           items={toTabItems({
-            currentPath: location.pathname,
+            currentPath: activePath,
             onAction: actions.handleMenuAction,
             tabs: tabState.tabs,
           })}
@@ -61,13 +61,18 @@ export default function PageTabs() {
             if (action === 'remove' && typeof targetKey === 'string') actions.closeCurrent(targetKey)
           }}
           tabBarGutter={4}
-          tabBarExtraContent={<PageTabMenu items={activeMenuItems} onAction={(key) => actions.handleMenuAction(key)} />}
+          tabBarExtraContent={(
+            <PageTabTools
+              canScroll={scrollState.canScroll}
+              canScrollRight={scrollState.canScrollRight}
+              items={activeMenuItems}
+              onAction={(key) => actions.handleMenuAction(key)}
+              onScrollRight={() => handleScroll(220)}
+            />
+          )}
           type="editable-card"
         />
       </div>
-      {scrollState.canScroll && (
-        <TabScrollButton disabled={!scrollState.canScrollRight} direction="right" onScroll={() => handleScroll(220)} />
-      )}
     </div>
   )
 }
@@ -85,6 +90,17 @@ function TabScrollButton({ direction, disabled, onScroll }: TabScrollButtonProps
       onClick={onScroll}
       type="text"
     />
+  )
+}
+
+function PageTabTools({ canScroll, canScrollRight, items, onAction, onScrollRight }: PageTabToolsProps) {
+  return (
+    <div className="app-shell__tabs-tools">
+      {canScroll && (
+        <TabScrollButton disabled={!canScrollRight} direction="right" onScroll={onScrollRight} />
+      )}
+      <PageTabMenu items={items} onAction={onAction} />
+    </div>
   )
 }
 
@@ -157,9 +173,26 @@ function willKeepPathAfterSideClose(options: SideCloseOptions) {
   return direction === 'left' ? activeIndex >= targetIndex : activeIndex <= targetIndex
 }
 
-function scrollTabs(container: HTMLDivElement | null, deltaX: number) {
+function scrollTabs(container: HTMLDivElement | null, deltaX: number, onSettled: () => void) {
   const scroller = container?.querySelector('.ant-tabs-nav-wrap')
-  scroller?.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX, deltaY: 0 }))
+  if (!scroller || deltaX === 0) return
+
+  let remaining = Math.abs(deltaX)
+  const direction = Math.sign(deltaX)
+  const stepSize = 28
+  const scrollStep = () => {
+    const nextDelta = direction * Math.min(stepSize, remaining)
+    scroller.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: nextDelta, deltaY: 0 }))
+    remaining -= Math.abs(nextDelta)
+
+    if (remaining > 0) {
+      requestAnimationFrame(scrollStep)
+      return
+    }
+    onSettled()
+  }
+
+  requestAnimationFrame(scrollStep)
 }
 
 function watchTabScrollState(container: HTMLDivElement | null, onChange: (state: TabScrollState) => void) {
@@ -235,6 +268,12 @@ function createMenuItems(options: CreateMenuItemsOptions): MenuProps['items'] {
 interface PageTabMenuProps {
   items: MenuProps['items']
   onAction: (key: TabActionKey) => void
+}
+
+interface PageTabToolsProps extends PageTabMenuProps {
+  canScroll: boolean
+  canScrollRight: boolean
+  onScrollRight: () => void
 }
 
 interface PageTabLabelProps {

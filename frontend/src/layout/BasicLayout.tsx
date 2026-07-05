@@ -159,6 +159,7 @@ function isEdgeScrollRoute(pathname: string) {
     || pathname === '/system-config'
     || pathname === '/operation-logs'
     || pathname === '/process-orders/create'
+    || isProcessOrderRouteDesignerRoute(pathname)
     || isProcessOrderDetailRoute(pathname)
     || isProcessOrderWorkbenchRoute(pathname)
     || isDocumentDetailRoute(pathname, 'delivery-orders')
@@ -172,6 +173,10 @@ function isProcessOrderDetailRoute(pathname: string) {
 
 function isProcessOrderWorkbenchRoute(pathname: string) {
   return /^\/process-orders\/[^/]+\/(?:back-record|config-finish)$/.test(pathname)
+}
+
+function isProcessOrderRouteDesignerRoute(pathname: string) {
+  return /^\/process-orders\/create\/[^/]+\/routes\/[^/]+$/.test(pathname)
 }
 
 function isDocumentDetailRoute(pathname: string, modulePath: string) {

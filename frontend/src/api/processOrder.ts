@@ -155,6 +155,17 @@ export function previewProcessRoute(orderUuid: string, dto: ProcessRoutePreviewD
   })
 }
 
+export function saveDraftProcessRoute(orderUuid: string, dto: ProcessRoutePreviewDTO) {
+  if (!dto.originalUuid) {
+    return Promise.reject(new Error('缺少母卷编号，无法保存链式工艺'))
+  }
+  return request<ProcessRoutePreviewVO>({
+    url: `/api/process-orders/${orderUuid}/rolls/${dto.originalUuid}/route-plan`,
+    method: 'put',
+    data: dto,
+  })
+}
+
 export function previewPendingProcessRoute(orderUuid: string, dto: ProcessRoutePreviewDTO) {
   return request<ProcessRoutePreviewVO>({
     url: `/api/process-orders/${orderUuid}/route-preview`,

@@ -16,6 +16,12 @@ export const PAY_METHOD: Record<number, string> = {
   4: '支付宝',
 }
 
+export const RECEIVE_TYPE: Record<number, { text: string; color: string }> = {
+  1: { text: '普通收款', color: 'blue' },
+  2: { text: '废纸抵扣', color: 'orange' },
+  3: { text: '混合收款', color: 'purple' },
+}
+
 export const INVOICE_TYPE: Record<number, string> = {
   1: '开票',
   2: '不开票',

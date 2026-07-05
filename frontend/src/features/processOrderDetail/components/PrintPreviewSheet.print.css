@@ -1,13 +1,21 @@
 @page {
-  size: A4 landscape;
-  margin: 8mm;
+  size: A4 portrait;
+  margin: 4mm 5mm 6mm;
+
+  @bottom-center {
+    content: "第 " counter(page) " 页 / 共 " counter(pages) " 页";
+    font-size: 7.5pt;
+    color: #000;
+  }
 }
 
 @media print {
   html,
   body {
-    width: auto;
+    width: auto !important;
+    height: auto !important;
     margin: 0 !important;
+    padding: 0 !important;
     background: #fff !important;
     overflow: visible !important;
   }
@@ -16,122 +24,427 @@
     display: none !important;
   }
 
+  .print-issue-print-root,
+  .print-issue-print-root * {
+    visibility: visible !important;
+  }
+
   .print-issue-print-root {
     display: block !important;
+    position: static !important;
     width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
     background: #fff !important;
+    transform: none !important;
   }
 
   .print-preview-sheet {
-    width: auto;
+    width: 100%;
     max-width: none;
+    margin: 0;
     padding: 0;
-    color: #111827;
+    color: #000;
     background: #fff;
     border: 0;
     border-radius: 0;
     box-shadow: none;
+    font-size: 8.6pt;
+    line-height: 1.12;
+  }
+
+  .print-preview-sheet * {
+    color: #000 !important;
+    print-color-adjust: economy;
+    -webkit-print-color-adjust: economy;
   }
 
   .print-preview-sheet__header {
-    gap: 8mm;
-    padding-bottom: 3mm;
+    align-items: center;
+    gap: 3mm;
+    padding-bottom: 1.2mm;
     border-bottom-width: 1pt;
-  }
-
-  .print-preview-sheet h1 {
-    font-size: 16pt;
-  }
-
-  .print-preview-sheet h2 {
-    margin-top: 4mm;
-    margin-bottom: 2mm;
-    font-size: 11pt;
     break-after: avoid;
   }
 
+  .print-preview-sheet h1 {
+    font-size: 14pt;
+    line-height: 1.05;
+    white-space: nowrap;
+  }
+
   .print-preview-sheet__meta,
-  .print-preview-sheet__summary,
   .print-preview-sheet__footer {
-    gap: 2mm 4mm;
-    font-size: 9pt;
+    gap: 1mm 3mm;
+    font-size: 8.4pt;
+    line-height: 1.15;
   }
 
   .print-preview-sheet__remark-block {
-    grid-template-columns: 18mm minmax(0, 1fr);
-    gap: 2.5mm;
-    margin-top: 3mm;
-    padding: 2.2mm 2.6mm;
+    grid-template-columns: 15mm minmax(0, 1fr);
+    gap: 1.5mm;
+    margin-top: 1.3mm;
+    padding: 1.2mm 1.5mm;
     border-width: 0.8pt;
-    border-left-width: 3pt;
-    border-radius: 2mm;
-    background: #fff8e6 !important;
+    border-left-width: 2pt;
+    border-radius: 0;
+    background: #fff !important;
+    break-inside: avoid;
+    line-height: 1.18;
   }
 
-  .print-preview-sheet__remark-label {
-    padding: 1mm 1.5mm;
-    font-size: 8.5pt;
+  .print-preview-sheet__summary {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0;
+    margin: 1.5mm 0;
+    border-top: 0.7pt solid #000;
+    border-left: 0.7pt solid #000;
   }
 
-  .print-preview-sheet__remark-text {
-    font-size: 10pt;
-    line-height: 1.45;
+  .print-preview-sheet__summary span {
+    padding: 0.7mm 0.8mm;
+    border: 0;
+    border-right: 0.7pt solid #000;
+    border-bottom: 0.7pt solid #000;
+    border-radius: 0;
+    background: #fff !important;
+    line-height: 1.08;
   }
 
-  .print-preview-table {
-    font-size: 8.5pt;
+  .print-preview-sheet__summary em,
+  .print-route-output-row strong {
+    display: inline;
+    font-size: 8pt;
+  }
+
+  .print-preview-sheet__summary em::after {
+    content: "：";
+  }
+
+  .print-preview-sheet__summary strong {
+    display: inline;
+    margin-top: 0;
+    font-size: 8.2pt;
+  }
+
+  .print-preview-sheet__routes {
+    display: none !important;
+    gap: 1mm;
+  }
+
+  .print-dense-section {
+    display: block;
+  }
+
+  .print-dense-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 7.7pt;
+    line-height: 1.08;
+  }
+
+  .print-dense-table thead {
+    display: table-header-group;
+  }
+
+  .print-dense-table tbody {
+    display: table-row-group;
+  }
+
+  .print-dense-table tr {
     break-inside: auto;
     page-break-inside: auto;
   }
 
-  .print-preview-table thead {
+  .print-dense-table th,
+  .print-dense-table td {
+    padding: 0.45mm 0.65mm;
+    border: 0.7pt solid #000;
+    vertical-align: top;
+    word-break: break-word;
+  }
+
+  .print-dense-table th {
+    font-weight: 700;
+    text-align: left;
+    background: #fff !important;
+  }
+
+  .print-dense-table th:nth-child(1) {
+    width: 14mm;
+  }
+
+  .print-dense-table th:nth-child(2) {
+    width: 32mm;
+  }
+
+  .print-dense-table th:nth-child(3) {
+    width: 20mm;
+  }
+
+  .print-dense-table th:nth-child(4) {
+    width: 42mm;
+  }
+
+  .print-dense-table th:nth-child(5) {
+    width: 17mm;
+  }
+
+  .print-dense-table th:nth-child(6) {
+    width: 12mm;
+  }
+
+  .print-dense-table th:nth-child(7) {
+    width: 18mm;
+  }
+
+  .print-dense-table th:nth-child(8) {
+    width: auto;
+  }
+
+  .print-dense-table__mother strong,
+  .print-dense-table__mother span,
+  .print-dense-table__mother em {
+    display: block;
+  }
+
+  .print-dense-table__mother strong {
+    font-weight: 700;
+  }
+
+  .print-dense-table__mother em {
+    margin-top: 0.5mm;
+    font-style: normal;
+  }
+
+  .print-dense-table__source {
+    white-space: pre-line;
+  }
+
+  .print-dense-table__item-row {
+    height: 4.6mm;
+  }
+
+  .print-dense-table__item-row > td {
+    height: 4.6mm;
+    min-height: 4.6mm;
+    padding-top: 0.32mm;
+    padding-bottom: 0.32mm;
+    line-height: 1.08;
+  }
+
+  .print-dense-table__group-row {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .print-dense-table__group-row td {
+    padding: 0.48mm 0.7mm;
+    border-top: 0.7pt solid #000;
+    border-bottom: 0.7pt solid #000;
+    border-left: 0.7pt solid #000;
+    background: #ededed !important;
+    line-height: 1.12;
+  }
+
+  .print-dense-table__group-row strong {
+    display: inline-block;
+    margin-right: 2mm;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .print-dense-table__group-row strong::before {
+    display: inline-block;
+    margin-right: 1.2mm;
+    padding: 0.15mm 1.15mm 0.1mm;
+    color: #fff !important;
+    background: #000 !important;
+    font-size: 7pt;
+    font-weight: 700;
+    line-height: 1.15;
+    content: "工艺";
+    vertical-align: 0.08mm;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .print-dense-table__group-row span {
+    font-weight: 600;
+  }
+
+  .print-dense-table__group-row + tr td {
+    border-top-width: 0.9pt;
+  }
+
+  .print-dense-table__write {
+    height: 4.6mm;
+  }
+
+  .print-dense-table__muted {
+    text-align: center;
+  }
+
+  .print-roll-block {
+    grid-template-columns: 38mm minmax(0, 1fr);
+    border-width: 0.8pt;
+    border-radius: 0;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .print-roll-block__source {
+    padding: 1.1mm;
+    border-right-width: 0.8pt;
+    background: #fff !important;
+  }
+
+  .print-roll-block__source h2 {
+    margin-bottom: 0.7mm;
+    font-size: 9.5pt;
+    line-height: 1.1;
+  }
+
+  .print-roll-source-list div {
+    grid-template-columns: 13mm minmax(0, 1fr);
+    gap: 0.8mm;
+    padding: 0.25mm 0;
+    line-height: 1.08;
+  }
+
+  .print-write-grid {
+    grid-template-columns: 7mm 1fr 7mm 1fr;
+    gap: 0.5mm 1mm;
+    margin-top: 0.8mm;
+    padding-top: 0.7mm;
+    border-top-width: 0.6pt;
+    font-size: 8pt;
+    line-height: 1;
+  }
+
+  .print-write-cell {
+    min-height: 5.5mm;
+    background: #fff !important;
+  }
+
+  .print-write-grid i {
+    min-height: 3.5mm;
+    background: #fff !important;
+    border-bottom: 0.7pt solid #000;
+  }
+
+  .print-roll-block__main {
+    padding: 1mm;
+  }
+
+  .print-route-stage-list {
+    gap: 0.8mm;
+  }
+
+  .print-route-stage {
+    border-width: 0.7pt;
+    border-radius: 0;
+    break-inside: avoid;
+  }
+
+  .print-route-stage__head {
+    grid-template-columns: minmax(28mm, 1fr) minmax(28mm, 0.9fr) minmax(18mm, 0.6fr);
+    gap: 1mm;
+    padding: 0.7mm 1mm;
+    border-bottom: 0.7pt solid #000;
+    background: #fff !important;
+    font-size: 8.4pt;
+    line-height: 1.08;
+  }
+
+  .print-route-stage__requirement {
+    padding: 0.8mm 1mm;
+    border-top: 0;
+    background: #fff !important;
+    font-size: 8.4pt;
+    line-height: 1.16;
+  }
+
+  .print-route-output-table {
+    font-size: 8.3pt;
+    break-inside: auto;
+  }
+
+  .print-route-output-table th:nth-child(1) {
+    width: 12%;
+  }
+
+  .print-route-output-table th:nth-child(2) {
+    width: 32%;
+  }
+
+  .print-route-output-table th:nth-child(3) {
+    width: 13%;
+  }
+
+  .print-route-output-table th:nth-child(4) {
+    width: 11%;
+  }
+
+  .print-route-output-table th:nth-child(5) {
+    width: 13%;
+  }
+
+  .print-route-output-table th:nth-child(6) {
+    width: 19%;
+  }
+
+  .print-route-output-table thead {
     display: table-header-group;
   }
 
-  .print-preview-table tbody {
+  .print-route-output-table tbody {
     display: table-row-group;
   }
 
-  .print-preview-table th,
-  .print-preview-table td {
-    min-height: 0;
-    padding: 1.5mm 1.6mm;
-    border-width: 0.6pt;
-    line-height: 1.25;
-  }
-
-  .print-preview-table tr {
+  .print-route-output-table tr {
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
-  .print-preview-table--production {
-    margin-bottom: 3mm;
-    break-inside: auto;
-    page-break-inside: auto;
+  .print-route-output-table th,
+  .print-route-output-table td {
+    height: 5.4mm;
+    padding: 0.6mm 0.8mm;
+    border-width: 0.7pt;
+    line-height: 1.08;
   }
 
-  .print-preview-table__write {
-    height: 8mm;
+  .print-route-output-table th {
+    background: #fff !important;
+    font-weight: 700;
   }
 
-  .print-preview-table--production tbody tr,
-  .print-preview-table--production tbody td {
-    height: var(--production-row-height);
+  .print-route-output-row strong {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent !important;
+    font-size: 8pt;
+    text-align: left;
   }
 
-  .print-preview-sheet__roll-cell {
-    width: auto;
-  }
-
-  .print-preview-sheet__roll-cell span,
-  .print-preview-sheet__roll-cell strong {
-    line-height: 1.35;
+  .print-muted-cell {
+    background: #fff !important;
   }
 
   .print-preview-sheet__footer {
-    margin-top: 4mm;
-    padding-top: 3mm;
+    margin-top: 0.9mm;
+    padding-top: 0.9mm;
     border-top-width: 1pt;
+    break-inside: avoid;
+  }
+
+  .print-preview-sheet__footer span {
+    min-width: 28mm;
   }
 }

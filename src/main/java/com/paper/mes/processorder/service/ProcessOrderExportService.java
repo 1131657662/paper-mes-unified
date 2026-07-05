@@ -31,6 +31,7 @@ public class ProcessOrderExportService {
         writeSummary(workbook.createSheet("基础信息"), detail.getOrder(), styles);
         writeOriginals(workbook.createSheet("原卷信息"), detail.getOriginalRolls(), styles);
         writeSteps(workbook.createSheet("工序费用"), detail.getSteps(), detail.getOriginalRolls(), styles);
+        ProcessOrderStageOutputExportWriter.write(workbook.createSheet("阶段产物"), detail.getRollProductions());
         writeRewindParams(workbook.createSheet("复卷参数"), detail.getRollProductions(), styles);
         writeFinishes(workbook.createSheet("成品明细"), detail.getFinishRolls(), detail.getRollProductions(), styles);
         writeSources(workbook.createSheet("成品来源"), detail.getRollProductions(), styles);

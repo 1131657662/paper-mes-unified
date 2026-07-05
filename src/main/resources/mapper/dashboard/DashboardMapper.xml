@@ -3,6 +3,58 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.paper.mes.dashboard.mapper.DashboardMapper">
 
+    <sql id="EffectiveFinishRollWhere">
+        f.is_deleted = 0
+        AND COALESCE(f.is_spare, 0) = 0
+        AND COALESCE(f.roll_no_status, 1) != 3
+        AND COALESCE(f.finish_status, 0) != 4
+        AND (
+            NOT EXISTS (
+                SELECT 1
+                FROM biz_process_stage_output sfo
+                WHERE sfo.finish_roll_uuid = f.uuid
+                  AND sfo.is_deleted = 0
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM biz_process_stage_output sff
+                WHERE sff.finish_roll_uuid = f.uuid
+                  AND sff.is_deleted = 0
+                  AND sff.output_type = 2
+                  AND sff.output_status = 3
+            )
+        )
+    </sql>
+
+    <sql id="MachineRankRows">
+        SELECT ps.order_uuid,
+               COALESCE(ps.machine_uuid, r.machine_uuid, 'none') AS machine_uuid,
+               COALESCE(ps.machine_name_snap, stepMachine.machine_name, rollMachine.machine_name, '未分配机台') AS machine_name,
+               CASE
+                   WHEN ps.step_type = 2 AND ps.process_weight IS NOT NULL
+                       THEN ps.process_weight * 1000
+                   WHEN ps.input_type = 2 AND inputOutput.uuid IS NOT NULL
+                       THEN COALESCE(inputOutput.actual_weight, inputOutput.estimate_weight, 0)
+                   ELSE COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)
+               END AS processWeight,
+               COALESCE(ps.step_amount, 0) AS stepAmount
+        FROM biz_process_step ps
+        JOIN biz_original_roll r
+          ON r.uuid = ps.original_uuid
+         AND r.is_deleted = 0
+         AND COALESCE(r.process_mode, 0) != 3
+        LEFT JOIN sys_machine stepMachine ON stepMachine.uuid = ps.machine_uuid
+        LEFT JOIN sys_machine rollMachine ON rollMachine.uuid = r.machine_uuid
+        JOIN biz_process_order o
+          ON o.uuid = ps.order_uuid
+         AND o.is_deleted = 0
+        LEFT JOIN biz_process_stage_output inputOutput
+          ON inputOutput.uuid = ps.input_output_uuid
+         AND inputOutput.is_deleted = 0
+        WHERE ps.is_deleted = 0
+          AND o.order_status IN (4, 5)
+    </sql>
+
     <sql id="SettleAllocationByOrder">
         SELECT sd.order_uuid,
                SUM(CASE WHEN st.settleTotal > 0
@@ -16,7 +68,13 @@
                         ELSE 0 END) AS billedAmount,
                SUM(CASE WHEN st.settleTotal > 0
                         THEN COALESCE(rr.receivedAmount, 0) * COALESCE(sd.order_amount, 0) / st.settleTotal
-                        ELSE 0 END) AS receivedAmount
+                        ELSE 0 END) AS receivedAmount,
+               SUM(CASE WHEN st.settleTotal > 0
+                        THEN COALESCE(rr.cashReceivedAmount, 0) * COALESCE(sd.order_amount, 0) / st.settleTotal
+                        ELSE 0 END) AS cashReceivedAmount,
+               SUM(CASE WHEN st.settleTotal > 0
+                        THEN COALESCE(rr.scrapOffsetAmount, 0) * COALESCE(sd.order_amount, 0) / st.settleTotal
+                        ELSE 0 END) AS scrapOffsetAmount
         FROM biz_settle_detail sd
         JOIN biz_settle_order so
           ON so.uuid = sd.settle_uuid
@@ -29,7 +87,12 @@
             GROUP BY settle_uuid
         ) st ON st.settle_uuid = sd.settle_uuid
         LEFT JOIN (
-            SELECT settle_uuid, SUM(COALESCE(receive_amount, 0)) AS receivedAmount
+            SELECT settle_uuid,
+                   SUM(COALESCE(receive_amount, 0)) AS receivedAmount,
+                   SUM(CASE WHEN cash_amount IS NULL AND COALESCE(scrap_offset_amount, 0) = 0
+                            THEN COALESCE(receive_amount, 0)
+                            ELSE COALESCE(cash_amount, 0) END) AS cashReceivedAmount,
+                   SUM(COALESCE(scrap_offset_amount, 0)) AS scrapOffsetAmount
             FROM biz_receive_record
             WHERE is_deleted = 0
               AND COALESCE(record_status, 1) = 1
@@ -52,6 +115,8 @@
                COALESCE(stock.inStockFinishWeight, 0) AS inStockFinishWeight,
                COALESCE(receivable.receivableCount, 0) AS receivableCount,
                COALESCE(receivable.receivableAmount, 0) AS receivableAmount,
+               COALESCE(receivable.cashReceivedAmount, 0) AS cashReceivedAmount,
+               COALESCE(receivable.scrapOffsetAmount, 0) AS scrapOffsetAmount,
                COALESCE(receivable.pendingSettleAmount, 0) AS pendingSettleAmount
         FROM (
             SELECT COUNT(*) AS monthOrderCount,
@@ -70,14 +135,11 @@
                 GROUP BY order_uuid
             ) orig ON orig.order_uuid = o.uuid
             LEFT JOIN (
-                SELECT order_uuid,
-                       SUM(COALESCE(actual_weight, estimate_weight, 0)) AS finishWeight
-                FROM biz_finish_roll
-                WHERE is_deleted = 0
-                  AND COALESCE(is_spare, 0) = 0
-                  AND COALESCE(roll_no_status, 1) != 3
-                  AND COALESCE(finish_status, 0) != 4
-                GROUP BY order_uuid
+                SELECT f.order_uuid,
+                       SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                FROM biz_finish_roll f
+                WHERE <include refid="EffectiveFinishRollWhere"/>
+                GROUP BY f.order_uuid
             ) fin ON fin.order_uuid = o.uuid
             LEFT JOIN (
                 <include refid="SettleAllocationByOrder"/>
@@ -89,12 +151,10 @@
         ) monthly
         CROSS JOIN (
             SELECT COUNT(*) AS inStockFinishCount,
-                   COALESCE(SUM(COALESCE(actual_weight, estimate_weight, 0)), 0) AS inStockFinishWeight
-            FROM biz_finish_roll
-            WHERE is_deleted = 0
-              AND COALESCE(is_spare, 0) = 0
-              AND COALESCE(roll_no_status, 1) != 3
-              AND finish_status = 2
+                   COALESCE(SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)), 0) AS inStockFinishWeight
+            FROM biz_finish_roll f
+            WHERE <include refid="EffectiveFinishRollWhere"/>
+              AND f.finish_status = 2
         ) stock
         CROSS JOIN (
             SELECT SUM(CASE WHEN settle.order_uuid IS NOT NULL
@@ -103,6 +163,8 @@
                             THEN 1 ELSE 0 END) AS receivableCount,
                    COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
                        - COALESCE(settle.receivedAmount, 0), 0)), 0) AS receivableAmount,
+                   COALESCE(SUM(settle.cashReceivedAmount), 0) AS cashReceivedAmount,
+                   COALESCE(SUM(settle.scrapOffsetAmount), 0) AS scrapOffsetAmount,
                    COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pendingSettleAmount
             FROM biz_process_order o
             LEFT JOIN (
@@ -158,14 +220,11 @@
             GROUP BY order_uuid
         ) orig ON orig.order_uuid = o.uuid
         LEFT JOIN (
-            SELECT order_uuid,
-                   SUM(COALESCE(actual_weight, estimate_weight, 0)) AS finishWeight
-            FROM biz_finish_roll
-            WHERE is_deleted = 0
-              AND COALESCE(is_spare, 0) = 0
-              AND COALESCE(roll_no_status, 1) != 3
-              AND COALESCE(finish_status, 0) != 4
-            GROUP BY order_uuid
+            SELECT f.order_uuid,
+                   SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+            FROM biz_finish_roll f
+            WHERE <include refid="EffectiveFinishRollWhere"/>
+            GROUP BY f.order_uuid
         ) fin ON fin.order_uuid = o.uuid
         LEFT JOIN (
             <include refid="SettleAllocationByOrder"/>
@@ -233,41 +292,33 @@
     </select>
 
     <select id="machineRank" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRankVO">
-        SELECT r.machine_uuid AS id,
-               m.machine_name AS name,
-               COUNT(*) AS count,
-               COALESCE(SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)), 0) AS weight,
-               COALESCE(SUM(r.process_amount), 0) AS amount
-        FROM biz_original_roll r
-        JOIN sys_machine m ON r.machine_uuid = m.uuid
-        JOIN biz_process_order o ON r.order_uuid = o.uuid AND o.is_deleted = 0
-        WHERE r.is_deleted = 0
-          AND r.machine_uuid IS NOT NULL
-          AND COALESCE(r.process_mode, 0) != 3
-          AND o.order_status IN (4, 5)
-          AND o.order_date &gt;= #{monthStart}
-          AND o.order_date &lt;= #{today}
-        GROUP BY r.machine_uuid, m.machine_name
+        SELECT machine_uuid AS id,
+               machine_name AS name,
+               COUNT(DISTINCT order_uuid) AS count,
+               COALESCE(SUM(processWeight), 0) AS weight,
+               COALESCE(SUM(stepAmount), 0) AS amount
+        FROM (
+            <include refid="MachineRankRows"/>
+              AND o.order_date &gt;= #{monthStart}
+              AND o.order_date &lt;= #{today}
+        ) rankedStep
+        GROUP BY machine_uuid, machine_name
         ORDER BY weight DESC
         LIMIT 6
     </select>
 
     <select id="machineYearRank" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRankVO">
-        SELECT r.machine_uuid AS id,
-               m.machine_name AS name,
-               COUNT(*) AS count,
-               COALESCE(SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)), 0) AS weight,
-               COALESCE(SUM(r.process_amount), 0) AS amount
-        FROM biz_original_roll r
-        JOIN sys_machine m ON r.machine_uuid = m.uuid
-        JOIN biz_process_order o ON r.order_uuid = o.uuid AND o.is_deleted = 0
-        WHERE r.is_deleted = 0
-          AND r.machine_uuid IS NOT NULL
-          AND COALESCE(r.process_mode, 0) != 3
-          AND o.order_status IN (4, 5)
-          AND o.order_date &gt;= #{yearStart}
-          AND o.order_date &lt;= #{today}
-        GROUP BY r.machine_uuid, m.machine_name
+        SELECT machine_uuid AS id,
+               machine_name AS name,
+               COUNT(DISTINCT order_uuid) AS count,
+               COALESCE(SUM(processWeight), 0) AS weight,
+               COALESCE(SUM(stepAmount), 0) AS amount
+        FROM (
+            <include refid="MachineRankRows"/>
+              AND o.order_date &gt;= #{yearStart}
+              AND o.order_date &lt;= #{today}
+        ) rankedStep
+        GROUP BY machine_uuid, machine_name
         ORDER BY weight DESC
         LIMIT 8
     </select>
@@ -292,14 +343,11 @@
             GROUP BY order_uuid
         ) orig ON orig.order_uuid = o.uuid
         LEFT JOIN (
-            SELECT order_uuid,
-                   SUM(COALESCE(actual_weight, estimate_weight, 0)) AS finishWeight
-            FROM biz_finish_roll
-            WHERE is_deleted = 0
-              AND COALESCE(is_spare, 0) = 0
-              AND COALESCE(roll_no_status, 1) != 3
-              AND COALESCE(finish_status, 0) != 4
-            GROUP BY order_uuid
+            SELECT f.order_uuid,
+                   SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+            FROM biz_finish_roll f
+            WHERE <include refid="EffectiveFinishRollWhere"/>
+            GROUP BY f.order_uuid
         ) fin ON fin.order_uuid = o.uuid
         WHERE o.is_deleted = 0
         ORDER BY o.create_time DESC

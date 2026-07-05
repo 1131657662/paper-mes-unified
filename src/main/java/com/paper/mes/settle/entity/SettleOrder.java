@@ -37,6 +37,8 @@ public class SettleOrder extends BaseEntity {
     private BigDecimal taxAmount;
     private BigDecimal totalAmount;
     private BigDecimal receivedAmount;
+    private BigDecimal cashReceivedAmount;
+    private BigDecimal scrapOffsetAmount;
     private BigDecimal unreceivedAmount;
     /** 1开票 2不开票 */
     private Integer isInvoice;

@@ -39,6 +39,8 @@ export interface ReportOverviewVO {
   settledAmount: number
   pendingSettleAmount: number
   receivedAmount: number
+  cashReceivedAmount: number
+  scrapOffsetAmount: number
   unreceivedAmount: number
 }
 
@@ -61,6 +63,8 @@ export interface ReportDimensionVO {
   settledAmount: number
   pendingSettleAmount: number
   receivedAmount: number
+  cashReceivedAmount: number
+  scrapOffsetAmount: number
   unreceivedAmount: number
 }
 
@@ -89,5 +93,7 @@ export interface ReportDetailVO {
   settledAmount: number
   pendingSettleAmount: number
   receivedAmount: number
+  cashReceivedAmount: number
+  scrapOffsetAmount: number
   unreceivedAmount: number
 }

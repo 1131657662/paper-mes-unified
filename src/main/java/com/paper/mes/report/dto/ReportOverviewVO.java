@@ -26,5 +26,7 @@ public class ReportOverviewVO {
     private BigDecimal settledAmount;
     private BigDecimal pendingSettleAmount;
     private BigDecimal receivedAmount;
+    private BigDecimal cashReceivedAmount;
+    private BigDecimal scrapOffsetAmount;
     private BigDecimal unreceivedAmount;
 }

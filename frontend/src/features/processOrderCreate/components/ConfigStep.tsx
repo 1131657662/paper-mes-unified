@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Card, Empty, Space, Table, Tag, message } from 'antd'
+import { Button, Card, Empty, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { Machine } from '../../../types/machine'
-import type { PlanPreviewVO, ProcessPlanDTO } from '../../../types/processOrder'
+import type { PlanPreviewVO, ProcessPlanDTO, ProcessRoutePreviewVO } from '../../../types/processOrder'
 import { formatKg } from '../../../utils/numberFormatters'
 import { defaultPlanForRoll, type DefaultPlanOptions } from '../draftMappers'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
@@ -27,7 +27,9 @@ interface Props {
   selectedId?: string
   plans: Record<string, ProcessPlanDTO>
   previews: Record<string, PlanPreviewVO>
+  routePreviews: Record<string, ProcessRoutePreviewVO>
   saving: boolean
+  onOpenRouteDesigner: (roll: RollDraft) => void
   onSelect: (localId: string) => void
   onPlanChange: (localId: string, plan: ProcessPlanDTO) => void
   onPreviewPlan: (roll: RollDraft, plan: ProcessPlanDTO) => Promise<void>
@@ -46,7 +48,9 @@ export default function ConfigStep({
   selectedId,
   plans,
   previews,
+  routePreviews,
   saving,
+  onOpenRouteDesigner,
   onSelect,
   onPlanChange,
   onPreviewPlan,
@@ -62,7 +66,8 @@ export default function ConfigStep({
   const [checkedIds, setCheckedIds] = useState<string[]>(selected ? [selected.localId] : [])
   const planDefaults = defaultPlanOptions ?? { spareCount: defaultSpareCount }
   const selectedPlan = selected ? plans[selected.localId] ?? defaultPlanForRoll(selected, planDefaults) : undefined
-  useAutoPlanPreview({ orderUuid, selected, selectedPlan, onPreviewPlan })
+  const selectedRoutePreview = selected?.uuid ? routePreviews[selected.uuid] : undefined
+  useAutoPlanPreview({ orderUuid, selected: selectedRoutePreview ? undefined : selected, selectedPlan, onPreviewPlan })
 
   const toggle = (localId: string, checked: boolean) => {
     if (lockedRolls[localId]) return
@@ -124,16 +129,24 @@ export default function ConfigStep({
       selectedId={selected?.localId}
       checkedIds={checkedIds}
       previews={previews}
+      routePreviews={routePreviews}
       lockedRolls={lockedRolls}
       onClearSelection={() => setCheckedIds([])}
       onSelect={selectRoll}
       onLockedSelect={(_, lock) => message.info(`该母卷已被 ${lock.ownerLabel} 合并使用，无需单独配置`)}
       onToggle={toggle}
       onSelectSameSpec={selectSameSpec}
+      onOpenRouteDesigner={onOpenRouteDesigner}
     />
   )
 
-  const editor = selected && selectedPlan ? (
+  const editor = selected && selectedRoutePreview ? (
+    <RouteConfiguredPanel
+      preview={selectedRoutePreview}
+      roll={selected}
+      onOpen={() => onOpenRouteDesigner(selected)}
+    />
+  ) : selected && selectedPlan ? (
     <ProcessPlanEditor
       roll={selected}
       rolls={rolls}
@@ -187,6 +200,32 @@ export default function ConfigStep({
       return prev.includes(localId) ? prev.filter((id) => id !== localId) : [localId]
     })
   }
+}
+
+function RouteConfiguredPanel({ onOpen, preview, roll }: RouteConfiguredPanelProps) {
+  const finals = preview.outputs?.filter((item) => !item.consumedByNextStage) ?? []
+  const finishWeight = finals.reduce((sum, item) => sum + Number(item.estimateWeight ?? 0), 0)
+  return (
+    <div className="route-configured-panel">
+      <Tag color="blue">链式工艺</Tag>
+      <Typography.Title level={5}>{roll.rollNo || roll.paperName || '母卷'} 已配置多序加工</Typography.Title>
+      <Space wrap>
+        <Tag>工序 {preview.stages?.length ?? 0} 道</Tag>
+        <Tag color="green">最终成品 {finals.length} 件</Tag>
+        <Tag color="cyan">预估 {formatKg(finishWeight)}</Tag>
+      </Space>
+      <Typography.Paragraph type="secondary">
+        该母卷已进入链式路线模式，单道工艺编辑已锁定，避免覆盖多序产物关系。
+      </Typography.Paragraph>
+      <Button type="primary" onClick={onOpen}>进入链式工艺设计</Button>
+    </div>
+  )
+}
+
+interface RouteConfiguredPanelProps {
+  onOpen: () => void
+  preview: ProcessRoutePreviewVO
+  roll: RollDraft
 }
 
 function LightConfigStep({

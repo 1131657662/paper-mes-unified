@@ -23,6 +23,7 @@ public class ProcessPlanMapper {
         FinishConfigSaveDTO dto = new FinishConfigSaveDTO();
         dto.setProcessMode(plan.getProcessMode());
         dto.setMainStepType(plan.getMainStepType());
+        dto.setMachineUuid(plan.getMachineUuid());
         dto.setSpareCount(plan.getSpareCount());
         dto.setRewindMode(plan.getRewindMode());
         dto.setKnifeCount(plan.getKnifeCount());
@@ -36,6 +37,7 @@ public class ProcessPlanMapper {
         ProcessPlanDTO plan = new ProcessPlanDTO();
         plan.setProcessMode(dto.getProcessMode());
         plan.setMainStepType(dto.getMainStepType());
+        plan.setMachineUuid(dto.getMachineUuid());
         plan.setSpareCount(dto.getSpareCount());
         plan.setRewindMode(dto.getRewindMode());
         plan.setKnifeCount(dto.getKnifeCount());

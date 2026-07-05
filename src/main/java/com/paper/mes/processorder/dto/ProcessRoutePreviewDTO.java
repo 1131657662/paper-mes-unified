@@ -35,9 +35,11 @@ public class ProcessRoutePreviewDTO {
         private Integer stepType;
 
         private String stepName;
+        private String machineUuid;
         private Integer knifeCount;
         private BigDecimal processWeight;
         private BigDecimal unitPrice;
+        private ProcessPlanDTO plan;
 
         @Valid
         private List<RouteOutputDTO> outputs;

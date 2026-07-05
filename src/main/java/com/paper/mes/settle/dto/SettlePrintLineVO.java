@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 结算单打印/导出明细行：按加工单下的原纸卷展示加工、成品与费用。
@@ -63,4 +64,5 @@ public class SettlePrintLineVO {
     private BigDecimal lineAmount;
     private Integer isInvoice;
     private String remark;
+    private List<SettleFeeLineVO> feeLines;
 }

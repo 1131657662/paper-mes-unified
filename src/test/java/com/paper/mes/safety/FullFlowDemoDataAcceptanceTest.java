@@ -12,6 +12,7 @@ import com.paper.mes.settle.service.SettleExportService;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,26 +23,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class FullFlowDemoDataAcceptanceTest {
 
     @Test
-    void demoData_whenRunningProcessToDeliverySettleReceive_coversMainBusinessScenarios() {
+    void demoData_whenRunningProcessToDeliverySettleReceive_coversMainBusinessScenarios() throws IOException {
         DeliveryDetailVO delivery = deliveryDetail();
         SettleDetailVO settle = settleDetail();
 
-        Workbook deliveryWorkbook = new DeliveryExportService().buildWorkbook(delivery);
-        Workbook settleWorkbook = new SettleExportService().buildWorkbook(settle);
+        try (Workbook deliveryWorkbook = new DeliveryExportService().buildWorkbook(delivery);
+             Workbook settleWorkbook = new SettleExportService().buildWorkbook(settle)) {
+            assertEquals(5, delivery.getDetails().size());
+            assertEquals("CK-DEMO-0001", text(deliveryWorkbook.getSheetAt(0).getRow(1).getCell(1)));
+            assertEquals("JG-DEMO-0001", text(deliveryWorkbook.getSheetAt(0).getRow(9).getCell(1)));
+            assertEquals("JG-DEMO-0002", text(deliveryWorkbook.getSheetAt(0).getRow(12).getCell(1)));
+            assertEquals("直发", text(deliveryWorkbook.getSheetAt(0).getRow(12).getCell(9)));
 
-        assertEquals(5, delivery.getDetails().size());
-        assertEquals("CK-DEMO-0001", text(deliveryWorkbook.getSheetAt(0).getRow(1).getCell(1)));
-        assertEquals("JG-DEMO-0001", text(deliveryWorkbook.getSheetAt(0).getRow(9).getCell(1)));
-        assertEquals("JG-DEMO-0002", text(deliveryWorkbook.getSheetAt(0).getRow(12).getCell(1)));
-        assertEquals("直发", text(deliveryWorkbook.getSheetAt(0).getRow(12).getCell(9)));
-
-        assertEquals(5, settle.getPrintLines().size());
-        assertEquals("JS-DEMO-0001", text(settleWorkbook.getSheetAt(0).getRow(1).getCell(1)));
-        assertEquals("锯纸 + 现场定尺", text(settleWorkbook.getSheetAt(0).getRow(8).getCell(8)));
-        assertEquals("直发", text(settleWorkbook.getSheetAt(0).getRow(12).getCell(8)));
-        assertEquals("装卸费 120.00；运费 80.00；其他费 50.00", text(settleWorkbook.getSheetAt(0).getRow(8).getCell(19)));
-        assertEquals("有效", text(settleWorkbook.getSheet("收款流水").getRow(4).getCell(6)));
-        assertEquals("已撤销", text(settleWorkbook.getSheet("收款流水").getRow(5).getCell(6)));
+            assertEquals(5, settle.getPrintLines().size());
+            assertEquals("JS-DEMO-0001", text(settleWorkbook.getSheetAt(0).getRow(1).getCell(1)));
+            assertEquals("锯纸 + 现场定尺", text(settleWorkbook.getSheetAt(0).getRow(10).getCell(8)));
+            assertEquals("直发", text(settleWorkbook.getSheetAt(0).getRow(14).getCell(8)));
+            assertEquals("装卸费 120.00；运费 80.00；其他费 50.00", text(settleWorkbook.getSheetAt(0).getRow(10).getCell(19)));
+            assertEquals("有效", text(settleWorkbook.getSheet("收款流水").getRow(4).getCell(11)));
+            assertEquals("已撤销", text(settleWorkbook.getSheet("收款流水").getRow(5).getCell(11)));
+        }
     }
 
     private DeliveryDetailVO deliveryDetail() {
@@ -100,6 +101,8 @@ class FullFlowDemoDataAcceptanceTest {
         order.setExtraAmount(new BigDecimal("250.00"));
         order.setTotalAmount(new BigDecimal("2917.12"));
         order.setReceivedAmount(new BigDecimal("1500.00"));
+        order.setCashReceivedAmount(new BigDecimal("1500.00"));
+        order.setScrapOffsetAmount(BigDecimal.ZERO);
         order.setUnreceivedAmount(new BigDecimal("1417.12"));
         vo.setOrder(order);
         vo.setPrintLines(List.of(
@@ -159,6 +162,8 @@ class FullFlowDemoDataAcceptanceTest {
         ReceiveRecord record = new ReceiveRecord();
         record.setReceiveDate(LocalDateTime.of(2026, 7, 4, 9, 0));
         record.setReceiveAmount(new BigDecimal("1500.00"));
+        record.setCashAmount(new BigDecimal("1500.00"));
+        record.setReceiveType(1);
         record.setPayMethod(2);
         record.setOperator("财务");
         record.setRecordStatus(1);
@@ -169,6 +174,8 @@ class FullFlowDemoDataAcceptanceTest {
         ReceiveRecord record = new ReceiveRecord();
         record.setReceiveDate(LocalDateTime.of(2026, 7, 4, 10, 0));
         record.setReceiveAmount(new BigDecimal("300.00"));
+        record.setCashAmount(new BigDecimal("300.00"));
+        record.setReceiveType(1);
         record.setPayMethod(1);
         record.setOperator("财务");
         record.setRecordStatus(2);

@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
-import { createTab, ensurePageTabs, type PageTabItem } from './pageTabModel'
+import { createTab, ensurePageTabs, normalizePageTabPath, type PageTabItem } from './pageTabModel'
 import { cachePageTabs, createInitialPageTabs } from './pageTabStorage'
 
 export function usePageTabs(pathname: string) {
-  const [tabs, setTabs] = useState<PageTabItem[]>(() => createInitialPageTabs(pathname))
+  const activePath = normalizePageTabPath(pathname)
+  const [tabs, setTabs] = useState<PageTabItem[]>(() => createInitialPageTabs(activePath))
 
   useEffect(() => {
     setTabs((current) => {
-      if (current.some((tab) => tab.path === pathname)) return current
-      return [...current, createTab(pathname)]
+      const normalized = ensurePageTabs(current)
+      if (normalized.some((tab) => tab.path === activePath)) return normalized
+      return ensurePageTabs([...normalized, createTab(activePath)])
     })
-  }, [pathname])
+  }, [activePath])
 
   useEffect(() => {
     cachePageTabs(tabs)
@@ -44,5 +46,5 @@ export function usePageTabs(pathname: string) {
     setTabs((current) => ensurePageTabs(current.filter((tab) => !tab.closable)))
   }
 
-  return { closeAllTabs, closeLeftTabs, closeOtherTabs, closeRightTabs, closeTab, tabs }
+  return { activePath, closeAllTabs, closeLeftTabs, closeOtherTabs, closeRightTabs, closeTab, tabs }
 }

@@ -30,7 +30,7 @@ export default function SettleGroupedBill({ lines }: Props) {
             columns={groupLineColumns}
             dataSource={group.lines}
             pagination={false}
-            scroll={{ x: 2320 }}
+            scroll={{ x: 2620 }}
           />
         ),
       }))}

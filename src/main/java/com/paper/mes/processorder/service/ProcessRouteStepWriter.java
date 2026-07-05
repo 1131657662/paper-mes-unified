@@ -1,5 +1,7 @@
 package com.paper.mes.processorder.service;
 
+import com.paper.mes.machine.entity.Machine;
+import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.ProcessStageInputRel;
@@ -9,10 +11,13 @@ import com.paper.mes.processorder.mapper.ProcessStageInputRelMapper;
 import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.util.CollectionUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -29,6 +34,7 @@ public class ProcessRouteStepWriter {
     private final ProcessStepMapper processStepMapper;
     private final ProcessStageOutputMapper stageOutputMapper;
     private final ProcessStageInputRelMapper stageInputRelMapper;
+    private final MachineMapper machineMapper;
 
     public Map<String, ProcessStageOutput> write(ProcessRouteContext context,
                                                  ProcessRoutePreviewDTO dto,
@@ -50,10 +56,11 @@ public class ProcessRouteStepWriter {
                                                       Map<String, ProcessStageOutput> outputsByKey,
                                                       int startStepSort,
                                                       boolean firstIsMain) {
+        Map<String, String> machineNameByUuid = loadMachineNames(dto.getStages(), context.roll().getMachineUuid());
         for (int i = 0; i < dto.getStages().size(); i++) {
             ProcessRoutePreviewDTO.RouteStageDTO stage = dto.getStages().get(i);
             ProcessStep step = buildStep(context, stage, preview.getStages().get(i), outputsByKey,
-                    startStepSort + i, firstIsMain && i == 0);
+                    machineNameByUuid, startStepSort + i, firstIsMain && i == 0);
             processStepMapper.insert(step);
             appendStageInputs(context, stage, step, outputsByKey);
             appendStageOutputs(context, stage, preview, step, outputsByKey);
@@ -65,6 +72,7 @@ public class ProcessRouteStepWriter {
                                   ProcessRoutePreviewDTO.RouteStageDTO stage,
                                   ProcessRoutePreviewVO.RouteStageLineVO line,
                                   Map<String, ProcessStageOutput> outputsByKey,
+                                  Map<String, String> machineNameByUuid,
                                   int stepSort,
                                   boolean isMain) {
         ProcessStageOutput parent = firstInputOutput(stage, outputsByKey);
@@ -78,12 +86,47 @@ public class ProcessRouteStepWriter {
         step.setStepSort(stepSort);
         step.setStepType(stage.getStepType());
         step.setStepName(StringUtils.hasText(stage.getStepName()) ? stage.getStepName() : stepName(stage.getStepType()));
+        applyMachine(step, stage, context.roll().getMachineUuid(), machineNameByUuid);
         step.setIsMain(isMain ? 1 : 0);
         step.setKnifeCount(stage.getKnifeCount());
         step.setProcessWeight(line.getProcessWeight());
         step.setUnitPrice(stage.getUnitPrice());
         step.setStepAmount(line.getStepAmount());
         return step;
+    }
+
+    private void applyMachine(ProcessStep step, ProcessRoutePreviewDTO.RouteStageDTO stage, String fallbackMachineUuid,
+                              Map<String, String> machineNameByUuid) {
+        String machineUuid = resolveMachineUuid(stage, fallbackMachineUuid);
+        step.setMachineUuid(machineUuid);
+        step.setMachineNameSnap(machineNameByUuid.get(machineUuid));
+    }
+
+    private String resolveMachineUuid(ProcessRoutePreviewDTO.RouteStageDTO stage, String fallbackMachineUuid) {
+        if (StringUtils.hasText(stage.getMachineUuid())) {
+            return stage.getMachineUuid();
+        }
+        if (stage.getPlan() != null && StringUtils.hasText(stage.getPlan().getMachineUuid())) {
+            return stage.getPlan().getMachineUuid();
+        }
+        return fallbackMachineUuid;
+    }
+
+    private Map<String, String> loadMachineNames(List<ProcessRoutePreviewDTO.RouteStageDTO> stages, String fallbackMachineUuid) {
+        Map<String, String> names = new HashMap<>();
+        for (ProcessRoutePreviewDTO.RouteStageDTO stage : CollectionUtils.isEmpty(stages) ? List.<ProcessRoutePreviewDTO.RouteStageDTO>of() : stages) {
+            String machineUuid = resolveMachineUuid(stage, fallbackMachineUuid);
+            if (StringUtils.hasText(machineUuid)) {
+                names.putIfAbsent(machineUuid, null);
+            }
+        }
+        if (names.isEmpty()) {
+            return names;
+        }
+        for (Machine machine : machineMapper.selectBatchIds(names.keySet())) {
+            names.put(machine.getUuid(), machine.getMachineName());
+        }
+        return names;
     }
 
     private void appendStageInputs(ProcessRouteContext context,

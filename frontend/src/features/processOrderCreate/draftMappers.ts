@@ -201,6 +201,7 @@ export function defaultConfigForRoll(roll: RollDraft, options: DefaultPlanOption
   return {
     processMode: plan.processMode,
     mainStepType: plan.mainStepType,
+    machineUuid: plan.machineUuid,
     rewindMode: plan.rewindMode,
     unitPrice: plan.unitPrice,
     spareCount: plan.spareCount,

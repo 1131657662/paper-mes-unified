@@ -171,7 +171,10 @@ class BusinessFlowSafetyContractTest {
 
         assertContainsAll(slice(source, "public void receive", "public void cancelReceive"),
                 "businessLockService.lockSettleOrder(uuid);",
-                "amount.compareTo(unreceived) > 0",
+                "SettleReceiveAmountResolver.resolve(dto, unreceived)",
+                "record.setReceiveAmount(amount.receiveAmount())",
+                "record.setCashAmount(amount.cashAmount())",
+                "record.setScrapOffsetAmount(amount.scrapOffsetAmount())",
                 "refreshReceiveState(settle)");
         assertContainsAll(slice(source, "public void cancelReceive", "public void voidSettle"),
                 "businessLockService.lockSettleOrder(uuid);",
@@ -185,12 +188,15 @@ class BusinessFlowSafetyContractTest {
                 "wrapper.eq(SettleOrder::getSettleStatus, previousStatus)",
                 ".setSql(\"version = version + 1\")");
         assertContainsAll(slice(source, "private void refreshReceiveState", "private void updateReceiveRecordForCancel"),
-                "applyReceiveState(settle, total, received)");
+                "applyReceiveState(settle, total, activeReceiveTotals(settle.getUuid()))");
         assertContainsAll(slice(source, "private void applyReceiveState", "private void updateReceiveRecordForCancel"),
-                "SettleReceiveStatusResolver.resolve(totalAmount, receivedAmount)");
+                "SettleReceiveStatusResolver.resolve(totalAmount, totals.receiveAmount())",
+                "settle.setCashReceivedAmount(totals.cashAmount())",
+                "settle.setScrapOffsetAmount(totals.scrapOffsetAmount())");
         assertContainsAll(slice(source, "private BigDecimal activeReceiveAmount", "private List<SettleDetail> settleDetails"),
                 ".eq(ReceiveRecord::getIsDeleted, 0)",
-                ".eq(ReceiveRecord::getSettleUuid, settleUuid)");
+                ".eq(ReceiveRecord::getSettleUuid, settleUuid)",
+                "totals = totals.add(record)");
     }
 
     @Test

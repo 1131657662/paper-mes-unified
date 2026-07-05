@@ -31,6 +31,8 @@ public class DashboardOverviewVO {
         private BigDecimal inStockFinishWeight;
         private Integer receivableCount;
         private BigDecimal receivableAmount;
+        private BigDecimal cashReceivedAmount;
+        private BigDecimal scrapOffsetAmount;
         private BigDecimal pendingSettleAmount;
     }
 

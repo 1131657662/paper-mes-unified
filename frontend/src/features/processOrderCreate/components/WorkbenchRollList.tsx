@@ -1,7 +1,7 @@
 import { Button, Checkbox, List, Space, Tag, Typography } from 'antd'
 import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
 import type { Machine } from '../../../types/machine'
-import type { PlanPreviewVO } from '../../../types/processOrder'
+import type { PlanPreviewVO, ProcessRoutePreviewVO } from '../../../types/processOrder'
 import { rollPreviewStatus } from '../previewStatusUtils'
 import type { MergedSourceLock } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
@@ -12,12 +12,14 @@ interface Props {
   selectedId?: string
   checkedIds: string[]
   previews: Record<string, PlanPreviewVO>
+  routePreviews?: Record<string, ProcessRoutePreviewVO>
   lockedRolls?: Record<string, MergedSourceLock>
   onClearSelection: () => void
   onSelect: (localId: string) => void
   onLockedSelect?: (roll: RollDraft, lock: MergedSourceLock) => void
   onToggle: (localId: string, checked: boolean) => void
   onSelectSameSpec: () => void
+  onOpenRouteDesigner?: (roll: RollDraft) => void
 }
 
 export default function WorkbenchRollList({
@@ -26,12 +28,14 @@ export default function WorkbenchRollList({
   selectedId,
   checkedIds,
   previews,
+  routePreviews = {},
   lockedRolls = {},
   onClearSelection,
   onSelect,
   onLockedSelect,
   onToggle,
   onSelectSameSpec,
+  onOpenRouteDesigner,
 }: Props) {
   return (
     <div>
@@ -46,6 +50,7 @@ export default function WorkbenchRollList({
           const lock = lockedRolls[roll.localId]
           const disabled = Boolean(lock)
           const status = rollPreviewStatus({ roll, preview: previews[roll.localId], lock })
+          const routePreview = roll.uuid ? routePreviews[roll.uuid] : undefined
           return (
             <List.Item
               onClick={() => disabled && lock ? onLockedSelect?.(roll, lock) : onSelect(roll.localId)}
@@ -80,8 +85,21 @@ export default function WorkbenchRollList({
                   </Tag>
                   {roll.processMode !== 3 && <Tag color="green">{STEP_TYPE[roll.mainStepType ?? 2]}</Tag>}
                   {roll.processMode !== 3 && <Tag color={roll.machineUuid ? 'cyan' : 'default'}>{machineName(roll.machineUuid, machines)}</Tag>}
-                  <Tag color={status.color}>{status.label}</Tag>
+                  {routePreview ? <Tag color="blue">链式 {routePreview.stages?.length ?? 0} 道</Tag> : <Tag color={status.color}>{status.label}</Tag>}
                 </div>
+                {roll.processMode !== 3 && (
+                  <Button
+                    size="small"
+                    type={routePreview ? 'primary' : 'default'}
+                    style={{ marginTop: 8 }}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onOpenRouteDesigner?.(roll)
+                    }}
+                  >
+                    {routePreview ? '编辑链式工艺' : '链式工艺'}
+                  </Button>
+                )}
               </div>
             </List.Item>
           )

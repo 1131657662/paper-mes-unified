@@ -6,9 +6,11 @@ import {
   listProcessOrderDrafts,
   previewOriginalRollImport,
   previewProcessPlan,
+  previewProcessRoute,
   replaceDraftOriginalRolls,
   saveDraftBaseInfo,
   saveDraftProgress,
+  saveDraftProcessRoute,
   saveProcessConfigDraft,
   saveProcessPlan,
   saveProcessPlanBatch,
@@ -22,6 +24,7 @@ import type {
   OriginalRollDTO,
   ProcessPlanBatchSaveDTO,
   ProcessPlanPreviewRequestDTO,
+  ProcessRoutePreviewDTO,
 } from '../../../types/processOrder'
 
 export const createOrderService = {
@@ -44,6 +47,10 @@ export const createOrderService = {
     saveProcessConfigDraft(params.orderUuid, params.rollUuid, { config: params.config }),
   previewPlan: (params: { orderUuid: string; request: ProcessPlanPreviewRequestDTO }) =>
     previewProcessPlan(params.orderUuid, params.request),
+  previewRoute: (params: { orderUuid: string; request: ProcessRoutePreviewDTO }) =>
+    previewProcessRoute(params.orderUuid, params.request),
+  saveRoute: (params: { orderUuid: string; request: ProcessRoutePreviewDTO }) =>
+    saveDraftProcessRoute(params.orderUuid, params.request),
   savePlan: (params: { orderUuid: string; rollUuid: string; request: ProcessPlanPreviewRequestDTO }) =>
     saveProcessPlan(params.orderUuid, params.rollUuid, params.request),
   savePlanBatch: (params: { orderUuid: string; dto: ProcessPlanBatchSaveDTO }) =>

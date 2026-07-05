@@ -1,10 +1,10 @@
-import { createTab, type PageTabItem } from './pageTabModel'
+import { createTab, normalizePageTabPath, type PageTabItem } from './pageTabModel'
 
 const PAGE_TABS_STORAGE_KEY = 'paper-mes:page-tabs:v1'
 const MAX_PAGE_TABS = 18
 
 export function createInitialPageTabs(currentPath: string) {
-  const paths = [...readCachedPaths(), currentPath]
+  const paths = [...readCachedPaths(), normalizePageTabPath(currentPath)]
   return uniquePaths(paths).slice(-MAX_PAGE_TABS).map(createTab)
 }
 
@@ -33,7 +33,8 @@ function safeLocalStorage<T>(operation: () => T) {
 
 function uniquePaths(paths: string[]) {
   return paths.reduce<string[]>((result, path) => {
-    return [...result.filter((item) => item !== path), path]
+    const normalizedPath = normalizePageTabPath(path)
+    return [...result.filter((item) => item !== normalizedPath), normalizedPath]
   }, [])
 }
 

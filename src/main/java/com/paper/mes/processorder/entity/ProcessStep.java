@@ -31,6 +31,8 @@ public class ProcessStep extends BaseEntity {
     /** 1锯纸 2复卷 */
     private Integer stepType;
     private String stepName;
+    private String machineUuid;
+    private String machineNameSnap;
     /** 1本卷主工艺 0车间追加工序 */
     private Integer isMain;
     /** 锯纸专用：实际加工刀数 */

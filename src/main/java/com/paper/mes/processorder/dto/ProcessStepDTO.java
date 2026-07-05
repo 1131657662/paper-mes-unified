@@ -32,6 +32,7 @@ public class ProcessStepDTO {
      * 工序名称
      */
     private String stepName;
+    private String machineUuid;
 
     /**
      * 是否主工艺：1主 0追加

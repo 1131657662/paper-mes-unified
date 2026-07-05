@@ -6,8 +6,8 @@ import type { TableRowSelection } from 'antd/es/table/interface'
 import TooltipText from '../../../components/biz/TooltipText'
 import { mesProTableOptions } from '../../../components/biz/mesProTableOptions'
 import { renderTableToolbarPortal } from '../../../components/biz/tableToolbarPortalUtils'
-import { useTableColumnsState } from '../../../hooks/useTableColumnsState'
 import { useResizableTableColumns } from '../../../components/useResizableTableColumns'
+import { useTableColumnsState } from '../../../hooks/useTableColumnsState'
 import { SETTLE_STATUS, SETTLE_TYPE } from '../../../constants/settle'
 import type { SettleOrder } from '../../../types/settle'
 import { formatMoney, formatPercent } from '../utils/settleFormatters'
@@ -89,18 +89,10 @@ function buildColumns(actions: {
     { title: '结算日期', dataIndex: 'settleDate', width: 110 },
     { title: '应收', dataIndex: 'totalAmount', align: 'right', width: 110, render: (_, record) => formatMoney(record.totalAmount) },
     {
-      title: '收款进度',
+      title: '结清进度',
       dataIndex: 'receivedAmount',
-      width: 160,
-      render: (_, record) => (
-        <div className="settle-cell-stack mes-cell-stack">
-          <Progress
-            percent={Number(formatPercent(record.receivedAmount ?? 0, record.totalAmount ?? 0).replace('%', ''))}
-            size="small"
-          />
-          <span>已收 {formatMoney(record.receivedAmount)} / 未收 {formatMoney(record.unreceivedAmount)}</span>
-        </div>
-      ),
+      width: 210,
+      render: (_, record) => <ReceiveProgress record={record} />,
     },
     {
       title: '状态',
@@ -119,18 +111,25 @@ function buildColumns(actions: {
       width: 150,
       render: (_, record) => (
         <Space className="mes-action-buttons">
-          <Button type="link" size="small" onClick={() => actions.onDetail(record)}>
-            详情
-          </Button>
+          <Button type="link" size="small" onClick={() => actions.onDetail(record)}>详情</Button>
           {actions.canReceiveSettle && record.settleStatus !== 3 && (
-            <Button type="link" size="small" onClick={() => actions.onReceive(record)}>
-              收款
-            </Button>
+            <Button type="link" size="small" onClick={() => actions.onReceive(record)}>收款</Button>
           )}
         </Space>
       ),
     },
   ]
+}
+
+function ReceiveProgress({ record }: { record: SettleOrder }) {
+  const percent = Number(formatPercent(record.receivedAmount ?? 0, record.totalAmount ?? 0).replace('%', ''))
+  return (
+    <div className="settle-cell-stack mes-cell-stack">
+      <Progress percent={percent} size="small" />
+      <span>已结清 {formatMoney(record.receivedAmount)} / 未收 {formatMoney(record.unreceivedAmount)}</span>
+      <span>现金 {formatMoney(record.cashReceivedAmount)} / 废纸 {formatMoney(record.scrapOffsetAmount)}</span>
+    </div>
+  )
 }
 
 function textCell(value?: ReactNode) {

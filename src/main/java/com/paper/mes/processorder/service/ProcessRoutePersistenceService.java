@@ -39,6 +39,14 @@ public class ProcessRoutePersistenceService {
     private void updateRollRoute(OriginalRoll roll, ProcessRoutePreviewDTO.RouteStageDTO firstStage) {
         roll.setProcessMode(1);
         roll.setMainStepType(firstStage.getStepType());
+        roll.setMachineUuid(resolveStageMachine(firstStage));
         originalRollMapper.updateById(roll);
+    }
+
+    private String resolveStageMachine(ProcessRoutePreviewDTO.RouteStageDTO stage) {
+        if (stage.getMachineUuid() != null && !stage.getMachineUuid().isBlank()) {
+            return stage.getMachineUuid();
+        }
+        return stage.getPlan() == null ? null : stage.getPlan().getMachineUuid();
     }
 }

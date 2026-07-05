@@ -41,6 +41,7 @@ public class ProcessRoutePreviewer {
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (ProcessRoutePreviewDTO.RouteStageDTO stage : dto.getStages()) {
             validateStageInputs(stage, outputsByKey, usedInputKeys);
+            ProcessRoutePreviewValidator.validateStageWeight(roll, stage, outputsByKey);
             BigDecimal processWeight = resolveProcessWeight(roll, stage, outputsByKey);
             BigDecimal amount = FeeCalculator.stepAmount(stage.getStepType(), stage.getKnifeCount(), processWeight, stage.getUnitPrice());
             totalAmount = totalAmount.add(amount);
@@ -118,9 +119,8 @@ public class ProcessRoutePreviewer {
         return selectedOutputWeightTon(stage.getInputOutputKeys(), outputsByKey);
     }
     private BigDecimal originalWeightTon(OriginalRoll roll) {
-        BigDecimal weight = roll.getRollWeight() == null ? BigDecimal.ZERO : roll.getRollWeight();
-        BigDecimal pieces = BigDecimal.valueOf(roll.getPieceNum() == null ? 1 : roll.getPieceNum());
-        return weight.multiply(pieces).divide(FeeCalculator.TON_DIVISOR, 3, RoundingMode.HALF_UP);
+        return ProcessRoutePreviewValidator.originalWeight(roll)
+                .divide(FeeCalculator.TON_DIVISOR, 3, RoundingMode.HALF_UP);
     }
     private BigDecimal selectedOutputWeightTon(List<String> keys,
                                                Map<String, ProcessRoutePreviewVO.RouteOutputVO> outputsByKey) {
@@ -141,12 +141,20 @@ public class ProcessRoutePreviewer {
         line.setStageLevel(stage.getStageLevel());
         line.setStepType(stage.getStepType());
         line.setStepName(stage.getStepName());
+        line.setMachineUuid(resolveMachineUuid(stage));
         line.setInputOutputKeys(stage.getInputOutputKeys());
         line.setKnifeCount(stage.getKnifeCount());
         line.setProcessWeight(processWeight);
         line.setUnitPrice(stage.getUnitPrice());
         line.setStepAmount(amount);
         return line;
+    }
+
+    private String resolveMachineUuid(ProcessRoutePreviewDTO.RouteStageDTO stage) {
+        if (stage.getMachineUuid() != null && !stage.getMachineUuid().isBlank()) {
+            return stage.getMachineUuid();
+        }
+        return stage.getPlan() == null ? null : stage.getPlan().getMachineUuid();
     }
 
     private void appendOutputs(ProcessRoutePreviewDTO.RouteStageDTO stage, OriginalRoll roll, Set<String> consumedKeys,
@@ -158,6 +166,9 @@ public class ProcessRoutePreviewer {
             int count = output.getCount() == null ? 1 : output.getCount();
             for (int i = 0; i < count; i++) {
                 ProcessRoutePreviewVO.RouteOutputVO line = outputLine(stage, roll, output, consumedKeys, sort, i);
+                if (outputsByKey.containsKey(line.getOutputKey())) {
+                    throw new BusinessException("阶段产物编号重复：" + line.getOutputKey());
+                }
                 outputsByKey.put(line.getOutputKey(), line);
                 outputLines.add(line);
                 sort++;

@@ -1,19 +1,11 @@
-import { Button, Segmented, Space, Tag } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { Segmented } from 'antd'
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DocumentDetailTable from '../../../components/biz/DocumentDetailTable'
-import MesTooltip from '../../../components/biz/MesTooltip'
 import { mesTablePagination } from '../../../components/biz/mesPaginationUtils'
-import TooltipText from '../../../components/biz/TooltipText'
-import { ORDER_STATUS } from '../../../constants/processOrder'
 import type { ReportDetailVO, ReportDimension, ReportDimensionVO } from '../../../types/report'
 import ReportDimensionSummaryRow from './ReportDimensionSummaryRow'
-import {
-  formatMoney,
-  formatNumber,
-  formatPercent,
-  formatTonFromKg,
-} from '../utils/reportFormatters'
+import { detailColumns, dimensionColumns } from './reportTableColumns'
 
 interface Props {
   details: ReportDetailVO[]
@@ -48,45 +40,45 @@ export default function ReportTables({
         />
       </div>
       <div className="report-table-stack">
-        <div className="report-table-block">
-          <div className="report-table-block__head">
-            <strong>维度汇总</strong>
-            <span>应收按加工单制单日期归属，已收仅统计有效收款流水。</span>
-          </div>
-          <div className="document-module-table">
-            <DocumentDetailTable<ReportDimensionVO>
-              columns={dimensionColumns(dimension)}
-              dataSource={dimensions}
-              loading={loading}
-              onReload={onRefresh}
-              pagination={false}
-              rowKey={(record) => `${dimension}-${record.dimensionKey}`}
-              scroll={{ x: 1696, y: 260 }}
-              storageKey={`report-dimension-${dimension}`}
-              summary={() => <ReportDimensionSummaryRow rows={dimensions} />}
-            />
-          </div>
-        </div>
-        <div className="report-table-block">
-          <div className="report-table-block__head">
-            <strong>加工单明细</strong>
-            <span>点击加工单号可进入详情核对来源、成品和结算链路。</span>
-          </div>
-          <div className="document-module-table">
-            <DocumentDetailTable<ReportDetailVO>
-              columns={detailColumns((uuid) => navigate(`/process-orders/${uuid}`))}
-              dataSource={details}
-              loading={loading}
-              onReload={onRefresh}
-              pagination={mesTablePagination(20)}
-              rowKey="orderUuid"
-              scroll={{ x: 2132, y: 560 }}
-              storageKey="report-order-details"
-            />
-          </div>
-        </div>
+        <ReportTableBlock title="维度汇总" hint="应收按加工单制单日期归属；现金实收和废纸抵扣均只统计有效收款流水。">
+          <DocumentDetailTable<ReportDimensionVO>
+            columns={dimensionColumns(dimension)}
+            dataSource={dimensions}
+            loading={loading}
+            onReload={onRefresh}
+            pagination={false}
+            rowKey={(record) => `${dimension}-${record.dimensionKey}`}
+            scroll={{ x: 1952, y: 260 }}
+            storageKey={`report-dimension-${dimension}`}
+            summary={() => <ReportDimensionSummaryRow rows={dimensions} />}
+          />
+        </ReportTableBlock>
+        <ReportTableBlock title="加工单明细" hint="点击加工单号可进入详情核对来源、成品和结算链路。">
+          <DocumentDetailTable<ReportDetailVO>
+            columns={detailColumns((uuid) => navigate(`/process-orders/${uuid}`))}
+            dataSource={details}
+            loading={loading}
+            onReload={onRefresh}
+            pagination={mesTablePagination(20)}
+            rowKey="orderUuid"
+            scroll={{ x: 2388, y: 560 }}
+            storageKey="report-order-details"
+          />
+        </ReportTableBlock>
       </div>
     </section>
+  )
+}
+
+function ReportTableBlock({ children, hint, title }: { children: ReactNode; hint: string; title: string }) {
+  return (
+    <div className="report-table-block">
+      <div className="report-table-block__head">
+        <strong>{title}</strong>
+        <span>{hint}</span>
+      </div>
+      <div className="document-module-table">{children}</div>
+    </div>
   )
 }
 
@@ -100,122 +92,3 @@ const dimensionOptions = [
   { value: 'settleType', label: '结算' },
   { value: 'status', label: '状态' },
 ]
-
-function dimensionColumns(dimension: ReportDimension): ColumnsType<ReportDimensionVO> {
-  return [
-    { title: dimensionTitle(dimension), dataIndex: 'dimensionName', key: 'dimensionName', width: 180, render: dimensionCell },
-    { title: '加工单', dataIndex: 'orderCount', key: 'orderCount', width: 96, align: 'right', render: countCell('单') },
-    { title: '原卷', dataIndex: 'originalRollCount', key: 'originalRollCount', width: 88, align: 'right', render: countCell('卷') },
-    { title: '成品', dataIndex: 'finishRollCount', key: 'finishRollCount', width: 88, align: 'right', render: countCell('卷') },
-    { title: '原纸吨位', dataIndex: 'originalWeight', key: 'originalWeight', width: 128, align: 'right', render: formatTonFromKg },
-    { title: '成品吨位', dataIndex: 'finishWeight', key: 'finishWeight', width: 128, align: 'right', render: formatTonFromKg },
-    { title: '损耗吨位', dataIndex: 'lossWeight', key: 'lossWeight', width: 120, align: 'right', render: formatTonFromKg },
-    { title: '损耗率', dataIndex: 'lossRatio', key: 'lossRatio', width: 98, align: 'right', render: formatPercent },
-    { title: '刀数', dataIndex: 'knifeCount', key: 'knifeCount', width: 88, align: 'right', render: numberCell },
-    { title: '锯纸费', dataIndex: 'sawAmount', key: 'sawAmount', width: 118, align: 'right', render: formatMoney },
-    { title: '复卷费', dataIndex: 'rewindAmount', key: 'rewindAmount', width: 118, align: 'right', render: formatMoney },
-    { title: '加工费', dataIndex: 'processAmount', key: 'processAmount', width: 118, align: 'right', render: formatMoney },
-    { title: '附加费', dataIndex: 'extraAmount', key: 'extraAmount', width: 118, align: 'right', render: formatMoney },
-    { title: '应收合计', dataIndex: 'totalAmount', key: 'totalAmount', width: 128, align: 'right', render: formatMoney },
-    { title: '已结算应收', dataIndex: 'settledAmount', key: 'settledAmount', width: 132, align: 'right', render: formatMoney },
-    { title: '待结算应收', dataIndex: 'pendingSettleAmount', key: 'pendingSettleAmount', width: 132, align: 'right', render: formatMoney },
-    { title: '有效已收', dataIndex: 'receivedAmount', key: 'receivedAmount', width: 128, align: 'right', render: formatMoney },
-    { title: '已结算未收', dataIndex: 'unreceivedAmount', key: 'unreceivedAmount', width: 128, align: 'right', render: formatMoney },
-  ]
-}
-
-function detailColumns(onOpenOrder: (uuid: string) => void): ColumnsType<ReportDetailVO> {
-  return [
-    { title: '加工单号', dataIndex: 'orderNo', key: 'orderNo', width: 156, fixed: 'left', render: (_, record) => orderLinkCell(record, onOpenOrder) },
-    { title: '制单日期', dataIndex: 'orderDate', key: 'orderDate', width: 108 },
-    { title: '客户', dataIndex: 'customerName', key: 'customerName', width: 170, render: textCell },
-    { title: '纸品规格', dataIndex: 'paperSummary', key: 'paperSummary', width: 260, render: textCell },
-    { title: '工艺', dataIndex: 'processSummary', key: 'processSummary', width: 140, render: tagTextCell },
-    { title: '状态', dataIndex: 'orderStatus', key: 'orderStatus', width: 96, render: statusCell },
-    { title: '结算', dataIndex: 'settleType', key: 'settleType', width: 92, render: settleTypeCell },
-    { title: '开票', dataIndex: 'isInvoice', key: 'isInvoice', width: 92, render: invoiceCell },
-    { title: '原卷', dataIndex: 'originalRollCount', key: 'originalRollCount', width: 88, align: 'right', render: countCell('卷') },
-    { title: '成品', dataIndex: 'finishRollCount', key: 'finishRollCount', width: 88, align: 'right', render: countCell('卷') },
-    { title: '原纸吨位', dataIndex: 'originalWeight', key: 'originalWeight', width: 128, align: 'right', render: formatTonFromKg },
-    { title: '成品吨位', dataIndex: 'finishWeight', key: 'finishWeight', width: 128, align: 'right', render: formatTonFromKg },
-    { title: '损耗吨位', dataIndex: 'lossWeight', key: 'lossWeight', width: 118, align: 'right', render: formatTonFromKg },
-    { title: '损耗率', dataIndex: 'lossRatio', key: 'lossRatio', width: 98, align: 'right', render: formatPercent },
-    { title: '刀数', dataIndex: 'knifeCount', key: 'knifeCount', width: 88, align: 'right', render: numberCell },
-    { title: '锯纸费', dataIndex: 'sawAmount', key: 'sawAmount', width: 116, align: 'right', render: formatMoney },
-    { title: '复卷费', dataIndex: 'rewindAmount', key: 'rewindAmount', width: 116, align: 'right', render: formatMoney },
-    { title: '加工费', dataIndex: 'processAmount', key: 'processAmount', width: 116, align: 'right', render: formatMoney },
-    { title: '附加费', dataIndex: 'extraAmount', key: 'extraAmount', width: 116, align: 'right', render: formatMoney },
-    { title: '应收合计', dataIndex: 'totalAmount', key: 'totalAmount', width: 124, align: 'right', render: formatMoney },
-    { title: '已结算应收', dataIndex: 'settledAmount', key: 'settledAmount', width: 132, align: 'right', render: formatMoney },
-    { title: '待结算应收', dataIndex: 'pendingSettleAmount', key: 'pendingSettleAmount', width: 132, align: 'right', render: formatMoney },
-    { title: '有效已收', dataIndex: 'receivedAmount', key: 'receivedAmount', width: 124, align: 'right', render: formatMoney },
-    { title: '已结算未收', dataIndex: 'unreceivedAmount', key: 'unreceivedAmount', width: 124, align: 'right', render: formatMoney },
-  ]
-}
-
-function orderLinkCell(record: ReportDetailVO, onOpenOrder: (uuid: string) => void) {
-  return (
-    <MesTooltip title="打开加工单详情">
-      <Button
-        className="report-order-link"
-        type="link"
-        size="small"
-        onClick={() => onOpenOrder(record.orderUuid)}
-      >
-        {record.orderNo || '-'}
-      </Button>
-    </MesTooltip>
-  )
-}
-
-function dimensionCell(value: string, record: ReportDimensionVO) {
-  return (
-    <Space size={6}>
-      <TooltipText value={value || record.dimensionKey} />
-      {record.dimensionKey === 'none' && <Tag>未分配</Tag>}
-    </Space>
-  )
-}
-
-function tagTextCell(value?: string) {
-  return <Tag color="blue">{value || '-'}</Tag>
-}
-
-function textCell(value?: string | number) {
-  return <TooltipText value={value} />
-}
-
-function countCell(unit: string) {
-  return (value?: number) => `${formatNumber(value)} ${unit}`
-}
-
-function numberCell(value?: number) {
-  return formatNumber(value)
-}
-
-function statusCell(value?: number) {
-  const item = ORDER_STATUS[value ?? -1]
-  return <Tag color={item?.color ?? 'default'}>{item?.text ?? '-'}</Tag>
-}
-
-function settleTypeCell(value?: number) {
-  return value === 1 ? '次结' : value === 2 ? '月结' : '-'
-}
-
-function invoiceCell(value?: number) {
-  return <Tag color={value === 1 ? 'gold' : 'default'}>{value === 1 ? '开票' : '不开票'}</Tag>
-}
-
-function dimensionTitle(dimension: ReportDimension) {
-  const titles: Record<ReportDimension, string> = {
-    customer: '客户',
-    invoice: '开票',
-    machine: '机台',
-    month: '月份',
-    paper: '产品',
-    process: '工艺',
-    settleType: '结算方式',
-    status: '状态',
-  }
-  return titles[dimension]
-}

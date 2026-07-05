@@ -46,15 +46,15 @@ export default function ReportMetricStrip({ overview }: Props) {
     {
       icon: <AccountBookOutlined />,
       main: formatMoney(overview?.unreceivedAmount),
-      sub: `有效已收 ${formatMoney(overview?.receivedAmount)} / 待结算 ${formatMoney(overview?.pendingSettleAmount)}`,
+      sub: `已结清 ${formatMoney(overview?.receivedAmount)} / 待结算 ${formatMoney(overview?.pendingSettleAmount)}`,
       title: '已结算未收',
       tone: 'danger',
     },
     {
       icon: <FieldTimeOutlined />,
       main: `${formatNumber(overview?.knifeCount)} 刀`,
-      sub: `锯 ${formatMoney(overview?.sawAmount)} / 复卷 ${formatMoney(overview?.rewindAmount)}`,
-      title: '刀数与工艺费',
+      sub: `现金 ${formatMoney(overview?.cashReceivedAmount)} / 废纸 ${formatMoney(overview?.scrapOffsetAmount)}`,
+      title: '结清组成',
     },
   ]
 

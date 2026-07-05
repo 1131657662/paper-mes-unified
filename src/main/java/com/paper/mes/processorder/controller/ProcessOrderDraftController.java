@@ -17,7 +17,7 @@ import com.paper.mes.processorder.dto.ProcessOrderSubmitVO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
-import com.paper.mes.processorder.service.ProcessRouteDraftPreviewService;
+import com.paper.mes.processorder.service.ProcessRouteDraftManager;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,7 +39,7 @@ import java.util.List;
 public class ProcessOrderDraftController {
 
     private final ProcessOrderDraftService draftService;
-    private final ProcessRouteDraftPreviewService routePreviewService;
+    private final ProcessRouteDraftManager routeDraftManager;
 
     @GetMapping("/drafts")
     @RequirePermission(Permissions.ORDER_VIEW)
@@ -93,7 +93,20 @@ public class ProcessOrderDraftController {
     @PostMapping("/{orderUuid}/rolls/route-preview")
     public R<ProcessRoutePreviewVO> previewProcessRoute(@PathVariable String orderUuid,
                                                         @Valid @RequestBody ProcessRoutePreviewDTO dto) {
-        return R.success(routePreviewService.preview(orderUuid, dto));
+        return R.success(routeDraftManager.preview(orderUuid, dto));
+    }
+
+    @PutMapping("/{orderUuid}/rolls/{rollUuid}/route-plan")
+    public R<ProcessRoutePreviewVO> saveProcessRoute(@PathVariable String orderUuid,
+                                                     @PathVariable String rollUuid,
+                                                     @Valid @RequestBody ProcessRoutePreviewDTO dto) {
+        return R.success(routeDraftManager.save(orderUuid, rollUuid, dto));
+    }
+
+    @PutMapping("/{orderUuid}/rolls/route-plan")
+    public R<ProcessRoutePreviewVO> saveProcessRoute(@PathVariable String orderUuid,
+                                                     @Valid @RequestBody ProcessRoutePreviewDTO dto) {
+        return R.success(routeDraftManager.save(orderUuid, dto));
     }
 
     @PutMapping("/{orderUuid}/rolls/{rollUuid}/process-plan")

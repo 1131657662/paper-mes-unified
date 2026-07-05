@@ -1,18 +1,15 @@
-import { Tag } from 'antd'
-import type { CSSProperties } from 'react'
-import { buildDisplayRows } from '../../../components/processOrder/shared/displayRowBuilder'
-import type { DisplayRow } from '../../../components/processOrder/shared/types'
-import {
-  buildConditionText,
-  buildLayoutText,
-  fmtDiameter,
-  rewindModeLabel,
-} from '../../../components/processOrder/shared/detailHelpers'
-import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
+import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import { CONFIG_KEYS } from '../../systemConfig/configFallbacks'
 import { useSystemConfigValue } from '../../systemConfig/hooks/useSystemConfigValue'
-import type { FinishProductionVO, ProcessOrderDetailVO, RollProductionVO } from '../../../types/processOrder'
-import { buildDetailMetrics, formatKg, resolveFinishEstimateWeight } from '../orderDetailUtils'
+import {
+  buildPrintRollBlocks,
+  buildPrintSummary,
+  type PrintRollBlock,
+  type PrintRouteOutput,
+  type PrintRouteStage,
+  type PrintSummaryItem,
+} from './printPreviewModel'
+import PrintDenseTable from './PrintDenseTable'
 import './PrintPreviewSheet.css'
 import './PrintPreviewSheet.print.css'
 
@@ -21,196 +18,186 @@ interface Props {
 }
 
 export default function PrintPreviewSheet({ detail }: Props) {
-  const metrics = buildDetailMetrics(detail)
-  const rows = buildDisplayRows(detail.rollProductions ?? [])
+  const blocks = buildPrintRollBlocks(detail)
+  const summary = buildPrintSummary(detail)
   const { value: printTitle } = useSystemConfigValue(CONFIG_KEYS.processOrderTitle, '车间加工单')
 
   return (
     <div className="print-preview-sheet">
-      <header className="print-preview-sheet__header">
-        <div>
-          <h1>{printTitle}</h1>
-          <div className="print-preview-sheet__meta">
-            <span>加工单号：{detail.order.orderNo ?? '-'}</span>
-            <span>客户：{detail.order.customerName ?? '-'}</span>
-            <span>制单日期：{detail.order.orderDate ?? '-'}</span>
-          </div>
-        </div>
-        <div className="print-preview-sheet__summary">
-          {detail.order.isMixProcess === 1 && <Tag color="purple">混合工艺</Tag>}
-          <div>{metrics.rollCount} 卷 / {formatKg(metrics.totalOriginalWeight)}</div>
-          <div>{metrics.finishCount} 个正式号</div>
-          <div>预估成品：{formatKg(metrics.totalEstimateWeight)}</div>
-        </div>
-      </header>
-
+      <PrintHeader detail={detail} title={printTitle} />
       {orderRemark(detail) && <OrderRemarkBlock remark={orderRemark(detail)} />}
-
-      <section>
-        <h2>原纸复核区</h2>
-        <table className="print-preview-table print-preview-table--roll-check">
-          <thead>
-            <tr>
-              <th>母卷</th>
-              <th>品名</th>
-              <th>标称克重</th>
-              <th>标称门幅</th>
-              <th>标称重量</th>
-              <th>实际克重</th>
-              <th>实际门幅</th>
-              <th>复称重量</th>
-            </tr>
-          </thead>
-          <tbody>
-            {detail.originalRolls.map((roll, index) => (
-              <tr key={roll.uuid}>
-                <td>{roll.rollNo || roll.extraNo || `母卷 ${index + 1}`}</td>
-                <td>{roll.paperName || '-'}</td>
-                <td>{roll.gramWeight ? `${roll.gramWeight}g` : '-'}</td>
-                <td>{roll.originalWidth ? `${roll.originalWidth}mm` : '-'}</td>
-                <td>{formatKg((roll.rollWeight ?? 0) * (roll.pieceNum ?? 1))}</td>
-                <td className="print-preview-table__write" />
-                <td className="print-preview-table__write" />
-                <td className="print-preview-table__write" />
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <SummaryStrip items={summary} />
+      <section className="print-preview-sheet__routes">
+        {blocks.map((block) => <RollBlock block={block} key={block.key} />)}
       </section>
-
-      <section>
-        <h2>成品加工明细</h2>
-        {rows.map((row) => (
-          <ProductionBlock key={row.key} row={row} />
-        ))}
-      </section>
-
-      <footer className="print-preview-sheet__footer">
-        <span>总成品：{metrics.finishCount} 件</span>
-        <span>备用号：{metrics.spareCount} 个</span>
-        <span>总刀数：{metrics.knifeCount} 刀</span>
-        <span>复核人：</span>
-        <span>操作工：</span>
-        <span>班组长：</span>
-        <span>完工日期：</span>
-      </footer>
+      <PrintDenseTable blocks={blocks} />
+      <PrintFooter />
     </div>
+  )
+}
+
+function PrintHeader({ detail, title }: { detail: ProcessOrderDetailVO; title: string }) {
+  const { order } = detail
+  return (
+    <header className="print-preview-sheet__header">
+      <h1>{title}</h1>
+      <div className="print-preview-sheet__meta">
+        <span>单号：{order.orderNo ?? '-'}</span>
+        <span>客户：{order.customerName ?? '-'}</span>
+        <span>日期：{order.orderDate ?? '-'}</span>
+        <span>打印：{order.printStatus === 1 ? `${order.printCount ?? 1} 次` : '未打印'}</span>
+      </div>
+    </header>
   )
 }
 
 function OrderRemarkBlock({ remark }: { remark: string }) {
   return (
     <section className="print-preview-sheet__remark-block">
-      <div className="print-preview-sheet__remark-label">重要备注</div>
-      <div className="print-preview-sheet__remark-text">{remark}</div>
+      <strong>重要备注</strong>
+      <span>{remark}</span>
     </section>
   )
 }
 
-function ProductionBlock({ row }: { row: DisplayRow }) {
-  const production = row.mainProduction
-  const finishes = row.finishes
-
-  if (finishes.length === 0) {
-    return (
-      <table className="print-preview-table print-preview-table--production print-preview-table--production-empty">
-        <ProductionHeader />
-        <tbody>
-          <tr>
-            <RollInfoCell title={rollTitle(row)} production={production} />
-            <td colSpan={6}>暂无预生成成品，直发卷将在回录后生成出库记录</td>
-          </tr>
-        </tbody>
-      </table>
-    )
-  }
-
+function SummaryStrip({ items }: { items: PrintSummaryItem[] }) {
   return (
-    <table className="print-preview-table print-preview-table--production" style={productionTableStyle(finishes.length)}>
-      <ProductionHeader />
+    <section className="print-preview-sheet__summary">
+      {items.map((item) => (
+        <span key={item.label}>
+          <em>{item.label}</em>
+          <strong>{item.value}</strong>
+        </span>
+      ))}
+    </section>
+  )
+}
+
+function RollBlock({ block }: { block: PrintRollBlock }) {
+  return (
+    <article className="print-roll-block">
+      <aside className="print-roll-block__source">
+        <h2>{block.title}</h2>
+        <SourceList block={block} />
+        <WriteGrid />
+      </aside>
+      <div className="print-roll-block__main">
+        <RouteStages stages={block.routeStages} />
+      </div>
+    </article>
+  )
+}
+
+function SourceList({ block }: { block: PrintRollBlock }) {
+  return (
+    <dl className="print-roll-source-list">
+      {block.sourceItems.map((item) => (
+        <div key={item.label}>
+          <dt>{item.label}</dt>
+          <dd>{item.value}</dd>
+        </div>
+      ))}
+      {block.remark && (
+        <div className="print-roll-source-list__remark">
+          <dt>明细备注</dt>
+          <dd>{block.remark}</dd>
+        </div>
+      )}
+    </dl>
+  )
+}
+
+function RouteStages({ stages }: { stages: PrintRouteStage[] }) {
+  if (!stages.length) return <div className="print-route-empty">未配置加工路线</div>
+  return (
+    <div className="print-route-stage-list">
+      {stages.map((stage) => <RouteStage stage={stage} key={stage.key} />)}
+    </div>
+  )
+}
+
+function RouteStage({ stage }: { stage: PrintRouteStage }) {
+  return (
+    <section className="print-route-stage">
+      <div className="print-route-stage__head">
+        <strong>{stage.title}</strong>
+        <span>来源：{stage.source}</span>
+        <span>{stage.metric}</span>
+      </div>
+      <p className="print-route-stage__requirement">
+        <strong>工艺要求：</strong>
+        {stage.requirement}
+      </p>
+      <OutputList outputs={stage.outputs} />
+    </section>
+  )
+}
+
+function OutputList({ outputs }: { outputs: PrintRouteOutput[] }) {
+  if (!outputs.length) return <div className="print-route-output-empty">暂无产出</div>
+  return (
+    <table className="print-route-output-table">
+      <thead>
+        <tr>
+          <th>产物</th>
+          <th>规格</th>
+          <th>预估重量</th>
+          <th>状态</th>
+          <th>实际重量</th>
+          <th>异常说明</th>
+        </tr>
+      </thead>
       <tbody>
-        {finishes.map((finish, index) => (
-          <tr key={finish.uuid}>
-            {index === 0 && <RollInfoCell title={rollTitle(row)} production={production} rowSpan={finishes.length} />}
-            <td>{finish.finishRollNo || '-'}</td>
-            <td>{finish.isSpare === 1 ? '备用' : '正式'}</td>
-            <td>{finishSpec(finish)}</td>
-            <td>{formatKg(resolveFinishEstimateWeight(finish, finishes, production))}</td>
-            <td className="print-preview-table__write" />
-            <td className="print-preview-table__write" />
-          </tr>
-        ))}
+        {outputs.map((output) => <OutputRow output={output} key={output.key} />)}
       </tbody>
     </table>
   )
 }
 
-function ProductionHeader() {
+function OutputRow({ output }: { output: PrintRouteOutput }) {
+  const fillable = output.status === 'final'
   return (
-    <thead>
-      <tr>
-        <th>母卷信息</th>
-        <th>成品卷号</th>
-        <th>类型</th>
-        <th>预设规格</th>
-        <th>预估件重</th>
-        <th>实际重量</th>
-        <th>异常说明</th>
-      </tr>
-    </thead>
+    <tr className={`print-route-output-row print-route-output-row--${output.status}`}>
+      <td>{output.name}</td>
+      <td>{output.spec}</td>
+      <td>{output.weight}</td>
+      <td><strong>{outputStatusText(output.status)}</strong></td>
+      <td className={fillable ? 'print-write-cell' : 'print-muted-cell'}>{fillable ? '' : '-'}</td>
+      <td className={fillable ? 'print-write-cell' : 'print-muted-cell'}>{fillable ? '' : '-'}</td>
+    </tr>
   )
 }
 
-function RollInfoCell({
-  title,
-  production,
-  rowSpan,
-}: {
-  title: string
-  production: RollProductionVO
-  rowSpan?: number
-}) {
+function outputStatusText(status: PrintRouteOutput['status']) {
+  if (status === 'next') return '进入下道'
+  if (status === 'trim') return '切边'
+  return '最终交付'
+}
+
+function WriteGrid() {
   return (
-    <td className="print-preview-sheet__roll-cell" rowSpan={rowSpan}>
-      <strong>{title}</strong>
-      <span>{production.paperName || '-'} / {production.gramWeight ?? '-'}g / {production.originalWidth ?? '-'}mm</span>
-      <span>工艺：{mainProcessLabel(production)}</span>
-      <span>加工方式：{PROCESS_MODE[production.processMode ?? 1] ?? '-'}</span>
-      <span>条件：{buildConditionText(production)}</span>
-      <span>排布：{buildLayoutText(production)}</span>
-    </td>
+    <div className="print-write-grid">
+      <span>实克</span>
+      <i />
+      <span>实幅</span>
+      <i />
+      <span>复重</span>
+      <i />
+      <span>异常</span>
+      <i />
+    </div>
   )
 }
 
-function rollTitle(row: DisplayRow): string {
-  if (row.isMergeGroup) return `合并复卷 ${row.rollProductions.length} 卷`
-  const production = row.mainProduction
-  return production.rollNo || production.extraNo || `母卷 ${row.seq}`
-}
-
-function mainProcessLabel(production: RollProductionVO): string {
-  if (production.processMode === 3) return '直发'
-  if (production.mainStepType === 2) return rewindModeLabel(production) ?? '复卷'
-  return STEP_TYPE[production.mainStepType ?? 1] ?? '锯纸'
-}
-
-function finishSpec(finish: FinishProductionVO): string {
-  const width = finish.finishWidth ? `${finish.finishWidth}mm` : '-'
-  const diameter = finish.finishDiameter ? ` / ${fmtDiameter(finish.finishDiameter, 'φ')}` : ''
-  return `${width}${diameter}`
-}
-
-function productionTableStyle(rowCount: number): CSSProperties {
-  return {
-    '--production-row-height': `${productionRowHeight(rowCount)}px`,
-  } as CSSProperties
-}
-
-function productionRowHeight(rowCount: number): number {
-  if (rowCount <= 1) return 132
-  if (rowCount === 2) return 66
-  if (rowCount === 3) return 48
-  return 42
+function PrintFooter() {
+  return (
+    <footer className="print-preview-sheet__footer">
+      <span>操作工：</span>
+      <span>复核人：</span>
+      <span>班组长：</span>
+      <span>完工日期：</span>
+    </footer>
+  )
 }
 
 function orderRemark(detail: ProcessOrderDetailVO): string {

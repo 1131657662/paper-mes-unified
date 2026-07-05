@@ -18,6 +18,7 @@ const IGNORE_ROW_TOGGLE_SELECTOR = [
   '.ant-table-selection-column',
   '.process-order-list__actions',
   '.process-order-resize-handle',
+  '.resizable-col-handle',
 ].join(',')
 
 export function useProcessOrderRowSelection() {

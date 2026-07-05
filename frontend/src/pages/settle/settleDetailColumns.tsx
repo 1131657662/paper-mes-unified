@@ -1,6 +1,6 @@
 import { Button, Space, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { PAY_METHOD } from '../../constants/settle'
+import { PAY_METHOD, RECEIVE_TYPE } from '../../constants/settle'
 import TooltipText from '../../components/biz/TooltipText'
 import { formatMoney } from '../../features/settle/utils/settleFormatters'
 import type { ReceiveRecord, SettleDetail } from '../../types/settle'
@@ -39,8 +39,9 @@ export function buildReceiveColumns(options: {
 } = {}): ColumnsType<ReceiveRecord> {
   const columns: ColumnsType<ReceiveRecord> = [
     { title: '收款时间', dataIndex: 'receiveDate', fixed: 'left', width: 170 },
+    { title: '类型', dataIndex: 'receiveType', width: 100, render: receiveTypeCell },
     {
-      title: '收款金额',
+      title: '本次结清',
       dataIndex: 'receiveAmount',
       align: 'right',
       width: 120,
@@ -48,17 +49,14 @@ export function buildReceiveColumns(options: {
         <Typography.Text delete={record.recordStatus === 2}>{formatMoney(value)}</Typography.Text>
       ),
     },
+    { title: '现金实收', dataIndex: 'cashAmount', align: 'right', width: 118, render: formatMoney },
+    { title: '废纸抵扣', dataIndex: 'scrapOffsetAmount', align: 'right', width: 118, render: formatMoney },
+    { title: '废纸重量kg', dataIndex: 'scrapWeight', align: 'right', width: 116, render: numberText },
+    { title: '折算单价', dataIndex: 'scrapUnitPrice', align: 'right', width: 108, render: unitPriceText },
     { title: '收款方式', dataIndex: 'payMethod', width: 90, render: (value) => PAY_METHOD[value] || '-' },
     { title: '流水号', dataIndex: 'payNo', width: 150, render: textCell },
     { title: '经办人', dataIndex: 'operator', width: 100, render: textCell },
-    {
-      title: '状态',
-      dataIndex: 'recordStatus',
-      width: 96,
-      render: (value) => value === 2
-        ? <Tag className="mes-status-tag" color="default">已撤销</Tag>
-        : <Tag className="mes-status-tag" color="success">有效</Tag>,
-    },
+    { title: '状态', dataIndex: 'recordStatus', width: 96, render: statusCell },
     {
       title: '备注/撤销原因',
       dataIndex: 'remark',
@@ -75,9 +73,8 @@ export function buildReceiveColumns(options: {
       key: 'actions',
       fixed: 'right',
       width: 88,
-      render: (_, record) => (
+      render: (_, record) => record.recordStatus !== 2 && (
         <Space size={8}>
-          {record.recordStatus !== 2 && (
           <Button
             danger
             size="small"
@@ -87,7 +84,6 @@ export function buildReceiveColumns(options: {
           >
             撤销
           </Button>
-        )}
         </Space>
       ),
     })
@@ -96,8 +92,29 @@ export function buildReceiveColumns(options: {
   return columns
 }
 
+function receiveTypeCell(value?: number) {
+  const item = value ? RECEIVE_TYPE[value] : RECEIVE_TYPE[1]
+  return <Tag className="mes-status-tag" color={item?.color ?? 'blue'}>{item?.text ?? '-'}</Tag>
+}
+
+function statusCell(value?: number) {
+  return value === 2
+    ? <Tag className="mes-status-tag" color="default">已撤销</Tag>
+    : <Tag className="mes-status-tag" color="success">有效</Tag>
+}
+
 function textCell(value?: string | number) {
   return <TooltipText value={value} />
+}
+
+function numberText(value?: number) {
+  if (value == null) return '-'
+  return Number(value).toLocaleString('zh-CN', { maximumFractionDigits: 3 })
+}
+
+function unitPriceText(value?: number) {
+  if (value == null || Number(value) <= 0) return '-'
+  return `${Number(value).toLocaleString('zh-CN', { maximumFractionDigits: 4 })} 元/kg`
 }
 
 function amountWithHint({

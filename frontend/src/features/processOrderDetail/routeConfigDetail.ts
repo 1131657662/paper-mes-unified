@@ -177,6 +177,15 @@ export function sourceRollFromOutput(row: DetailRouteOutputRow): RollDraft {
   }
 }
 
+export function routeOutputRowsForPlan(
+  stageLevel: number,
+  sources: DetailRouteOutputRow[],
+  plan: ProcessPlanDTO,
+  existingRows: DetailRouteOutputRow[] = [],
+): DetailRouteOutputRow[] {
+  return outputsForPlan(stageLevel, sources, plan, existingRows)
+}
+
 export function buildDetailRouteDto(roll: OriginalRoll, form: DetailRouteFormState): ProcessRoutePreviewDTO {
   return {
     originalUuid: roll.uuid,
@@ -528,6 +537,7 @@ function stageDto(form: DetailRouteFormState, stage: DetailRouteStageForm): Proc
     stepName: routeStepName(stage.stepType),
     knifeCount: stage.stepType === STEP_TYPE_SAW ? stage.plan.knifeCount : undefined,
     unitPrice: stage.plan.unitPrice,
+    plan: stage.plan,
     outputs: stageOutputRows(form, stage).map(toOutputDto),
   }
 }

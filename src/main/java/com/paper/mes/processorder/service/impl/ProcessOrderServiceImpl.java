@@ -18,6 +18,8 @@ import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.service.CustomerService;
 import com.paper.mes.delivery.entity.DeliveryDetail;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
+import com.paper.mes.machine.entity.Machine;
+import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.processorder.calc.FeeCalculator;
 import com.paper.mes.processorder.calc.RewindWeightCalculator;
@@ -157,6 +159,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private final DocumentNoService documentNoService;
     private final ProcessOrderExportService processOrderExportService;
     private final BusinessLockService businessLockService;
+    private final MachineMapper machineMapper;
 
     @Override
     public PageResult<ProcessOrder> pageOrders(ProcessOrderQuery query) {
@@ -685,6 +688,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
         roll.setProcessMode(dto.getProcessMode());
         roll.setMainStepType(dto.getMainStepType());
+        if (StringUtils.hasText(dto.getMachineUuid())) {
+            roll.setMachineUuid(dto.getMachineUuid());
+        }
         validateFinishConfig(orderUuid, roll, dto);
         validateMainStepType(roll);
         ConcurrencyGuard.requireRowUpdated(originalRollMapper.updateById(roll));
@@ -2797,6 +2803,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
         mainStep.setStepType(roll.getMainStepType());
         mainStep.setStepName(stepName(roll.getMainStepType()));
+        applyMachine(mainStep, dto.getMachineUuid(), roll.getMachineUuid());
         mainStep.setKnifeCount(resolveKnifeCount(roll, dto));
         mainStep.setProcessWeight(mainStep.getStepType() == FeeCalculator.STEP_TYPE_REWIND
                 ? rewindProcessWeight(order.getUuid(), roll, dto)
@@ -3295,6 +3302,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (dto.getKnifeCount() != null) step.setKnifeCount(dto.getKnifeCount());
         if (dto.getProcessWeight() != null) step.setProcessWeight(dto.getProcessWeight());
         if (dto.getUnitPrice() != null) step.setUnitPrice(dto.getUnitPrice());
+        if (dto.getMachineUuid() != null) applyMachine(step, dto.getMachineUuid(), null);
         if (dto.getRemark() != null) step.setRemark(dto.getRemark());
 
         processStepMapper.updateById(step);
@@ -3385,10 +3393,26 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         BeanUtils.copyProperties(dto, step);
         step.setOrderUuid(orderUuid);
         step.setStepSort(stepSort);
+        OriginalRoll roll = originalRollMapper.selectById(dto.getOriginalUuid());
+        applyMachine(step, dto.getMachineUuid(), roll == null ? null : roll.getMachineUuid());
         if (step.getIsMain() == null) {
             step.setIsMain(0);
         }
         return step;
+    }
+
+    private void applyMachine(ProcessStep step, String requestedMachineUuid, String fallbackMachineUuid) {
+        String machineUuid = StringUtils.hasText(requestedMachineUuid) ? requestedMachineUuid : fallbackMachineUuid;
+        step.setMachineUuid(machineUuid);
+        step.setMachineNameSnap(resolveMachineName(machineUuid));
+    }
+
+    private String resolveMachineName(String machineUuid) {
+        if (!StringUtils.hasText(machineUuid)) {
+            return null;
+        }
+        Machine machine = machineMapper.selectById(machineUuid);
+        return machine == null ? null : machine.getMachineName();
     }
 
     private ProcessOrder requireOrder(String uuid) {

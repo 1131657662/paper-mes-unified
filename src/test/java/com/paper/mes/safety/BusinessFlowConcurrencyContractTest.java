@@ -168,7 +168,10 @@ class BusinessFlowConcurrencyContractTest {
 
         assertContainsAll(receive,
                 "businessLockService.lockSettleOrder(uuid);",
-                "amount.compareTo(unreceived) > 0",
+                "SettleReceiveAmountResolver.resolve(dto, unreceived)",
+                "record.setReceiveAmount(amount.receiveAmount())",
+                "record.setCashAmount(amount.cashAmount())",
+                "record.setScrapOffsetAmount(amount.scrapOffsetAmount())",
                 "record.setRecordStatus(RECEIVE_STATUS_ACTIVE)",
                 "refreshReceiveState(settle)");
         assertBefore(receive, "businessLockService.lockSettleOrder(uuid);", "receiveRecordMapper.insert(record)");
@@ -187,7 +190,7 @@ class BusinessFlowConcurrencyContractTest {
         assertContainsAll(slice(source, "private BigDecimal activeReceiveAmount", "private List<SettleDetail> settleDetails"),
                 ".eq(ReceiveRecord::getIsDeleted, 0)",
                 "record.getRecordStatus() == null || record.getRecordStatus() == RECEIVE_STATUS_ACTIVE",
-                "total = total.add(nz(record.getReceiveAmount()))");
+                "totals = totals.add(record)");
     }
 
     @Test

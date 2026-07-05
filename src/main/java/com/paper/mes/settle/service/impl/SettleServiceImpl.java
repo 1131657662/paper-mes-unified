@@ -25,10 +25,12 @@ import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
+import com.paper.mes.processorder.entity.ProcessStageOutput;
 import com.paper.mes.processorder.entity.ProcessStep;
 import com.paper.mes.processorder.mapper.FinishOriginalRelMapper;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
+import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.settle.dto.ReceiveDTO;
@@ -101,6 +103,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private final FinishRollMapper finishRollMapper;
     private final FinishOriginalRelMapper finishOriginalRelMapper;
     private final ProcessStepMapper processStepMapper;
+    private final ProcessStageOutputMapper processStageOutputMapper;
     private final ProcessOrderService processOrderService;
     private final CustomerService customerService;
     private final MachineMapper machineMapper;
@@ -290,7 +293,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         vo.setDetails(details);
         vo.setReceives(receives);
         List<SettlePrintLineVO> snapshotLines = readSnapshotPrintLines(order.getSnapBill());
-        vo.setPrintLines(snapshotLines == null ? buildPrintLines(viewOrder, details) : snapshotLines);
+        List<SettlePrintLineVO> printLines = snapshotLines == null ? buildPrintLines(viewOrder, details) : snapshotLines;
+        SettleFeeLineBuilder.ensureFeeLines(printLines);
+        vo.setPrintLines(printLines);
         vo.setOperationLogs(loadOperationLogs(uuid));
         return vo;
     }
@@ -321,17 +326,19 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (settle.getUnreceivedAmount() != null && settle.getUnreceivedAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("结算单已结清，不可再收款");
         }
-        BigDecimal amount = dto.getReceiveAmount();
         BigDecimal unreceived = nz(settle.getUnreceivedAmount());
-        if (amount.compareTo(unreceived) > 0) {
-            throw new BusinessException("收款金额超过未收金额，禁止超收");
-        }
+        SettleReceiveAmountResolver.Resolved amount = SettleReceiveAmountResolver.resolve(dto, unreceived);
 
         ReceiveRecord record = new ReceiveRecord();
         record.setSettleUuid(uuid);
         record.setReceiveDate(dto.getReceiveDate() != null ? dto.getReceiveDate() : LocalDateTime.now());
-        record.setReceiveAmount(amount);
-        record.setPayMethod(dto.getPayMethod());
+        record.setReceiveAmount(amount.receiveAmount());
+        record.setCashAmount(amount.cashAmount());
+        record.setScrapOffsetAmount(amount.scrapOffsetAmount());
+        record.setScrapWeight(amount.scrapWeight());
+        record.setScrapUnitPrice(amount.scrapUnitPrice());
+        record.setReceiveType(amount.receiveType());
+        record.setPayMethod(amount.cashAmount().signum() > 0 ? dto.getPayMethod() : null);
         record.setPayNo(dto.getPayNo());
         String operator = resolveOperator(dto.getOperator());
         record.setOperator(operator);
@@ -344,7 +351,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,
                 settle.getUuid(), settle.getSettleNo(),
                 OperationLogService.ACTION_RECEIVE, operator,
-                "登记收款 " + amount + " 元");
+                receiveLogText("登记收款", amount));
     }
 
     @Override
@@ -372,7 +379,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,
                 settle.getUuid(), settle.getSettleNo(),
                 OperationLogService.ACTION_ROLLBACK, operator,
-                "撤销收款 " + record.getReceiveAmount() + " 元，原因：" + dto.getReason());
+                cancelReceiveLogText(record, dto.getReason()));
     }
 
     @Override
@@ -467,8 +474,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         settle.setAmountNoTax(amounts.noTax());
         settle.setTaxAmount(amounts.tax());
         settle.setTotalAmount(amounts.total());
-        BigDecimal received = activeReceiveAmount(settle.getUuid());
-        applyReceiveState(settle, amounts.total(), received);
+        applyReceiveState(settle, amounts.total(), activeReceiveTotals(settle.getUuid()));
     }
 
     private SettleOrder requireSettle(String uuid) {
@@ -500,16 +506,22 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private void refreshReceiveState(SettleOrder settle) {
         Integer previousStatus = settle.getSettleStatus();
         applySettlementAmountView(settle, normalizeDetailsForInvoiceView(settle, settleDetails(settle.getUuid())));
-        BigDecimal received = nz(settle.getReceivedAmount());
         BigDecimal total = nz(settle.getTotalAmount());
-        applyReceiveState(settle, total, received);
+        applyReceiveState(settle, total, activeReceiveTotals(settle.getUuid()));
         updateSettleReceiveState(settle, previousStatus);
     }
 
     private void applyReceiveState(SettleOrder settle, BigDecimal totalAmount, BigDecimal receivedAmount) {
+        applyReceiveState(settle, totalAmount,
+                new SettleReceiveTotals(nz(receivedAmount), nz(receivedAmount), BigDecimal.ZERO));
+    }
+
+    private void applyReceiveState(SettleOrder settle, BigDecimal totalAmount, SettleReceiveTotals totals) {
         SettleReceiveStatusResolver.State state =
-                SettleReceiveStatusResolver.resolve(totalAmount, receivedAmount);
+                SettleReceiveStatusResolver.resolve(totalAmount, totals.receiveAmount());
         settle.setReceivedAmount(state.receivedAmount());
+        settle.setCashReceivedAmount(totals.cashAmount());
+        settle.setScrapOffsetAmount(totals.scrapOffsetAmount());
         settle.setUnreceivedAmount(state.unreceivedAmount());
         settle.setSettleStatus(state.status());
     }
@@ -538,6 +550,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 .set(SettleOrder::getTaxAmount, settle.getTaxAmount())
                 .set(SettleOrder::getTotalAmount, settle.getTotalAmount())
                 .set(SettleOrder::getReceivedAmount, settle.getReceivedAmount())
+                .set(SettleOrder::getCashReceivedAmount, settle.getCashReceivedAmount())
+                .set(SettleOrder::getScrapOffsetAmount, settle.getScrapOffsetAmount())
                 .set(SettleOrder::getUnreceivedAmount, settle.getUnreceivedAmount())
                 .set(SettleOrder::getSettleStatus, settle.getSettleStatus())
                 .set(SettleOrder::getUpdateTime, LocalDateTime.now())
@@ -552,17 +566,34 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private BigDecimal activeReceiveAmount(String settleUuid) {
+        return activeReceiveTotals(settleUuid).receiveAmount();
+    }
+
+    private String receiveLogText(String action, SettleReceiveAmountResolver.Resolved amount) {
+        return action + " " + amount.receiveAmount() + " 元，现金 "
+                + amount.cashAmount() + " 元，废纸抵扣 "
+                + amount.scrapOffsetAmount() + " 元，废纸 "
+                + amount.scrapWeight() + " kg";
+    }
+
+    private String cancelReceiveLogText(ReceiveRecord record, String reason) {
+        return "撤销收款 " + nz(record.getReceiveAmount()) + " 元，现金 "
+                + nz(record.getCashAmount()) + " 元，废纸抵扣 "
+                + nz(record.getScrapOffsetAmount()) + " 元，原因：" + reason;
+    }
+
+    private SettleReceiveTotals activeReceiveTotals(String settleUuid) {
         List<ReceiveRecord> receives = receiveRecordMapper.selectList(
                 new LambdaQueryWrapper<ReceiveRecord>()
                         .eq(ReceiveRecord::getIsDeleted, 0)
                         .eq(ReceiveRecord::getSettleUuid, settleUuid));
-        BigDecimal total = BigDecimal.ZERO;
+        SettleReceiveTotals totals = SettleReceiveTotals.zero();
         for (ReceiveRecord record : receives) {
             if (record.getRecordStatus() == null || record.getRecordStatus() == RECEIVE_STATUS_ACTIVE) {
-                total = total.add(nz(record.getReceiveAmount()));
+                totals = totals.add(record);
             }
         }
-        return total;
+        return totals;
     }
 
     private List<SettleDetail> settleDetails(String settleUuid) {
@@ -594,12 +625,19 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 .orderByAsc(OriginalRoll::getRowSort));
         List<ProcessStep> steps = processStepMapper.selectList(new LambdaQueryWrapper<ProcessStep>()
                 .in(ProcessStep::getOrderUuid, orderUuids));
+        List<ProcessStageOutput> stageOutputs = processStageOutputMapper.selectList(new LambdaQueryWrapper<ProcessStageOutput>()
+                .in(ProcessStageOutput::getOrderUuid, orderUuids)
+                .eq(ProcessStageOutput::getIsDeleted, 0)
+                .orderByAsc(ProcessStageOutput::getOriginalUuid)
+                .orderByAsc(ProcessStageOutput::getStageLevel)
+                .orderByAsc(ProcessStageOutput::getOutputSort));
         List<FinishRoll> finishes = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
                 .in(FinishRoll::getOrderUuid, orderUuids));
         List<FinishOriginalRel> rels = finishOriginalRelMapper.selectList(new LambdaQueryWrapper<FinishOriginalRel>()
                 .in(FinishOriginalRel::getOrderUuid, orderUuids));
 
         Map<String, List<ProcessStep>> stepsByOriginal = groupStepsByOriginal(steps);
+        Map<String, List<ProcessStageOutput>> outputsByOriginal = groupStageOutputsByOriginal(stageOutputs);
         Map<String, List<FinishRoll>> finishesByOriginal = groupFinishesByOriginal(finishes, rels, rolls);
         Map<String, String> machineNameByUuid = loadMachineNames(rolls);
         Map<String, SettleDetail> detailByOrderUuid = new LinkedHashMap<>();
@@ -612,6 +650,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             ProcessOrder order = orderByUuid.get(roll.getOrderUuid());
             SettlePrintLineVO line = buildPrintLine(settle, order, customer, roll,
                     stepsByOriginal.getOrDefault(roll.getUuid(), List.of()),
+                    outputsByOriginal.getOrDefault(roll.getUuid(), List.of()),
                     finishesByOriginal.getOrDefault(roll.getUuid(), List.of()), machineNameByUuid);
             linesByOrderUuid.computeIfAbsent(roll.getOrderUuid(), k -> new ArrayList<>()).add(line);
         }
@@ -629,6 +668,16 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         for (ProcessStep step : steps) {
             if (StringUtils.hasText(step.getOriginalUuid())) {
                 grouped.computeIfAbsent(step.getOriginalUuid(), k -> new ArrayList<>()).add(step);
+            }
+        }
+        return grouped;
+    }
+
+    private Map<String, List<ProcessStageOutput>> groupStageOutputsByOriginal(List<ProcessStageOutput> outputs) {
+        Map<String, List<ProcessStageOutput>> grouped = new LinkedHashMap<>();
+        for (ProcessStageOutput output : outputs) {
+            if (StringUtils.hasText(output.getOriginalUuid())) {
+                grouped.computeIfAbsent(output.getOriginalUuid(), k -> new ArrayList<>()).add(output);
             }
         }
         return grouped;
@@ -678,7 +727,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 .distinct()
                 .toList();
         if (machineUuids.isEmpty()) {
-            return Map.of();
+            return new LinkedHashMap<>();
         }
         return machineMapper.selectBatchIds(machineUuids).stream()
                 .collect(java.util.stream.Collectors.toMap(Machine::getUuid,
@@ -687,7 +736,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private SettlePrintLineVO buildPrintLine(SettleOrder settle, ProcessOrder order, Customer customer, OriginalRoll roll,
-                                             List<ProcessStep> steps, List<FinishRoll> finishes,
+                                             List<ProcessStep> steps, List<ProcessStageOutput> stageOutputs,
+                                             List<FinishRoll> finishes,
                                              Map<String, String> machineNameByUuid) {
         LineAmounts amounts = lineAmounts(steps);
         BigDecimal taxRate = taxRateOf(order, customer);
@@ -712,7 +762,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setProcessMode(roll.getProcessMode());
         line.setMainStepType(roll.getMainStepType());
         line.setMachineUuid(roll.getMachineUuid());
-        line.setMachineName(machineNameByUuid.get(roll.getMachineUuid()));
+        line.setMachineName(resolveMachineName(machineNameByUuid, roll.getMachineUuid()));
         line.setProcessText(processText(roll));
         line.setProcessStepSummary(processStepSummary(steps));
         line.setFinishSummary(finishSummary(finishes));
@@ -736,7 +786,15 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setLineAmount(amounts.processAmount());
         line.setIsInvoice(settle.getIsInvoice());
         line.setRemark(roll.getRemark());
+        line.setFeeLines(SettleFeeLineBuilder.fromSteps(line, roll, steps, stageOutputs));
         return line;
+    }
+
+    private String resolveMachineName(Map<String, String> machineNameByUuid, String machineUuid) {
+        if (!StringUtils.hasText(machineUuid) || machineNameByUuid == null || machineNameByUuid.isEmpty()) {
+            return null;
+        }
+        return machineNameByUuid.get(machineUuid);
     }
 
     private void applyOrderAmountClosure(List<SettlePrintLineVO> lines, SettleDetail detail, ProcessOrder order) {
@@ -765,6 +823,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             line.setExtraAmount(share);
             line.setExtraFeeSummary(extraFeeSummary);
             line.setLineAmount(nz(line.getLineAmount()).add(share));
+            SettleFeeLineBuilder.appendExtraLine(line, share, extraFeeSummary);
         }
     }
 
@@ -805,6 +864,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             assigned = assigned.add(share);
             line.setTaxAmount(share);
             line.setLineAmount(nz(line.getLineAmount()).add(share));
+            SettleFeeLineBuilder.appendTaxLine(line, share);
         }
     }
 
@@ -870,12 +930,20 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             parts.add(step.getKnifeCount() + "刀");
         }
         if (step.getProcessWeight() != null) {
-            parts.add(nz(step.getProcessWeight()) + "kg");
+            parts.add(processWeightText(step));
         }
         if (step.getUnitPrice() != null) {
             parts.add("单价 " + moneyText(step.getUnitPrice()));
         }
         return parts.isEmpty() ? name : name + "（" + String.join(" / ", parts) + "）";
+    }
+
+    private String processWeightText(ProcessStep step) {
+        if (step.getStepType() != null && step.getStepType() == STEP_TYPE_REWIND) {
+            BigDecimal quantity = SettleFeeLineSupport.billingQuantity(step.getStepAmount(), step.getUnitPrice(), step.getProcessWeight());
+            return quantity.stripTrailingZeros().toPlainString() + "t";
+        }
+        return nz(step.getProcessWeight()).stripTrailingZeros().toPlainString() + "kg";
     }
 
     private String stepTypeText(Integer stepType) {
@@ -1104,7 +1172,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private String buildSettleSnapshot(SettleOrder settle, List<SettleDetail> details, List<ProcessOrder> orders) {
         List<SettlePrintLineVO> printLines = buildPrintLines(settle, details);
         Map<String, Object> snap = new LinkedHashMap<>();
-        snap.put("schema_version", "1.2");
+        snap.put("schema_version", "1.4");
         snap.put("snapshot_type", "settle_bill");
         snap.put("settle_uuid", settle.getUuid());
         snap.put("settle_no", settle.getSettleNo());
@@ -1123,6 +1191,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         snap.put("extra_amount", settle.getExtraAmount());
         snap.put("total_amount", settle.getTotalAmount());
         snap.put("received_amount", settle.getReceivedAmount());
+        snap.put("cash_received_amount", settle.getCashReceivedAmount());
+        snap.put("scrap_offset_amount", settle.getScrapOffsetAmount());
         snap.put("unreceived_amount", settle.getUnreceivedAmount());
         snap.put("remark", settle.getRemark());
         snap.put("source_orders", buildSettleSnapshotOrders(orders));
@@ -1208,6 +1278,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         view.setTaxAmount(decimalValue(root, "tax_amount", "taxAmount", order.getTaxAmount()));
         view.setTotalAmount(decimalValue(root, "total_amount", "totalAmount", order.getTotalAmount()));
         view.setReceivedAmount(order.getReceivedAmount());
+        view.setCashReceivedAmount(decimalValue(root, "cash_received_amount", "cashReceivedAmount", order.getCashReceivedAmount()));
+        view.setScrapOffsetAmount(decimalValue(root, "scrap_offset_amount", "scrapOffsetAmount", order.getScrapOffsetAmount()));
         view.setUnreceivedAmount(order.getUnreceivedAmount());
         view.setSettleStatus(order.getSettleStatus());
         view.setSnapBill(order.getSnapBill());

@@ -3,6 +3,29 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.paper.mes.report.mapper.ReportMapper">
 
+    <sql id="EffectiveFinishRollWhere">
+        f.is_deleted = 0
+        AND COALESCE(f.is_spare, 0) = 0
+        AND COALESCE(f.roll_no_status, 1) != 3
+        AND COALESCE(f.finish_status, 0) != 4
+        AND (
+            NOT EXISTS (
+                SELECT 1
+                FROM biz_process_stage_output sfo
+                WHERE sfo.finish_roll_uuid = f.uuid
+                  AND sfo.is_deleted = 0
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM biz_process_stage_output sff
+                WHERE sff.finish_roll_uuid = f.uuid
+                  AND sff.is_deleted = 0
+                  AND sff.output_type = 2
+                  AND sff.output_status = 3
+            )
+        )
+    </sql>
+
     <sql id="OrderFilters">
         o.is_deleted = 0
         <choose>
@@ -52,12 +75,16 @@
         </if>
     </sql>
 
-    <sql id="RollFilters">
+    <sql id="RollSpecFilters">
         <if test="q.paperName != null and q.paperName != ''">
             AND r.paper_name LIKE CONCAT('%', #{q.paperName}, '%')
         </if>
         <if test="q.mainStepType != null">AND r.main_step_type = #{q.mainStepType}</if>
         <if test="q.processMode != null">AND r.process_mode = #{q.processMode}</if>
+    </sql>
+
+    <sql id="RollFilters">
+        <include refid="RollSpecFilters"/>
         <if test="q.machineUuid != null and q.machineUuid != ''">AND r.machine_uuid = #{q.machineUuid}</if>
     </sql>
 
@@ -74,7 +101,13 @@
                         ELSE 0 END) AS billedAmount,
                SUM(CASE WHEN st.settleTotal > 0
                         THEN COALESCE(rr.receivedAmount, 0) * COALESCE(sd.order_amount, 0) / st.settleTotal
-                        ELSE 0 END) AS receivedAmount
+                        ELSE 0 END) AS receivedAmount,
+               SUM(CASE WHEN st.settleTotal > 0
+                        THEN COALESCE(rr.cashReceivedAmount, 0) * COALESCE(sd.order_amount, 0) / st.settleTotal
+                        ELSE 0 END) AS cashReceivedAmount,
+               SUM(CASE WHEN st.settleTotal > 0
+                        THEN COALESCE(rr.scrapOffsetAmount, 0) * COALESCE(sd.order_amount, 0) / st.settleTotal
+                        ELSE 0 END) AS scrapOffsetAmount
         FROM biz_settle_detail sd
         JOIN biz_settle_order so
           ON so.uuid = sd.settle_uuid
@@ -87,7 +120,12 @@
             GROUP BY settle_uuid
         ) st ON st.settle_uuid = sd.settle_uuid
         LEFT JOIN (
-            SELECT settle_uuid, SUM(COALESCE(receive_amount, 0)) AS receivedAmount
+            SELECT settle_uuid,
+                   SUM(COALESCE(receive_amount, 0)) AS receivedAmount,
+                   SUM(CASE WHEN cash_amount IS NULL AND COALESCE(scrap_offset_amount, 0) = 0
+                            THEN COALESCE(receive_amount, 0)
+                            ELSE COALESCE(cash_amount, 0) END) AS cashReceivedAmount,
+                   SUM(COALESCE(scrap_offset_amount, 0)) AS scrapOffsetAmount
             FROM biz_receive_record
             WHERE is_deleted = 0
               AND COALESCE(record_status, 1) = 1
@@ -175,6 +213,12 @@
                        COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
                            THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
                            ELSE 0 END), 0) AS receivedAmount,
+                       COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(settle.cashReceivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END), 0) AS cashReceivedAmount,
+                       COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(settle.scrapOffsetAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END), 0) AS scrapOffsetAmount,
                        COALESCE(SUM(GREATEST(
                            CASE WHEN amountScope.orderAmountBase > 0
                                THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
@@ -192,6 +236,8 @@
                        COALESCE(SUM(settle.billedAmount), 0) AS settled_amount,
                        COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pending_settle_amount,
                        COALESCE(SUM(settle.receivedAmount), 0) AS receivedAmount,
+                       COALESCE(SUM(settle.cashReceivedAmount), 0) AS cashReceivedAmount,
+                       COALESCE(SUM(settle.scrapOffsetAmount), 0) AS scrapOffsetAmount,
                        COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
                            - COALESCE(settle.receivedAmount, 0), 0)), 0) AS unreceivedAmount
                    </otherwise>
@@ -213,10 +259,7 @@
                    COUNT(*) AS finishRollCount,
                    SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
             FROM biz_finish_roll f
-            WHERE f.is_deleted = 0
-              AND COALESCE(f.is_spare, 0) = 0
-              AND COALESCE(f.roll_no_status, 1) != 3
-              AND COALESCE(f.finish_status, 0) != 4
+            WHERE <include refid="EffectiveFinishRollWhere"/>
               <if test="q.paperName != null and q.paperName != ''">
                   AND f.paper_name LIKE CONCAT('%', #{q.paperName}, '%')
               </if>
@@ -244,7 +287,321 @@
 
     <select id="dimensionSummary" resultType="com.paper.mes.report.dto.ReportDimensionVO">
         <choose>
-            <when test="dimension == 'paper' or dimension == 'process' or dimension == 'machine'">
+            <when test="dimension == 'process'">
+                SELECT d.dimensionKey,
+                       d.dimensionName,
+                       COUNT(DISTINCT d.order_uuid) AS orderCount,
+                       COUNT(DISTINCT d.original_uuid) AS originalRollCount,
+                       COALESCE(SUM(d.finishRollCount), 0) AS finishRollCount,
+                       COALESCE(SUM(d.sourceWeight), 0) AS originalWeight,
+                       COALESCE(SUM(d.finishWeight), 0) AS finishWeight,
+                       COALESCE(SUM(d.lossWeight), 0) AS lossWeight,
+                       CASE WHEN COALESCE(SUM(d.sourceWeight), 0) = 0 THEN 0
+                            ELSE COALESCE(SUM(d.lossWeight), 0) / COALESCE(SUM(d.sourceWeight), 0) * 100
+                       END AS lossRatio,
+                       COALESCE(SUM(d.knifeCount), 0) AS knifeCount,
+                       COALESCE(SUM(d.sawAmount), 0) AS sawAmount,
+                       COALESCE(SUM(d.rewindAmount), 0) AS rewindAmount,
+                       COALESCE(SUM(d.processAmount), 0) AS processAmount,
+                       COALESCE(SUM(d.extraAmount), 0) AS extraAmount,
+                       COALESCE(SUM(d.totalAmount), 0) AS totalAmount,
+                       COALESCE(SUM(d.settled_amount), 0) AS settled_amount,
+                       COALESCE(SUM(d.pending_settle_amount), 0) AS pending_settle_amount,
+                       COALESCE(SUM(d.receivedAmount), 0) AS receivedAmount,
+                       COALESCE(SUM(d.cashReceivedAmount), 0) AS cashReceivedAmount,
+                       COALESCE(SUM(d.scrapOffsetAmount), 0) AS scrapOffsetAmount,
+                       COALESCE(SUM(d.unreceivedAmount), 0) AS unreceivedAmount
+                FROM (
+                    SELECT ps.uuid AS step_uuid,
+                           ps.original_uuid,
+                           ps.order_uuid,
+                           CASE
+                               WHEN ps.step_type = 1 THEN 'saw'
+                               WHEN ps.step_type = 2 THEN 'rewind'
+                               ELSE CONCAT('step-', ps.step_type)
+                           END AS dimensionKey,
+                           CASE
+                               WHEN ps.step_type = 1 THEN '锯纸'
+                               WHEN ps.step_type = 2 THEN '复卷'
+                               ELSE COALESCE(ps.step_name, '其他工序')
+                           END AS dimensionName,
+                           CASE
+                               WHEN ps.step_type = 2 AND ps.process_weight IS NOT NULL
+                                   THEN ps.process_weight * 1000
+                               WHEN ps.input_type = 2 AND inputOutput.uuid IS NOT NULL
+                                   THEN COALESCE(inputOutput.actual_weight, inputOutput.estimate_weight, 0)
+                               ELSE COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)
+                           END AS sourceWeight,
+                           COALESCE(ps.loss_weight, 0) AS lossWeight,
+                           COALESCE(ps.knife_count, 0) AS knifeCount,
+                           CASE WHEN ps.step_type = 1 THEN COALESCE(ps.step_amount, 0) ELSE 0 END AS sawAmount,
+                           CASE WHEN ps.step_type = 2 THEN COALESCE(ps.step_amount, 0) ELSE 0 END AS rewindAmount,
+                           COALESCE(ps.step_amount, 0) AS processAmount,
+                           COALESCE(finalOutput.finishRollCount, 0) AS finishRollCount,
+                           COALESCE(finalOutput.finishWeight, 0) AS finishWeight,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(o.total_extra_amount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS extraAmount,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(settle.billedAmount, o.total_amount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS totalAmount,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(settle.billedAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS settled_amount,
+                           CASE WHEN settle.order_uuid IS NULL AND COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(o.total_amount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS pending_settle_amount,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(settle.receivedAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS receivedAmount,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(settle.cashReceivedAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS cashReceivedAmount,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(settle.scrapOffsetAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS scrapOffsetAmount,
+                           GREATEST(
+                               CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                    THEN COALESCE(settle.billedAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                    ELSE 0 END
+                               -
+                               CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                    THEN COALESCE(settle.receivedAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                    ELSE 0 END,
+                               0
+                           ) AS unreceivedAmount
+                    FROM biz_process_step ps
+                    JOIN biz_process_order o ON o.uuid = ps.order_uuid
+                    JOIN biz_original_roll r
+                      ON r.uuid = ps.original_uuid
+                     AND r.is_deleted = 0
+                     AND COALESCE(r.process_mode, 0) != 3
+                    LEFT JOIN biz_process_stage_output inputOutput
+                      ON inputOutput.uuid = ps.input_output_uuid
+                     AND inputOutput.is_deleted = 0
+                    LEFT JOIN (
+                        SELECT stepFinal.step_uuid,
+                               SUM(stepFinal.finishRollCount) AS finishRollCount,
+                               SUM(stepFinal.finishWeight) AS finishWeight
+                        FROM (
+                            SELECT s.step_uuid,
+                                   COUNT(DISTINCT f.uuid) AS finishRollCount,
+                                   SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                            FROM biz_process_stage_output s
+                            JOIN biz_finish_roll f
+                              ON f.uuid = s.finish_roll_uuid
+                             AND <include refid="EffectiveFinishRollWhere"/>
+                            WHERE s.is_deleted = 0
+                              AND s.output_type = 2
+                              AND s.output_status = 3
+                            GROUP BY s.step_uuid
+                            UNION ALL
+                            SELECT legacyStep.uuid AS step_uuid,
+                                   COUNT(DISTINCT f.uuid) AS finishRollCount,
+                                   SUM(COALESCE(rel.share_weight, f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                            FROM biz_process_step legacyStep
+                            JOIN biz_finish_original_rel rel
+                              ON rel.original_uuid = legacyStep.original_uuid
+                             AND rel.is_deleted = 0
+                            JOIN biz_finish_roll f
+                              ON f.uuid = rel.finish_uuid
+                             AND <include refid="EffectiveFinishRollWhere"/>
+                            WHERE legacyStep.is_deleted = 0
+                              AND NOT EXISTS (
+                                  SELECT 1
+                                  FROM biz_process_stage_output existingOutput
+                                  WHERE existingOutput.step_uuid = legacyStep.uuid
+                                    AND existingOutput.is_deleted = 0
+                              )
+                            GROUP BY legacyStep.uuid
+                        ) stepFinal
+                        GROUP BY stepFinal.step_uuid
+                    ) finalOutput ON finalOutput.step_uuid = ps.uuid
+                    LEFT JOIN (
+                        SELECT psb.order_uuid,
+                               SUM(COALESCE(psb.step_amount, 0)) AS orderStepAmount
+                        FROM biz_process_step psb
+                        JOIN biz_original_roll r
+                          ON r.uuid = psb.original_uuid
+                         AND r.is_deleted = 0
+                         AND COALESCE(r.process_mode, 0) != 3
+                        WHERE psb.is_deleted = 0
+                        <include refid="RollFilters"/>
+                        GROUP BY psb.order_uuid
+                    ) orderStepBase ON orderStepBase.order_uuid = ps.order_uuid
+                    LEFT JOIN (
+                        <include refid="SettleAllocationByOrder"/>
+                    ) settle ON settle.order_uuid = ps.order_uuid
+                    <where>
+                        ps.is_deleted = 0
+                        AND <include refid="OrderFilters"/>
+                        <include refid="RollFilters"/>
+                    </where>
+                ) d
+                GROUP BY d.dimensionKey, d.dimensionName
+                ORDER BY totalAmount DESC, originalWeight DESC
+            </when>
+            <when test="dimension == 'machine'">
+                SELECT d.dimensionKey,
+                       d.dimensionName,
+                       COUNT(DISTINCT d.order_uuid) AS orderCount,
+                       COUNT(DISTINCT d.original_uuid) AS originalRollCount,
+                       COALESCE(SUM(d.finishRollCount), 0) AS finishRollCount,
+                       COALESCE(SUM(d.sourceWeight), 0) AS originalWeight,
+                       COALESCE(SUM(d.finishWeight), 0) AS finishWeight,
+                       COALESCE(SUM(d.lossWeight), 0) AS lossWeight,
+                       CASE WHEN COALESCE(SUM(d.sourceWeight), 0) = 0 THEN 0
+                            ELSE COALESCE(SUM(d.lossWeight), 0) / COALESCE(SUM(d.sourceWeight), 0) * 100
+                       END AS lossRatio,
+                       COALESCE(SUM(d.knifeCount), 0) AS knifeCount,
+                       COALESCE(SUM(d.sawAmount), 0) AS sawAmount,
+                       COALESCE(SUM(d.rewindAmount), 0) AS rewindAmount,
+                       COALESCE(SUM(d.processAmount), 0) AS processAmount,
+                       COALESCE(SUM(d.extraAmount), 0) AS extraAmount,
+                       COALESCE(SUM(d.totalAmount), 0) AS totalAmount,
+                       COALESCE(SUM(d.settled_amount), 0) AS settled_amount,
+                       COALESCE(SUM(d.pending_settle_amount), 0) AS pending_settle_amount,
+                       COALESCE(SUM(d.receivedAmount), 0) AS receivedAmount,
+                       COALESCE(SUM(d.cashReceivedAmount), 0) AS cashReceivedAmount,
+                       COALESCE(SUM(d.scrapOffsetAmount), 0) AS scrapOffsetAmount,
+                       COALESCE(SUM(d.unreceivedAmount), 0) AS unreceivedAmount
+                FROM (
+                    SELECT ps.uuid AS step_uuid,
+                           ps.original_uuid,
+                           ps.order_uuid,
+                           COALESCE(ps.machine_uuid, r.machine_uuid, 'none') AS dimensionKey,
+                           COALESCE(ps.machine_name_snap, stepMachine.machine_name, rollMachine.machine_name, '未分配机台') AS dimensionName,
+                           CASE
+                               WHEN ps.step_type = 2 AND ps.process_weight IS NOT NULL
+                                   THEN ps.process_weight * 1000
+                               WHEN ps.input_type = 2 AND inputOutput.uuid IS NOT NULL
+                                   THEN COALESCE(inputOutput.actual_weight, inputOutput.estimate_weight, 0)
+                               ELSE COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)
+                           END AS sourceWeight,
+                           COALESCE(ps.loss_weight, 0) AS lossWeight,
+                           COALESCE(ps.knife_count, 0) AS knifeCount,
+                           CASE WHEN ps.step_type = 1 THEN COALESCE(ps.step_amount, 0) ELSE 0 END AS sawAmount,
+                           CASE WHEN ps.step_type = 2 THEN COALESCE(ps.step_amount, 0) ELSE 0 END AS rewindAmount,
+                           COALESCE(ps.step_amount, 0) AS processAmount,
+                           COALESCE(finalOutput.finishRollCount, 0) AS finishRollCount,
+                           COALESCE(finalOutput.finishWeight, 0) AS finishWeight,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(o.total_extra_amount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS extraAmount,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(settle.billedAmount, o.total_amount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS totalAmount,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(settle.billedAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS settled_amount,
+                           CASE WHEN settle.order_uuid IS NULL AND COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(o.total_amount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS pending_settle_amount,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(settle.receivedAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS receivedAmount,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(settle.cashReceivedAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS cashReceivedAmount,
+                           CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                THEN COALESCE(settle.scrapOffsetAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                ELSE 0 END AS scrapOffsetAmount,
+                           GREATEST(
+                               CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                    THEN COALESCE(settle.billedAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                    ELSE 0 END
+                               -
+                               CASE WHEN COALESCE(orderStepBase.orderStepAmount, 0) > 0
+                                    THEN COALESCE(settle.receivedAmount, 0) * COALESCE(ps.step_amount, 0) / orderStepBase.orderStepAmount
+                                    ELSE 0 END,
+                               0
+                           ) AS unreceivedAmount
+                    FROM biz_process_step ps
+                    JOIN biz_process_order o ON o.uuid = ps.order_uuid
+                    JOIN biz_original_roll r
+                      ON r.uuid = ps.original_uuid
+                     AND r.is_deleted = 0
+                     AND COALESCE(r.process_mode, 0) != 3
+                    LEFT JOIN sys_machine stepMachine ON stepMachine.uuid = ps.machine_uuid
+                    LEFT JOIN sys_machine rollMachine ON rollMachine.uuid = r.machine_uuid
+                    LEFT JOIN biz_process_stage_output inputOutput
+                      ON inputOutput.uuid = ps.input_output_uuid
+                     AND inputOutput.is_deleted = 0
+                    LEFT JOIN (
+                        SELECT stepFinal.step_uuid,
+                               SUM(stepFinal.finishRollCount) AS finishRollCount,
+                               SUM(stepFinal.finishWeight) AS finishWeight
+                        FROM (
+                            SELECT s.step_uuid,
+                                   COUNT(DISTINCT f.uuid) AS finishRollCount,
+                                   SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                            FROM biz_process_stage_output s
+                            JOIN biz_finish_roll f
+                              ON f.uuid = s.finish_roll_uuid
+                             AND <include refid="EffectiveFinishRollWhere"/>
+                            WHERE s.is_deleted = 0
+                              AND s.output_type = 2
+                              AND s.output_status = 3
+                            GROUP BY s.step_uuid
+                            UNION ALL
+                            SELECT legacyStep.uuid AS step_uuid,
+                                   COUNT(DISTINCT f.uuid) AS finishRollCount,
+                                   SUM(COALESCE(rel.share_weight, f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                            FROM biz_process_step legacyStep
+                            JOIN biz_finish_original_rel rel
+                              ON rel.original_uuid = legacyStep.original_uuid
+                             AND rel.is_deleted = 0
+                            JOIN biz_finish_roll f
+                              ON f.uuid = rel.finish_uuid
+                             AND <include refid="EffectiveFinishRollWhere"/>
+                            WHERE legacyStep.is_deleted = 0
+                              AND NOT EXISTS (
+                                  SELECT 1
+                                  FROM biz_process_stage_output existingOutput
+                                  WHERE existingOutput.step_uuid = legacyStep.uuid
+                                    AND existingOutput.is_deleted = 0
+                              )
+                            GROUP BY legacyStep.uuid
+                        ) stepFinal
+                        GROUP BY stepFinal.step_uuid
+                    ) finalOutput ON finalOutput.step_uuid = ps.uuid
+                    LEFT JOIN (
+                        SELECT psb.order_uuid,
+                               SUM(COALESCE(psb.step_amount, 0)) AS orderStepAmount
+                        FROM biz_process_step psb
+                        JOIN biz_original_roll r
+                          ON r.uuid = psb.original_uuid
+                         AND r.is_deleted = 0
+                         AND COALESCE(r.process_mode, 0) != 3
+                        WHERE psb.is_deleted = 0
+                        <include refid="RollSpecFilters"/>
+                        GROUP BY psb.order_uuid
+                    ) orderStepBase ON orderStepBase.order_uuid = ps.order_uuid
+                    LEFT JOIN (
+                        <include refid="SettleAllocationByOrder"/>
+                    ) settle ON settle.order_uuid = ps.order_uuid
+                    <where>
+                        ps.is_deleted = 0
+                        AND o.is_deleted = 0
+                        <choose>
+                            <when test="q.orderStatus != null">AND o.order_status = #{q.orderStatus}</when>
+                            <otherwise>AND o.order_status IN (4, 5)</otherwise>
+                        </choose>
+                        <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
+                        <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
+                        <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
+                        <if test="q.settleType != null">AND o.settle_type = #{q.settleType}</if>
+                        <if test="q.isInvoice != null">AND o.is_invoice = #{q.isInvoice}</if>
+                        <include refid="RollSpecFilters"/>
+                        <if test="q.machineUuid != null and q.machineUuid != ''">
+                            AND COALESCE(ps.machine_uuid, r.machine_uuid) = #{q.machineUuid}
+                        </if>
+                    </where>
+                ) d
+                GROUP BY d.dimensionKey, d.dimensionName
+                ORDER BY totalAmount DESC, originalWeight DESC
+            </when>
+            <when test="dimension == 'paper'">
                 SELECT d.dimensionKey,
                        d.dimensionName,
                        COUNT(DISTINCT d.order_uuid) AS orderCount,
@@ -265,6 +622,8 @@
                        COALESCE(SUM(d.settled_amount), 0) AS settled_amount,
                        COALESCE(SUM(d.pending_settle_amount), 0) AS pending_settle_amount,
                        COALESCE(SUM(d.receivedAmount), 0) AS receivedAmount,
+                       COALESCE(SUM(d.cashReceivedAmount), 0) AS cashReceivedAmount,
+                       COALESCE(SUM(d.scrapOffsetAmount), 0) AS scrapOffsetAmount,
                        COALESCE(SUM(d.unreceivedAmount), 0) AS unreceivedAmount
                 FROM (
                     SELECT rb.*,
@@ -283,6 +642,12 @@
                            CASE WHEN rb.orderAmountBase > 0
                                 THEN rb.orderReceivedAmount * rb.rollAmountBase / rb.orderAmountBase
                                 ELSE 0 END AS receivedAmount,
+                           CASE WHEN rb.orderAmountBase > 0
+                                THEN rb.orderCashReceivedAmount * rb.rollAmountBase / rb.orderAmountBase
+                                ELSE 0 END AS cashReceivedAmount,
+                           CASE WHEN rb.orderAmountBase > 0
+                                THEN rb.orderScrapOffsetAmount * rb.rollAmountBase / rb.orderAmountBase
+                                ELSE 0 END AS scrapOffsetAmount,
                            GREATEST(
                                CASE WHEN rb.orderAmountBase > 0
                                     THEN rb.orderSettledAmount * rb.rollAmountBase / rb.orderAmountBase
@@ -344,6 +709,8 @@
                                COALESCE(settle.billedAmount, 0) AS orderSettledAmount,
                                CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END AS orderPendingSettleAmount,
                                COALESCE(settle.receivedAmount, 0) AS orderReceivedAmount,
+                               COALESCE(settle.cashReceivedAmount, 0) AS orderCashReceivedAmount,
+                               COALESCE(settle.scrapOffsetAmount, 0) AS orderScrapOffsetAmount,
                                COALESCE(step.knifeCount, 0) AS knifeCount,
                                COALESCE(step.sawAmount, 0) AS sawAmount,
                                COALESCE(step.rewindAmount, 0) AS rewindAmount,
@@ -381,10 +748,7 @@
                             FROM biz_finish_original_rel rel
                             JOIN biz_finish_roll f
                               ON f.uuid = rel.finish_uuid
-                             AND f.is_deleted = 0
-                             AND COALESCE(f.is_spare, 0) = 0
-                             AND COALESCE(f.roll_no_status, 1) != 3
-                             AND COALESCE(f.finish_status, 0) != 4
+                             AND <include refid="EffectiveFinishRollWhere"/>
                             WHERE rel.is_deleted = 0
                             GROUP BY rel.original_uuid
                         ) fin ON fin.original_uuid = r.uuid
@@ -435,6 +799,12 @@
                                COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
                                    THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
                                    ELSE 0 END), 0) AS receivedAmount,
+                               COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                                   THEN COALESCE(settle.cashReceivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                                   ELSE 0 END), 0) AS cashReceivedAmount,
+                               COALESCE(SUM(CASE WHEN amountScope.orderAmountBase > 0
+                                   THEN COALESCE(settle.scrapOffsetAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                                   ELSE 0 END), 0) AS scrapOffsetAmount,
                                COALESCE(SUM(GREATEST(
                                    CASE WHEN amountScope.orderAmountBase > 0
                                        THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
@@ -452,6 +822,8 @@
                                COALESCE(SUM(settle.billedAmount), 0) AS settled_amount,
                                COALESCE(SUM(CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END), 0) AS pending_settle_amount,
                                COALESCE(SUM(settle.receivedAmount), 0) AS receivedAmount,
+                               COALESCE(SUM(settle.cashReceivedAmount), 0) AS cashReceivedAmount,
+                               COALESCE(SUM(settle.scrapOffsetAmount), 0) AS scrapOffsetAmount,
                                COALESCE(SUM(GREATEST(COALESCE(settle.billedAmount, 0)
                                    - COALESCE(settle.receivedAmount, 0), 0)), 0) AS unreceivedAmount
                            </otherwise>
@@ -509,10 +881,7 @@
                            COUNT(*) AS finishRollCount,
                            SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
                     FROM biz_finish_roll f
-                    WHERE f.is_deleted = 0
-                      AND COALESCE(f.is_spare, 0) = 0
-                      AND COALESCE(f.roll_no_status, 1) != 3
-                      AND COALESCE(f.finish_status, 0) != 4
+                    WHERE <include refid="EffectiveFinishRollWhere"/>
                     GROUP BY f.order_uuid
                 ) fin ON fin.order_uuid = o.uuid
                 LEFT JOIN (
@@ -585,6 +954,12 @@
                        CASE WHEN amountScope.orderAmountBase > 0
                            THEN COALESCE(settle.receivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
                            ELSE 0 END AS receivedAmount,
+                       CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(settle.cashReceivedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END AS cashReceivedAmount,
+                       CASE WHEN amountScope.orderAmountBase > 0
+                           THEN COALESCE(settle.scrapOffsetAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
+                           ELSE 0 END AS scrapOffsetAmount,
                        GREATEST(
                            CASE WHEN amountScope.orderAmountBase > 0
                                THEN COALESCE(settle.billedAmount, 0) * amountScope.scopedAmountBase / amountScope.orderAmountBase
@@ -602,6 +977,8 @@
                        COALESCE(settle.billedAmount, 0) AS settled_amount,
                        CASE WHEN settle.order_uuid IS NULL THEN COALESCE(o.total_amount, 0) ELSE 0 END AS pending_settle_amount,
                        COALESCE(settle.receivedAmount, 0) AS receivedAmount,
+                       COALESCE(settle.cashReceivedAmount, 0) AS cashReceivedAmount,
+                       COALESCE(settle.scrapOffsetAmount, 0) AS scrapOffsetAmount,
                        GREATEST(COALESCE(settle.billedAmount, 0)
                            - COALESCE(settle.receivedAmount, 0), 0) AS unreceivedAmount
                    </otherwise>
@@ -630,9 +1007,7 @@
                    COUNT(*) AS finishRollCount,
                    SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
             FROM biz_finish_roll f
-            WHERE f.is_deleted = 0
-              AND COALESCE(f.is_spare, 0) = 0
-              AND COALESCE(f.roll_no_status, 1) != 3
+            WHERE <include refid="EffectiveFinishRollWhere"/>
               <if test="q.paperName != null and q.paperName != ''">
                   AND f.paper_name LIKE CONCAT('%', #{q.paperName}, '%')
               </if>
