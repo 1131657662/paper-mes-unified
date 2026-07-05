@@ -191,6 +191,15 @@ class ReportMapperSqlContractTest {
         assertFalse(sql.contains("SELECT r.machine_uuid AS id"));
     }
 
+    @Test
+    void reportAndDashboard_whenUsingProcessWeight_convertTonsToKilogramsForWeightColumns() throws IOException {
+        String reportSql = resourceText("mapper/report/ReportMapper.xml");
+        String dashboardSql = resourceText("mapper/dashboard/DashboardMapper.xml");
+
+        assertTrue(reportSql.contains("ps.process_weight * 1000"));
+        assertTrue(dashboardSql.contains("ps.process_weight * 1000"));
+    }
+
     private String settleAllocationSql(String resource) throws IOException {
         String sql = resourceText(resource);
         String start = "<sql id=\"SettleAllocationByOrder\">";

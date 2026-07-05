@@ -69,7 +69,7 @@ INSERT INTO biz_process_step
 (uuid, order_uuid, original_uuid, step_sort, step_type, step_name, is_main, knife_count, process_weight, unit_price, step_amount, loss_weight, operator, remark)
 VALUES
 ('demo-step-c-1', @order_c, 'demo-c-orig-1', 1, 1, '标准锯纸', 1, 8, 3000.000, 22.50, 180.00, 42.000, '陈师傅', '625mm×4，含切边'),
-('demo-step-c-2', @order_c, 'demo-c-orig-2', 1, 2, '复卷改门幅', 1, 0, 8300.000, 150.00, 1245.00, 58.000, '孙师傅', '1250mm×2');
+('demo-step-c-2', @order_c, 'demo-c-orig-2', 1, 2, '复卷改门幅', 1, 0, 8.300, 150.00, 1245.00, 58.000, '孙师傅', '1250mm×2');
 
 INSERT INTO biz_process_param
 (uuid, order_uuid, original_uuid, step_uuid, param_mode, layer_sort, out_diameter, core_diameter, layer_width, area_ratio, remark)

@@ -116,6 +116,18 @@ class ProcessRouteSafetyContractTest {
     }
 
     @Test
+    void processRouteBootstrap_whenLegacyRewindWeightsAreKilograms_normalizesToTons() throws IOException {
+        String source = source(INTEGRITY_BOOTSTRAP);
+
+        assertContainsAll(source,
+                "normalizeLegacyRewindProcessWeight();",
+                "ps.step_type = 2",
+                "ps.process_weight >= 100",
+                "ROUND(ps.process_weight / 1000, 3)",
+                "ROUND(ps.process_weight / 1000 * ps.unit_price, 2)");
+    }
+
+    @Test
     void processOrderFeeAndStepChanges_useSingleMixProcessRule() throws IOException {
         String source = source("src/main/java/com/paper/mes/processorder/service/impl/ProcessOrderServiceImpl.java");
         String calcFee = slice(source, "public FeeResultVO calcFee", "private BigDecimal sumExtraFees");
