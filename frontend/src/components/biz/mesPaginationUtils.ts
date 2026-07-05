@@ -1,4 +1,5 @@
 import type { TablePaginationConfig } from 'antd/es/table'
+import { formatNumber } from '../../utils/numberFormatters'
 
 export const mesPageSizeOptions = [10, 20, 50, 100, 200, 500, 1000]
 
@@ -24,5 +25,5 @@ export function mesTablePagination(
 }
 
 function formatTotal(total: number) {
-  return total.toLocaleString('zh-CN')
+  return formatNumber(total)
 }

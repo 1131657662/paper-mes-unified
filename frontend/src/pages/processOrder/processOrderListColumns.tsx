@@ -6,6 +6,7 @@ import TooltipText from '../../components/biz/TooltipText'
 import { ORDER_STATUS, PRIORITY } from '../../constants/processOrder'
 import ProcessOrderRowActions from './ProcessOrderRowActions'
 import { BillingCell, OrderNoCell, OrderScheduleCell, PriorityPill, ProductionSummary } from './ProcessOrderListCells'
+import { formatMoney } from '../../utils/numberFormatters'
 
 interface ColumnOptions {
   customerEnum: Record<string, { text: string }>
@@ -66,12 +67,5 @@ function renderPrintStatus(record: ProcessOrder) {
 
 function renderMoney(value?: number) {
   if (value == null || value === 0) return '-'
-  return `¥${formatNumber(value, 2)}`
-}
-
-function formatNumber(value: number, digits: number) {
-  return value.toLocaleString('zh-CN', {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  })
+  return formatMoney(value)
 }

@@ -8,6 +8,7 @@ import {
 import { Button, Space, Statistic, Tag, Typography, message } from 'antd'
 import { ORDER_STATUS } from '../../../constants/processOrder'
 import type { ProcessOrderSubmitVO } from '../../../types/processOrder'
+import { formatNumber } from '../../../utils/numberFormatters'
 import './SubmitSuccessPanel.css'
 
 interface Props {
@@ -40,8 +41,8 @@ export default function SubmitSuccessPanel({
 
       <div className="submit-success-panel__stats">
         <Statistic title="加工单号" value={result.orderNo ?? '-'} />
-        <Statistic title="正式卷号" value={finishNos.length} suffix="个" />
-        <Statistic title="备用卷号" value={spareNos.length} suffix="个" />
+        <Statistic title="正式卷号" value={formatNumber(finishNos.length)} suffix="个" />
+        <Statistic title="备用卷号" value={formatNumber(spareNos.length)} suffix="个" />
       </div>
 
       <div className="submit-success-panel__rolls">

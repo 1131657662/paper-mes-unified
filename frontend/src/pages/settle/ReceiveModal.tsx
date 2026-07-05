@@ -4,6 +4,7 @@ import type { Dayjs } from 'dayjs'
 import { useReceiveSettle } from '../../features/settle/hooks/useReceiveSettle'
 import { useAuthUser } from '../../stores/authStore'
 import type { ReceiveDTO } from '../../types/settle'
+import { formatNumber, formatTrimmedNumber } from '../../utils/numberFormatters'
 
 interface Props {
   settleUuid: string | null
@@ -119,8 +120,8 @@ export default function ReceiveModal({
           <InputNumber style={{ width: '100%' }} min={0} precision={3} />
         </Form.Item>
         <div className="mes-modal-tip">
-          <Statistic title="本次结清" value={totalAmount} precision={2} prefix="¥" />
-          <Statistic title="废纸折算单价" value={scrapUnitPrice} precision={4} suffix="元/kg" />
+          <Statistic title="本次结清" value={totalAmount} precision={2} prefix="¥" formatter={formatStatisticMoney} />
+          <Statistic title="废纸折算单价" value={scrapUnitPrice} precision={4} suffix="元/kg" formatter={formatStatisticPrice} />
         </div>
         <Form.Item
           name="payMethod"
@@ -188,7 +189,15 @@ function roundPrice(value: number) {
 }
 
 function formatMoneyText(value: number) {
-  return value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return formatNumber(value, 2)
+}
+
+function formatStatisticMoney(value?: string | number) {
+  return formatNumber(Number(value ?? 0), 2)
+}
+
+function formatStatisticPrice(value?: string | number) {
+  return formatTrimmedNumber(Number(value ?? 0), 4)
 }
 
 function cleanText(value?: string) {

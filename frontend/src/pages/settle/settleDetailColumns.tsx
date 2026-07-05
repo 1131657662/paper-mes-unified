@@ -4,6 +4,7 @@ import { PAY_METHOD, RECEIVE_TYPE } from '../../constants/settle'
 import TooltipText from '../../components/biz/TooltipText'
 import { formatMoney } from '../../features/settle/utils/settleFormatters'
 import type { ReceiveRecord, SettleDetail } from '../../types/settle'
+import { formatTrimmedNumber } from '../../utils/numberFormatters'
 
 export { settlePrintLineColumns } from './settlePrintLineColumns'
 
@@ -109,12 +110,12 @@ function textCell(value?: string | number) {
 
 function numberText(value?: number) {
   if (value == null) return '-'
-  return Number(value).toLocaleString('zh-CN', { maximumFractionDigits: 3 })
+  return formatTrimmedNumber(value, 3)
 }
 
 function unitPriceText(value?: number) {
   if (value == null || Number(value) <= 0) return '-'
-  return `${Number(value).toLocaleString('zh-CN', { maximumFractionDigits: 4 })} 元/kg`
+  return `${formatTrimmedNumber(value, 4)} 元/kg`
 }
 
 function amountWithHint({

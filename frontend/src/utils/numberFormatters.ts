@@ -1,15 +1,17 @@
-const LOCALE = 'zh-CN'
-
 export function formatNumber(value?: number | null, digits = 0): string {
-  return Number(value ?? 0).toLocaleString(LOCALE, {
-    maximumFractionDigits: digits,
-    minimumFractionDigits: digits,
-  })
+  const numeric = Number(value ?? 0)
+  return Number.isFinite(numeric) ? numeric.toFixed(digits) : Number(0).toFixed(digits)
 }
 
 export function formatOptionalNumber(value?: number | null, digits = 0): string {
   if (value == null) return '-'
   return formatNumber(value, digits)
+}
+
+export function formatTrimmedNumber(value?: number | null, digits = 0): string {
+  if (value == null) return '-'
+  if (digits <= 0) return formatNumber(value, 0)
+  return formatNumber(value, digits).replace(/\.?0+$/, '')
 }
 
 export function formatMoney(value?: number | null): string {
