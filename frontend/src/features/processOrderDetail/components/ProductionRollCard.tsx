@@ -5,7 +5,10 @@ import {
   buildLayoutText,
   calcTrimWidth,
   groupFinishes,
+  isActiveSpareProductionFinish,
+  isDeliverableProductionFinish,
   rewindModeLabel,
+  trimWeightFromFinishes,
 } from '../../../components/processOrder/shared/detailHelpers'
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import type { RollProductionVO } from '../../../types/processOrder'
@@ -33,9 +36,9 @@ export default function ProductionRollCard({
   row,
 }: Props) {
   const trimWidth = calcTrimWidth(row.mainProduction)
-  const trimWeight = sumFinishValue(row.finishes, 'trimWeightShare')
-  const spareCount = row.finishes.filter((f) => f.isSpare === 1).length
-  const finishCount = row.finishes.filter((f) => f.isSpare !== 1).length
+  const trimWeight = trimWeightFromFinishes(row.finishes)
+  const spareCount = row.finishes.filter(isActiveSpareProductionFinish).length
+  const finishCount = row.finishes.filter(isDeliverableProductionFinish).length
   const originalUuid = resolveOriginalUuid(row)
 
   return (
@@ -123,8 +126,4 @@ function AdditionalSteps({ row }: Props) {
       {steps.map((step) => <Tag key={step.uuid}>{step.stepName || '追加工序'}</Tag>)}
     </Space>
   )
-}
-
-function sumFinishValue(finishes: DisplayRow['finishes'], key: 'trimWeightShare'): number {
-  return finishes.reduce((sum, finish) => sum + (finish[key] ?? 0), 0)
 }

@@ -13,7 +13,8 @@ export interface SawPlanStats {
 
 export function calcSawPlanStats(specs: FinishConfigSpecDTO[], originalWidth: number): SawPlanStats {
   const productWidth = sumWidth(specs, false)
-  const trimWidth = sumWidth(specs, true)
+  const explicitTrimWidth = sumWidth(specs, true)
+  const trimWidth = explicitTrimWidth > 0 ? explicitTrimWidth : Math.max(0, originalWidth - productWidth)
   const finishCount = specs.filter((spec) => !isTrimSpec(spec)).reduce((sum, spec) => sum + safeCount(spec), 0)
   const trimRows = specs.filter(isTrimSpec).reduce((sum, spec) => sum + safeCount(spec), 0)
   const usedWidth = productWidth + trimWidth

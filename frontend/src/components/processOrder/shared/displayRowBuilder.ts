@@ -1,4 +1,5 @@
 import type { RollProductionVO } from '../../../types/processOrder'
+import { isDeliverableProductionFinish } from './detailHelpers'
 import type { DisplayRow, MergeGroup } from './types'
 
 /**
@@ -72,7 +73,9 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
       rewindParams,
       finishes: allFinishes,
       totalKnifeCount: steps.reduce((s, step) => s + (step.knifeCount ?? 0), 0),
-      totalEstimateWeight: allFinishes.reduce((s, f) => s + (f.estimateWeight ?? 0), 0),
+      totalEstimateWeight: allFinishes
+        .filter(isDeliverableProductionFinish)
+        .reduce((s, f) => s + (f.estimateWeight ?? 0), 0),
       rewindMode,
       isDirectShip: mainProd.processMode === 3,
       hasConfig: rewindParams.length > 0 || (mainProd.finishes?.length ?? 0) > 0,
@@ -101,7 +104,9 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
       rewindParams,
       finishes: prod.finishes ?? [],
       totalKnifeCount: steps.reduce((s, step) => s + (step.knifeCount ?? 0), 0),
-      totalEstimateWeight: (prod.finishes ?? []).reduce((s, f) => s + (f.estimateWeight ?? 0), 0),
+      totalEstimateWeight: (prod.finishes ?? [])
+        .filter(isDeliverableProductionFinish)
+        .reduce((s, f) => s + (f.estimateWeight ?? 0), 0),
       rewindMode,
       isDirectShip: prod.processMode === 3,
       hasConfig: rewindParams.length > 0 || (prod.finishes?.length ?? 0) > 0,

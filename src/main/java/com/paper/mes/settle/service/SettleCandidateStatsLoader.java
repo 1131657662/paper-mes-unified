@@ -19,6 +19,8 @@ import java.util.Map;
 public class SettleCandidateStatsLoader {
 
     private static final int IS_SPARE_NO = 0;
+    private static final int IS_REMAIN_YES = 1;
+    private static final int ROLL_NO_VOID = 3;
 
     private final OriginalRollMapper originalRollMapper;
     private final FinishRollMapper finishRollMapper;
@@ -87,7 +89,10 @@ public class SettleCandidateStatsLoader {
     }
 
     private boolean isFormalFinishRoll(FinishRoll roll) {
-        return roll.getIsSpare() == null || roll.getIsSpare() == IS_SPARE_NO;
+        boolean formal = roll.getIsSpare() == null || roll.getIsSpare() == IS_SPARE_NO;
+        boolean finalProduct = roll.getIsRemain() == null || roll.getIsRemain() != IS_REMAIN_YES;
+        boolean active = roll.getRollNoStatus() == null || roll.getRollNoStatus() != ROLL_NO_VOID;
+        return formal && finalProduct && active;
     }
 
     public record CandidateStats(

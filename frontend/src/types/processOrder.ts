@@ -104,6 +104,7 @@ export interface FinishRoll {
   paperName?: string
   gramWeight?: number
   finishWidth?: number
+  trimWidthShare?: number
   estimateWeight?: number
   actualWeight?: number
   scrapWeight?: number
@@ -156,6 +157,7 @@ export interface FinishProductionVO {
   rowSort?: number
   rollNoStatus?: number
   isSpare?: number
+  isRemain?: number
   sourceType?: number
   paperName?: string
   gramWeight?: number
@@ -164,6 +166,7 @@ export interface FinishProductionVO {
   finishCoreDiameter?: number
   estimateWeight?: number
   actualWeight?: number
+  trimWidthShare?: number
   trimWeightShare?: number
   finishStatus?: number
   sources?: FinishSourceVO[]
@@ -185,8 +188,11 @@ export interface StageOutputVO {
   finishCoreDiameter?: number
   estimateWeight?: number
   actualWeight?: number
+  /** 0正品 1边角余料 */
+  isRemain?: number
   sourceStepType?: number
   sourceSummary?: string
+  remark?: string
 }
 
 export interface RewindParamVO {
@@ -326,6 +332,7 @@ export interface RewindSegmentPreview {
   repeatCount?: number
   layoutWidth?: number
   trimWidth?: number
+  trimWeight?: number
   summary?: string
 }
 
@@ -425,6 +432,8 @@ export interface ProcessRouteOutputDTO {
   outputKey?: string
   outputType?: number
   count?: number
+  /** 0正品 1边角余料 */
+  isRemain?: number
   paperName?: string
   gramWeight?: number
   finishWidth?: number
@@ -469,6 +478,8 @@ export interface ProcessRouteOutputVO {
   outputSort?: number
   outputType?: number
   consumedByNextStage?: boolean
+  /** 0正品 1边角余料 */
+  isRemain?: number
   paperName?: string
   gramWeight?: number
   finishWidth?: number

@@ -27,6 +27,7 @@ public class ProcessRouteDraftManager {
 
     private static final int STATUS_DRAFT = 0;
     private static final int PROCESS_MODE_STANDARD = 1;
+    private static final int IS_REMAIN_YES = 1;
 
     private final ProcessOrderMapper orderMapper;
     private final OriginalRollMapper rollMapper;
@@ -118,10 +119,15 @@ public class ProcessRouteDraftManager {
 
     private void requireFinalOutputs(ProcessRoutePreviewVO preview) {
         boolean hasFinal = preview.getOutputs() != null
-                && preview.getOutputs().stream().anyMatch(item -> !Boolean.TRUE.equals(item.getConsumedByNextStage()));
+                && preview.getOutputs().stream().anyMatch(this::isDeliverableOutput);
         if (!hasFinal) {
             throw new BusinessException(ErrorCode.E003, "链式工艺至少需要一个最终成品");
         }
+    }
+
+    private boolean isDeliverableOutput(ProcessRoutePreviewVO.RouteOutputVO output) {
+        return !Boolean.TRUE.equals(output.getConsumedByNextStage())
+                && (output.getIsRemain() == null || output.getIsRemain() != IS_REMAIN_YES);
     }
 
     private void updateRollRoute(OriginalRoll roll, ProcessRoutePreviewDTO dto) {

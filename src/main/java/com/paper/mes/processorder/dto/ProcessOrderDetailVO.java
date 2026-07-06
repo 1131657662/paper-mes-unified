@@ -66,8 +66,10 @@ public class ProcessOrderDetailVO {
         private Integer finishCoreDiameter;
         private BigDecimal estimateWeight;
         private BigDecimal actualWeight;
+        private Integer isRemain;
         private Integer sourceStepType;
         private String sourceSummary;
+        private String remark;
     }
 
     @Data
@@ -89,6 +91,7 @@ public class ProcessOrderDetailVO {
         private Integer rowSort;
         private Integer rollNoStatus;
         private Integer isSpare;
+        private Integer isRemain;
         private Integer sourceType;
         private String paperName;
         private Integer gramWeight;
@@ -97,6 +100,7 @@ public class ProcessOrderDetailVO {
         private Integer finishCoreDiameter;
         private BigDecimal estimateWeight;
         private BigDecimal actualWeight;
+        private Integer trimWidthShare;
         private BigDecimal trimWeightShare;
         private Integer finishStatus;
         private List<FinishSourceVO> sources;

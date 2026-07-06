@@ -53,7 +53,7 @@ export function routePreviewSummary(preview: ProcessRoutePreviewVO) {
 }
 
 function routeFinalOutputs(preview?: ProcessRoutePreviewVO) {
-  return (preview?.outputs ?? []).filter((item) => !item.consumedByNextStage)
+  return (preview?.outputs ?? []).filter((item) => item.isRemain !== 1 && !item.consumedByNextStage)
 }
 
 function stageRowKey(record: ProcessRouteStageLineVO) {
@@ -69,7 +69,7 @@ const stageColumns: ColumnsType<ProcessRouteStageLineVO> = [
 
 const outputColumns: ColumnsType<ProcessRouteOutputVO> = [
   { title: '产物', dataIndex: 'outputKey', width: 100 },
-  { title: '状态', dataIndex: 'consumedByNextStage', width: 110, render: outputStatus },
+  { title: '状态', width: 110, render: (_, row) => outputStatus(row) },
   { title: '规格', render: (_, row) => `${row.gramWeight ?? '-'}g / ${row.finishWidth ?? '-'}mm` },
   { title: '预估重量', dataIndex: 'estimateWeight', width: 120, render: formatKg },
 ]
@@ -78,6 +78,7 @@ function sourceText(value?: string[]) {
   return Array.isArray(value) && value.length ? value.join('、') : '母卷'
 }
 
-function outputStatus(value?: boolean) {
-  return value ? <Tag color="orange">进入下道</Tag> : <Tag color="green">最终成品</Tag>
+function outputStatus(row: ProcessRouteOutputVO) {
+  if (row.isRemain === 1) return <Tag color="orange">修边</Tag>
+  return row.consumedByNextStage ? <Tag color="orange">进入下道</Tag> : <Tag color="green">最终成品</Tag>
 }

@@ -18,9 +18,9 @@ interface Props {
 }
 
 export default function RouteDraftPreviewResult({ preview }: Props) {
-  const finalCount = (preview.outputs ?? []).filter((item) => !item.consumedByNextStage).length
+  const finalCount = (preview.outputs ?? []).filter(isDeliverableOutput).length
   const finalWeight = (preview.outputs ?? [])
-    .filter((item) => !item.consumedByNextStage)
+    .filter(isDeliverableOutput)
     .reduce((sum, item) => sum + Number(item.estimateWeight ?? 0), 0)
 
   return (
@@ -70,7 +70,7 @@ const stageColumns: ColumnsType<ProcessRouteStageLineVO> = [
 const outputColumns: ColumnsType<ProcessRouteOutputVO> = [
   { title: '产出', dataIndex: 'outputKey', width: 90 },
   { title: '阶段', dataIndex: 'stageLevel', width: 70, render: (value) => `第${value ?? '-'}段` },
-  { title: '状态', dataIndex: 'consumedByNextStage', width: 100, render: outputStatus },
+  { title: '状态', width: 100, render: (_, row) => outputStatus(row) },
   { title: '门幅', dataIndex: 'finishWidth', width: 90, render: (value) => value ? `${value}mm` : '-' },
   { title: '预估重', dataIndex: 'estimateWeight', width: 110, render: formatOptionalKg },
   { title: '备注', dataIndex: 'remark', width: 180 },
@@ -80,8 +80,13 @@ function sourceText(value?: string[]) {
   return Array.isArray(value) && value.length ? value.join('、') : '原卷'
 }
 
-function outputStatus(value?: boolean) {
-  return value ? <Tag color="orange">进入下道</Tag> : <Tag color="green">最终成品</Tag>
+function outputStatus(row: ProcessRouteOutputVO) {
+  if (row.isRemain === 1) return <Tag color="orange">修边</Tag>
+  return row.consumedByNextStage ? <Tag color="orange">进入下道</Tag> : <Tag color="green">最终成品</Tag>
+}
+
+function isDeliverableOutput(item: ProcessRouteOutputVO) {
+  return item.isRemain !== 1 && !item.consumedByNextStage
 }
 
 function stageRowKey(record: ProcessRouteStageLineVO) {

@@ -9,7 +9,7 @@ export interface ExecutionSummary {
 
 export function buildExecutionSummary(detail?: ProcessOrderDetailVO): ExecutionSummary {
   const productions = detail?.rollProductions ?? []
-  const officialCount = (detail?.finishRolls ?? []).filter((roll) => roll.isSpare !== 1 && roll.rollNoStatus !== 3).length
+  const officialCount = (detail?.finishRolls ?? []).filter((roll) => roll.isSpare !== 1 && roll.isRemain !== 1 && roll.rollNoStatus !== 3).length
   const spareCount = (detail?.finishRolls ?? []).filter((roll) => roll.isSpare === 1 && roll.rollNoStatus !== 3).length
 
   const status = detail?.order?.orderStatus

@@ -57,7 +57,7 @@ export function routeOutputsByStage(roll: OriginalRoll, stages: RouteDraftStage[
 
 export function finalRouteOutputs(roll: OriginalRoll, stages: RouteDraftStage[]): DetailRouteOutputRow[] {
   const consumed = new Set(stages.flatMap((stage) => stage.inputOutputKeys))
-  return allRouteOutputs(roll, stages).filter((row) => !consumed.has(row.outputKey))
+  return allRouteOutputs(roll, stages).filter((row) => row.isRemain !== 1 && !consumed.has(row.outputKey))
 }
 
 export function inputRowsForDraftStage(
@@ -71,6 +71,7 @@ export function inputRowsForDraftStage(
   const priorStages = stages.slice(0, stageIndex)
   const consumedBefore = new Set(priorStages.slice(1).flatMap((stage) => stage.inputOutputKeys))
   return outputsBeforeStage(roll, stages, stageIndex)
+    .filter((row) => row.isRemain !== 1)
     .filter((row) => currentInputs.has(row.outputKey) || !consumedBefore.has(row.outputKey))
 }
 
@@ -178,12 +179,14 @@ function stageDto(stage: RouteDraftStage, outputs: DetailRouteOutputRow[]): Proc
 function outputDto(row: DetailRouteOutputRow): ProcessRouteOutputDTO {
   return {
     outputKey: row.outputKey,
+    isRemain: row.isRemain,
     paperName: row.paperName,
     gramWeight: row.gramWeight,
     finishWidth: row.finishWidth,
     finishDiameter: row.finishDiameter,
     finishCoreDiameter: row.finishCoreDiameter,
     estimateWeight: row.estimateWeight,
+    remark: row.isRemain === 1 ? '修边/余料' : undefined,
   }
 }
 
@@ -315,7 +318,7 @@ function patchLayoutItem(items: RewindLayoutItemPlanDTO[], itemIndex: number, it
 
 function sourceRows(rows: DetailRouteOutputRow[], keys: string[]) {
   const selected = new Set(keys)
-  return rows.filter((row) => selected.has(row.outputKey))
+  return rows.filter((row) => row.isRemain !== 1 && selected.has(row.outputKey))
 }
 
 export function routeOriginalSource(roll: OriginalRoll): DetailRouteOutputRow {

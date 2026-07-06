@@ -24,6 +24,8 @@ public class ProcessRouteFinishWriter {
 
     private static final int ROLL_NO_PRE = 1;
     private static final int FORMAL_FINISH = 0;
+    private static final int IS_REMAIN_NO = 0;
+    private static final int IS_REMAIN_YES = 1;
     private static final int FINISH_STATUS_PENDING = 1;
     private static final int OUTPUT_FINISH_CREATED = 3;
 
@@ -55,6 +57,7 @@ public class ProcessRouteFinishWriter {
         finish.setRowSort(rowSort);
         finish.setRollNoStatus(ROLL_NO_PRE);
         finish.setIsSpare(FORMAL_FINISH);
+        finish.setIsRemain(isRemainOutput(output) ? IS_REMAIN_YES : IS_REMAIN_NO);
         finish.setSourceType(1);
         finish.setFinishStatus(FINISH_STATUS_PENDING);
         finish.setWarehouseUuid(context.order().getWarehouseUuid());
@@ -66,8 +69,12 @@ public class ProcessRouteFinishWriter {
         finish.setFinishCoreDiameter(output.getFinishCoreDiameter());
         finish.setEstimateWeight(output.getEstimateWeight());
         finish.setEstimateWeightSnap(output.getEstimateWeight());
-        finish.setRemark("后续工艺最终产出：" + output.getOutputKey());
+        finish.setRemark(isRemainOutput(output) ? "修边/余料" : "后续工艺最终产出：" + output.getOutputKey());
         return finish;
+    }
+
+    private boolean isRemainOutput(ProcessRoutePreviewVO.RouteOutputVO output) {
+        return output.getIsRemain() != null && output.getIsRemain() == IS_REMAIN_YES;
     }
 
     private void saveRel(ProcessRouteContext context, FinishRoll finish, BigDecimal weight) {

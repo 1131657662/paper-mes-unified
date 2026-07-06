@@ -37,6 +37,8 @@ public class ProcessRoutePreviewVO {
         private Integer outputSort;
         private Integer outputType;
         private Boolean consumedByNextStage;
+        /** 0正品 1边角余料。 */
+        private Integer isRemain;
         private String paperName;
         private Integer gramWeight;
         private Integer finishWidth;

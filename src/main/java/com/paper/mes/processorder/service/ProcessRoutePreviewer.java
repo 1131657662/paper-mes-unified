@@ -19,6 +19,9 @@ import java.util.Set;
 
 @Component
 public class ProcessRoutePreviewer {
+    private static final int IS_REMAIN_YES = 1;
+    private static final int IS_REMAIN_NO = 0;
+
     public ProcessRoutePreviewVO preview(OriginalRoll roll, ProcessRoutePreviewDTO dto) {
         return preview(roll, dto, Map.of());
     }
@@ -62,6 +65,7 @@ public class ProcessRoutePreviewer {
         line.setOutputSort(output.getOutputSort());
         line.setOutputType(output.getOutputType());
         line.setConsumedByNextStage(false);
+        line.setIsRemain(isTrimOutput(output) ? IS_REMAIN_YES : IS_REMAIN_NO);
         line.setPaperName(output.getPaperName());
         line.setGramWeight(output.getGramWeight());
         line.setFinishWidth(output.getFinishWidth());
@@ -90,6 +94,9 @@ public class ProcessRoutePreviewer {
             }
             if (!outputsByKey.containsKey(key)) {
                 throw new BusinessException("后续工艺引用了不存在的阶段产出：" + key);
+            }
+            if (isRemainOutput(outputsByKey.get(key))) {
+                throw new BusinessException("修边/余料不能作为后续工艺来源：" + key);
             }
             if (!usedInputKeys.add(key)) {
                 throw new BusinessException("阶段产出不能重复作为后续工艺来源：" + key);
@@ -186,6 +193,7 @@ public class ProcessRoutePreviewer {
         line.setOutputSort(sort);
         line.setConsumedByNextStage(consumedKeys.contains(key));
         line.setOutputType(line.getConsumedByNextStage() ? 1 : output.getOutputType() == null ? 2 : output.getOutputType());
+        line.setIsRemain(output.getIsRemain() != null && output.getIsRemain() == IS_REMAIN_YES ? IS_REMAIN_YES : IS_REMAIN_NO);
         line.setPaperName(output.getPaperName() == null ? roll.getPaperName() : output.getPaperName());
         line.setGramWeight(output.getGramWeight() == null ? roll.getGramWeight() : output.getGramWeight());
         line.setFinishWidth(output.getFinishWidth());
@@ -202,5 +210,18 @@ public class ProcessRoutePreviewer {
             return "S" + stage.getStageLevel() + "-O" + sort;
         }
         return index == 0 ? output.getOutputKey() : output.getOutputKey() + "-" + (index + 1);
+    }
+
+    private boolean isRemainOutput(ProcessRoutePreviewVO.RouteOutputVO output) {
+        return output != null && output.getIsRemain() != null && output.getIsRemain() == IS_REMAIN_YES;
+    }
+
+    private boolean isTrimOutput(ProcessStageOutput output) {
+        return "修边/余料".equals(output.getRemark())
+                || "修边/余料".equals(output.getPaperName())
+                || "修边".equals(output.getPaperName())
+                || "切边".equals(output.getPaperName())
+                || "修边".equals(output.getOutputNo())
+                || "切边".equals(output.getOutputNo());
     }
 }

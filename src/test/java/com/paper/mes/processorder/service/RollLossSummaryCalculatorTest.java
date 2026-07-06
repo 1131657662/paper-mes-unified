@@ -54,6 +54,17 @@ class RollLossSummaryCalculatorTest {
         assertFalse(result.containsKey("roll-a"));
     }
 
+    @Test
+    void calculate_whenFinishIsRemain_countsRemainWeightAsLoss() {
+        Map<String, BigDecimal> result = RollLossSummaryCalculator.calculate(
+                List.of(original("roll-a", 1)),
+                List.of(),
+                List.of(remainFinish("trim-a", "4.000")),
+                List.of(rel("trim-a", "roll-a", "25")));
+
+        assertEquals(new BigDecimal("1.000"), result.get("roll-a").setScale(3));
+    }
+
     private static OriginalRoll original(String uuid, int processMode) {
         OriginalRoll roll = new OriginalRoll();
         roll.setUuid(uuid);
@@ -77,6 +88,17 @@ class RollLossSummaryCalculatorTest {
         finish.setRollNoStatus(rollNoStatus);
         finish.setScrapWeight(new BigDecimal(scrapWeight));
         finish.setTrimWeightShare(new BigDecimal(trimWeight));
+        return finish;
+    }
+
+    private static FinishRoll remainFinish(String uuid, String actualWeight) {
+        FinishRoll finish = new FinishRoll();
+        finish.setUuid(uuid);
+        finish.setSourceType(1);
+        finish.setIsSpare(0);
+        finish.setIsRemain(1);
+        finish.setRollNoStatus(1);
+        finish.setActualWeight(new BigDecimal(actualWeight));
         return finish;
     }
 

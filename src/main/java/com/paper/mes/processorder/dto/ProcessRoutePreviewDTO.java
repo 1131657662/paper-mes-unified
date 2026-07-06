@@ -50,6 +50,8 @@ public class ProcessRoutePreviewDTO {
         private String outputKey;
         private Integer outputType;
         private Integer count;
+        /** 0正品 1边角余料。 */
+        private Integer isRemain;
         private String paperName;
         private Integer gramWeight;
         private Integer finishWidth;

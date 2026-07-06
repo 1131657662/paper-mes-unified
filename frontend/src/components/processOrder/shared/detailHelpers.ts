@@ -25,6 +25,19 @@ export const fmtDiameter = (value?: number, prefix = '') => {
   return diameter == null ? '-' : `${prefix}${diameter}mm`
 }
 
+export const isActiveProductionFinish = (finish: FinishProductionVO) => finish.rollNoStatus !== 3
+export const isRemainProductionFinish = (finish: FinishProductionVO) => finish.isRemain === 1
+export const isSpareProductionFinish = (finish: FinishProductionVO) => finish.isSpare === 1
+export const isDeliverableProductionFinish = (finish: FinishProductionVO) => (
+  isActiveProductionFinish(finish) && !isSpareProductionFinish(finish) && !isRemainProductionFinish(finish)
+)
+export const isVisibleProductionOutput = (finish: FinishProductionVO) => (
+  isActiveProductionFinish(finish) && !isSpareProductionFinish(finish)
+)
+export const isActiveSpareProductionFinish = (finish: FinishProductionVO) => (
+  isActiveProductionFinish(finish) && isSpareProductionFinish(finish)
+)
+
 /** 从 rewindParams 取复卷模式标签 */
 export const rewindModeLabel = (record: RollProductionVO) => {
   const mode = record.rewindParams?.find((p) => p.paramMode != null)?.paramMode
@@ -35,7 +48,7 @@ export const rewindModeLabel = (record: RollProductionVO) => {
 /* ---------- 成品分组 ---------- */
 
 export function groupFinishes(finishes?: FinishProductionVO[]): FinishGroup[] {
-  const official = (finishes ?? []).filter((f) => f.isSpare !== 1)
+  const official = (finishes ?? []).filter(isDeliverableProductionFinish)
   const map = new Map<number, { count: number; totalEstimate: number }>()
   for (const f of official) {
     const w = f.finishWidth ?? 0
@@ -52,11 +65,39 @@ export function groupFinishes(finishes?: FinishProductionVO[]): FinishGroup[] {
 /* ---------- 修边计算 ---------- */
 
 export function calcTrimWidth(record: RollProductionVO) {
+  const explicitTrim = trimFinishes(record.finishes).reduce((sum, finish) => sum + (finish.finishWidth ?? 0), 0)
+  if (explicitTrim > 0) return explicitTrim
+  const legacyTrim = legacyTrimWidthFromFinishes(record.finishes)
+  if (legacyTrim > 0) return legacyTrim
+  if (!canInferTrimFromLayout(record)) return 0
   const originalWidth = record.originalWidth ?? 0
   if (!originalWidth) return 0
   const groups = groupFinishes(record.finishes)
   const used = groups.reduce((sum, g) => sum + g.width * g.count, 0)
   return Math.max(0, originalWidth - used)
+}
+
+function canInferTrimFromLayout(record: RollProductionVO) {
+  if (record.processMode !== 1) return false
+  if (record.mainStepType !== 2) return true
+  const mode = record.rewindParams?.find((p) => p.paramMode != null)?.paramMode
+  return mode !== 2
+}
+
+export function trimFinishes(finishes?: FinishProductionVO[]) {
+  return (finishes ?? []).filter((finish) => isVisibleProductionOutput(finish) && isRemainProductionFinish(finish))
+}
+
+export function trimWeightFromFinishes(finishes?: FinishProductionVO[]) {
+  const explicit = trimFinishes(finishes).reduce((sum, finish) => {
+    return sum + (finish.actualWeight ?? finish.estimateWeight ?? 0)
+  }, 0)
+  if (explicit > 0) return explicit
+  return (finishes ?? []).reduce((sum, finish) => sum + (finish.trimWeightShare ?? 0), 0)
+}
+
+export function legacyTrimWidthFromFinishes(finishes?: FinishProductionVO[]) {
+  return (finishes ?? []).reduce((sum, finish) => sum + (finish.trimWidthShare ?? 0), 0)
 }
 
 /* ---------- 加工流程步骤描述 ---------- */
@@ -74,7 +115,7 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
   const groups = groupFinishes(record.finishes)
   const isRewind = record.mainStepType === 2
   const trim = calcTrimWidth(record)
-  const spareCount = (record.finishes ?? []).filter((f) => f.isSpare === 1).length
+  const spareCount = (record.finishes ?? []).filter(isActiveSpareProductionFinish).length
 
   // 主工艺
   if (record.processMode === 3) {

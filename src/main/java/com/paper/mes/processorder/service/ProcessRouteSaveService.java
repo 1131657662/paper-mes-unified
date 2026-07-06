@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProcessRouteSaveService {
 
     private static final int STATUS_PENDING = 1;
+    private static final int IS_REMAIN_YES = 1;
 
     private final ProcessOrderMapper orderMapper;
     private final OriginalRollMapper originalRollMapper;
@@ -64,9 +65,14 @@ public class ProcessRouteSaveService {
     private void requireFinalOutputs(ProcessRoutePreviewVO preview) {
         boolean hasFinal = preview.getOutputs() != null
                 && preview.getOutputs().stream()
-                .anyMatch(output -> !Boolean.TRUE.equals(output.getConsumedByNextStage()));
+                .anyMatch(this::isDeliverableOutput);
         if (!hasFinal) {
             throw new BusinessException(ErrorCode.E003, "后续工艺至少需要一个最终成品产出");
         }
+    }
+
+    private boolean isDeliverableOutput(ProcessRoutePreviewVO.RouteOutputVO output) {
+        return !Boolean.TRUE.equals(output.getConsumedByNextStage())
+                && (output.getIsRemain() == null || output.getIsRemain() != IS_REMAIN_YES);
     }
 }

@@ -8,6 +8,7 @@ import {
   fmt,
   fmtKg,
   groupFinishes,
+  isActiveSpareProductionFinish,
 } from './shared/detailHelpers'
 import { buildDisplayRows } from './shared/displayRowBuilder'
 import ExpandedProductionRow from './ExpandedProductionRow'
@@ -100,7 +101,7 @@ const fullColumns: ColumnsType<DisplayRow> = [
     title: '产量', width: 100, align: 'right',
     render: (_, row) => {
       const groups = groupFinishes(row.finishes)
-      const spareCount = row.finishes.filter((f) => f.isSpare === 1).length
+      const spareCount = row.finishes.filter(isActiveSpareProductionFinish).length
       const totalCount = groups.reduce((s, g) => s + g.count, 0) + spareCount
       const totalWeight = groups.reduce((s, g) => s + g.totalEstimate, 0)
       if (!totalCount) return <Text type="secondary">-</Text>
@@ -167,7 +168,7 @@ const compactColumns: ColumnsType<DisplayRow> = [
       const trim = calcTrimWidth(row.mainProduction)
       if (row.isDirectShip) return <Text type="secondary" style={{ fontSize: 11 }}>直发</Text>
       if (layoutText === '-') return <Text type="secondary" style={{ fontSize: 11 }}>-</Text>
-      const suffix = trim > 0 ? ` · 修${trim}` : ''
+      const suffix = trim > 0 ? ` · 修边 ${trim}mm` : ''
       return <TooltipText value={`${layoutText}${suffix}`} />
     },
   },
@@ -175,7 +176,7 @@ const compactColumns: ColumnsType<DisplayRow> = [
     title: '产量', width: 85, align: 'right',
     render: (_, row) => {
       const groups = groupFinishes(row.finishes)
-      const spareCount = row.finishes.filter((f) => f.isSpare === 1).length
+      const spareCount = row.finishes.filter(isActiveSpareProductionFinish).length
       const totalCount = groups.reduce((s, g) => s + g.count, 0) + spareCount
       const totalWeight = groups.reduce((s, g) => s + g.totalEstimate, 0)
       if (!totalCount) return <Text type="secondary" style={{ fontSize: 11 }}>-</Text>
@@ -207,7 +208,7 @@ export default function ProductionFlowTable({ productions, compact }: Props) {
   // 汇总
   const allFinishes = rows.flatMap((r) => r.finishes)
   const finishGroups = groupFinishes(allFinishes)
-  const totalSpareCount = allFinishes.filter((f) => f.isSpare === 1).length
+  const totalSpareCount = allFinishes.filter(isActiveSpareProductionFinish).length
   const totalFinishCount = finishGroups.reduce((s, g) => s + g.count, 0) + totalSpareCount
   const totalEstimateWeight = finishGroups.reduce((s, g) => s + g.totalEstimate, 0)
 

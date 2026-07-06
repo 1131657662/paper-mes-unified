@@ -62,10 +62,54 @@ class SawPlanPreviewerTest {
                 spec("TRIM", 100, 1)
         ), roll(2000, "1000"));
 
-        assertEquals(2, finishes.size());
+        assertEquals(3, finishes.size());
         assertEquals(1, finishes.getFirst().getCount());
         assertEquals(new BigDecimal("475.000"), finishes.getFirst().getEstimateWeight());
         assertEquals(new BigDecimal("475.000"), finishes.get(1).getEstimateWeight());
+        assertEquals("TRIM", finishes.get(2).getItemType());
+        assertEquals(100, finishes.get(2).getFinishWidth());
+        assertEquals(new BigDecimal("50.000"), finishes.get(2).getEstimateWeight());
+    }
+
+    @Test
+    void preview_withoutTrimRows_usesRemainingWidthAsTrim() {
+        PlanPreviewVO preview = previewer.preview(plan(List.of(
+                spec("FINISH", 950, 2)
+        )), roll(2000, "1000"));
+
+        assertTrue(preview.isReady());
+        assertEquals(2, preview.getFinishCount());
+        assertEquals(1, preview.getTrimCount());
+        assertEquals(new BigDecimal("50.000"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("950.000"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("475.000"), preview.getFinishes().getFirst().getEstimateWeight());
+        assertTrue(preview.getSummary().contains("100mm"));
+    }
+
+    @Test
+    void saveSpecs_withoutTrimRows_appendsImplicitTrimSpec() {
+        List<FinishConfigSpecDTO> finishes = previewer.saveSpecs(List.of(
+                spec("FINISH", 950, 2)
+        ), roll(2000, "1000"));
+
+        assertEquals(3, finishes.size());
+        assertEquals("TRIM", finishes.get(2).getItemType());
+        assertEquals(100, finishes.get(2).getFinishWidth());
+        assertEquals(new BigDecimal("50.000"), finishes.get(2).getEstimateWeight());
+    }
+
+    @Test
+    void saveSpecs_whenOnSite_doesNotInferTrimOrEstimateWeight() {
+        OriginalRoll roll = roll(2000, "1000");
+        roll.setProcessMode(2);
+
+        List<FinishConfigSpecDTO> finishes = previewer.saveSpecs(List.of(
+                spec("FINISH", 0, 2)
+        ), roll);
+
+        assertEquals(2, finishes.size());
+        assertEquals("FINISH", finishes.getFirst().getItemType());
+        assertEquals(new BigDecimal("0.000"), finishes.getFirst().getEstimateWeight());
     }
 
     private ProcessPlanDTO plan(List<FinishConfigSpecDTO> specs) {
@@ -88,6 +132,7 @@ class SawPlanPreviewerTest {
     private OriginalRoll roll(int width, String weight) {
         OriginalRoll roll = new OriginalRoll();
         roll.setUuid("roll-1");
+        roll.setProcessMode(1);
         roll.setOriginalWidth(width);
         roll.setRollWeight(new BigDecimal(weight));
         roll.setPieceNum(1);

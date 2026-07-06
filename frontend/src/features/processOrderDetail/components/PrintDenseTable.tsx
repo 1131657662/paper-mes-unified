@@ -49,7 +49,7 @@ function DenseTableRow({ row }: { row: DenseRow }) {
 }
 
 function DenseItemTableRow({ row }: { row: DenseItemRow }) {
-  const fillable = row.output?.status === 'final'
+  const fillable = row.output?.status === 'final' || row.output?.status === 'trim'
   return (
     <tr className="print-dense-table__item-row">
       {row.blockRowSpan && (
@@ -93,6 +93,6 @@ function sourceValue(block: PrintRollBlock, label: string): string {
 
 function outputStatusText(status: PrintRouteOutput['status']): string {
   if (status === 'next') return '进下道'
-  if (status === 'trim') return '切边'
+  if (status === 'trim') return '修边'
   return '交付'
 }

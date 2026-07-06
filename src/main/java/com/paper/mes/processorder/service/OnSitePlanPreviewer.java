@@ -21,7 +21,7 @@ public class OnSitePlanPreviewer {
         List<FinishConfigSpecDTO> specs = plan.getFinishSpecs() == null ? List.of() : plan.getFinishSpecs();
         List<FinishPreviewVO.FinishItemPreview> finishes = finishRows(specs);
         vo.setFinishCount(finishes.size());
-        vo.setTrimCount(trimCount(specs));
+        vo.setTrimCount(0);
         vo.setTotalEstimateWeight(BigDecimal.ZERO);
         vo.setTotalTrimWeight(BigDecimal.ZERO);
         vo.setFinishes(finishes);
@@ -66,13 +66,6 @@ public class OnSitePlanPreviewer {
         row.setTrimWeight(BigDecimal.ZERO);
         row.setSourceSummary("现场定尺");
         return row;
-    }
-
-    private int trimCount(List<FinishConfigSpecDTO> specs) {
-        return specs.stream()
-                .filter(spec -> ITEM_TRIM.equals(itemType(spec)))
-                .mapToInt(spec -> spec.getCount() == null ? 1 : spec.getCount())
-                .sum();
     }
 
     private String itemType(FinishConfigSpecDTO spec) {

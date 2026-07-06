@@ -7,7 +7,9 @@ import {
   fmt,
   fmtDiameter,
   groupFinishes,
+  isActiveSpareProductionFinish,
   REWIND_MODE,
+  trimWeightFromFinishes,
 } from './shared/detailHelpers'
 import { formatKg, formatTon } from '../../utils/numberFormatters'
 
@@ -43,7 +45,8 @@ export default function ExpandedProductionRow({ row }: Props) {
   }))
 
   const trim = calcTrimWidth(p)
-  const trimWeight = row.finishes.reduce((s, f) => s + (f.trimWeightShare ?? 0), 0)
+  const trimWeight = trimWeightFromFinishes(row.finishes)
+  const spareCount = row.finishes.filter(isActiveSpareProductionFinish).length
   const allSources = row.finishes.flatMap((f) => f.sources ?? [])
   const uniqueSources = Array.from(
     new Map(allSources.filter((s) => s.originalUuid).map((s) => [s.originalUuid, s])).values(),
@@ -101,17 +104,19 @@ export default function ExpandedProductionRow({ row }: Props) {
       </Descriptions>
 
       {/* 成品明细表 */}
-      {finishData.length > 0 && (
+      {(finishData.length > 0 || trim > 0 || trimWeight > 0) && (
         <>
-          <Table
-            size="small"
-            rowKey="finishWidth"
-            columns={finishCols}
-            dataSource={finishData}
-            pagination={false}
-            style={{ marginTop: 8, marginBottom: 0 }}
-            locale={{ emptyText: null }}
-          />
+          {finishData.length > 0 && (
+            <Table
+              size="small"
+              rowKey="finishWidth"
+              columns={finishCols}
+              dataSource={finishData}
+              pagination={false}
+              style={{ marginTop: 8, marginBottom: 0 }}
+              locale={{ emptyText: null }}
+            />
+          )}
           {(trim > 0 || trimWeight > 0) && (
             <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>
               修边: {trim}mm{trimWeight > 0 ? ` · ${formatKg(trimWeight)}` : ''}
@@ -136,9 +141,9 @@ export default function ExpandedProductionRow({ row }: Props) {
       )}
 
       {/* 备品 */}
-      {row.finishes.filter((f) => f.isSpare === 1).length > 0 && (
+      {spareCount > 0 && (
         <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
-          备品: {row.finishes.filter((f) => f.isSpare === 1).length}卷
+          备品: {spareCount}卷
         </Text>
       )}
     </div>

@@ -57,7 +57,7 @@ export default function SawingConfigForm({ roll, processMode, config, onChange }
 
   const calculateTheoreticalKnife = () => {
     const totalCount = finishSpecs.reduce((sum, spec) => sum + spec.count, 0)
-    return Math.max(0, totalCount - 1)
+    return Math.max(0, totalCount - 1) + (calculateTrimWidth() > 0 ? 1 : 0)
   }
 
   const calculateEstimateWeights = () => {

@@ -13,6 +13,12 @@ import {
   formatOptionalTonFromKg,
 } from '../../utils/numberFormatters'
 
+const isActiveFinish = (finish: FinishRoll | FinishProductionVO) => finish.rollNoStatus !== 3
+const isRemainFinish = (finish: FinishRoll | FinishProductionVO) => finish.isRemain === 1
+const isDeliverableFinish = (finish: FinishRoll | FinishProductionVO) => (
+  isActiveFinish(finish) && finish.isSpare !== 1 && !isRemainFinish(finish)
+)
+
 export interface DetailMetrics {
   rollCount: number
   finishCount: number
@@ -33,7 +39,7 @@ export function buildDetailMetrics(detail?: ProcessOrderDetailVO): DetailMetrics
   return {
     rollCount: rolls.length,
     finishCount: countOfficialFinishes(finishes),
-    spareCount: finishes.filter((f) => f.isSpare === 1 && f.rollNoStatus !== 3).length,
+    spareCount: finishes.filter((f) => f.isSpare === 1 && isActiveFinish(f)).length,
     totalOriginalWeight: sumOriginalWeight(rolls),
     totalEstimateWeight: sumEstimateWeight(detail),
     totalActualWeight: sumFinishes(finishes, 'actualWeight'),
@@ -48,9 +54,10 @@ export function resolveFinishEstimateWeight(
   finishes: FinishProductionVO[],
   production: RollProductionVO,
 ): number | undefined {
+  if (!isDeliverableFinish(finish)) return undefined
   if (finish.estimateWeight != null && finish.estimateWeight > 0) return finish.estimateWeight
-  const officialFinishes = finishes.filter((item) => item.isSpare !== 1)
-  if (!officialFinishes.length || finish.isSpare === 1) return undefined
+  const officialFinishes = finishes.filter(isDeliverableFinish)
+  if (!officialFinishes.length) return undefined
   const availableWeight = productionAvailableWeight(production, officialFinishes)
   if (availableWeight <= 0) return undefined
   const widthBasis = officialFinishes.reduce((sum, item) => sum + (item.finishWidth ?? 0), 0)
@@ -84,7 +91,7 @@ export function formatNumber(value: number, digits = 0): string {
 }
 
 function countOfficialFinishes(finishes: FinishRoll[]): number {
-  return finishes.filter((f) => f.isSpare !== 1 && f.rollNoStatus !== 3).length
+  return finishes.filter(isDeliverableFinish).length
 }
 
 function sumOriginalWeight(rolls: OriginalRoll[]): number {
@@ -96,7 +103,7 @@ function sumOriginalWeight(rolls: OriginalRoll[]): number {
 
 function sumFinishes(finishes: FinishRoll[], key: 'estimateWeight' | 'actualWeight'): number {
   return finishes.reduce((sum, finish) => {
-    if (finish.isSpare === 1 || finish.rollNoStatus === 3) return sum
+    if (!isDeliverableFinish(finish)) return sum
     return sum + (finish[key] ?? 0)
   }, 0)
 }

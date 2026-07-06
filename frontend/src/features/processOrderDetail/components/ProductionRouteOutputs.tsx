@@ -38,7 +38,7 @@ export default function ProductionRouteOutputs({
   outputs = [],
   production,
 }: Props) {
-  const roots = buildRouteTree(outputs, finishes, fallbackProcessLabel(production))
+  const roots = buildRouteTree(outputs, finishes, fallbackProcessLabel(production), production)
   if (!roots.length) return null
 
   const flow = buildProductionRouteFlow({ canAppendRoute, onConfigureRoute, originalUuid, production, roots })

@@ -95,6 +95,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     private static final int STEP_TYPE_SAW = 1;
     private static final int STEP_TYPE_REWIND = 2;
+    private static final int ROLL_NO_VOID = 3;
+    private static final int IS_SPARE_YES = 1;
+    private static final int IS_REMAIN_YES = 1;
     private static final int MONEY_SCALE = 2;
 
     private final SettleDetailMapper settleDetailMapper;
@@ -744,6 +747,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                                              Map<String, String> machineNameByUuid) {
         LineAmounts amounts = lineAmounts(steps);
         BigDecimal taxRate = taxRateOf(order, customer);
+        List<FinishRoll> deliverableFinishes = finishes.stream().filter(this::isDeliverableFinish).toList();
         SettlePrintLineVO line = new SettlePrintLineVO();
         line.setSettleUuid(settle.getUuid());
         line.setOrderUuid(roll.getOrderUuid());
@@ -768,10 +772,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setMachineName(resolveMachineName(machineNameByUuid, roll.getMachineUuid()));
         line.setProcessText(processText(roll));
         line.setProcessStepSummary(processStepSummary(steps));
-        line.setFinishSummary(finishSummary(finishes));
-        line.setFinishDetailSummary(finishDetailSummary(finishes));
-        line.setFinishCount(finishes.size());
-        line.setFinishWeight(sumFinishWeight(finishes));
+        line.setFinishSummary(finishSummary(deliverableFinishes));
+        line.setFinishDetailSummary(finishDetailSummary(deliverableFinishes));
+        line.setFinishCount(deliverableFinishes.size());
+        line.setFinishWeight(sumFinishWeight(deliverableFinishes));
         line.setTrimWeight(sumTrimWeight(finishes));
         line.setTrimSummary(trimSummary(finishes));
         line.setSawWeight(amounts.sawWeight());
@@ -1038,8 +1042,16 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         int trimWidth = 0;
         BigDecimal trimWeight = BigDecimal.ZERO;
         for (FinishRoll finish : finishes) {
-            trimWidth += finish.getTrimWidthShare() == null ? 0 : finish.getTrimWidthShare();
-            trimWeight = trimWeight.add(nz(finish.getTrimWeightShare()));
+            if (isSpareFinish(finish) || isVoidFinish(finish)) {
+                continue;
+            }
+            if (isRemainFinish(finish)) {
+                trimWidth += finish.getFinishWidth() == null ? 0 : finish.getFinishWidth();
+                trimWeight = trimWeight.add(finishWeight(finish));
+            } else {
+                trimWidth += finish.getTrimWidthShare() == null ? 0 : finish.getTrimWidthShare();
+                trimWeight = trimWeight.add(nz(finish.getTrimWeightShare()));
+            }
         }
         if (trimWidth == 0 && trimWeight.signum() == 0) {
             return "-";
@@ -1050,7 +1062,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private BigDecimal sumFinishWeight(List<FinishRoll> finishes) {
         BigDecimal total = BigDecimal.ZERO;
         for (FinishRoll finish : finishes) {
-            total = total.add(nz(finish.getActualWeight() != null ? finish.getActualWeight() : finish.getEstimateWeight()));
+            if (isDeliverableFinish(finish)) {
+                total = total.add(finishWeight(finish));
+            }
         }
         return total;
     }
@@ -1058,9 +1072,33 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private BigDecimal sumTrimWeight(List<FinishRoll> finishes) {
         BigDecimal total = BigDecimal.ZERO;
         for (FinishRoll finish : finishes) {
-            total = total.add(nz(finish.getTrimWeightShare()));
+            if (isSpareFinish(finish) || isVoidFinish(finish)) {
+                continue;
+            }
+            total = total.add(isRemainFinish(finish) ? finishWeight(finish) : nz(finish.getTrimWeightShare()));
         }
         return total;
+    }
+
+    private boolean isDeliverableFinish(FinishRoll finish) {
+        return !isSpareFinish(finish) && !isRemainFinish(finish)
+                && !isVoidFinish(finish);
+    }
+
+    private boolean isSpareFinish(FinishRoll finish) {
+        return IS_SPARE_YES == (finish.getIsSpare() == null ? 0 : finish.getIsSpare());
+    }
+
+    private boolean isRemainFinish(FinishRoll finish) {
+        return IS_REMAIN_YES == (finish.getIsRemain() == null ? 0 : finish.getIsRemain());
+    }
+
+    private boolean isVoidFinish(FinishRoll finish) {
+        return ROLL_NO_VOID == (finish.getRollNoStatus() == null ? 0 : finish.getRollNoStatus());
+    }
+
+    private BigDecimal finishWeight(FinishRoll finish) {
+        return nz(finish.getActualWeight() != null ? finish.getActualWeight() : finish.getEstimateWeight());
     }
 
     private String contentDisposition(String filename) {

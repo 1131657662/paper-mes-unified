@@ -1,4 +1,10 @@
 import { Tag } from 'antd'
+import {
+  calcTrimWidth,
+  isDeliverableProductionFinish,
+  trimFinishes,
+  trimWeightFromFinishes,
+} from '../../../components/processOrder/shared/detailHelpers'
 import type { FinishGroup } from '../../../components/processOrder/shared/types'
 import type { FinishProductionVO, RollProductionVO } from '../../../types/processOrder'
 import { formatKg } from '../orderDetailUtils'
@@ -17,10 +23,15 @@ export default function ProductionFinishColumn({
   finishes,
   finishCount,
   groups,
+  production,
   spareCount,
 }: Props) {
-  const rollNos = finishes.filter((f) => f.isSpare !== 1).slice(0, 6)
-  const sources = collectSources(finishes)
+  const deliverableFinishes = finishes.filter(isDeliverableProductionFinish)
+  const rollNos = deliverableFinishes.slice(0, 6)
+  const trimRows = trimFinishes(finishes)
+  const trimWeight = trimWeightFromFinishes(finishes)
+  const fallbackTrimWidth = trimRows.length ? 0 : calcTrimWidth(production)
+  const sources = collectSources(deliverableFinishes)
 
   return (
     <div>
@@ -41,6 +52,26 @@ export default function ProductionFinishColumn({
           卷号：{rollNos.map((f) => f.finishRollNo).join('、')}
           {finishCount > rollNos.length ? ` 等 ${finishCount} 件` : ''}
         </div>
+      )}
+      {(trimRows.length > 0 || fallbackTrimWidth > 0 || trimWeight > 0) && (
+        <div className="production-roll__group production-roll__spaced">
+          {trimRows.length > 0
+            ? trimRows.map((finish) => (
+              <span className="production-pill production-pill--trim" key={finish.uuid}>
+                修边 {finish.finishWidth ? `${finish.finishWidth}mm` : '-'}
+                {trimWeight > 0 && trimRows.length === 1 ? ` / ${formatKg(trimWeight)}` : ''}
+              </span>
+            ))
+            : (
+              <span className="production-pill production-pill--trim">
+                修边 {fallbackTrimWidth > 0 ? `${fallbackTrimWidth}mm` : '-'}
+                {trimWeight > 0 ? ` / ${formatKg(trimWeight)}` : ''}
+              </span>
+            )}
+        </div>
+      )}
+      {trimRows.length > 1 && trimWeight > 0 && (
+        <div className="production-roll__line">修边重量合计：{formatKg(trimWeight)}</div>
       )}
       {sources.length > 1 && <SourcePills sources={sources} />}
     </div>

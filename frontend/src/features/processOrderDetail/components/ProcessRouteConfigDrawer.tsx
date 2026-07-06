@@ -397,7 +397,7 @@ function DrawerFooter({
 }
 
 const outputColumns: ColumnsType<DetailRouteOutputRow> = [
-  { title: '产物', dataIndex: 'label', width: 150, render: (value, row) => <Space size={4}>{value}<Tag>{row.outputKey}</Tag></Space> },
+  { title: '产物', dataIndex: 'label', width: 150, render: (value, row) => <Space size={4}>{value}<Tag color={row.isRemain === 1 ? 'orange' : undefined}>{row.outputKey}</Tag></Space> },
   { title: '来源编号', width: 180, render: (_, row) => row.finishRollNo || row.sourceRollNo || row.sourceOutputKey || '-' },
   { title: '品名', dataIndex: 'paperName', width: 140 },
   { title: '规格', width: 150, render: (_, row) => `${row.gramWeight ?? '-'}g / ${row.finishWidth ?? '-'}mm` },
@@ -418,11 +418,16 @@ const stageColumns: ColumnsType<ProcessRouteStageLineVO> = [
 const previewOutputColumns: ColumnsType<ProcessRouteOutputVO> = [
   { title: '产出', dataIndex: 'outputKey', width: 90 },
   { title: '阶段', dataIndex: 'stageLevel', width: 70, render: (value) => `第${value ?? '-'}段` },
-  { title: '状态', dataIndex: 'consumedByNextStage', width: 100, render: (value) => value ? <Tag color="orange">进入下道</Tag> : <Tag color="green">最终成品</Tag> },
+  { title: '状态', width: 100, render: (_, row) => routeOutputStatus(row) },
   { title: '门幅', dataIndex: 'finishWidth', width: 90, render: (value) => value ? `${value}mm` : '-' },
   { title: '预估重', dataIndex: 'estimateWeight', width: 110, render: formatWeight },
   { title: '备注', dataIndex: 'remark', width: 180 },
 ]
+
+function routeOutputStatus(row: ProcessRouteOutputVO) {
+  if (row.isRemain === 1) return <Tag color="orange">修边</Tag>
+  return row.consumedByNextStage ? <Tag color="orange">进入下道</Tag> : <Tag color="green">最终成品</Tag>
+}
 
 function initialForm(
   detail: ProcessOrderDetailVO | undefined,

@@ -41,6 +41,7 @@ export interface DetailRouteOutputRow {
   finishRollNo?: string
   finishWidth: number
   gramWeight?: number
+  isRemain?: number
   label: string
   outputKey: string
   parentOutputKey?: string
@@ -138,6 +139,7 @@ export function inputRowsForStage(form: DetailRouteFormState, stageId: string): 
   const currentInputs = new Set(index >= 0 ? form.stages[index]?.inputOutputKeys ?? [] : [])
   const consumed = consumedInputKeysBeforeStage(form, stageIndex)
   return outputRowsBeforeStage(form, stageIndex)
+    .filter((row) => row.isRemain !== 1)
     .filter((row) => !consumed.has(row.outputKey) || currentInputs.has(row.outputKey))
 }
 
@@ -154,7 +156,7 @@ export function selectedInputRowsForStage(form: DetailRouteFormState, stage: Det
 
 export function finalDetailRouteOutputs(form: DetailRouteFormState): DetailRouteOutputRow[] {
   const consumed = new Set(form.stages.flatMap((stage) => stage.inputOutputKeys))
-  return allDetailRouteOutputs(form).filter((row) => !consumed.has(row.outputKey))
+  return allDetailRouteOutputs(form).filter((row) => row.isRemain !== 1 && !consumed.has(row.outputKey))
 }
 
 export function allDetailRouteOutputs(form: DetailRouteFormState): DetailRouteOutputRow[] {
@@ -330,8 +332,8 @@ function outputsForPlan(
   const usedKeys = new Set(existingRows.map((row) => row.outputKey))
   return seeds.map((seed, index) => ({
     ...seed,
-    label: `第${stageLevel}段产物 ${index + 1}`,
-    outputKey: nextOutputKey(stageLevel, usedKeys),
+    label: seed.isRemain === 1 ? `第${stageLevel}段修边` : `第${stageLevel}段产物 ${index + 1}`,
+    outputKey: nextOutputKey(stageLevel, usedKeys, seed.isRemain === 1),
     parentOutputKey: source.outputKey,
     sourceStepType: plan.mainStepType,
     sourceOutputKey: source.outputKey,
@@ -340,20 +342,24 @@ function outputsForPlan(
   }))
 }
 
-function nextOutputKey(stageLevel: number, usedKeys: Set<string>) {
+function nextOutputKey(stageLevel: number, usedKeys: Set<string>, remain = false) {
   let sort = 1
-  while (usedKeys.has(`S${stageLevel}-F${sort}`)) {
+  const prefix = remain ? 'T' : 'F'
+  while (usedKeys.has(`S${stageLevel}-${prefix}${sort}`)) {
     sort += 1
   }
-  const key = `S${stageLevel}-F${sort}`
+  const key = `S${stageLevel}-${prefix}${sort}`
   usedKeys.add(key)
   return key
 }
 
 function sawOutputSeeds(source: DetailRouteOutputRow, plan: ProcessPlanDTO): OutputSeed[] {
-  const specs = (plan.finishSpecs ?? []).filter((spec) => (spec.itemType ?? 'FINISH') !== 'TRIM')
+  const allSpecs = plan.finishSpecs ?? []
+  const specs = allSpecs.filter((spec) => (spec.itemType ?? 'FINISH') !== 'TRIM')
   const expandedSpecs = specs.flatMap((spec) => Array.from({ length: Math.max(1, spec.count ?? 1) }, () => spec))
-  const finishWeight = Math.max(0, source.estimateWeight - sawTrimWeight(source, plan.finishSpecs ?? []))
+  const trimWidth = sawTrimWidth(source, allSpecs)
+  const trimWeightValue = calcTrimWeight(source.estimateWeight, source.finishWidth, trimWidth)
+  const finishWeight = Math.max(0, source.estimateWeight - trimWeightValue)
   const widthTotal = expandedSpecs.reduce((sum, spec) => sum + Number(spec.finishWidth ?? 0), 0)
   let allocated = 0
   const rows = expandedSpecs.map((spec, index) => {
@@ -368,7 +374,8 @@ function sawOutputSeeds(source: DetailRouteOutputRow, plan: ProcessPlanDTO): Out
       paperName: source.paperName,
     }
   })
-  return rows.length ? rows : [seedFromSource(source)]
+  if (!rows.length) return [seedFromSource(source)]
+  return appendTrimSeed(rows, source, trimWidth, trimWeightValue)
 }
 
 function allocatedSawWeight(totalWeight: number, widthTotal: number, width: number, index: number, count: number, allocated: number) {
@@ -377,12 +384,15 @@ function allocatedSawWeight(totalWeight: number, widthTotal: number, width: numb
   return roundWeight(totalWeight * width / widthTotal)
 }
 
-function sawTrimWeight(source: DetailRouteOutputRow, specs: FinishConfigSpecDTO[]) {
-  const trimWidth = specs
+function sawTrimWidth(source: DetailRouteOutputRow, specs: FinishConfigSpecDTO[]) {
+  const explicitTrim = specs
     .filter((spec) => spec.itemType === 'TRIM')
     .reduce((sum, spec) => sum + Number(spec.finishWidth ?? 0) * Math.max(1, spec.count ?? 1), 0)
-  if (trimWidth <= 0 || source.finishWidth <= 0) return 0
-  return roundWeight(source.estimateWeight * trimWidth / source.finishWidth)
+  if (explicitTrim > 0) return explicitTrim
+  const finishWidth = specs
+    .filter((spec) => (spec.itemType ?? 'FINISH') !== 'TRIM')
+    .reduce((sum, spec) => sum + Number(spec.finishWidth ?? 0) * Math.max(1, spec.count ?? 1), 0)
+  return Math.max(0, source.finishWidth - finishWidth)
 }
 
 function rewindOutputSeeds(sources: DetailRouteOutputRow[], plan: ProcessPlanDTO): OutputSeed[] {
@@ -390,12 +400,14 @@ function rewindOutputSeeds(sources: DetailRouteOutputRow[], plan: ProcessPlanDTO
   const segments = plan.segments?.length ? plan.segments : [defaultRewindSegment(source)]
   const ratios = rewindSegmentRatios(sources, segments, plan.rewindMode)
   const totalWeight = rewindTotalWeight(sources, segments, plan.rewindMode)
-  return allocateRewindSeeds(
+  const trimWidth = rewindTrimWidth(segments, source.finishWidth, ratios, plan.rewindMode)
+  const rows = allocateRewindSeeds(
     segments.flatMap((segment, index) => rewindSegmentSeedInputs(source, segment, ratios[index] ?? 0, plan.rewindMode)),
     totalWeight,
     source.finishWidth,
-    rewindTrimWidth(segments, source.finishWidth, ratios),
+    trimWidth,
   )
+  return appendTrimSeed(rows, source, trimWidth, calcTrimWeight(totalWeight, source.finishWidth, trimWidth))
 }
 
 function rewindSegmentSeedInputs(
@@ -448,7 +460,8 @@ function rewindSeedBasis(
   return finishWidth * ratio
 }
 
-function rewindTrimWidth(segments: RewindSegmentPlanDTO[], originalWidth: number, ratios: number[]) {
+function rewindTrimWidth(segments: RewindSegmentPlanDTO[], originalWidth: number, ratios: number[], rewindMode?: number) {
+  if (rewindMode === 2) return 0
   return segments.reduce((sum, segment, index) => sum + segmentTrimWidth(segment, originalWidth) * (ratios[index] ?? 0), 0)
 }
 
@@ -545,12 +558,14 @@ function stageDto(form: DetailRouteFormState, stage: DetailRouteStageForm): Proc
 function toOutputDto(row: DetailRouteOutputRow): ProcessRouteOutputDTO {
   return {
     outputKey: row.outputKey,
+    isRemain: row.isRemain,
     paperName: row.paperName,
     gramWeight: row.gramWeight,
     finishCoreDiameter: row.finishCoreDiameter,
     finishDiameter: row.finishDiameter,
     finishWidth: row.finishWidth,
     estimateWeight: row.estimateWeight,
+    remark: row.isRemain === 1 ? '修边/余料' : undefined,
   }
 }
 
@@ -636,13 +651,15 @@ function stageOutputRow(
   baseStageLevel: number,
 ): DetailRouteOutputRow {
   const stageLevel = output.stageLevel ?? baseStageLevel
+  const isRemain = isTrimStageOutput(output) ? 1 : undefined
   return {
     estimateWeight: finishWeight(roll, output.estimateWeight ?? output.actualWeight, output.finishWidth),
     finishCoreDiameter: output.finishCoreDiameter,
     finishDiameter: output.finishDiameter,
     finishWidth: Number(output.finishWidth ?? roll.originalWidth ?? 1),
     gramWeight: output.gramWeight ?? roll.gramWeight,
-    label: `${stageLabel(stageLevel)}产物 ${output.outputSort ?? index + 1}`,
+    isRemain,
+    label: isRemain === 1 ? `${stageLabel(stageLevel)}修边` : `${stageLabel(stageLevel)}产物 ${output.outputSort ?? index + 1}`,
     outputKey: output.outputNo || output.uuid,
     parentOutputUuid: output.parentOutputUuid,
     paperName: output.paperName ?? roll.paperName,
@@ -654,8 +671,18 @@ function stageOutputRow(
   }
 }
 
+function isTrimStageOutput(output: StageOutputVO): boolean {
+  return output.isRemain === 1
+    || output.outputNo === '切边'
+    || output.outputNo === '修边'
+    || output.paperName === '切边'
+    || output.paperName === '修边'
+    || output.paperName === '修边/余料'
+    || output.remark === '修边/余料'
+}
+
 function activeFinishes(finishes: FinishProductionVO[]): FinishProductionVO[] {
-  return finishes.filter((finish) => finish.rollNoStatus !== ROLL_NO_VOID)
+  return finishes.filter((finish) => finish.rollNoStatus !== ROLL_NO_VOID && finish.isRemain !== 1)
 }
 
 function finishOutputKey(finish: FinishProductionVO, index: number) {
@@ -722,6 +749,25 @@ function seedFromSource(source: DetailRouteOutputRow): OutputSeed {
   }
 }
 
+function appendTrimSeed(rows: OutputSeed[], source: DetailRouteOutputRow, width: number, weight: number): OutputSeed[] {
+  const finishWidth = Math.max(0, Math.round(width))
+  if (finishWidth <= 0 && weight <= 0) return rows
+  return [...rows, {
+    estimateWeight: roundWeight(weight),
+    finishCoreDiameter: source.finishCoreDiameter,
+    finishDiameter: source.finishDiameter,
+    finishWidth,
+    gramWeight: source.gramWeight,
+    isRemain: 1,
+    paperName: source.paperName,
+  }]
+}
+
+function calcTrimWeight(sourceWeight: number, sourceWidth: number, trimWidth: number) {
+  if (sourceWeight <= 0 || sourceWidth <= 0 || trimWidth <= 0) return 0
+  return roundWeight(sourceWeight * trimWidth / sourceWidth)
+}
+
 function rollTotalWeight(roll: OriginalRoll) {
   return Number(roll.actualWeight ?? roll.totalWeight ?? (Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)))
 }
@@ -771,6 +817,7 @@ interface OutputSeed {
   finishDiameter?: number
   finishWidth: number
   gramWeight?: number
+  isRemain?: number
   paperName?: string
 }
 

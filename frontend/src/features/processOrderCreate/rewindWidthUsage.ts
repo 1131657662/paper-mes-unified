@@ -23,7 +23,8 @@ export function calcRewindWidthUsage(
   const width = Number(originalWidth ?? 0)
   const items = segment.layoutItems ?? []
   const finishWidth = sumLayoutWidth(items, false)
-  const trimWidth = sumLayoutWidth(items, true)
+  const explicitTrimWidth = sumLayoutWidth(items, true)
+  const trimWidth = explicitTrimWidth > 0 ? explicitTrimWidth : Math.max(0, width - finishWidth)
   const usedWidth = finishWidth + trimWidth
 
   return {
@@ -33,7 +34,7 @@ export function calcRewindWidthUsage(
     usedWidth,
     remainingWidth: width - usedWidth,
     finishCount: countLayoutItems(items, false),
-    trimCount: countLayoutItems(items, true),
+    trimCount: explicitTrimWidth > 0 ? countLayoutItems(items, true) : trimWidth > 0 ? 1 : 0,
     usedPercent: width > 0 ? Math.min(100, Math.round((usedWidth / width) * 100)) : 0,
   }
 }

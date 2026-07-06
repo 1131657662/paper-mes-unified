@@ -1,6 +1,13 @@
 import { IS_INVOICE, ORDER_SETTLE_TYPE, PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
 import { buildDisplayRows } from '../../../components/processOrder/shared/displayRowBuilder'
-import { fmtDiameter } from '../../../components/processOrder/shared/detailHelpers'
+import {
+  calcTrimWidth,
+  fmtDiameter,
+  isDeliverableProductionFinish,
+  isRemainProductionFinish,
+  isVisibleProductionOutput,
+  trimWeightFromFinishes,
+} from '../../../components/processOrder/shared/detailHelpers'
 import type {
   FinishProductionVO,
   ProcessOrderDetailVO,
@@ -63,7 +70,7 @@ export function buildPrintSummary(detail: ProcessOrderDetailVO): PrintSummaryIte
   const rewindWeight = (detail.steps ?? []).reduce((sum, step) => (
     step.stepType === 2 ? sum + (step.processWeight ?? 0) : sum
   ), 0)
-  const finalCount = (detail.finishRolls ?? []).filter((item) => item.isSpare !== 1 && item.rollNoStatus !== 3).length
+  const finalCount = (detail.finishRolls ?? []).filter(isFinalFinishRoll).length
   return [
     { label: '原卷', value: `${metrics.rollCount} 卷 / ${formatTon(metrics.totalOriginalWeight)}` },
     { label: '最终成品', value: `${finalCount} 件 / ${formatTon(metrics.totalEstimateWeight)}` },
@@ -96,7 +103,7 @@ function routeStagesFromOutputs(
 
 function routeStagesFromFinishes(production: RollProductionVO, steps: ProcessStep[]): PrintRouteStage[] {
   const step = sortedSteps(steps)[0]
-  const outputs = (production.finishes ?? []).filter((item) => item.isSpare !== 1 && item.rollNoStatus !== 3)
+  const outputs = (production.finishes ?? []).filter(isVisibleProductionOutput)
   return [{
     key: `${production.originalUuid ?? 'roll'}-single`,
     title: `第1道 ${step?.stepName || STEP_TYPE[production.mainStepType ?? step?.stepType ?? 1] || '加工'}`,
@@ -112,30 +119,51 @@ function singleStageOutputs(
   outputs: FinishProductionVO[],
   step?: ProcessStep,
 ): PrintRouteOutput[] {
-  const items: PrintRouteOutput[] = outputs.map((finish) => ({
-      key: finish.uuid,
-      name: finish.finishRollNo || '预生成成品',
-      spec: finishSpec(finish),
-      weight: formatKg(finish.estimateWeight),
-      status: 'final',
-    }))
-  if ((step?.stepType ?? production.mainStepType) !== 1) return items
-  const trim = trimOutput({
-    key: `${production.originalUuid ?? 'roll'}-trim`,
-    sourceWeight: (production.rollWeight ?? 0) * (production.pieceNum ?? 1),
-    sourceWidth: production.originalWidth,
-    usedWidth: outputs.reduce((sum, item) => sum + (item.finishWidth ?? 0), 0),
-  })
+  const items = outputs.map(finishRouteOutput)
+  const trim = fallbackSingleStageTrim(production, outputs, step)
   return trim ? [...items, trim] : items
 }
 
+function finishRouteOutput(finish: FinishProductionVO): PrintRouteOutput {
+  const remain = isRemainProductionFinish(finish)
+  return {
+    key: finish.uuid,
+    name: remain ? trimTitle(finish.finishRollNo) : finish.finishRollNo || '预生成成品',
+    spec: finishSpec(finish),
+    weight: formatKg(finish.estimateWeight),
+    status: remain ? 'trim' : 'final',
+  }
+}
+
+function fallbackSingleStageTrim(
+  production: RollProductionVO,
+  outputs: FinishProductionVO[],
+  step?: ProcessStep,
+): PrintRouteOutput | null {
+  if (outputs.some(isRemainProductionFinish)) return null
+  if ((step?.stepType ?? production.mainStepType) == null) return null
+  const trimWidth = calcTrimWidth(production)
+  const trimWeight = trimWeightFromFinishes(production.finishes)
+  if (trimWidth <= 0 && trimWeight <= 0) return null
+  const sourceWeight = (production.rollWeight ?? 0) * (production.pieceNum ?? 1)
+  const estimateWeight = trimWeight > 0 ? trimWeight : estimateTrimWeight(sourceWeight, production.originalWidth, trimWidth)
+  return {
+    key: `${production.originalUuid ?? 'roll'}-trim`,
+    name: '修边',
+    spec: trimWidth > 0 ? `${trimWidth}mm` : '-',
+    weight: estimateWeight == null ? '-' : formatKg(estimateWeight),
+    status: 'trim',
+  }
+}
+
 function routeOutput(output: StageOutputVO): PrintRouteOutput {
+  const trim = isTrimOutput(output)
   return {
     key: output.uuid,
-    name: output.outputNo || '-',
+    name: trim ? trimTitle(output.outputNo) : output.outputNo || '-',
     spec: outputSpec(output),
     weight: formatKg(output.estimateWeight),
-    status: isTrimOutput(output) ? 'trim' : isFinalOutput(output) ? 'final' : 'next',
+    status: trim ? 'trim' : isFinalOutput(output) ? 'final' : 'next',
   }
 }
 
@@ -145,13 +173,17 @@ function outputsWithTrim(
   stageOutputs: StageOutputVO[],
   allOutputs: StageOutputVO[],
 ): StageOutputVO[] {
-  if ((step?.stepType ?? stageOutputs[0]?.sourceStepType) !== 1) return stageOutputs
+  const stepType = step?.stepType ?? stageOutputs[0]?.sourceStepType
+  if (stepType !== 1) return stageOutputs
+  if (stageOutputs.some(isTrimOutput)) return stageOutputs
   const source = stageSource(production, stageOutputs, allOutputs)
   const trim = trimOutput({
     key: `${production.originalUuid ?? 'roll'}-stage-${stageOutputs[0]?.stageLevel ?? 1}-trim`,
     sourceWeight: source.weight,
     sourceWidth: source.width,
-    usedWidth: stageOutputs.reduce((sum, item) => sum + (item.finishWidth ?? 0), 0),
+    usedWidth: stageOutputs
+      .filter((item) => !isTrimOutput(item))
+      .reduce((sum, item) => sum + (item.finishWidth ?? 0), 0),
   })
   return trim ? [...stageOutputs, trimToStageOutput(trim, stageOutputs[0])] : stageOutputs
 }
@@ -182,11 +214,16 @@ function trimOutput(params: {
   const trimWeight = params.sourceWeight > 0 ? params.sourceWeight * trimWidth / params.sourceWidth : undefined
   return {
     key: params.key,
-    name: '切边',
+    name: '修边',
     spec: `${trimWidth}mm`,
     weight: trimWeight == null ? '-' : formatKg(trimWeight),
     status: 'trim',
   }
+}
+
+function estimateTrimWeight(sourceWeight: number, sourceWidth?: number, trimWidth?: number): number | undefined {
+  if (!sourceWidth || !trimWidth || sourceWeight <= 0) return undefined
+  return sourceWeight * trimWidth / sourceWidth
 }
 
 function trimToStageOutput(trim: PrintRouteOutput, sample?: StageOutputVO): StageOutputVO {
@@ -197,10 +234,12 @@ function trimToStageOutput(trim: PrintRouteOutput, sample?: StageOutputVO): Stag
     outputSort: 999,
     outputType: 0,
     outputStatus: 0,
-    paperName: '切边',
+    paperName: '修边',
+    isRemain: 1,
     finishWidth: Number(trim.spec.replace('mm', '')),
     estimateWeight: Number(trim.weight.replace(/kg|,/g, '')) || undefined,
-    sourceStepType: 1,
+    sourceStepType: sample?.sourceStepType,
+    remark: '修边/余料',
   }
 }
 
@@ -222,6 +261,7 @@ function singleStageRequirement(
   step?: ProcessStep,
 ): string {
   const stepType = step?.stepType ?? production.mainStepType
+  const deliverableOutputs = outputs.filter(isDeliverableProductionFinish)
   if (stepType === 1) {
     const sourceWidth = production.originalWidth
     const sourceWeight = (production.rollWeight ?? 0) * (production.pieceNum ?? 1)
@@ -229,13 +269,13 @@ function singleStageRequirement(
       sourceWidth,
       sourceWeight,
       knifeCount: step?.knifeCount,
-      outputs: outputs.map((item) => ({ width: item.finishWidth, status: 'final' })),
+      outputs: deliverableOutputs.map((item) => ({ width: item.finishWidth, status: 'final' })),
     })
   }
   return rewindText({
     source: '原卷',
     sourceWeight: (production.rollWeight ?? 0) * (production.pieceNum ?? 1),
-    outputs: outputs.map((item) => ({
+    outputs: deliverableOutputs.map((item) => ({
       width: item.finishWidth,
       diameter: item.finishDiameter,
       core: item.finishCoreDiameter,
@@ -254,7 +294,7 @@ function sawRequirement(
     sourceWidth: source.width,
     sourceWeight: source.weight,
     knifeCount: step?.knifeCount,
-    outputs: outputs.map((item) => ({
+    outputs: outputs.filter((item) => !isTrimOutput(item)).map((item) => ({
       width: item.finishWidth,
       status: isFinalOutput(item) ? 'final' : 'next',
     })),
@@ -270,7 +310,7 @@ function rewindRequirement(
   return rewindText({
     source,
     sourceWeight: rewindSourceWeight(outputs, allOutputs, step),
-    outputs: outputs.map((item) => ({
+    outputs: outputs.filter((item) => !isTrimOutput(item)).map((item) => ({
       width: item.finishWidth,
       diameter: item.finishDiameter,
       core: item.finishCoreDiameter,
@@ -442,7 +482,22 @@ function isFinalOutput(output: StageOutputVO): boolean {
 }
 
 function isTrimOutput(output: StageOutputVO): boolean {
-  return output.outputNo === '切边' || output.paperName === '切边'
+  return output.isRemain === 1
+    || output.outputNo === '切边'
+    || output.outputNo === '修边'
+    || output.paperName === '切边'
+    || output.paperName === '修边'
+    || output.paperName === '修边/余料'
+    || output.remark === '修边/余料'
+}
+
+function isFinalFinishRoll(item: { isSpare?: number; isRemain?: number; rollNoStatus?: number }): boolean {
+  return item.isSpare !== 1 && item.isRemain !== 1 && item.rollNoStatus !== 3
+}
+
+function trimTitle(identifier?: string) {
+  if (!identifier || identifier === '修边' || identifier === '切边') return '修边'
+  return `修边 ${identifier}`
 }
 
 function rollTitle(seq: number, production: RollProductionVO, isMergeGroup: boolean): string {

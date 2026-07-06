@@ -124,6 +124,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private static final int PRINT_STATUS_PRINTED = 1;
     private static final int IS_SPARE_NO = 0;
     private static final int IS_SPARE_YES = 1;
+    private static final int IS_REMAIN_NO = 0;
+    private static final int IS_REMAIN_YES = 1;
     private static final int ROLL_NO_VOID = 3;
     private static final int ROLL_NO_PRE = 1;
     private static final int PROCESS_MODE_DIRECT_SHIP = 3;
@@ -288,8 +290,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
     private boolean isFormalFinishRoll(FinishRoll roll) {
         boolean formal = roll.getIsSpare() == null || roll.getIsSpare() == IS_SPARE_NO;
+        boolean finalProduct = roll.getIsRemain() == null || roll.getIsRemain() != IS_REMAIN_YES;
         boolean active = roll.getRollNoStatus() == null || roll.getRollNoStatus() != ROLL_NO_VOID;
-        return formal && active;
+        return formal && finalProduct && active;
     }
 
     private boolean isActiveSpareRoll(FinishRoll roll) {
@@ -457,9 +460,20 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         item.setFinishCoreDiameter(output.getFinishCoreDiameter());
         item.setEstimateWeight(output.getEstimateWeight());
         item.setActualWeight(output.getActualWeight());
+        item.setIsRemain(isTrimStageOutput(output) ? IS_REMAIN_YES : IS_REMAIN_NO);
         item.setSourceStepType(output.getSourceStepType());
         item.setSourceSummary(output.getSourceSummary());
+        item.setRemark(output.getRemark());
         return item;
+    }
+
+    private boolean isTrimStageOutput(ProcessStageOutput output) {
+        return "修边/余料".equals(output.getRemark())
+                || "修边/余料".equals(output.getPaperName())
+                || "修边".equals(output.getPaperName())
+                || "切边".equals(output.getPaperName())
+                || "修边".equals(output.getOutputNo())
+                || "切边".equals(output.getOutputNo());
     }
 
     private List<ProcessOrderDetailVO.RewindParamVO> toDetailRewindParams(List<ProcessParam> params) {
@@ -500,6 +514,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             item.setRowSort(finish.getRowSort());
             item.setRollNoStatus(finish.getRollNoStatus());
             item.setIsSpare(finish.getIsSpare());
+            item.setIsRemain(finish.getIsRemain());
             item.setSourceType(finish.getSourceType());
             item.setPaperName(finish.getPaperName());
             item.setGramWeight(finish.getGramWeight());
@@ -508,6 +523,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             item.setFinishCoreDiameter(finish.getFinishCoreDiameter());
             item.setEstimateWeight(finish.getEstimateWeight());
             item.setActualWeight(finish.getActualWeight());
+            item.setTrimWidthShare(finish.getTrimWidthShare());
             item.setTrimWeightShare(finish.getTrimWeightShare());
             item.setFinishStatus(finish.getFinishStatus());
             item.setSources(toDetailSources(relsByFinish.get(finish.getUuid()), rollByUuid));
@@ -1149,6 +1165,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             m.put("uuid", f.getUuid());
             m.put("finish_roll_no", f.getFinishRollNo());
             m.put("is_spare", f.getIsSpare());
+            m.put("is_remain", f.getIsRemain());
             m.put("paper_name", f.getPaperName());
             m.put("finish_width", f.getFinishWidth());
             m.put("finish_diameter", f.getFinishDiameter());
@@ -1184,7 +1201,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 throw new BusinessException("原纸缺少主工序，不能打印：" + finishOriginalKey(roll));
             }
             boolean hasFinish = finishRolls.stream().anyMatch(finish -> finishOriginalKey(roll).equals(finish.getOriginalRollNos())
-                    && finish.getIsSpare() != null && finish.getIsSpare() == IS_SPARE_NO);
+                    && isFormalFinishRoll(finish));
             if (!hasFinish) {
                 throw new BusinessException("原纸尚未配置正式成品号，不能打印：" + finishOriginalKey(roll));
             }
@@ -1292,9 +1309,13 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             if (f.getFinishRollNo() == null) {
                 continue;
             }
-            if (IS_SPARE_YES == f.getIsSpare()) {
+            if (IS_REMAIN_YES == (f.getIsRemain() == null ? 0 : f.getIsRemain())) {
+                continue;
+            }
+            int spareFlag = f.getIsSpare() == null ? IS_SPARE_NO : f.getIsSpare();
+            if (spareFlag == IS_SPARE_YES) {
                 spare.add(f.getFinishRollNo());
-            } else if (IS_SPARE_NO == f.getIsSpare()) {
+            } else if (isFormalFinishRoll(f)) {
                 formal.add(f.getFinishRollNo());
             }
         }
@@ -1786,6 +1807,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             m.put("source_type", f.getSourceType());
             m.put("roll_no_status", f.getRollNoStatus());
             m.put("finish_status", f.getFinishStatus());
+            m.put("is_remain", f.getIsRemain());
             m.put("actual_weight", f.getActualWeight());
             m.put("scrap_weight", f.getScrapWeight());
             m.put("trim_weight_share", f.getTrimWeightShare());
@@ -2190,7 +2212,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 new LambdaQueryWrapper<FinishRoll>().eq(FinishRoll::getOrderUuid, orderUuid));
         BigDecimal sum = BigDecimal.ZERO;
         for (FinishRoll f : finishRolls) {
-            if (f.getActualWeight() != null) {
+            if (isFormalFinishRoll(f) && f.getActualWeight() != null) {
                 sum = sum.add(f.getActualWeight());
             }
         }
@@ -2313,6 +2335,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 .map(segment -> segment.getSegmentRatio() == null ? BigDecimal.ONE : segment.getSegmentRatio())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal weightedTrimWidth = BigDecimal.ZERO;
+        int trimCount = 0;
         int fallbackSort = 1;
         for (RewindPlanPreviewDTO.RewindSegmentDTO segment : dto.getSegments()) {
             int repeatCount = segment.getRepeatCount() == null ? 1 : segment.getRepeatCount();
@@ -2320,7 +2343,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                     ? resolveConsumedSegmentRatio(segment, sourceRolls, ratioTotal)
                     : resolveSegmentRatio(segment, ratioTotal);
             int layoutWidth = calcLayoutWidth(segment, LAYOUT_ITEM_FINISH);
-            int trimWidth = calcTrimWidth(originalWidth, segment);
+            int trimWidth = calcTrimWidth(dto.getRewindMode(), originalWidth, segment);
             String sourceSummary = sourceSummary(dto.getRewindMode(), segment, sourceRolls);
             FinishPreviewVO.SegmentPreview segmentPreview = new FinishPreviewVO.SegmentPreview();
             segmentPreview.setSegmentSort(segment.getSegmentSort() == null ? fallbackSort : segment.getSegmentSort());
@@ -2329,6 +2352,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             segmentPreview.setRepeatCount(repeatCount);
             segmentPreview.setLayoutWidth(layoutWidth);
             segmentPreview.setTrimWidth(trimWidth);
+            segmentPreview.setTrimWeight(calcSegmentTrimWeight(totalWeight, trimWidth, segmentRatio, originalWidth));
             segmentPreview.setSummary(buildSegmentSummary(segment));
             segmentPreviews.add(segmentPreview);
 
@@ -2357,6 +2381,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 }
                 if (!repeatPieces.isEmpty() && trimWidth > 0) {
                     weightedTrimWidth = weightedTrimWidth.add(BigDecimal.valueOf(trimWidth).multiply(repeatedSegmentRatio));
+                    trimCount++;
                 }
                 pieces.addAll(repeatPieces);
             }
@@ -2370,17 +2395,27 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         vo.setRewindMode(dto.getRewindMode());
         vo.setOriginalWidth(roll.getOriginalWidth());
         vo.setFinishCount(finishes.size());
-        vo.setTrimCount(pieces.stream().mapToInt(piece -> piece.trimWidth > 0 ? 1 : 0).sum());
+        vo.setTrimCount(trimCount);
         vo.setSpareCount(dto.getSpareCount() == null ? 0 : dto.getSpareCount());
         vo.setTotalEstimateWeight(finishes.stream()
                 .map(FinishPreviewVO.FinishItemPreview::getEstimateWeight)
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
-        vo.setTotalTrimWeight(finishes.stream()
-                .map(FinishPreviewVO.FinishItemPreview::getTrimWeight)
+        vo.setTotalTrimWeight(segmentPreviews.stream()
+                .map(FinishPreviewVO.SegmentPreview::getTrimWeight)
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
         vo.setSegments(segmentPreviews);
         vo.setFinishes(finishes);
         return vo;
+    }
+
+    private BigDecimal calcSegmentTrimWeight(BigDecimal totalWeight, int trimWidth, BigDecimal segmentRatio,
+                                             int originalWidth) {
+        if (trimWidth <= 0 || originalWidth <= 0 || totalWeight == null || totalWeight.signum() <= 0) {
+            return BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP);
+        }
+        BigDecimal ratio = segmentRatio == null ? BigDecimal.ZERO : segmentRatio;
+        return totalWeight.multiply(BigDecimal.valueOf(trimWidth)).multiply(ratio)
+                .divide(BigDecimal.valueOf(originalWidth), 3, RoundingMode.HALF_UP);
     }
 
     private List<FinishPreviewVO.FinishItemPreview> allocatePreviewWeights(List<PreviewPiece> pieces,
@@ -2550,7 +2585,16 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         return width;
     }
 
-    private int calcTrimWidth(int originalWidth, RewindPlanPreviewDTO.RewindSegmentDTO segment) {
+    private int calcTrimWidth(Integer rewindMode, int originalWidth, RewindPlanPreviewDTO.RewindSegmentDTO segment) {
+        if (segment.getLayoutItems() == null || segment.getLayoutItems().isEmpty()) {
+            return 0;
+        }
+        if (rewindMode != null && rewindMode == 2) {
+            if (calcLayoutWidth(segment, LAYOUT_ITEM_TRIM) > 0) {
+                throw new BusinessException("改直径不变门幅模式不能配置修边");
+            }
+            return 0;
+        }
         int explicitTrim = calcLayoutWidth(segment, LAYOUT_ITEM_TRIM);
         if (explicitTrim > 0) {
             int totalWidth = calcLayoutWidth(segment, LAYOUT_ITEM_FINISH) + explicitTrim;
@@ -2619,6 +2663,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (isDirectShip(roll)) {
             return;
         }
+        if (isOnSite(roll)) {
+            validateOnSiteConfig(dto);
+            return;
+        }
         if (dto.getFinishSpecs() == null || dto.getFinishSpecs().isEmpty()) {
             if (roll.getMainStepType() != FeeCalculator.STEP_TYPE_REWIND
                     || dto.getRewindSegments() == null || dto.getRewindSegments().isEmpty()) {
@@ -2631,6 +2679,20 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             return;
         }
         validateSawConfig(roll, dto);
+    }
+
+    private void validateOnSiteConfig(FinishConfigSaveDTO dto) {
+        int finishCount = 0;
+        for (FinishConfigSpecDTO spec : dto.getFinishSpecs() == null ? List.<FinishConfigSpecDTO>of() : dto.getFinishSpecs()) {
+            validateSpecType(spec);
+            validateSpecCount(spec);
+            if (!isTrimSpec(spec)) {
+                finishCount += safeCount(spec);
+            }
+        }
+        if (finishCount < 1) {
+            throw new BusinessException("现场定尺至少需要预占一个成品号");
+        }
     }
 
     private void validateFinishSpecBasics(OriginalRoll roll, List<FinishConfigSpecDTO> specs) {
@@ -2700,6 +2762,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
         if (rewindMode == 4) {
             for (FinishConfigSpecDTO spec : dto.getFinishSpecs()) {
+                if (isTrimSpec(spec)) {
+                    continue;
+                }
                 if (spec.getLayers() == null || spec.getLayers().isEmpty()) {
                     throw new BusinessException("内外层分层模式必须填写分层参数");
                 }
@@ -2713,6 +2778,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 rollByUuid.put(sourceRoll.getUuid(), sourceRoll);
             }
             for (FinishConfigSpecDTO spec : dto.getFinishSpecs()) {
+                if (isTrimSpec(spec)) {
+                    continue;
+                }
                 if (spec.getSources() == null || spec.getSources().isEmpty()) {
                     throw new BusinessException("多母卷合并复卷必须选择来源原纸");
                 }
@@ -2849,6 +2917,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     private List<FinishConfigSpecDTO> buildSawSaveSpecs(OriginalRoll roll, FinishConfigSaveDTO dto) {
+        if (isOnSite(roll)) {
+            return buildOnSiteSaveSpecs(dto.getFinishSpecs());
+        }
         return sawPlanPreviewer.saveSpecs(dto.getFinishSpecs(), roll);
     }
 
@@ -2856,13 +2927,33 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (roll.getMainStepType() == null || roll.getMainStepType() != FeeCalculator.STEP_TYPE_SAW) {
             return dto.getKnifeCount();
         }
+        if (isOnSite(roll)) {
+            return dto.getKnifeCount();
+        }
         List<FinishConfigSpecDTO> specs = dto.getFinishSpecs() == null ? List.of() : dto.getFinishSpecs();
-        int trimWidth = specs.stream()
-                .filter(this::isTrimSpec)
-                .mapToInt(spec -> (spec.getFinishWidth() == null ? 0 : spec.getFinishWidth()) * safeCount(spec))
-                .sum();
+        int trimWidth = sawPlanPreviewer.effectiveTrimWidth(specs, roll);
         int derived = sawPlanPreviewer.knifeCount(sawPlanPreviewer.finishSpecs(specs), trimWidth);
         return derived > 0 ? derived : dto.getKnifeCount();
+    }
+
+    private List<FinishConfigSpecDTO> buildOnSiteSaveSpecs(List<FinishConfigSpecDTO> specs) {
+        List<FinishConfigSpecDTO> result = new ArrayList<>();
+        for (FinishConfigSpecDTO spec : specs == null ? List.<FinishConfigSpecDTO>of() : specs) {
+            if (isTrimSpec(spec)) {
+                continue;
+            }
+            for (int i = 0; i < safeCount(spec); i++) {
+                FinishConfigSpecDTO row = new FinishConfigSpecDTO();
+                row.setItemType(LAYOUT_ITEM_FINISH);
+                row.setCount(1);
+                row.setFinishWidth(spec.getFinishWidth());
+                row.setFinishDiameter(spec.getFinishDiameter());
+                row.setFinishCoreDiameter(spec.getFinishCoreDiameter());
+                row.setEstimateWeight(BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP));
+                result.add(row);
+            }
+        }
+        return result;
     }
 
     private boolean isTrimSpec(FinishConfigSpecDTO spec) {
@@ -2901,12 +2992,15 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private void saveRewindParams(ProcessOrder order, OriginalRoll roll, ProcessStep mainStep,
                                    FinishConfigSaveDTO dto, List<FinishConfigSpecDTO> specs) {
         Integer rewindMode = dto.getRewindMode();
-        if (rewindMode == null) {
+        if (rewindMode == null || isOnSite(roll)) {
             return;
         }
         int paramMode = rewindMode;
         for (int specIndex = 0; specIndex < specs.size(); specIndex++) {
             FinishConfigSpecDTO spec = specs.get(specIndex);
+            if (isTrimSpec(spec)) {
+                continue;
+            }
             if (rewindMode == 4 && spec.getLayers() != null) {
                 for (int layerIndex = 0; layerIndex < spec.getLayers().size(); layerIndex++) {
                     FinishConfigSpecDTO.FinishLayerDTO layer = spec.getLayers().get(layerIndex);
@@ -2949,7 +3043,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private void saveFinishOriginalRelIfNeeded(ProcessOrder order, OriginalRoll roll, FinishConfigSaveDTO dto,
                                               FinishConfigSpecDTO spec, FinishRoll finish) {
         if (dto.getRewindMode() != null && dto.getRewindMode() == 5) {
-            for (FinishConfigSpecDTO.FinishSourceDTO source : spec.getSources()) {
+            List<FinishConfigSpecDTO.FinishSourceDTO> sources = spec.getSources() == null ? List.of() : spec.getSources();
+            for (FinishConfigSpecDTO.FinishSourceDTO source : sources) {
                 FinishOriginalRel rel = new FinishOriginalRel();
                 rel.setOrderUuid(order.getUuid());
                 rel.setFinishUuid(finish.getUuid());
@@ -2974,15 +3069,21 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     private List<FinishConfigSpecDTO> buildRewindSaveSpecs(String orderUuid, OriginalRoll roll, FinishConfigSaveDTO dto) {
+        if (isOnSite(roll)) {
+            return buildOnSiteSaveSpecs(dto.getFinishSpecs());
+        }
         if (dto.getRewindSegments() != null && !dto.getRewindSegments().isEmpty()) {
             RewindPlanPreviewDTO previewDto = new RewindPlanPreviewDTO();
             previewDto.setRewindMode(dto.getRewindMode());
             previewDto.setSpareCount(dto.getSpareCount());
             previewDto.setSegments(dto.getRewindSegments());
             FinishPreviewVO preview = buildRewindPreview(orderUuid, roll, previewDto);
-            List<FinishConfigSpecDTO> specs = new ArrayList<>(preview.getFinishes().size());
-            for (FinishPreviewVO.FinishItemPreview finish : preview.getFinishes()) {
+            List<FinishPreviewVO.FinishItemPreview> previewFinishes = preview.getFinishes() == null ? List.of() : preview.getFinishes();
+            List<FinishPreviewVO.SegmentPreview> previewSegments = preview.getSegments() == null ? List.of() : preview.getSegments();
+            List<FinishConfigSpecDTO> specs = new ArrayList<>(previewFinishes.size() + previewSegments.size());
+            for (FinishPreviewVO.FinishItemPreview finish : previewFinishes) {
                 FinishConfigSpecDTO spec = new FinishConfigSpecDTO();
+                spec.setItemType(LAYOUT_ITEM_FINISH);
                 spec.setCount(1);
                 spec.setFinishWidth(finish.getFinishWidth());
                 spec.setFinishDiameter(finish.getFinishDiameter());
@@ -2994,9 +3095,34 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 }
                 specs.add(spec);
             }
+            specs.addAll(buildRewindTrimSaveSpecs(preview, dto));
             return specs;
         }
         return applyRewindEstimateWeights(orderUuid, roll, dto);
+    }
+
+    private List<FinishConfigSpecDTO> buildRewindTrimSaveSpecs(FinishPreviewVO preview, FinishConfigSaveDTO dto) {
+        if (preview.getSegments() == null || preview.getSegments().isEmpty()) {
+            return List.of();
+        }
+        List<FinishConfigSpecDTO> specs = new ArrayList<>();
+        for (FinishPreviewVO.SegmentPreview segment : preview.getSegments()) {
+            if (segment.getTrimWidth() == null || segment.getTrimWidth() <= 0) {
+                continue;
+            }
+            FinishConfigSpecDTO spec = new FinishConfigSpecDTO();
+            spec.setItemType(LAYOUT_ITEM_TRIM);
+            spec.setCount(1);
+            spec.setFinishWidth(segment.getTrimWidth());
+            spec.setEstimateWeight(segment.getTrimWeight() == null
+                    ? BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP)
+                    : segment.getTrimWeight().setScale(3, RoundingMode.HALF_UP));
+            if (dto.getRewindMode() != null && dto.getRewindMode() == 5) {
+                spec.setSources(resolveSegmentSources(dto.getRewindSegments(), segment.getSegmentSort()));
+            }
+            specs.add(spec);
+        }
+        return specs;
     }
 
     private List<FinishConfigSpecDTO.FinishSourceDTO> resolveSegmentSources(
@@ -3020,18 +3146,36 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (specs == null || specs.isEmpty()) {
             return List.of();
         }
+        List<FinishConfigSpecDTO> finishSpecs = specs.stream()
+                .filter(spec -> !isTrimSpec(spec))
+                .toList();
+        List<FinishConfigSpecDTO> trimSpecs = specs.stream()
+                .filter(this::isTrimSpec)
+                .toList();
+        if (dto.getRewindMode() != null && dto.getRewindMode() == 2 && !trimSpecs.isEmpty()) {
+            throw new BusinessException("改直径不变门幅模式不能配置修边");
+        }
         BigDecimal totalWeight = dto.getRewindMode() != null && dto.getRewindMode() == 5
-                ? calcSourceTotalWeight(orderUuid, specs)
+                ? calcSourceTotalWeight(orderUuid, finishSpecs)
                 : calcTotalWeight(roll.getRollWeight(), roll.getPieceNum());
         BigDecimal trimWidth = BigDecimal.ZERO;
         if (roll.getOriginalWidth() != null && roll.getOriginalWidth() > 0 && dto.getRewindMode() != null && dto.getRewindMode() != 2 && dto.getRewindMode() != 5) {
-            int totalFinishWidth = specs.stream().mapToInt(spec -> spec.getFinishWidth() == null ? 0 : spec.getFinishWidth() * spec.getCount()).sum();
-            trimWidth = BigDecimal.valueOf(Math.max(0, roll.getOriginalWidth() - totalFinishWidth));
+            int explicitTrimWidth = trimSpecs.stream()
+                    .mapToInt(spec -> (spec.getFinishWidth() == null ? 0 : spec.getFinishWidth()) * safeCount(spec))
+                    .sum();
+            int totalFinishWidth = finishSpecs.stream()
+                    .mapToInt(spec -> (spec.getFinishWidth() == null ? 0 : spec.getFinishWidth()) * safeCount(spec))
+                    .sum();
+            if (totalFinishWidth > roll.getOriginalWidth()
+                    || (explicitTrimWidth > 0 && totalFinishWidth + explicitTrimWidth > roll.getOriginalWidth())) {
+                throw new BusinessException("复卷门幅排布加修边宽度不能超过原纸门幅");
+            }
+            trimWidth = BigDecimal.valueOf(explicitTrimWidth > 0 ? explicitTrimWidth : Math.max(0, roll.getOriginalWidth() - totalFinishWidth));
         }
         BigDecimal originalWidth = roll.getOriginalWidth() == null ? BigDecimal.ZERO : BigDecimal.valueOf(roll.getOriginalWidth());
 
         List<RewindWeightCalculator.PieceInput> pieces = new ArrayList<>();
-        for (FinishConfigSpecDTO spec : specs) {
+        for (FinishConfigSpecDTO spec : finishSpecs) {
             BigDecimal basis = rewindBasis(roll, dto.getRewindMode(), spec);
             for (int i = 0; i < spec.getCount(); i++) {
                 pieces.add(new RewindWeightCalculator.PieceInput(basis, null));
@@ -3046,10 +3190,11 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 BigDecimal.ZERO);
 
         int cursor = 0;
-        List<FinishConfigSpecDTO> expanded = new ArrayList<>(pieces.size());
-        for (FinishConfigSpecDTO spec : specs) {
+        List<FinishConfigSpecDTO> expanded = new ArrayList<>(pieces.size() + (trimWidth.signum() > 0 ? 1 : 0));
+        for (FinishConfigSpecDTO spec : finishSpecs) {
             for (int i = 0; i < spec.getCount(); i++) {
                 FinishConfigSpecDTO nextSpec = new FinishConfigSpecDTO();
+                nextSpec.setItemType(LAYOUT_ITEM_FINISH);
                 nextSpec.setFinishWidth(spec.getFinishWidth());
                 nextSpec.setFinishDiameter(spec.getFinishDiameter());
                 nextSpec.setFinishCoreDiameter(spec.getFinishCoreDiameter());
@@ -3061,7 +3206,25 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 expanded.add(nextSpec);
             }
         }
+        if (trimWidth.signum() > 0) {
+            expanded.add(rewindTrimSpec(trimWidth, totalWeight, originalWidth, trimSpecs));
+        }
         return expanded;
+    }
+
+    private FinishConfigSpecDTO rewindTrimSpec(BigDecimal trimWidth, BigDecimal totalWeight, BigDecimal originalWidth,
+                                               List<FinishConfigSpecDTO> trimSpecs) {
+        FinishConfigSpecDTO spec = new FinishConfigSpecDTO();
+        spec.setItemType(LAYOUT_ITEM_TRIM);
+        spec.setCount(1);
+        spec.setFinishWidth(trimWidth.intValue());
+        spec.setEstimateWeight(originalWidth.signum() > 0
+                ? totalWeight.multiply(trimWidth).divide(originalWidth, 3, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP));
+        if (!trimSpecs.isEmpty()) {
+            spec.setSources(trimSpecs.get(0).getSources());
+        }
+        return spec;
     }
 
     private BigDecimal calcSourceTotalWeight(String orderUuid, List<FinishConfigSpecDTO> specs) {
@@ -3159,10 +3322,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private FinishRoll buildFinishRoll(ProcessOrder order, OriginalRoll roll, FinishConfigSpecDTO spec,
                                        int rowSort, int isSpare) {
         FinishRoll finish = new FinishRoll();
+        boolean trimSpec = spec != null && isTrimSpec(spec);
         finish.setOrderUuid(order.getUuid());
         finish.setRowSort(rowSort);
         finish.setRollNoStatus(ROLL_NO_PRE);
         finish.setIsSpare(isSpare);
+        finish.setIsRemain(trimSpec ? IS_REMAIN_YES : IS_REMAIN_NO);
         finish.setPaperName(roll.getPaperName() == null ? "待定" : roll.getPaperName());
         finish.setGramWeight(roll.getGramWeight() == null ? 0 : roll.getGramWeight());
         finish.setSourceType(1);
@@ -3178,6 +3343,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         finish.setFinishCoreDiameter(spec.getFinishCoreDiameter());
         finish.setEstimateWeight(spec.getEstimateWeight());
         finish.setEstimateWeightSnap(spec.getEstimateWeight());
+        if (trimSpec) {
+            finish.setRemark("修边/余料");
+        }
         return finish;
     }
 

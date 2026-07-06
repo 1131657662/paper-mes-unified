@@ -19,6 +19,7 @@ public final class RollLossSummaryCalculator {
     private static final int SOURCE_DIRECT_SHIP = 2;
     private static final int ROLL_NO_VOID = 3;
     private static final int IS_SPARE_YES = 1;
+    private static final int IS_REMAIN_YES = 1;
     private static final BigDecimal HUNDRED = new BigDecimal("100");
 
     private RollLossSummaryCalculator() {
@@ -60,6 +61,10 @@ public final class RollLossSummaryCalculator {
                 continue;
             }
             BigDecimal ratio = rel.getShareRatio() == null ? HUNDRED : rel.getShareRatio();
+            if (isRemainFinish(finish)) {
+                add(lossByRoll, rel.getOriginalUuid(), share(finishWeight(finish), ratio));
+                continue;
+            }
             add(lossByRoll, rel.getOriginalUuid(), share(finish.getScrapWeight(), ratio));
             add(lossByRoll, rel.getOriginalUuid(), share(finish.getTrimWeightShare(), ratio));
         }
@@ -72,6 +77,14 @@ public final class RollLossSummaryCalculator {
         return SOURCE_DIRECT_SHIP == (finish.getSourceType() == null ? 0 : finish.getSourceType())
                 || ROLL_NO_VOID == (finish.getRollNoStatus() == null ? 0 : finish.getRollNoStatus())
                 || IS_SPARE_YES == (finish.getIsSpare() == null ? 0 : finish.getIsSpare());
+    }
+
+    private static boolean isRemainFinish(FinishRoll finish) {
+        return IS_REMAIN_YES == (finish.getIsRemain() == null ? 0 : finish.getIsRemain());
+    }
+
+    private static BigDecimal finishWeight(FinishRoll finish) {
+        return finish.getActualWeight() != null ? finish.getActualWeight() : finish.getEstimateWeight();
     }
 
     private static BigDecimal share(BigDecimal weight, BigDecimal ratio) {

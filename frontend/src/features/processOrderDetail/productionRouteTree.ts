@@ -1,4 +1,9 @@
-import type { FinishProductionVO, StageOutputVO } from '../../types/processOrder'
+import type { FinishProductionVO, RollProductionVO, StageOutputVO } from '../../types/processOrder'
+import {
+  activeFinishesWithFallbackTrim,
+  isStageTrimOutput,
+  stageOutputsWithFallbackTrim,
+} from './productionRouteTrimFallback'
 
 export interface RouteNode {
   appendable: boolean
@@ -16,15 +21,18 @@ export interface RouteNode {
 
 const OUTPUT_CONSUMED = 2
 const OUTPUT_VOID = 4
-const ROLL_NO_VOID = 3
 
 export function buildRouteTree(
   outputs: StageOutputVO[],
   finishes: FinishProductionVO[],
   fallbackProcessLabel = '首道加工',
+  production?: RollProductionVO,
 ): RouteNode[] {
-  const activeOutputRows = outputs.filter((output) => output.outputStatus !== OUTPUT_VOID)
-  if (!activeOutputRows.length) return activeFinishes(finishes).map((finish) => toFinishNode(finish, fallbackProcessLabel))
+  const activeOutputRows = stageOutputsWithFallbackTrim(outputs, production)
+  if (!activeOutputRows.length) {
+    return activeFinishesWithFallbackTrim(finishes, production)
+      .map((finish) => toFinishNode(finish, fallbackProcessLabel))
+  }
 
   const nodes = new Map(activeOutputRows.map((output) => [output.uuid, toStageNode(output)]))
   const childrenByParent = new Map<string, RouteNode[]>()
@@ -48,43 +56,46 @@ export function buildRouteTree(
 }
 
 function toStageNode(output: StageOutputVO): RouteNode {
+  const remain = isStageTrimOutput(output)
   return {
     children: [],
     key: output.uuid,
     level: output.stageLevel ?? 1,
-    title: output.outputNo || `产物 ${output.outputSort ?? '-'}`,
+    title: remain ? trimTitle(output.outputNo) : output.outputNo || `产物 ${output.outputSort ?? '-'}`,
     meta: formatSpec(output.paperName, output.gramWeight, output.finishWidth),
     weight: output.estimateWeight,
     processLabel: output.sourceSummary || stepTypeText(output.sourceStepType),
-    statusColor: outputStatusColor(output.outputStatus),
-    statusText: outputStatusText(output.outputStatus),
-    outputKey: output.outputNo || output.uuid,
-    appendable: isAppendableOutput(output),
+    statusColor: remain ? 'orange' : outputStatusColor(output.outputStatus),
+    statusText: remain ? '修边/余料' : outputStatusText(output.outputStatus),
+    outputKey: remain ? undefined : output.outputNo || output.uuid,
+    appendable: !remain && isAppendableOutput(output),
   }
 }
 
 function toFinishNode(finish: FinishProductionVO, processLabel: string): RouteNode {
+  const isRemain = finish.isRemain === 1
   return {
     children: [],
     key: finish.uuid,
     level: 1,
-    title: finish.finishRollNo || `成品 ${finish.rowSort ?? '-'}`,
+    title: isRemain ? trimTitle(finish.finishRollNo) : finish.finishRollNo || `成品 ${finish.rowSort ?? '-'}`,
     meta: formatSpec(finish.paperName, finish.gramWeight, finish.finishWidth),
     weight: finish.estimateWeight,
     processLabel,
-    statusColor: 'green',
-    statusText: '最终成品',
-    outputKey: finish.finishRollNo || (finish.uuid ? `F:${finish.uuid}` : undefined),
-    appendable: true,
+    statusColor: isRemain ? 'orange' : 'green',
+    statusText: isRemain ? '修边/余料' : '最终成品',
+    outputKey: isRemain ? undefined : finish.finishRollNo || (finish.uuid ? `F:${finish.uuid}` : undefined),
+    appendable: !isRemain,
   }
-}
-
-function activeFinishes(finishes: FinishProductionVO[]) {
-  return finishes.filter((finish) => finish.rollNoStatus !== ROLL_NO_VOID && finish.isSpare !== 1)
 }
 
 function isAppendableOutput(output: StageOutputVO) {
   return output.outputStatus !== OUTPUT_CONSUMED && output.outputStatus !== OUTPUT_VOID
+}
+
+function trimTitle(identifier?: string) {
+  if (!identifier || identifier === '修边' || identifier === '切边') return '修边'
+  return `修边 ${identifier}`
 }
 
 function sortNodes(nodes: RouteNode[]) {

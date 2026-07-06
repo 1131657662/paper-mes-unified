@@ -170,7 +170,7 @@ function OutputRow({ output }: { output: PrintRouteOutput }) {
 
 function outputStatusText(status: PrintRouteOutput['status']) {
   if (status === 'next') return '进入下道'
-  if (status === 'trim') return '切边'
+  if (status === 'trim') return '修边'
   return '最终交付'
 }
 

@@ -27,6 +27,7 @@ public class FinishPreviewVO {
         private Integer repeatCount;
         private Integer layoutWidth;
         private Integer trimWidth;
+        private BigDecimal trimWeight;
         private String summary;
     }
 

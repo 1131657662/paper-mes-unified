@@ -18,12 +18,13 @@ public class SawPlanPreviewer {
 
     private static final String ITEM_FINISH = "FINISH";
     private static final String ITEM_TRIM = "TRIM";
+    private static final int PROCESS_MODE_STANDARD = 1;
 
     public PlanPreviewVO preview(ProcessPlanDTO plan, OriginalRoll roll) {
         PlanPreviewVO vo = shell(plan, roll);
         List<FinishConfigSpecDTO> specs = plan.getFinishSpecs() == null ? List.of() : plan.getFinishSpecs();
         List<FinishConfigSpecDTO> finishes = finishSpecs(specs);
-        int trimWidth = trimWidth(specs);
+        int trimWidth = effectiveTrimWidth(specs, roll);
         int finishWidth = widthTotal(finishes);
         int originalWidth = roll.getOriginalWidth() == null ? 0 : roll.getOriginalWidth();
         int pieceCount = finishCount(finishes);
@@ -56,17 +57,38 @@ public class SawPlanPreviewer {
     }
 
     public List<FinishConfigSpecDTO> saveSpecs(List<FinishConfigSpecDTO> specs, OriginalRoll roll) {
+        List<FinishConfigSpecDTO> sourceSpecs = specs == null ? List.of() : specs;
         ProcessPlanDTO plan = new ProcessPlanDTO();
         plan.setProcessMode(roll.getProcessMode());
         plan.setMainStepType(1);
         plan.setSpareCount(0);
-        plan.setFinishSpecs(specs);
+        plan.setFinishSpecs(sourceSpecs);
         List<FinishPreviewVO.FinishItemPreview> previews = preview(plan, roll).getFinishes();
-        List<FinishConfigSpecDTO> result = new ArrayList<>(previews.size());
+        List<FinishConfigSpecDTO> result = new ArrayList<>(previews.size() + 1);
         for (FinishPreviewVO.FinishItemPreview item : previews) {
             result.add(toSaveSpec(item));
         }
+        int trimWidth = effectiveTrimWidth(sourceSpecs, roll);
+        if (trimWidth > 0) {
+            result.add(toTrimSaveSpec(roll, trimWidth));
+        }
         return result;
+    }
+
+    public int effectiveTrimWidth(List<FinishConfigSpecDTO> specs, OriginalRoll roll) {
+        if (!isStandardProcess(roll)) {
+            return 0;
+        }
+        List<FinishConfigSpecDTO> sourceSpecs = specs == null ? List.of() : specs;
+        int explicitTrim = trimWidth(sourceSpecs);
+        if (explicitTrim > 0) {
+            return explicitTrim;
+        }
+        int originalWidth = roll.getOriginalWidth() == null ? 0 : roll.getOriginalWidth();
+        if (originalWidth <= 0) {
+            return 0;
+        }
+        return Math.max(0, originalWidth - widthTotal(finishSpecs(sourceSpecs)));
     }
 
     public int knifeCount(List<FinishConfigSpecDTO> specs, int trimWidth) {
@@ -97,6 +119,15 @@ public class SawPlanPreviewer {
         return spec;
     }
 
+    private FinishConfigSpecDTO toTrimSaveSpec(OriginalRoll roll, int trimWidth) {
+        FinishConfigSpecDTO spec = new FinishConfigSpecDTO();
+        spec.setItemType(ITEM_TRIM);
+        spec.setCount(1);
+        spec.setFinishWidth(trimWidth);
+        spec.setEstimateWeight(estimateTrimWeight(roll, trimWidth));
+        return spec;
+    }
+
     private boolean validWidth(PlanPreviewVO vo, int originalWidth, int finishWidth, int trimWidth) {
         if (originalWidth <= 0) {
             return true;
@@ -112,7 +143,7 @@ public class SawPlanPreviewer {
     private List<FinishPreviewVO.FinishItemPreview> toPreviewRows(List<FinishConfigSpecDTO> specs, OriginalRoll roll,
                                                                   int trimWidth, BigDecimal trimWeight) {
         List<FinishPreviewVO.FinishItemPreview> rows = new ArrayList<>();
-        BigDecimal totalWeight = totalWeight(roll).subtract(trimWeight);
+        BigDecimal totalWeight = isStandardProcess(roll) ? totalWeight(roll).subtract(trimWeight) : BigDecimal.ZERO;
         BigDecimal widthBasis = BigDecimal.valueOf(widthTotal(specs));
         BigDecimal allocated = BigDecimal.ZERO;
         int totalCount = finishCount(specs);
@@ -198,6 +229,10 @@ public class SawPlanPreviewer {
 
     private String itemType(FinishConfigSpecDTO spec) {
         return StringUtils.hasText(spec.getItemType()) ? spec.getItemType().trim().toUpperCase() : ITEM_FINISH;
+    }
+
+    private boolean isStandardProcess(OriginalRoll roll) {
+        return roll.getProcessMode() == null || roll.getProcessMode() == PROCESS_MODE_STANDARD;
     }
 
     private String summary(int finishCount, int knifeCount, int finishWidth, int trimWidth) {

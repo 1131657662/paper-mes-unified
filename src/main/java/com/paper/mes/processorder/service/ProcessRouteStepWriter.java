@@ -30,6 +30,7 @@ public class ProcessRouteStepWriter {
     private static final int OUTPUT_FINAL = 2;
     private static final int OUTPUT_PLANNED = 1;
     private static final int OUTPUT_CONSUMED = 2;
+    private static final int IS_REMAIN_YES = 1;
 
     private final ProcessStepMapper processStepMapper;
     private final ProcessStageOutputMapper stageOutputMapper;
@@ -192,8 +193,12 @@ public class ProcessRouteStepWriter {
         row.setEstimateWeight(output.getEstimateWeight());
         row.setSourceStepType(stage.getStepType());
         row.setSourceSummary(step.getStepName());
-        row.setRemark(output.getRemark());
+        row.setRemark(isRemainOutput(output) ? "修边/余料" : output.getRemark());
         return row;
+    }
+
+    private boolean isRemainOutput(ProcessRoutePreviewVO.RouteOutputVO output) {
+        return output.getIsRemain() != null && output.getIsRemain() == IS_REMAIN_YES;
     }
 
     private ProcessStageOutput firstInputOutput(ProcessRoutePreviewDTO.RouteStageDTO stage,

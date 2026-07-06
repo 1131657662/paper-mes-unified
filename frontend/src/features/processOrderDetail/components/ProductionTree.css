@@ -95,6 +95,11 @@
   background: #f6ffed;
 }
 
+.production-pill--trim {
+  border-color: #ffd591;
+  background: #fff7e6;
+}
+
 .production-route-map {
   display: flex;
   flex-direction: column;

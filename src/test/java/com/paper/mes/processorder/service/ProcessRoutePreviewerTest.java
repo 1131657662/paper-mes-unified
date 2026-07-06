@@ -85,6 +85,32 @@ class ProcessRoutePreviewerTest {
     }
 
     @Test
+    void preview_whenOutputIsTrim_marksRemainOutput() {
+        ProcessRoutePreviewDTO dto = new ProcessRoutePreviewDTO();
+        dto.setOriginalUuid("roll-1");
+        dto.setStages(List.of(trimSawStage()));
+
+        ProcessRoutePreviewVO preview = previewer.preview(roll(), dto);
+
+        ProcessRoutePreviewVO.RouteOutputVO trim = preview.getOutputs().get(1);
+        assertEquals("stage-trim", trim.getOutputKey());
+        assertEquals(1, trim.getIsRemain());
+        assertFalse(trim.getConsumedByNextStage());
+    }
+
+    @Test
+    void preview_whenNextStageReferencesTrim_throwsBusinessException() {
+        ProcessRoutePreviewDTO dto = new ProcessRoutePreviewDTO();
+        dto.setOriginalUuid("roll-1");
+        dto.setStages(List.of(
+                trimSawStage(),
+                rewindStage("stage-trim")
+        ));
+
+        assertThrows(BusinessException.class, () -> previewer.preview(roll(), dto));
+    }
+
+    @Test
     void preview_whenRewindConsumesTwoOutputs_chargesCombinedWeight() {
         ProcessRoutePreviewVO preview = previewer.preview(roll(), sawThenRewindBothOutputsRoute());
 
@@ -162,6 +188,17 @@ class ProcessRoutePreviewerTest {
         return stage;
     }
 
+    private ProcessRoutePreviewDTO.RouteStageDTO trimSawStage() {
+        ProcessRoutePreviewDTO.RouteStageDTO stage = stage(1, FeeCalculator.STEP_TYPE_SAW, "锯纸");
+        stage.setKnifeCount(1);
+        stage.setUnitPrice(new BigDecimal("8"));
+        stage.setOutputs(List.of(
+                output("stage-output-a", new BigDecimal("900.000")),
+                trimOutput("stage-trim", new BigDecimal("100.000"))
+        ));
+        return stage;
+    }
+
     private ProcessRoutePreviewDTO.RouteStageDTO rewindStage(String outputKey) {
         return rewindStage(List.of(outputKey), "stage-output-finish");
     }
@@ -201,6 +238,13 @@ class ProcessRoutePreviewerTest {
         output.setGramWeight(450);
         output.setFinishWidth(1250);
         output.setEstimateWeight(weight);
+        return output;
+    }
+
+    private ProcessRoutePreviewDTO.RouteOutputDTO trimOutput(String key, BigDecimal weight) {
+        ProcessRoutePreviewDTO.RouteOutputDTO output = output(key, weight);
+        output.setIsRemain(1);
+        output.setRemark("修边/余料");
         return output;
     }
 
