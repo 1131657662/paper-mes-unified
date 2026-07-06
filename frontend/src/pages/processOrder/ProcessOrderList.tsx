@@ -242,3 +242,8 @@ export default function ProcessOrderList() {
     </>
   )
 }
+
+function tableDensityMode(rowCount: number, pageSize: number) {
+  if (rowCount === 0) return 'empty'
+  return rowCount < pageSize ? 'short' : 'fill'
+}

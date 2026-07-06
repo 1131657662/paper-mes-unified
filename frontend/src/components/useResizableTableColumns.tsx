@@ -19,12 +19,14 @@ interface ResizableColumn<RecordType> {
   width?: number | string
 }
 
+type ColumnWidths = Record<string, number>
+
 export function useResizableTableColumns<
   RecordType,
   ColumnType,
 >(columns: ColumnType[], storageKey: string) {
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
-  const [widths, setWidths] = useState(() => loadNormalizedWidths<RecordType, ColumnType>(columns, storageKey))
+  const [widths, setWidths] = useState<ColumnWidths>(() => loadNormalizedWidths<RecordType, ColumnType>(columns, storageKey))
 
   useEffect(() => {
     const reset = (event: Event) => {
@@ -96,6 +98,27 @@ function numericWidth(width: number | string | undefined) {
   return typeof width === 'number' ? width : undefined
 }
 
+function loadNormalizedWidths<RecordType, ColumnType>(columns: ColumnType[], storageKey: string): ColumnWidths {
+  const savedWidths = loadResizableTableWidths(storageKey)
+  return columns.reduce<ColumnWidths>((result, column) => {
+    const resizableColumn = column as ResizableColumn<RecordType>
+    const key = columnKey(resizableColumn)
+    if (!key || savedWidths[key] == null) return result
+    result[key] = clampWidth(savedWidths[key], columnMinWidth(resizableColumn, key))
+    return result
+  }, {})
+}
+
+function columnMinWidth<RecordType>(
+  column: ResizableColumn<RecordType>,
+  key: string | undefined,
+) {
+  const defaultWidth = key && isActionColumn(column, key) ? 168 : resizableColumnMinWidth
+  const width = column.minWidth
+  if (typeof width !== 'number' || !Number.isFinite(width)) return defaultWidth
+  return Math.max(defaultWidth, Math.min(resizableColumnMaxWidth, Math.round(width)))
+}
+
 function resolvedWidth<RecordType>(
   column: ResizableColumn<RecordType>,
   key: string | undefined,
@@ -104,9 +127,15 @@ function resolvedWidth<RecordType>(
 ) {
   const baseWidth = numericWidth(column.width)
   if (key && isActionColumn(column, key)) return baseWidth
-  return savedWidth ?? baseWidth
+  const width = savedWidth ?? baseWidth
+  if (!width) return width
+  return clampWidth(width, minWidth)
 }
 
 function isActionColumn<RecordType>(column: ResizableColumn<RecordType>, key: string) {
   return key === 'actions' || key === 'operation' || column.valueType === 'option'
+}
+
+function clampWidth(width: number, minWidth: number) {
+  return Math.max(minWidth, Math.min(resizableColumnMaxWidth, Math.round(width)))
 }

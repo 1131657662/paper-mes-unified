@@ -72,7 +72,9 @@ createRoot(document.getElementById('root')!).render(
             },
           }}
         >
-          <RouterProvider router={router} />
+          <ProConfigProvider intl={zhCNIntl}>
+            <RouterProvider router={router} />
+          </ProConfigProvider>
         </ConfigProvider>
       </QueryClientProvider>
     </ErrorBoundary>

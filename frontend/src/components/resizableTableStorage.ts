@@ -25,3 +25,16 @@ export function resetResizableTableWidths(storageKey: string) {
 function widthStorageKey(storageKey: string) {
   return `table_cols_${storageKey}`
 }
+
+function parseColumnWidths(value: unknown): ColumnWidths {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  return Object.entries(value as Record<string, unknown>).reduce<ColumnWidths>((result, [key, width]) => {
+    if (typeof width === 'number' && Number.isFinite(width)) {
+      result[key] = Math.max(
+        resizableColumnMinWidth,
+        Math.min(resizableColumnMaxWidth, Math.round(width)),
+      )
+    }
+    return result
+  }, {})
+}
