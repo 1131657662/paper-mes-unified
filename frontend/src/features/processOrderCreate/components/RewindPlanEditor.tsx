@@ -8,6 +8,11 @@ import type {
 } from '../../../types/processOrder'
 import { sourceOptionsFromRolls } from '../rewindSourceUtils'
 import { appendRemainingTrim } from '../rewindWidthUsage'
+import {
+  defaultRewindSegment,
+  normalizeLayeredRewindPlan,
+  normalizeLayeredRewindSegments,
+} from '../rewindLayerPlanUtils'
 import type { RollDraft } from '../types'
 import RewindWidthSummary from './RewindWidthSummary'
 import { RewindSourceEditor, RewindSourceUsageSummary } from './RewindSourceEditor'
@@ -30,24 +35,28 @@ const modeOptions = [
 ]
 
 export default function RewindPlanEditor({ plan, roll, rolls, onChange }: Props) {
-  const segments = plan.segments?.length ? plan.segments : [defaultSegment(roll)]
+  const mode = plan.rewindMode ?? 2
+  const rawSegments = plan.segments?.length ? plan.segments : [defaultRewindSegment(roll)]
+  const segments = mode === 4 ? normalizeLayeredRewindSegments(rawSegments, roll) : rawSegments
   const sourceOptions = sourceOptionsFromRolls(rolls)
-  const updateSegments = (next: RewindSegmentPlanDTO[]) => onChange({ ...plan, segments: next })
+  const updateSegments = (next: RewindSegmentPlanDTO[]) => {
+    onChange(normalizeLayeredRewindPlan({ ...plan, rewindMode: mode, segments: next }, roll))
+  }
 
   return (
     <Space className="create-editor-stack" direction="vertical" size={12}>
       <Select
-        value={plan.rewindMode ?? 2}
+        value={mode}
         options={modeOptions}
         className="create-editor-mode-select"
         onChange={(value) => onChange(planWithMode(plan, roll, value))}
       />
-      {(plan.rewindMode ?? 2) === 5 && <RewindSourceUsageSummary segments={segments} sourceOptions={sourceOptions} />}
+      {mode === 5 && <RewindSourceUsageSummary segments={segments} sourceOptions={sourceOptions} />}
       {segments.map((segment, index) => (
         <SegmentCard
           key={index}
           index={index}
-          mode={plan.rewindMode ?? 2}
+          mode={mode}
           roll={roll}
           rolls={rolls}
           segment={segment}
@@ -56,7 +65,7 @@ export default function RewindPlanEditor({ plan, roll, rolls, onChange }: Props)
           onDelete={() => updateSegments(segments.filter((_, itemIndex) => itemIndex !== index))}
         />
       ))}
-      <Button icon={<PlusOutlined />} onClick={() => updateSegments([...segments, defaultSegment(roll, segments.length + 1)])}>
+      <Button icon={<PlusOutlined />} onClick={() => updateSegments([...segments, defaultRewindSegment(roll, segments.length + 1)])}>
         添加分段
       </Button>
     </Space>
@@ -141,46 +150,23 @@ function LayoutItemsEditor({ mode, segment, onChange }: LayoutItemsEditorProps) 
   )
 }
 
-interface LayoutItemsEditorProps {
-  mode: number
-  segment: RewindSegmentPlanDTO
-  onChange: (segment: RewindSegmentPlanDTO) => void
-}
-
-function defaultSegment(roll: RollDraft, sort = 1): RewindSegmentPlanDTO {
-  return {
-    segmentSort: sort,
-    segmentRatio: 1,
-    targetDiameter: roll.originalDiameter,
-    finishCoreDiameter: roll.coreDiameter ?? 3,
-    repeatCount: 1,
-    sources: roll.uuid ? [{ originalUuid: roll.uuid, shareRatio: 100, consumeRatio: 100, sourceSort: 1 }] : [],
-    layoutItems: [{ width: roll.originalWidth, quantity: 1, itemType: 'FINISH' }],
-  }
-}
-
 function planWithMode(plan: ProcessPlanDTO, roll: RollDraft, rewindMode: number): ProcessPlanDTO {
   if (rewindMode === 4) {
-    return { ...plan, rewindMode, segments: layeredSegments(plan.segments?.length ? plan.segments : [defaultSegment(roll)], roll) }
+    const segments = plan.segments?.length ? plan.segments : [defaultRewindSegment(roll)]
+    return normalizeLayeredRewindPlan({ ...plan, rewindMode, segments }, roll)
   }
   if (rewindMode !== 2) return { ...plan, rewindMode }
-  const segments = (plan.segments?.length ? plan.segments : [defaultSegment(roll)]).map((segment) => ({
+  const segments = (plan.segments?.length ? plan.segments : [defaultRewindSegment(roll)]).map((segment) => ({
     ...segment,
     layoutItems: [{ width: roll.originalWidth ?? 1, quantity: 1, itemType: 'FINISH' as const }],
   }))
   return { ...plan, rewindMode, segments }
 }
 
-function layeredSegments(segments: RewindSegmentPlanDTO[], roll: RollDraft) {
-  return segments.map((segment) => ({
-    ...segment,
-    layoutItems: (segment.layoutItems?.length ? segment.layoutItems : defaultSegment(roll).layoutItems)?.map((item) => (
-      item.itemType === 'TRIM' || item.layers?.length ? item : {
-        ...item,
-        layers: [{ outDiameter: segment.targetDiameter ?? roll.originalDiameter, coreDiameter: segment.finishCoreDiameter ?? roll.coreDiameter ?? 3 }],
-      }
-    )),
-  }))
+interface LayoutItemsEditorProps {
+  mode: number
+  segment: RewindSegmentPlanDTO
+  onChange: (segment: RewindSegmentPlanDTO) => void
 }
 
 function patchSegment(segments: RewindSegmentPlanDTO[], index: number, next: RewindSegmentPlanDTO) {

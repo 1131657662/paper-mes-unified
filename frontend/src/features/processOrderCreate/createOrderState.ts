@@ -13,6 +13,7 @@ import {
   newRollDraft,
   rollDraftFromOriginal,
 } from './draftMappers'
+import { normalizeLayeredRewindPlan } from './rewindLayerPlanUtils'
 import type { RollDraft } from './types'
 
 export interface HydratedCreateOrderState {
@@ -47,7 +48,8 @@ export function hydrateDraftState(draft: DraftOrderVO): HydratedCreateOrderState
   }
 
   for (const roll of safeRolls) {
-    plans[roll.localId] = plans[roll.localId] ?? defaultPlanForRoll(roll)
+    const plan = plans[roll.localId] ?? defaultPlanForRoll(roll)
+    plans[roll.localId] = normalizeLayeredRewindPlan(plan, roll)
   }
 
   return {
@@ -88,7 +90,10 @@ export function rebasePlanForRoll(plan: ProcessPlanDTO, roll: RollDraft): Proces
     })),
     segments: plan.segments?.map((segment) => ({
       ...segment,
-      layoutItems: segment.layoutItems?.map((item) => ({ ...item })),
+      layoutItems: segment.layoutItems?.map((item) => ({
+        ...item,
+        layers: item.layers?.map((layer) => ({ ...layer })),
+      })),
       sources: segment.sources?.map((source) => ({ ...source })),
     })),
   }

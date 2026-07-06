@@ -12,6 +12,7 @@ import {
 } from '../draftMappers'
 import { applyDefaultMachineToPlan, applyDefaultMachinesToRolls } from '../machineDefaults'
 import { mergedSourceUuidSet } from '../rewindConsumptionUtils'
+import { normalizeLayeredRewindPlan } from '../rewindLayerPlanUtils'
 import type { RollDraft } from '../types'
 import { useCreateDraft } from './useCreateDraft'
 import { useGetDraft } from './useGetDraft'
@@ -140,13 +141,18 @@ export function useCreateOrderPage(draftUuid?: string) {
   }
 
   const handlePlanChange = (localId: string, plan: ProcessPlanDTO) => {
-    setPlans((prev) => ({ ...prev, [localId]: plan }))
+    const roll = rolls.find((item) => item.localId === localId)
+    const nextPlan = roll ? normalizeLayeredRewindPlan(plan, roll) : plan
+    setPlans((prev) => ({ ...prev, [localId]: nextPlan }))
   }
 
   const saveRollPlan = async (roll: RollDraft, plan: ProcessPlanDTO, notify = false) => {
     if (!orderUuid || !roll.uuid) return
     const pricedPlan = applyLegacyPlanPriceDefaults(plan, defaultPlanOptions)
-    const nextPlan = applyDefaultMachineToPlan(rebasePlanForRoll(pricedPlan, roll), machines)
+    const nextPlan = normalizeLayeredRewindPlan(
+      applyDefaultMachineToPlan(rebasePlanForRoll(pricedPlan, roll), machines),
+      roll,
+    )
     const preview = await savePlan({
       orderUuid,
       rollUuid: roll.uuid,
@@ -160,7 +166,10 @@ export function useCreateOrderPage(draftUuid?: string) {
   const handlePreviewPlan = async (roll: RollDraft, plan: ProcessPlanDTO) => {
     if (!orderUuid || !roll.uuid) return
     const pricedPlan = applyLegacyPlanPriceDefaults(plan, defaultPlanOptions)
-    const nextPlan = applyDefaultMachineToPlan(rebasePlanForRoll(pricedPlan, roll), machines)
+    const nextPlan = normalizeLayeredRewindPlan(
+      applyDefaultMachineToPlan(rebasePlanForRoll(pricedPlan, roll), machines),
+      roll,
+    )
     const preview = await previewPlan({
       orderUuid,
       request: { originalUuid: roll.uuid, plan: nextPlan },
@@ -176,7 +185,15 @@ export function useCreateOrderPage(draftUuid?: string) {
   const handleSavePlanBatch = async (targetRolls: RollDraft[], plan: ProcessPlanDTO) => {
     if (!orderUuid) return
     const savedRolls = targetRolls.filter((roll) => roll.uuid)
-    const batchPlan = applyDefaultMachineToPlan(applyLegacyPlanPriceDefaults(plan, defaultPlanOptions), machines)
+    if (!savedRolls.length) {
+      message.warning('请选择已保存的母卷')
+      return
+    }
+    const pricedPlan = applyLegacyPlanPriceDefaults(plan, defaultPlanOptions)
+    const batchPlan = normalizeLayeredRewindPlan(
+      applyDefaultMachineToPlan(pricedPlan, machines),
+      savedRolls[0],
+    )
     const result = await savePlanBatch({
       orderUuid,
       dto: { originalUuids: savedRolls.map((roll) => roll.uuid!), plan: batchPlan },
