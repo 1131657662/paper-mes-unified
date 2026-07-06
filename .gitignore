@@ -18,6 +18,9 @@ target/
 
 # 本地数据库连接配置（含口令，不上传）
 src/main/resources/application-dev.yml
+src/main/resources/application-prod.yml
+.env
+*.env.local
 
 # 上传文件本地存储产物
 /upload/

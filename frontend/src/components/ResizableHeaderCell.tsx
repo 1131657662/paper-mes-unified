@@ -8,11 +8,13 @@ import {
 import './ResizableTable.css'
 
 interface ResizableHeaderCellProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  minWidth?: number
   width?: number
   onResize?: (event: React.SyntheticEvent, data: ResizeCallbackData) => void
 }
 
 export default function ResizableHeaderCell({
+  minWidth = resizableColumnMinWidth,
   onResize,
   width,
   ...restProps
@@ -25,7 +27,7 @@ export default function ResizableHeaderCell({
     <Resizable
       width={width}
       height={0}
-      minConstraints={[resizableColumnMinWidth, 0]}
+      minConstraints={[minWidth, 0]}
       maxConstraints={[resizableColumnMaxWidth, 0]}
       handle={<span className="resizable-col-handle" onClick={(event) => event.stopPropagation()} />}
       onResize={onResize}

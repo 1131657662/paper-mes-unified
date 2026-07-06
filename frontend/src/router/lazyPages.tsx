@@ -20,6 +20,7 @@ export const PaperDetailPage = lazy(() => import('../pages/paper/PaperDetailPage
 export const PaperFormPage = lazy(() => import('../pages/paper/PaperFormPage'))
 export const PaperList = lazy(() => import('../pages/paper/PaperList'))
 export const ProcessOrderList = lazy(() => import('../pages/processOrder/ProcessOrderList'))
+export const ProfilePage = lazy(() => import('../pages/profile/ProfilePage'))
 export const ReportPage = lazy(() => import('../pages/report/ReportPage'))
 export const RouteDesignerPage = lazy(() => import('../pages/processOrder/RouteDesignerPage'))
 export const SettleCreatePage = lazy(() => import('../pages/settle/SettleCreatePage'))

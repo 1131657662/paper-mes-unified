@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Alert, Avatar, Dropdown, Layout, Menu, Space, Tag } from 'antd'
+import { Alert, Dropdown, Layout, Menu } from 'antd'
 import type { MenuProps } from 'antd'
 import {
   ExportOutlined,
@@ -7,6 +7,7 @@ import {
   BarChartOutlined,
   ContainerOutlined,
   DashboardOutlined,
+  DownOutlined,
   FileTextOutlined,
   ControlOutlined,
   LogoutOutlined,
@@ -19,9 +20,13 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { logout } from '../api/auth'
 import AppBreadcrumb from './AppBreadcrumb'
 import PageTabs from './PageTabs'
-import { selectedMenuKey } from '../router/routeMeta'
+import AppLogoMark from '../components/brand/AppLogoMark'
+import GeneratedUserAvatar from '../components/user/GeneratedUserAvatar'
+import { findRouteMeta, selectedMenuKey } from '../router/routeMeta'
+import { APP_BRAND } from '../config/brand'
 import { useAuthActions, useAuthUser } from '../stores/authStore'
 import { PERMISSIONS } from '../constants/permissions'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { hasAnyPermission } from '../utils/permission'
 import '../styles/app-shell.css'
@@ -38,10 +43,13 @@ export default function BasicLayout() {
   const { signOut } = useAuthActions()
   const isOnline = useOnlineStatus()
   const menuItems = buildMenuItems(user?.permissions)
+  const routeTitle = findRouteMeta(location.pathname)?.label
   const contentClassName = [
     'app-shell__content',
     isEdgeScrollRoute(location.pathname) && 'app-shell__content--edge-scroll',
   ].filter(Boolean).join(' ')
+
+  useDocumentTitle(routeTitle)
 
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, left: 0 })
@@ -50,8 +58,9 @@ export default function BasicLayout() {
   return (
     <Layout className="app-shell">
       <Sider theme="dark" collapsible>
-        <div className="app-shell__brand">
-          纸品加工 MES
+        <div className="app-shell__brand" aria-label={APP_BRAND.name}>
+          <AppLogoMark className="app-shell__brand-mark" title={`${APP_BRAND.name} 图标`} />
+          <span className="app-shell__brand-name">{APP_BRAND.name}</span>
         </div>
         <Menu
           theme="dark"
@@ -69,6 +78,15 @@ export default function BasicLayout() {
             menu={{
               items: [
                 {
+                  key: 'profile',
+                  icon: <UserOutlined />,
+                  label: '个人中心',
+                  onClick: () => navigate('/profile'),
+                },
+                {
+                  type: 'divider',
+                },
+                {
                   key: 'logout',
                   icon: <LogoutOutlined />,
                   label: '退出登录',
@@ -85,13 +103,14 @@ export default function BasicLayout() {
             }}
             trigger={['click']}
           >
-            <Space className="app-shell__user">
-              <Avatar size={30} icon={<UserOutlined />} />
-              <span>{user?.realName ?? user?.username ?? '未登录'}</span>
-              <Tag color={user?.roleCode === 'admin' ? 'blue' : 'default'}>
-                {roleLabel(user?.roleCode)}
-              </Tag>
-            </Space>
+            <button type="button" className="app-shell__user" aria-label="用户菜单">
+              <GeneratedUserAvatar className="app-shell__user-avatar" size={30} user={user} />
+              <span className="app-shell__user-meta">
+                <span className="app-shell__user-name">{user?.realName ?? user?.username ?? '未登录'}</span>
+                <span className="app-shell__user-role">{roleLabel(user?.roleCode)}</span>
+              </span>
+              <DownOutlined className="app-shell__user-caret" />
+            </button>
           </Dropdown>
         </Header>
         <PageTabs />
@@ -158,6 +177,7 @@ function isEdgeScrollRoute(pathname: string) {
     || pathname === '/reports'
     || pathname === '/system-config'
     || pathname === '/operation-logs'
+    || pathname === '/profile'
     || pathname === '/process-orders/create'
     || isProcessOrderRouteDesignerRoute(pathname)
     || isProcessOrderDetailRoute(pathname)

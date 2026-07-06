@@ -31,6 +31,7 @@ public class OperationLogService {
     public static final String ACTION_USER_UPDATE = "编辑用户";
     public static final String ACTION_USER_STATUS = "账号启停";
     public static final String ACTION_PASSWORD_RESET = "重置密码";
+    public static final String ACTION_PASSWORD_CHANGE = "修改密码";
 
     /** 业务类型常量。 */
     public static final String BIZ_TYPE_ORDER = "加工单";

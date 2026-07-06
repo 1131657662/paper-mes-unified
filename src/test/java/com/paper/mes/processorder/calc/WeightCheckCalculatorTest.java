@@ -67,4 +67,21 @@ class WeightCheckCalculatorTest {
         assertEquals(0, r.diffWeight.compareTo(new BigDecimal("0.000")));
         assertEquals(0, r.theoreticalWeight.compareTo(new BigDecimal("1000.000")));
     }
+
+    @Test
+    void configured_thresholds_change_level_boundaries() {
+        WeightCheckCalculator.Thresholds thresholds = WeightCheckCalculator.Thresholds.of(
+                new BigDecimal("3"), new BigDecimal("6"));
+
+        WeightCheckCalculator.CheckResult pass = WeightCheckCalculator.check(
+                new BigDecimal("1000"), new BigDecimal("970"), Z, Z, Z, thresholds);
+        WeightCheckCalculator.CheckResult warn = WeightCheckCalculator.check(
+                new BigDecimal("1000"), new BigDecimal("950"), Z, Z, Z, thresholds);
+        WeightCheckCalculator.CheckResult block = WeightCheckCalculator.check(
+                new BigDecimal("1000"), new BigDecimal("930"), Z, Z, Z, thresholds);
+
+        assertEquals(WeightCheckCalculator.Level.PASS, pass.level);
+        assertEquals(WeightCheckCalculator.Level.WARN, warn.level);
+        assertEquals(WeightCheckCalculator.Level.BLOCK, block.level);
+    }
 }

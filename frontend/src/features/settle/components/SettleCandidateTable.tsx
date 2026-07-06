@@ -7,6 +7,7 @@ import { formatMoney, formatTon, settleModeText } from '../utils/settleFormatter
 interface Props {
   data: SettleCandidateVO[]
   loading: boolean
+  selectable?: boolean
   selectedRowKeys: React.Key[]
   scrollY?: number | string
   onSelectionChange: (keys: React.Key[]) => void
@@ -16,9 +17,12 @@ export default function SettleCandidateTable({
   data,
   loading,
   onSelectionChange,
+  selectable = true,
   scrollY = 'calc(100vh - 520px)',
   selectedRowKeys,
 }: Props) {
+  const activeSelectedKeys = selectable ? selectedRowKeys : []
+
   return (
     <Table<SettleCandidateVO>
       className="mes-table-card"
@@ -28,17 +32,17 @@ export default function SettleCandidateTable({
       columns={columns}
       dataSource={data}
       pagination={false}
-      rowSelection={{
-        selectedRowKeys,
+      rowSelection={selectable ? {
+        selectedRowKeys: activeSelectedKeys,
         onChange: onSelectionChange,
         getCheckboxProps: (record) => ({
           disabled: !isBillableCandidate(record),
         }),
-      }}
-      rowClassName={(record) => (selectedRowKeys.includes(record.orderUuid) ? 'is-selected' : '')}
-      onRow={(record) => ({
-        onClick: () => toggleKey(record.orderUuid, selectedRowKeys, onSelectionChange, record),
-      })}
+      } : undefined}
+      rowClassName={(record) => (activeSelectedKeys.includes(record.orderUuid) ? 'is-selected' : '')}
+      onRow={(record) => selectable ? ({
+        onClick: () => toggleKey(record.orderUuid, activeSelectedKeys, onSelectionChange, record),
+      }) : {}}
       scroll={{ x: 1080, y: scrollY }}
     />
   )

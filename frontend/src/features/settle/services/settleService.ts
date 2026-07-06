@@ -1,5 +1,6 @@
 import {
   cancelReceivePayment,
+  createSettleByMonth,
   createSettleByOrders,
   exportSettleOrder,
   getSettleCandidates,
@@ -11,6 +12,7 @@ import {
 import type {
   ReceiveDTO,
   SettleActionReasonDTO,
+  SettleByMonthDTO,
   SettleByOrdersDTO,
   SettleCandidateQuery,
   SettleQuery,
@@ -19,6 +21,7 @@ import type { DocumentExportInput } from '../../../utils/documentExport'
 
 export const settleService = {
   candidates: (query: SettleCandidateQuery) => getSettleCandidates(query),
+  createByMonth: (data: SettleByMonthDTO) => createSettleByMonth(data),
   createByOrders: (data: SettleByOrdersDTO) => createSettleByOrders(data),
   detail: (uuid: string) => getSettleOrderDetail(uuid),
   export: (params: DocumentExportInput) => exportSettleOrder(params),

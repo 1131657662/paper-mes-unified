@@ -1,0 +1,20 @@
+[Unit]
+Description=Paper MES backend
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=paper-mes
+Group=paper-mes
+WorkingDirectory=/opt/paper-mes/app
+Environment=SPRING_PROFILES_ACTIVE=prod
+Environment=SPRING_CONFIG_ADDITIONAL_LOCATION=file:/etc/paper-mes/
+ExecStart=/usr/bin/java -Xms256m -Xmx768m -jar /opt/paper-mes/app/paper-mes.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/var/log/paper-mes/stdout.log
+StandardError=append:/var/log/paper-mes/stderr.log
+
+[Install]
+WantedBy=multi-user.target

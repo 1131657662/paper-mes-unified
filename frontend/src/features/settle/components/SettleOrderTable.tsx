@@ -53,6 +53,7 @@ export default function SettleOrderTable({
       rowSelection={rowSelection}
       onRow={onRow}
       bordered
+      locale={{ emptyText: '暂无结算单' }}
       cardProps={false}
       headerTitle={false}
       options={mesProTableOptions(onReload)}
@@ -77,7 +78,8 @@ function buildColumns(actions: {
       title: '结算单',
       dataIndex: 'settleNo',
       fixed: 'left',
-      width: 155,
+      width: 190,
+      minWidth: 180,
       render: (value, record) => (
         <div className="settle-cell-stack mes-cell-stack">
           <Typography.Text strong>{value}</Typography.Text>
@@ -85,19 +87,20 @@ function buildColumns(actions: {
         </div>
       ),
     },
-    { title: '客户', dataIndex: 'customerName', width: 140, render: (_, record) => textCell(record.customerName) },
-    { title: '结算日期', dataIndex: 'settleDate', width: 110 },
-    { title: '应收', dataIndex: 'totalAmount', align: 'right', width: 110, render: (_, record) => formatMoney(record.totalAmount) },
+    { title: '客户', dataIndex: 'customerName', width: 180, minWidth: 160, render: (_, record) => textCell(record.customerName) },
+    { title: '结算日期', dataIndex: 'settleDate', width: 124 },
+    { title: '应收', dataIndex: 'totalAmount', align: 'right', width: 128, render: (_, record) => formatMoney(record.totalAmount) },
     {
       title: '结清进度',
       dataIndex: 'receivedAmount',
-      width: 210,
+      width: 268,
+      minWidth: 248,
       render: (_, record) => <ReceiveProgress record={record} />,
     },
     {
       title: '状态',
       dataIndex: 'settleStatus',
-      width: 105,
+      width: 112,
       render: (_, record) => {
         const status = SETTLE_STATUS[record.settleStatus]
         return status ? <Tag className="mes-status-tag" color={status.color}>{status.text}</Tag> : '-'
@@ -108,7 +111,8 @@ function buildColumns(actions: {
       key: 'actions',
       className: 'settle-order-table__actions-cell',
       fixed: 'right',
-      width: 150,
+      width: 168,
+      minWidth: 168,
       render: (_, record) => (
         <Space className="mes-action-buttons">
           <Button type="link" size="small" onClick={() => actions.onDetail(record)}>详情</Button>

@@ -38,7 +38,7 @@ export default function SettleSearchBar({ customers, form, loadingCustomers, onR
           />
         </Form.Item>
         <Form.Item name="dateRange" label="结算日期">
-          <DatePicker.RangePicker style={{ width: '100%' }} />
+          <DatePicker.RangePicker placeholder={['开始日期', '结束日期']} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="settleStatus" label="状态">
           <Select allowClear placeholder="全部状态" options={statusOptions()} />

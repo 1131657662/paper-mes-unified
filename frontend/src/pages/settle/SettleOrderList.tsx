@@ -33,6 +33,7 @@ export default function SettleOrderList() {
   const query = { ...filters, current: page, settleStatus: settleStatus(queueFilter, filters), size: pageSize }
   const ordersQuery = useSettleOrders(query)
   const orders = ordersQuery.data?.records ?? []
+  const tableDensity = tableDensityMode(orders.length, pageSize, ordersQuery.isLoading)
   const selectedReceivable = rowSelection.selectedRows.filter((record) => record.settleStatus !== 3)
 
   const handleSearch = (values: SettleSearchFormValues) => {
@@ -97,7 +98,7 @@ export default function SettleOrderList() {
         rowSelection.clear()
       }}
     >
-      <div className="document-page-table">
+      <div className="document-page-table" data-table-density={tableDensity}>
         <SettleOrderTable
           canReceiveSettle={canReceiveSettle}
           data={orders}
@@ -133,6 +134,12 @@ export default function SettleOrderList() {
       />
     </DocumentListShell>
   )
+}
+
+function tableDensityMode(rowCount: number, pageSize: number, loading: boolean) {
+  if (loading) return 'fill'
+  if (rowCount === 0) return 'empty'
+  return rowCount < pageSize ? 'short' : 'fill'
 }
 
 function settleStatus(filter: QueueFilter, filters: SettleQuery) {

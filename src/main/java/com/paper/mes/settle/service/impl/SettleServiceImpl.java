@@ -234,6 +234,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String createByMonth(SettleByMonthDTO dto) {
+        if (dto.getPeriodStart().isAfter(dto.getPeriodEnd())) {
+            throw new BusinessException("账期开始日不能晚于结束日");
+        }
         Customer customer = customerService.getById(dto.getCustomerUuid());
         if (customer == null) {
             throw new BusinessException(ErrorCode.E002, "客户不存在");

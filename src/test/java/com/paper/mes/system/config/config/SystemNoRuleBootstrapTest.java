@@ -28,6 +28,7 @@ class SystemNoRuleBootstrapTest {
         bootstrap.run(null);
 
         verify(jdbcTemplate, atLeastOnce()).execute(anyString());
+        verify(jdbcTemplate).execute(sqlContains("CREATE TABLE IF NOT EXISTS `sys_roll_no_sequence`"));
         verify(jdbcTemplate, never()).update(sqlContains("UPDATE sys_no_rule"), any(), any(), any());
     }
 

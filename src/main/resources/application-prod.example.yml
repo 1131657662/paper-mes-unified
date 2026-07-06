@@ -1,0 +1,37 @@
+server:
+  address: 127.0.0.1
+  port: 8081
+  servlet:
+    context-path: /
+  forward-headers-strategy: framework
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/paper_processing?useSSL=false&useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+    username: paper_mes_app
+    password: CHANGE_ME_STRONG_PASSWORD
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+app:
+  upload:
+    dir: /opt/paper-mes/upload
+    url-prefix: /files
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  file:
+    name: /var/log/paper-mes/app.log
+  level:
+    root: INFO
+    com.paper.mes: INFO

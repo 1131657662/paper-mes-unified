@@ -89,6 +89,8 @@ export default function ReceiveModal({
       onCancel={onClose}
       afterOpenChange={handleOpenChange}
       confirmLoading={receiveMutation.isPending}
+      okText="确认登记"
+      cancelText="取消"
       destroyOnHidden
       forceRender
     >
@@ -139,7 +141,7 @@ export default function ReceiveModal({
           <Input placeholder="银行流水号或交易号" />
         </Form.Item>
         <Form.Item name="receiveDate" label="收款时间" initialValue={dayjs()}>
-          <DatePicker showTime style={{ width: '100%' }} />
+          <DatePicker showTime placeholder="选择收款时间" style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="remark" label="备注">
           <Input.TextArea rows={2} placeholder="可填写废纸来源、抵扣说明或收款备注" />

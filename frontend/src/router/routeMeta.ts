@@ -13,6 +13,7 @@ export const routeMeta: AppRouteMeta[] = [
   { path: '/delivery-orders', label: '出库管理' },
   { path: '/settle-orders', label: '结算管理' },
   { path: '/reports', label: '统计报表' },
+  { path: '/profile', label: '个人中心' },
   { path: '/customers', label: '客户管理', parentLabel: '基础档案', group: 'base' },
   { path: '/customers/create', label: '新增客户', parentLabel: '客户管理', menuKey: '/customers' },
   { path: '/customers/:uuid', label: '客户详情', parentLabel: '客户管理', menuKey: '/customers' },

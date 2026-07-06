@@ -6,9 +6,11 @@ import { useNavigate } from 'react-router-dom'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import SettleCandidateTable from '../../features/settle/components/SettleCandidateTable'
+import SettleSelectedSummary from '../../features/settle/components/SettleSelectedSummary'
+import { useCreateSettleByMonth } from '../../features/settle/hooks/useCreateSettleByMonth'
 import { useCreateSettleByOrders } from '../../features/settle/hooks/useCreateSettleByOrders'
 import { useSettleCandidates } from '../../features/settle/hooks/useSettleCandidates'
-import { formatMoney, selectedTotals } from '../../features/settle/utils/settleFormatters'
+import { selectedTotals } from '../../features/settle/utils/settleFormatters'
 import { DICT_TYPES, invoiceFallbackOptions } from '../../features/systemConfig/configFallbacks'
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
 import type { SettleCandidateQuery } from '../../types/settle'
@@ -16,6 +18,7 @@ import '../documentModule.css'
 
 interface SettleCreateForm {
   customerUuid?: string
+  createMode: 'selected' | 'month'
   isInvoice: number
   period?: [Dayjs, Dayjs] | null
   remark?: string
@@ -27,13 +30,19 @@ export default function SettleCreatePage() {
   const navigate = useNavigate()
   const customersQuery = useCustomers()
   const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
-  const createMutation = useCreateSettleByOrders()
+  const createByOrdersMutation = useCreateSettleByOrders()
+  const createByMonthMutation = useCreateSettleByMonth()
   const [candidateQuery, setCandidateQuery] = useState<SettleCandidateQuery>({})
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
-  const candidatesQuery = useSettleCandidates(candidateQuery)
-  const candidates = candidatesQuery.data ?? []
+  const createMode = Form.useWatch('createMode', form) ?? 'selected'
+  const isMonthMode = createMode === 'month'
+  const canLoadCandidates = !isMonthMode
+    || Boolean(candidateQuery.customerUuid && candidateQuery.periodStart && candidateQuery.periodEnd)
+  const candidatesQuery = useSettleCandidates(candidateQuery, canLoadCandidates)
+  const candidates = canLoadCandidates ? candidatesQuery.data ?? [] : []
   const selectedCandidates = candidates.filter((item) => selectedRowKeys.includes(item.orderUuid))
-  const totals = selectedTotals(selectedCandidates)
+  const previewCandidates = isMonthMode ? candidates : selectedCandidates
+  const totals = selectedTotals(previewCandidates)
 
   const handleValuesChange = (_: Partial<SettleCreateForm>, values: SettleCreateForm) => {
     setCandidateQuery({
@@ -46,6 +55,14 @@ export default function SettleCreatePage() {
 
   const handleSubmit = async () => {
     const values = await form.validateFields()
+    if (values.createMode === 'month') {
+      await submitByMonth(values)
+      return
+    }
+    await submitBySelectedOrders(values)
+  }
+
+  const submitBySelectedOrders = async (values: SettleCreateForm) => {
     if (selectedCandidates.length === 0) {
       message.warning('请先勾选需要结算的加工单')
       return
@@ -54,7 +71,7 @@ export default function SettleCreatePage() {
       message.warning('存在待核价加工单，请先完成加工费计算后再结算')
       return
     }
-    const uuid = await createMutation.mutateAsync({
+    const uuid = await createByOrdersMutation.mutateAsync({
       isInvoice: values.isInvoice,
       orderUuids: selectedCandidates.map((item) => item.orderUuid),
       periodEnd: values.period?.[1]?.format('YYYY-MM-DD'),
@@ -66,6 +83,33 @@ export default function SettleCreatePage() {
     navigate(`/settle-orders/${uuid}`)
   }
 
+  const submitByMonth = async (values: SettleCreateForm) => {
+    if (!values.customerUuid || !values.period) {
+      message.warning('按月结算需要选择客户和账期')
+      return
+    }
+    if (candidates.length === 0) {
+      message.warning('该账期暂无可结算加工单')
+      return
+    }
+    if (candidates.some((item) => Number(item.totalAmount ?? 0) <= 0)) {
+      message.warning('账期内存在待核价加工单，请先完成加工费计算后再结算')
+      return
+    }
+    const uuid = await createByMonthMutation.mutateAsync({
+      customerUuid: values.customerUuid,
+      isInvoice: values.isInvoice,
+      periodEnd: values.period[1].format('YYYY-MM-DD'),
+      periodStart: values.period[0].format('YYYY-MM-DD'),
+      remark: values.remark,
+      settleDate: values.settleDate.format('YYYY-MM-DD'),
+    })
+    message.success('月结结算单已生成')
+    navigate(`/settle-orders/${uuid}`)
+  }
+
+  const isSubmitting = createByOrdersMutation.isPending || createByMonthMutation.isPending
+
   return (
     <div className="document-module-page">
       <MesPageHeader
@@ -75,7 +119,7 @@ export default function SettleCreatePage() {
         actions={(
           <Space>
             <Button onClick={() => navigate('/settle-orders')}>取消</Button>
-            <Button type="primary" loading={createMutation.isPending} onClick={handleSubmit}>生成结算单</Button>
+            <Button type="primary" loading={isSubmitting} onClick={handleSubmit}>生成结算单</Button>
           </Space>
         )}
       />
@@ -84,10 +128,16 @@ export default function SettleCreatePage() {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ isInvoice: 2, settleDate: dayjs() }}
+          initialValues={{ createMode: 'selected', isInvoice: 2, settleDate: dayjs() }}
           onValuesChange={handleValuesChange}
         >
           <div className="document-module-grid">
+            <Form.Item name="createMode" label="创建方式">
+              <Radio.Group>
+                <Radio.Button value="selected">勾选加工单</Radio.Button>
+                <Radio.Button value="month">按月自动圈单</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
             <Form.Item name="customerUuid" label="客户">
               <Select
                 allowClear
@@ -129,28 +179,20 @@ export default function SettleCreatePage() {
 
       <Card
         className="document-module-card"
-        title="选择加工单"
-        extra={<SelectedSummary count={totals.orderCount} amount={totals.total} />}
+        title={isMonthMode ? '账期候选预览' : '选择加工单'}
+        extra={<SettleSelectedSummary label={isMonthMode ? '候选' : '已选'} count={totals.orderCount} amount={totals.total} />}
       >
         <div className="document-module-table">
           <SettleCandidateTable
             data={candidates}
             loading={candidatesQuery.isLoading || candidatesQuery.isFetching}
+            selectable={!isMonthMode}
             scrollY={460}
             selectedRowKeys={selectedRowKeys}
             onSelectionChange={setSelectedRowKeys}
           />
         </div>
       </Card>
-    </div>
-  )
-}
-
-function SelectedSummary({ amount, count }: { amount: number; count: number }) {
-  return (
-    <div className="document-module-summary">
-      <span>已选 <strong>{count}</strong> 单</span>
-      <span>预计应收 <strong>{formatMoney(amount)}</strong></span>
     </div>
   )
 }

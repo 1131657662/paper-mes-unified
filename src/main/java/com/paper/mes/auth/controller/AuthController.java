@@ -1,6 +1,7 @@
 package com.paper.mes.auth.controller;
 
 import com.paper.mes.auth.dto.AuthUserVO;
+import com.paper.mes.auth.dto.ChangePasswordDTO;
 import com.paper.mes.auth.dto.LoginDTO;
 import com.paper.mes.auth.service.AuthService;
 import com.paper.mes.common.R;
@@ -28,6 +29,12 @@ public class AuthController {
     @GetMapping("/me")
     public R<AuthUserVO> me(HttpServletRequest request) {
         return R.success(authService.currentUserVO(authService.resolveToken(request)));
+    }
+
+    @PostMapping("/password")
+    public R<Void> changePassword(HttpServletRequest request, @Valid @RequestBody ChangePasswordDTO dto) {
+        authService.changePassword(authService.resolveToken(request), dto);
+        return R.success();
     }
 
     @PostMapping("/logout")

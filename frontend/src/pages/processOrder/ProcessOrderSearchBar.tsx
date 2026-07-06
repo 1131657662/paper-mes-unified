@@ -53,7 +53,7 @@ export default function ProcessOrderSearchBar({ customerEnum, onSearch }: Props)
           <Select allowClear showSearch placeholder="全部客户" options={customerOptions(customerEnum)} optionFilterProp="label" />
         </Form.Item>
         <Form.Item name="dateRange" label="制单日期">
-          <RangePicker style={{ width: '100%' }} />
+          <RangePicker placeholder={['开始日期', '结束日期']} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="orderStatus" label="状态">
           <Select allowClear placeholder="全部状态" options={statusOptions()} />

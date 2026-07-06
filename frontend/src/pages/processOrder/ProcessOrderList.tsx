@@ -37,6 +37,7 @@ export default function ProcessOrderList() {
   const dialogs = useProcessOrderListDialogs()
   const customerEnum = useProcessOrderCustomerEnum()
   const [searchFilters, setSearchFilters] = useState<ProcessOrderSearchFilters>({})
+  const [visibleRowCount, setVisibleRowCount] = useState(0)
   const orderPagination = useProcessOrderPagination(20)
   const columnsState = useTableColumnsState('table-columns-process-order')
   useProcessOrderSearchShortcut()
@@ -151,6 +152,7 @@ export default function ProcessOrderList() {
     onVoidOrder: handleVoidOrder,
   })
   const resizableTable = useResizableProcessColumns(columns)
+  const tableDensity = tableDensityMode(visibleRowCount, orderPagination.pagination.pageSize)
   const batchActions: BatchActions = {
     onBackRecord: openRecord,
     onCalcFee: handleCalcFee,
@@ -174,7 +176,7 @@ export default function ProcessOrderList() {
         selectedRows={rowSelection.selectedRows}
       >
         <ProTable<ProcessOrder>
-          className="process-order-table"
+          className={`process-order-table process-order-table--${tableDensity}`}
           rowKey="uuid"
           actionRef={actionRef}
           columns={resizableTable.columns}
@@ -195,6 +197,7 @@ export default function ProcessOrderList() {
           rowSelection={rowSelection.rowSelection}
           rowClassName={rowSelection.rowClassName}
           onRow={rowSelection.onRow}
+          locale={{ emptyText: '暂无加工单' }}
           scroll={{ x: resizableTable.scrollX, y: '100%' }}
           tableLayout="fixed"
           tableAlertRender={false}
@@ -212,6 +215,7 @@ export default function ProcessOrderList() {
               dateFrom: params.dateFrom,
               dateTo: params.dateTo,
             })
+            setVisibleRowCount(res.records?.length ?? 0)
             orderPagination.updateTotal(res.total ?? 0)
             return { data: res.records ?? [], total: res.total ?? 0, success: true }
           }}

@@ -23,15 +23,42 @@ body,
 }
 
 .app-shell__brand {
+  display: flex;
   height: 48px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
   margin: 16px;
+  padding: 0 8px;
   color: #fff;
   font-size: 16px;
   font-weight: 650;
-  line-height: 48px;
+  line-height: 1;
   overflow: hidden;
-  text-align: center;
   white-space: nowrap;
+}
+
+.app-shell__brand-mark {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 18%);
+}
+
+.app-shell__brand-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ant-layout-sider-collapsed .app-shell__brand {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.ant-layout-sider-collapsed .app-shell__brand-name {
+  display: none;
 }
 
 .app-shell__header {
@@ -68,10 +95,18 @@ body,
 }
 
 .app-shell__user {
-  height: 38px;
-  padding: 0 8px;
+  display: inline-flex;
+  height: 40px;
+  align-items: center;
+  gap: 10px;
+  max-width: 220px;
+  padding: 0 10px 0 6px;
+  border: 0;
   border-radius: 8px;
+  background: transparent;
   cursor: pointer;
+  font: inherit;
+  text-align: left;
   transition: background .16s ease;
   white-space: nowrap;
 }
@@ -79,6 +114,58 @@ body,
 .app-shell__user:hover {
   background: #f5f7fa;
 }
+
+.app-shell__user:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 1px;
+}
+
+.app-shell__user-avatar.generated-user-avatar {
+  flex: none;
+  border: 1px solid rgb(255 255 255 / 88%);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
+}
+
+.app-shell__user-meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.app-shell__user-name {
+  max-width: 132px;
+  overflow: hidden;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+}
+
+.app-shell__user-role {
+  color: #86909c;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.app-shell__user-caret {
+  flex: none;
+  color: #98a2b3;
+  font-size: 10px;
+  transition: transform .16s ease;
+}
+
+.app-shell__user[aria-expanded='true'] .app-shell__user-caret,
+.app-shell__user.ant-dropdown-open .app-shell__user-caret {
+  transform: rotate(180deg);
+}
+
+.app-shell__user.ant-dropdown-open {
+  background: #f0f5ff;
+}
+
 
 @keyframes app-shell-tab-line-in {
   from {
@@ -294,7 +381,7 @@ body,
   min-width: 40px;
   height: 34px;
   align-items: center;
-  justify-content: center;
+  justify-center;
   padding: 0;
   border-radius: 0;
   color: #475467;
@@ -387,7 +474,13 @@ body,
     padding-inline: 12px;
   }
 
-  .app-shell__user .ant-tag {
+  .app-shell__user {
+    max-width: 56px;
+    padding: 0 6px;
+  }
+
+  .app-shell__user-meta,
+  .app-shell__user-caret {
     display: none;
   }
 }

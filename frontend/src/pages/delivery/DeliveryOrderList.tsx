@@ -46,6 +46,7 @@ export default function DeliveryOrderList() {
   const query = { ...filters, current: page, deliveryStatus: deliveryStatus(queueFilter, filters), size: pageSize }
   const ordersQuery = useDeliveryOrders(query)
   const orders = ordersQuery.data?.records ?? []
+  const tableDensity = tableDensityMode(orders.length, pageSize, ordersQuery.isLoading)
   const selectedPendingOrders = rowSelection.selectedRows.filter((record) => record.deliveryStatus === 1)
   const selectedSingle = rowSelection.selectedRows.length === 1 ? rowSelection.selectedRows[0] : undefined
 
@@ -214,7 +215,7 @@ export default function DeliveryOrderList() {
         rowSelection.clear()
       }}
     >
-      <div className="document-page-table">
+      <div className="document-page-table" data-table-density={tableDensity}>
         <DeliveryOrderTable
           canManageDelivery={canManageDelivery}
           data={orders}
@@ -235,6 +236,12 @@ export default function DeliveryOrderList() {
       />
     </DocumentListShell>
   )
+}
+
+function tableDensityMode(rowCount: number, pageSize: number, loading: boolean) {
+  if (loading) return 'fill'
+  if (rowCount === 0) return 'empty'
+  return rowCount < pageSize ? 'short' : 'fill'
 }
 
 function DeliverySearchBar({
@@ -267,7 +274,7 @@ function DeliverySearchBar({
           />
         </Form.Item>
         <Form.Item name="dateRange" label="出库日期">
-          <DatePicker.RangePicker style={{ width: '100%' }} />
+          <DatePicker.RangePicker placeholder={['开始日期', '结束日期']} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="deliveryStatus" label="状态">
           <Select allowClear placeholder="全部状态" options={statusOptions()} />

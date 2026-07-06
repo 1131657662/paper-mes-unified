@@ -11,3 +11,8 @@ export interface LoginDTO {
   password: string
   username: string
 }
+
+export interface ChangePasswordDTO {
+  newPassword: string
+  oldPassword: string
+}

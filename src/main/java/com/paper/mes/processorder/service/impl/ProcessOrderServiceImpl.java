@@ -70,6 +70,7 @@ import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.RollLossSummaryCalculator;
 import com.paper.mes.processorder.service.RollNoSequenceService;
 import com.paper.mes.processorder.service.SawPlanPreviewer;
+import com.paper.mes.processorder.service.WeightCheckThresholdService;
 import com.paper.mes.processorder.statemachine.OrderStatus;
 import com.paper.mes.processorder.statemachine.RollStatus;
 import com.paper.mes.processorder.statemachine.StateMachine;
@@ -160,6 +161,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private final ProcessOrderExportService processOrderExportService;
     private final BusinessLockService businessLockService;
     private final MachineMapper machineMapper;
+    private final WeightCheckThresholdService weightCheckThresholdService;
 
     @Override
     public PageResult<ProcessOrder> pageOrders(ProcessOrderQuery query) {
@@ -1606,7 +1608,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             }
         }
         wActual = wActual.subtract(directBase);
-        return WeightCheckCalculator.check(wActual, finishSum, lossSum, scrapSum, trimSum);
+        return WeightCheckCalculator.check(wActual, finishSum, lossSum, scrapSum, trimSum,
+                weightCheckThresholdService.currentThresholds());
     }
 
     private List<BackRecordResultVO.RollCheck> computeClosureChecks(ProcessOrder order, List<OriginalRoll> rolls,
@@ -1652,10 +1655,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             bucket.trimSum = bucket.trimSum.add(weightShare(finish.getTrimWeightShare(), ratio));
         }
 
+        WeightCheckCalculator.Thresholds thresholds = weightCheckThresholdService.currentThresholds();
         List<BackRecordResultVO.RollCheck> checks = new ArrayList<>(buckets.size());
         for (ClosureBucket bucket : buckets.values()) {
             WeightCheckCalculator.CheckResult check = WeightCheckCalculator.check(
-                    bucket.roll.getActualWeight(), bucket.finishSum, bucket.lossSum, bucket.scrapSum, bucket.trimSum);
+                    bucket.roll.getActualWeight(), bucket.finishSum, bucket.lossSum, bucket.scrapSum,
+                    bucket.trimSum, thresholds);
             checks.add(toRollCheck(bucket.roll, null, check));
         }
         return checks;

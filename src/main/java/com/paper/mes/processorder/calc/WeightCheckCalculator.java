@@ -21,8 +21,9 @@ public final class WeightCheckCalculator {
 
     private static final MathContext MC = new MathContext(20, RoundingMode.HALF_UP);
     private static final BigDecimal HUNDRED = new BigDecimal("100");
-    private static final BigDecimal WARN_THRESHOLD = new BigDecimal("2");
-    private static final BigDecimal BLOCK_THRESHOLD = new BigDecimal("5");
+    private static final BigDecimal DEFAULT_WARN_THRESHOLD = new BigDecimal("2");
+    private static final BigDecimal DEFAULT_BLOCK_THRESHOLD = new BigDecimal("5");
+    private static final Thresholds DEFAULT_THRESHOLDS = Thresholds.of(DEFAULT_WARN_THRESHOLD, DEFAULT_BLOCK_THRESHOLD);
     private static final int RATIO_SCALE = 2;
     private static final int WEIGHT_SCALE = 3;
 
@@ -49,23 +50,29 @@ public final class WeightCheckCalculator {
      */
     public static CheckResult check(BigDecimal wActual, BigDecimal finishSum,
                                     BigDecimal lossSum, BigDecimal scrapSum, BigDecimal trimSum) {
+        return check(wActual, finishSum, lossSum, scrapSum, trimSum, DEFAULT_THRESHOLDS);
+    }
+
+    public static CheckResult check(BigDecimal wActual, BigDecimal finishSum, BigDecimal lossSum,
+                                    BigDecimal scrapSum, BigDecimal trimSum, Thresholds thresholds) {
         BigDecimal actual = nz(wActual);
         BigDecimal theoretical = nz(finishSum).add(nz(lossSum)).add(nz(scrapSum)).add(nz(trimSum));
         BigDecimal diff = actual.subtract(theoretical).abs();
+        Thresholds config = thresholds == null ? DEFAULT_THRESHOLDS : thresholds;
 
         BigDecimal ratioPct;
         if (actual.signum() == 0) {
             // 无基准重量无法闭合，按拦截处理（理论合计非零时）。
             ratioPct = theoretical.signum() == 0 ? BigDecimal.ZERO
-                    : BLOCK_THRESHOLD.add(BigDecimal.ONE);
+                    : config.blockThreshold.add(BigDecimal.ONE);
         } else {
             ratioPct = diff.divide(actual, MC).multiply(HUNDRED, MC);
         }
 
         Level level;
-        if (ratioPct.compareTo(WARN_THRESHOLD) <= 0) {
+        if (ratioPct.compareTo(config.warnThreshold) <= 0) {
             level = Level.PASS;
-        } else if (ratioPct.compareTo(BLOCK_THRESHOLD) <= 0) {
+        } else if (ratioPct.compareTo(config.blockThreshold) <= 0) {
             level = Level.WARN;
         } else {
             level = Level.BLOCK;
@@ -81,6 +88,25 @@ public final class WeightCheckCalculator {
 
     private static BigDecimal nz(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
+    }
+
+    public static final class Thresholds {
+        private final BigDecimal warnThreshold;
+        private final BigDecimal blockThreshold;
+
+        private Thresholds(BigDecimal warnThreshold, BigDecimal blockThreshold) {
+            this.warnThreshold = warnThreshold;
+            this.blockThreshold = blockThreshold;
+        }
+
+        public static Thresholds of(BigDecimal warnThreshold, BigDecimal blockThreshold) {
+            BigDecimal warn = nz(warnThreshold);
+            BigDecimal block = nz(blockThreshold);
+            if (warn.signum() < 0 || block.compareTo(warn) < 0) {
+                throw new IllegalArgumentException("Invalid weight check thresholds");
+            }
+            return new Thresholds(warn, block);
+        }
     }
 
     /** 单卷闭合校验结果。diffWeight 保留符号（正=实际偏大，负=理论偏大）。 */

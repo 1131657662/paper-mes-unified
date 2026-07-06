@@ -53,6 +53,7 @@ export default function DeliveryOrderTable({
       rowSelection={rowSelection}
       onRow={onRow}
       bordered
+      locale={{ emptyText: '暂无出库单' }}
       cardProps={false}
       headerTitle={false}
       options={mesProTableOptions(onReload)}
@@ -77,15 +78,17 @@ function buildColumns(actions: {
       title: '出库单号',
       dataIndex: 'deliveryNo',
       fixed: 'left',
-      width: 150,
+      width: 180,
+      minWidth: 170,
       render: (value) => <Typography.Text strong>{value}</Typography.Text>,
     },
-    { title: '客户', dataIndex: 'customerName', width: 140, render: (_, record) => textCell(record.customerName) },
-    { title: '日期', dataIndex: 'deliveryDate', width: 110 },
+    { title: '客户', dataIndex: 'customerName', width: 180, minWidth: 160, render: (_, record) => textCell(record.customerName) },
+    { title: '日期', dataIndex: 'deliveryDate', width: 124 },
     {
       title: '出库统计',
       dataIndex: 'totalCount',
-      width: 150,
+      width: 170,
+      minWidth: 150,
       render: (_, record) => (
         <div className="delivery-cell-stack mes-cell-stack">
           <span>{record.totalCount} 卷</span>
@@ -93,12 +96,12 @@ function buildColumns(actions: {
         </div>
       ),
     },
-    { title: '提货人', dataIndex: 'pickerName', width: 110, render: (value) => value || '-' },
-    { title: '车牌/柜号', dataIndex: 'carNo', width: 145, render: (_, record) => `${record.carNo || '-'} / ${record.containerNo || '-'}` },
+    { title: '提货人', dataIndex: 'pickerName', width: 120, render: (value) => value || '-' },
+    { title: '车牌/柜号', dataIndex: 'carNo', width: 170, minWidth: 150, render: (_, record) => `${record.carNo || '-'} / ${record.containerNo || '-'}` },
     {
       title: '状态',
       dataIndex: 'deliveryStatus',
-      width: 105,
+      width: 112,
       render: (_, record) => {
         const status = DELIVERY_STATUS[record.deliveryStatus]
         return status ? <Tag className="mes-status-tag" color={status.color}>{status.text}</Tag> : '-'
@@ -107,7 +110,8 @@ function buildColumns(actions: {
     {
       title: '结算拦截',
       dataIndex: 'settleBlockAction',
-      width: 110,
+      width: 126,
+      minWidth: 126,
       render: (_, record) => record.settleBlockAction
         ? <Tag className="mes-status-tag" color="orange">{SETTLE_BLOCK_ACTION[record.settleBlockAction]}</Tag>
         : '-',
@@ -117,7 +121,8 @@ function buildColumns(actions: {
       key: 'actions',
       className: 'delivery-order-table__actions-cell',
       fixed: 'right',
-      width: 150,
+      width: 168,
+      minWidth: 168,
       render: (_, record) => (
         <Space className="mes-action-buttons">
           <Button type="link" size="small" onClick={() => actions.onDetail(record)}>

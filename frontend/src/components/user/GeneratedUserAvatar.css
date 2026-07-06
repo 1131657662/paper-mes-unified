@@ -1,0 +1,16 @@
+.generated-user-avatar {
+  display: inline-grid;
+  width: var(--user-avatar-size);
+  height: var(--user-avatar-size);
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.generated-user-avatar svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

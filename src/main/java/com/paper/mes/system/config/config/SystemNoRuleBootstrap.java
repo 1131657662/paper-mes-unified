@@ -22,6 +22,7 @@ public class SystemNoRuleBootstrap implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         createTableIfMissing();
+        createSequenceTableIfMissing();
         seedRules();
     }
 
@@ -53,6 +54,17 @@ public class SystemNoRuleBootstrap implements ApplicationRunner {
                   KEY `idx_sys_no_rule_status` (`status`),
                   KEY `idx_sys_no_rule_deleted` (`is_deleted`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='system document number rules'
+                """);
+    }
+
+    private void createSequenceTableIfMissing() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS `sys_roll_no_sequence` (
+                  `sequence_key` varchar(80) NOT NULL,
+                  `current_value` bigint NOT NULL DEFAULT 0,
+                  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`sequence_key`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='document number sequence'
                 """);
     }
 

@@ -96,7 +96,8 @@ public class SystemConfigBootstrap implements ApplicationRunner {
 
     private void seedConfigItems() {
         seedConfig("cfg-spare-roll-count", "process", "process.spareRollNoCount", "默认备用卷号数量", "0", "number", "个", 10, "新建加工单提交时默认生成的备用卷号数量");
-        seedConfig("cfg-weight-tolerance", "process", "process.weightTolerancePercent", "回录重量误差阈值", "3", "number", "%", 20, "超出阈值时需要业务确认或授权");
+        seedConfig("cfg-weight-tolerance", "process", "process.weightTolerancePercent", "回录重量警告阈值", "3", "number", "%", 20, "超过该阈值进入 WARN，需要填写原因");
+        seedConfig("cfg-weight-block-tolerance", "process", "process.weightBlockTolerancePercent", "回录重量拦截阈值", "5", "number", "%", 30, "超过该阈值进入 BLOCK，需要授权放行");
         seedConfig("cfg-print-title", "print", "print.processOrderTitle", "加工单打印标题", "车间加工单", "string", null, 10, "打印模板页眉标题");
         seedConfig("cfg-page-size", "ui", "ui.defaultPageSize", "默认每页条数", "20", "number", "条", 10, "列表默认分页条数");
         seedConfig("cfg-company-name", "print", "print.companyName", "公司名称", "纸品加工 MES", "string", null, 20, "出库单、结算单和打印页展示");

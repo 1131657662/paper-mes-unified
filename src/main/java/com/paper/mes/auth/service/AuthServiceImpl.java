@@ -1,8 +1,10 @@
 package com.paper.mes.auth.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.auth.dto.AuthUserVO;
+import com.paper.mes.auth.dto.ChangePasswordDTO;
 import com.paper.mes.auth.dto.CurrentUser;
 import com.paper.mes.auth.dto.LoginDTO;
 import com.paper.mes.auth.entity.SysUser;
@@ -12,6 +14,7 @@ import com.paper.mes.auth.mapper.SysUserSessionMapper;
 import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ResultCode;
+import com.paper.mes.oplog.service.OperationLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +33,7 @@ public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
 
     private final PasswordService passwordService;
     private final SysUserSessionMapper sessionMapper;
+    private final OperationLogService operationLogService;
 
     @Override
     @Transactional
@@ -57,6 +61,23 @@ public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
     public AuthUserVO currentUserVO(String token) {
         SysUser user = validUserByToken(token);
         return toVO(user, token);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String token, ChangePasswordDTO dto) {
+        SysUser user = validUserByToken(token);
+        if (!passwordService.matches(dto.getOldPassword(), user.getPasswordHash())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "原密码不正确");
+        }
+        if (passwordService.matches(dto.getNewPassword(), user.getPasswordHash())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "新密码不能与原密码相同");
+        }
+        user.setPasswordHash(passwordService.encode(dto.getNewPassword()));
+        updateById(user);
+        revokeOtherSessions(user.getUuid(), token);
+        operationLogService.record(OperationLogService.BIZ_TYPE_USER, user.getUuid(), user.getUsername(),
+                OperationLogService.ACTION_PASSWORD_CHANGE, user.getRealName(), "用户修改自己的登录密码");
     }
 
     @Override
@@ -116,6 +137,14 @@ public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         return sessionMapper.selectOne(new LambdaQueryWrapper<SysUserSession>()
                 .eq(SysUserSession::getToken, token)
                 .last("limit 1"));
+    }
+
+    private void revokeOtherSessions(String userUuid, String currentToken) {
+        sessionMapper.update(null, new LambdaUpdateWrapper<SysUserSession>()
+                .eq(SysUserSession::getUserUuid, userUuid)
+                .isNull(SysUserSession::getRevokedTime)
+                .ne(SysUserSession::getToken, currentToken)
+                .set(SysUserSession::getRevokedTime, LocalDateTime.now()));
     }
 
     private AuthUserVO toVO(SysUser user, String token) {

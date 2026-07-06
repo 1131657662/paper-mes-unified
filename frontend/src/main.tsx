@@ -1,7 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ConfigProvider } from 'antd'
-import zhCN from 'antd/locale/zh_CN'
+import { ConfigProvider, Empty } from 'antd'
+import zhCN from 'antd/es/locale/zh_CN'
+import { ProConfigProvider, zhCNIntl } from '@ant-design/pro-components'
 import { RouterProvider } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import 'antd/dist/reset.css'
@@ -19,12 +20,22 @@ const antdLocale = {
   },
 }
 
+function renderEmpty(componentName?: string) {
+  return (
+    <Empty
+      image={Empty.PRESENTED_IMAGE_SIMPLE}
+      description={componentName === 'Table' ? '暂无数据' : '暂无可选项'}
+    />
+  )
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ConfigProvider
           locale={antdLocale}
+          renderEmpty={renderEmpty}
           theme={{
             token: {
               colorPrimary: '#1677ff',

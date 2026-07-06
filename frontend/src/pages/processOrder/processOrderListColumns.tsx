@@ -33,20 +33,20 @@ const priorityValueEnum = Object.fromEntries(
 
 export function buildProcessOrderColumns(options: ColumnOptions): ProColumns<ProcessOrder>[] {
   return [
-    { title: '加工单', dataIndex: 'orderNo', width: 170, hideInSearch: true, render: (_, record) => <OrderNoCell record={record} /> },
+    { title: '加工单', dataIndex: 'orderNo', width: 190, minWidth: 180, hideInSearch: true, render: (_, record) => <OrderNoCell record={record} /> },
     { title: '加工单号/客户', dataIndex: 'keyword', hideInTable: true },
-    { title: '客户', dataIndex: 'customerName', width: 150, hideInSearch: true, render: textCell },
+    { title: '客户', dataIndex: 'customerName', width: 180, minWidth: 160, hideInSearch: true, render: textCell },
     { title: '客户', dataIndex: 'customerUuid', hideInTable: true, valueType: 'select', valueEnum: options.customerEnum },
-    { title: '制单日期', dataIndex: 'orderDate', width: 112, hideInSearch: true },
+    { title: '制单日期', dataIndex: 'orderDate', width: 124, hideInSearch: true },
     { title: '制单日期', dataIndex: 'dateRange', valueType: 'dateRange', hideInTable: true },
-    { title: '优先级', dataIndex: 'priority', width: 86, valueType: 'select', valueEnum: priorityValueEnum, hideInSearch: true, render: (_, record) => <PriorityPill value={record.priority} /> },
-    { title: '安排', dataIndex: 'schedule', width: 150, hideInSearch: true, render: (_, record) => <OrderScheduleCell record={record} /> },
-    { title: '结算/开票', dataIndex: 'billing', width: 122, hideInSearch: true, render: (_, record) => <BillingCell record={record} /> },
-    { title: '状态', dataIndex: 'orderStatus', width: 98, valueType: 'select', valueEnum: statusValueEnum, render: (_, record) => renderStatus(record) },
-    { title: '下发', dataIndex: 'printStatus', width: 98, hideInSearch: true, render: (_, record) => renderPrintStatus(record) },
-    { title: '生产统计', dataIndex: 'productionSummary', width: 252, hideInSearch: true, render: (_, record) => <ProductionSummary record={record} /> },
-    { title: '费用', dataIndex: 'totalAmount', width: 116, hideInSearch: true, render: (_, record) => renderMoney(record.totalAmount) },
-    { title: '操作', key: 'actions', valueType: 'option', width: 136, fixed: 'right', render: (_, record) => <ProcessOrderRowActions record={record} {...options} /> },
+    { title: '优先级', dataIndex: 'priority', width: 96, valueType: 'select', valueEnum: priorityValueEnum, hideInSearch: true, render: (_, record) => <PriorityPill value={record.priority} /> },
+    { title: '安排', dataIndex: 'schedule', width: 170, minWidth: 150, hideInSearch: true, render: (_, record) => <OrderScheduleCell record={record} /> },
+    { title: '结算/开票', dataIndex: 'billing', width: 138, minWidth: 128, hideInSearch: true, render: (_, record) => <BillingCell record={record} /> },
+    { title: '状态', dataIndex: 'orderStatus', width: 112, valueType: 'select', valueEnum: statusValueEnum, render: (_, record) => renderStatus(record) },
+    { title: '下发', dataIndex: 'printStatus', width: 122, hideInSearch: true, render: (_, record) => renderPrintStatus(record) },
+    { title: '生产统计', dataIndex: 'productionSummary', width: 286, minWidth: 260, hideInSearch: true, render: (_, record) => <ProductionSummary record={record} /> },
+    { title: '费用', dataIndex: 'totalAmount', width: 128, hideInSearch: true, render: (_, record) => renderMoney(record.totalAmount) },
+    { title: '操作', key: 'actions', valueType: 'option', width: 168, minWidth: 168, fixed: 'right', render: (_, record) => <ProcessOrderRowActions record={record} {...options} /> },
   ]
 }
 

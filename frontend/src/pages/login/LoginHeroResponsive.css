@@ -20,7 +20,8 @@
   }
 
   .login-hero__features {
-    max-width: 250px;
+    max-width: 440px;
+    grid-template-columns: 1fr;
   }
 
   .login-hero__visual {
@@ -57,7 +58,7 @@
 
 @media (max-width: 920px) {
   .login-hero {
-    min-height: 720px;
+    min-height: 540px;
   }
 
   .login-hero__content {
@@ -66,26 +67,28 @@
 
   .login-hero__copy {
     width: min(620px, 100%);
-    margin-top: 54px;
+    margin-top: 44px;
   }
 
   .login-hero__features {
     position: relative;
     z-index: 4;
+    max-width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .login-hero__visual {
     right: -8%;
     bottom: 12px;
     width: 88%;
-    height: 46%;
-    opacity: .55;
+    height: 40%;
+    opacity: .38;
   }
 }
 
 @media (max-width: 560px) {
   .login-hero {
-    min-height: 660px;
+    min-height: 520px;
   }
 
   .login-hero__content {
@@ -102,10 +105,15 @@
   }
 
   .login-hero__copy h1 {
-    font-size: 34px;
+    font-size: 31px;
   }
 
   .login-hero__copy p {
     font-size: 13px;
+  }
+
+  .login-hero__features {
+    grid-template-columns: 1fr;
+    margin-top: 28px;
   }
 }

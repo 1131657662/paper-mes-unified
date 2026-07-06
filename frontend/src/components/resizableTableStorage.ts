@@ -7,7 +7,7 @@ export function loadResizableTableWidths(storageKey: string): ColumnWidths {
   const raw = localStorage.getItem(widthStorageKey(storageKey))
   if (!raw) return {}
   try {
-    return JSON.parse(raw) as ColumnWidths
+    return parseColumnWidths(JSON.parse(raw))
   } catch {
     return {}
   }
