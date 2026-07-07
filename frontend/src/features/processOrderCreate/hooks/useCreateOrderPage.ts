@@ -11,6 +11,7 @@ import {
   toRollDto,
 } from '../draftMappers'
 import { applyDefaultMachineToPlan, applyDefaultMachinesToRolls } from '../machineDefaults'
+import { clearCreateOrderLocalDraft, loadCreateOrderLocalDraft, saveCreateOrderLocalDraft } from '../localDraftStorage'
 import { mergedSourceUuidSet } from '../rewindConsumptionUtils'
 import { normalizeLayeredRewindPlan } from '../rewindLayerPlanUtils'
 import type { RollDraft } from '../types'
@@ -30,17 +31,23 @@ import type { Customer } from '../../../types/customer'
 import { CONFIG_KEYS } from '../../systemConfig/configFallbacks'
 import { useNumberConfigValue } from '../../systemConfig/hooks/useSystemConfigValue'
 
-export function useCreateOrderPage(draftUuid?: string) {
+interface UseCreateOrderPageOptions {
+  resetLocalDraft?: boolean
+}
+
+export function useCreateOrderPage(draftUuid?: string, options: UseCreateOrderPageOptions = {}) {
+  const resetLocalDraft = options.resetLocalDraft === true
+  const [localDraft] = useState(() => (draftUuid || resetLocalDraft ? undefined : loadCreateOrderLocalDraft()))
   const hydratedDraftUuid = useRef<string>()
-  const [current, setCurrent] = useState(0)
-  const [orderUuid, setOrderUuid] = useState<string>()
-  const [baseInfo, setBaseInfo] = useState<DraftOrderBaseDTO>()
-  const [rolls, setRolls] = useState<RollDraft[]>([newRollDraft()])
-  const [selectedId, setSelectedId] = useState<string>()
-  const [plans, setPlans] = useState<Record<string, ProcessPlanDTO>>({})
-  const [previews, setPreviews] = useState<Record<string, PlanPreviewVO>>({})
-  const [routes, setRoutes] = useState<Record<string, ProcessRoutePreviewDTO>>({})
-  const [routePreviews, setRoutePreviews] = useState<Record<string, ProcessRoutePreviewVO>>({})
+  const [current, setCurrent] = useState(() => localDraft?.current ?? 0)
+  const [orderUuid, setOrderUuid] = useState<string | undefined>(() => localDraft?.orderUuid)
+  const [baseInfo, setBaseInfo] = useState<DraftOrderBaseDTO | undefined>(() => localDraft?.baseInfo)
+  const [rolls, setRolls] = useState<RollDraft[]>(() => localDraft?.rolls ?? [newRollDraft()])
+  const [selectedId, setSelectedId] = useState<string | undefined>(() => localDraft?.selectedId)
+  const [plans, setPlans] = useState<Record<string, ProcessPlanDTO>>(() => localDraft?.plans ?? {})
+  const [previews, setPreviews] = useState<Record<string, PlanPreviewVO>>(() => localDraft?.previews ?? {})
+  const [routes, setRoutes] = useState<Record<string, ProcessRoutePreviewDTO>>(() => localDraft?.routes ?? {})
+  const [routePreviews, setRoutePreviews] = useState<Record<string, ProcessRoutePreviewVO>>(() => localDraft?.routePreviews ?? {})
   const [submitResult, setSubmitResult] = useState<ProcessOrderSubmitVO>()
 
   const { data: draft, isLoading: loadingDraft } = useGetDraft(draftUuid)
@@ -66,6 +73,25 @@ export function useCreateOrderPage(draftUuid?: string) {
   const { mutateAsync: savePlan, isPending: savingPlan } = useSavePlan()
   const { mutateAsync: savePlanBatch, isPending: savingPlanBatch } = useSavePlanBatch()
   const { mutateAsync: submitDraft, isPending: submitting } = useSubmitDraft()
+
+  useEffect(() => {
+    if (resetLocalDraft) clearCreateOrderLocalDraft()
+  }, [resetLocalDraft])
+
+  useEffect(() => {
+    if (draftUuid || resetLocalDraft || submitResult) return
+    saveCreateOrderLocalDraft({
+      baseInfo,
+      current,
+      orderUuid,
+      plans,
+      previews,
+      routePreviews,
+      routes,
+      rolls,
+      selectedId,
+    })
+  }, [baseInfo, current, draftUuid, orderUuid, plans, previews, resetLocalDraft, routePreviews, routes, rolls, selectedId, submitResult])
 
   useEffect(() => {
     if (!draftUuid || !draft || hydratedDraftUuid.current === draftUuid) return
@@ -101,6 +127,10 @@ export function useCreateOrderPage(draftUuid?: string) {
     setOrderUuid(uuid)
     setBaseInfo(dto)
     await moveToStep(1, uuid)
+  }
+
+  const handleBaseInfoChange = (value: DraftOrderBaseDTO) => {
+    setBaseInfo(normalizeBaseInfo(value))
   }
 
   const handleRollsNext = async () => {
@@ -216,6 +246,7 @@ export function useCreateOrderPage(draftUuid?: string) {
   const handleSubmit = async () => {
     if (!orderUuid) return
     const result = await submitDraft(orderUuid)
+    clearCreateOrderLocalDraft()
     setSubmitResult(result)
     message.success(`加工单 ${result.orderNo} 已提交`)
   }
@@ -246,6 +277,7 @@ export function useCreateOrderPage(draftUuid?: string) {
     setCurrent,
     setRolls,
     setSelectedId,
+    handleBaseInfoChange,
     handleBaseNext,
     handleConfigNext,
     handleImportPreview,

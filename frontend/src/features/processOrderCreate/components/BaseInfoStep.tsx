@@ -21,6 +21,7 @@ interface Props {
   warehouses: ReferenceOption[]
   initialValue?: DraftOrderBaseDTO
   loading: boolean
+  onChange?: (value: DraftOrderBaseDTO) => void
   onNext: (value: DraftOrderBaseDTO) => void
 }
 
@@ -33,7 +34,7 @@ function toDto(value: BaseInfoFormValues): DraftOrderBaseDTO {
   }
 }
 
-export default function BaseInfoStep({ customers, warehouses, initialValue, loading, onNext }: Props) {
+export default function BaseInfoStep({ customers, warehouses, initialValue, loading, onChange, onNext }: Props) {
   const [form] = Form.useForm<BaseInfoFormValues>()
   const { options: priorityOptions } = useNumberDictOptions(DICT_TYPES.priority, priorityFallbackOptions)
   const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
@@ -46,12 +47,18 @@ export default function BaseInfoStep({ customers, warehouses, initialValue, load
     const customer = customers.find((item) => item.value === customerUuid)
     if (!customer) return
     const customerSettleType = customer.settleType ?? 2
-    form.setFieldsValue({
+    const nextValues: Partial<BaseInfoFormValues> = {
       isInvoice: customer.defaultInvoice ?? 2,
       settleDay: customerSettleType === 2 ? customer.settleDay : undefined,
       settleType: customerSettleType,
       taxRate: customer.taxRate,
-    })
+    }
+    form.setFieldsValue(nextValues)
+    onChange?.(toDto({ ...form.getFieldsValue(), ...nextValues, customerUuid }))
+  }
+
+  const handleValuesChange = (_: Partial<BaseInfoFormValues>, values: BaseInfoFormValues) => {
+    onChange?.(toDto(values))
   }
 
   return (
@@ -67,6 +74,7 @@ export default function BaseInfoStep({ customers, warehouses, initialValue, load
           isInvoice: initialValue?.isInvoice ?? 2,
           settleType: initialValue?.settleType ?? 2,
         }}
+        onValuesChange={handleValuesChange}
         onFinish={(value) => onNext(toDto(value))}
       >
         {selectedCustomer && (

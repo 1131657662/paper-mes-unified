@@ -14,15 +14,16 @@ const steps = ['基础信息', '原纸录入', '加工方式', '工艺配置', '
 export default function CreateOrderPage() {
   const [searchParams] = useSearchParams()
   const draftUuid = searchParams.get('draft') ?? undefined
-  const pageKey = draftUuid ?? searchParams.get('fresh') ?? 'new'
+  const freshToken = searchParams.get('fresh')
+  const pageKey = draftUuid ?? freshToken ?? 'new'
 
-  return <CreateOrderContent key={pageKey} draftUuid={draftUuid} />
+  return <CreateOrderContent key={pageKey} draftUuid={draftUuid} resetLocalDraft={Boolean(freshToken)} />
 }
 
-function CreateOrderContent({ draftUuid }: { draftUuid?: string }) {
+function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string; resetLocalDraft: boolean }) {
   const navigate = useNavigate()
   const pageRef = useRef<HTMLDivElement | null>(null)
-  const state = useCreateOrderPage(draftUuid)
+  const state = useCreateOrderPage(draftUuid, { resetLocalDraft })
   const createAnother = () => navigate(`/process-orders/create?fresh=${Date.now()}`, { replace: true })
 
   useEffect(() => {
@@ -54,6 +55,7 @@ function CreateOrderContent({ draftUuid }: { draftUuid?: string }) {
             warehouses={state.warehouseOptions}
             initialValue={state.baseInfo}
             loading={state.creatingDraft || state.savingBase}
+            onChange={state.handleBaseInfoChange}
             onNext={state.handleBaseNext}
           />
         )}
