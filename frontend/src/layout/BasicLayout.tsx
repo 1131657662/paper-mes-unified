@@ -8,12 +8,16 @@ import {
   ContainerOutlined,
   DashboardOutlined,
   DownOutlined,
+  FileOutlined,
   FileTextOutlined,
   ControlOutlined,
+  InboxOutlined,
   LogoutOutlined,
   ProfileOutlined,
   SettingOutlined,
   TeamOutlined,
+  ToolOutlined,
+  UsergroupAddOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -136,10 +140,10 @@ type MenuItem = Required<MenuProps>['items'][number]
 function buildMenuItems(permissions?: string[]): MenuProps['items'] {
   const can = (items: string[]) => hasAnyPermission(permissions, items)
   const baseChildren = [
-    can([PERMISSIONS.baseView]) && { key: '/customers', label: '客户管理' },
-    can([PERMISSIONS.baseView]) && { key: '/papers', label: '纸张档案' },
-    can([PERMISSIONS.baseView]) && { key: '/machines', label: '机台档案' },
-    can([PERMISSIONS.baseView]) && { key: '/warehouses', label: '仓库档案' },
+    can([PERMISSIONS.baseView]) && { key: '/customers', icon: <UsergroupAddOutlined />, label: '客户管理' },
+    can([PERMISSIONS.baseView]) && { key: '/papers', icon: <FileOutlined />, label: '纸张档案' },
+    can([PERMISSIONS.baseView]) && { key: '/machines', icon: <ToolOutlined />, label: '机台档案' },
+    can([PERMISSIONS.baseView]) && { key: '/warehouses', icon: <InboxOutlined />, label: '仓库档案' },
   ].filter(Boolean) as MenuItem[]
   const systemChildren = can([PERMISSIONS.userManage])
     ? [
