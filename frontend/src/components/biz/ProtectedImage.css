@@ -1,0 +1,28 @@
+.protected-image {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius-sm);
+  background: var(--mes-color-soft);
+}
+
+.protected-image .ant-image,
+.protected-image img {
+  width: 100%;
+  height: 100%;
+}
+
+.protected-image img {
+  display: block;
+  object-fit: cover;
+}
+
+.protected-image--placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}

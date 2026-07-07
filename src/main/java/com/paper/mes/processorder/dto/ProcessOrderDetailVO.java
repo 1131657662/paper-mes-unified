@@ -33,6 +33,7 @@ public class ProcessOrderDetailVO {
         private String batchNo;
         private String rollNo;
         private String damageDesc;
+        private List<String> damageImages;
         private String paperName;
         private Integer gramWeight;
         private Integer originalWidth;

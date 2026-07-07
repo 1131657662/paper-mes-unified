@@ -381,6 +381,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             item.setBatchNo(roll.getBatchNo());
             item.setRollNo(roll.getRollNo());
             item.setDamageDesc(roll.getDamageDesc());
+            item.setDamageImages(parseDamageImages(roll.getDamageImages()));
             item.setPaperName(roll.getPaperName());
             item.setGramWeight(roll.getGramWeight());
             item.setOriginalWidth(roll.getOriginalWidth());

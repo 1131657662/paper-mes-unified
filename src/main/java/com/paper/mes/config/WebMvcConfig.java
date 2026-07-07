@@ -10,9 +10,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Paths;
 
-/**
- * 静态资源映射（P2-4）：将上传目录通过 {urlPrefix}/** 对外暴露，使已存破损图片可经 HTTP 访问。
- */
+/** 上传文件映射：兼容已存 /files/** 路径，并通过拦截器要求登录后访问。 */
 @Configuration
 @EnableConfigurationProperties(FileStorageProperties.class)
 public class WebMvcConfig implements WebMvcConfigurer {
@@ -33,6 +31,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/api/**")
                 .excludePathPatterns("/api/auth/login");
+        String filePattern = fileUrlPattern();
+        if (!filePattern.startsWith("/api/")) {
+            registry.addInterceptor(authInterceptor).addPathPatterns(filePattern);
+        }
         registry.addInterceptor(permissionInterceptor)
                 .addPathPatterns("/api/**")
                 .excludePathPatterns("/api/auth/login");
@@ -44,5 +46,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
         String location = "file:" + absoluteDir + "/";
         registry.addResourceHandler(properties.getUrlPrefix() + "/**")
                 .addResourceLocations(location);
+    }
+
+    private String fileUrlPattern() {
+        String prefix = properties.getUrlPrefix();
+        if (prefix == null || prefix.isBlank()) {
+            prefix = "/files";
+        }
+        if (!prefix.startsWith("/")) {
+            prefix = "/" + prefix;
+        }
+        return prefix.endsWith("/") ? prefix + "**" : prefix + "/**";
     }
 }

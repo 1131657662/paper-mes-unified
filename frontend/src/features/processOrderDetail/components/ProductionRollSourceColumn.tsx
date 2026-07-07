@@ -5,6 +5,7 @@ import { fmt } from '../../../components/processOrder/shared/detailHelpers'
 import type { RollProductionVO } from '../../../types/processOrder'
 import { ROLL_STATUS } from '../../../constants/processOrder'
 import MesTooltip from '../../../components/biz/MesTooltip'
+import ProtectedImage from '../../../components/biz/ProtectedImage'
 import { formatKg } from '../orderDetailUtils'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 
@@ -50,6 +51,7 @@ export default function ProductionRollSourceColumn({
         来料 {formatKg((production.rollWeight ?? 0) * (production.pieceNum ?? 1))}
       </div>
       <RollRemarkNotes row={row} />
+      <RollDamageImages row={row} />
       {row.isMergeGroup && (
         <div className="production-roll__group production-roll__spaced">
           {row.rollProductions.map((source, index) => (
@@ -59,6 +61,24 @@ export default function ProductionRollSourceColumn({
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function RollDamageImages({ row }: { row: DisplayRow }) {
+  const images = row.rollProductions.flatMap((production, index) => damageImages(production, index + 1))
+  if (!images.length) return null
+
+  return (
+    <div className="production-roll__images">
+      {images.map((image) => (
+        <ProtectedImage
+          key={image.key}
+          className="production-roll__image"
+          path={image.path}
+          alt={image.alt}
+        />
+      ))}
     </div>
   )
 }
@@ -86,6 +106,14 @@ function buildRollNotes(production: RollProductionVO, seq: number) {
     { key: `${production.originalUuid}-damage`, label: `${prefix} 损伤`, value: production.damageDesc },
     { key: `${production.originalUuid}-remark`, label: `${prefix} 备注`, value: production.remark },
   ].filter((item): item is { key: string; label: string; value: string } => Boolean(item.value))
+}
+
+function damageImages(production: RollProductionVO, seq: number) {
+  return (production.damageImages ?? []).map((path, index) => ({
+    alt: `${rollName(production, seq)} 损伤图片 ${index + 1}`,
+    key: `${production.originalUuid ?? seq}-${index}-${path}`,
+    path,
+  }))
 }
 
 function RouteActions({

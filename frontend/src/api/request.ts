@@ -43,7 +43,7 @@ const instance = axios.create({
 
 instance.interceptors.request.use((config) => {
   const token = getAuthSnapshot().user?.accessToken
-  if (token) {
+  if (token && shouldAttachAuthorization(config.url)) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
@@ -92,6 +92,16 @@ export default request
 
 function configUrlEndsWith(url: string | undefined, suffix: string) {
   return typeof url === 'string' && url.endsWith(suffix)
+}
+
+function shouldAttachAuthorization(url: string | undefined) {
+  if (!url) return true
+  try {
+    const target = new URL(url, window.location.origin)
+    return target.origin === window.location.origin
+  } catch {
+    return false
+  }
 }
 
 function errorText(error: unknown, fallbackText: string) {

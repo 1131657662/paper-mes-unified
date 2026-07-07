@@ -78,6 +78,7 @@ export interface OriginalRoll {
   totalWeight?: number
   batchNo?: string
   damageDesc?: string
+  damageImages?: string | string[]
   /** 1标准加工 2现场定尺 3不加工直发 */
   processMode?: number
   /** 主工艺类型：1锯纸 2复卷 */
@@ -212,6 +213,7 @@ export interface RollProductionVO {
   batchNo?: string
   rollNo?: string
   damageDesc?: string
+  damageImages?: string[]
   paperName?: string
   gramWeight?: number
   originalWidth?: number
