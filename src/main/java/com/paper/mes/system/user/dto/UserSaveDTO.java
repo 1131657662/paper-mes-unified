@@ -1,8 +1,11 @@
 package com.paper.mes.system.user.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+
+import com.paper.mes.auth.service.PasswordPolicy;
 
 @Data
 public class UserSaveDTO {
@@ -11,7 +14,7 @@ public class UserSaveDTO {
     @Size(max = 50, message = "登录账号长度不能超过50")
     private String username;
 
-    @Size(min = 6, max = 32, message = "密码长度需为6-32位")
+    @Pattern(regexp = PasswordPolicy.PATTERN, message = PasswordPolicy.MESSAGE)
     private String password;
 
     @NotBlank(message = "姓名不能为空")

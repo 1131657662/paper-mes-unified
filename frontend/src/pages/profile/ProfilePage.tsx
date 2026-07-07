@@ -4,6 +4,7 @@ import { IdcardOutlined, KeyOutlined, LockOutlined, SafetyCertificateOutlined, U
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import GeneratedUserAvatar from '../../components/user/GeneratedUserAvatar'
 import { getRoleModuleNames, getRoleProfile } from '../../constants/permissionMeta'
+import { strongPasswordRules } from '../../constants/passwordRules'
 import { useChangePassword } from '../../features/auth/hooks/useChangePassword'
 import { useAuthUser } from '../../stores/authStore'
 import type { AuthUser } from '../../types/auth'
@@ -112,8 +113,7 @@ function InfoRow({ icon, label, value }: { icon: ReactNode; label: string; value
 }
 
 const newPasswordRules = [
-  { required: true, message: '请输入新密码' },
-  { min: 6, max: 32, message: '密码长度需为6-32位' },
+  ...strongPasswordRules('请输入新密码'),
 ]
 
 const confirmPasswordRules = [

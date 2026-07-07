@@ -1,4 +1,5 @@
 import { Form, Input, Modal } from 'antd'
+import { strongPasswordRules } from '../../constants/passwordRules'
 import type { UserPasswordDTO } from '../../types/user'
 
 interface Props {
@@ -32,10 +33,7 @@ export default function UserPasswordModal({ onCancel, onSubmit, open, submitting
         <Form.Item
           name="password"
           label="新密码"
-          rules={[
-            { required: true, message: '请输入新密码' },
-            { min: 6, max: 32, message: '密码长度需为6-32位' },
-          ]}
+          rules={strongPasswordRules('请输入新密码')}
         >
           <Input.Password placeholder="请输入新密码" />
         </Form.Item>

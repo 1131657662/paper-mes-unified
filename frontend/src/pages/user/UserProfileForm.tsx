@@ -1,5 +1,6 @@
 import { Form, Input, Select } from 'antd'
 import type { FormInstance } from 'antd'
+import { strongPasswordRules } from '../../constants/passwordRules'
 import type { UserSaveDTO } from '../../types/user'
 import { userRoleOptions, userStatusOptions } from './userDisplay'
 
@@ -44,10 +45,7 @@ export default function UserProfileForm({ editing, form, onFinish }: Props) {
             <Form.Item
               name="password"
               label="初始密码"
-              rules={[
-                { required: true, message: '请输入初始密码' },
-                { min: 6, max: 32, message: '密码长度需为6-32位' },
-              ]}
+              rules={strongPasswordRules('请输入初始密码')}
             >
               <Input.Password placeholder="请输入初始密码" />
             </Form.Item>

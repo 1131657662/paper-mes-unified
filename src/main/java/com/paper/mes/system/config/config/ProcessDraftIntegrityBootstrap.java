@@ -7,16 +7,24 @@ import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Map;
+
 @Component
 @RequiredArgsConstructor
 @Order(29)
 public class ProcessDraftIntegrityBootstrap implements ApplicationRunner {
+
+    private static final String TABLE = "biz_process_config_draft";
+    private static final String VERSION_COLUMN = "version";
+    private static final String TARGET_VERSION_DEFAULT = "1";
 
     private final JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(ApplicationArguments args) {
         createProcessConfigDraftTable();
+        fixVersionDefault();
     }
 
     private void createProcessConfigDraftTable() {
@@ -36,7 +44,7 @@ public class ProcessDraftIntegrityBootstrap implements ApplicationRunner {
                   `update_by` VARCHAR(64) NULL,
                   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                  `version` INT NOT NULL DEFAULT 0,
+                  `version` INT NOT NULL DEFAULT 1,
                   `ext_str1` VARCHAR(255) NULL,
                   `ext_str2` VARCHAR(255) NULL,
                   `ext_num1` DECIMAL(18,6) NULL,
@@ -46,5 +54,34 @@ public class ProcessDraftIntegrityBootstrap implements ApplicationRunner {
                   KEY `idx_config_draft_order_status` (`order_uuid`, `config_status`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单单卷工艺配置草稿'
                 """);
+    }
+
+    private void fixVersionDefault() {
+        String columnDefault = versionColumnDefault();
+        if (columnDefault == null) {
+            return;
+        }
+        if (!TARGET_VERSION_DEFAULT.equals(columnDefault)) {
+            jdbcTemplate.execute("""
+                    ALTER TABLE `biz_process_config_draft`
+                    MODIFY `version` INT NOT NULL DEFAULT 1
+                    """);
+        }
+        jdbcTemplate.update("UPDATE `biz_process_config_draft` SET `version` = 1 WHERE `version` = 0");
+    }
+
+    private String versionColumnDefault() {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                SELECT column_default
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                  AND column_name = ?
+                """, TABLE, VERSION_COLUMN);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        Object columnDefault = rows.getFirst().get("column_default");
+        return columnDefault == null ? null : columnDefault.toString();
     }
 }

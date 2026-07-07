@@ -1,18 +1,32 @@
 package com.paper.mes.auth.config;
 
 import com.paper.mes.auth.service.PasswordService;
+import com.paper.mes.auth.service.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import java.security.SecureRandom;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class AuthBootstrap implements ApplicationRunner {
+
+    private static final int GENERATED_PASSWORD_LENGTH = 16;
+    private static final String PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Profiles PROD_PROFILE = Profiles.of("prod");
 
     private final JdbcTemplate jdbcTemplate;
     private final PasswordService passwordService;
+    private final Environment environment;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -79,8 +93,10 @@ public class AuthBootstrap implements ApplicationRunner {
         if (count != null && count > 0) {
             return;
         }
-        insertDefaultUser("u-admin", "admin", "admin123", "系统管理员", "admin");
-        insertDefaultUser("u-operator", "operator", "operator123", "录单员", "operator");
+        insertDefaultUser("u-admin", "admin", initialPassword("app.initial.admin-password", "admin"),
+                "系统管理员", "admin");
+        insertDefaultUser("u-operator", "operator", initialPassword("app.initial.operator-password", "operator"),
+                "录单员", "operator");
     }
 
     private void insertDefaultUser(String uuid, String username, String password,
@@ -90,5 +106,38 @@ public class AuthBootstrap implements ApplicationRunner {
                 (uuid, username, password_hash, real_name, role_code, status, create_by, update_by)
                 VALUES (?, ?, ?, ?, ?, 1, 'system', 'system')
                 """, uuid, username, passwordService.encode(password), realName, roleCode);
+    }
+
+    private String initialPassword(String propertyName, String username) {
+        String configured = environment.getProperty(propertyName);
+        if (StringUtils.hasText(configured)) {
+            String password = configured.trim();
+            if (!PasswordPolicy.isStrong(password)) {
+                throw new IllegalStateException(propertyName + " " + PasswordPolicy.MESSAGE);
+            }
+            return password;
+        }
+        if (environment.acceptsProfiles(PROD_PROFILE)) {
+            throw new IllegalStateException(propertyName + " must be configured in production");
+        }
+        String generated = generatePassword();
+        log.warn("Generated development initial password for user [{}]: {}", username, generated);
+        return generated;
+    }
+
+    private String generatePassword() {
+        String password;
+        do {
+            password = randomPassword();
+        } while (!PasswordPolicy.isStrong(password));
+        return password;
+    }
+
+    private String randomPassword() {
+        StringBuilder builder = new StringBuilder(GENERATED_PASSWORD_LENGTH);
+        for (int i = 0; i < GENERATED_PASSWORD_LENGTH; i++) {
+            builder.append(PASSWORD_CHARS.charAt(SECURE_RANDOM.nextInt(PASSWORD_CHARS.length())));
+        }
+        return builder.toString();
     }
 }

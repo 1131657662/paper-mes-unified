@@ -45,18 +45,21 @@ export const routeMeta: AppRouteMeta[] = [
   { path: '/settle-orders/create', label: '新建结算单', parentLabel: '结算管理', menuKey: '/settle-orders' },
   { path: '/settle-orders/:uuid', label: '结算单详情', parentLabel: '结算管理', menuKey: '/settle-orders' },
   { path: '/operation-logs', label: '操作日志', parentLabel: '系统管理', group: 'system' },
+  { path: '*', label: '页面不存在' },
 ]
 
 export function findRouteMeta(pathname: string) {
-  return routeMeta.find((item) => matchPath(item.path, pathname)) ?? routeMeta[0]
+  return routeMeta.find((item) => matchPath(item.path, pathname))
 }
 
 export function selectedMenuKey(pathname: string) {
   const meta = findRouteMeta(pathname)
+  if (meta?.path === '*') return pathname
   return meta?.menuKey ?? meta?.path ?? pathname
 }
 
 function matchPath(pattern: string, pathname: string) {
+  if (pattern === '*') return true
   if (pattern === pathname) return true
   const patternParts = pattern.split('/').filter(Boolean)
   const pathParts = pathname.split('/').filter(Boolean)

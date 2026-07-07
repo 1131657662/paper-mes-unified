@@ -13,16 +13,27 @@ const ERROR_CODE_TEXT: Record<string, string> = {
   E006: '数据已被他人修改，请刷新后重试',
 }
 
+const ERROR_NOTIFIED_KEY = '__paperMesErrorNotified'
+
 /** 业务错误：携带后端 code / errorCode，便于调用方按需分支处理（如 E005 弹放行框）。 */
 export class BizError extends Error {
   code: number
   errorCode?: string
+  notified = false
+
   constructor(msg: string, code: number, errorCode?: string) {
     super(msg)
     this.name = 'BizError'
     this.code = code
     this.errorCode = errorCode
   }
+}
+
+/** 避免请求拦截器、React Query、页面 catch 对同一个错误重复弹提示。 */
+export function notifyErrorOnce(error: unknown, fallbackText = '请求失败'): void {
+  if (isErrorNotified(error)) return
+  message.error(errorText(error, fallbackText))
+  markErrorNotified(error)
 }
 
 const instance = axios.create({
@@ -50,21 +61,22 @@ instance.interceptors.response.use(
     }
     const text =
       body?.message || (body?.errorCode && ERROR_CODE_TEXT[body.errorCode]) || '请求失败'
-    message.error(text)
+    const bizError = new BizError(text, body?.code ?? -1, body?.errorCode)
+    notifyErrorOnce(bizError, text)
     if (body?.code === 401) {
       getAuthSnapshot().actions.signOut()
       if (window.location.pathname !== '/login' && !configUrlEndsWith(resp.config.url, '/api/auth/me')) {
         window.location.href = `/login?from=${encodeURIComponent(window.location.pathname + window.location.search)}`
       }
     }
-    return Promise.reject(new BizError(text, body?.code ?? -1, body?.errorCode))
+    return Promise.reject(bizError)
   },
   (error) => {
     // HTTP 层异常（网络断、超时、非 200 的传输错误）。
     const text = error?.message?.includes('timeout')
       ? '请求超时，请重试'
       : '网络异常，请检查连接'
-    message.error(text)
+    notifyErrorOnce(error, text)
     return Promise.reject(error)
   },
 )
@@ -80,4 +92,28 @@ export default request
 
 function configUrlEndsWith(url: string | undefined, suffix: string) {
   return typeof url === 'string' && url.endsWith(suffix)
+}
+
+function errorText(error: unknown, fallbackText: string) {
+  if (error instanceof BizError && error.message) return error.message
+  return fallbackText
+}
+
+function isErrorNotified(error: unknown) {
+  if (error instanceof BizError) return error.notified
+  return isNotifiableError(error) && error[ERROR_NOTIFIED_KEY] === true
+}
+
+function markErrorNotified(error: unknown) {
+  if (error instanceof BizError) {
+    error.notified = true
+    return
+  }
+  if (isNotifiableError(error)) {
+    error[ERROR_NOTIFIED_KEY] = true
+  }
+}
+
+function isNotifiableError(error: unknown): error is Record<typeof ERROR_NOTIFIED_KEY, boolean | undefined> {
+  return typeof error === 'object' && error !== null
 }

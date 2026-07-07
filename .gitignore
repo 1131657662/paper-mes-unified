@@ -21,6 +21,15 @@ src/main/resources/application-dev.yml
 src/main/resources/application-prod.yml
 .env
 *.env.local
+*.key
+*.pem
+
+# 本地审查/服务器/凭据资料（可能包含敏感信息，不上传）
+*审查报告*
+*服务器*
+*凭据*
+*密钥*
+*密码*
 
 # 上传文件本地存储产物
 /upload/

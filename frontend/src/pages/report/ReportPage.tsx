@@ -17,6 +17,7 @@ import { useReportOverview } from '../../features/report/hooks/useReportOverview
 import { useReportMachines, useReportPapers } from '../../features/report/hooks/useReportReferenceData'
 import { formatMoney, formatNumber, formatTonFromKg } from '../../features/report/utils/reportFormatters'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
+import { notifyErrorOnce } from '../../api/request'
 import type { ReportDimension, ReportQuery } from '../../types/report'
 import '../documentModule.css'
 import './ReportPage.css'
@@ -56,9 +57,7 @@ export default function ReportPage() {
     exportMutation.mutate(
       { ...query, dimension },
       {
-        onError: (error) => {
-          message.error(error instanceof Error ? error.message : '导出失败，请稍后重试')
-        },
+        onError: (error) => notifyErrorOnce(error, '导出失败，请稍后重试'),
         onSuccess: (result) => message.success(`已导出 ${result.filename}（${formatFileSize(result.size)}）`),
       },
     )

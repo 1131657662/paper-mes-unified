@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Form, message } from 'antd'
 import type { ProcessStepDTO } from '../../../api/processOrder'
-import { BizError } from '../../../api/request'
+import { BizError, notifyErrorOnce } from '../../../api/request'
 import { useAddProcessStep } from '../../../features/processOrderDetail/hooks/useAddProcessStep'
 import { useBackRecordProcessOrder } from '../../../features/processOrderDetail/hooks/useBackRecordProcessOrder'
 import { useChangeOrderStatus } from '../../../features/processOrderDetail/hooks/useChangeOrderStatus'
@@ -80,11 +80,10 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
     const bizError = error as BizError
     if (bizError.errorCode === 'E005') return setAuthOpen(true)
     if (bizError.errorCode === 'E006') {
-      message.error('数据已被他人修改，已刷新当前单据')
       await detailQuery.refetch()
       return
     }
-    message.error(bizError.message || '回录失败，请检查数据后重试')
+    notifyErrorOnce(error, '回录失败，请检查数据后重试')
   }
 
   const submitAuthorization = async () => {
