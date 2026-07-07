@@ -153,6 +153,7 @@ function groupedWidthText<T>(items: Array<LayeredRewindItem<T>>) {
     groups.set(item.width, (groups.get(item.width) ?? 0) + 1)
   }
   return Array.from(groups.entries())
+    .sort(([a], [b]) => a - b)
     .map(([width, count]) => `${width}mm×${count}`)
     .join(' + ')
 }

@@ -15,6 +15,11 @@ import {
   layersSummaryText,
   type LayeredRewindLayer,
 } from '../../../components/processOrder/shared/layeredRewindView'
+import {
+  compareLayerRows,
+  layerItemSortMap,
+  type LayeredRewindSort,
+} from '../../../components/processOrder/shared/layeredRewindOrder'
 import type {
   FinishProductionVO,
   ProcessOrderDetailVO,
@@ -55,6 +60,11 @@ export interface PrintRollBlock {
 export interface PrintSummaryItem {
   label: string
   value: string
+}
+
+interface PrintRouteSortContext<T> {
+  fallbackTrimLayer?: LayeredRewindLayer<T>
+  sortMap: Map<string, LayeredRewindSort>
 }
 
 export function buildPrintRollBlocks(detail: ProcessOrderDetailVO): PrintRollBlock[] {
@@ -195,11 +205,43 @@ function withLayerTexts<T>(
 ): PrintRouteOutput[] {
   if (!layers.length) return rows
   const map = layerItemMap(layers)
+  const sortMap = layerItemSortMap(layers)
   const fallbackTrimLayer = layers.find((layer) => layer.trimWidth > 0)
+  const sortContext = { fallbackTrimLayer, sortMap }
   return rows.map((row) => {
     const layer = map.get(row.key) ?? (row.status === 'trim' ? fallbackTrimLayer : undefined)
     return layer ? { ...row, layerText: layer.label } : row
-  })
+  }).sort((a, b) => comparePrintRouteOutputs(a, b, sortContext))
+}
+
+function comparePrintRouteOutputs<T>(
+  a: PrintRouteOutput,
+  b: PrintRouteOutput,
+  context: PrintRouteSortContext<T>,
+): number {
+  return compareLayerRows(
+    outputSortInfo(a, context),
+    outputSortInfo(b, context),
+  ) || (a.width ?? 0) - (b.width ?? 0) || a.name.localeCompare(b.name)
+}
+
+function outputSortInfo<T>(
+  row: PrintRouteOutput,
+  context: PrintRouteSortContext<T>,
+): LayeredRewindSort | undefined {
+  return context.sortMap.get(row.key)
+    ?? (row.status === 'trim' && context.fallbackTrimLayer
+      ? fallbackTrimSort(context.sortMap, context.fallbackTrimLayer.index)
+      : undefined)
+}
+
+function fallbackTrimSort(
+  sortMap: Map<string, LayeredRewindSort>,
+  layerIndex: number,
+): LayeredRewindSort {
+  const layerOrders = Array.from(sortMap.values()).filter((item) => item.layerIndex === layerIndex)
+  const maxOrder = Math.max(0, ...layerOrders.map((item) => item.displayOrder))
+  return { displayOrder: maxOrder + 0.5, layerIndex }
 }
 
 function outputsWithTrim(
@@ -407,7 +449,7 @@ function groupedWidths(outputs: Array<{ width?: number; status: 'next' | 'final'
 
 function groupedRewindOutputs(outputs: Array<{ width?: number; diameter?: number; core?: number }>): string {
   const groups = new Map<string, { text: string; count: number }>()
-  for (const output of outputs) {
+  for (const output of [...outputs].sort((a, b) => (a.width ?? 0) - (b.width ?? 0))) {
     const text = [
       output.width ? `${output.width}mm` : '沿用门幅',
       output.diameter ? fmtDiameter(output.diameter, 'φ') : '直径按配置',

@@ -5,6 +5,11 @@ import {
   layerItemMap,
 } from '../../components/processOrder/shared/layeredRewindView'
 import {
+  compareLayerRows,
+  layerItemSortMap,
+  type LayeredRewindSort,
+} from '../../components/processOrder/shared/layeredRewindOrder'
+import {
   activeFinishesWithFallbackTrim,
   isStageTrimOutput,
   stageOutputsWithFallbackTrim,
@@ -21,6 +26,7 @@ export interface RouteNode {
   processLabel: string
   statusColor: string
   statusText: string
+  sortInfo?: LayeredRewindSort
   title: string
   weight?: number
 }
@@ -37,15 +43,28 @@ export function buildRouteTree(
   const activeOutputRows = stageOutputsWithFallbackTrim(outputs, production)
   if (!activeOutputRows.length) {
     const finishRows = activeFinishesWithFallbackTrim(finishes, production)
-    const finishLayers = production ? layerItemMap(buildFinishLayers(production, finishRows)) : undefined
-    return finishRows.map((finish) => {
-      return toFinishNode(finish, fallbackProcessLabel, finishLayers?.get(finish.uuid)?.label)
-    })
+    const finishLayers = production ? buildFinishLayers(production, finishRows) : []
+    const finishLayerMap = layerItemMap(finishLayers)
+    const finishSortMap = layerItemSortMap(finishLayers)
+    return sortNodes(finishRows.map((finish) => {
+      return toFinishNode(
+        finish,
+        fallbackProcessLabel,
+        finishLayerMap.get(finish.uuid)?.label,
+        finishSortMap.get(finish.uuid),
+      )
+    }))
   }
 
-  const stageLayers = production ? stageLayerMap(production, activeOutputRows) : undefined
+  const stageLayers = production ? stageLayersFor(production, activeOutputRows) : []
+  const stageLayerMap = layerItemMap(stageLayers)
+  const stageSortMap = layerItemSortMap(stageLayers)
   const nodes = new Map(activeOutputRows.map((output) => {
-    return [output.uuid, toStageNode(output, stageLayers?.get(output.uuid)?.label)]
+    return [output.uuid, toStageNode(
+      output,
+      stageLayerMap.get(output.uuid)?.label,
+      stageSortMap.get(output.uuid),
+    )]
   }))
   const childrenByParent = new Map<string, RouteNode[]>()
   const roots: RouteNode[] = []
@@ -67,7 +86,11 @@ export function buildRouteTree(
   return sortNodes(roots)
 }
 
-function toStageNode(output: StageOutputVO, layerText?: string): RouteNode {
+function toStageNode(
+  output: StageOutputVO,
+  layerText?: string,
+  sortInfo?: LayeredRewindSort,
+): RouteNode {
   const remain = isStageTrimOutput(output)
   return {
     children: [],
@@ -80,12 +103,18 @@ function toStageNode(output: StageOutputVO, layerText?: string): RouteNode {
     processLabel: output.sourceSummary || stepTypeText(output.sourceStepType),
     statusColor: remain ? 'orange' : outputStatusColor(output.outputStatus),
     statusText: remain ? '修边/余料' : outputStatusText(output.outputStatus),
+    sortInfo,
     outputKey: remain ? undefined : output.outputNo || output.uuid,
     appendable: !remain && isAppendableOutput(output),
   }
 }
 
-function toFinishNode(finish: FinishProductionVO, processLabel: string, layerText?: string): RouteNode {
+function toFinishNode(
+  finish: FinishProductionVO,
+  processLabel: string,
+  layerText?: string,
+  sortInfo?: LayeredRewindSort,
+): RouteNode {
   const isRemain = finish.isRemain === 1
   return {
     children: [],
@@ -98,14 +127,15 @@ function toFinishNode(finish: FinishProductionVO, processLabel: string, layerTex
     processLabel,
     statusColor: isRemain ? 'orange' : 'green',
     statusText: isRemain ? '修边/余料' : '最终成品',
+    sortInfo,
     outputKey: isRemain ? undefined : finish.finishRollNo || (finish.uuid ? `F:${finish.uuid}` : undefined),
     appendable: !isRemain,
   }
 }
 
-function stageLayerMap(production: RollProductionVO, outputs: StageOutputVO[]) {
+function stageLayersFor(production: RollProductionVO, outputs: StageOutputVO[]) {
   const rewindRows = outputs.filter((output) => (output.sourceStepType ?? production.mainStepType) === 2)
-  return layerItemMap(buildStageOutputLayers(production, rewindRows))
+  return buildStageOutputLayers(production, rewindRows)
 }
 
 function isAppendableOutput(output: StageOutputVO) {
@@ -118,7 +148,11 @@ function trimTitle(identifier?: string) {
 }
 
 function sortNodes(nodes: RouteNode[]) {
-  return [...nodes].sort((a, b) => a.level - b.level || a.title.localeCompare(b.title))
+  return [...nodes].sort((a, b) => {
+    return compareLayerRows(a.sortInfo, b.sortInfo)
+      || a.level - b.level
+      || a.title.localeCompare(b.title)
+  })
 }
 
 function formatSpec(name?: string, gram?: number, width?: number) {
