@@ -2,6 +2,7 @@
 .claude/
 .mimocode/
 .codex-run-logs/
+AGENTS.md
 logs/
 
 # 系统/编辑器
