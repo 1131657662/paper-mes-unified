@@ -91,6 +91,7 @@ export default function SettleOrderList() {
           登记收款
         </Button>
       )}
+      loading={ordersQuery.isLoading}
       onCreate={() => navigate('/settle-orders/create')}
       onQueueChange={(value) => {
         setQueueFilter(value)

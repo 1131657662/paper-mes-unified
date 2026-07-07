@@ -1,10 +1,10 @@
-import { Spin } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import DashboardActivityTimeline from '../../features/dashboard/components/DashboardActivityTimeline'
 import DashboardHeader from '../../features/dashboard/components/DashboardHeader'
 import DashboardMetricGrid from '../../features/dashboard/components/DashboardMetricGrid'
 import DashboardOrderList from '../../features/dashboard/components/DashboardOrderList'
 import DashboardRankList from '../../features/dashboard/components/DashboardRankList'
+import DashboardSkeleton from '../../features/dashboard/components/DashboardSkeleton'
 import DashboardTodoList from '../../features/dashboard/components/DashboardTodoList'
 import DashboardTrend from '../../features/dashboard/components/DashboardTrend'
 import DashboardWorkbenchPanel from '../../features/dashboard/components/DashboardWorkbenchPanel'
@@ -16,13 +16,19 @@ import './DashboardPage.css'
 export default function DashboardPage() {
   const navigate = useNavigate()
   const user = useAuthUser()
-  const { data: overview, isFetching: isLoadingOverview, refetch: refreshOverview } = useDashboardOverview()
+  const {
+    data: overview,
+    isFetching: isRefreshingOverview,
+    isLoading: isLoadingOverview,
+    refetch: refreshOverview,
+  } = useDashboardOverview()
+  const showInitialSkeleton = isLoadingOverview && !overview
   const goOrdersByStatus = (status: number) => navigate(`/process-orders?orderStatus=${status}`)
 
   return (
     <div className="dashboard-page">
       <DashboardHeader
-        loading={isLoadingOverview}
+        loading={isRefreshingOverview}
         metrics={overview?.metrics}
         onOpenReports={() => navigate('/reports')}
         onRefresh={() => refreshOverview()}
@@ -31,7 +37,9 @@ export default function DashboardPage() {
         userName={user?.realName ?? user?.username ?? '操作员'}
       />
 
-      <Spin spinning={isLoadingOverview}>
+      {showInitialSkeleton ? (
+        <DashboardSkeleton />
+      ) : (
         <div className="dashboard-page__content">
           <DashboardMetricGrid metrics={overview?.metrics} />
           <div className="dashboard-page__analysis-grid">
@@ -74,7 +82,7 @@ export default function DashboardPage() {
             />
           </div>
         </div>
-      </Spin>
+      )}
     </div>
   )
 }

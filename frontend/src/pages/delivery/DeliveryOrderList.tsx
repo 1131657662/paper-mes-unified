@@ -208,6 +208,7 @@ export default function DeliveryOrderList() {
           )}
         </>
       )}
+      loading={ordersQuery.isLoading}
       onCreate={() => navigate('/delivery-orders/create')}
       onQueueChange={(value) => {
         setQueueFilter(value)

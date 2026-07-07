@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button, Card } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
+import DocumentListSkeleton from './DocumentListSkeleton'
 import { TableToolbarHostProvider } from './TableToolbarPortal'
 import './DocumentListShell.css'
 
@@ -18,6 +19,7 @@ interface Props<T extends string> {
   children: React.ReactNode
   extra?: React.ReactNode
   leftActions?: React.ReactNode
+  loading?: boolean
   search?: React.ReactNode
   onCreate: () => void
   onQueueChange: (value: T) => void
@@ -29,6 +31,7 @@ export default function DocumentListShell<T extends string>({
   createText,
   extra,
   leftActions,
+  loading = false,
   onCreate,
   onQueueChange,
   queue,
@@ -65,7 +68,7 @@ export default function DocumentListShell<T extends string>({
         </div>
       </div>
       <TableToolbarHostProvider host={toolsHost}>
-        {children}
+        {loading ? <DocumentListSkeleton /> : children}
       </TableToolbarHostProvider>
     </Card>
   )
