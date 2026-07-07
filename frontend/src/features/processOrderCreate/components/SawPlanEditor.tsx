@@ -60,6 +60,7 @@ function SawSummary({ originalWidth, stats }: { originalWidth: number; stats: Re
         <Tag color="blue">自动刀数：{stats.knifeCount}</Tag>
         <Tag color="green">成品：{stats.finishCount} 件</Tag>
         <Tag color={stats.trimWidth > 0 ? 'orange' : 'default'}>切边：{stats.trimWidth}mm</Tag>
+        {stats.implicitTrimWidth > 0 && <Tag color="gold">可转切边：{stats.implicitTrimWidth}mm</Tag>}
         <Typography.Text type={overflow ? 'danger' : 'secondary'}>
           门幅 {stats.usedWidth}/{originalWidth || '-'}mm{overflow ? `，超出 ${Math.abs(stats.remainingWidth)}mm` : `，剩余 ${stats.remainingWidth}mm`}
         </Typography.Text>

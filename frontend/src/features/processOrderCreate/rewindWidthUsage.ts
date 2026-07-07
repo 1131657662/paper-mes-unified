@@ -3,6 +3,7 @@ import type { RewindLayoutItemPlanDTO, RewindSegmentPlanDTO } from '../../types/
 export interface RewindWidthUsage {
   originalWidth: number
   finishWidth: number
+  implicitTrimWidth: number
   trimWidth: number
   usedWidth: number
   remainingWidth: number
@@ -23,18 +24,20 @@ export function calcRewindWidthUsage(
   const width = Number(originalWidth ?? 0)
   const items = segment.layoutItems ?? []
   const finishWidth = sumLayoutWidth(items, false)
-  const explicitTrimWidth = sumLayoutWidth(items, true)
-  const trimWidth = explicitTrimWidth > 0 ? explicitTrimWidth : Math.max(0, width - finishWidth)
+  const trimWidth = sumLayoutWidth(items, true)
   const usedWidth = finishWidth + trimWidth
+  const remainingWidth = width - usedWidth
+  const implicitTrimWidth = trimWidth > 0 ? 0 : Math.max(0, width - finishWidth)
 
   return {
     originalWidth: width,
     finishWidth,
+    implicitTrimWidth,
     trimWidth,
     usedWidth,
-    remainingWidth: width - usedWidth,
+    remainingWidth,
     finishCount: countLayoutItems(items, false),
-    trimCount: explicitTrimWidth > 0 ? countLayoutItems(items, true) : trimWidth > 0 ? 1 : 0,
+    trimCount: countLayoutItems(items, true),
     usedPercent: width > 0 ? Math.min(100, Math.round((usedWidth / width) * 100)) : 0,
   }
 }

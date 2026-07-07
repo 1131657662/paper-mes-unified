@@ -12,6 +12,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.BadSqlGrammarException;
 
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.stream.Collectors;
@@ -44,6 +46,18 @@ public class GlobalExceptionHandler {
     public R<Void> handleDuplicateKey(Exception ex) {
         log.warn("唯一键冲突", ex);
         return R.fail(ResultCode.CONFLICT, "单号已存在，请重试");
+    }
+
+    @ExceptionHandler(BadSqlGrammarException.class)
+    public R<Void> handleBadSqlGrammar(BadSqlGrammarException ex) {
+        log.error("数据库结构或 SQL 不匹配", ex);
+        return R.fail(ResultCode.ERROR, "数据库结构未同步，请完成最新版本部署后重试");
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public R<Void> handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.warn("数据库约束冲突", ex);
+        return R.fail(ResultCode.CONFLICT, "数据超出系统允许范围，请检查输入后重试");
     }
 
     /**

@@ -24,6 +24,7 @@ export default function RewindWidthSummary({ mode, originalWidth, segment, onFil
       <Space wrap size={8}>
         <Tag color="blue">成品 {usage.finishWidth}mm / {usage.finishCount}件</Tag>
         <Tag color={usage.trimWidth > 0 ? 'orange' : 'default'}>修边 {usage.trimWidth}mm</Tag>
+        {usage.implicitTrimWidth > 0 && <Tag color="gold">可转修边 {usage.implicitTrimWidth}mm</Tag>}
         <Typography.Text type={overflow ? 'danger' : 'secondary'}>
           门幅 {usage.usedWidth}/{usage.originalWidth || '-'}mm
           {overflow ? `，超出 ${Math.abs(usage.remainingWidth)}mm` : `，剩余 ${Math.max(0, usage.remainingWidth)}mm`}
