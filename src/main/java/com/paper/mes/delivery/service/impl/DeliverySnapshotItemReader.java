@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.delivery.dto.DeliveryDetailItemVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.util.List;
 /**
  * 出库快照明细读取：优先读取当前 camelCase 快照，兼容旧版 snake_case details。
  */
+@Slf4j
 final class DeliverySnapshotItemReader {
 
     private DeliverySnapshotItemReader() {
@@ -34,7 +36,8 @@ final class DeliverySnapshotItemReader {
             }
             items = readSnakeCaseItems(node);
             return hasUsableSnapshotItems(items) ? items : null;
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.warn("出库明细快照解析失败，将回退到实时明细：{}", ex.getMessage());
             return null;
         }
     }

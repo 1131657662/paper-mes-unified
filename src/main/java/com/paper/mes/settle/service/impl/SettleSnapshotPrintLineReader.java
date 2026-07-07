@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -14,6 +15,7 @@ import java.util.List;
 /**
  * Reads frozen settle print-line snapshots from current camelCase fields and legacy snake_case fields.
  */
+@Slf4j
 final class SettleSnapshotPrintLineReader {
 
     private SettleSnapshotPrintLineReader() {
@@ -32,7 +34,8 @@ final class SettleSnapshotPrintLineReader {
                 }
             }
             return null;
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.warn("结算打印行快照解析失败，将回退到当前明细：{}", ex.getMessage());
             return null;
         }
     }

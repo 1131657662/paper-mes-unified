@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.delivery.dto.DeliveryDetailItemVO;
 import com.paper.mes.delivery.dto.DeliveryRollbackSnapshotVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.util.List;
 /**
  * Reads the previous confirm snapshot stored inside a delivery rollback snapshot.
  */
+@Slf4j
 final class DeliveryRollbackSnapshotReader {
 
     private DeliveryRollbackSnapshotReader() {
@@ -43,7 +45,8 @@ final class DeliveryRollbackSnapshotReader {
             snapshot.setTotalWeight(decimal(previous, "total_weight", "totalWeight"));
             snapshot.setDetails(details == null ? List.of() : details);
             return snapshot;
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.warn("出库回退快照解析失败，将回退到实时明细：{}", ex.getMessage());
             return null;
         }
     }
@@ -51,7 +54,8 @@ final class DeliveryRollbackSnapshotReader {
     private static List<DeliveryDetailItemVO> readPreviousDetails(JsonNode previous, ObjectMapper objectMapper) {
         try {
             return DeliverySnapshotItemReader.read(objectMapper.writeValueAsString(previous), objectMapper);
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.warn("出库回退快照中的原确认明细解析失败：{}", ex.getMessage());
             return null;
         }
     }

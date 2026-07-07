@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.settle.entity.SettleDetail;
 import com.paper.mes.settle.entity.SettleOrder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.util.List;
 /**
  * 结算金额读取规则：历史结算单以快照金额为准，旧数据无快照时才按明细兜底计算。
  */
+@Slf4j
 final class SettleAmountSnapshotReader {
 
     private static final int MONEY_SCALE = 2;
@@ -72,7 +74,8 @@ final class SettleAmountSnapshotReader {
         }
         try {
             return objectMapper.readTree(json);
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.warn("结算金额快照解析失败，将按结算明细兜底计算：{}", ex.getMessage());
             return null;
         }
     }

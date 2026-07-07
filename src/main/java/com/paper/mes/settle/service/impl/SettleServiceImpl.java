@@ -57,6 +57,7 @@ import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpHeaders;
@@ -80,6 +81,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrder>
         implements SettleService {
 
@@ -399,8 +401,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         }
         List<SettleDetail> details = settleDetails(uuid);
         businessLockService.lockProcessOrders(details.stream().map(SettleDetail::getOrderUuid).toList());
+        Map<String, ProcessOrder> orderByUuid = loadSettleDetailOrders(details);
         for (SettleDetail detail : details) {
-            ProcessOrder order = processOrderService.getById(detail.getOrderUuid());
+            ProcessOrder order = orderByUuid.get(detail.getOrderUuid());
             if (order != null && order.getOrderStatus() != null && order.getOrderStatus() == ORDER_STATUS_SETTLED) {
                 rollbackSettledProcessOrder(order.getUuid());
             }
@@ -606,6 +609,23 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         return settleDetailMapper.selectList(new LambdaQueryWrapper<SettleDetail>()
                 .eq(SettleDetail::getIsDeleted, 0)
                 .eq(SettleDetail::getSettleUuid, settleUuid));
+    }
+
+    private Map<String, ProcessOrder> loadSettleDetailOrders(List<SettleDetail> details) {
+        List<String> orderUuids = details.stream()
+                .map(SettleDetail::getOrderUuid)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+        if (orderUuids.isEmpty()) {
+            return Map.of();
+        }
+        List<ProcessOrder> orders = processOrderService.listByIds(orderUuids);
+        Map<String, ProcessOrder> orderByUuid = new LinkedHashMap<>();
+        for (ProcessOrder order : orders) {
+            orderByUuid.put(order.getUuid(), order);
+        }
+        return orderByUuid;
     }
 
     private List<OperationLog> loadOperationLogs(String settleUuid) {
@@ -1335,7 +1355,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         }
         try {
             return objectMapper.readTree(json);
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.warn("结算快照解析失败，将按当前业务数据兜底展示：{}", ex.getMessage());
             return null;
         }
     }

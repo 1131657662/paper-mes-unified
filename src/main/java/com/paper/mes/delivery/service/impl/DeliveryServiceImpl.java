@@ -53,6 +53,7 @@ import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpHeaders;
@@ -78,6 +79,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, DeliveryOrder>
         implements DeliveryService {
 
@@ -650,7 +652,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         try {
             return objectMapper.readTree(json);
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.warn("出库快照解析失败，将按当前业务数据兜底展示：{}", ex.getMessage());
             return null;
         }
     }

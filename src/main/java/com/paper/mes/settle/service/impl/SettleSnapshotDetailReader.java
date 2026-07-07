@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.settle.entity.SettleDetail;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.util.List;
 /**
  * Reads frozen settle detail snapshots from current camelCase fields and legacy snake_case fields.
  */
+@Slf4j
 final class SettleSnapshotDetailReader {
 
     private SettleSnapshotDetailReader() {
@@ -31,7 +33,8 @@ final class SettleSnapshotDetailReader {
                 }
             }
             return null;
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.warn("结算明细快照解析失败，将回退到当前明细：{}", ex.getMessage());
             return null;
         }
     }
