@@ -47,16 +47,20 @@ class BusinessFlowConcurrencyContractTest {
     void deliveryChange_whenEditingPendingOrder_keepsReservationGuards() throws IOException {
         String source = source(DELIVERY_SERVICE);
         String append = slice(source, "public void appendDetails", "public void removeDetail");
+        String appendGuard = slice(source, "private List<String> validateAppendFinishUuids",
+                "private Map<String, FinishRoll> loadFinishRollsByUuid");
         String remove = slice(source, "public void removeDetail", "private String nextDeliveryNo");
 
         assertContainsAll(append,
                 "businessLockService.lockDeliveryOrder(uuid);",
                 "businessLockService.lockFinishRolls",
                 "order.getDeliveryStatus() == null || order.getDeliveryStatus() != DELIVERY_STATUS_PENDING",
+                "validateAppendFinishUuids(dto.getItems(), existingFinishUuids, lockedFinishUuids)",
+                "refreshTotals(order)");
+        assertContainsAll(appendGuard,
                 "requestFinishUuids.add(item.getFinishUuid())",
                 "existingFinishUuids.contains(item.getFinishUuid())",
-                "lockedFinishUuids.contains(item.getFinishUuid())",
-                "refreshTotals(order)");
+                "lockedFinishUuids.contains(item.getFinishUuid())");
         assertBefore(append,
                 "order.getDeliveryStatus() == null || order.getDeliveryStatus() != DELIVERY_STATUS_PENDING",
                 "insertDeliveryDetail(detail)");

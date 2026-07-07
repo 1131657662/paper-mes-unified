@@ -212,26 +212,21 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
 
         // 逐件校验成品：存在、已入库(2)、归属当前客户。
+        Set<String> lockedFinishUuids = new HashSet<>(pendingDeliveryFinishUuids());
+        List<String> requestFinishUuids = validateCreateFinishUuids(dto.getItems(), lockedFinishUuids);
+        Map<String, FinishRoll> finishByUuid = loadFinishRollsByUuid(requestFinishUuids);
+        Map<String, ProcessOrder> orderByUuid = loadOrdersByFinish(finishByUuid.values().stream().toList());
         List<FinishRoll> picked = new ArrayList<>(dto.getItems().size());
-        Map<String, String> orderNoCache = new LinkedHashMap<>();
-        List<String> lockedFinishUuids = pendingDeliveryFinishUuids();
-        Set<String> requestFinishUuids = new HashSet<>();
         Set<String> cashOrderUuids = new LinkedHashSet<>();
         for (DeliveryCreateDTO.Item item : dto.getItems()) {
-            if (!requestFinishUuids.add(item.getFinishUuid())) {
-                throw new BusinessException("出库成品重复：" + item.getFinishUuid());
-            }
-            if (lockedFinishUuids.contains(item.getFinishUuid())) {
-                throw new BusinessException("成品已在待出库单中，不能重复创建出库：" + item.getFinishUuid());
-            }
-            FinishRoll f = finishRollMapper.selectById(item.getFinishUuid());
+            FinishRoll f = finishByUuid.get(item.getFinishUuid());
             if (f == null) {
                 throw new BusinessException(ErrorCode.E002, "成品不存在：" + item.getFinishUuid());
             }
             if (f.getFinishStatus() == null || f.getFinishStatus() != FINISH_STATUS_IN_STOCK) {
                 throw new BusinessException("成品非已入库状态，不可出库：" + f.getFinishRollNo());
             }
-            ProcessOrder order = processOrderMapper.selectById(f.getOrderUuid());
+            ProcessOrder order = orderByUuid.get(f.getOrderUuid());
             if (order == null || !dto.getCustomerUuid().equals(order.getCustomerUuid())) {
                 throw new BusinessException("成品不属于该客户：" + f.getFinishRollNo());
             }
@@ -241,7 +236,6 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             if (order.getSettleType() != null && order.getSettleType() == SETTLE_TYPE_CASH) {
                 cashOrderUuids.add(order.getUuid());
             }
-            orderNoCache.put(f.getOrderUuid(), order.getOrderNo());
             picked.add(f);
         }
 
@@ -427,29 +421,22 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 .map(DeliveryDetail::getFinishUuid)
                 .filter(StringUtils::hasText)
                 .collect(Collectors.toSet());
-        Set<String> requestFinishUuids = new HashSet<>();
-        List<String> lockedFinishUuids = pendingDeliveryFinishUuids();
+        Set<String> lockedFinishUuids = new HashSet<>(pendingDeliveryFinishUuids());
+        List<String> requestFinishUuids = validateAppendFinishUuids(dto.getItems(), existingFinishUuids, lockedFinishUuids);
+        Map<String, FinishRoll> finishByUuid = loadFinishRollsByUuid(requestFinishUuids);
+        Map<String, ProcessOrder> orderByUuid = loadOrdersByFinish(finishByUuid.values().stream().toList());
         Set<String> cashOrderUuids = new LinkedHashSet<>();
         List<DeliveryDetail> appendDetails = new ArrayList<>(dto.getItems().size());
 
         for (DeliveryAppendItemsDTO.Item item : dto.getItems()) {
-            if (!requestFinishUuids.add(item.getFinishUuid())) {
-                throw new BusinessException("追加成品重复：" + item.getFinishUuid());
-            }
-            if (existingFinishUuids.contains(item.getFinishUuid())) {
-                throw new BusinessException("成品已在本张出库单中：" + item.getFinishUuid());
-            }
-            if (lockedFinishUuids.contains(item.getFinishUuid())) {
-                throw new BusinessException("成品已在其他待出库单中：" + item.getFinishUuid());
-            }
-            FinishRoll finish = finishRollMapper.selectById(item.getFinishUuid());
+            FinishRoll finish = finishByUuid.get(item.getFinishUuid());
             if (finish == null) {
                 throw new BusinessException(ErrorCode.E002, "成品不存在：" + item.getFinishUuid());
             }
             if (finish.getFinishStatus() == null || finish.getFinishStatus() != FINISH_STATUS_IN_STOCK) {
                 throw new BusinessException("成品非已入库状态，不可追加出库：" + finish.getFinishRollNo());
             }
-            ProcessOrder processOrder = processOrderMapper.selectById(finish.getOrderUuid());
+            ProcessOrder processOrder = orderByUuid.get(finish.getOrderUuid());
             if (processOrder == null || !order.getCustomerUuid().equals(processOrder.getCustomerUuid())) {
                 throw new BusinessException("成品不属于该出库单客户：" + finish.getFinishRollNo());
             }
@@ -831,6 +818,58 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
     private void validateOutWeight(FinishRoll finish, BigDecimal outWeight) {
         DeliveryStockPolicy.validateOutWeight(finish, outWeight);
+    }
+
+    private List<String> validateCreateFinishUuids(List<DeliveryCreateDTO.Item> items, Set<String> lockedFinishUuids) {
+        Set<String> requestFinishUuids = new LinkedHashSet<>();
+        for (DeliveryCreateDTO.Item item : items) {
+            if (!requestFinishUuids.add(item.getFinishUuid())) {
+                throw new BusinessException("出库成品重复：" + item.getFinishUuid());
+            }
+            if (lockedFinishUuids.contains(item.getFinishUuid())) {
+                throw new BusinessException("成品已在待出库单中，不能重复创建出库：" + item.getFinishUuid());
+            }
+        }
+        return new ArrayList<>(requestFinishUuids);
+    }
+
+    private List<String> validateAppendFinishUuids(List<DeliveryAppendItemsDTO.Item> items,
+                                                   Set<String> existingFinishUuids,
+                                                   Set<String> lockedFinishUuids) {
+        Set<String> requestFinishUuids = new LinkedHashSet<>();
+        for (DeliveryAppendItemsDTO.Item item : items) {
+            if (!requestFinishUuids.add(item.getFinishUuid())) {
+                throw new BusinessException("追加成品重复：" + item.getFinishUuid());
+            }
+            if (existingFinishUuids.contains(item.getFinishUuid())) {
+                throw new BusinessException("成品已在本张出库单中：" + item.getFinishUuid());
+            }
+            if (lockedFinishUuids.contains(item.getFinishUuid())) {
+                throw new BusinessException("成品已在其他待出库单中：" + item.getFinishUuid());
+            }
+        }
+        return new ArrayList<>(requestFinishUuids);
+    }
+
+    private Map<String, FinishRoll> loadFinishRollsByUuid(List<String> finishUuids) {
+        if (finishUuids.isEmpty()) {
+            return Map.of();
+        }
+        return finishRollMapper.selectBatchIds(finishUuids).stream()
+                .collect(Collectors.toMap(FinishRoll::getUuid, Function.identity(), (left, right) -> left));
+    }
+
+    private Map<String, ProcessOrder> loadOrdersByFinish(List<FinishRoll> finishes) {
+        List<String> orderUuids = finishes.stream()
+                .map(FinishRoll::getOrderUuid)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+        if (orderUuids.isEmpty()) {
+            return Map.of();
+        }
+        return processOrderMapper.selectBatchIds(orderUuids).stream()
+                .collect(Collectors.toMap(ProcessOrder::getUuid, Function.identity(), (left, right) -> left));
     }
 
     private Map<String, FinishRoll> loadFinishByUuid(List<DeliveryDetail> details) {
