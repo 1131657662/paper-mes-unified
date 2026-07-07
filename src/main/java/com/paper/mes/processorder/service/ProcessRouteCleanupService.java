@@ -1,6 +1,8 @@
 package com.paper.mes.processorder.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.paper.mes.auth.context.AuthContextHolder;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ErrorCode;
 import com.paper.mes.processorder.entity.FinishOriginalRel;
@@ -20,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -62,9 +65,24 @@ public class ProcessRouteCleanupService {
             finishOriginalRelMapper.delete(new LambdaQueryWrapper<FinishOriginalRel>()
                     .in(FinishOriginalRel::getFinishUuid, existing.stream().map(FinishRoll::getUuid).toList()));
         }
-        for (FinishRoll finish : existing) {
-            finish.setRollNoStatus(ROLL_NO_VOID);
-            finishRollMapper.updateById(finish);
+        voidFinishRolls(existing);
+    }
+
+    private void voidFinishRolls(List<FinishRoll> finishes) {
+        if (finishes.isEmpty()) {
+            return;
+        }
+        List<String> finishUuids = finishes.stream().map(FinishRoll::getUuid).toList();
+        int updated = finishRollMapper.update(null, new LambdaUpdateWrapper<FinishRoll>()
+                .in(FinishRoll::getUuid, finishUuids)
+                .ne(FinishRoll::getRollNoStatus, ROLL_NO_VOID)
+                .isNull(FinishRoll::getActualWeight)
+                .set(FinishRoll::getRollNoStatus, ROLL_NO_VOID)
+                .set(FinishRoll::getUpdateTime, LocalDateTime.now())
+                .set(FinishRoll::getUpdateBy, AuthContextHolder.currentDisplayName())
+                .setSql("version = version + 1"));
+        if (updated != finishUuids.size()) {
+            throw new BusinessException(ErrorCode.E006, "旧成品卷号状态已变化，请刷新后重试");
         }
     }
 
