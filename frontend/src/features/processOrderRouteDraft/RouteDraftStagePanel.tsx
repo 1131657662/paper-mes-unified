@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button, Card, Empty, Select, Space, Tag, Typography, message } from 'antd'
 import type { Machine } from '../../types/machine'
 import type { OriginalRoll } from '../../types/processOrder'
@@ -49,7 +49,8 @@ export default function RouteDraftStagePanel({
   selectedKey,
   stages,
 }: Props) {
-  const source = sourceRowsForRoute(roll, stages).find((row) => row.outputKey === selectedKey)
+  const routeSources = useMemo(() => sourceRowsForRoute(roll, stages), [roll, stages])
+  const source = routeSources.find((row) => row.outputKey === selectedKey)
   const existingStage = stageForSourceKey(stages, selectedKey)
   const [draftStage, setDraftStage] = useState<RouteDraftStage>()
 
@@ -60,7 +61,7 @@ export default function RouteDraftStagePanel({
   useEffect(() => {
     if (!source || existingStage || quickAction?.sourceKey !== selectedKey) return
     setDraftStage(draftStageForSource(source, quickAction.stepType, prices))
-  }, [existingStage, prices.rewindUnitPrice, prices.sawUnitPrice, quickAction?.nonce, quickAction?.sourceKey, quickAction?.stepType, selectedKey, source?.outputKey])
+  }, [existingStage, prices, quickAction?.nonce, quickAction?.sourceKey, quickAction?.stepType, selectedKey, source])
 
   if (!source) return <Empty description="请选择母卷或阶段产物" />
 

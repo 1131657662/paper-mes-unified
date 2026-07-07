@@ -19,7 +19,8 @@ import {
   SubmitBlockerAlert,
   type PreviewStatusDisplay,
 } from './PreviewStepParts'
-import RoutePreviewInline, { routeFinalCount, routePreviewSummary } from './RoutePreviewInline'
+import RoutePreviewInline from './RoutePreviewInline'
+import { routeFinalCount, routePreviewSummary } from './routePreviewInlineUtils'
 import SubmitSuccessPanel from './SubmitSuccessPanel'
 
 interface Props {

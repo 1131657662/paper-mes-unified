@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Empty, Modal, Space, Spin, Tag, Typography, message } from 'antd'
 import { useNavigate, useParams } from 'react-router-dom'
 import MesPageHeader from '../../components/layout/MesPageHeader'
@@ -41,8 +41,14 @@ export default function RouteDesignerPage() {
   const hydratedKey = useRef<string>()
   const { mutateAsync: previewRoute, isPending: isPreviewing } = usePreviewRoute()
   const { mutateAsync: saveRoute, isPending: isSaving } = useSaveRoute()
-  const prices = { sawUnitPrice: customer?.sawPrice, rewindUnitPrice: customer?.rewindPrice }
-  const defaultPlanOptions = { sawPrice: customer?.sawPrice, rewindPrice: customer?.rewindPrice }
+  const prices = useMemo(() => ({
+    sawUnitPrice: customer?.sawPrice,
+    rewindUnitPrice: customer?.rewindPrice,
+  }), [customer?.rewindPrice, customer?.sawPrice])
+  const defaultPlanOptions = useMemo(() => ({
+    sawPrice: customer?.sawPrice,
+    rewindPrice: customer?.rewindPrice,
+  }), [customer?.rewindPrice, customer?.sawPrice])
 
   useEffect(() => {
     const nextKey = `${uuid}-${roll?.uuid}-${config?.configType}-${customer?.sawPrice}-${customer?.rewindPrice}`

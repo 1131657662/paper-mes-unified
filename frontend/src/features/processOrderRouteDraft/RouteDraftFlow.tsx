@@ -7,7 +7,7 @@ import '@xyflow/react/dist/style.css'
 import type { OriginalRoll } from '../../types/processOrder'
 import type { DetailRouteOutputRow } from '../processOrderDetail/routeConfigDetail'
 import { buildRouteFlowModel } from './routeDraftFlowModel'
-import { routeDraftEdgeTypes, routeDraftNodeTypes } from './RouteDraftFlowParts'
+import { routeDraftEdgeTypes, routeDraftNodeTypes } from './routeDraftFlowRegistry'
 import type { RouteDraftStage } from './routeDraftModel'
 
 interface Props {

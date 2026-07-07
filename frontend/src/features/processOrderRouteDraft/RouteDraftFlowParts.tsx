@@ -6,23 +6,12 @@ import {
   Position,
   getSmoothStepPath,
   type EdgeProps,
-  type EdgeTypes,
   type NodeProps,
-  type NodeTypes,
 } from '@xyflow/react'
 import MesTooltip from '../../components/biz/MesTooltip'
 import type { RouteDraftEdge, RouteOutputNode, RouteProcessNode } from './routeDraftFlowModel'
 
-export const routeDraftNodeTypes: NodeTypes = {
-  processNode: RouteFlowProcessNode,
-  routeNode: RouteFlowNode,
-}
-
-export const routeDraftEdgeTypes: EdgeTypes = {
-  routeEdge: RouteFlowEdge,
-}
-
-function RouteFlowNode({ data }: NodeProps<RouteOutputNode>) {
+export function RouteFlowNode({ data }: NodeProps<RouteOutputNode>) {
   return (
     <div className={data.selected ? 'route-draft-node route-draft-node--selected' : 'route-draft-node'} onClick={data.onSelect}>
       <Handle type="target" position={Position.Left} className="route-draft-node__handle" />
@@ -54,7 +43,7 @@ function RouteFlowNode({ data }: NodeProps<RouteOutputNode>) {
   )
 }
 
-function RouteFlowProcessNode({ data }: NodeProps<RouteProcessNode>) {
+export function RouteFlowProcessNode({ data }: NodeProps<RouteProcessNode>) {
   return (
     <button
       type="button"
@@ -69,7 +58,7 @@ function RouteFlowProcessNode({ data }: NodeProps<RouteProcessNode>) {
   )
 }
 
-function RouteFlowEdge(props: EdgeProps<RouteDraftEdge>) {
+export function RouteFlowEdge(props: EdgeProps<RouteDraftEdge>) {
   const [edgePath] = getSmoothStepPath(props)
   return <BaseEdge path={edgePath} markerEnd={props.markerEnd} style={props.style} />
 }
