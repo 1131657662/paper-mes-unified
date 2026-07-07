@@ -137,6 +137,11 @@ class BusinessFlowConcurrencyContractTest {
                 "clearGeneratedProductionData(order)",
                 "from == OrderStatus.PROCESSING && to == OrderStatus.PENDING",
                 "resetIssueAndBackRecordFields(order)");
+        assertContainsAll(slice(source, "private void clearGeneratedProductionData", "private void resetIssueAndBackRecordFields"),
+                ".set(OriginalRoll::getProcessAmount, ZERO_AMOUNT)");
+        assertFalse(slice(source, "private void clearGeneratedProductionData", "private void resetIssueAndBackRecordFields")
+                .contains(".set(OriginalRoll::getProcessAmount, null)"),
+                "待下发回退草稿时原纸加工费列为 NOT NULL，应归零而不是写入 NULL");
     }
 
     @Test

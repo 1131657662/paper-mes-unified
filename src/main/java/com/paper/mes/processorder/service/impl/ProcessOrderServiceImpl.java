@@ -119,6 +119,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private static final int ROLL_STATUS_PENDING = 1;
     private static final int DEFAULT_PIECE_NUM = 1;
     private static final int DEFAULT_PROCESS_MODE = 1;
+    private static final BigDecimal ZERO_AMOUNT = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
     private static final int PROCESS_MODE_ON_SITE = 2;
     private static final int PRINT_STATUS_UNPRINTED = 0;
     private static final int PRINT_STATUS_PRINTED = 1;
@@ -175,6 +176,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
         if (query.getOrderStatus() != null) {
             wrapper.eq(ProcessOrder::getOrderStatus, query.getOrderStatus());
+        } else {
+            wrapper.ne(ProcessOrder::getOrderStatus, STATUS_VOIDED);
         }
         if (StringUtils.hasText(query.getCustomerUuid())) {
             wrapper.eq(ProcessOrder::getCustomerUuid, query.getCustomerUuid());
@@ -1006,7 +1009,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         originalRollMapper.update(null, new LambdaUpdateWrapper<OriginalRoll>()
                 .eq(OriginalRoll::getOrderUuid, orderUuid)
                 .set(OriginalRoll::getRollStatus, ROLL_STATUS_PENDING)
-                .set(OriginalRoll::getProcessAmount, null));
+                .set(OriginalRoll::getProcessAmount, ZERO_AMOUNT));
     }
 
     private void resetIssueAndBackRecordFields(ProcessOrder order) {
