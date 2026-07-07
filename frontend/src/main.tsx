@@ -11,6 +11,7 @@ import './styles/mes-theme.css'
 import { router } from './router'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { queryClient } from './app/queryClient'
+import { installUnhandledErrorHandlers } from './app/unhandledErrors'
 
 const antdLocale = {
   ...zhCN,
@@ -28,6 +29,8 @@ function renderEmpty(componentName?: string) {
     />
   )
 }
+
+installUnhandledErrorHandlers()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
