@@ -151,8 +151,12 @@ export default function ProcessOrderList() {
     onSnapshotDiff: dialogs.openDiff,
     onVoidOrder: handleVoidOrder,
   })
-  const resizableTable = useResizableProcessColumns(columns)
   const tableDensity = tableDensityMode(visibleRowCount, orderPagination.pagination.pageSize)
+  const resizableTable = useResizableProcessColumns(columns)
+  const tableScroll = {
+    x: resizableTable.scrollX,
+    ...(tableDensity === 'fill' ? { y: '100%' } : {}),
+  }
   const batchActions: BatchActions = {
     onBackRecord: openRecord,
     onCalcFee: handleCalcFee,
@@ -198,7 +202,7 @@ export default function ProcessOrderList() {
           rowClassName={rowSelection.rowClassName}
           onRow={rowSelection.onRow}
           locale={{ emptyText: '暂无加工单' }}
-          scroll={{ x: resizableTable.scrollX, y: '100%' }}
+          scroll={tableScroll}
           tableLayout="fixed"
           tableAlertRender={false}
           tableAlertOptionRender={false}

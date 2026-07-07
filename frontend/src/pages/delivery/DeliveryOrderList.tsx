@@ -225,6 +225,7 @@ export default function DeliveryOrderList() {
           rowSelection={rowSelection.rowSelection}
           onConfirm={handleConfirm}
           onDetail={(record) => navigate(`/delivery-orders/${record.uuid}`)}
+          fixedHeader={tableDensity === 'fill'}
           onRow={rowSelection.onRow}
         />
       </div>

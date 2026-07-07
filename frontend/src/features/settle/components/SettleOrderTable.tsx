@@ -15,6 +15,7 @@ import { formatMoney, formatPercent } from '../utils/settleFormatters'
 interface Props {
   canReceiveSettle?: boolean
   data: SettleOrder[]
+  fixedHeader?: boolean
   loading: boolean
   onReload?: () => void
   rowClassName?: (record: SettleOrder) => string
@@ -27,6 +28,7 @@ interface Props {
 export default function SettleOrderTable({
   canReceiveSettle = false,
   data,
+  fixedHeader = false,
   loading,
   onDetail,
   onReload,
@@ -59,7 +61,7 @@ export default function SettleOrderTable({
       options={mesProTableOptions(onReload)}
       optionsRender={renderTableToolbarPortal}
       search={false}
-      scroll={{ x: resizable.scrollX, y: '100%' }}
+      scroll={{ x: resizable.scrollX, ...(fixedHeader ? { y: '100%' } : {}) }}
       tableAlertRender={false}
       tableAlertOptionRender={false}
       tableLayout="fixed"

@@ -107,6 +107,7 @@ export default function SettleOrderList() {
           rowClassName={rowSelection.rowClassName}
           rowSelection={rowSelection.rowSelection}
           onDetail={(record) => navigate(`/settle-orders/${record.uuid}`)}
+          fixedHeader={tableDensity === 'fill'}
           onRow={rowSelection.onRow}
           onReceive={(record) => setReceiveRecord(record)}
         />

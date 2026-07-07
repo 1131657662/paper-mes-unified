@@ -15,6 +15,7 @@ import { formatTon } from '../utils/deliveryFormatters'
 interface Props {
   canManageDelivery?: boolean
   data: DeliveryOrder[]
+  fixedHeader?: boolean
   loading: boolean
   onReload?: () => void
   rowClassName?: (record: DeliveryOrder) => string
@@ -27,6 +28,7 @@ interface Props {
 export default function DeliveryOrderTable({
   canManageDelivery = false,
   data,
+  fixedHeader = false,
   loading,
   onConfirm,
   onDetail,
@@ -59,7 +61,7 @@ export default function DeliveryOrderTable({
       options={mesProTableOptions(onReload)}
       optionsRender={renderTableToolbarPortal}
       search={false}
-      scroll={{ x: resizable.scrollX, y: '100%' }}
+      scroll={{ x: resizable.scrollX, ...(fixedHeader ? { y: '100%' } : {}) }}
       tableAlertRender={false}
       tableAlertOptionRender={false}
       tableLayout="fixed"

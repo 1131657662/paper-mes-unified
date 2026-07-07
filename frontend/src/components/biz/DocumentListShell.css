@@ -198,7 +198,7 @@
   min-height: 0;
   flex: 1 1 0;
   overflow: auto !important;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 }
 
 .document-page-table[data-table-density='empty'],
