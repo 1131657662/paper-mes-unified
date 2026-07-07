@@ -7,6 +7,7 @@ import type { ProcessRouteConfigTarget } from './routeConfigTypes'
 export interface ProductionFlowNodeData extends Record<string, unknown> {
   appendable?: boolean
   kind: 'source' | 'output'
+  layerText?: string
   lines: string[]
   onConfigureRoute?: (target: ProcessRouteConfigTarget) => void
   originalUuid?: string
@@ -43,11 +44,11 @@ interface PositionedRouteNode {
 }
 
 const SOURCE_ID = 'source'
-const LEVEL_GAP = 330
-const NODE_HEIGHT = 92
-const NODE_WIDTH = 248
-const ROW_GAP = 122
-const TOP_PADDING = 48
+const LEVEL_GAP = 370
+const NODE_HEIGHT = 108
+const NODE_WIDTH = 286
+const ROW_GAP = 144
+const TOP_PADDING = 56
 
 export function buildProductionRouteFlow(options: ProductionRouteFlowOptions): ProductionRouteFlowModel {
   const { production, roots } = options
@@ -126,6 +127,7 @@ function outputNode(item: PositionedRouteNode, options: ProductionRouteFlowOptio
     data: {
       appendable,
       kind: 'output',
+      layerText: item.node.layerText,
       lines: item.node.weight == null ? [item.node.meta] : [item.node.meta, `预估 ${formatKg(item.node.weight)}`],
       onConfigureRoute,
       originalUuid,

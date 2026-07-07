@@ -64,7 +64,7 @@ function DenseItemTableRow({ row }: { row: DenseItemRow }) {
           {sourceInfo(row.block)}
         </td>
       )}
-      <td>{row.output?.name ?? '-'}</td>
+      <td>{row.output ? <DenseOutputName output={row.output} /> : '-'}</td>
       <td>{row.output?.spec ?? '-'}</td>
       <td>{row.output?.weight ?? '-'}</td>
       <td>{row.output ? outputStatusText(row.output.status) : '-'}</td>
@@ -75,6 +75,15 @@ function DenseItemTableRow({ row }: { row: DenseItemRow }) {
         {fillable ? '' : '-'}
       </td>
     </tr>
+  )
+}
+
+function DenseOutputName({ output }: { output: PrintRouteOutput }) {
+  return (
+    <span className="print-dense-table__product">
+      {output.layerText && <span className="print-dense-table__layer">{output.layerText}</span>}
+      <span>{output.name}</span>
+    </span>
   )
 }
 

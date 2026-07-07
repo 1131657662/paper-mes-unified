@@ -1,5 +1,10 @@
 import type { FinishProductionVO, RollProductionVO, StageOutputVO } from '../../types/processOrder'
 import {
+  buildFinishLayers,
+  buildStageOutputLayers,
+  layerItemMap,
+} from '../../components/processOrder/shared/layeredRewindView'
+import {
   activeFinishesWithFallbackTrim,
   isStageTrimOutput,
   stageOutputsWithFallbackTrim,
@@ -10,6 +15,7 @@ export interface RouteNode {
   children: RouteNode[]
   key: string
   level: number
+  layerText?: string
   meta: string
   outputKey?: string
   processLabel: string
@@ -30,11 +36,17 @@ export function buildRouteTree(
 ): RouteNode[] {
   const activeOutputRows = stageOutputsWithFallbackTrim(outputs, production)
   if (!activeOutputRows.length) {
-    return activeFinishesWithFallbackTrim(finishes, production)
-      .map((finish) => toFinishNode(finish, fallbackProcessLabel))
+    const finishRows = activeFinishesWithFallbackTrim(finishes, production)
+    const finishLayers = production ? layerItemMap(buildFinishLayers(production, finishRows)) : undefined
+    return finishRows.map((finish) => {
+      return toFinishNode(finish, fallbackProcessLabel, finishLayers?.get(finish.uuid)?.label)
+    })
   }
 
-  const nodes = new Map(activeOutputRows.map((output) => [output.uuid, toStageNode(output)]))
+  const stageLayers = production ? stageLayerMap(production, activeOutputRows) : undefined
+  const nodes = new Map(activeOutputRows.map((output) => {
+    return [output.uuid, toStageNode(output, stageLayers?.get(output.uuid)?.label)]
+  }))
   const childrenByParent = new Map<string, RouteNode[]>()
   const roots: RouteNode[] = []
 
@@ -55,12 +67,13 @@ export function buildRouteTree(
   return sortNodes(roots)
 }
 
-function toStageNode(output: StageOutputVO): RouteNode {
+function toStageNode(output: StageOutputVO, layerText?: string): RouteNode {
   const remain = isStageTrimOutput(output)
   return {
     children: [],
     key: output.uuid,
     level: output.stageLevel ?? 1,
+    layerText,
     title: remain ? trimTitle(output.outputNo) : output.outputNo || `产物 ${output.outputSort ?? '-'}`,
     meta: formatSpec(output.paperName, output.gramWeight, output.finishWidth),
     weight: output.estimateWeight,
@@ -72,12 +85,13 @@ function toStageNode(output: StageOutputVO): RouteNode {
   }
 }
 
-function toFinishNode(finish: FinishProductionVO, processLabel: string): RouteNode {
+function toFinishNode(finish: FinishProductionVO, processLabel: string, layerText?: string): RouteNode {
   const isRemain = finish.isRemain === 1
   return {
     children: [],
     key: finish.uuid,
     level: 1,
+    layerText,
     title: isRemain ? trimTitle(finish.finishRollNo) : finish.finishRollNo || `成品 ${finish.rowSort ?? '-'}`,
     meta: formatSpec(finish.paperName, finish.gramWeight, finish.finishWidth),
     weight: finish.estimateWeight,
@@ -87,6 +101,11 @@ function toFinishNode(finish: FinishProductionVO, processLabel: string): RouteNo
     outputKey: isRemain ? undefined : finish.finishRollNo || (finish.uuid ? `F:${finish.uuid}` : undefined),
     appendable: !isRemain,
   }
+}
+
+function stageLayerMap(production: RollProductionVO, outputs: StageOutputVO[]) {
+  const rewindRows = outputs.filter((output) => (output.sourceStepType ?? production.mainStepType) === 2)
+  return layerItemMap(buildStageOutputLayers(production, rewindRows))
 }
 
 function isAppendableOutput(output: StageOutputVO) {

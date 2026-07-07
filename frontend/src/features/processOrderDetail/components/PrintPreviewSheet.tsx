@@ -158,13 +158,22 @@ function OutputRow({ output }: { output: PrintRouteOutput }) {
   const fillable = output.status === 'final'
   return (
     <tr className={`print-route-output-row print-route-output-row--${output.status}`}>
-      <td>{output.name}</td>
+      <td><OutputName output={output} /></td>
       <td>{output.spec}</td>
       <td>{output.weight}</td>
       <td><strong>{outputStatusText(output.status)}</strong></td>
       <td className={fillable ? 'print-write-cell' : 'print-muted-cell'}>{fillable ? '' : '-'}</td>
       <td className={fillable ? 'print-write-cell' : 'print-muted-cell'}>{fillable ? '' : '-'}</td>
     </tr>
+  )
+}
+
+function OutputName({ output }: { output: PrintRouteOutput }) {
+  return (
+    <span className="print-route-output-name">
+      {output.layerText && <span className="print-route-output-layer">{output.layerText}</span>}
+      <span>{output.name}</span>
+    </span>
   )
 }
 

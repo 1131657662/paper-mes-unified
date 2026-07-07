@@ -109,6 +109,7 @@ function NodeTags({ data }: { data: ProductionFlowNode['data'] }) {
   }
   return (
     <span className="production-route-flow-card__tags">
+      {data.layerText && <Tag color="geekblue">{data.layerText}</Tag>}
       {data.stageText && <Tag color={color}>{data.stageText}</Tag>}
       {data.statusText && <Tag color={color}>{data.statusText}</Tag>}
       {data.appendable && data.originalUuid && data.outputKey && (

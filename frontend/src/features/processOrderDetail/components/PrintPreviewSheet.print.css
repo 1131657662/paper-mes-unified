@@ -433,6 +433,21 @@
     text-align: left;
   }
 
+  .print-route-output-name,
+  .print-dense-table__product {
+    gap: 0.35mm;
+  }
+
+  .print-route-output-layer,
+  .print-dense-table__layer {
+    padding: 0;
+    border: 0;
+    background: transparent !important;
+    font-size: 7pt;
+    font-weight: 700;
+    line-height: 1.05;
+  }
+
   .print-muted-cell {
     background: #fff !important;
   }

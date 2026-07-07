@@ -8,6 +8,13 @@ import {
   isVisibleProductionOutput,
   trimWeightFromFinishes,
 } from '../../../components/processOrder/shared/detailHelpers'
+import {
+  buildFinishLayers,
+  buildStageOutputLayers,
+  layerItemMap,
+  layersSummaryText,
+  type LayeredRewindLayer,
+} from '../../../components/processOrder/shared/layeredRewindView'
 import type {
   FinishProductionVO,
   ProcessOrderDetailVO,
@@ -20,9 +27,11 @@ import { buildDetailMetrics, formatKg, formatTon } from '../orderDetailUtils'
 
 export interface PrintRouteOutput {
   key: string
+  layerText?: string
   name: string
   spec: string
   weight: string
+  width?: number
   status: 'next' | 'final' | 'trim'
 }
 
@@ -96,7 +105,7 @@ function routeStagesFromOutputs(
       source: sourceText(step, outputs, levelOutputs),
       metric: stepMetric(step, levelOutputs, outputs),
       requirement: stageRequirement(production, step, levelOutputs, outputs),
-      outputs: stageOutputsWithTrim.map(routeOutput),
+      outputs: layeredRouteOutputs(production, stageOutputsWithTrim.map(routeOutput), stageOutputsWithTrim, step),
     }
   })
 }
@@ -121,7 +130,7 @@ function singleStageOutputs(
 ): PrintRouteOutput[] {
   const items = outputs.map(finishRouteOutput)
   const trim = fallbackSingleStageTrim(production, outputs, step)
-  return trim ? [...items, trim] : items
+  return withLayerTexts(trim ? [...items, trim] : items, buildFinishLayers(production, outputs))
 }
 
 function finishRouteOutput(finish: FinishProductionVO): PrintRouteOutput {
@@ -131,6 +140,7 @@ function finishRouteOutput(finish: FinishProductionVO): PrintRouteOutput {
     name: remain ? trimTitle(finish.finishRollNo) : finish.finishRollNo || '预生成成品',
     spec: finishSpec(finish),
     weight: formatKg(finish.estimateWeight),
+    width: finish.finishWidth,
     status: remain ? 'trim' : 'final',
   }
 }
@@ -152,6 +162,7 @@ function fallbackSingleStageTrim(
     name: '修边',
     spec: trimWidth > 0 ? `${trimWidth}mm` : '-',
     weight: estimateWeight == null ? '-' : formatKg(estimateWeight),
+    width: trimWidth,
     status: 'trim',
   }
 }
@@ -163,8 +174,32 @@ function routeOutput(output: StageOutputVO): PrintRouteOutput {
     name: trim ? trimTitle(output.outputNo) : output.outputNo || '-',
     spec: outputSpec(output),
     weight: formatKg(output.estimateWeight),
+    width: output.finishWidth,
     status: trim ? 'trim' : isFinalOutput(output) ? 'final' : 'next',
   }
+}
+
+function layeredRouteOutputs(
+  production: RollProductionVO,
+  rows: PrintRouteOutput[],
+  outputs: StageOutputVO[],
+  step?: ProcessStep,
+): PrintRouteOutput[] {
+  if ((step?.stepType ?? outputs[0]?.sourceStepType) !== 2) return rows
+  return withLayerTexts(rows, buildStageOutputLayers(production, outputs))
+}
+
+function withLayerTexts<T>(
+  rows: PrintRouteOutput[],
+  layers: Array<LayeredRewindLayer<T>>,
+): PrintRouteOutput[] {
+  if (!layers.length) return rows
+  const map = layerItemMap(layers)
+  const fallbackTrimLayer = layers.find((layer) => layer.trimWidth > 0)
+  return rows.map((row) => {
+    const layer = map.get(row.key) ?? (row.status === 'trim' ? fallbackTrimLayer : undefined)
+    return layer ? { ...row, layerText: layer.label } : row
+  })
 }
 
 function outputsWithTrim(
@@ -251,7 +286,7 @@ function stageRequirement(
 ): string {
   const stepType = step?.stepType ?? outputs[0]?.sourceStepType ?? production.mainStepType
   if (stepType === 1) return sawRequirement(production, step, outputs, allOutputs)
-  if (stepType === 2) return rewindRequirement(step, outputs, allOutputs)
+  if (stepType === 2) return rewindRequirement(production, step, outputs, allOutputs)
   return '按本阶段产物规格加工，完成后填写实际重量和异常说明。'
 }
 
@@ -272,7 +307,7 @@ function singleStageRequirement(
       outputs: deliverableOutputs.map((item) => ({ width: item.finishWidth, status: 'final' })),
     })
   }
-  return rewindText({
+  const text = rewindText({
     source: '原卷',
     sourceWeight: (production.rollWeight ?? 0) * (production.pieceNum ?? 1),
     outputs: deliverableOutputs.map((item) => ({
@@ -281,6 +316,7 @@ function singleStageRequirement(
       core: item.finishCoreDiameter,
     })),
   })
+  return appendLayerRequirement(text, layersSummaryText(buildFinishLayers(production, outputs)))
 }
 
 function sawRequirement(
@@ -302,12 +338,13 @@ function sawRequirement(
 }
 
 function rewindRequirement(
+  production: RollProductionVO,
   step: ProcessStep | undefined,
   outputs: StageOutputVO[],
   allOutputs: StageOutputVO[],
 ): string {
   const source = sourceText(step, allOutputs, outputs)
-  return rewindText({
+  const text = rewindText({
     source,
     sourceWeight: rewindSourceWeight(outputs, allOutputs, step),
     outputs: outputs.filter((item) => !isTrimOutput(item)).map((item) => ({
@@ -316,6 +353,12 @@ function rewindRequirement(
       core: item.finishCoreDiameter,
     })),
   })
+  return appendLayerRequirement(text, layersSummaryText(buildStageOutputLayers(production, outputs)))
+}
+
+function appendLayerRequirement(text: string, layerText: string): string {
+  if (!layerText) return text
+  return `${text.replace(/。$/, '')}；内外层分层：${layerText}。`
 }
 
 function sawText(params: {

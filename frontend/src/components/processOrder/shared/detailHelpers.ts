@@ -1,5 +1,6 @@
 import type { FinishProductionVO, RollProductionVO } from '../../../types/processOrder'
 import { formatKg, formatTon } from '../../../utils/numberFormatters'
+import { buildFinishLayers, layersSummaryText } from './layeredRewindView'
 import type { FinishGroup } from './types'
 
 /* ---------- 通用格式化 ---------- */
@@ -171,7 +172,9 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
     }
     // 分层
     if (rewindMode === 4) {
-      const segs = [...params].sort((a, b) => (a.layerSort ?? 0) - (b.layerSort ?? 0))
+      const layerText = layersSummaryText(buildFinishLayers(record, record.finishes ?? []))
+      if (layerText) mainDetails.push(layerText)
+      const segs = layerText ? '' : [...params].sort((a, b) => (a.layerSort ?? 0) - (b.layerSort ?? 0))
         .map((p) => fmt(p.layerWidth, 'mm')).join(' / ')
       if (segs) mainDetails.push(`${params.length}段: ${segs}`)
     }
@@ -284,6 +287,8 @@ export function buildConditionText(record: RollProductionVO): string {
 
   // 分层 (mode 4)
   if (mode === 4) {
+    const layerText = layersSummaryText(buildFinishLayers(record, record.finishes ?? []))
+    if (layerText) return '内外层分层'
     const sorted = [...params].sort((a, b) => (a.layerSort ?? 0) - (b.layerSort ?? 0))
     parts.push(sorted.map((p) => `${p.layerWidth}mm`).join('/'))
   }
@@ -297,6 +302,8 @@ export function buildConditionText(record: RollProductionVO): string {
 /* ---------- 排刀方案文本 ---------- */
 
 export function buildLayoutText(record: RollProductionVO): string {
+  const layerText = layersSummaryText(buildFinishLayers(record, record.finishes ?? []))
+  if (layerText) return layerText
   const groups = groupFinishes(record.finishes)
   if (!groups.length) return '-'
   return groups.map((g) => `${g.width}mm×${g.count}`).join(' + ')

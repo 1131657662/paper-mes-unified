@@ -5,6 +5,7 @@ import {
   trimFinishes,
   trimWeightFromFinishes,
 } from '../../../components/processOrder/shared/detailHelpers'
+import { buildFinishLayers } from '../../../components/processOrder/shared/layeredRewindView'
 import type { FinishGroup } from '../../../components/processOrder/shared/types'
 import type { FinishProductionVO, RollProductionVO } from '../../../types/processOrder'
 import { formatKg } from '../orderDetailUtils'
@@ -32,6 +33,7 @@ export default function ProductionFinishColumn({
   const trimWeight = trimWeightFromFinishes(finishes)
   const fallbackTrimWidth = trimRows.length ? 0 : calcTrimWidth(production)
   const sources = collectSources(deliverableFinishes)
+  const layers = buildFinishLayers(production, finishes)
 
   return (
     <div>
@@ -42,11 +44,15 @@ export default function ProductionFinishColumn({
       <div className="production-roll__line">
         预估重量合计：{formatKg(estimateWeight)}
       </div>
-      <div className="production-roll__group production-roll__spaced">
-        {groups.map((group) => (
-          <span className="production-pill" key={group.width}>{group.width}mm × {group.count}</span>
-        ))}
-      </div>
+      {layers.length > 0
+        ? <LayerPills layers={layers} />
+        : (
+          <div className="production-roll__group production-roll__spaced">
+            {groups.map((group) => (
+              <span className="production-pill" key={group.width}>{group.width}mm × {group.count}</span>
+            ))}
+          </div>
+        )}
       {rollNos.length > 0 && (
         <div className="production-roll__line production-roll__spaced">
           卷号：{rollNos.map((f) => f.finishRollNo).join('、')}
@@ -74,6 +80,18 @@ export default function ProductionFinishColumn({
         <div className="production-roll__line">修边重量合计：{formatKg(trimWeight)}</div>
       )}
       {sources.length > 1 && <SourcePills sources={sources} />}
+    </div>
+  )
+}
+
+function LayerPills({ layers }: { layers: ReturnType<typeof buildFinishLayers> }) {
+  return (
+    <div className="production-roll__group production-roll__spaced">
+      {layers.map((layer) => (
+        <span className="production-pill production-pill--layer" key={layer.key}>
+          {layer.summary}
+        </span>
+      ))}
     </div>
   )
 }
