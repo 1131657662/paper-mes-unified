@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Empty, Modal, Space, Spin, Tag, Typography, message } from 'antd'
+import { RedoOutlined, UndoOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import type { OriginalRoll, ProcessRoutePreviewVO } from '../../types/processOrder'
@@ -12,6 +13,7 @@ import RouteDraftFlow from '../../features/processOrderRouteDraft/RouteDraftFlow
 import RouteDraftPreviewResult from '../../features/processOrderRouteDraft/RouteDraftPreviewResult'
 import RouteDraftStagePanel, { type RouteQuickAction } from '../../features/processOrderRouteDraft/RouteDraftStagePanel'
 import RouteDraftSummaryBar from '../../features/processOrderRouteDraft/RouteDraftSummaryBar'
+import { useRouteDraftHistory } from '../../features/processOrderRouteDraft/useRouteDraftHistory'
 import {
   ORIGINAL_OUTPUT_KEY,
   allRouteOutputs,
@@ -33,7 +35,15 @@ export default function RouteDesignerPage() {
   const roll = draft?.rolls?.find((item) => item.uuid === rollUuid)
   const config = draft?.configs?.find((item) => item.originalUuid === rollUuid)
   const customer = customerPage?.records?.find((item) => item.uuid === draft?.order?.customerUuid)
-  const [stages, setStages] = useState<RouteDraftStage[]>([])
+  const {
+    canRedo,
+    canUndo,
+    commit: commitRouteStages,
+    redo: redoRouteStages,
+    reset: resetRouteStages,
+    stages,
+    undo: undoRouteStages,
+  } = useRouteDraftHistory()
   const [preview, setPreview] = useState<ProcessRoutePreviewVO>()
   const [previewError, setPreviewError] = useState<string>()
   const [selectedOutputKey, setSelectedOutputKey] = useState<string>(ORIGINAL_OUTPUT_KEY)
@@ -53,12 +63,12 @@ export default function RouteDesignerPage() {
   useEffect(() => {
     const nextKey = `${uuid}-${roll?.uuid}-${config?.configType}-${customer?.sawPrice}-${customer?.rewindPrice}`
     if (!roll || !uuid || hydratedKey.current === nextKey) return
-    setStages(createRouteStages(roll, config?.route, defaultPlanOptions))
+    resetRouteStages(createRouteStages(roll, config?.route, defaultPlanOptions))
     setPreview(config?.routePreview)
     setPreviewError(undefined)
     setSelectedOutputKey(ORIGINAL_OUTPUT_KEY)
     hydratedKey.current = nextKey
-  }, [config, customer, defaultPlanOptions, roll, uuid])
+  }, [config, customer, defaultPlanOptions, resetRouteStages, roll, uuid])
 
   if (!uuid || !rollUuid) return <RouteMissing onBack={() => navigate('/process-orders')} />
 
@@ -87,6 +97,7 @@ export default function RouteDesignerPage() {
     }
     try {
       const result = await saveRoute({ orderUuid: uuid, request: buildRouteDto(roll, stages) })
+      resetRouteStages(stages)
       setPreview(result)
       setPreviewError(undefined)
       message.success('链式工艺已保存')
@@ -105,14 +116,26 @@ export default function RouteDesignerPage() {
       message.warning(result.message)
       return
     }
-    setStages(result.stages)
-    setPreview(undefined)
-    setPreviewError(undefined)
+    commitRouteStages(result.stages)
+    clearPreview()
     setSelectedOutputKey(ORIGINAL_OUTPUT_KEY)
     message.success(result.message)
   }
   const handleStagesChange = (nextStages: RouteDraftStage[]) => {
-    setStages(nextStages)
+    commitRouteStages(nextStages)
+    clearPreview()
+  }
+  const handleUndo = () => {
+    undoRouteStages()
+    clearPreview()
+    setSelectedOutputKey(ORIGINAL_OUTPUT_KEY)
+  }
+  const handleRedo = () => {
+    redoRouteStages()
+    clearPreview()
+    setSelectedOutputKey(ORIGINAL_OUTPUT_KEY)
+  }
+  const clearPreview = () => {
     setPreview(undefined)
     setPreviewError(undefined)
   }
@@ -126,7 +149,20 @@ export default function RouteDesignerPage() {
           description="从母卷或任一阶段产物继续配置下一道工艺，最终未被消耗的产物才会生成正式成品。"
           backText="返回新建单"
           onBack={backToDraft}
-          actions={<RouteActions isPreviewing={isPreviewing} isSaving={isSaving} onApply={() => confirmApplyToSame()} onPreview={handlePreview} onSave={handleSave} onBack={backToDraft} />}
+          actions={(
+            <RouteActions
+              canRedo={canRedo}
+              canUndo={canUndo}
+              isPreviewing={isPreviewing}
+              isSaving={isSaving}
+              onApply={() => confirmApplyToSame()}
+              onBack={backToDraft}
+              onPreview={handlePreview}
+              onRedo={handleRedo}
+              onSave={handleSave}
+              onUndo={handleUndo}
+            />
+          )}
         />
         {!roll ? <RouteMissing onBack={backToDraft} /> : (
           <>
@@ -191,11 +227,24 @@ export default function RouteDesignerPage() {
   }
 }
 
-function RouteActions({ isPreviewing, isSaving, onApply, onBack, onPreview, onSave }: RouteActionProps) {
+function RouteActions({
+  canRedo,
+  canUndo,
+  isPreviewing,
+  isSaving,
+  onApply,
+  onBack,
+  onPreview,
+  onRedo,
+  onSave,
+  onUndo,
+}: RouteActionProps) {
   return (
     <Space wrap>
       <Button onClick={onBack}>返回新建单</Button>
       <Button onClick={onApply}>应用到同类</Button>
+      <Button icon={<UndoOutlined />} disabled={!canUndo} onClick={onUndo}>撤销</Button>
+      <Button icon={<RedoOutlined />} disabled={!canRedo} onClick={onRedo}>重做</Button>
       <Button loading={isPreviewing} onClick={onPreview}>预览校验</Button>
       <Button type="primary" loading={isSaving} onClick={onSave}>保存草稿</Button>
     </Space>
@@ -255,12 +304,16 @@ function RouteMissing({ onBack }: { onBack: () => void }) {
 }
 
 interface RouteActionProps {
+  canRedo: boolean
+  canUndo: boolean
   isPreviewing: boolean
   isSaving: boolean
   onApply: () => void
   onBack: () => void
   onPreview: () => void
+  onRedo: () => void
   onSave: () => void
+  onUndo: () => void
 }
 
 interface SourcePanelProps {
