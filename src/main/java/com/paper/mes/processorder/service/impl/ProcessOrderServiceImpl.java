@@ -1447,6 +1447,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 throw new BusinessException("成品记录不存在：" + d.getUuid());
             }
             f.setActualWeight(d.getActualWeight());
+            f.setRemainingWeight(d.getActualWeight());
             if (d.getScrapWeight() != null) {
                 f.setScrapWeight(d.getScrapWeight());
             }
@@ -1553,6 +1554,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             f.setFinishWidth(roll.getActualWidth() != null ? roll.getActualWidth() : roll.getOriginalWidth());
             f.setSourceType(SOURCE_DIRECT_SHIP);
             f.setActualWeight(roll.getActualWeight()); // 直发：成品重量=母卷复称重量。
+            f.setRemainingWeight(roll.getActualWeight());
             f.setEstimateWeight(roll.getActualWeight());
             f.setFinishStatus(FINISH_STATUS_IN_STOCK); // 跳过待入库直接已入库。
             f.setWarehouseUuid(order.getWarehouseUuid());
