@@ -20,11 +20,11 @@ final class DeliveryStockPolicy {
         if (finish == null) {
             return BigDecimal.ZERO;
         }
-        if (finish.getRemainingWeight() != null) {
-            return finish.getRemainingWeight();
-        }
         if (finish.getFinishStatus() != null && finish.getFinishStatus() == FINISH_STATUS_OUT) {
             return BigDecimal.ZERO;
+        }
+        if (finish.getRemainingWeight() != null) {
+            return finish.getRemainingWeight();
         }
         return nz(finish.getActualWeight());
     }
