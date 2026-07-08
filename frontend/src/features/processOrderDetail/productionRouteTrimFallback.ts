@@ -96,10 +96,10 @@ function stageSource(
 ): { width?: number; weight: number } {
   const parentUuid = stageOutputs.find((output) => output.parentOutputUuid)?.parentOutputUuid
   const parent = allOutputs.find((output) => output.uuid === parentUuid)
-  if (parent) return { width: parent.finishWidth, weight: parent.estimateWeight ?? 0 }
+  if (parent) return { width: parent.finishWidth, weight: parent.actualWeight ?? parent.estimateWeight ?? 0 }
   return {
     width: production.originalWidth,
-    weight: (production.rollWeight ?? 0) * (production.pieceNum ?? 1),
+    weight: production.actualWeight ?? (production.rollWeight ?? 0) * (production.pieceNum ?? 1),
   }
 }
 

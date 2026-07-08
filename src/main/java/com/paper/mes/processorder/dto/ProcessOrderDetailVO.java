@@ -38,6 +38,7 @@ public class ProcessOrderDetailVO {
         private Integer gramWeight;
         private Integer originalWidth;
         private BigDecimal rollWeight;
+        private BigDecimal actualWeight;
         private BigDecimal processAmount;
         private Integer pieceNum;
         private Integer processMode;

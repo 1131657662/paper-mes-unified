@@ -218,6 +218,7 @@ export interface RollProductionVO {
   gramWeight?: number
   originalWidth?: number
   rollWeight?: number
+  actualWeight?: number
   processAmount?: number
   pieceNum?: number
   processMode?: number

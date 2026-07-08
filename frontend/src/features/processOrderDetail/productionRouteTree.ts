@@ -29,10 +29,18 @@ export interface RouteNode {
   sortInfo?: LayeredRewindSort
   title: string
   weight?: number
+  weightLabel?: RouteWeightLabel
 }
 
 const OUTPUT_CONSUMED = 2
 const OUTPUT_VOID = 4
+
+export type RouteWeightLabel = '实际' | '预估'
+
+interface RouteWeight {
+  label?: RouteWeightLabel
+  value?: number
+}
 
 export function buildRouteTree(
   outputs: StageOutputVO[],
@@ -92,6 +100,7 @@ function toStageNode(
   sortInfo?: LayeredRewindSort,
 ): RouteNode {
   const remain = isStageTrimOutput(output)
+  const weight = displayWeight(output.actualWeight, output.estimateWeight)
   return {
     children: [],
     key: output.uuid,
@@ -99,7 +108,8 @@ function toStageNode(
     layerText,
     title: remain ? trimTitle(output.outputNo) : output.outputNo || `产物 ${output.outputSort ?? '-'}`,
     meta: formatSpec(output.paperName, output.gramWeight, output.finishWidth),
-    weight: output.estimateWeight,
+    weight: weight.value,
+    weightLabel: weight.label,
     processLabel: output.sourceSummary || stepTypeText(output.sourceStepType),
     statusColor: remain ? 'orange' : outputStatusColor(output.outputStatus),
     statusText: remain ? '修边/余料' : outputStatusText(output.outputStatus),
@@ -116,6 +126,7 @@ function toFinishNode(
   sortInfo?: LayeredRewindSort,
 ): RouteNode {
   const isRemain = finish.isRemain === 1
+  const weight = displayWeight(finish.actualWeight, finish.estimateWeight)
   return {
     children: [],
     key: finish.uuid,
@@ -123,7 +134,8 @@ function toFinishNode(
     layerText,
     title: isRemain ? trimTitle(finish.finishRollNo) : finish.finishRollNo || `成品 ${finish.rowSort ?? '-'}`,
     meta: formatSpec(finish.paperName, finish.gramWeight, finish.finishWidth),
-    weight: finish.estimateWeight,
+    weight: weight.value,
+    weightLabel: weight.label,
     processLabel,
     statusColor: isRemain ? 'orange' : 'green',
     statusText: isRemain ? '修边/余料' : '最终成品',
@@ -131,6 +143,12 @@ function toFinishNode(
     outputKey: isRemain ? undefined : finish.finishRollNo || (finish.uuid ? `F:${finish.uuid}` : undefined),
     appendable: !isRemain,
   }
+}
+
+function displayWeight(actualWeight?: number, estimateWeight?: number): RouteWeight {
+  if (actualWeight != null) return { value: actualWeight, label: '实际' }
+  if (estimateWeight != null) return { value: estimateWeight, label: '预估' }
+  return {}
 }
 
 function stageLayersFor(production: RollProductionVO, outputs: StageOutputVO[]) {

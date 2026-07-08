@@ -372,6 +372,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         Map<String, List<ProcessStageOutput>> outputsByRoll = groupStageOutputsByRoll(stageOutputs);
         Map<String, List<FinishOriginalRel>> relsByFinish = groupRelsByFinish(finishOriginalRels);
         Map<String, List<FinishRoll>> finishesByRoll = groupFinishesByRoll(finishRolls, finishOriginalRels, rollByUuid);
+        Map<String, FinishRoll> finishByUuid = indexFinishesByUuid(finishRolls);
 
         List<ProcessOrderDetailVO.RollProductionVO> productions = new ArrayList<>(rolls.size());
         for (OriginalRoll roll : rolls) {
@@ -386,6 +387,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             item.setGramWeight(roll.getGramWeight());
             item.setOriginalWidth(roll.getOriginalWidth());
             item.setRollWeight(roll.getRollWeight());
+            item.setActualWeight(roll.getActualWeight());
             item.setProcessAmount(roll.getProcessAmount());
             item.setPieceNum(roll.getPieceNum());
             item.setProcessMode(roll.getProcessMode());
@@ -393,12 +395,20 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             item.setRollStatus(roll.getRollStatus());
             item.setRemark(roll.getRemark());
             item.setSteps(stepsByRoll.getOrDefault(roll.getUuid(), List.of()));
-            item.setStageOutputs(toDetailStageOutputs(outputsByRoll.get(roll.getUuid())));
+            item.setStageOutputs(toDetailStageOutputs(outputsByRoll.get(roll.getUuid()), finishByUuid));
             item.setRewindParams(toDetailRewindParams(paramsByRoll.get(roll.getUuid())));
             item.setFinishes(toDetailFinishes(finishesByRoll.get(roll.getUuid()), relsByFinish, rollByUuid));
             productions.add(item);
         }
         return productions;
+    }
+
+    private Map<String, FinishRoll> indexFinishesByUuid(List<FinishRoll> finishes) {
+        Map<String, FinishRoll> result = new LinkedHashMap<>();
+        for (FinishRoll finish : finishes) {
+            result.put(finish.getUuid(), finish);
+        }
+        return result;
     }
 
     private Map<String, List<FinishRoll>> groupFinishesByRoll(List<FinishRoll> finishes,
@@ -436,18 +446,20 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         return grouped;
     }
 
-    private List<ProcessOrderDetailVO.StageOutputVO> toDetailStageOutputs(List<ProcessStageOutput> outputs) {
+    private List<ProcessOrderDetailVO.StageOutputVO> toDetailStageOutputs(List<ProcessStageOutput> outputs,
+                                                                          Map<String, FinishRoll> finishByUuid) {
         if (outputs == null || outputs.isEmpty()) {
             return List.of();
         }
         List<ProcessOrderDetailVO.StageOutputVO> result = new ArrayList<>(outputs.size());
         for (ProcessStageOutput output : outputs) {
-            result.add(toDetailStageOutput(output));
+            result.add(toDetailStageOutput(output, finishByUuid));
         }
         return result;
     }
 
-    private ProcessOrderDetailVO.StageOutputVO toDetailStageOutput(ProcessStageOutput output) {
+    private ProcessOrderDetailVO.StageOutputVO toDetailStageOutput(ProcessStageOutput output,
+                                                                   Map<String, FinishRoll> finishByUuid) {
         ProcessOrderDetailVO.StageOutputVO item = new ProcessOrderDetailVO.StageOutputVO();
         item.setUuid(output.getUuid());
         item.setOutputNo(output.getOutputNo());
@@ -463,7 +475,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         item.setFinishDiameter(output.getFinishDiameter());
         item.setFinishCoreDiameter(output.getFinishCoreDiameter());
         item.setEstimateWeight(output.getEstimateWeight());
-        item.setActualWeight(output.getActualWeight());
+        item.setActualWeight(resolveStageActualWeight(output, finishByUuid));
         item.setIsRemain(isTrimStageOutput(output) ? IS_REMAIN_YES : IS_REMAIN_NO);
         item.setSourceStepType(output.getSourceStepType());
         item.setSourceSummary(output.getSourceSummary());
@@ -478,6 +490,14 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 || "切边".equals(output.getPaperName())
                 || "修边".equals(output.getOutputNo())
                 || "切边".equals(output.getOutputNo());
+    }
+
+    private BigDecimal resolveStageActualWeight(ProcessStageOutput output, Map<String, FinishRoll> finishByUuid) {
+        if (output.getActualWeight() != null) {
+            return output.getActualWeight();
+        }
+        FinishRoll finish = finishByUuid.get(output.getFinishRollUuid());
+        return finish == null ? null : finish.getActualWeight();
     }
 
     private List<ProcessOrderDetailVO.RewindParamVO> toDetailRewindParams(List<ProcessParam> params) {

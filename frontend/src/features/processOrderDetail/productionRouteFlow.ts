@@ -101,6 +101,7 @@ function flattenRouteNode(item: PositionedRouteNode, options: ProductionRouteFlo
 }
 
 function sourceNode(production: RollProductionVO, y: number): ProductionFlowNode {
+  const weight = sourceWeight(production)
   return {
     id: SOURCE_ID,
     type: 'productionRoute',
@@ -108,7 +109,7 @@ function sourceNode(production: RollProductionVO, y: number): ProductionFlowNode
     data: {
       kind: 'source',
       title: production.rollNo || production.extraNo || production.paperName || '母卷',
-      lines: [sourceSpec(production), `来料 ${formatKg((production.rollWeight ?? 0) * (production.pieceNum ?? 1))}`],
+      lines: [sourceSpec(production), `${weight.label} ${formatKg(weight.value)}`],
       statusText: '原卷',
       statusColor: 'blue',
     },
@@ -128,7 +129,7 @@ function outputNode(item: PositionedRouteNode, options: ProductionRouteFlowOptio
       appendable,
       kind: 'output',
       layerText: item.node.layerText,
-      lines: item.node.weight == null ? [item.node.meta] : [item.node.meta, `预估 ${formatKg(item.node.weight)}`],
+      lines: outputLines(item.node),
       onConfigureRoute,
       originalUuid,
       outputKey: item.node.outputKey,
@@ -140,6 +141,16 @@ function outputNode(item: PositionedRouteNode, options: ProductionRouteFlowOptio
     },
     style: { width: NODE_WIDTH },
   }
+}
+
+function sourceWeight(production: RollProductionVO): { label: string; value: number } {
+  if (production.actualWeight != null) return { label: '实际', value: production.actualWeight }
+  return { label: '来料', value: (production.rollWeight ?? 0) * (production.pieceNum ?? 1) }
+}
+
+function outputLines(node: RouteNode): string[] {
+  if (node.weight == null) return [node.meta]
+  return [node.meta, `${node.weightLabel ?? '预估'} ${formatKg(node.weight)}`]
 }
 
 function routeEdges(item: PositionedRouteNode, parentId: string): ProductionFlowEdge[] {
