@@ -36,6 +36,7 @@ export interface DeliveryDetail {
   actualWeight?: number
   remainingWeight?: number
   outWeight: number
+  isRemain?: number
   sourceType?: number
   finishStatus?: number
   originalRollNos?: string
@@ -98,6 +99,7 @@ export interface AvailableFinishVO {
   finishCoreDiameter?: number
   actualWeight: number
   remainingWeight?: number
+  isRemain?: number
   sourceType: number
   finishStatus: number
   settleType?: number

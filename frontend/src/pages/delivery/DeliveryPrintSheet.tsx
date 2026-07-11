@@ -6,6 +6,7 @@ import {
   formatKg,
   formatTon,
 } from '../../features/delivery/utils/deliveryFormatters'
+import { formatGram } from '../../utils/numberFormatters'
 import '../../pages/documentModule.css'
 
 interface Props {
@@ -59,9 +60,9 @@ export default function DeliveryPrintSheet({ detail }: Props) {
                 <tr key={item.uuid}>
                   <td>{index + 1}</td>
                   <td>{item.orderNo || '-'}</td>
-                  <td>{item.finishRollNo || '-'}</td>
+                  <td>{printFinishRollNo(item)}</td>
                   <td>{item.paperName || '-'}</td>
-                  <td>{item.gramWeight ? `${item.gramWeight}g` : '-'}</td>
+                  <td>{formatGram(item.gramWeight)}</td>
                   <td>{deliveryDetailSpecText(item)}</td>
                   <td>{formatKg(item.actualWeight)}</td>
                   <td>{formatKg(item.outWeight)}</td>
@@ -84,4 +85,9 @@ export default function DeliveryPrintSheet({ detail }: Props) {
       </div>
     </div>
   )
+}
+
+function printFinishRollNo(item: { finishRollNo?: string; isRemain?: number }) {
+  const rollNo = item.finishRollNo || '-'
+  return item.isRemain === 1 ? `${rollNo}（余料）` : rollNo
 }

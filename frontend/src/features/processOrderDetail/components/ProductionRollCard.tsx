@@ -12,7 +12,8 @@ import {
 } from '../../../components/processOrder/shared/detailHelpers'
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import type { RollProductionVO } from '../../../types/processOrder'
-import { formatKg, sumProductionEstimateWeight } from '../orderDetailUtils'
+import { formatMm } from '../../../utils/numberFormatters'
+import { formatProductionKg, sumProductionEstimateWeight } from '../orderDetailUtils'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import ProductionFinishColumn from './ProductionFinishColumn'
 import ProductionRollSourceColumn from './ProductionRollSourceColumn'
@@ -95,8 +96,8 @@ function PlanColumn({ row, trimWidth, trimWeight }: Props & { trimWidth: number;
       <div className="production-roll__line">门幅排布：{buildLayoutText(production)}</div>
       {(trimWidth > 0 || trimWeight > 0) && (
         <div className="production-roll__line">
-          修边 {trimWidth > 0 ? `${trimWidth}mm` : '-'}
-          {trimWeight > 0 ? ` / ${formatKg(trimWeight)}` : ''}
+          修边 {trimWidth > 0 ? formatMm(trimWidth) : '-'}
+          {trimWeight > 0 ? ` / ${formatProductionKg(trimWeight, production)}` : ''}
         </div>
       )}
       <AdditionalSteps row={row} />

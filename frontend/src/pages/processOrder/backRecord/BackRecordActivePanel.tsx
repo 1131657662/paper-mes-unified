@@ -3,6 +3,7 @@ import { ArrowLeftOutlined, ArrowRightOutlined, CopyOutlined, SwapOutlined } fro
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import { buildConditionText, buildLayoutText } from '../../../components/processOrder/shared/detailHelpers'
 import { formatKg } from '../../../features/processOrderDetail/orderDetailUtils'
+import { formatGram, formatMm } from '../../../utils/numberFormatters'
 import type { ProcessStep } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import BackRecordFinishEntryList from './BackRecordFinishEntryList'
@@ -71,7 +72,7 @@ function RollActualPanel({
         <Fact label="编号" value={roll.extraNo || '-'} />
         <Fact label="批次" value={roll.batchNo || '-'} />
         <Fact label="件数" value={`${roll.pieceNum ?? 1} 件`} />
-        <Fact label="标称" value={`${roll.paperName || '-'} / ${roll.gramWeight ?? '-'}g / ${roll.originalWidth ?? '-'}mm`} />
+        <Fact label="标称" value={`${roll.paperName || '-'} / ${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}`} />
         <Fact label="来料重量" value={formatKg((roll.rollWeight ?? 0) * (roll.pieceNum ?? 1))} />
         <Fact label="加工方式" value={PROCESS_MODE[roll.processMode ?? 1] ?? '-'} />
       </div>

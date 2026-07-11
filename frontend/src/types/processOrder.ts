@@ -617,6 +617,10 @@ export interface ProcessOrderVoidDTO {
   reason: string
 }
 
+export interface ProcessOrderRollbackDTO {
+  reason: string
+}
+
 /** 主单备注轻量编辑入参。 */
 export interface ProcessOrderRemarkDTO {
   remark?: string

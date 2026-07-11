@@ -89,7 +89,9 @@ function buildMoreItems(record: ProcessOrder | undefined, actions: BatchActions)
   if (status === 1) items.push(item('rollback-draft', '回退草稿编辑', () => confirmStatus(record, 0, '确认回退到草稿继续编辑？已生成的工序、成品号和打印快照会失效。', actions), <RollbackOutlined />, true))
   if (status === 2) items.push(item('rollback-pending-from-processing', '回退待下发', () => confirmStatus(record, 1, '确认回退到待下发？已打印快照会失效，需要重新打印下发。', actions), <RollbackOutlined />, true))
   if (status === 3) items.push(item('rollback-pending', '回退待下发', () => confirmStatus(record, 1, '确认回退到待下发？会清理完成快照和回录信息。', actions), <RollbackOutlined />, true))
+  if (status === 3) items.push(item('rollback-draft-from-record', '回退草稿编辑', () => confirmStatus(record, 0, '确认回退到草稿更换母卷？会清理下发、回录、成品号和工序产物数据。', actions), <RollbackOutlined />, true))
   if (status === 4) items.push(item('rollback-record', '回退待回录', () => confirmStatus(record, 3, '确认回退到待回录？', actions), <RollbackOutlined />, true))
+  if (status === 4) items.push(item('rollback-draft-from-finished', '回退草稿编辑', () => confirmStatus(record, 0, '确认回退到草稿更换母卷？会清理下发、回录、成品号和工序产物数据。', actions), <RollbackOutlined />, true))
   if (status === 0 || status === 1 || status === 2) items.push(item('void-order', '作废加工单', () => actions.onVoidOrder(record), <StopOutlined />, true))
   return items
 }

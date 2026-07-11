@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Modal, message } from 'antd'
+import { Modal, Space, message } from 'antd'
 import { useAppendDeliveryDetails } from '../../features/delivery/hooks/useAppendDeliveryDetails'
 import { useAvailableFinishes } from '../../features/delivery/hooks/useAvailableFinishes'
 import { availableFinishWeight, formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { AvailableFinishVO } from '../../types/delivery'
 import DeliveryCreateTable, { type DeliveryLineEdit } from './DeliveryCreateTable'
+import {
+  DeliveryFinishScopeControl,
+  filterFinishesByScope,
+  finishScopeName,
+  type DeliveryFinishScope,
+} from './DeliveryFinishScopeControl'
 
 interface Props {
   customerName?: string
@@ -25,17 +31,26 @@ export default function DeliveryAppendItemsModal({
 }: Props) {
   const appendMutation = useAppendDeliveryDetails()
   const finishesQuery = useAvailableFinishes(open ? customerUuid : undefined)
+  const [finishScope, setFinishScope] = useState<DeliveryFinishScope>('product')
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [lineEdits, setLineEdits] = useState<Record<string, DeliveryLineEdit>>({})
   const finishes = finishesQuery.data ?? []
-  const selectedFinishes = finishes.filter((item) => selectedRowKeys.includes(item.finishUuid))
+  const visibleFinishes = filterFinishesByScope(finishes, finishScope)
+  const selectedFinishes = visibleFinishes.filter((item) => selectedRowKeys.includes(item.finishUuid))
 
   useEffect(() => {
     if (!open) {
+      setFinishScope('product')
       setSelectedRowKeys([])
       setLineEdits({})
     }
   }, [open])
+
+  const handleScopeChange = (value: DeliveryFinishScope) => {
+    setFinishScope(value)
+    setSelectedRowKeys([])
+    setLineEdits({})
+  }
 
   const handleEditChange = (finishUuid: string, value: DeliveryLineEdit) => {
     setLineEdits((prev) => ({ ...prev, [finishUuid]: { ...prev[finishUuid], ...value } }))
@@ -44,7 +59,7 @@ export default function DeliveryAppendItemsModal({
   const handleSubmit = async () => {
     if (!deliveryUuid) return
     if (selectedFinishes.length === 0) {
-      message.warning('请先勾选要追加的成品卷')
+      message.warning(`请先勾选要追加的${finishScopeName(finishScope)}卷`)
       return
     }
     const hasRisk = selectedFinishes.some((item) => item.settlementRisk)
@@ -73,15 +88,16 @@ export default function DeliveryAppendItemsModal({
       onOk={handleSubmit}
     >
       <div className="delivery-append-modal">
-        <div className="document-module-summary">
+        <Space className="document-module-summary" size={12} wrap>
           <span>客户 <strong>{customerName || '-'}</strong></span>
-          <span>可选 <strong>{finishes.length}</strong> 卷</span>
+          <DeliveryFinishScopeControl finishes={finishes} value={finishScope} onChange={handleScopeChange} />
+          <span>可选 <strong>{visibleFinishes.length}</strong> 卷</span>
           <span>已选 <strong>{selectedFinishes.length}</strong> 卷</span>
           <span>合计 <strong>{formatTon(selectedWeight(selectedFinishes, lineEdits))}</strong></span>
-        </div>
+        </Space>
         <div className="document-module-table">
           <DeliveryCreateTable
-            data={finishes}
+            data={visibleFinishes}
             edits={lineEdits}
             loading={finishesQuery.isLoading || finishesQuery.isFetching}
             selectedRowKeys={selectedRowKeys}

@@ -16,8 +16,8 @@ import java.util.List;
 public class SettleIntegrityBootstrap implements ApplicationRunner {
 
     private static final String DETAIL_TABLE = "biz_settle_detail";
-    private static final String ACTIVE_ORDER_COLUMN = "order_uuid_active";
-    private static final String ACTIVE_ORDER_INDEX = "uk_biz_settle_detail_active_order";
+    private static final String ACTIVE_ORDER_COLUMN = "active_order_uuid";
+    private static final String ACTIVE_ORDER_INDEX = "uk_settle_detail_order_active";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -74,7 +74,7 @@ public class SettleIntegrityBootstrap implements ApplicationRunner {
         }
         jdbcTemplate.execute("""
                 ALTER TABLE `biz_settle_detail`
-                ADD COLUMN `order_uuid_active` VARCHAR(32)
+                ADD COLUMN `active_order_uuid` VARCHAR(36)
                 GENERATED ALWAYS AS (
                   CASE
                     WHEN `is_deleted` = 0 THEN NULLIF(TRIM(`order_uuid`), '')
@@ -90,7 +90,7 @@ public class SettleIntegrityBootstrap implements ApplicationRunner {
         }
         jdbcTemplate.execute("""
                 ALTER TABLE `biz_settle_detail`
-                ADD UNIQUE KEY `uk_biz_settle_detail_active_order` (`order_uuid_active`)
+                ADD UNIQUE KEY `uk_settle_detail_order_active` (`active_order_uuid`)
                 """);
     }
 

@@ -62,7 +62,7 @@ public class DeliveryExportService {
             Row row = sheet.createRow(rowIndex++);
             row.createCell(0).setCellValue(index++);
             row.createCell(1).setCellValue(text(item.getOrderNo()));
-            row.createCell(2).setCellValue(text(item.getFinishRollNo()));
+            row.createCell(2).setCellValue(finishRollNoText(item));
             row.createCell(3).setCellValue(text(item.getPaperName()));
             row.createCell(4).setCellValue(text(item.getGramWeight()));
             row.createCell(5).setCellValue(specText(item));
@@ -164,6 +164,11 @@ public class DeliveryExportService {
 
     private String text(Object value) {
         return value == null ? "-" : value.toString();
+    }
+
+    private String finishRollNoText(DeliveryDetailItemVO item) {
+        String rollNo = text(item.getFinishRollNo());
+        return Integer.valueOf(1).equals(item.getIsRemain()) ? rollNo + "（余料）" : rollNo;
     }
 
     private String firstText(String first, String second) {

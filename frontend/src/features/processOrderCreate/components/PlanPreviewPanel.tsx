@@ -8,7 +8,7 @@ import type {
   RewindFinishItemPreview,
   RewindSegmentPreview,
 } from '../../../types/processOrder'
-import { formatKg } from '../../../utils/numberFormatters'
+import { formatKg, formatMm } from '../../../utils/numberFormatters'
 import './PlanPreviewPanel.css'
 
 interface Props {
@@ -20,18 +20,18 @@ interface Props {
 const segmentColumns: ColumnsType<RewindSegmentPreview> = [
   { title: '段', dataIndex: 'segmentSort', width: 52, render: (value) => `#${value ?? '-'}` },
   { title: '比例', dataIndex: 'segmentRatio', width: 72, render: (value) => `${value ?? '-'}%` },
-  { title: '目标直径', dataIndex: 'targetDiameter', width: 88, render: (value) => value ? `${value}mm` : '-' },
+  { title: '目标直径', dataIndex: 'targetDiameter', width: 88, render: (value) => value ? formatMm(value) : '-' },
   { title: '重复', dataIndex: 'repeatCount', width: 58 },
-  { title: '排布', dataIndex: 'layoutWidth', width: 84, render: (value) => value ? `${value}mm` : '-' },
-  { title: '修边', dataIndex: 'trimWidth', width: 72, render: (value) => value ? `${value}mm` : '-' },
+  { title: '排布', dataIndex: 'layoutWidth', width: 84, render: (value) => value ? formatMm(value) : '-' },
+  { title: '修边', dataIndex: 'trimWidth', width: 72, render: (value) => value ? formatMm(value) : '-' },
   { title: '摘要', dataIndex: 'summary', width: 180, render: textCell },
 ]
 
 const finishColumns: ColumnsType<RewindFinishItemPreview> = [
   { title: '段', dataIndex: 'segmentSort', width: 52, render: (value) => value ? `#${value}` : '-' },
-  { title: '门幅', dataIndex: 'finishWidth', width: 72, render: (value) => `${value ?? 0}mm` },
-  { title: '直径', dataIndex: 'finishDiameter', width: 76, render: (value) => value ? `${value}mm` : '-' },
-  { title: '纸芯', dataIndex: 'finishCoreDiameter', width: 72, render: (value) => value ? `${value}mm` : '-' },
+  { title: '门幅', dataIndex: 'finishWidth', width: 72, render: (value) => formatMm(value ?? 0) },
+  { title: '直径', dataIndex: 'finishDiameter', width: 76, render: (value) => value ? formatMm(value) : '-' },
+  { title: '纸芯', dataIndex: 'finishCoreDiameter', width: 72, render: (value) => value ? formatMm(value) : '-' },
   { title: '预估重', dataIndex: 'estimateWeight', width: 92, render: (value) => formatKg(Number(value ?? 0)) },
   { title: '修边重', dataIndex: 'trimWeight', width: 92, render: (value) => formatKg(Number(value ?? 0)) },
   { title: '来源', dataIndex: 'sourceSummary', width: 160, render: textCell },

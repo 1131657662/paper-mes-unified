@@ -1,6 +1,7 @@
 import { Typography } from 'antd'
 import type { RewindLayoutItemDTO } from '../../types/processOrder'
 import MesTooltip from '../biz/MesTooltip'
+import { formatMm } from '../../utils/numberFormatters'
 
 interface Props {
   layoutItems: RewindLayoutItemDTO[]
@@ -25,7 +26,7 @@ export default function LayoutBar({ layoutItems, originalWidth }: Props) {
         const pct = (item.width / originalWidth) * 100
         const isFinish = item.itemType === 'FINISH'
         const color = isFinish ? FINISH_COLOR : TRIM_COLOR
-        const label = isFinish ? `成品 ${item.width}mm x${item.quantity ?? 1}` : `修边 ${item.width}mm`
+        const label = isFinish ? `成品 ${formatMm(item.width)} × ${item.quantity ?? 1}` : `修边 ${formatMm(item.width)}`
         return (
           <MesTooltip key={index} title={label}>
             <div

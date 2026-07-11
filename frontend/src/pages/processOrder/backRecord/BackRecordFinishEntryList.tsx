@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Alert, Button, Form, Input, InputNumber, Select, Tag, Typography } from 'antd'
 import { CopyOutlined } from '@ant-design/icons'
 import { IS_REMAIN } from '../../../constants/processOrder'
@@ -5,8 +6,10 @@ import { DICT_TYPES, abnormalFallbackOptions } from '../../../features/systemCon
 import { useDictOptions } from '../../../features/systemConfig/hooks/useRuntimeDictOptions'
 import type { FinishRoll } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
+import { formatKg, formatMm } from '../../../utils/numberFormatters'
 import { focusNextBackRecordField } from './backRecordKeyboard'
 import type { BackRecordWorkItem, WorkbenchFinish } from './backRecordWorkbenchTypes'
+import { autoTrimWeights } from './backRecordAutoTrim'
 import { theoreticalItemFinishValues } from './backRecordTheoryFill'
 
 interface Props {
@@ -16,7 +19,26 @@ interface Props {
 
 export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Props) {
   const form = Form.useFormInstance<BackRecordFormValues>()
+  const finishes = Form.useWatch('finishes', form)
+  const rolls = Form.useWatch('rolls', form)
+  const steps = Form.useWatch('steps', form)
+  const autoTrimUuids = useRef(new Set<string>())
+  const manualTrimUuids = useRef(new Set<string>())
   const { options: abnormalTypeOptions } = useDictOptions(DICT_TYPES.abnormalType, abnormalFallbackOptions)
+
+  useEffect(() => {
+    const patches = autoTrimWeights(item, { finishes, rolls, steps }, {
+      autoTrimUuids: autoTrimUuids.current,
+      manualTrimUuids: manualTrimUuids.current,
+    })
+    for (const patch of patches) {
+      const path: ['finishes', string, 'actualWeight'] = ['finishes', patch.uuid, 'actualWeight']
+      const current = form.getFieldValue(path)
+      if (current === patch.actualWeight) continue
+      form.setFieldValue(path, patch.actualWeight)
+      autoTrimUuids.current.add(patch.uuid)
+    }
+  }, [finishes, form, item, rolls, steps])
 
   const fillFinishes = () => {
     const values = theoreticalItemFinishValues(item)
@@ -42,6 +64,9 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Pr
               key={entry.finish.uuid}
               abnormalTypeOptions={abnormalTypeOptions}
               entry={entry}
+              onActualWeightChange={() => {
+                if (entry.finish.isRemain === 1) manualTrimUuids.current.add(entry.finish.uuid)
+              }}
               onFieldExhausted={onFieldExhausted}
             />
           ))}
@@ -54,10 +79,12 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Pr
 function FinishEntryRow({
   abnormalTypeOptions,
   entry,
+  onActualWeightChange,
   onFieldExhausted,
 }: {
   abnormalTypeOptions: Array<{ label: string; value: number | string }>
   entry: WorkbenchFinish
+  onActualWeightChange: () => void
   onFieldExhausted: () => void
 }) {
   const finish = entry.finish
@@ -82,7 +109,7 @@ function FinishEntryRow({
             { type: 'number', min: 0.001, message: '需大于0' },
           ]}
         >
-          <InputNumber data-back-record-field="true" min={0} placeholder={finish.isSpare === 1 ? '未用留空' : 'kg'} addonAfter="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
+          <InputNumber data-back-record-field="true" min={0} placeholder={finish.isSpare === 1 ? '未用留空' : 'kg'} addonAfter="kg" onChange={onActualWeightChange} onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['finishes', finish.uuid, 'scrapWeight']} label="报废/损耗">
           <InputNumber data-back-record-field="true" min={0} placeholder="kg" addonAfter="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
@@ -105,8 +132,8 @@ function FinishEntryRow({
 }
 
 function finishSpec(finish: FinishRoll) {
-  const width = finish.finishWidth ? `${finish.finishWidth}mm` : '-'
-  const weight = finish.estimateWeight ? `${finish.estimateWeight}kg` : '无预估'
+  const width = formatMm(finish.finishWidth)
+  const weight = finish.estimateWeight ? formatKg(finish.estimateWeight) : '无预估'
   return `${finish.paperName || '-'} / ${width} / ${weight}`
 }
 

@@ -8,6 +8,7 @@ import SnapshotDiffModal from '../../../pages/processOrder/SnapshotDiffModal'
 import { queries } from '../../../queries'
 import { useCalcProcessOrderFee } from '../hooks/useCalcProcessOrderFee'
 import { useChangeOrderStatus } from '../hooks/useChangeOrderStatus'
+import { useRollbackProcessOrderToDraft } from '../hooks/useRollbackProcessOrderToDraft'
 import { useVoidProcessOrder } from '../hooks/useVoidProcessOrder'
 import { confirmOrderStatusChange, isRollbackStatusChange } from '../confirmOrderStatusChange'
 import OrderExecutionPanel from './OrderExecutionPanel'
@@ -25,6 +26,7 @@ export default function OrderExecutionHost({ detail }: Props) {
   const [diffOpen, setDiffOpen] = useState(false)
   const [manageRollOpen, setManageRollOpen] = useState(false)
   const { mutateAsync: changeStatus, isPending: isChangingStatus } = useChangeOrderStatus()
+  const { mutateAsync: rollbackToDraft, isPending: isRollingBackDraft } = useRollbackProcessOrderToDraft()
   const { mutateAsync: calcFee, isPending: isCalculatingFee } = useCalcProcessOrderFee(orderUuid)
   const { mutateAsync: voidOrder, isPending: isVoidingOrder } = useVoidProcessOrder()
 
@@ -37,7 +39,11 @@ export default function OrderExecutionHost({ detail }: Props) {
   }
 
   const handleChangeStatus = async (targetStatus: number, reason?: string) => {
-    await changeStatus({ orderUuid, reason, targetStatus })
+    if (targetStatus === 0) {
+      await rollbackToDraft({ orderUuid, reason: reason ?? '' })
+    } else {
+      await changeStatus({ orderUuid, reason, targetStatus })
+    }
     message.success('状态已更新')
     if (targetStatus === 0) {
       navigate(`/process-orders/create?draft=${orderUuid}`)
@@ -111,6 +117,7 @@ export default function OrderExecutionHost({ detail }: Props) {
         }}
         loading={{
           changingStatus: isChangingStatus,
+          rollingBackDraft: isRollingBackDraft,
           calculatingFee: isCalculatingFee,
           voidingOrder: isVoidingOrder,
         }}

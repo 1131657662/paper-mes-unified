@@ -3,6 +3,7 @@ import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import MesTooltip from '../../../components/biz/MesTooltip'
 import type { FinishConfigSpecDTO, ProcessPlanDTO } from '../../../types/processOrder'
+import { formatMm } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
 import { calcSawPlanStats, isTrimSpec, normalizeSawSpecs } from '../sawPlanUtils'
 import './CreateOrderEditors.css'
@@ -59,10 +60,10 @@ function SawSummary({ originalWidth, stats }: { originalWidth: number; stats: Re
       <Space wrap>
         <Tag color="blue">自动刀数：{stats.knifeCount}</Tag>
         <Tag color="green">成品：{stats.finishCount} 件</Tag>
-        <Tag color={stats.trimWidth > 0 ? 'orange' : 'default'}>切边：{stats.trimWidth}mm</Tag>
-        {stats.implicitTrimWidth > 0 && <Tag color="gold">可转切边：{stats.implicitTrimWidth}mm</Tag>}
+        <Tag color={stats.trimWidth > 0 ? 'orange' : 'default'}>切边：{formatMm(stats.trimWidth)}</Tag>
+        {stats.implicitTrimWidth > 0 && <Tag color="gold">可转切边：{formatMm(stats.implicitTrimWidth)}</Tag>}
         <Typography.Text type={overflow ? 'danger' : 'secondary'}>
-          门幅 {stats.usedWidth}/{originalWidth || '-'}mm{overflow ? `，超出 ${Math.abs(stats.remainingWidth)}mm` : `，剩余 ${stats.remainingWidth}mm`}
+          门幅 {stats.usedWidth}/{originalWidth || '-'} mm{overflow ? `，超出 ${formatMm(Math.abs(stats.remainingWidth))}` : `，剩余 ${formatMm(stats.remainingWidth)}`}
         </Typography.Text>
       </Space>
       {originalWidth > 0 && <Progress percent={stats.usedPercent} size="small" status={overflow ? 'exception' : 'active'} />}

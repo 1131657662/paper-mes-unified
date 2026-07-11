@@ -5,7 +5,9 @@ import type {
   DeliveryProcessStepItem,
 } from '../../../types/delivery'
 import {
+  formatGram,
   formatKg as formatWeightKg,
+  formatMm,
   formatNumber,
   formatTonFromKg,
 } from '../../../utils/numberFormatters'
@@ -24,19 +26,19 @@ export function availableFinishWeight(item: Pick<AvailableFinishVO, 'actualWeigh
 
 export function finishSpecText(item: AvailableFinishVO) {
   const parts = [
-    item.gramWeight ? `${item.gramWeight}g` : undefined,
-    item.finishWidth ? `${item.finishWidth}mm` : undefined,
-    item.finishDiameter ? `φ${item.finishDiameter}` : undefined,
-    item.finishCoreDiameter ? `芯${item.finishCoreDiameter}` : undefined,
+    item.gramWeight ? formatGram(item.gramWeight) : undefined,
+    item.finishWidth ? formatMm(item.finishWidth) : undefined,
+    item.finishDiameter ? `φ${item.finishDiameter} mm` : undefined,
+    item.finishCoreDiameter ? `芯 ${item.finishCoreDiameter} mm` : undefined,
   ].filter(Boolean)
   return parts.length ? parts.join(' / ') : '-'
 }
 
 export function deliveryDetailSpecText(item: DeliveryDetail) {
   const parts = [
-    item.finishWidth ? `${item.finishWidth}mm` : undefined,
-    item.finishDiameter ? `φ${item.finishDiameter}` : undefined,
-    item.finishCoreDiameter ? `芯${item.finishCoreDiameter}` : undefined,
+    item.finishWidth ? formatMm(item.finishWidth) : undefined,
+    item.finishDiameter ? `φ${item.finishDiameter} mm` : undefined,
+    item.finishCoreDiameter ? `芯 ${item.finishCoreDiameter} mm` : undefined,
   ].filter(Boolean)
   return parts.length ? parts.join(' / ') : '-'
 }
@@ -69,8 +71,8 @@ function originalSourceText(item: DeliveryOriginalSourceItem) {
   const weight = item.actualWeight ?? item.totalWeight
   const spec = [
     item.paperName,
-    item.actualGramWeight ? `${item.actualGramWeight}g` : item.gramWeight ? `${item.gramWeight}g` : undefined,
-    item.actualWidth ? `${item.actualWidth}mm` : item.originalWidth ? `${item.originalWidth}mm` : undefined,
+    item.actualGramWeight ? formatGram(item.actualGramWeight) : item.gramWeight ? formatGram(item.gramWeight) : undefined,
+    item.actualWidth ? formatMm(item.actualWidth) : item.originalWidth ? formatMm(item.originalWidth) : undefined,
     weight != null ? formatKg(weight) : undefined,
     item.machineName ? `机台${item.machineName}` : undefined,
   ].filter(Boolean)

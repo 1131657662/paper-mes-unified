@@ -1,5 +1,6 @@
 import type { RollProductionVO } from '../../../types/processOrder'
 import { isDeliverableProductionFinish } from './detailHelpers'
+import { sortFinishOutputs } from './outputOrder'
 import type { DisplayRow, MergeGroup } from './types'
 
 /**
@@ -41,13 +42,13 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
 
     // 去重成品
     const finishSet = new Set<string>()
-    const allFinishes = allProds.flatMap((p) =>
+    const allFinishes = sortFinishOutputs(mainProd, allProds.flatMap((p) =>
       (p.finishes ?? []).filter((f) => {
         if (finishSet.has(f.uuid)) return false
         finishSet.add(f.uuid)
         return true
       }),
-    )
+    ))
 
     const steps = [...(mainProd.steps ?? [])].sort((a, b) => (a.stepSort ?? 0) - (b.stepSort ?? 0))
     const rewindParams = mainProd.rewindParams ?? []
@@ -102,7 +103,7 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
       sourceProductions: [],
       steps,
       rewindParams,
-      finishes: prod.finishes ?? [],
+      finishes: sortFinishOutputs(prod, prod.finishes ?? []),
       totalKnifeCount: steps.reduce((s, step) => s + (step.knifeCount ?? 0), 0),
       totalEstimateWeight: (prod.finishes ?? [])
         .filter(isDeliverableProductionFinish)

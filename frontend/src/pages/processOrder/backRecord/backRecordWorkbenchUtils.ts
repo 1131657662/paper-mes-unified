@@ -2,6 +2,7 @@ import { buildDisplayRows } from '../../../components/processOrder/shared/displa
 import { buildProcessingFlow } from '../../../components/processOrder/shared/detailHelpers'
 import type { DisplayRow } from '../../../components/processOrder/shared/types'
 import type { FinishRoll, OriginalRoll, ProcessOrderDetailVO } from '../../../types/processOrder'
+import { formatGram, formatMm } from '../../../utils/numberFormatters'
 import { activeFinishRolls, type BackRecordFormValues } from './backRecordUtils'
 import type { BackRecordWorkItem, BackRecordWorkbenchData, WorkbenchFinish } from './backRecordWorkbenchTypes'
 
@@ -147,8 +148,8 @@ function sourceText(roll: OriginalRoll): string
 function sourceText(roll: DisplayRow['mainProduction']): string
 function sourceText(roll: OriginalRoll | DisplayRow['mainProduction']): string {
   const paper = roll.paperName || '-'
-  const gram = roll.gramWeight ? `${roll.gramWeight}g` : '-'
-  const width = roll.originalWidth ? `${roll.originalWidth}mm` : '-'
+  const gram = formatGram(roll.gramWeight)
+  const width = formatMm(roll.originalWidth)
   return `${paper} / ${gram} / ${width}`
 }
 

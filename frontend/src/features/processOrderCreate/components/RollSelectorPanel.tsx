@@ -1,6 +1,7 @@
 import { Badge, List, Tag, Typography } from 'antd'
 import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
 import type { Machine } from '../../../types/machine'
+import { formatKg, formatMm } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
 
 interface Props {
@@ -34,7 +35,7 @@ export default function RollSelectorPanel({ machines, rolls, selectedId, configu
               <Typography.Text strong>原纸 {index + 1}</Typography.Text>
               {configuredIds.includes(roll.localId) && <Badge status="success" text="已配置" style={{ marginLeft: 8 }} />}
               <div style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
-                {roll.paperName || '-'} / {roll.originalWidth}mm / {roll.rollWeight}kg
+                {roll.paperName || '-'} / {formatMm(roll.originalWidth)} / {formatKg(roll.rollWeight)}
               </div>
               <div style={{ marginTop: 6 }}>
                 <Tag color={roll.processMode === 3 ? 'default' : 'blue'}>{PROCESS_MODE[roll.processMode ?? 1]}</Tag>

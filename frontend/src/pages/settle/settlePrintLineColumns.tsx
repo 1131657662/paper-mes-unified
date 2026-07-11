@@ -4,6 +4,7 @@ import TooltipText from '../../components/biz/TooltipText'
 import { INVOICE_TYPE } from '../../constants/settle'
 import { formatKg, formatMoney } from '../../features/settle/utils/settleFormatters'
 import type { SettlePrintLine } from '../../types/settle'
+import { formatGram, formatMm, formatUnit } from '../../utils/numberFormatters'
 import { SettleFeeSourceCell } from './SettleFeeLinesView'
 
 export const settlePrintLineColumns: ColumnsType<SettlePrintLine> = [
@@ -132,11 +133,11 @@ function originalIdentity(record: SettlePrintLine) {
 
 function originalSpec(record: SettlePrintLine) {
   const parts = [
-    record.actualGramWeight ? `${record.actualGramWeight}g` : record.gramWeight ? `${record.gramWeight}g` : undefined,
-    record.actualWidth ? `${record.actualWidth}mm` : record.originalWidth ? `${record.originalWidth}mm` : undefined,
-    record.originalDiameter ? `直径${record.originalDiameter}` : undefined,
-    record.coreDiameter ? `纸芯${record.coreDiameter}` : undefined,
-    record.originalLength ? `${record.originalLength}m` : undefined,
+    record.actualGramWeight ? formatGram(record.actualGramWeight) : record.gramWeight ? formatGram(record.gramWeight) : undefined,
+    record.actualWidth ? formatMm(record.actualWidth) : record.originalWidth ? formatMm(record.originalWidth) : undefined,
+    record.originalDiameter ? `直径 ${formatMm(record.originalDiameter)}` : undefined,
+    record.coreDiameter ? `纸芯 ${formatMm(record.coreDiameter)}` : undefined,
+    record.originalLength ? formatUnit(record.originalLength, 'm') : undefined,
   ].filter(Boolean)
   return parts.length ? parts.join(' / ') : '-'
 }

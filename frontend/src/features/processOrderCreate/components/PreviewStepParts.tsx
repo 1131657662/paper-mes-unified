@@ -1,7 +1,7 @@
 import { Alert, Button, Space, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { PlanPreviewVO, ProcessPlanDTO } from '../../../types/processOrder'
-import { formatKg } from '../../../utils/numberFormatters'
+import { formatKg, formatMm } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
 
 export interface PreviewStatusDisplay {
@@ -65,7 +65,7 @@ export function SinglePlanPreview({ plan, preview, roll }: SinglePlanPreviewProp
 
 const finishColumns: ColumnsType<NonNullable<PlanPreviewVO['finishes']>[number]> = [
   { title: '段', dataIndex: 'segmentSort' },
-  { title: '门幅', dataIndex: 'finishWidth', render: (value) => `${value ?? 0}mm` },
+  { title: '门幅', dataIndex: 'finishWidth', render: (value) => formatMm(value ?? 0) },
   { title: '预估重量', dataIndex: 'estimateWeight', render: (value) => formatKg(Number(value ?? 0)) },
   { title: '来源', dataIndex: 'sourceSummary' },
 ]

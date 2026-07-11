@@ -34,7 +34,7 @@ public class ProcessParamIntegrityBootstrap implements ApplicationRunner {
         }
         jdbcTemplate.execute("""
                 ALTER TABLE `biz_process_param`
-                MODIFY `area_ratio` DECIMAL(%d,%d) DEFAULT NULL COMMENT '面积/重量分摊占比%%'
+                MODIFY `area_ratio` DECIMAL(%d,%d) DEFAULT NULL COMMENT '历史字段：预估重量kg，不再按百分比展示'
                 """.formatted(decimal.nextPrecision(), TARGET_SCALE));
     }
 

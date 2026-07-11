@@ -31,6 +31,7 @@ import type {
   ProcessOrderDetailVO,
   ProcessOrderQuery,
   ProcessOrderRemarkDTO,
+  ProcessOrderRollbackDTO,
   ProcessOrderVoidDTO,
   ProcessOrderSubmitVO,
   ProcessPlanBatchSaveDTO,
@@ -224,6 +225,14 @@ export function submitProcessOrderDraft(uuid: string) {
 export function changeOrderStatus(uuid: string, dto: StatusChangeDTO) {
   return request<void>({
     url: `/api/process-orders/${uuid}/status`,
+    method: 'put',
+    data: dto,
+  })
+}
+
+export function rollbackProcessOrderToDraft(uuid: string, dto: ProcessOrderRollbackDTO) {
+  return request<void>({
+    url: `/api/process-orders/${uuid}/rollback-draft`,
     method: 'put',
     data: dto,
   })

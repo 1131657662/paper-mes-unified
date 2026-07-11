@@ -4,7 +4,7 @@ import { RedoOutlined, UndoOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import type { OriginalRoll, ProcessRoutePreviewVO } from '../../types/processOrder'
-import { formatKg } from '../../utils/numberFormatters'
+import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
 import { useGetDraft } from '../../features/processOrderCreate/hooks/useGetDraft'
 import { useMachines, useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import { usePreviewRoute } from '../../features/processOrderCreate/hooks/usePreviewRoute'
@@ -266,7 +266,7 @@ function RouteSourcePanel({ onSelect, roll, selectedKey, stages }: SourcePanelPr
         onClick={() => onSelect(ORIGINAL_OUTPUT_KEY)}
       >
         <Typography.Text strong>{roll.rollNo || roll.extraNo || '未编号母卷'}</Typography.Text>
-        <span>{roll.paperName || '-'} / {roll.gramWeight ?? '-'}g / {roll.originalWidth ?? '-'}mm</span>
+        <span>{roll.paperName || '-'} / {formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)}</span>
         <span>来料 {formatKg(Number(roll.totalWeight ?? 0))}</span>
       </button>
       <div className="route-draft-output-list">
@@ -277,7 +277,7 @@ function RouteSourcePanel({ onSelect, roll, selectedKey, stages }: SourcePanelPr
             onClick={() => onSelect(row.outputKey)}
           >
             <span><b>{row.outputKey}</b><Tag color={finals.has(row.outputKey) ? 'green' : 'blue'}>{finals.has(row.outputKey) ? '最终' : '中间'}</Tag></span>
-            <small>{row.paperName || '-'} / {row.gramWeight ?? '-'}g / {row.finishWidth ?? '-'}mm</small>
+            <small>{row.paperName || '-'} / {formatGram(row.gramWeight)} / {formatMm(row.finishWidth)}</small>
             <em>{formatKg(row.estimateWeight)}</em>
           </button>
         )) : <Empty description="配置首道工艺后生成阶段产物" />}

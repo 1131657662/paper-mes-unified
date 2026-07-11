@@ -51,7 +51,7 @@ export function confirmOrderStatusChange({
 }
 
 export function isRollbackStatusChange(currentStatus: number, targetStatus: number) {
-  return (currentStatus === 1 && targetStatus === 0)
+  return (currentStatus >= 1 && currentStatus <= 4 && targetStatus === 0)
     || (currentStatus === 2 && targetStatus === 1)
     || (currentStatus === 3 && targetStatus === 1)
     || (currentStatus === 4 && targetStatus === 3)

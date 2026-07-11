@@ -1,7 +1,7 @@
 import { Button, Tag, Typography } from 'antd'
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import { formatKg } from '../../../features/processOrderDetail/orderDetailUtils'
-import { formatOptionalKg } from '../../../utils/numberFormatters'
+import { formatGram, formatMm, formatOptionalKg } from '../../../utils/numberFormatters'
 import type { OriginalRoll } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import { buildWorkItemMetrics, workItemStatus } from './backRecordWorkbenchUtils'
@@ -84,7 +84,7 @@ function RollNavItem({
 
 function rollSpec(roll: OriginalRoll) {
   const paper = roll.paperName || '-'
-  const gram = roll.gramWeight ? `${roll.gramWeight}g` : '-'
-  const width = roll.originalWidth ? `${roll.originalWidth}mm` : '-'
+  const gram = formatGram(roll.gramWeight)
+  const width = formatMm(roll.originalWidth)
   return `${paper} / ${gram} / ${width}`
 }

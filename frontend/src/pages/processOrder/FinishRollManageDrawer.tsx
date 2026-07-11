@@ -31,6 +31,7 @@ import type {
 } from '../../types/processOrder'
 import { FINISH_STATUS, ROLL_NO_STATUS } from '../../constants/processOrder'
 import MesTooltip from '../../components/biz/MesTooltip'
+import { formatMm, formatUnit } from '../../utils/numberFormatters'
 
 interface Props {
   orderUuid: string | null
@@ -204,7 +205,7 @@ export default function FinishRollManageDrawer({
       width: 80,
       render: (v) => (
         <span style={v === 0 ? { color: '#999' } : {}}>
-          {v ? `${v}g/㎡` : '-'}
+          {v ? formatUnit(v, 'g/㎡') : '-'}
         </span>
       ),
     },
@@ -213,7 +214,7 @@ export default function FinishRollManageDrawer({
       dataIndex: 'finishWidth',
       width: 80,
       render: (v) => (
-        <span style={v === 0 ? { color: '#999' } : {}}>{v ? `${v}mm` : '-'}</span>
+        <span style={v === 0 ? { color: '#999' } : {}}>{v ? formatMm(v) : '-'}</span>
       ),
     },
     {

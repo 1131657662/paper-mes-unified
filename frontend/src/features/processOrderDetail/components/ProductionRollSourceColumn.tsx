@@ -1,12 +1,12 @@
 import { Button, Tag } from 'antd'
 import { EditOutlined, ToolOutlined } from '@ant-design/icons'
 import type { DisplayRow } from '../../../components/processOrder/shared/types'
-import { fmt } from '../../../components/processOrder/shared/detailHelpers'
 import type { RollProductionVO } from '../../../types/processOrder'
 import { ROLL_STATUS } from '../../../constants/processOrder'
 import MesTooltip from '../../../components/biz/MesTooltip'
 import ProtectedImage from '../../../components/biz/ProtectedImage'
-import { formatKg } from '../orderDetailUtils'
+import { formatGram, formatMm } from '../../../utils/numberFormatters'
+import { formatProductionKg } from '../orderDetailUtils'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 
 interface Props {
@@ -45,10 +45,10 @@ export default function ProductionRollSourceColumn({
         />
       </div>
       <div className="production-roll__line">
-        {production.paperName || '-'} / {fmt(production.gramWeight, 'g')} / {fmt(production.originalWidth, 'mm')}
+        {production.paperName || '-'} / {formatGram(production.gramWeight)} / {formatMm(production.originalWidth)}
       </div>
       <div className="production-roll__line">
-        来料 {formatKg((production.rollWeight ?? 0) * (production.pieceNum ?? 1))}
+        来料 {formatProductionKg((production.rollWeight ?? 0) * (production.pieceNum ?? 1), production)}
       </div>
       <RollRemarkNotes row={row} />
       <RollDamageImages row={row} />

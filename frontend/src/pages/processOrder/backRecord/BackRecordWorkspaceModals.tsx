@@ -22,6 +22,7 @@ interface Props {
   onCancelChange: () => void
   onCancelStep: () => void
   onOpenStep: () => void
+  onRollbackToDraft: () => Promise<void>
   onRollbackToConfig: () => Promise<void>
   onSubmitAuth: () => Promise<void>
 }
@@ -42,6 +43,7 @@ export default function BackRecordWorkspaceModals(props: Props) {
         rollingBack={props.rollingBack}
         onCancel={props.onCancelChange}
         onAddExtraStep={props.onOpenStep}
+        onRollbackToDraft={props.onRollbackToDraft}
         onRollbackToConfig={props.onRollbackToConfig}
       />
       <ProcessStepFormModal

@@ -131,6 +131,8 @@ class BusinessFlowConcurrencyContractTest {
                 "validateRollback(order, from, to);",
                 "cleanupDataOnRollback(order, from, to);",
                 "OperationLogService.ACTION_ROLLBACK");
+        assertContainsAll(slice(source, "public void rollbackToDraft", "public void voidOrder"),
+                "updateOrderForDraftRollback(order)");
         assertContainsAll(slice(source, "private void validateRollback", "private void cleanupDataOnRollback"),
                 "ensureOrderNotReferencedBySettle",
                 "ensureOrderHasNoDeliveryDetail",
@@ -141,11 +143,22 @@ class BusinessFlowConcurrencyContractTest {
                 "clearGeneratedProductionData(order)",
                 "from == OrderStatus.PROCESSING && to == OrderStatus.PENDING",
                 "resetIssueAndBackRecordFields(order)");
+        assertContainsAll(slice(source, "private void clearRollActuals", "private void voidDirectShipFinishes"),
+                ".set(OriginalRoll::getTotalLossRatio, ZERO_AMOUNT)");
+        assertFalse(slice(source, "private void clearRollActuals", "private void voidDirectShipFinishes")
+                        .contains(".set(OriginalRoll::getTotalLossRatio, null)"),
+                "母卷总损耗率列为 NOT NULL，回退编辑应归零而不是写入 NULL");
         assertContainsAll(slice(source, "private void clearGeneratedProductionData", "private void resetIssueAndBackRecordFields"),
                 ".set(OriginalRoll::getProcessAmount, ZERO_AMOUNT)");
         assertFalse(slice(source, "private void clearGeneratedProductionData", "private void resetIssueAndBackRecordFields")
                 .contains(".set(OriginalRoll::getProcessAmount, null)"),
                 "待下发回退草稿时原纸加工费列为 NOT NULL，应归零而不是写入 NULL");
+        assertContainsAll(slice(source, "private void updateOrderForDraftRollback", "public void changeRollStatus"),
+                ".set(ProcessOrder::getBackRecordTime, null)",
+                ".set(ProcessOrder::getSnapPrint, null)",
+                ".set(ProcessOrder::getTotalAmount, null)",
+                ".set(ProcessOrder::getTotalStepCount, 0)",
+                ".setSql(\"version = version + 1\")");
     }
 
     @Test

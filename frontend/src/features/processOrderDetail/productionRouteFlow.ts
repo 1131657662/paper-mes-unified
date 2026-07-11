@@ -1,11 +1,13 @@
 import type { Edge, Node } from '@xyflow/react'
 import type { RollProductionVO } from '../../types/processOrder'
-import { formatKg } from './orderDetailUtils'
+import { formatGram, formatKgWithMaxDecimals, formatMm } from '../../utils/numberFormatters'
+import { formatProductionKg } from './orderDetailUtils'
 import type { RouteNode } from './productionRouteTree'
 import type { ProcessRouteConfigTarget } from './routeConfigTypes'
 
 export interface ProductionFlowNodeData extends Record<string, unknown> {
   appendable?: boolean
+  isTrim?: boolean
   kind: 'source' | 'output'
   layerText?: string
   lines: string[]
@@ -109,7 +111,7 @@ function sourceNode(production: RollProductionVO, y: number): ProductionFlowNode
     data: {
       kind: 'source',
       title: production.rollNo || production.extraNo || production.paperName || '母卷',
-      lines: [sourceSpec(production), `${weight.label} ${formatKg(weight.value)}`],
+      lines: [sourceSpec(production), `${weight.label} ${formatProductionKg(weight.value, production)}`],
       statusText: '原卷',
       statusColor: 'blue',
     },
@@ -127,6 +129,7 @@ function outputNode(item: PositionedRouteNode, options: ProductionRouteFlowOptio
     position: { x: item.x, y: item.y - NODE_HEIGHT / 2 },
     data: {
       appendable,
+      isTrim: item.node.isTrim,
       kind: 'output',
       layerText: item.node.layerText,
       lines: outputLines(item.node),
@@ -150,7 +153,7 @@ function sourceWeight(production: RollProductionVO): { label: string; value: num
 
 function outputLines(node: RouteNode): string[] {
   if (node.weight == null) return [node.meta]
-  return [node.meta, `${node.weightLabel ?? '预估'} ${formatKg(node.weight)}`]
+  return [node.meta, `${node.weightLabel ?? '预估'} ${formatKgWithMaxDecimals(node.weight, node.weightDigits)}`]
 }
 
 function routeEdges(item: PositionedRouteNode, parentId: string): ProductionFlowEdge[] {
@@ -183,5 +186,5 @@ function maxNodeY(node: PositionedRouteNode): number {
 }
 
 function sourceSpec(production: RollProductionVO) {
-  return `${production.paperName || '-'} / ${production.gramWeight ?? '-'}g / ${production.originalWidth ?? '-'}mm`
+  return `${production.paperName || '-'} / ${formatGram(production.gramWeight)} / ${formatMm(production.originalWidth)}`
 }

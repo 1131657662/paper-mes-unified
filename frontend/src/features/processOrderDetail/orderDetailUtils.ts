@@ -7,7 +7,9 @@ import type {
   RollProductionVO,
 } from '../../types/processOrder'
 import {
+  decimalPlaces,
   formatNumber as formatSharedNumber,
+  formatKgWithMaxDecimals,
   formatOptionalKg,
   formatOptionalMoney,
   formatOptionalTonFromKg,
@@ -78,6 +80,11 @@ export function formatKg(value?: number): string {
   return formatOptionalKg(value)
 }
 
+export function formatProductionKg(value: number | null | undefined, production: RollProductionVO): string {
+  if (value == null) return '-'
+  return formatKgWithMaxDecimals(value, productionWeightDigits(production))
+}
+
 export function formatTon(value?: number): string {
   return formatOptionalTonFromKg(value)
 }
@@ -120,6 +127,10 @@ function productionAvailableWeight(production: RollProductionVO, finishes: Finis
   const totalWeight = (production.rollWeight ?? 0) * (production.pieceNum ?? 1)
   const trimWeight = finishes.reduce((sum, finish) => sum + (finish.trimWeightShare ?? 0), 0)
   return Math.max(0, totalWeight - trimWeight)
+}
+
+function productionWeightDigits(production: RollProductionVO): number {
+  return decimalPlaces(production.actualWeight ?? production.rollWeight)
 }
 
 function roundWeight(value: number): number {

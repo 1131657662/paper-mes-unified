@@ -5,7 +5,7 @@ import type {
   ProcessRoutePreviewVO,
   ProcessRouteStageLineVO,
 } from '../../../types/processOrder'
-import { formatKg, formatMoney } from '../../../utils/numberFormatters'
+import { formatGram, formatKg, formatMm, formatMoney } from '../../../utils/numberFormatters'
 import { routeFinalOutputs } from './routePreviewInlineUtils'
 
 interface Props {
@@ -57,7 +57,7 @@ const stageColumns: ColumnsType<ProcessRouteStageLineVO> = [
 const outputColumns: ColumnsType<ProcessRouteOutputVO> = [
   { title: '产物', dataIndex: 'outputKey', width: 100 },
   { title: '状态', width: 110, render: (_, row) => outputStatus(row) },
-  { title: '规格', render: (_, row) => `${row.gramWeight ?? '-'}g / ${row.finishWidth ?? '-'}mm` },
+  { title: '规格', render: (_, row) => `${formatGram(row.gramWeight)} / ${formatMm(row.finishWidth)}` },
   { title: '预估重量', dataIndex: 'estimateWeight', width: 120, render: formatKg },
 ]
 

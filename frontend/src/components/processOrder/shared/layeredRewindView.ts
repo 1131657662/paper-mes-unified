@@ -143,7 +143,7 @@ function refreshSummaries<T>(layers: Array<LayeredRewindLayer<T>>) {
 
 function layerSummary<T>(layer: LayeredRewindLayer<T>) {
   const parts = groupedWidthText(layer.items)
-  const trim = layer.trimWidth > 0 ? `修边${layer.trimWidth}mm` : ''
+  const trim = layer.trimWidth > 0 ? `修边 ${layer.trimWidth} mm` : ''
   return [layer.label, [parts, trim].filter(Boolean).join(' + ')].filter(Boolean).join(' ')
 }
 
@@ -154,7 +154,7 @@ function groupedWidthText<T>(items: Array<LayeredRewindItem<T>>) {
   }
   return Array.from(groups.entries())
     .sort(([a], [b]) => a - b)
-    .map(([width, count]) => `${width}mm×${count}`)
+    .map(([width, count]) => `${width} mm × ${count}`)
     .join(' + ')
 }
 

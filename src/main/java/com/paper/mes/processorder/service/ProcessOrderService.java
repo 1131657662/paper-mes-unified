@@ -61,6 +61,9 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
     /** 加工单状态流转（状态机校验合法性，乐观锁更新）。 */
     void changeStatus(String uuid, Integer targetStatus, String reason);
 
+    /** 深度回退草稿：用于已下发/已回录后需要更换母卷或重做方案。 */
+    void rollbackToDraft(String uuid, String reason);
+
     /** 整单作废：仅草稿/待下发可操作，必须记录原因。 */
     void voidOrder(String uuid, ProcessOrderVoidDTO dto);
 

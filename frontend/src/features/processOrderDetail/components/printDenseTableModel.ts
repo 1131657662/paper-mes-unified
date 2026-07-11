@@ -129,7 +129,7 @@ function processInfo(stage?: PrintRouteStage): {
 function normalizedRequirement(text: string): string {
   return text
     .replace(/，来源重量\s*[\d,.]+t/g, '')
-    .replace(/\s*\/\s*[\d,.]+kg/g, '')
+    .replace(/\s*\/\s*[\d,.]+\s*kg/g, '')
     .replace(/\s+/g, ' ')
     .trim()
 }

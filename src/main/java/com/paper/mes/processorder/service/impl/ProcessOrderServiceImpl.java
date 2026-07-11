@@ -838,6 +838,31 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void rollbackToDraft(String uuid, String reason) {
+        businessLockService.lockProcessOrders(List.of(uuid));
+        ProcessOrder order = getById(uuid);
+        if (order == null) {
+            throw new BusinessException(ErrorCode.E002, "加工单不存在");
+        }
+        OrderStatus from = OrderStatus.of(order.getOrderStatus());
+        String rollbackReason = requireRollbackReason(reason);
+        validateDeepRollbackToDraft(order, from);
+        cleanupBackRecordActuals(order);
+        clearGeneratedProductionData(order);
+        resetIssueAndBackRecordFields(order);
+        resetCalculatedAmounts(order);
+        updateOrderForDraftRollback(order);
+        operationLogService.record(
+                OperationLogService.BIZ_TYPE_ORDER,
+                order.getUuid(),
+                order.getOrderNo(),
+                OperationLogService.ACTION_ROLLBACK,
+                currentOperator(),
+                "深度回退到草稿，清理下发、回录和产物数据，原因：" + rollbackReason);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void voidOrder(String uuid, ProcessOrderVoidDTO dto) {
         businessLockService.lockProcessOrders(List.of(uuid));
         ProcessOrder order = getById(uuid);
@@ -859,7 +884,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         ensureOrderNotReferencedBySettle(order.getUuid(), "加工单已被结算单引用，不可作废");
         ensureOrderHasNoDeliveryDetail(order.getUuid(), "加工单已有出库单明细引用，不可作废");
         ensureOrderHasNoOutboundFinish(order.getUuid());
-        ensureNoBackRecordData(order);
+        if (status == STATUS_PROCESSING) {
+            ensureNoBackRecordData(order);
+        }
     }
 
     private void markOrderVoided(ProcessOrder order, String reason) {
@@ -990,9 +1017,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
         if (from == OrderStatus.TO_RECORD && to == OrderStatus.PENDING) {
             // 3→1：清理完成快照、回录信息
-            order.setSnapFinish(null);
-            order.setBackRecordTime(null);
-            order.setBackRecordUser(null);
+            resetIssueAndBackRecordFields(order);
+            cleanupBackRecordActuals(order);
 
             // 成品回退到待入库状态（已入库→待入库）
             finishRollMapper.update(null,
@@ -1002,6 +1028,70 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                             .set(FinishRoll::getFinishStatus, 1)  // → 待入库
             );
         }
+    }
+
+    private void validateDeepRollbackToDraft(ProcessOrder order, OrderStatus from) {
+        if (from == OrderStatus.DRAFT) {
+            return;
+        }
+        if (from == OrderStatus.SETTLED || from == OrderStatus.VOIDED) {
+            throw new BusinessException(ErrorCode.E003, "已结算或已作废加工单不可回退编辑");
+        }
+        ensureOrderNotReferencedBySettle(order.getUuid(), "加工单已被结算单引用，不可回退编辑");
+        ensureOrderHasNoDeliveryDetail(order.getUuid(), "加工单已有出库单明细引用，不可回退编辑");
+        ensureOrderHasNoOutboundFinish(order.getUuid());
+    }
+
+    private void cleanupBackRecordActuals(ProcessOrder order) {
+        String orderUuid = order.getUuid();
+        clearRollActuals(orderUuid);
+        voidDirectShipFinishes(orderUuid);
+        clearProcessFinishActuals(orderUuid);
+        clearStepLosses(orderUuid);
+        clearStageOutputActuals(orderUuid);
+    }
+
+    private void clearRollActuals(String orderUuid) {
+        originalRollMapper.update(null, new LambdaUpdateWrapper<OriginalRoll>()
+                .eq(OriginalRoll::getOrderUuid, orderUuid)
+                .set(OriginalRoll::getActualGramWeight, null)
+                .set(OriginalRoll::getActualWidth, null)
+                .set(OriginalRoll::getActualWeight, null)
+                .set(OriginalRoll::getTotalLossWeight, null)
+                .set(OriginalRoll::getTotalLossRatio, ZERO_AMOUNT)
+                .set(OriginalRoll::getRollStatus, ROLL_STATUS_PENDING));
+    }
+
+    private void voidDirectShipFinishes(String orderUuid) {
+        finishRollMapper.update(null, new LambdaUpdateWrapper<FinishRoll>()
+                .eq(FinishRoll::getOrderUuid, orderUuid)
+                .eq(FinishRoll::getSourceType, SOURCE_DIRECT_SHIP)
+                .set(FinishRoll::getRollNoStatus, ROLL_NO_VOID));
+    }
+
+    private void clearProcessFinishActuals(String orderUuid) {
+        finishRollMapper.update(null, new LambdaUpdateWrapper<FinishRoll>()
+                .eq(FinishRoll::getOrderUuid, orderUuid)
+                .and(w -> w.isNull(FinishRoll::getSourceType).or().ne(FinishRoll::getSourceType, SOURCE_DIRECT_SHIP))
+                .set(FinishRoll::getActualWeight, null)
+                .set(FinishRoll::getRemainingWeight, null)
+                .set(FinishRoll::getScrapWeight, null)
+                .set(FinishRoll::getIsAbnormal, 0)
+                .set(FinishRoll::getAbnormalType, null)
+                .set(FinishRoll::getActualRemark, null)
+                .set(FinishRoll::getFinishStatus, FINISH_STATUS_PENDING));
+    }
+
+    private void clearStepLosses(String orderUuid) {
+        processStepMapper.update(null, new LambdaUpdateWrapper<ProcessStep>()
+                .eq(ProcessStep::getOrderUuid, orderUuid)
+                .set(ProcessStep::getLossWeight, null));
+    }
+
+    private void clearStageOutputActuals(String orderUuid) {
+        processStageOutputMapper.update(null, new LambdaUpdateWrapper<ProcessStageOutput>()
+                .eq(ProcessStageOutput::getOrderUuid, orderUuid)
+                .set(ProcessStageOutput::getActualWeight, null));
     }
 
     private void clearGeneratedProductionData(ProcessOrder order) {
@@ -1055,10 +1145,42 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         order.setTotalExtraAmount(null);
         order.setTotalAmount(null);
         order.setTotalFinishWeight(null);
-        order.setTotalStepCount(null);
+        order.setTotalStepCount(0);
         order.setHasExtraStep(0);
         order.setActualTotalKnife(null);
         order.setIsMixProcess(0);
+    }
+
+    private void updateOrderForDraftRollback(ProcessOrder order) {
+        ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null,
+                new LambdaUpdateWrapper<ProcessOrder>()
+                        .eq(ProcessOrder::getUuid, order.getUuid())
+                        .set(ProcessOrder::getOrderStatus, STATUS_DRAFT)
+                        .set(ProcessOrder::getSnapPrint, null)
+                        .set(ProcessOrder::getSnapFinish, null)
+                        .set(ProcessOrder::getPrintStatus, PRINT_STATUS_UNPRINTED)
+                        .set(ProcessOrder::getPrintCount, 0)
+                        .set(ProcessOrder::getLastPrintTime, null)
+                        .set(ProcessOrder::getLastPrintUser, null)
+                        .set(ProcessOrder::getBackRecordTime, null)
+                        .set(ProcessOrder::getBackRecordUser, null)
+                        .set(ProcessOrder::getProcessAmountNoTax, null)
+                        .set(ProcessOrder::getProcessAmountTax, null)
+                        .set(ProcessOrder::getExtraAmountNoTax, null)
+                        .set(ProcessOrder::getExtraAmountTax, null)
+                        .set(ProcessOrder::getTotalAmountNoTax, null)
+                        .set(ProcessOrder::getTotalAmountTax, null)
+                        .set(ProcessOrder::getTotalProcessAmount, null)
+                        .set(ProcessOrder::getTotalExtraAmount, null)
+                        .set(ProcessOrder::getTotalAmount, null)
+                        .set(ProcessOrder::getTotalFinishWeight, null)
+                        .set(ProcessOrder::getTotalStepCount, 0)
+                        .set(ProcessOrder::getHasExtraStep, 0)
+                        .set(ProcessOrder::getActualTotalKnife, null)
+                        .set(ProcessOrder::getIsMixProcess, 0)
+                        .set(ProcessOrder::getUpdateBy, currentOperator())
+                        .set(ProcessOrder::getUpdateTime, LocalDateTime.now())
+                        .setSql("version = version + 1")));
     }
 
     @Override
@@ -1559,6 +1681,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             }
             boolean already = existingFinishes.stream()
                     .anyMatch(f -> SOURCE_DIRECT_SHIP == (f.getSourceType() == null ? 0 : f.getSourceType())
+                            && ROLL_NO_VOID != (f.getRollNoStatus() == null ? 0 : f.getRollNoStatus())
                             && roll.getRollNo() != null && roll.getRollNo().equals(f.getFinishRollNo()));
             if (already) {
                 continue;

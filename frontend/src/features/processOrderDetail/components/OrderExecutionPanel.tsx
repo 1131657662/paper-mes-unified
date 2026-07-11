@@ -27,6 +27,7 @@ interface ExecutionActions {
 
 interface ExecutionLoading {
   changingStatus?: boolean
+  rollingBackDraft?: boolean
   calculatingFee?: boolean
   voidingOrder?: boolean
 }
@@ -153,6 +154,16 @@ function SecondaryActions({
           回退待下发
         </Button>
       )}
+      {status === 3 && (
+        <Button
+          danger
+          icon={<RollbackOutlined />}
+          loading={loading.rollingBackDraft}
+          onClick={() => actions.onChangeStatus(0, '确认回退到草稿更换母卷？会清理下发、回录、成品号和工序产物数据。')}
+        >
+          回退编辑
+        </Button>
+      )}
       {status === 4 && (
         <Button
           danger
@@ -163,11 +174,21 @@ function SecondaryActions({
           回退待回录
         </Button>
       )}
+      {status === 4 && (
+        <Button
+          danger
+          icon={<RollbackOutlined />}
+          loading={loading.rollingBackDraft}
+          onClick={() => actions.onChangeStatus(0, '确认回退到草稿更换母卷？会清理下发、回录、成品号和工序产物数据。')}
+        >
+          回退编辑
+        </Button>
+      )}
       {status === 1 && (
         <Button
           danger
           icon={<RollbackOutlined />}
-          loading={loading.changingStatus}
+          loading={loading.rollingBackDraft}
           onClick={() => actions.onChangeStatus(0, '确认回退到草稿继续编辑？已生成的工序、成品号和打印快照会失效。')}
         >
           回退编辑

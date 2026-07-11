@@ -68,6 +68,7 @@ final class DeliverySnapshotItemReader {
             item.setActualWeight(decimal(itemNode, "actual_weight"));
             item.setRemainingWeight(decimal(itemNode, "remaining_weight", "remainingWeight"));
             item.setOutWeight(decimal(itemNode, "out_weight"));
+            item.setIsRemain(integer(itemNode, "is_remain", "isRemain"));
             item.setSourceType(integer(itemNode, "source_type"));
             item.setFinishStatus(integer(itemNode, "finish_status"));
             item.setOriginalRollNos(text(itemNode, "original_roll_nos"));

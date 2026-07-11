@@ -78,8 +78,9 @@ function fallbackProcessLabel(production: RollProductionVO) {
 }
 
 function ProductionRouteNode({ data }: NodeProps<ProductionFlowNode>) {
+  const trimClassName = data.isTrim ? ' production-route-flow-card--trim' : ''
   return (
-    <div className={`production-route-flow-card production-route-flow-card--${data.kind}`}>
+    <div className={`production-route-flow-card production-route-flow-card--${data.kind}${trimClassName}`}>
       <Handle type="target" position={Position.Left} className="production-route-flow-card__handle" />
       <div className="production-route-flow-card__header">
         <strong>{data.title}</strong>

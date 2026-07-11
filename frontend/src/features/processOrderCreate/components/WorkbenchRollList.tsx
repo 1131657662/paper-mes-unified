@@ -2,6 +2,7 @@ import { Button, Checkbox, List, Space, Tag, Typography } from 'antd'
 import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
 import type { Machine } from '../../../types/machine'
 import type { PlanPreviewVO, ProcessRoutePreviewVO } from '../../../types/processOrder'
+import { formatGram, formatMm } from '../../../utils/numberFormatters'
 import { rollPreviewStatus } from '../previewStatusUtils'
 import type { MergedSourceLock } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
@@ -75,7 +76,7 @@ export default function WorkbenchRollList({
                   <div>
                     <Typography.Text strong>母卷 {index + 1}</Typography.Text>
                     <div style={{ color: '#666', fontSize: 12 }}>
-                      {roll.rollNo || roll.paperName || '-'} / {roll.gramWeight}g / {roll.originalWidth}mm
+                      {roll.rollNo || roll.paperName || '-'} / {formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)}
                     </div>
                   </div>
                 </Space>

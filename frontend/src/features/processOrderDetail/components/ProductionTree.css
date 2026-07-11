@@ -138,9 +138,7 @@
   overflow: hidden;
   border: 1px solid #dbeafe;
   border-radius: var(--mes-radius);
-  background:
-    radial-gradient(circle at 16% 24%, rgb(22 119 255 / 8%), transparent 28%),
-    linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+  background: #f8fbff;
 }
 
 .production-route-flow .react-flow__controls {
@@ -172,6 +170,12 @@
   grid-template-columns: 1fr;
   border-color: #d6e4ff;
   background: #f7fbff;
+}
+
+.production-route-flow-card--trim {
+  border-color: #ffe7ba;
+  background: #fffaf0;
+  box-shadow: 0 8px 18px rgb(120 53 15 / 6%);
 }
 
 .production-route-flow-card__header {

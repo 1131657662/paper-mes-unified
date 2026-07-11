@@ -1,8 +1,12 @@
 package com.paper.mes.processorder.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -24,10 +28,13 @@ public class FinishConfigSpecDTO {
     private Integer finishCoreDiameter;
 
     @NotNull(message = "数量不能为空")
-    @Min(value = 1, message = "数量至少为 1")
+    @Min(value = 1, message = "数量至少为1")
     private Integer count;
 
+    @PositiveOrZero(message = "预估重量不能为负")
     private BigDecimal estimateWeight;
+    @DecimalMin(value = "0.00", message = "分摊比例不能为负")
+    @DecimalMax(value = "100.00", message = "分摊比例不能超过100%")
     private BigDecimal splitRatio;
 
     @Valid
@@ -39,13 +46,19 @@ public class FinishConfigSpecDTO {
     @Data
     public static class FinishSourceDTO {
         private String originalUuid;
+        @DecimalMin(value = "0.00", message = "来源占比不能为负")
+        @DecimalMax(value = "100.00", message = "来源占比不能超过100%")
         private BigDecimal shareRatio;
+        @DecimalMin(value = "0.00", message = "消耗比例不能为负")
+        @DecimalMax(value = "100.00", message = "消耗比例不能超过100%")
         private BigDecimal consumeRatio;
     }
 
     @Data
     public static class FinishLayerDTO {
+        @Positive(message = "分层外径必须大于0")
         private Integer outDiameter;
+        @Positive(message = "分层纸芯必须大于0")
         private Integer coreDiameter;
     }
 }

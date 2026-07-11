@@ -1,4 +1,4 @@
-import { Button, Tag, Typography } from 'antd'
+import { Button, Space, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { SOURCE_TYPE } from '../../constants/delivery'
 import TooltipText from '../../components/biz/TooltipText'
@@ -9,6 +9,7 @@ import {
   formatKg,
 } from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryDetail } from '../../types/delivery'
+import { formatGram } from '../../utils/numberFormatters'
 
 export function buildDeliveryDetailColumns(options: {
   canRemove?: boolean
@@ -21,11 +22,16 @@ export function buildDeliveryDetailColumns(options: {
       title: '卷号',
       dataIndex: 'finishRollNo',
       fixed: 'left',
-      width: 125,
-      render: (value) => <Typography.Text strong>{value || '-'}</Typography.Text>,
+      width: 150,
+      render: (value, record) => (
+        <Space size={4} wrap>
+          <Typography.Text strong>{value || '-'}</Typography.Text>
+          {record.isRemain === 1 ? <Tag color="orange">余料</Tag> : null}
+        </Space>
+      ),
     },
     { title: '品名', dataIndex: 'paperName', width: 130, render: textCell },
-    { title: '克重', dataIndex: 'gramWeight', width: 78, render: (value) => value ? `${value}g` : '-' },
+    { title: '克重', dataIndex: 'gramWeight', width: 78, render: formatGram },
     { title: '规格', key: 'spec', width: 155, render: (_, record) => deliveryDetailSpecText(record) },
     { title: '件重', dataIndex: 'actualWeight', align: 'right', width: 110, render: formatKg },
     { title: '出库重量', dataIndex: 'outWeight', align: 'right', width: 110, render: formatKg },

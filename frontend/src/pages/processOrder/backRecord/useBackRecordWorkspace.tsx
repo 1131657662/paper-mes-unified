@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Form, message } from 'antd'
+import { useNavigate } from 'react-router-dom'
 import type { ProcessStepDTO } from '../../../api/processOrder'
 import { BizError, notifyErrorOnce } from '../../../api/request'
 import { useAddProcessStep } from '../../../features/processOrderDetail/hooks/useAddProcessStep'
 import { useBackRecordProcessOrder } from '../../../features/processOrderDetail/hooks/useBackRecordProcessOrder'
 import { useChangeOrderStatus } from '../../../features/processOrderDetail/hooks/useChangeOrderStatus'
 import { useProcessOrderDetail } from '../../../features/processOrderDetail/hooks/useProcessOrderDetail'
+import { useRollbackProcessOrderToDraft } from '../../../features/processOrderDetail/hooks/useRollbackProcessOrderToDraft'
 import { confirmOrderStatusChange } from '../../../features/processOrderDetail/confirmOrderStatusChange'
 import BackRecordWorkspaceModals from './BackRecordWorkspaceModals'
 import {
@@ -25,6 +27,7 @@ interface Params {
 }
 
 export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSuccess }: Params) {
+  const navigate = useNavigate()
   const [form] = Form.useForm<BackRecordFormValues>()
   const [authForm] = Form.useForm<BackRecordAuthorization>()
   const [authOpen, setAuthOpen] = useState(false)
@@ -35,6 +38,7 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
   const backRecordMutation = useBackRecordProcessOrder(uuid ?? undefined)
   const addStepMutation = useAddProcessStep()
   const changeStatusMutation = useChangeOrderStatus()
+  const rollbackDraftMutation = useRollbackProcessOrderToDraft()
   const values = useBackRecordFormValues(form)
   const [filledValues, setFilledValues] = useState<BackRecordFormValues>({})
   const displayValues = mergeBackRecordValues(values, filledValues)
@@ -125,6 +129,25 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
     })
   }
 
+  const rollbackToDraft = async () => {
+    if (!uuid) return
+    confirmOrderStatusChange({
+      title: '确认回退到草稿更换母卷？',
+      orderNo: detailQuery.data?.order.orderNo,
+      okText: '确认回退',
+      danger: true,
+      requireReason: true,
+      reasonPlaceholder: '请填写回退原因，例如：母卷更换、规格录错、方案重做',
+      onConfirm: async (reason) => {
+        await rollbackDraftMutation.mutateAsync({ orderUuid: uuid, reason: reason ?? '' })
+        message.success('已回退到草稿，请重新编辑母卷和加工方案')
+        setChangeOpen(false)
+        onSuccess()
+        navigate(`/process-orders/create?draft=${uuid}`)
+      },
+    })
+  }
+
   return {
     detail: detailQuery.data,
     form,
@@ -137,12 +160,13 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
         changeOpen={changeOpen}
         detail={detailQuery.data ?? null}
         addingStep={addStepMutation.isPending}
-        rollingBack={changeStatusMutation.isPending}
+        rollingBack={changeStatusMutation.isPending || rollbackDraftMutation.isPending}
         onAddExtraStep={addExtraStep}
         onCancelAuth={() => setAuthOpen(false)}
         onCancelChange={() => setChangeOpen(false)}
         onCancelStep={() => setStepFormOpen(false)}
         onOpenStep={() => setStepFormOpen(true)}
+        onRollbackToDraft={rollbackToDraft}
         onRollbackToConfig={rollbackToConfig}
         onSubmitAuth={submitAuthorization}
         stepFormOpen={stepFormOpen}

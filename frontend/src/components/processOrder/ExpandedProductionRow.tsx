@@ -11,7 +11,7 @@ import {
   REWIND_MODE,
   trimWeightFromFinishes,
 } from './shared/detailHelpers'
-import { formatKg, formatTon } from '../../utils/numberFormatters'
+import { formatKg, formatMm, formatTon } from '../../utils/numberFormatters'
 
 const { Text } = Typography
 
@@ -119,7 +119,7 @@ export default function ExpandedProductionRow({ row }: Props) {
           )}
           {(trim > 0 || trimWeight > 0) && (
             <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>
-              修边: {trim}mm{trimWeight > 0 ? ` · ${formatKg(trimWeight)}` : ''}
+              修边: {formatMm(trim)}{trimWeight > 0 ? ` · ${formatKg(trimWeight)}` : ''}
             </Text>
           )}
         </>

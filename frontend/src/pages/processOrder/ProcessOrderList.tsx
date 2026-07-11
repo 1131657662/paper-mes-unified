@@ -9,6 +9,7 @@ import {
   pageProcessOrders,
   changeOrderStatus,
   calcProcessOrderFee,
+  rollbackProcessOrderToDraft,
   voidProcessOrder,
 } from '../../api/processOrder'
 import type { ProcessOrder } from '../../types/processOrder'
@@ -47,7 +48,11 @@ export default function ProcessOrderList() {
   }
 
   const handleTransition = async (record: ProcessOrder, target: number, reason?: string) => {
-    await changeOrderStatus(record.uuid, { reason, targetStatus: target })
+    if (target === 0) {
+      await rollbackProcessOrderToDraft(record.uuid, { reason: reason ?? '' })
+    } else {
+      await changeOrderStatus(record.uuid, { reason, targetStatus: target })
+    }
     message.success('状态已更新')
     rowSelection.clear()
     actionRef.current?.reload()

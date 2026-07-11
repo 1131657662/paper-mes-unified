@@ -4,6 +4,7 @@ import { PROCESS_MODE, STEP_TYPE } from '../../constants/processOrder'
 import SawingConfigForm from './SawingConfigForm'
 import RewindingConfigForm from './RewindingConfigForm'
 import DirectShipInfo from './DirectShipInfo'
+import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
 
 interface Props {
   roll: OriginalRoll
@@ -64,10 +65,10 @@ export default function FinishConfigPanel({
       <Card size="small" title="原纸信息" style={{ marginBottom: 16 }}>
         <Descriptions size="small" column={2}>
           <Descriptions.Item label="品名">{roll.paperName}</Descriptions.Item>
-          <Descriptions.Item label="克重">{roll.gramWeight}g</Descriptions.Item>
-          <Descriptions.Item label="门幅">{roll.originalWidth}mm</Descriptions.Item>
+          <Descriptions.Item label="克重">{formatGram(roll.gramWeight)}</Descriptions.Item>
+          <Descriptions.Item label="门幅">{formatMm(roll.originalWidth)}</Descriptions.Item>
           <Descriptions.Item label="单重">
-            {roll.rollWeight}kg × {roll.pieceNum || 1}件
+            {formatKg(roll.rollWeight)} × {roll.pieceNum || 1}件
           </Descriptions.Item>
           <Descriptions.Item label="加工模式">{PROCESS_MODE[processMode] ?? '-'}</Descriptions.Item>
           <Descriptions.Item label="主工艺">

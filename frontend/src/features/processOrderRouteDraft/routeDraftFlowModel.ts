@@ -1,6 +1,6 @@
 import type { Edge, Node } from '@xyflow/react'
 import type { OriginalRoll } from '../../types/processOrder'
-import { formatKg } from '../../utils/numberFormatters'
+import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
 import type { DetailRouteOutputRow } from '../processOrderDetail/routeConfigDetail'
 import { routeStepName } from '../processOrderDetail/routeConfigDetail'
 import {
@@ -76,7 +76,7 @@ function sourceNode(options: RouteDraftFlowOptions): RouteOutputNode {
       title: options.roll.rollNo || options.roll.extraNo || options.roll.paperName || '母卷',
       status: '母卷',
       lines: [
-        `${options.roll.paperName || '-'} / ${options.roll.gramWeight ?? '-'}g / ${options.roll.originalWidth ?? '-'}mm`,
+        `${options.roll.paperName || '-'} / ${formatGram(options.roll.gramWeight)} / ${formatMm(options.roll.originalWidth)}`,
         `来料 ${formatKg(source.estimateWeight)}`,
       ],
     },
@@ -100,7 +100,7 @@ function outputNode(row: DetailRouteOutputRow, options: RouteDraftFlowOptions, l
       status: consumed ? '中间产物' : '最终成品',
       title: row.outputKey,
       lines: [
-        `${row.paperName || '-'} / ${row.gramWeight ?? '-'}g / ${row.finishWidth ?? '-'}mm`,
+        `${row.paperName || '-'} / ${formatGram(row.gramWeight)} / ${formatMm(row.finishWidth)}`,
         `预估 ${formatKg(row.estimateWeight)}`,
       ],
     },

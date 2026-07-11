@@ -6,6 +6,7 @@ import ProcessPlanEditor from '../processOrderCreate/components/ProcessPlanEdito
 import type { DefaultPlanOptions } from '../processOrderCreate/draftMappers'
 import { STEP_TYPE_REWIND, STEP_TYPE_SAW, sourceRollFromOutput } from '../processOrderDetail/routeConfigDetail'
 import type { DetailRoutePriceDefaults } from '../processOrderDetail/routeConfigDetail'
+import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
 import {
   ORIGINAL_OUTPUT_KEY,
   draftStageForSource,
@@ -129,8 +130,8 @@ function SourceSummary({ source }: { source: ReturnType<typeof sourceRowsForRout
   return (
     <Card size="small" className="route-draft-source-summary">
       <Typography.Text strong>{source.outputKey === ORIGINAL_OUTPUT_KEY ? '母卷' : source.outputKey}</Typography.Text>
-      <span>{source.paperName || '-'} / {source.gramWeight ?? '-'}g / {source.finishWidth ?? '-'}mm</span>
-      <span>预估重量 {source.estimateWeight.toFixed(3)}kg</span>
+      <span>{source.paperName || '-'} / {formatGram(source.gramWeight)} / {formatMm(source.finishWidth)}</span>
+      <span>预估重量 {formatKg(source.estimateWeight)}</span>
     </Card>
   )
 }

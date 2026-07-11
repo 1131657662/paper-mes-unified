@@ -1,7 +1,7 @@
 import { Button, Select, Space, Tag, Tooltip, Typography } from 'antd'
 import { CheckCircleOutlined } from '@ant-design/icons'
 import type { DetailRouteOutputRow } from '../routeConfigDetail'
-import { formatKg } from '../../../utils/numberFormatters'
+import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
 
 interface Props {
   inputs: DetailRouteOutputRow[]
@@ -142,7 +142,7 @@ function groupByStage(inputs: DetailRouteOutputRow[]): StageGroup[] {
 }
 
 function routeOutputLabel(row: DetailRouteOutputRow) {
-  return `${stageName(row.stageLevel)}｜${row.outputKey}｜${sourceNo(row)}｜${row.paperName || '-'}｜${row.gramWeight ?? '-'}g / ${row.finishWidth ?? '-'}mm｜${formatKg(row.estimateWeight)}`
+  return `${stageName(row.stageLevel)}｜${row.outputKey}｜${sourceNo(row)}｜${row.paperName || '-'}｜${specText(row)}｜${formatKg(row.estimateWeight)}`
 }
 
 function stageName(stageLevel?: number) {
@@ -162,7 +162,7 @@ function parentSourceText(row: DetailRouteOutputRow) {
 }
 
 function specText(row: DetailRouteOutputRow) {
-  return `${row.gramWeight ?? '-'}g / ${row.finishWidth ?? '-'}mm`
+  return `${formatGram(row.gramWeight)} / ${formatMm(row.finishWidth)}`
 }
 
 function diameterText(row: DetailRouteOutputRow) {

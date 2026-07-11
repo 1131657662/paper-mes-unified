@@ -473,7 +473,7 @@ CREATE TABLE `biz_process_param` (
   `core_diameter` INT           DEFAULT NULL            COMMENT '本层纸芯直径 英寸',
   `layer_width`   INT           DEFAULT NULL            COMMENT '本层/本件门幅 mm',
   `area_value`    DECIMAL(14,3) DEFAULT NULL            COMMENT '计算横截面积 mm²',
-  `area_ratio`    DECIMAL(5,2)  DEFAULT NULL            COMMENT '面积/重量分摊占比%',
+  `area_ratio`    DECIMAL(10,3) DEFAULT NULL            COMMENT '历史字段：预估重量kg，不再按百分比展示',
   `split_ratio`   DECIMAL(5,2)  DEFAULT NULL            COMMENT '合并复卷自定义分摊比例%',
   `param_json`    JSON          DEFAULT NULL            COMMENT '复杂分层参数原始快照',
   `remark`        VARCHAR(255)  DEFAULT NULL            COMMENT '备注',

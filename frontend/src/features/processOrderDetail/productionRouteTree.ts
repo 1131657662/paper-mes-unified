@@ -1,4 +1,5 @@
 import type { FinishProductionVO, RollProductionVO, StageOutputVO } from '../../types/processOrder'
+import { decimalPlaces, formatGram, formatMm } from '../../utils/numberFormatters'
 import {
   buildFinishLayers,
   buildStageOutputLayers,
@@ -18,6 +19,7 @@ import {
 export interface RouteNode {
   appendable: boolean
   children: RouteNode[]
+  isTrim: boolean
   key: string
   level: number
   layerText?: string
@@ -29,6 +31,7 @@ export interface RouteNode {
   sortInfo?: LayeredRewindSort
   title: string
   weight?: number
+  weightDigits?: number
   weightLabel?: RouteWeightLabel
 }
 
@@ -54,12 +57,14 @@ export function buildRouteTree(
     const finishLayers = production ? buildFinishLayers(production, finishRows) : []
     const finishLayerMap = layerItemMap(finishLayers)
     const finishSortMap = layerItemSortMap(finishLayers)
+    const weightDigits = productionWeightDigits(production)
     return sortNodes(finishRows.map((finish) => {
       return toFinishNode(
         finish,
         fallbackProcessLabel,
         finishLayerMap.get(finish.uuid)?.label,
         finishSortMap.get(finish.uuid),
+        weightDigits,
       )
     }))
   }
@@ -67,11 +72,13 @@ export function buildRouteTree(
   const stageLayers = production ? stageLayersFor(production, activeOutputRows) : []
   const stageLayerMap = layerItemMap(stageLayers)
   const stageSortMap = layerItemSortMap(stageLayers)
+  const weightDigits = productionWeightDigits(production)
   const nodes = new Map(activeOutputRows.map((output) => {
     return [output.uuid, toStageNode(
       output,
       stageLayerMap.get(output.uuid)?.label,
       stageSortMap.get(output.uuid),
+      weightDigits,
     )]
   }))
   const childrenByParent = new Map<string, RouteNode[]>()
@@ -98,17 +105,20 @@ function toStageNode(
   output: StageOutputVO,
   layerText?: string,
   sortInfo?: LayeredRewindSort,
+  weightDigits = 3,
 ): RouteNode {
   const remain = isStageTrimOutput(output)
   const weight = displayWeight(output.actualWeight, output.estimateWeight)
   return {
     children: [],
+    isTrim: remain,
     key: output.uuid,
     level: output.stageLevel ?? 1,
     layerText,
     title: remain ? trimTitle(output.outputNo) : output.outputNo || `产物 ${output.outputSort ?? '-'}`,
     meta: formatSpec(output.paperName, output.gramWeight, output.finishWidth),
     weight: weight.value,
+    weightDigits,
     weightLabel: weight.label,
     processLabel: output.sourceSummary || stepTypeText(output.sourceStepType),
     statusColor: remain ? 'orange' : outputStatusColor(output.outputStatus),
@@ -124,17 +134,20 @@ function toFinishNode(
   processLabel: string,
   layerText?: string,
   sortInfo?: LayeredRewindSort,
+  weightDigits = 3,
 ): RouteNode {
   const isRemain = finish.isRemain === 1
   const weight = displayWeight(finish.actualWeight, finish.estimateWeight)
   return {
     children: [],
+    isTrim: isRemain,
     key: finish.uuid,
     level: 1,
     layerText,
     title: isRemain ? trimTitle(finish.finishRollNo) : finish.finishRollNo || `成品 ${finish.rowSort ?? '-'}`,
     meta: formatSpec(finish.paperName, finish.gramWeight, finish.finishWidth),
     weight: weight.value,
+    weightDigits,
     weightLabel: weight.label,
     processLabel,
     statusColor: isRemain ? 'orange' : 'green',
@@ -143,6 +156,10 @@ function toFinishNode(
     outputKey: isRemain ? undefined : finish.finishRollNo || (finish.uuid ? `F:${finish.uuid}` : undefined),
     appendable: !isRemain,
   }
+}
+
+function productionWeightDigits(production?: RollProductionVO): number {
+  return decimalPlaces(production?.actualWeight ?? production?.rollWeight)
 }
 
 function displayWeight(actualWeight?: number, estimateWeight?: number): RouteWeight {
@@ -168,13 +185,18 @@ function trimTitle(identifier?: string) {
 function sortNodes(nodes: RouteNode[]) {
   return [...nodes].sort((a, b) => {
     return compareLayerRows(a.sortInfo, b.sortInfo)
+      || trimRank(a) - trimRank(b)
       || a.level - b.level
       || a.title.localeCompare(b.title)
   })
 }
 
+function trimRank(node: RouteNode) {
+  return node.isTrim ? 1 : 0
+}
+
 function formatSpec(name?: string, gram?: number, width?: number) {
-  return `${name || '-'} / ${gram ?? '-'}g / ${width ?? '-'}mm`
+  return `${name || '-'} / ${formatGram(gram)} / ${formatMm(width)}`
 }
 
 function stepTypeText(stepType?: number) {

@@ -24,6 +24,8 @@ public class AvailableFinishVO {
     private BigDecimal actualWeight;
     /** 当前剩余可出库重量 kg；为空时旧数据按 actualWeight 兜底。 */
     private BigDecimal remainingWeight;
+    /** 1 表示切边/余料，其他值表示正常成品。 */
+    private Integer isRemain;
     /** 1加工产出 2原纸直发 */
     private Integer sourceType;
     /** 1待入库 2已入库 3已出库 4报废 */

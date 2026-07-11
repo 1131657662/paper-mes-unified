@@ -17,13 +17,13 @@ export const REWIND_MODE: Record<number, string> = {
   5: '多母卷合并复卷',
 }
 
-export const fmt = (v?: number, suffix = '') => (v == null ? '-' : `${v}${suffix}`)
+export const fmt = (v?: number, suffix = '') => (v == null ? '-' : suffix ? `${v} ${suffix}` : `${v}`)
 export const fmtKg = (v?: number) => (v == null ? '-' : formatKg(v))
 export const toDisplayDiameterMm = (value?: number) =>
   value == null ? undefined : value > 0 && value < 100 ? Math.round(value * 25.4) : value
 export const fmtDiameter = (value?: number, prefix = '') => {
   const diameter = toDisplayDiameterMm(value)
-  return diameter == null ? '-' : `${prefix}${diameter}mm`
+  return diameter == null ? '-' : `${prefix}${diameter} mm`
 }
 
 export const isActiveProductionFinish = (finish: FinishProductionVO) => finish.rollNoStatus !== 3
@@ -141,10 +141,10 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
   // 锯纸
   if (!isRewind) {
     const knifeCount = record.steps?.find((s) => s.isMain === 1)?.knifeCount ?? (groups.reduce((s, g) => s + g.count, 0) - 1)
-    const widthLayout = groups.map((g) => `${g.width}mm×${g.count}件`).join(', ')
+    const widthLayout = groups.map((g) => `${g.width} mm × ${g.count}件`).join(', ')
     if (knifeCount > 0) mainDetails.push(`切 ${knifeCount}刀 | 门幅 ${widthLayout}`)
     else if (widthLayout) mainDetails.push(`门幅 ${widthLayout}`)
-    if (trim > 0) mainDetails.push(`修边 ${trim}mm`)
+    if (trim > 0) mainDetails.push(`修边 ${trim} mm`)
     const totalCount = groups.reduce((s, g) => s + g.count, 0)
     const totalWeight = groups.reduce((s, g) => s + g.totalEstimate, 0)
     if (totalCount > 0) {
@@ -180,7 +180,7 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
     }
     // 排刀
     if (groups.length > 0) {
-      mainDetails.push(`排刀: ${groups.map((g) => `${g.width}mm×${g.count}件`).join(', ')}${trim > 0 ? ` | 修边 ${trim}mm` : ''}`)
+      mainDetails.push(`排刀: ${groups.map((g) => `${g.width} mm × ${g.count}件`).join(', ')}${trim > 0 ? ` | 修边 ${trim} mm` : ''}`)
     }
     // mode 5 来源
     if (rewindMode === 5) {
@@ -269,12 +269,9 @@ export function buildConditionText(record: RollProductionVO): string {
   const mode = params[0]?.paramMode
   const parts: string[] = []
 
-  // 分段占比 (mode 1, 3)
-  if (mode === 1 || mode === 3) {
-    const sorted = [...params].sort((a, b) => (a.layerSort ?? 0) - (b.layerSort ?? 0))
-    if (sorted.length > 1) {
-      parts.push(sorted.map((p) => `${p.areaRatio ?? 0}%`).join('+'))
-    }
+  // 改门幅的排布在“门幅排布”中展示；areaRatio 当前存的是预估重量，不能当百分比显示。
+  if (mode === 1) {
+    parts.push('按门幅排布')
   }
 
   // 直径 & 纸芯 (mode 2, 3, 5)
@@ -290,7 +287,7 @@ export function buildConditionText(record: RollProductionVO): string {
     const layerText = layersSummaryText(buildFinishLayers(record, record.finishes ?? []))
     if (layerText) return '内外层分层'
     const sorted = [...params].sort((a, b) => (a.layerSort ?? 0) - (b.layerSort ?? 0))
-    parts.push(sorted.map((p) => `${p.layerWidth}mm`).join('/'))
+    parts.push(sorted.map((p) => `${p.layerWidth} mm`).join(' / '))
   }
 
   // 合并 (mode 5)
@@ -306,5 +303,5 @@ export function buildLayoutText(record: RollProductionVO): string {
   if (layerText) return layerText
   const groups = groupFinishes(record.finishes)
   if (!groups.length) return '-'
-  return groups.map((g) => `${g.width}mm×${g.count}`).join(' + ')
+  return groups.map((g) => `${g.width} mm × ${g.count}`).join(' + ')
 }

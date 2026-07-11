@@ -7,7 +7,7 @@ import type {
   ProcessPlanDTO,
   ProcessRoutePreviewVO,
 } from '../../../types/processOrder'
-import { formatKg } from '../../../utils/numberFormatters'
+import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
 import { totalWeight } from '../draftMappers'
 import { rollPreviewStatus } from '../previewStatusUtils'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
@@ -89,7 +89,7 @@ function RollPreview({ locks, roll, state }: RollPreviewProps) {
 function previewColumns(state: Props, locks: ReturnType<typeof mergedSourceLocks>): ColumnsType<RollDraft> {
   return [
     { title: '母卷', width: 150, render: (_, roll) => roll.rollNo || roll.paperName || '-' },
-    { title: '原纸规格', width: 160, render: (_, roll) => `${roll.gramWeight}g / ${roll.originalWidth}mm` },
+    { title: '原纸规格', width: 160, render: (_, roll) => `${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}` },
     { title: '重量', width: 120, render: (_, roll) => formatKg(Number(roll.rollWeight) * (roll.pieceNum ?? 1)) },
     { title: '加工方式', width: 110, render: (_, roll) => <Tag>{PROCESS_MODE[roll.processMode ?? 1]}</Tag> },
     {

@@ -1,6 +1,7 @@
 import { INVOICE_TYPE } from '../../constants/settle'
 import { formatKg, formatMoney, formatTon } from '../../features/settle/utils/settleFormatters'
 import type { SettleDetailVO, SettlePrintLine } from '../../types/settle'
+import { formatGram, formatMm, formatUnit } from '../../utils/numberFormatters'
 import { buildSettleBillGroups, type SettleBillGroup } from './settleBillGroups'
 import { SettleFeeSourcePrint } from './SettleFeeLinesView'
 import '../documentModule.css'
@@ -131,15 +132,15 @@ function printOriginalLabel(line: SettlePrintLine) {
 }
 
 function printOriginalSpec(line: SettlePrintLine) {
-  const gram = line.actualGramWeight ? `${line.actualGramWeight}g` : line.gramWeight ? `${line.gramWeight}g` : '-'
-  const width = line.actualWidth ? `${line.actualWidth}mm` : line.originalWidth ? `${line.originalWidth}mm` : '-'
+  const gram = line.actualGramWeight ? formatGram(line.actualGramWeight) : formatGram(line.gramWeight)
+  const width = line.actualWidth ? formatMm(line.actualWidth) : formatMm(line.originalWidth)
   return [
     line.paperName || '-',
     gram,
     width,
-    line.originalDiameter && `直径${line.originalDiameter}`,
-    line.coreDiameter && `纸芯${line.coreDiameter}`,
-    line.originalLength && `${line.originalLength}m`,
+    line.originalDiameter && `直径 ${formatMm(line.originalDiameter)}`,
+    line.coreDiameter && `纸芯 ${formatMm(line.coreDiameter)}`,
+    line.originalLength && formatUnit(line.originalLength, 'm'),
   ].filter(Boolean).join(' / ')
 }
 

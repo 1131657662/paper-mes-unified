@@ -1,6 +1,7 @@
 import { Button, Progress, Space, Tag, Typography } from 'antd'
 import MesTooltip from '../../../components/biz/MesTooltip'
 import type { RewindLayoutItemPlanDTO, RewindSegmentPlanDTO } from '../../../types/processOrder'
+import { formatMm } from '../../../utils/numberFormatters'
 import { calcRewindWidthUsage, rewindWidthPolicy } from '../rewindWidthUsage'
 import './RewindWidthSummary.css'
 
@@ -22,12 +23,12 @@ export default function RewindWidthSummary({ mode, originalWidth, segment, onFil
   return (
     <div className="rewind-width-summary">
       <Space wrap size={8}>
-        <Tag color="blue">成品 {usage.finishWidth}mm / {usage.finishCount}件</Tag>
-        <Tag color={usage.trimWidth > 0 ? 'orange' : 'default'}>修边 {usage.trimWidth}mm</Tag>
-        {usage.implicitTrimWidth > 0 && <Tag color="gold">可转修边 {usage.implicitTrimWidth}mm</Tag>}
+        <Tag color="blue">成品 {formatMm(usage.finishWidth)} / {usage.finishCount}件</Tag>
+        <Tag color={usage.trimWidth > 0 ? 'orange' : 'default'}>修边 {formatMm(usage.trimWidth)}</Tag>
+        {usage.implicitTrimWidth > 0 && <Tag color="gold">可转修边 {formatMm(usage.implicitTrimWidth)}</Tag>}
         <Typography.Text type={overflow ? 'danger' : 'secondary'}>
-          门幅 {usage.usedWidth}/{usage.originalWidth || '-'}mm
-          {overflow ? `，超出 ${Math.abs(usage.remainingWidth)}mm` : `，剩余 ${Math.max(0, usage.remainingWidth)}mm`}
+          门幅 {usage.usedWidth}/{usage.originalWidth || '-'} mm
+          {overflow ? `，超出 ${formatMm(Math.abs(usage.remainingWidth))}` : `，剩余 ${formatMm(Math.max(0, usage.remainingWidth))}`}
         </Typography.Text>
         <Button size="small" disabled={usage.remainingWidth <= 0} onClick={onFillTrim}>
           剩余转修边
@@ -72,5 +73,5 @@ function LayoutStrip({ items, originalWidth }: { items: RewindLayoutItemPlanDTO[
 
 function labelForItem(item: RewindLayoutItemPlanDTO) {
   const type = item.itemType === 'TRIM' ? '修边' : '成品'
-  return `${type} ${item.width}mm × ${item.quantity ?? 1}`
+  return `${type} ${formatMm(item.width)} × ${item.quantity ?? 1}`
 }

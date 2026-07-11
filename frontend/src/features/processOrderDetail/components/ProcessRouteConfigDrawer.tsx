@@ -16,7 +16,7 @@ import type {
 import RewindPlanEditor from '../../processOrderCreate/components/RewindPlanEditor'
 import SawPlanEditor from '../../processOrderCreate/components/SawPlanEditor'
 import { queries } from '../../../queries'
-import { formatKg as formatWeightKg, formatTon } from '../../../utils/numberFormatters'
+import { formatGram, formatKg as formatWeightKg, formatMm, formatTon } from '../../../utils/numberFormatters'
 import { usePreviewPendingRoute } from '../hooks/usePreviewPendingRoute'
 import { useSavePendingRoute } from '../hooks/useSavePendingRoute'
 import { usePreviewAppendRoute } from '../hooks/usePreviewAppendRoute'
@@ -173,7 +173,7 @@ function RouteBaseControls({ roll, rolls, onRollChange }: BaseControlProps) {
           <Descriptions.Item label="卷号">{roll.rollNo || '-'}</Descriptions.Item>
           <Descriptions.Item label="编号">{roll.extraNo || '-'}</Descriptions.Item>
           <Descriptions.Item label="品名">{roll.paperName || '-'}</Descriptions.Item>
-          <Descriptions.Item label="规格">{roll.gramWeight ?? '-'}g / {roll.originalWidth ?? '-'}mm</Descriptions.Item>
+          <Descriptions.Item label="规格">{formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)}</Descriptions.Item>
           <Descriptions.Item label="直径/纸芯">{roll.originalDiameter ?? '-'} / {roll.coreDiameter ?? '-'}</Descriptions.Item>
           <Descriptions.Item label="件数">{roll.pieceNum ?? 1} 件</Descriptions.Item>
           <Descriptions.Item label="重量">{formatWeight(rollTotalWeight(roll))}</Descriptions.Item>
@@ -400,7 +400,7 @@ const outputColumns: ColumnsType<DetailRouteOutputRow> = [
   { title: '产物', dataIndex: 'label', width: 150, render: (value, row) => <Space size={4}>{value}<Tag color={row.isRemain === 1 ? 'orange' : undefined}>{row.outputKey}</Tag></Space> },
   { title: '来源编号', width: 180, render: (_, row) => row.finishRollNo || row.sourceRollNo || row.sourceOutputKey || '-' },
   { title: '品名', dataIndex: 'paperName', width: 140 },
-  { title: '规格', width: 150, render: (_, row) => `${row.gramWeight ?? '-'}g / ${row.finishWidth ?? '-'}mm` },
+  { title: '规格', width: 150, render: (_, row) => `${formatGram(row.gramWeight)} / ${formatMm(row.finishWidth)}` },
   { title: '直径/纸芯', width: 130, render: (_, row) => `${row.finishDiameter ?? '-'} / ${row.finishCoreDiameter ?? '-'}` },
   { title: '预估重量', dataIndex: 'estimateWeight', width: 120, align: 'right', render: formatWeight },
 ]
@@ -419,7 +419,7 @@ const previewOutputColumns: ColumnsType<ProcessRouteOutputVO> = [
   { title: '产出', dataIndex: 'outputKey', width: 90 },
   { title: '阶段', dataIndex: 'stageLevel', width: 70, render: (value) => `第${value ?? '-'}段` },
   { title: '状态', width: 100, render: (_, row) => routeOutputStatus(row) },
-  { title: '门幅', dataIndex: 'finishWidth', width: 90, render: (value) => value ? `${value}mm` : '-' },
+  { title: '门幅', dataIndex: 'finishWidth', width: 90, render: (value) => formatMm(value) },
   { title: '预估重', dataIndex: 'estimateWeight', width: 110, render: formatWeight },
   { title: '备注', dataIndex: 'remark', width: 180 },
 ]
@@ -485,7 +485,7 @@ function stageRowKey(record: ProcessRouteStageLineVO) {
 
 function rollLabel(roll: OriginalRoll) {
   const no = [roll.rollNo && `卷号:${roll.rollNo}`, roll.extraNo && `编号:${roll.extraNo}`].filter(Boolean).join(' / ')
-  return `${roll.rowSort ?? '-'} | ${no || '未编号'} | ${roll.paperName || '-'} | ${roll.gramWeight ?? '-'}g / ${roll.originalWidth ?? '-'}mm | ${formatWeight(rollTotalWeight(roll))}`
+  return `${roll.rowSort ?? '-'} | ${no || '未编号'} | ${roll.paperName || '-'} | ${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)} | ${formatWeight(rollTotalWeight(roll))}`
 }
 
 function stageName(stageLevel?: number) {
@@ -521,7 +521,7 @@ function sourcePaperText(rows: DetailRouteOutputRow[]) {
 }
 
 function sourceSpecText(rows: DetailRouteOutputRow[]) {
-  return rows.map((row) => `${row.gramWeight ?? '-'}g / ${row.finishWidth ?? '-'}mm`).join('、')
+  return rows.map((row) => `${formatGram(row.gramWeight)} / ${formatMm(row.finishWidth)}`).join('、')
 }
 
 function totalSourceWeight(rows: DetailRouteOutputRow[]) {

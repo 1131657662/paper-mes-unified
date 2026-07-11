@@ -194,6 +194,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             vo.setFinishCoreDiameter(f.getFinishCoreDiameter());
             vo.setActualWeight(f.getActualWeight());
             vo.setRemainingWeight(availableWeight);
+            vo.setIsRemain(f.getIsRemain());
             vo.setSourceType(f.getSourceType());
             vo.setFinishStatus(f.getFinishStatus());
             vo.setSettlementRisk(settlementRiskOrderUuids.contains(f.getOrderUuid()));
@@ -563,6 +564,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             row.put("actual_weight", item.getActualWeight());
             row.put("remaining_weight", item.getRemainingWeight());
             row.put("out_weight", item.getOutWeight());
+            row.put("is_remain", item.getIsRemain());
             row.put("source_type", item.getSourceType());
             row.put("finish_status", item.getFinishStatus());
             row.put("original_roll_nos", item.getOriginalRollNos());
@@ -1096,6 +1098,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         vo.setActualWeight(finish == null ? null : finish.getActualWeight());
         vo.setRemainingWeight(finish == null ? null : DeliveryStockPolicy.availableWeight(finish));
         vo.setOutWeight(detail.getOutWeight());
+        vo.setIsRemain(finish == null ? null : finish.getIsRemain());
         vo.setSourceType(finish == null ? null : finish.getSourceType());
         vo.setFinishStatus(finish == null ? null : finish.getFinishStatus());
         vo.setOriginalRollNos(finish == null ? null : finish.getOriginalRollNos());

@@ -9,6 +9,12 @@ import { useCreateDelivery } from '../../features/delivery/hooks/useCreateDelive
 import { availableFinishWeight, formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { AvailableFinishVO, DeliveryCreateDTO } from '../../types/delivery'
 import DeliveryCreateTable, { type DeliveryLineEdit } from './DeliveryCreateTable'
+import {
+  DeliveryFinishScopeControl,
+  filterFinishesByScope,
+  finishScopeName,
+  type DeliveryFinishScope,
+} from './DeliveryFinishScopeControl'
 import '../documentModule.css'
 
 interface DeliveryCreateForm {
@@ -26,14 +32,23 @@ export default function DeliveryCreatePage() {
   const customersQuery = useCustomers()
   const createMutation = useCreateDelivery()
   const [customerUuid, setCustomerUuid] = useState<string>()
+  const [finishScope, setFinishScope] = useState<DeliveryFinishScope>('product')
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [lineEdits, setLineEdits] = useState<Record<string, DeliveryLineEdit>>({})
   const finishesQuery = useAvailableFinishes(customerUuid)
   const finishes = finishesQuery.data ?? []
-  const selectedFinishes = finishes.filter((item) => selectedRowKeys.includes(item.finishUuid))
+  const visibleFinishes = filterFinishesByScope(finishes, finishScope)
+  const selectedFinishes = visibleFinishes.filter((item) => selectedRowKeys.includes(item.finishUuid))
 
   const handleCustomerChange = (value?: string) => {
     setCustomerUuid(value)
+    setFinishScope('product')
+    setSelectedRowKeys([])
+    setLineEdits({})
+  }
+
+  const handleScopeChange = (value: DeliveryFinishScope) => {
+    setFinishScope(value)
     setSelectedRowKeys([])
     setLineEdits({})
   }
@@ -45,7 +60,7 @@ export default function DeliveryCreatePage() {
   const handleSubmit = async () => {
     const values = await form.validateFields()
     if (selectedFinishes.length === 0) {
-      message.warning('请先勾选本次要出库的成品卷')
+      message.warning(`请先勾选本次要出库的${finishScopeName(finishScope)}卷`)
       return
     }
     const hasRisk = selectedFinishes.some((item) => item.settlementRisk)
@@ -118,11 +133,16 @@ export default function DeliveryCreatePage() {
       <Card
         className="document-module-card"
         title="选择出库成品"
-        extra={<SelectedSummary count={selectedFinishes.length} weight={selectedWeight(selectedFinishes, lineEdits)} />}
+        extra={(
+          <Space size={12} wrap>
+            <DeliveryFinishScopeControl finishes={finishes} value={finishScope} onChange={handleScopeChange} />
+            <SelectedSummary count={selectedFinishes.length} weight={selectedWeight(selectedFinishes, lineEdits)} />
+          </Space>
+        )}
       >
         <div className="document-module-table">
           <DeliveryCreateTable
-            data={finishes}
+            data={visibleFinishes}
             edits={lineEdits}
             loading={finishesQuery.isLoading || finishesQuery.isFetching}
             selectedRowKeys={selectedRowKeys}

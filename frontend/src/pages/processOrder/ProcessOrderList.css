@@ -361,13 +361,9 @@
 }
 
 .process-order-table--empty,
-.process-order-table--short,
 .process-order-table--empty.ant-pro-table,
-.process-order-table--short.ant-pro-table,
 .process-order-table--empty .ant-pro-table,
-.process-order-table--short .ant-pro-table,
-.process-order-table--empty .ant-table-wrapper,
-.process-order-table--short .ant-table-wrapper {
+.process-order-table--empty .ant-table-wrapper {
   height: auto;
   flex: 0 0 auto;
 }
@@ -375,24 +371,18 @@
 .process-order-table--empty .ant-spin-nested-loading,
 .process-order-table--empty .ant-spin-container,
 .process-order-table--empty .ant-table,
-.process-order-table--empty .ant-table-container,
-.process-order-table--short .ant-spin-nested-loading,
-.process-order-table--short .ant-spin-container,
-.process-order-table--short .ant-table,
-.process-order-table--short .ant-table-container {
+.process-order-table--empty .ant-table-container {
   height: auto;
   flex: 0 0 auto;
 }
 
 .process-order-table--empty .ant-table-content,
-.process-order-table--empty .ant-table-body,
-.process-order-table--short .ant-table-content,
-.process-order-table--short .ant-table-body {
+.process-order-table--empty .ant-table-body {
   height: auto;
   max-height: none !important;
   flex: 0 0 auto;
   overflow-x: auto !important;
-  overflow-y: hidden !important;
+  overflow-y: auto !important;
   scrollbar-gutter: auto;
 }
 

@@ -8,7 +8,8 @@ import {
 import { buildFinishLayers } from '../../../components/processOrder/shared/layeredRewindView'
 import type { FinishGroup } from '../../../components/processOrder/shared/types'
 import type { FinishProductionVO, RollProductionVO } from '../../../types/processOrder'
-import { formatKg } from '../orderDetailUtils'
+import { formatMm } from '../../../utils/numberFormatters'
+import { formatProductionKg } from '../orderDetailUtils'
 
 interface Props {
   estimateWeight: number
@@ -42,14 +43,14 @@ export default function ProductionFinishColumn({
         {spareCount > 0 && <Tag color="orange">备用 {spareCount}</Tag>}
       </div>
       <div className="production-roll__line">
-        预估重量合计：{formatKg(estimateWeight)}
+        预估重量合计：{formatProductionKg(estimateWeight, production)}
       </div>
       {layers.length > 0
         ? <LayerPills layers={layers} />
         : (
           <div className="production-roll__group production-roll__spaced">
             {groups.map((group) => (
-              <span className="production-pill" key={group.width}>{group.width}mm × {group.count}</span>
+              <span className="production-pill" key={group.width}>{formatMm(group.width)} × {group.count}</span>
             ))}
           </div>
         )}
@@ -64,20 +65,20 @@ export default function ProductionFinishColumn({
           {trimRows.length > 0
             ? trimRows.map((finish) => (
               <span className="production-pill production-pill--trim" key={finish.uuid}>
-                修边 {finish.finishWidth ? `${finish.finishWidth}mm` : '-'}
-                {trimWeight > 0 && trimRows.length === 1 ? ` / ${formatKg(trimWeight)}` : ''}
+                修边 {formatMm(finish.finishWidth)}
+                {trimWeight > 0 && trimRows.length === 1 ? ` / ${formatProductionKg(trimWeight, production)}` : ''}
               </span>
             ))
             : (
               <span className="production-pill production-pill--trim">
-                修边 {fallbackTrimWidth > 0 ? `${fallbackTrimWidth}mm` : '-'}
-                {trimWeight > 0 ? ` / ${formatKg(trimWeight)}` : ''}
+                修边 {fallbackTrimWidth > 0 ? formatMm(fallbackTrimWidth) : '-'}
+                {trimWeight > 0 ? ` / ${formatProductionKg(trimWeight, production)}` : ''}
               </span>
             )}
         </div>
       )}
       {trimRows.length > 1 && trimWeight > 0 && (
-        <div className="production-roll__line">修边重量合计：{formatKg(trimWeight)}</div>
+        <div className="production-roll__line">修边重量合计：{formatProductionKg(trimWeight, production)}</div>
       )}
       {sources.length > 1 && <SourcePills sources={sources} />}
     </div>

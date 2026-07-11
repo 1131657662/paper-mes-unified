@@ -3,7 +3,7 @@ import { Button, Card, Empty, Space, Table, Tag, Typography, message } from 'ant
 import type { ColumnsType } from 'antd/es/table'
 import type { Machine } from '../../../types/machine'
 import type { PlanPreviewVO, ProcessPlanDTO, ProcessRoutePreviewVO } from '../../../types/processOrder'
-import { formatKg } from '../../../utils/numberFormatters'
+import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
 import { defaultPlanForRoll, type DefaultPlanOptions } from '../draftMappers'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
@@ -263,7 +263,7 @@ function lightColumns(lockedRolls: ReturnType<typeof mergedSourceLocks>): Column
   return [
     { title: '母卷', width: 170, render: (_, roll) => rollNoText(roll) },
     { title: '品名', dataIndex: 'paperName', width: 130 },
-    { title: '规格', width: 150, render: (_, roll) => `${roll.gramWeight ?? '-'}g / ${roll.originalWidth ?? '-'}mm` },
+    { title: '规格', width: 150, render: (_, roll) => `${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}` },
     { title: '重量', width: 120, align: 'right', render: (_, roll) => formatKg(rollTotalWeight(roll)) },
     { title: '处理方式', width: 140, render: (_, roll) => lightRollStatus(roll, lockedRolls) },
     { title: '说明', width: 220, render: (_, roll) => lightRollHint(roll, lockedRolls) },

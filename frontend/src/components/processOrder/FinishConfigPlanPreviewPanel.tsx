@@ -2,7 +2,7 @@ import { Descriptions, Empty, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import TooltipText from '../biz/TooltipText'
 import type { FinishPreviewVO, RewindFinishItemPreview, RewindSegmentDTO, RewindSegmentPreview } from '../../types/processOrder'
-import { formatKg, formatOptionalKg } from '../../utils/numberFormatters'
+import { formatKg, formatMm, formatOptionalKg } from '../../utils/numberFormatters'
 
 interface Props {
   segments: RewindSegmentDTO[]
@@ -20,21 +20,21 @@ const segColumns: ColumnsType<RewindSegmentPreview> = [
     width: 70,
     render: (v: number) => `${v}%`,
   },
-  { title: '目标直径', dataIndex: 'targetDiameter', width: 85, render: (v: number) => `${v}mm` },
+  { title: '目标直径', dataIndex: 'targetDiameter', width: 85, render: (v: number) => formatMm(v) },
   { title: '重复', dataIndex: 'repeatCount', width: 55 },
-  { title: '排布宽度', dataIndex: 'layoutWidth', width: 85, render: (v: number) => `${v}mm` },
-  { title: '修边', dataIndex: 'trimWidth', width: 70, render: (v: number) => (v ? `${v}mm` : '-') },
+  { title: '排布宽度', dataIndex: 'layoutWidth', width: 85, render: (v: number) => formatMm(v) },
+  { title: '修边', dataIndex: 'trimWidth', width: 70, render: (v: number) => (v ? formatMm(v) : '-') },
   { title: '汇总', dataIndex: 'summary', render: textCell },
 ]
 
 const finishColumns: ColumnsType<RewindFinishItemPreview> = [
   { title: '分段', dataIndex: 'segmentSort', width: 50, render: (v: number) => `#${v}` },
-  { title: '成品门幅', dataIndex: 'finishWidth', width: 85, render: (v: number) => `${v}mm` },
-  { title: '成品直径', dataIndex: 'finishDiameter', width: 85, render: (v: number) => `${v}mm` },
-  { title: '纸芯直径', dataIndex: 'finishCoreDiameter', width: 85, render: (v: number) => `${v}mm` },
+  { title: '成品门幅', dataIndex: 'finishWidth', width: 85, render: (v: number) => formatMm(v) },
+  { title: '成品直径', dataIndex: 'finishDiameter', width: 85, render: (v: number) => formatMm(v) },
+  { title: '纸芯直径', dataIndex: 'finishCoreDiameter', width: 85, render: (v: number) => formatMm(v) },
   { title: '分摊比例', dataIndex: 'segmentRatio', width: 80, render: (v: number) => `${v}%` },
   { title: '预估重量', dataIndex: 'estimateWeight', width: 85, render: (v: number) => formatKg(v) },
-  { title: '修边宽度', dataIndex: 'trimWidth', width: 80, render: (v: number) => (v ? `${v}mm` : '-') },
+  { title: '修边宽度', dataIndex: 'trimWidth', width: 80, render: (v: number) => (v ? formatMm(v) : '-') },
   { title: '修边重量', dataIndex: 'trimWeight', width: 80, render: (v: number) => (v == null ? '-' : formatKg(v)) },
   { title: '来源', dataIndex: 'sourceSummary', render: textCell },
 ]

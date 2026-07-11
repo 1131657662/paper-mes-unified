@@ -7,6 +7,7 @@ import type {
 } from '../../types/processOrder'
 import {
   formatMoney,
+  formatMm,
   formatOptionalKg,
   formatOptionalMoney,
   formatOptionalTon,
@@ -71,7 +72,7 @@ const outputColumns: ColumnsType<ProcessRouteOutputVO> = [
   { title: '产出', dataIndex: 'outputKey', width: 90 },
   { title: '阶段', dataIndex: 'stageLevel', width: 70, render: (value) => `第${value ?? '-'}段` },
   { title: '状态', width: 100, render: (_, row) => outputStatus(row) },
-  { title: '门幅', dataIndex: 'finishWidth', width: 90, render: (value) => value ? `${value}mm` : '-' },
+  { title: '门幅', dataIndex: 'finishWidth', width: 90, render: (value) => value ? formatMm(value) : '-' },
   { title: '预估重', dataIndex: 'estimateWeight', width: 110, render: formatOptionalKg },
   { title: '备注', dataIndex: 'remark', width: 180 },
 ]

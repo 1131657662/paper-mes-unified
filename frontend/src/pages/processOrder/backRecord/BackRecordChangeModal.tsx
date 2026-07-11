@@ -10,6 +10,7 @@ interface Props {
   rollingBack?: boolean
   onCancel: () => void
   onAddExtraStep: () => void
+  onRollbackToDraft: () => void
   onRollbackToConfig: () => void
 }
 
@@ -20,6 +21,7 @@ export default function BackRecordChangeModal({
   rollingBack,
   onCancel,
   onAddExtraStep,
+  onRollbackToDraft,
   onRollbackToConfig,
 }: Props) {
   const canRollback = detail?.order.orderStatus === 3
@@ -73,6 +75,21 @@ export default function BackRecordChangeModal({
                 onClick={onRollbackToConfig}
               >
                 回退待下发重配
+              </Button>
+            }
+          />
+          <ChangeCard
+            title="母卷更换"
+            description="例如已录入实重后发现来料母卷需要换掉；会回到草稿并清理下发、回录、成品号和工序产物数据。"
+            action={
+              <Button
+                danger
+                icon={<RollbackOutlined />}
+                loading={rollingBack}
+                disabled={!canRollback}
+                onClick={onRollbackToDraft}
+              >
+                回退草稿编辑
               </Button>
             }
           />

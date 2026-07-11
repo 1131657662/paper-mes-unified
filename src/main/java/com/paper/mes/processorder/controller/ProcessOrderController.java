@@ -18,6 +18,7 @@ import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
+import com.paper.mes.processorder.dto.ProcessOrderRollbackDTO;
 import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
@@ -137,6 +138,14 @@ public class ProcessOrderController {
     public R<Void> changeStatus(@PathVariable String uuid,
                                 @Valid @RequestBody StatusChangeDTO dto) {
         processOrderService.changeStatus(uuid, dto.getTargetStatus(), dto.getReason());
+        return R.success();
+    }
+
+    @PutMapping("/{uuid}/rollback-draft")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<Void> rollbackToDraft(@PathVariable String uuid,
+                                   @Valid @RequestBody ProcessOrderRollbackDTO dto) {
+        processOrderService.rollbackToDraft(uuid, dto.getReason());
         return R.success();
     }
 

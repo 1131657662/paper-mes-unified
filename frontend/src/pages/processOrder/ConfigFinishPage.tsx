@@ -6,6 +6,7 @@ import { getProcessOrder, saveFinishConfig } from '../../api/processOrder'
 import type { FinishConfigSaveDTO, OriginalRoll, ProcessOrderDetailVO } from '../../types/processOrder'
 import { PROCESS_MODE, STEP_TYPE } from '../../constants/processOrder'
 import FinishConfigPanel from '../../components/processOrder/FinishConfigPanel'
+import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
 
 const buildDefaultConfig = (roll: OriginalRoll): FinishConfigSaveDTO => {
   const processMode = roll.processMode ?? 1
@@ -329,10 +330,10 @@ export default function ConfigFinishPage() {
                       <div style={{ fontSize: 12, color: '#666' }}>
                         <div>{roll.paperName}</div>
                         <div>
-                          {roll.gramWeight}g | {roll.originalWidth}mm
+                          {formatGram(roll.gramWeight)} | {formatMm(roll.originalWidth)}
                         </div>
                         <div>
-                          {roll.rollWeight}kg × {roll.pieceNum || 1}件
+                          {formatKg(roll.rollWeight)} × {roll.pieceNum || 1}件
                         </div>
                         <div style={{ marginTop: 4 }}>
                           <Typography.Text type="secondary">{getProcessModeText(roll.processMode)}</Typography.Text>

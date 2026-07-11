@@ -1,4 +1,4 @@
-import { Input, InputNumber, Table, Tag, Typography } from 'antd'
+import { Input, InputNumber, Space, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { SOURCE_TYPE } from '../../constants/delivery'
 import {
@@ -58,8 +58,13 @@ function buildColumns(
       title: '成品卷号',
       dataIndex: 'finishRollNo',
       fixed: 'left',
-      width: 130,
-      render: (value) => <Typography.Text strong>{value}</Typography.Text>,
+      width: 150,
+      render: (value, record) => (
+        <Space size={4} wrap>
+          <Typography.Text strong>{value}</Typography.Text>
+          {record.isRemain === 1 ? <Tag color="orange">余料</Tag> : <Tag color="green">成品</Tag>}
+        </Space>
+      ),
     },
     {
       title: '加工单',

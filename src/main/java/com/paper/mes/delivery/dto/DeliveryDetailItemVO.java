@@ -25,6 +25,8 @@ public class DeliveryDetailItemVO {
     private BigDecimal actualWeight;
     private BigDecimal remainingWeight;
     private BigDecimal outWeight;
+    /** 1 表示切边/余料，其他值表示正常成品。 */
+    private Integer isRemain;
     private Integer sourceType;
     private Integer finishStatus;
     private String originalRollNos;

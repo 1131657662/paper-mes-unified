@@ -1,4 +1,5 @@
 import type { OriginalRoll } from '../../../types/processOrder'
+import { formatGram, formatMm } from '../../../utils/numberFormatters'
 
 export function buildBackRecordRollOptions(rolls: OriginalRoll[] = []) {
   return rolls.map((roll, index) => ({
@@ -6,7 +7,7 @@ export function buildBackRecordRollOptions(rolls: OriginalRoll[] = []) {
     rollName: [
       `母卷 ${index + 1}`,
       roll.rollNo || roll.extraNo || '无卷号',
-      `${roll.paperName || '-'} / ${roll.gramWeight ?? '-'}g / ${roll.originalWidth ?? '-'}mm`,
+      `${roll.paperName || '-'} / ${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}`,
     ].join(' | '),
   }))
 }

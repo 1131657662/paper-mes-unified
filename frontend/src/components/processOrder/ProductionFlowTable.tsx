@@ -15,7 +15,7 @@ import ExpandedProductionRow from './ExpandedProductionRow'
 import TooltipText from '../biz/TooltipText'
 import type { RollProductionVO } from '../../types/processOrder'
 import { ROLL_STATUS } from '../../constants/processOrder'
-import { formatTonFromKg } from '../../utils/numberFormatters'
+import { formatMm, formatTonFromKg } from '../../utils/numberFormatters'
 
 const { Text } = Typography
 
@@ -91,7 +91,7 @@ const fullColumns: ColumnsType<DisplayRow> = [
         <Space direction="vertical" size={0}>
           <Text style={{ fontSize: 12 }}>{layoutText}</Text>
           {trim > 0 && (
-            <Text type="secondary" style={{ fontSize: 11 }}>修边 {trim}mm</Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>修边 {formatMm(trim)}</Text>
           )}
         </Space>
       )
@@ -168,7 +168,7 @@ const compactColumns: ColumnsType<DisplayRow> = [
       const trim = calcTrimWidth(row.mainProduction)
       if (row.isDirectShip) return <Text type="secondary" style={{ fontSize: 11 }}>直发</Text>
       if (layoutText === '-') return <Text type="secondary" style={{ fontSize: 11 }}>-</Text>
-      const suffix = trim > 0 ? ` · 修边 ${trim}mm` : ''
+      const suffix = trim > 0 ? ` · 修边 ${formatMm(trim)}` : ''
       return <TooltipText value={`${layoutText}${suffix}`} />
     },
   },

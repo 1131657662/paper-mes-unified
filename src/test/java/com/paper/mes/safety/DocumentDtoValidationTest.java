@@ -5,6 +5,7 @@ import com.paper.mes.delivery.dto.DeliveryCreateDTO;
 import com.paper.mes.processorder.dto.BackRecordDTO;
 import com.paper.mes.processorder.dto.BackRecordRollDTO;
 import com.paper.mes.processorder.dto.BackRecordStepDTO;
+import com.paper.mes.processorder.dto.OriginalRollDTO;
 import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
 import com.paper.mes.settle.dto.SettleByOrdersDTO;
 import jakarta.validation.Validation;
@@ -78,6 +79,23 @@ class DocumentDtoValidationTest {
         dto.setReason(" ");
 
         assertTrue(validateMessages(dto).contains("作废原因不能为空"));
+    }
+
+    @Test
+    void originalRoll_whenRequiredNumbersAreNotPositive_reportsValidationErrors() {
+        OriginalRollDTO dto = new OriginalRollDTO();
+        dto.setPaperName("纸");
+        dto.setGramWeight(0);
+        dto.setOriginalWidth(0);
+        dto.setRollWeight(BigDecimal.ZERO);
+        dto.setPieceNum(0);
+
+        Set<String> messages = validateMessages(dto);
+
+        assertTrue(messages.contains("克重必须大于0"));
+        assertTrue(messages.contains("门幅必须大于0"));
+        assertTrue(messages.contains("单件重量必须大于0"));
+        assertTrue(messages.contains("件数至少为1"));
     }
 
     private Set<String> validateMessages(Object dto) {
