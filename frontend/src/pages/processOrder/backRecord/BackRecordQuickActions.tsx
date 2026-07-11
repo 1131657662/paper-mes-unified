@@ -4,7 +4,7 @@ import type { FormInstance } from 'antd/es/form'
 import MesTooltip from '../../../components/biz/MesTooltip'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
-import { theoreticalFinishValues, theoreticalRollValues } from './backRecordTheoryFill'
+import { theoreticalBackRecordValues } from './backRecordTheoryFill'
 
 interface Props {
   detail: ProcessOrderDetailVO | null
@@ -16,10 +16,7 @@ interface Props {
 export default function BackRecordQuickActions({ detail, form, onOpenChange, onValuesFilled }: Props) {
   const handleTheoryFill = () => {
     if (!detail) return
-    const values = {
-      rolls: theoreticalRollValues(detail),
-      finishes: theoreticalFinishValues(detail),
-    }
+    const values = theoreticalBackRecordValues(detail)
     form.setFieldsValue(values)
     onValuesFilled?.(values)
     form.validateFields().catch(() => undefined)

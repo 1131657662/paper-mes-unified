@@ -1,22 +1,35 @@
 import type { FinishRoll, OriginalRoll, ProcessOrderDetailVO } from '../../../types/processOrder'
+import { decimalPlaces } from '../../../utils/numberFormatters'
 import {
   activeFinishRolls,
   type BackRecordFormValues,
   type FinishRecordValues,
   type RollRecordValues,
 } from './backRecordUtils'
+import { autoTrimWeights } from './backRecordAutoTrim'
 import { buildBackRecordWorkbench } from './backRecordWorkbenchUtils'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
+
+export function theoreticalBackRecordValues(detail: ProcessOrderDetailVO): BackRecordFormValues {
+  const rolls = theoreticalRollValues(detail)
+  return {
+    rolls,
+    finishes: theoreticalFinishValues(detail, rolls),
+  }
+}
 
 export function theoreticalRollValues(detail: ProcessOrderDetailVO): BackRecordFormValues['rolls'] {
   return Object.fromEntries(detail.originalRolls.map((roll) => [roll.uuid, theoreticalRollValue(roll)]))
 }
 
-export function theoreticalFinishValues(detail: ProcessOrderDetailVO): Record<string, FinishRecordValues> {
+export function theoreticalFinishValues(
+  detail: ProcessOrderDetailVO,
+  rolls: BackRecordFormValues['rolls'] = theoreticalRollValues(detail),
+): Record<string, FinishRecordValues> {
   const values = new Map<string, FinishRecordValues>()
   const active = new Set(activeFinishRolls(detail).map((finish) => finish.uuid))
   for (const item of buildBackRecordWorkbench(detail).items) {
-    assignItemFinishes(item, values)
+    assignItemFinishes(item, values, rolls)
   }
   for (const finish of activeFinishRolls(detail)) {
     if (!values.has(finish.uuid)) values.set(finish.uuid, theoreticalFinishValue(finish))
@@ -26,18 +39,26 @@ export function theoreticalFinishValues(detail: ProcessOrderDetailVO): Record<st
 
 export function theoreticalItemFinishValues(item: BackRecordWorkItem): Record<string, FinishRecordValues> {
   const values = new Map<string, FinishRecordValues>()
-  assignItemFinishes(item, values)
+  const rolls = item.roll ? { [item.roll.uuid]: theoreticalRollValue(item.roll) } : {}
+  assignItemFinishes(item, values, rolls)
   return Object.fromEntries(values)
 }
 
-function assignItemFinishes(item: BackRecordWorkItem, values: Map<string, FinishRecordValues>) {
+function assignItemFinishes(
+  item: BackRecordWorkItem,
+  values: Map<string, FinishRecordValues>,
+  rolls: BackRecordFormValues['rolls'],
+) {
   const entries = item.finishes.filter(({ finish }) => finish.rollNoStatus !== 3 && finish.sourceType !== 2)
-  const official = entries.filter(({ finish }) => finish.isSpare !== 1)
-  const distributedWeights = distributeOfficialWeights(official.map(({ finish }) => finish), item.roll)
+  const official = entries.filter(({ finish }) => finish.isSpare !== 1 && finish.isRemain !== 1)
+  const hasTrim = entries.some(({ finish }) => finish.isRemain === 1)
+  const distributedWeights = distributeOfficialWeights(official.map(({ finish }) => finish), item.roll, !hasTrim)
   const weights = new Map(official.map(({ finish }, index) => [finish.uuid, distributedWeights[index]]))
   entries.forEach(({ finish }) => {
-    values.set(finish.uuid, theoreticalFinishValue(finish, finish.isSpare === 1 ? undefined : weights.get(finish.uuid)))
+    const fallback = finish.isSpare === 1 || finish.isRemain === 1 ? undefined : weights.get(finish.uuid)
+    values.set(finish.uuid, theoreticalFinishValue(finish, fallback))
   })
+  assignAutoTrimWeights(item, values, rolls)
 }
 
 function theoreticalRollValue(roll: OriginalRoll): RollRecordValues {
@@ -51,7 +72,9 @@ function theoreticalRollValue(roll: OriginalRoll): RollRecordValues {
 
 function theoreticalFinishValue(finish: FinishRoll, fallbackWeight?: number): FinishRecordValues {
   return {
-    actualWeight: finish.actualWeight ?? firstPositive(finish.estimateWeight, fallbackWeight),
+    actualWeight: finish.isRemain === 1 || finish.isSpare === 1
+      ? finish.actualWeight
+      : finish.actualWeight ?? firstPositive(fallbackWeight, finish.estimateWeight),
     scrapWeight: finish.scrapWeight ?? 0,
     isRemain: finish.isRemain ?? 0,
     isAbnormal: finish.isAbnormal ?? 0,
@@ -60,13 +83,18 @@ function theoreticalFinishValue(finish: FinishRoll, fallbackWeight?: number): Fi
   }
 }
 
-function distributeOfficialWeights(finishes: FinishRoll[], roll?: OriginalRoll): Array<number | undefined> {
+function distributeOfficialWeights(
+  finishes: FinishRoll[],
+  roll: OriginalRoll | undefined,
+  balanceToSource: boolean,
+): Array<number | undefined> {
   if (!finishes.length) return []
-  const explicit = finishes.map((finish) => firstPositive(finish.actualWeight, finish.estimateWeight))
-  if (explicit.every((weight) => weight != null)) return explicit
+  const digits = sourceWeightDigits(roll)
+  const explicit = finishes.map((finish) => roundOptional(firstPositive(finish.actualWeight, finish.estimateWeight), digits))
+  if (explicit.every((weight) => weight != null)) return balanceToSource ? balanceWeights(explicit, nominalRollWeight(roll), digits) : explicit
   const total = nominalRollWeight(roll)
   if (!total || total <= 0) return explicit
-  const totalWeight = total
+  const totalWeight = roundWeight(total, digits)
   const knownTotal = sum(explicit)
   const missingCount = explicit.filter((weight) => weight == null).length
   if (knownTotal > 0 && knownTotal < totalWeight && missingCount > 0) {
@@ -74,15 +102,41 @@ function distributeOfficialWeights(finishes: FinishRoll[], roll?: OriginalRoll):
     let missingLeft = missingCount
     return explicit.map((weight) => {
       if (weight != null) return weight
-      const next = missingLeft === 1 ? roundWeight(remaining) : roundWeight(remaining / missingLeft)
+      const next = missingLeft === 1 ? roundWeight(remaining, digits) : roundWeight(remaining / missingLeft, digits)
       remaining -= next
       missingLeft -= 1
       return next
     })
   }
   if (knownTotal >= totalWeight) return explicit
-  const share = roundWeight(totalWeight / finishes.length)
-  return finishes.map((_, index) => (index === finishes.length - 1 ? roundWeight(totalWeight - share * (finishes.length - 1)) : share))
+  const share = roundWeight(totalWeight / finishes.length, digits)
+  return finishes.map((_, index) => (index === finishes.length - 1 ? roundWeight(totalWeight - share * (finishes.length - 1), digits) : share))
+}
+
+function balanceWeights(weights: number[], total: number | undefined, digits: number) {
+  if (total == null || total <= 0 || weights.length === 0) return weights
+  const roundedTotal = roundWeight(total, digits)
+  const currentTotal = sum(weights)
+  const diff = roundWeight(roundedTotal - currentTotal, digits)
+  if (diff === 0) return weights
+  const result = [...weights]
+  result[result.length - 1] = Math.max(0, roundWeight((result[result.length - 1] ?? 0) + diff, digits))
+  return result
+}
+
+function assignAutoTrimWeights(
+  item: BackRecordWorkItem,
+  values: Map<string, FinishRecordValues>,
+  rolls: BackRecordFormValues['rolls'],
+) {
+  const finishes = Object.fromEntries(Array.from(values.entries()))
+  const patches = autoTrimWeights(item, { finishes, rolls }, {
+    autoTrimUuids: new Set(item.finishes.map(({ finish }) => finish.uuid)),
+    manualTrimUuids: new Set(),
+  })
+  for (const patch of patches) {
+    values.set(patch.uuid, { ...values.get(patch.uuid), actualWeight: patch.actualWeight })
+  }
 }
 
 function firstPositive(...values: Array<number | undefined>) {
@@ -94,8 +148,17 @@ function nominalRollWeight(roll?: OriginalRoll) {
   return roll.rollWeight * (roll.pieceNum ?? 1)
 }
 
-function roundWeight(value: number) {
-  return Math.round(value * 1000) / 1000
+function sourceWeightDigits(roll?: OriginalRoll) {
+  return decimalPlaces(nominalRollWeight(roll), 3)
+}
+
+function roundOptional(value: number | undefined, digits: number) {
+  return value == null ? undefined : roundWeight(value, digits)
+}
+
+function roundWeight(value: number, digits: number) {
+  const scale = 10 ** Math.max(0, digits)
+  return Math.round(value * scale) / scale
 }
 
 function sum(values: Array<number | undefined>): number {

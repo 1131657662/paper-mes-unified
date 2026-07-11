@@ -34,7 +34,10 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Pr
     for (const patch of patches) {
       const path: ['finishes', string, 'actualWeight'] = ['finishes', patch.uuid, 'actualWeight']
       const current = form.getFieldValue(path)
-      if (current === patch.actualWeight) continue
+      if (current === patch.actualWeight) {
+        autoTrimUuids.current.add(patch.uuid)
+        continue
+      }
       form.setFieldValue(path, patch.actualWeight)
       autoTrimUuids.current.add(patch.uuid)
     }
@@ -64,8 +67,15 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Pr
               key={entry.finish.uuid}
               abnormalTypeOptions={abnormalTypeOptions}
               entry={entry}
-              onActualWeightChange={() => {
-                if (entry.finish.isRemain === 1) manualTrimUuids.current.add(entry.finish.uuid)
+              onActualWeightChange={(value) => {
+                if (entry.finish.isRemain !== 1) return
+                if (value == null) {
+                  manualTrimUuids.current.delete(entry.finish.uuid)
+                  autoTrimUuids.current.delete(entry.finish.uuid)
+                  return
+                }
+                manualTrimUuids.current.add(entry.finish.uuid)
+                autoTrimUuids.current.delete(entry.finish.uuid)
               }}
               onFieldExhausted={onFieldExhausted}
             />
@@ -84,7 +94,7 @@ function FinishEntryRow({
 }: {
   abnormalTypeOptions: Array<{ label: string; value: number | string }>
   entry: WorkbenchFinish
-  onActualWeightChange: () => void
+  onActualWeightChange: (value: number | null) => void
   onFieldExhausted: () => void
 }) {
   const finish = entry.finish

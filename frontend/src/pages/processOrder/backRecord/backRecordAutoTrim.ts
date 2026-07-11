@@ -30,18 +30,23 @@ export function autoTrimWeights(
   const remainder = sourceWeight - officialTotal(officialFinishes, values) - lossTotal(item, values) - scrapTotal(item, values)
   if (remainder < 0) return []
 
-  const editableTrims = trimFinishes.filter(({ finish }) =>
-    !options.manualTrimUuids.has(finish.uuid)
-    && (values.finishes?.[finish.uuid]?.actualWeight == null || options.autoTrimUuids.has(finish.uuid)))
+  const manualTrimTotal = sum(trimFinishes
+    .filter(({ finish }) => options.manualTrimUuids.has(finish.uuid))
+    .map(({ finish }) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight))
+  const editableRemainder = Math.max(0, remainder - manualTrimTotal)
+  const editableTrims = trimFinishes.filter(({ finish }) => !options.manualTrimUuids.has(finish.uuid))
   if (editableTrims.length === 0) return []
 
-  const weights = distributeWeight(remainder, trimFinishes.length, decimalPlaces(sourceWeight, 3))
-  return trimFinishes
+  const weights = distributeWeight(editableRemainder, editableTrims.length, decimalPlaces(sourceWeight, 3))
+  return editableTrims
     .map((entry, index) => ({
       uuid: entry.finish.uuid,
       actualWeight: weights[index] ?? 0,
     }))
-    .filter((entry) => editableTrims.some(({ finish }) => finish.uuid === entry.uuid))
+    .filter((patch) => {
+      const current = values.finishes?.[patch.uuid]?.actualWeight
+      return current == null || options.autoTrimUuids.has(patch.uuid) || current === patch.actualWeight
+    })
 }
 
 function isOfficialFinish(entry: WorkbenchFinish, values: BackRecordFormValues) {
