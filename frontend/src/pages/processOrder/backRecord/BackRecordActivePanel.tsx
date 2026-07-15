@@ -1,11 +1,10 @@
 import { Alert, Button, Form, Input, InputNumber, Space, Tag, Typography } from 'antd'
-import { ArrowLeftOutlined, ArrowRightOutlined, CopyOutlined, SwapOutlined } from '@ant-design/icons'
+import { SwapOutlined } from '@ant-design/icons'
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import { buildConditionText, buildLayoutText } from '../../../components/processOrder/shared/detailHelpers'
 import { formatKg } from '../../../features/processOrderDetail/orderDetailUtils'
 import { formatGram, formatMm } from '../../../utils/numberFormatters'
 import type { ProcessStep } from '../../../types/processOrder'
-import type { BackRecordFormValues } from './backRecordUtils'
 import BackRecordFinishEntryList from './BackRecordFinishEntryList'
 import BackRecordOnSiteOutputList from './BackRecordOnSiteOutputList'
 import BackRecordTrimEntryList from './BackRecordTrimEntryList'
@@ -13,6 +12,7 @@ import { focusNextBackRecordField } from './backRecordKeyboard'
 import { processLines } from './backRecordWorkbenchUtils'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 import type { BackRecordSourceOption } from './BackRecordFinishFields'
+import BackRecordCurrentToolbar from './BackRecordCurrentToolbar'
 
 interface Props {
   item: BackRecordWorkItem
@@ -23,24 +23,11 @@ interface Props {
 }
 
 export default function BackRecordActivePanel({ item, onNext, onPrevious, onProcessChange, sourceOptions }: Props) {
-  const form = Form.useFormInstance<BackRecordFormValues>()
-
   return (
     <main className="back-record-active">
-      <div className="back-record-active__head">
-        <div>
-          <Typography.Title level={5}>{item.title}</Typography.Title>
-          {item.subtitle && <Typography.Text type="secondary">{item.subtitle}</Typography.Text>}
-        </div>
-        <Space wrap>
-          {item.isMergeGroup && <Tag color="geekblue">多母卷</Tag>}
-          <Tag color={item.sourceMode === 'linked' ? 'success' : 'warning'}>{sourceLabel(item.sourceMode)}</Tag>
-          <Button icon={<ArrowLeftOutlined />} onClick={onPrevious}>上一项</Button>
-          <Button icon={<ArrowRightOutlined />} onClick={onNext}>下一项</Button>
-        </Space>
-      </div>
+      <BackRecordCurrentToolbar item={item} onNext={onNext} onPrevious={onPrevious} />
 
-      {item.kind === 'roll' && <RollActualPanel item={item} form={form} onFieldExhausted={onNext} />}
+      {item.kind === 'roll' && <RollActualPanel item={item} onFieldExhausted={onNext} />}
       <ProcessPanel item={item} onFieldExhausted={onNext} onProcessChange={onProcessChange} />
       {item.roll?.processMode === 2 ? (
         <BackRecordOnSiteOutputList item={item} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
@@ -56,28 +43,17 @@ export default function BackRecordActivePanel({ item, onNext, onPrevious, onProc
 
 function RollActualPanel({
   item,
-  form,
   onFieldExhausted,
 }: {
   item: BackRecordWorkItem
-  form: ReturnType<typeof Form.useForm<BackRecordFormValues>>[0]
   onFieldExhausted: () => void
 }) {
   const roll = item.roll
   if (!roll) return null
 
-  const fillCurrent = () => {
-    form.setFieldValue(['rolls', roll.uuid], {
-      actualGramWeight: roll.actualGramWeight ?? roll.gramWeight,
-      actualWidth: roll.actualWidth ?? roll.originalWidth,
-      actualWeight: roll.actualWeight ?? (roll.rollWeight ?? 0) * (roll.pieceNum ?? 1),
-      remark: roll.remark,
-    })
-  }
-
   return (
     <section className="back-record-panel">
-      <PanelHead title="原纸复称" extra={<Button size="small" icon={<CopyOutlined />} onClick={fillCurrent}>带入标称</Button>} />
+      <PanelHead title="原纸复称" />
       <div className="back-record-roll-facts">
         <Fact label="卷号" value={roll.rollNo || '-'} />
         <Fact label="编号" value={roll.extraNo || '-'} />
@@ -210,11 +186,4 @@ function processSteps(item: BackRecordWorkItem): ProcessStep[] {
 function stepLabel(step: ProcessStep) {
   const stage = step.stageLevel ? `第${step.stageLevel}道` : `工序${step.stepSort ?? ''}`
   return `${stage}${step.stepName ? ` ${step.stepName}` : ''}`
-}
-
-function sourceLabel(mode: BackRecordWorkItem['sourceMode']) {
-  if (mode === 'linked') return '真实来源'
-  if (mode === 'inferred') return '辅助匹配'
-  if (mode === 'pool') return '待核对'
-  return '无成品'
 }

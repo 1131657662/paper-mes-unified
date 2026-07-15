@@ -239,12 +239,24 @@
 }
 
 .back-record-active__head {
+  position: sticky;
+  left: 0;
+  z-index: 2;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 10px;
+  background: var(--mes-color-panel);
   border-bottom: 1px solid var(--mes-color-border-light);
+}
+
+.back-record-active__title {
+  min-width: 0;
+}
+
+.back-record-active__toolbar-actions {
+  justify-content: flex-end;
 }
 
 .back-record-active__head h5 {
@@ -324,7 +336,9 @@
 }
 
 .back-record-input-grid .ant-input-number-group-wrapper,
-.back-record-finish-row__fields .ant-input-number-group-wrapper {
+.back-record-finish-row__fields .ant-input-number-group-wrapper,
+.back-record-input-grid .ant-input-number-affix-wrapper,
+.back-record-finish-row__fields .ant-input-number-affix-wrapper {
   width: 100%;
 }
 
@@ -343,7 +357,8 @@
   margin-bottom: 0;
 }
 
-.back-record-step-loss-grid .ant-input-number-group-wrapper {
+.back-record-step-loss-grid .ant-input-number-group-wrapper,
+.back-record-step-loss-grid .ant-input-number-affix-wrapper {
   width: 100%;
 }
 
@@ -416,7 +431,7 @@
 
 .back-record-finish-row__fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 8px;
   width: 100%;
   min-width: 0;
@@ -445,7 +460,7 @@
 
 .back-record-trim-row {
   display: grid;
-  grid-template-columns: 84px minmax(180px, 1.4fr) minmax(130px, 1fr) minmax(130px, 1fr) minmax(180px, 1.5fr) 36px;
+  grid-template-columns: 84px minmax(180px, 1.4fr) minmax(180px, 1fr) minmax(180px, 1fr) minmax(180px, 1.5fr) 36px;
   gap: 10px;
   align-items: end;
   padding: 10px 12px;
@@ -457,7 +472,8 @@
   margin-bottom: 0;
 }
 
-.back-record-trim-row .ant-input-number-group-wrapper {
+.back-record-trim-row .ant-input-number-group-wrapper,
+.back-record-trim-row .ant-input-number-affix-wrapper {
   width: 100%;
 }
 
@@ -485,7 +501,7 @@
 
 .back-record-output-row {
   display: grid;
-  grid-template-columns: minmax(110px, 0.8fr) minmax(170px, 1.25fr) repeat(3, minmax(120px, 1fr)) minmax(180px, 1.4fr) 36px;
+  grid-template-columns: minmax(120px, 0.75fr) minmax(190px, 1.1fr) minmax(180px, 1fr) repeat(2, minmax(145px, 0.8fr)) minmax(180px, 1fr) minmax(200px, 1.3fr) 36px;
   gap: 10px;
   align-items: end;
   padding: 10px;
@@ -495,7 +511,7 @@
 }
 
 .back-record-output-row.is-trim {
-  grid-template-columns: minmax(110px, 0.8fr) minmax(180px, 1.25fr) minmax(130px, 1fr) minmax(130px, 1fr) minmax(200px, 1.5fr) 36px;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(190px, 1.25fr) minmax(180px, 1fr) minmax(180px, 1fr) minmax(220px, 1.5fr) 36px;
   border-left-color: var(--mes-color-warning);
 }
 
@@ -503,7 +519,8 @@
   margin-bottom: 0;
 }
 
-.back-record-output-row .ant-input-number-group-wrapper {
+.back-record-output-row .ant-input-number-group-wrapper,
+.back-record-output-row .ant-input-number-affix-wrapper {
   width: 100%;
 }
 
@@ -649,7 +666,7 @@
 
 @media (min-width: 761px) {
   .back-record-active > .back-record-panel {
-    min-width: 1240px;
+    min-width: 1360px;
   }
 
   .back-record-input-grid {
@@ -662,7 +679,7 @@
   }
 
   .back-record-finish-row__fields {
-    min-width: 840px;
+    min-width: 1040px;
   }
 
   .back-record-step-loss-grid {
@@ -675,7 +692,7 @@
 
   .back-record-output-row,
   .back-record-output-row.is-trim {
-    min-width: 1180px;
+    min-width: 1320px;
   }
 }
 

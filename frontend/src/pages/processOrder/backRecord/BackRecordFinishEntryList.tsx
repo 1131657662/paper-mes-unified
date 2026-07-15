@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Form, message, Space, Tag, Typography } from 'antd'
-import { CopyOutlined, EditOutlined } from '@ant-design/icons'
+import { EditOutlined } from '@ant-design/icons'
 import { DICT_TYPES, abnormalFallbackOptions } from '../../../features/systemConfig/configFallbacks'
 import { useDictOptions } from '../../../features/systemConfig/hooks/useRuntimeDictOptions'
 import type { BackRecordFormValues } from './backRecordUtils'
 import { formatKg, formatMm } from '../../../utils/numberFormatters'
 import type { BackRecordWorkItem, WorkbenchFinish } from './backRecordWorkbenchTypes'
 import { autoTrimWeights } from './backRecordAutoTrim'
-import { theoreticalItemFinishValues } from './backRecordTheoryFill'
 import BackRecordBatchSpecModal, { type BatchSpecValues } from './BackRecordBatchSpecModal'
 import BackRecordFinishFields, { type BackRecordSourceOption } from './BackRecordFinishFields'
 
@@ -45,13 +44,6 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted, sour
     }
   }, [finishes, form, item, rolls, steps])
 
-  const fillFinishes = () => {
-    const values = theoreticalItemFinishValues(item)
-    for (const [uuid, value] of Object.entries(values)) {
-      form.setFieldValue(['finishes', uuid], value)
-    }
-  }
-
   const applyBatchSpecs = (values: BatchSpecValues) => {
     const targets = item.finishes.filter(({ finish }) => finish.isSpare !== 1 && finish.isRemain !== 1 && finish.rollNoStatus !== 3)
     let applied = 0
@@ -72,7 +64,6 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted, sour
         <Typography.Text strong>成品 / 已配置余料</Typography.Text>
         <Space wrap size={8}>
           {onSite && <Button size="small" icon={<EditOutlined />} onClick={() => setBatchOpen(true)}>批量填写门幅</Button>}
-          <Button size="small" icon={<CopyOutlined />} onClick={fillFinishes} disabled={item.finishes.length === 0}>带入预估</Button>
         </Space>
       </div>
       {item.finishes.length === 0 ? (
