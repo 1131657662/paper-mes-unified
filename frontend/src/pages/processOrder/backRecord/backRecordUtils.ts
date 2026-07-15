@@ -187,7 +187,9 @@ function toStepDTO(step: ProcessStep, values?: StepRecordValues): BackRecordStep
   return {
     uuid: step.uuid,
     lossWeight: values?.lossWeight,
-    knifeCount: values?.knifeCount,
+    knifeCount: values?.knifeCount != null && values.knifeCount > 0
+      ? values.knifeCount
+      : undefined,
   }
 }
 
