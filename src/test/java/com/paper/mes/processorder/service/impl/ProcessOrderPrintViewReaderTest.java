@@ -36,6 +36,10 @@ class ProcessOrderPrintViewReaderTest {
         assertThat(view.getSchemaVersion()).isEqualTo("2.0");
         assertThat(view.getDetail().getOriginalRolls().getFirst().getPaperName()).isEqualTo("frozen-paper");
         assertThat(view.getDetail().getRollProductions().getFirst().getStageOutputs()).hasSize(1);
+        ProcessOrderDetailVO.FinishProductionVO finish = view.getDetail().getRollProductions()
+                .getFirst().getFinishes().getFirst();
+        assertThat(finish.getActualRemark()).isEqualTo("回录备注");
+        assertThat(finish.getSources().getFirst().getExtraNo()).isEqualTo("NO-1");
         assertThat(view.getDetail().getOrder().getSnapPrint()).isNull();
     }
 
@@ -128,6 +132,7 @@ class ProcessOrderPrintViewReaderTest {
         finish.setFinishWidth(650);
         finish.setEstimateWeight(new BigDecimal("500"));
         finish.setActualWeight(new BigDecimal("495"));
+        finish.setActualRemark("回录备注");
         return finish;
     }
 
@@ -156,8 +161,22 @@ class ProcessOrderPrintViewReaderTest {
         item.setFinishWidth(finish.getFinishWidth());
         item.setEstimateWeight(finish.getEstimateWeight());
         item.setActualWeight(finish.getActualWeight());
-        item.setSources(List.of());
+        item.setActualRemark(finish.getActualRemark());
+        item.setSources(List.of(source()));
         return item;
+    }
+
+    private ProcessOrderDetailVO.FinishSourceVO source() {
+        ProcessOrderDetailVO.FinishSourceVO source = new ProcessOrderDetailVO.FinishSourceVO();
+        source.setOriginalUuid("roll-1");
+        source.setRowSort(1);
+        source.setExtraNo("NO-1");
+        source.setRollNo("R-1");
+        source.setPaperName("测试纸");
+        source.setActualGramWeight(101);
+        source.setActualWidth(1295);
+        source.setActualWeight(new BigDecimal("990"));
+        return source;
     }
 
     private Map<String, Object> snapshotRoot(String schema, String timeKey, String time) {

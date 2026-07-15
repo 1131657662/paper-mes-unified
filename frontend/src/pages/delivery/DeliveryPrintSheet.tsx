@@ -1,12 +1,10 @@
 import type { DeliveryDetailVO } from '../../types/delivery'
 import {
-  deliveryDetailSpecText,
   deliveryOriginalSnapshotText,
-  deliveryProcessSnapshotText,
   formatKg,
   formatTon,
 } from '../../features/delivery/utils/deliveryFormatters'
-import { formatGram } from '../../utils/numberFormatters'
+import { formatGram, formatMm } from '../../utils/numberFormatters'
 import '../../pages/documentModule.css'
 
 interface Props {
@@ -50,8 +48,6 @@ export default function DeliveryPrintSheet({ detail }: Props) {
                 <th>件重</th>
                 <th>出库重量</th>
                 <th>原纸信息</th>
-                <th>加工方式</th>
-                <th>工艺摘要</th>
                 <th>备注</th>
               </tr>
             </thead>
@@ -63,13 +59,11 @@ export default function DeliveryPrintSheet({ detail }: Props) {
                   <td>{printFinishRollNo(item)}</td>
                   <td>{item.paperName || '-'}</td>
                   <td>{formatGram(item.gramWeight)}</td>
-                  <td>{deliveryDetailSpecText(item)}</td>
+                  <td>{formatMm(item.finishWidth)}</td>
                   <td>{formatKg(item.actualWeight)}</td>
                   <td>{formatKg(item.outWeight)}</td>
                   <td>{deliveryOriginalSnapshotText(item)}</td>
-                  <td>{item.processModeText || '-'}</td>
-                  <td>{deliveryProcessSnapshotText(item)}</td>
-                  <td>{item.remark || item.actualRemark || '-'}</td>
+                  <td>{item.actualRemark || '-'}</td>
                 </tr>
               ))}
             </tbody>

@@ -3,7 +3,6 @@ import type { ColumnsType } from 'antd/es/table'
 import {
   formatGram,
   formatKg,
-  formatMm,
   formatTonFromKg,
 } from '../../../utils/numberFormatters'
 import {
@@ -77,16 +76,7 @@ const columns: ColumnsType<CustomerFinishedProductRow> = [
 ]
 
 function renderSpec(row: CustomerFinishedProductRow) {
-  const detail = [
-    row.diameter == null ? undefined : `直径 ${formatMm(row.diameter)}`,
-    row.coreDiameter == null ? undefined : `纸芯 ${formatMm(row.coreDiameter)}`,
-  ].filter(Boolean).join(' / ')
-  return (
-    <div className="finished-product-cell">
-      <Typography.Text>{formatMm(row.width)}</Typography.Text>
-      {detail && <span>{detail}</span>}
-    </div>
-  )
+  return <Typography.Text>{row.width == null ? '-' : `${row.width} mm`}</Typography.Text>
 }
 
 function renderSummary(totals: ReturnType<typeof calculateCustomerFinishedProductTotals>) {

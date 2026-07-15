@@ -147,8 +147,18 @@ export interface ProcessStep {
 
 export interface FinishSourceVO {
   originalUuid?: string
+  rowSort?: number
+  extraNo?: string
   rollNo?: string
   paperName?: string
+  gramWeight?: number
+  actualGramWeight?: number
+  originalWidth?: number
+  actualWidth?: number
+  rollWeight?: number
+  pieceNum?: number
+  actualWeight?: number
+  totalWeight?: number
   shareRatio?: number
   shareWeight?: number
   remark?: string
@@ -171,6 +181,7 @@ export interface FinishProductionVO {
   actualWeight?: number
   trimWidthShare?: number
   trimWeightShare?: number
+  actualRemark?: string
   finishStatus?: number
   sources?: FinishSourceVO[]
 }

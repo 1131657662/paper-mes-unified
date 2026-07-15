@@ -492,6 +492,10 @@
   border-radius: var(--mes-radius);
 }
 
+.document-print-sheet--settle {
+  min-width: 980px;
+}
+
 .document-print-sheet__header {
   display: flex;
   justify-content: space-between;
@@ -585,20 +589,55 @@
 }
 
 .document-print-table--settle th:nth-child(1) {
-  width: 8%;
-}
-
-.document-print-table--settle th:nth-child(2) {
   width: 13%;
 }
 
+.document-print-table--settle th:nth-child(2) {
+  width: 18%;
+}
+
+.document-print-table--settle th:nth-child(3),
+.document-print-table--settle th:nth-child(4) {
+  width: 10%;
+}
+
 .document-print-table--settle th:nth-child(5) {
+  width: 19%;
+}
+
+.document-print-table--settle th:nth-child(6) {
   width: 15%;
+}
+
+.document-print-table--settle th:nth-child(7) {
+  width: 7%;
+}
+
+.document-print-table--settle th:nth-child(8) {
+  width: 8%;
 }
 
 .document-print-table__subtotal td {
   background: #f8fafc;
   font-weight: 650;
+}
+
+.document-print-group__totals {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 7px 9px;
+  border: 1px solid #9aa7b5;
+  border-top: 0;
+  background: #f8fafc;
+  font-size: 12px;
+}
+
+.settle-print-basis {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .document-print-money {
@@ -701,6 +740,10 @@
     border-radius: 0;
   }
 
+  .document-print-sheet--settle {
+    min-width: 0;
+  }
+
   .document-print-sheet__header {
     gap: 8mm;
     padding-bottom: 3mm;
@@ -722,5 +765,13 @@
     padding: 1.5mm 2mm;
     border-width: .6pt;
     font-size: 8.5pt;
+  }
+
+  .document-print-group__totals {
+    gap: 1mm 3mm;
+    padding: 1.2mm 1.5mm;
+    border-width: .6pt;
+    border-top: 0;
+    font-size: 8pt;
   }
 }

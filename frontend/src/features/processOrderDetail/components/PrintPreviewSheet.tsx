@@ -1,5 +1,6 @@
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import type { PrintViewVersion } from '../../../types/processOrder'
+import { PRIORITY } from '../../../constants/processOrder'
 import { CONFIG_KEYS } from '../../systemConfig/configFallbacks'
 import { useSystemConfigValue } from '../../systemConfig/hooks/useSystemConfigValue'
 import {
@@ -43,9 +44,14 @@ export default function PrintPreviewSheet({ detail, snapshotTime, snapshotUser, 
 
 function PrintHeader({ detail, snapshotTime, snapshotUser, title, versionLabel }: Props & { title: string }) {
   const { order } = detail
+  const priorityText = PRIORITY[order.priority ?? 1] ?? '普通'
+  const highlighted = (order.priority ?? 1) >= 2
   return (
     <header className="print-preview-sheet__header">
-      <h1>{title}</h1>
+      <div className="print-preview-sheet__title">
+        <h1>{title}</h1>
+        {highlighted && <strong className="print-priority-mark">{priorityText}</strong>}
+      </div>
       <div className="print-preview-sheet__meta">
         <span>单号：{order.orderNo ?? '-'}</span>
         <span>客户：{order.customerName ?? '-'}</span>

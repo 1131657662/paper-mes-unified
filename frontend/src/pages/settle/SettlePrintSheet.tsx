@@ -1,9 +1,8 @@
 import { INVOICE_TYPE } from '../../constants/settle'
 import { formatKg, formatMoney, formatTon } from '../../features/settle/utils/settleFormatters'
-import type { SettleDetailVO, SettlePrintLine } from '../../types/settle'
-import { formatGram, formatMm, formatUnit } from '../../utils/numberFormatters'
+import type { SettleDetailVO, SettleFeeLine, SettlePrintLine } from '../../types/settle'
+import { formatGram, formatMm } from '../../utils/numberFormatters'
 import { buildSettleBillGroups, type SettleBillGroup } from './settleBillGroups'
-import { SettleFeeSourcePrint } from './SettleFeeLinesView'
 import '../documentModule.css'
 
 interface Props {
@@ -16,7 +15,7 @@ export default function SettlePrintSheet({ detail }: Props) {
 
   return (
     <div className="document-print-area document-print-area--settle">
-      <div className="document-print-sheet">
+      <div className="document-print-sheet document-print-sheet--settle">
         <header className="document-print-sheet__header">
           <div>
             <h1>客户结算单</h1>
@@ -29,9 +28,7 @@ export default function SettlePrintSheet({ detail }: Props) {
           </div>
           <div className="document-print-sheet__summary">
             <span>应收：{formatMoney(order.totalAmount)}</span>
-            <span>已结清：{formatMoney(order.receivedAmount)}</span>
-            <span>现金：{formatMoney(order.cashReceivedAmount)}</span>
-            <span>废纸：{formatMoney(order.scrapOffsetAmount)}</span>
+            <span>已收：{formatMoney(order.receivedAmount)}</span>
             <span>未收：{formatMoney(order.unreceivedAmount)}</span>
           </div>
         </header>
@@ -41,10 +38,11 @@ export default function SettlePrintSheet({ detail }: Props) {
           {groups.map((group) => <PrintGroup group={group} key={group.key} />)}
         </section>
 
-        <footer className="document-print-sheet__footer">
-          <span>锯纸费：{formatMoney(order.sawAmount)}</span>
-          <span>复卷费：{formatMoney(order.rewindAmount)}</span>
-          <span>额外费：{formatMoney(order.extraAmount)}</span>
+        <footer className="document-print-sheet__footer document-print-sheet__footer--settle">
+          <span>未税金额：{formatMoney(order.amountNoTax)}</span>
+          <span>额外费用：{formatMoney(order.extraAmount)}</span>
+          <span>税费：{formatMoney(order.taxAmount)}</span>
+          <strong>应收合计：{formatMoney(order.totalAmount)}</strong>
           <span>客户确认：</span>
           <span>经办：</span>
         </footer>
@@ -61,7 +59,6 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
         {group.orderDate && <span>日期：{group.orderDate}</span>}
         <span>原纸：{group.lines.length} 卷 / {formatTon(group.originalWeight)}</span>
         <span>成品：{group.finishCount} 卷 / {formatTon(group.finishWeight)}</span>
-        <span>合计：{formatMoney(group.lineAmount)}</span>
       </div>
       <table className="document-print-table document-print-table--settle">
         <thead>
@@ -69,30 +66,16 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
             <th>原纸</th>
             <th>品名/规格</th>
             <th>原纸重量</th>
-            <th>加工内容</th>
-            <th>成品摘要</th>
-            <th>成品重量</th>
+            <th>加工项目</th>
+            <th>计费依据</th>
+            <th>成品结果</th>
             <th>切边</th>
-            <th>锯纸单价/金额</th>
-            <th>复卷单价/金额</th>
-            <th>额外费</th>
-            <th>应收合计</th>
+            <th>加工费</th>
           </tr>
         </thead>
-        <tbody>
-          {group.lines.map((line) => <PrintLine line={line} key={`${line.orderUuid}-${line.originalUuid}`} />)}
-          <tr className="document-print-table__subtotal">
-            <td colSpan={2}>加工单小计</td>
-            <td>{formatTon(group.originalWeight)}</td>
-            <td colSpan={2}>加工费 {formatMoney(group.processAmount)}</td>
-            <td>{formatTon(group.finishWeight)}</td>
-            <td>{formatTon(group.trimWeight)}</td>
-            <td colSpan={2}>额外费 {formatMoney(group.extraAmount)}{group.extraFeeSummary ? `（${group.extraFeeSummary}）` : ''}</td>
-            <td>开票价已计入应收</td>
-            <td>{formatMoney(group.lineAmount)}</td>
-          </tr>
-        </tbody>
+        <tbody>{group.lines.map((line) => <PrintLine line={line} key={`${line.orderUuid}-${line.originalUuid}`} />)}</tbody>
       </table>
+      <GroupTotals group={group} />
     </div>
   )
 }
@@ -100,60 +83,75 @@ function PrintGroup({ group }: { group: SettleBillGroup }) {
 function PrintLine({ line }: { line: SettlePrintLine }) {
   return (
     <tr>
-      <td>{printOriginalLabel(line)}</td>
-      <td>{printOriginalSpec(line)}</td>
+      <td>{originalLabel(line)}</td>
+      <td>{originalSpec(line)}</td>
       <td>{formatKg(line.originalWeight)}</td>
-      <td>{printProcessText(line)}<SettleFeeSourcePrint feeLines={line.feeLines} /></td>
-      <td>{line.finishDetailSummary || line.finishSummary || '-'}</td>
-      <td>{formatKg(line.finishWeight)}</td>
-      <td>{line.trimSummary || formatKg(line.trimWeight)}</td>
-      <td><PrintUnitPrice price={line.sawUnitPrice} invoicePrice={line.sawInvoiceUnitPrice} amount={line.sawAmount} /></td>
-      <td><PrintUnitPrice price={line.rewindUnitPrice} invoicePrice={line.rewindInvoiceUnitPrice} amount={line.rewindAmount} /></td>
-      <td><PrintAmountWithHint amount={line.extraAmount} hint={line.extraFeeSummary} /></td>
-      <td>{formatMoney(line.lineAmount)}</td>
+      <td>{processNames(line)}</td>
+      <td><PrintFeeBasis line={line} /></td>
+      <td>{finishResult(line)}</td>
+      <td>{trimText(line)}</td>
+      <td><strong>{formatMoney(line.processAmount)}</strong></td>
     </tr>
   )
 }
 
-function PrintUnitPrice({ amount, invoicePrice, price }: { amount?: number; invoicePrice?: number; price?: number }) {
-  const showInvoice = invoicePrice != null && invoicePrice !== price
+function PrintFeeBasis({ line }: { line: SettlePrintLine }) {
+  const fees = processFees(line)
+  if (fees.length === 0) return <span>{line.processStepSummary || line.processText || '-'}</span>
   return (
-    <span className="document-print-money">
-      <strong>{formatMoney(price)} / {formatMoney(amount)}</strong>
-      {showInvoice && <em>开票价 {formatMoney(invoicePrice)}</em>}
+    <span className="settle-print-basis">
+      {fees.map((fee, index) => (
+        <span key={`${fee.feeType}-${fee.stageLevel ?? 'x'}-${index}`}>
+          {feeFormula(fee)} = {formatMoney(fee.amountNoTax)}
+        </span>
+      ))}
     </span>
   )
 }
 
-function printOriginalLabel(line: SettlePrintLine) {
-  return [line.originalLabel || '-', line.originalRollNo && `卷号${line.originalRollNo}`, line.originalExtraNo && `编号${line.originalExtraNo}`]
-    .filter(Boolean)
-    .join(' / ')
-}
-
-function printOriginalSpec(line: SettlePrintLine) {
-  const gram = line.actualGramWeight ? formatGram(line.actualGramWeight) : formatGram(line.gramWeight)
-  const width = line.actualWidth ? formatMm(line.actualWidth) : formatMm(line.originalWidth)
-  return [
-    line.paperName || '-',
-    gram,
-    width,
-    line.originalDiameter && `直径 ${formatMm(line.originalDiameter)}`,
-    line.coreDiameter && `纸芯 ${formatMm(line.coreDiameter)}`,
-    line.originalLength && formatUnit(line.originalLength, 'm'),
-  ].filter(Boolean).join(' / ')
-}
-
-function printProcessText(line: SettlePrintLine) {
-  const process = line.processStepSummary || line.processText || '-'
-  return line.machineName ? `${process} / 机台${line.machineName}` : process
-}
-
-function PrintAmountWithHint({ amount, hint }: { amount?: number; hint?: string }) {
+function GroupTotals({ group }: { group: SettleBillGroup }) {
   return (
-    <span className="document-print-money">
-      <strong>{formatMoney(amount)}</strong>
-      {hint && <em>{hint}</em>}
-    </span>
+    <div className="document-print-group__totals">
+      <span>加工费：{formatMoney(group.processAmount)}</span>
+      <span>额外费：{formatMoney(group.extraAmount)}{group.extraFeeSummary ? `（${group.extraFeeSummary}）` : ''}</span>
+      <span>税费：{formatMoney(group.taxAmount)}</span>
+      <strong>本单应收：{formatMoney(group.lineAmount)}</strong>
+    </div>
   )
+}
+
+function originalLabel(line: SettlePrintLine) {
+  return [line.originalLabel || '-', line.originalRollNo && line.originalRollNo !== line.originalLabel && `卷号 ${line.originalRollNo}`, line.originalExtraNo && `编号 ${line.originalExtraNo}`]
+    .filter(Boolean).join(' / ')
+}
+
+function originalSpec(line: SettlePrintLine) {
+  const gram = line.actualGramWeight ?? line.gramWeight
+  const width = line.actualWidth ?? line.originalWidth
+  return [line.paperName || '-', gram == null ? undefined : formatGram(gram), width == null ? undefined : formatMm(width)]
+    .filter(Boolean).join(' / ')
+}
+
+function processNames(line: SettlePrintLine) {
+  const names = Array.from(new Set(processFees(line).map((fee) => fee.feeName.replace(/费$/, ''))))
+  return names.join(' / ') || line.processText || '-'
+}
+
+function processFees(line: SettlePrintLine) {
+  return (line.feeLines ?? []).filter((fee) => fee.feeType === 'saw' || fee.feeType === 'rewind')
+}
+
+function feeFormula(fee: SettleFeeLine) {
+  if (fee.formulaText) return fee.formulaText
+  if (fee.quantity == null || fee.unitPrice == null) return fee.feeName
+  return `${fee.quantity}${fee.quantityUnit || ''} × ${formatMoney(fee.unitPrice)}`
+}
+
+function finishResult(line: SettlePrintLine) {
+  const summary = `${line.finishCount ?? 0} 卷 / ${formatKg(line.finishWeight)}`
+  return line.finishSummary && line.finishSummary !== '-' ? `${summary}（${line.finishSummary}）` : summary
+}
+
+function trimText(line: SettlePrintLine) {
+  return line.trimSummary && line.trimSummary !== '-' ? line.trimSummary : formatKg(line.trimWeight)
 }

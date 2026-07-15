@@ -75,6 +75,20 @@
     white-space: nowrap;
   }
 
+  .print-preview-sheet__title {
+    gap: 2mm;
+  }
+
+  .print-priority-mark {
+    min-width: 15mm;
+    padding: 0.8mm 1.5mm;
+    border: 1.4pt double #000;
+    background: #fff !important;
+    font-size: 11pt;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+
   .print-preview-sheet__meta,
   .print-preview-sheet__footer {
     gap: 1mm 3mm;

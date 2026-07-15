@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProcessOrderDetailVO, RollProductionVO } from '../../../types/processOrder'
-import { buildPrintRollBlocks } from './printPreviewModel'
+import { buildPrintRollBlocks, buildPrintSummary } from './printPreviewModel'
 
 describe('完工打印模型', () => {
   it('使用实际母卷规格和成品重量生成完工内容', () => {
@@ -21,6 +21,16 @@ describe('完工打印模型', () => {
 
     expect(blocks[0]?.sourceItems).toContainEqual({ label: '克重/门幅', value: '80 g / 1200 mm' })
     expect(blocks[0]?.sourceItems).toContainEqual({ label: '标重', value: '1000 kg' })
+  })
+
+  it('用生产优先级替代车间无关的开票结算信息', () => {
+    const summary = buildPrintSummary({
+      ...detail(),
+      order: { uuid: 'order-1', priority: 2, isInvoice: 1, settleType: 2 },
+    })
+
+    expect(summary).toContainEqual({ label: '订单标记', value: '加急' })
+    expect(summary.some((item) => item.label === '开票/结算')).toBe(false)
   })
 })
 

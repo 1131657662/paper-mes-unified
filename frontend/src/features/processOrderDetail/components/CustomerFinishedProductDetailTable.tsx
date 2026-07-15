@@ -5,8 +5,6 @@ import {
   formatGram,
   formatKg,
   formatMm,
-  formatOptionalKg,
-  formatPercent,
   formatTonFromKg,
 } from '../../../utils/numberFormatters'
 import {
@@ -44,7 +42,8 @@ const columns: ColumnsType<FinishedProductRow> = [
   { title: '克重', align: 'right', width: 100, render: (_, row) => formatGram(row.finish.gramWeight) },
   { title: '规格', width: 220, render: (_, row) => renderSpec(row.finish) },
   { title: '重量', align: 'right', width: 140, render: (_, row) => formatKg(customerFinishedProductWeight(row)) },
-  { title: '来源母卷', width: 350, render: (_, row) => renderSources(row.sources) },
+  { title: '来源母卷', width: 390, render: (_, row) => renderSources(row.sources) },
+  { title: '备注', width: 180, render: (_, row) => row.finish.actualRemark || '-' },
 ]
 
 function renderName(finish: FinishProductionVO) {
@@ -57,16 +56,7 @@ function renderName(finish: FinishProductionVO) {
 }
 
 function renderSpec(finish: FinishProductionVO) {
-  const details = [
-    finish.finishDiameter == null ? undefined : `直径 ${formatMm(finish.finishDiameter)}`,
-    finish.finishCoreDiameter == null ? undefined : `纸芯 ${formatMm(finish.finishCoreDiameter)}`,
-  ].filter(Boolean).join(' / ')
-  return (
-    <div className="finished-product-cell">
-      <Typography.Text>{formatMm(finish.finishWidth)}</Typography.Text>
-      {details && <span>{details}</span>}
-    </div>
-  )
+  return <Typography.Text>{formatMm(finish.finishWidth)}</Typography.Text>
 }
 
 function renderSources(sources: FinishSourceVO[]) {
@@ -75,18 +65,35 @@ function renderSources(sources: FinishSourceVO[]) {
     <div className="customer-source-rolls">
       {sources.map((source, index) => (
         <div key={source.originalUuid ?? `${source.rollNo ?? 'source'}-${index}`}>
-          <Typography.Text strong>{source.rollNo ?? source.paperName ?? '-'}</Typography.Text>
-          {source.paperName && source.paperName !== source.rollNo && <span>{source.paperName}</span>}
-          <span>{sourceShareText(source)}</span>
+          <Typography.Text strong>{sourceLabel(source, index)}</Typography.Text>
+          <span>{sourceDetailText(source)}</span>
         </div>
       ))}
     </div>
   )
 }
 
-function sourceShareText(source: FinishSourceVO) {
-  const ratio = source.shareRatio == null ? '-' : formatPercent(source.shareRatio)
-  return `分摊比例 ${ratio} · 分摊重量 ${formatOptionalKg(source.shareWeight)}`
+function sourceLabel(source: FinishSourceVO, index: number) {
+  return source.rollNo ? `卷号 ${source.rollNo}` : `母卷${source.rowSort ?? index + 1}`
+}
+
+function sourceDetailText(source: FinishSourceVO) {
+  const identity = source.extraNo ? `编号 ${source.extraNo}` : undefined
+  const gram = source.actualGramWeight ?? source.gramWeight
+  const width = source.actualWidth ?? source.originalWidth
+  const weight = source.actualWeight ?? source.totalWeight ?? sourceWeight(source)
+  return [
+    identity,
+    source.paperName,
+    gram == null ? undefined : formatGram(gram),
+    width == null ? undefined : formatMm(width),
+    weight == null ? undefined : formatKg(weight),
+  ].filter(Boolean).join(' / ') || '-'
+}
+
+function sourceWeight(source: FinishSourceVO) {
+  if (source.rollWeight == null) return undefined
+  return source.rollWeight * (source.pieceNum ?? 1)
 }
 
 function renderSummary(count: number, weight: number) {
@@ -96,6 +103,7 @@ function renderSummary(count: number, weight: number) {
       <Table.Summary.Cell index={1} colSpan={3}>{count} 件</Table.Summary.Cell>
       <Table.Summary.Cell index={4} align="right">{formatTonFromKg(weight)}</Table.Summary.Cell>
       <Table.Summary.Cell index={5} />
+      <Table.Summary.Cell index={6} />
     </Table.Summary.Row>
   )
 }

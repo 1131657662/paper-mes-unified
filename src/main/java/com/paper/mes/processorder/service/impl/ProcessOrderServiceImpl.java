@@ -573,6 +573,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             item.setActualWeight(finish.getActualWeight());
             item.setTrimWidthShare(finish.getTrimWidthShare());
             item.setTrimWeightShare(finish.getTrimWeightShare());
+            item.setActualRemark(finish.getActualRemark());
             item.setFinishStatus(finish.getFinishStatus());
             item.setSources(toDetailSources(relsByFinish.get(finish.getUuid()), rollByUuid));
             result.add(item);
@@ -590,8 +591,18 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             OriginalRoll roll = rollByUuid.get(rel.getOriginalUuid());
             ProcessOrderDetailVO.FinishSourceVO item = new ProcessOrderDetailVO.FinishSourceVO();
             item.setOriginalUuid(rel.getOriginalUuid());
+            item.setRowSort(roll == null ? null : roll.getRowSort());
+            item.setExtraNo(roll == null ? null : roll.getExtraNo());
             item.setRollNo(roll == null ? null : roll.getRollNo());
             item.setPaperName(roll == null ? null : roll.getPaperName());
+            item.setGramWeight(roll == null ? null : roll.getGramWeight());
+            item.setActualGramWeight(roll == null ? null : roll.getActualGramWeight());
+            item.setOriginalWidth(roll == null ? null : roll.getOriginalWidth());
+            item.setActualWidth(roll == null ? null : roll.getActualWidth());
+            item.setRollWeight(roll == null ? null : roll.getRollWeight());
+            item.setPieceNum(roll == null ? null : roll.getPieceNum());
+            item.setActualWeight(roll == null ? null : roll.getActualWeight());
+            item.setTotalWeight(roll == null ? null : roll.getTotalWeight());
             item.setShareRatio(rel.getShareRatio());
             item.setShareWeight(rel.getShareWeight());
             item.setRemark(rel.getRemark());

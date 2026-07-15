@@ -106,6 +106,7 @@ public class ProcessOrderDetailVO {
         private BigDecimal actualWeight;
         private Integer trimWidthShare;
         private BigDecimal trimWeightShare;
+        private String actualRemark;
         private Integer finishStatus;
         private List<FinishSourceVO> sources;
     }
@@ -113,8 +114,18 @@ public class ProcessOrderDetailVO {
     @Data
     public static class FinishSourceVO {
         private String originalUuid;
+        private Integer rowSort;
+        private String extraNo;
         private String rollNo;
         private String paperName;
+        private Integer gramWeight;
+        private Integer actualGramWeight;
+        private Integer originalWidth;
+        private Integer actualWidth;
+        private BigDecimal rollWeight;
+        private Integer pieceNum;
+        private BigDecimal actualWeight;
+        private BigDecimal totalWeight;
         private BigDecimal shareRatio;
         private BigDecimal shareWeight;
         private String remark;

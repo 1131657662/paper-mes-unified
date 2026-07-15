@@ -1,9 +1,7 @@
 import type { FinishedProductRow } from './finishedProductRows'
 
 export interface CustomerFinishedProductRow {
-  coreDiameter?: number
   count: number
-  diameter?: number
   gramWeight?: number
   isTrim: boolean
   key: string
@@ -53,8 +51,6 @@ function customerGroupKey(row: FinishedProductRow) {
     finish.paperName,
     finish.gramWeight,
     finish.finishWidth,
-    finish.finishDiameter,
-    finish.finishCoreDiameter,
     finish.isRemain === 1 ? 'trim' : 'product',
   ].join('::')
 }
@@ -62,9 +58,7 @@ function customerGroupKey(row: FinishedProductRow) {
 function toCustomerRow(row: FinishedProductRow, key: string): CustomerFinishedProductRow {
   const { finish } = row
   return {
-    coreDiameter: finish.finishCoreDiameter,
     count: 1,
-    diameter: finish.finishDiameter,
     gramWeight: finish.gramWeight,
     isTrim: finish.isRemain === 1,
     key,

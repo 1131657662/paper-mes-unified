@@ -1,5 +1,4 @@
 import { Collapse, Empty, Typography } from 'antd'
-import type { ColumnGroupType, ColumnType, ColumnsType } from 'antd/es/table'
 import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
 import { formatMoney, formatTon } from '../../features/settle/utils/settleFormatters'
 import type { SettlePrintLine } from '../../types/settle'
@@ -27,10 +26,10 @@ export default function SettleGroupedBill({ lines }: Props) {
           <DocumentDetailTable
             storageKey={`settle-detail-bill-${group.key}`}
             rowKey={(record) => `${record.orderUuid}-${record.originalUuid}`}
-            columns={groupLineColumns}
+            columns={settlePrintLineColumns}
             dataSource={group.lines}
             pagination={false}
-            scroll={{ x: 2620 }}
+            scroll={{ x: 1395 }}
           />
         ),
       }))}
@@ -50,6 +49,7 @@ function GroupHeader({ group }: { group: SettleBillGroup }) {
       <Metric label="切边" value={formatTon(group.trimWeight)} />
       <Metric label="加工费" value={formatMoney(group.processAmount)} />
       <Metric label="额外费" value={formatMoney(group.extraAmount)} hint={group.extraFeeSummary} />
+      <Metric label="税费" value={formatMoney(group.taxAmount)} />
       <strong>应收 {formatMoney(group.lineAmount)}</strong>
     </div>
   )
@@ -63,12 +63,4 @@ function Metric({ hint, label, value }: { hint?: string; label: string; value: s
       {hint && <small>{hint}</small>}
     </span>
   )
-}
-
-const groupLineColumns: ColumnsType<SettlePrintLine> = settlePrintLineColumns.filter(
-  (column) => !isOrderNoColumn(column),
-)
-
-function isOrderNoColumn(column: ColumnGroupType<SettlePrintLine> | ColumnType<SettlePrintLine>) {
-  return 'dataIndex' in column && column.dataIndex === 'orderNo'
 }

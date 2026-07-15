@@ -1,4 +1,4 @@
-import { IS_INVOICE, ORDER_SETTLE_TYPE, PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
+import { PRIORITY, PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
 import { buildDisplayRows } from '../../../components/processOrder/shared/displayRowBuilder'
 import {
   calcTrimWidth,
@@ -101,7 +101,7 @@ export function buildPrintSummary(detail: ProcessOrderDetailVO): PrintSummaryIte
     { label: '锯纸刀数', value: `${detail.order.actualTotalKnife ?? sumKnifeCount(detail.steps)} 刀` },
     { label: '复卷吨位', value: formatRawTon(rewindWeight) },
     { label: '工序数', value: `${detail.steps?.length ?? 0} 道` },
-    { label: '开票/结算', value: `${IS_INVOICE[detail.order.isInvoice ?? 2] ?? '-'} / ${ORDER_SETTLE_TYPE[detail.order.settleType ?? 1] ?? '-'}` },
+    { label: '订单标记', value: PRIORITY[detail.order.priority ?? 1] ?? '普通' },
   ]
 }
 
