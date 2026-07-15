@@ -1,6 +1,7 @@
 package com.paper.mes.settle.service;
 
 import com.paper.mes.settle.dto.SettleDetailVO;
+import com.paper.mes.settle.dto.SettleFeeLineVO;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
 import com.paper.mes.settle.entity.ReceiveRecord;
 import com.paper.mes.settle.entity.SettleOrder;
@@ -14,30 +15,43 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SettleExportServiceTest {
 
     @Test
-    void buildWorkbook_whenExportingSettle_includesOriginalRollAndFeeBreakdown() throws IOException {
+    void buildWorkbook_whenExportingSettle_usesCustomerFacingColumnsAndGroupedFees() throws IOException {
         SettleExportService service = new SettleExportService();
 
         try (Workbook workbook = service.buildWorkbook(detail())) {
             var sheet = workbook.getSheetAt(0);
 
-            assertEquals("原纸", text(sheet.getRow(9).getCell(3)));
-            assertEquals("加工内容", text(sheet.getRow(9).getCell(8)));
-            assertEquals("成品摘要", text(sheet.getRow(9).getCell(9)));
-            assertEquals("锯纸单价", text(sheet.getRow(9).getCell(13)));
-            assertEquals("额外费说明", text(sheet.getRow(9).getCell(19)));
-            assertEquals("开票", text(sheet.getRow(9).getCell(20)));
-            assertEquals("应收合计", text(sheet.getRow(9).getCell(21)));
-            assertEquals("母卷1", text(sheet.getRow(10).getCell(3)));
-            assertEquals("锯纸+复卷", text(sheet.getRow(10).getCell(8)));
-            assertEquals("A000001、A000002", text(sheet.getRow(10).getCell(9)));
-            assertEquals("200（开票价 212）", text(sheet.getRow(10).getCell(13)));
-            assertEquals("装卸费 80.00；运费 30.00", text(sheet.getRow(10).getCell(19)));
-            assertEquals("开票", text(sheet.getRow(10).getCell(20)));
-            assertEquals("1176", text(sheet.getRow(10).getCell(21)));
+            assertEquals(8, sheet.getRow(9).getPhysicalNumberOfCells());
+            assertEquals("原纸", text(sheet.getRow(9).getCell(0)));
+            assertEquals("加工项目", text(sheet.getRow(9).getCell(3)));
+            assertEquals("计费依据", text(sheet.getRow(9).getCell(4)));
+            assertEquals("加工费", text(sheet.getRow(9).getCell(7)));
+            assertEquals("JG202607010001", text(sheet.getRow(10).getCell(1)));
+            assertEquals("母卷1", text(sheet.getRow(11).getCell(0)));
+            assertEquals("牛卡纸 / 450 g / 2500 mm", text(sheet.getRow(11).getCell(1)));
+            assertEquals("锯纸 / 复卷", text(sheet.getRow(11).getCell(3)));
+            assertEquals("6刀 × 200元/刀 = 651；2t × 150元/t = 359", text(sheet.getRow(11).getCell(4)));
+            assertTrue(sheet.getRow(11).getCell(4).getCellStyle().getWrapText());
+            assertEquals("2 卷 / 3000 kg（A000001、A000002）", text(sheet.getRow(11).getCell(5)));
+            assertEquals("JG202607010001 小计", text(sheet.getRow(12).getCell(0)));
+            assertEquals("100（装卸费 80.00；运费 30.00）", text(sheet.getRow(13).getCell(4)));
+            assertEquals("税费 66", text(sheet.getRow(13).getCell(5)));
+            assertEquals("1176", text(sheet.getRow(13).getCell(7)));
+        }
+    }
+
+    @Test
+    void buildWorkbook_whenLegacySnapshotHasNoTaxAmount_derivesGroupTax() throws IOException {
+        SettleDetailVO detail = detail();
+        detail.getPrintLines().getFirst().setTaxAmount(null);
+
+        try (Workbook workbook = new SettleExportService().buildWorkbook(detail)) {
+            assertEquals("税费 66", text(workbook.getSheetAt(0).getRow(13).getCell(5)));
         }
     }
 
@@ -121,7 +135,26 @@ class SettleExportServiceTest {
         line.setTaxAmount(new BigDecimal("66"));
         line.setIsInvoice(1);
         line.setLineAmount(new BigDecimal("1176"));
+        line.setFeeLines(List.of(sawFee(), rewindFee()));
         return line;
+    }
+
+    private SettleFeeLineVO sawFee() {
+        SettleFeeLineVO fee = new SettleFeeLineVO();
+        fee.setFeeType("saw");
+        fee.setFeeName("锯纸费");
+        fee.setFormulaText("6刀 × 200元/刀");
+        fee.setAmountNoTax(new BigDecimal("651"));
+        return fee;
+    }
+
+    private SettleFeeLineVO rewindFee() {
+        SettleFeeLineVO fee = new SettleFeeLineVO();
+        fee.setFeeType("rewind");
+        fee.setFeeName("复卷费");
+        fee.setFormulaText("2t × 150元/t");
+        fee.setAmountNoTax(new BigDecimal("359"));
+        return fee;
     }
 
     private ReceiveRecord activeReceive() {

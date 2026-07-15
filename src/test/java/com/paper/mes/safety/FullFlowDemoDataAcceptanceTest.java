@@ -37,9 +37,10 @@ class FullFlowDemoDataAcceptanceTest {
 
             assertEquals(5, settle.getPrintLines().size());
             assertEquals("JS-DEMO-0001", text(settleWorkbook.getSheetAt(0).getRow(1).getCell(1)));
-            assertEquals("锯纸 + 现场定尺", text(settleWorkbook.getSheetAt(0).getRow(10).getCell(8)));
-            assertEquals("直发", text(settleWorkbook.getSheetAt(0).getRow(14).getCell(8)));
-            assertEquals("装卸费 120.00；运费 80.00；其他费 50.00", text(settleWorkbook.getSheetAt(0).getRow(10).getCell(19)));
+            assertEquals("锯纸 + 现场定尺", text(settleWorkbook.getSheetAt(0).getRow(11).getCell(3)));
+            assertEquals("直发", text(settleWorkbook.getSheetAt(0).getRow(17).getCell(3)));
+            assertEquals("250（装卸费 120.00；运费 80.00；其他费 50.00）",
+                    text(settleWorkbook.getSheetAt(0).getRow(15).getCell(4)));
             assertEquals("有效", text(settleWorkbook.getSheet("收款流水").getRow(4).getCell(11)));
             assertEquals("已撤销", text(settleWorkbook.getSheet("收款流水").getRow(5).getCell(11)));
         }

@@ -25,4 +25,10 @@ final class SettleSheetStyles {
         style.setFont(font);
         return style;
     }
+
+    static CellStyle wrapStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setWrapText(true);
+        return style;
+    }
 }
