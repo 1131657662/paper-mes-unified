@@ -648,12 +648,34 @@
 }
 
 @media (min-width: 761px) {
+  .back-record-active > .back-record-panel {
+    min-width: 1240px;
+  }
+
   .back-record-input-grid {
-    min-width: 620px;
+    min-width: 760px;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
   }
 
   .back-record-finish-row {
+    min-width: 1080px;
+  }
+
+  .back-record-finish-row__fields {
+    min-width: 840px;
+  }
+
+  .back-record-step-loss-grid {
     min-width: 760px;
+  }
+
+  .back-record-trim-row {
+    min-width: 1120px;
+  }
+
+  .back-record-output-row,
+  .back-record-output-row.is-trim {
+    min-width: 1180px;
   }
 }
 

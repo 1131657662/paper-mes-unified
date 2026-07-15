@@ -6,12 +6,19 @@ export function useBackRecordDisplayValues(
   fallback: BackRecordFormValues,
 ): BackRecordFormValues {
   const watched: BackRecordFormValues = {
-    finishes: Form.useWatch('finishes', form),
-    onSiteOutputs: Form.useWatch('onSiteOutputs', form),
-    rolls: Form.useWatch('rolls', form),
-    steps: Form.useWatch('steps', form),
-    trims: Form.useWatch('trims', form),
+    finishes: Form.useWatch('finishes', { form, preserve: true }),
+    onSiteOutputs: Form.useWatch('onSiteOutputs', { form, preserve: true }),
+    rolls: Form.useWatch('rolls', { form, preserve: true }),
+    steps: Form.useWatch('steps', { form, preserve: true }),
+    trims: Form.useWatch('trims', { form, preserve: true }),
   }
+  return mergeBackRecordDisplayValues(fallback, watched)
+}
+
+export function mergeBackRecordDisplayValues(
+  fallback: BackRecordFormValues,
+  watched: BackRecordFormValues,
+): BackRecordFormValues {
   return {
     ...fallback,
     ...watched,
