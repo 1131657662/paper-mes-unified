@@ -6,9 +6,10 @@ import { buildDenseRows, type DenseItemRow, type DenseRow } from './printDenseTa
 
 interface Props {
   blocks: PrintRollBlock[]
+  showActuals?: boolean
 }
 
-export default function PrintDenseTable({ blocks }: Props) {
+export default function PrintDenseTable({ blocks, showActuals = false }: Props) {
   const rows = buildDenseRows(blocks)
   if (!rows.length) return null
   return (
@@ -27,14 +28,14 @@ export default function PrintDenseTable({ blocks }: Props) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => <DenseTableRow key={row.key} row={row} />)}
+          {rows.map((row) => <DenseTableRow key={row.key} row={row} showActuals={showActuals} />)}
         </tbody>
       </table>
     </section>
   )
 }
 
-function DenseTableRow({ row }: { row: DenseRow }) {
+function DenseTableRow({ row, showActuals }: { row: DenseRow; showActuals: boolean }) {
   if (row.kind === 'group') {
     return (
       <tr className="print-dense-table__group-row">
@@ -45,10 +46,10 @@ function DenseTableRow({ row }: { row: DenseRow }) {
       </tr>
     )
   }
-  return <DenseItemTableRow row={row} />
+  return <DenseItemTableRow row={row} showActuals={showActuals} />
 }
 
-function DenseItemTableRow({ row }: { row: DenseItemRow }) {
+function DenseItemTableRow({ row, showActuals }: { row: DenseItemRow; showActuals: boolean }) {
   const fillable = row.output?.status === 'final' || row.output?.status === 'trim'
   return (
     <tr className="print-dense-table__item-row">
@@ -69,7 +70,7 @@ function DenseItemTableRow({ row }: { row: DenseItemRow }) {
       <td>{row.output?.weight ?? '-'}</td>
       <td>{row.output ? outputStatusText(row.output.status) : '-'}</td>
       <td className={fillable ? 'print-dense-table__write' : 'print-dense-table__muted'}>
-        {fillable ? '' : '-'}
+        {showActuals ? row.output?.actualWeight ?? '-' : fillable ? '' : '-'}
       </td>
       <td className={fillable ? 'print-dense-table__write' : 'print-dense-table__muted'}>
         {fillable ? '' : '-'}

@@ -8,7 +8,8 @@ import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -21,15 +22,20 @@ import java.util.List;
 @Service
 public class ReportExportService {
 
-    public Workbook buildWorkbook(ReportOverviewVO overview,
-                                  List<ReportDimensionVO> dimensions,
-                                  List<ReportDetailVO> details,
-                                  String dimension) {
-        Workbook workbook = new XSSFWorkbook();
+    public SXSSFWorkbook buildWorkbook(ReportOverviewVO overview,
+                                       List<ReportDimensionVO> dimensions,
+                                       Iterable<ReportDetailVO> details,
+                                       String dimension) {
+        SXSSFWorkbook workbook = new SXSSFWorkbook(100);
+        workbook.setCompressTempFiles(true);
         CellStyle titleStyle = titleStyle(workbook);
         CellStyle headerStyle = headerStyle(workbook);
-        writeOverview(workbook.createSheet("汇总"), overview, titleStyle);
-        writeDimensions(workbook.createSheet("维度汇总"), dimensions, dimension, headerStyle);
+        SXSSFSheet overviewSheet = workbook.createSheet("汇总");
+        SXSSFSheet dimensionSheet = workbook.createSheet("维度汇总");
+        overviewSheet.trackAllColumnsForAutoSizing();
+        dimensionSheet.trackAllColumnsForAutoSizing();
+        writeOverview(overviewSheet, overview, titleStyle);
+        writeDimensions(dimensionSheet, dimensions, dimension, headerStyle);
         writeDetails(workbook.createSheet("加工单明细"), details, headerStyle);
         return workbook;
     }
@@ -82,7 +88,7 @@ public class ReportExportService {
         autosize(sheet, 20);
     }
 
-    private void writeDetails(Sheet sheet, List<ReportDetailVO> rows, CellStyle style) {
+    private void writeDetails(Sheet sheet, Iterable<ReportDetailVO> rows, CellStyle style) {
         header(sheet, style, "加工单号", "制单日期", "客户", "纸品", "工艺", "状态", "结算",
                 "开票", "原卷", "成品", "原纸吨位", "成品吨位", "损耗吨位", "损耗率%", "刀数",
                 "锯纸费", "复卷费", "加工费", "附加费", "应收合计", "已结算应收", "待结算应收",
@@ -91,7 +97,13 @@ public class ReportExportService {
         for (ReportDetailVO item : rows) {
             writeDetailRow(sheet.createRow(index++), item);
         }
-        autosize(sheet, 26);
+        setDetailColumnWidths(sheet);
+    }
+
+    private void setDetailColumnWidths(Sheet sheet) {
+        for (int index = 0; index < 26; index++) {
+            sheet.setColumnWidth(index, index < 8 ? 4200 : 3200);
+        }
     }
 
     private void writeDetailRow(Row row, ReportDetailVO item) {

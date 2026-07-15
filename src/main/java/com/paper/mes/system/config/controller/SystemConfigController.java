@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/system/config-items")
-@RequirePermission(Permissions.USER_MANAGE)
+@RequirePermission(Permissions.SYSTEM_CONFIG)
 @RequiredArgsConstructor
 public class SystemConfigController {
 

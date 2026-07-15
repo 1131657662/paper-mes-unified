@@ -12,6 +12,7 @@ import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
 import com.paper.mes.common.PageResult;
+import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.service.CustomerService;
@@ -115,6 +116,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private final OperationLogMapper operationLogMapper;
     private final OperationLogService operationLogService;
     private final SettleCandidateStatsLoader statsLoader;
+    private final SettlePageDataLoader pageDataLoader;
     private final SettleExportService settleExportService;
     private final DocumentNoService documentNoService;
     private final BusinessLockService businessLockService;
@@ -144,7 +146,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             wrapper.le(SettleOrder::getSettleDate, query.getDateTo());
         }
         wrapper.orderByDesc(SettleOrder::getCreateTime);
-        Page<SettleOrder> page = page(Page.of(query.getCurrent(), query.getSize()), wrapper);
+        Page<SettleOrder> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
         normalizePageAmountView(page.getRecords());
         return PageResult.of(page);
     }
@@ -358,8 +360,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,
                 settle.getUuid(), settle.getSettleNo(),
-                OperationLogService.ACTION_RECEIVE, operator,
-                receiveLogText("登记收款", amount));
+                OperationLogService.ACTION_RECEIVE, null,
+                receiveLogText("登记收款", amount) + "，业务经办人：" + operator);
     }
 
     @Override
@@ -386,7 +388,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         refreshReceiveState(settle);
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,
                 settle.getUuid(), settle.getSettleNo(),
-                OperationLogService.ACTION_ROLLBACK, operator,
+                OperationLogService.ACTION_RECEIVE_CANCEL, operator,
                 cancelReceiveLogText(record, dto.getReason()));
     }
 
@@ -414,7 +416,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         deleteSettleOrderForVoid(settle);
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,
                 settle.getUuid(), settle.getSettleNo(),
-                OperationLogService.ACTION_ROLLBACK, AuthContextHolder.currentDisplayName(),
+                OperationLogService.ACTION_SETTLE_VOID, AuthContextHolder.currentDisplayName(),
                 "作废结算单，原因：" + dto.getReason());
     }
 
@@ -478,12 +480,17 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private void applySettlementAmountView(SettleOrder settle, List<SettleDetail> details) {
+        applySettlementAmountView(settle, details, activeReceiveTotals(settle.getUuid()));
+    }
+
+    private void applySettlementAmountView(SettleOrder settle, List<SettleDetail> details,
+                                           SettleReceiveTotals receiveTotals) {
         SettleAmountSnapshotReader.Amounts amounts =
                 SettleAmountSnapshotReader.resolve(settle, details, objectMapper);
         settle.setAmountNoTax(amounts.noTax());
         settle.setTaxAmount(amounts.tax());
         settle.setTotalAmount(amounts.total());
-        applyReceiveState(settle, amounts.total(), activeReceiveTotals(settle.getUuid()));
+        applyReceiveState(settle, amounts.total(), receiveTotals);
     }
 
     private SettleOrder requireSettle(String uuid) {
@@ -498,18 +505,26 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (records.isEmpty()) {
             return;
         }
-        List<String> settleUuids = records.stream().map(SettleOrder::getUuid).toList();
-        List<SettleDetail> details = settleDetailMapper.selectList(new LambdaQueryWrapper<SettleDetail>()
-                .eq(SettleDetail::getIsDeleted, 0)
-                .in(SettleDetail::getSettleUuid, settleUuids));
-        Map<String, List<SettleDetail>> detailsBySettle = new LinkedHashMap<>();
-        for (SettleDetail detail : details) {
-            detailsBySettle.computeIfAbsent(detail.getSettleUuid(), k -> new ArrayList<>()).add(detail);
-        }
+        SettlePageDataLoader.PageData data = pageDataLoader.load(records);
         for (SettleOrder settle : records) {
-            List<SettleDetail> settleDetails = detailsBySettle.getOrDefault(settle.getUuid(), List.of());
-            applySettlementAmountView(settle, normalizeDetailsForInvoiceView(settle, settleDetails));
+            List<SettleDetail> details = data.detailsBySettle().getOrDefault(settle.getUuid(), List.of());
+            List<SettleDetail> normalized = normalizePageDetails(settle, details, data);
+            SettleReceiveTotals totals = data.receiveTotalsBySettle()
+                    .getOrDefault(settle.getUuid(), SettleReceiveTotals.zero());
+            applySettlementAmountView(settle, normalized, totals);
         }
+    }
+
+    private List<SettleDetail> normalizePageDetails(SettleOrder settle, List<SettleDetail> details,
+                                                    SettlePageDataLoader.PageData data) {
+        Customer customer = data.customerByUuid().get(settle.getCustomerUuid());
+        List<SettleDetail> normalized = new ArrayList<>(details.size());
+        for (SettleDetail detail : details) {
+            ProcessOrder order = data.orderByUuid().get(detail.getOrderUuid());
+            normalized.add(order == null ? detail
+                    : normalizedDetail(detail, order, settle.getIsInvoice(), customer));
+        }
+        return normalized;
     }
 
     private void refreshReceiveState(SettleOrder settle) {

@@ -4,8 +4,10 @@ import com.paper.mes.auth.dto.AuthUserVO;
 import com.paper.mes.auth.dto.ChangePasswordDTO;
 import com.paper.mes.auth.dto.LoginDTO;
 import com.paper.mes.auth.service.AuthService;
+import com.paper.mes.auth.service.AuthCookieService;
 import com.paper.mes.common.R;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,10 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthCookieService cookieService;
 
     @PostMapping("/login")
-    public R<AuthUserVO> login(@Valid @RequestBody LoginDTO dto) {
-        return R.success(authService.login(dto));
+    public R<AuthUserVO> login(@Valid @RequestBody LoginDTO dto, HttpServletResponse response) {
+        AuthUserVO user = authService.login(dto);
+        cookieService.write(response, user.getAccessToken());
+        return R.success(user);
     }
 
     @GetMapping("/me")
@@ -38,8 +43,9 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public R<Void> logout(HttpServletRequest request) {
+    public R<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(authService.resolveToken(request));
+        cookieService.clear(response);
         return R.success();
     }
 }

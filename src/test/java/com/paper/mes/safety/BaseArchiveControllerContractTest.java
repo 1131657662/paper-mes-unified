@@ -72,7 +72,7 @@ class BaseArchiveControllerContractTest {
         mvc.perform(post("/api/customers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(customerPayload()))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
 
         verify(customerService, never()).create(any());
@@ -86,7 +86,7 @@ class BaseArchiveControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(customerPayload())
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(403));
 
         verify(customerService, never()).create(any());

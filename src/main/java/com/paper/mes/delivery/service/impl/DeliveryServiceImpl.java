@@ -12,11 +12,13 @@ import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
 import com.paper.mes.common.PageResult;
+import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.service.CustomerService;
 import com.paper.mes.delivery.dto.AvailableFinishVO;
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
+import com.paper.mes.delivery.dto.DeliveryCancelDTO;
 import com.paper.mes.delivery.dto.DeliveryConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
 import com.paper.mes.delivery.dto.DeliveryDetailItemVO;
@@ -32,6 +34,7 @@ import com.paper.mes.delivery.service.DeliveryCashSettlementGuard;
 import com.paper.mes.delivery.service.DeliveryExportService;
 import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
 import com.paper.mes.delivery.service.DeliveryService;
+import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
 import com.paper.mes.machine.entity.Machine;
 import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.entity.OperationLog;
@@ -96,6 +99,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
     private final DeliveryDetailMapper deliveryDetailMapper;
     private final FinishRollMapper finishRollMapper;
+    private final AvailableFinishSourceLoader availableFinishSourceLoader;
     private final FinishOriginalRelMapper finishOriginalRelMapper;
     private final OriginalRollMapper originalRollMapper;
     private final ProcessOrderMapper processOrderMapper;
@@ -133,7 +137,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             wrapper.le(DeliveryOrder::getDeliveryDate, query.getDateTo());
         }
         wrapper.orderByDesc(DeliveryOrder::getCreateTime);
-        Page<DeliveryOrder> page = page(Page.of(query.getCurrent(), query.getSize()), wrapper);
+        Page<DeliveryOrder> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.of(page);
     }
 
@@ -169,6 +173,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         List<FinishRoll> finishes = finishRollMapper.selectList(
                 finishWrapper);
+        Map<String, List<AvailableFinishVO.SourceMotherRollVO>> sourcesByFinish =
+                availableFinishSourceLoader.load(finishes);
         List<AvailableFinishVO> list = new ArrayList<>(finishes.size());
         for (FinishRoll f : finishes) {
             BigDecimal availableWeight = DeliveryStockPolicy.availableWeight(f);
@@ -197,6 +203,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             vo.setIsRemain(f.getIsRemain());
             vo.setSourceType(f.getSourceType());
             vo.setFinishStatus(f.getFinishStatus());
+            vo.setOriginalRollNos(f.getOriginalRollNos());
+            vo.setSourceMotherRolls(sourcesByFinish.getOrDefault(f.getUuid(), List.of()));
             vo.setSettlementRisk(settlementRiskOrderUuids.contains(f.getOrderUuid()));
             list.add(vo);
         }
@@ -443,6 +451,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             if (processOrder == null || !order.getCustomerUuid().equals(processOrder.getCustomerUuid())) {
                 throw new BusinessException("成品不属于该出库单客户：" + finish.getFinishRollNo());
             }
+            if (!canDeliveryProcessOrder(processOrder)) {
+                throw new BusinessException("加工单非可出库状态：" + processOrder.getOrderNo());
+            }
             if (processOrder.getSettleType() != null && processOrder.getSettleType() == SETTLE_TYPE_CASH) {
                 cashOrderUuids.add(processOrder.getUuid());
             }
@@ -493,6 +504,28 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     /** 生成出库单号：由系统单号规则配置生成，唯一索引兜底防并发重复。 */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelPending(String uuid, DeliveryCancelDTO dto) {
+        businessLockService.lockDeliveryOrder(uuid);
+        DeliveryOrder order = requireOrder(uuid);
+        if (order.getDeliveryStatus() == null || order.getDeliveryStatus() != DELIVERY_STATUS_PENDING) {
+            throw new BusinessException("仅待出库单允许作废");
+        }
+        List<DeliveryDetail> details = deliveryDetails(uuid);
+        updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED);
+        int deletedDetails = deliveryDetailMapper.delete(new LambdaQueryWrapper<DeliveryDetail>()
+                .eq(DeliveryDetail::getDeliveryUuid, uuid));
+        if (deletedDetails != details.size()) {
+            throw new BusinessException(ErrorCode.E006);
+        }
+        String reason = dto.getReason().trim();
+        ConcurrencyGuard.requireUpdated(removeById(uuid));
+        operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
+                order.getUuid(), order.getDeliveryNo(), OperationLogService.ACTION_DELIVERY_CANCEL,
+                null, "作废待出库单：" + reason);
+    }
+
     private String nextDeliveryNo(LocalDate date) {
         return documentNoService.next(NoRuleBizType.DELIVERY_ORDER, date);
     }
@@ -1185,7 +1218,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         item.setProcessMode(roll.getProcessMode());
         item.setMainStepType(roll.getMainStepType());
         item.setMachineUuid(roll.getMachineUuid());
-        item.setMachineName(machineNameByUuid.get(roll.getMachineUuid()));
+        item.setMachineName(StringUtils.hasText(roll.getMachineUuid())
+                ? machineNameByUuid.get(roll.getMachineUuid()) : null);
         item.setOperator(roll.getOperator());
         item.setRemark(roll.getRemark());
         return item;

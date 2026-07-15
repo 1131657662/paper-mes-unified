@@ -4,6 +4,7 @@ import com.paper.mes.report.dto.ReportDetailVO;
 import com.paper.mes.report.dto.ReportDimensionVO;
 import com.paper.mes.report.dto.ReportOverviewVO;
 import com.paper.mes.report.dto.ReportQuery;
+import org.apache.ibatis.cursor.Cursor;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -20,5 +21,10 @@ public interface ReportMapper {
     List<ReportDimensionVO> dimensionSummary(@Param("q") ReportQuery q,
                                              @Param("dimension") String dimension);
 
-    List<ReportDetailVO> detailRows(@Param("q") ReportQuery q);
+    long detailCount(@Param("q") ReportQuery q);
+
+    List<ReportDetailVO> detailRows(@Param("q") ReportQuery q,
+                                    @Param("limit") int limit);
+
+    Cursor<ReportDetailVO> detailCursor(@Param("q") ReportQuery q);
 }

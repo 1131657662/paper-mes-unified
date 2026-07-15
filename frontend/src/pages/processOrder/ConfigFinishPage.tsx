@@ -1,403 +1,146 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button, Card, Checkbox, List, Space, Spin, Tag, Typography, message } from 'antd'
-import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons'
-import { getProcessOrder, saveFinishConfig } from '../../api/processOrder'
-import type { FinishConfigSaveDTO, OriginalRoll, ProcessOrderDetailVO } from '../../types/processOrder'
-import { PROCESS_MODE, STEP_TYPE } from '../../constants/processOrder'
-import FinishConfigPanel from '../../components/processOrder/FinishConfigPanel'
-import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
-
-const buildDefaultConfig = (roll: OriginalRoll): FinishConfigSaveDTO => {
-  const processMode = roll.processMode ?? 1
-  const mainStepType = roll.mainStepType
-  const originalWidth = roll.originalWidth ?? 500
-
-  if (mainStepType === 1) {
-    return {
-      processMode,
-      mainStepType,
-      knifeCount: 0,
-      spareCount: 0,
-      finishSpecs: [{ count: 1, finishWidth: processMode === 2 ? 0 : 400, estimateWeight: 0 }],
-    }
-  }
-
-  if (mainStepType === 2) {
-    return {
-      processMode,
-      mainStepType,
-      rewindMode: 1,
-      spareCount: 0,
-      finishSpecs: [
-        {
-          count: 1,
-          finishWidth: processMode === 2 ? 0 : originalWidth,
-          finishDiameter: 0,
-          finishCoreDiameter: 3,
-          estimateWeight: 0,
-          splitRatio: 100,
-        },
-      ],
-      rewindSegments: [
-        {
-          segmentSort: 1,
-          segmentRatio: 1,
-          targetDiameter: undefined,
-          finishCoreDiameter: 3,
-          repeatCount: 1,
-          sources: [{ originalUuid: roll.uuid, shareRatio: 100 }],
-          layoutItems: [{ width: originalWidth, quantity: 1, itemType: 'FINISH' }],
-        },
-      ],
-    }
-  }
-
-  return {
-    processMode,
-    mainStepType,
-    spareCount: 0,
-    finishSpecs: [],
-  }
-}
+import { Button, Space, Spin, message } from 'antd'
+import {
+  SaveOutlined,
+} from '@ant-design/icons'
+import { saveFinishConfig } from '../../api/processOrder'
+import MesPageHeader from '../../components/layout/MesPageHeader'
+import { useProcessOrderDetail } from '../../features/processOrderDetail/hooks/useProcessOrderDetail'
+import type { FinishConfigSaveDTO, OriginalRoll } from '../../types/processOrder'
+import ConfigFinishEditor from './ConfigFinishEditor'
+import ConfigFinishRollList from './ConfigFinishRollList'
+import {
+  buildDefaultConfig,
+  buildSavePlan,
+  configForRoll,
+  configuredFinishCounts,
+  mergedSourceRollUuids,
+  type ConfigFinishSavePlan,
+} from './configFinishModel'
+import { useConfigFinishSelection } from './useConfigFinishSelection'
+import './ConfigFinishPage.css'
 
 export default function ConfigFinishPage() {
   const { uuid } = useParams<{ uuid: string }>()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
-  const [detail, setDetail] = useState<ProcessOrderDetailVO | null>(null)
-  const [selectedRollIndex, setSelectedRollIndex] = useState(0)
-  const [selectedRollUuids, setSelectedRollUuids] = useState<string[]>([])
+  const { data: detail, isLoading, refetch } = useProcessOrderDetail(uuid)
   const [saving, setSaving] = useState(false)
-  const [currentConfig, setCurrentConfig] = useState<FinishConfigSaveDTO | null>(null)
-  const [configsByRollUuid, setConfigsByRollUuid] = useState<Record<string, FinishConfigSaveDTO>>({})
+  const rolls = detail?.originalRolls ?? []
+  const selection = useConfigFinishSelection(rolls)
+  const finishCounts = configuredFinishCounts(detail?.rollProductions ?? [])
+  const sourceOnlyUuids = mergedSourceRollUuids(detail?.rollProductions ?? [])
 
-  const fetchDetail = useCallback((resetConfigs = true) => {
-    if (!uuid) return
-    setLoading(true)
-    getProcessOrder(uuid)
-      .then((data) => {
-        setDetail(data)
-        if (resetConfigs) {
-          setSelectedRollIndex(0)
-          setCurrentConfig(null)
-          setConfigsByRollUuid({})
-        }
-      })
-      .finally(() => setLoading(false))
-  }, [uuid])
-
-  useEffect(() => {
-    if (uuid) {
-      fetchDetail()
-    }
-  }, [fetchDetail, uuid])
-
-  const originalRolls = detail?.originalRolls ?? []
-  const rollProductions = detail?.rollProductions ?? []
-  const rollProdByUuid = new Map(rollProductions.map((rp) => [rp.originalUuid, rp]))
-
-  const getFinishCount = (rollUuid: string) => {
-    const rp = rollProdByUuid.get(rollUuid)
-    return rp?.finishes?.length ?? 0
-  }
-
-  // 找出被其他原纸的 mode 5 合并复卷引用的来源原纸
-  const sourceOnlyUuids = new Set<string>()
-  for (const rp of rollProductions) {
-    if (rp.finishes) {
-      for (const finish of rp.finishes) {
-        if (finish.sources) {
-          for (const source of finish.sources) {
-            if (source.originalUuid && source.originalUuid !== rp.originalUuid) {
-              sourceOnlyUuids.add(source.originalUuid)
-            }
-          }
-        }
-      }
-    }
-  }
-
-  const currentRoll = originalRolls[selectedRollIndex]
-  const currentRollUuid = currentRoll?.uuid
-  const activeConfig = currentRollUuid ? currentConfig ?? configsByRollUuid[currentRollUuid] ?? null : null
-
-  const handleConfigChange = (config: FinishConfigSaveDTO) => {
-    if (!currentRollUuid) return
-    setCurrentConfig(config)
-    setConfigsByRollUuid((prev) => ({ ...prev, [currentRollUuid]: config }))
-  }
-
-  const selectRollIndex = (index: number) => {
-    const roll = originalRolls[index]
-    setSelectedRollIndex(index)
-    setCurrentConfig(roll ? configsByRollUuid[roll.uuid] ?? null : null)
-  }
-
-  const configForRoll = (roll: OriginalRoll) => {
-    const config = configsByRollUuid[roll.uuid] ?? buildDefaultConfig(roll)
-    return {
-      ...config,
-      processMode: roll.processMode ?? config.processMode,
-      mainStepType: roll.mainStepType ?? config.mainStepType,
-    }
-  }
-
-  const handlePrevRoll = () => {
-    if (selectedRollIndex > 0) {
-      selectRollIndex(selectedRollIndex - 1)
-    }
-  }
-
-  const handleNextRoll = () => {
-    if (selectedRollIndex < originalRolls.length - 1) {
-      selectRollIndex(selectedRollIndex + 1)
-    }
-  }
-
-  const handleRollSelect = (rollUuid: string, checked: boolean) => {
-    if (checked) {
-      setSelectedRollUuids([...selectedRollUuids, rollUuid])
-    } else {
-      setSelectedRollUuids(selectedRollUuids.filter((item) => item !== rollUuid))
-    }
-  }
-
-  const handleCopyToSelected = () => {
-    if (!currentRoll || selectedRollUuids.length === 0) {
-      message.warning('请先勾选要复制到的原纸')
-      return
-    }
-    const sourceConfig = activeConfig ?? buildDefaultConfig(currentRoll)
-    setConfigsByRollUuid((prev) => {
-      const next = { ...prev }
-      selectedRollUuids.forEach((rollUuid) => {
-        next[rollUuid] = sourceConfig
-      })
-      return next
-    })
-    message.success(`已复制配置到 ${selectedRollUuids.length} 个原纸`)
-  }
-
-  const saveCurrentRoll = async () => {
-    if (!uuid || !currentRoll) {
-      return null
-    }
-    return saveFinishConfig(uuid, currentRoll.uuid, configForRoll(currentRoll))
-  }
-
-  const handleSaveCurrent = async () => {
+  const saveCurrent = async () => {
+    if (!uuid || !selection.currentRoll) return
     setSaving(true)
     try {
-      const result = await saveCurrentRoll()
-      if (result) {
-        message.success(`保存成功，已生成 ${result.finishRollNos?.length ?? 0} 个正式成品号`)
-        fetchDetail(false)
-      }
+      const result = await saveFinishConfig(
+        uuid,
+        selection.currentRoll.uuid,
+        configForRoll(selection.currentRoll, selection.configs),
+      )
+      message.success(`保存成功，已生成 ${result.finishRollNos?.length ?? 0} 个正式成品号`)
+      await refetch()
     } finally {
       setSaving(false)
     }
   }
 
-  const handleSaveAll = async () => {
+  const saveAll = async () => {
     if (!uuid) return
+    const plan = buildSavePlan(rolls, finishCounts, sourceOnlyUuids)
+    if (plan.toSave.length === 0) return void message.info(emptyPlanMessage(plan))
     setSaving(true)
     try {
-      // 只保存用户配置过但尚未生成成品的原纸，跳过：
-      // 1. 已有成品的（已通过"保存当前"保存过）
-      // 2. 作为 mode 5 来源的原纸（材料已被合并消耗，无需单独配置）
-      // 3. 不加工直发的原纸
-      const toSave: OriginalRoll[] = []
-      const skippedConfigured: string[] = []
-      const skippedSource: string[] = []
-      for (const roll of originalRolls) {
-        if (roll.processMode === 3) continue // 直发
-        if (getFinishCount(roll.uuid) > 0) {
-          skippedConfigured.push(`原纸${originalRolls.indexOf(roll) + 1}`)
-          continue
-        }
-        if (sourceOnlyUuids.has(roll.uuid)) {
-          skippedSource.push(`原纸${originalRolls.indexOf(roll) + 1}`)
-          continue
-        }
-        toSave.push(roll)
-      }
-
-      if (toSave.length === 0) {
-        if (skippedConfigured.length > 0 || skippedSource.length > 0) {
-          const parts: string[] = []
-          if (skippedConfigured.length > 0) parts.push(`${skippedConfigured.join('、')} 已配置过`)
-          if (skippedSource.length > 0) parts.push(`${skippedSource.join('、')} 已作为合并来源`)
-          message.info(`无需保存：${parts.join('；')}`)
-        } else {
-          message.info('没有需要保存的原纸')
-        }
-        setSaving(false)
-        return
-      }
-
-      let finishCount = 0
-      for (const roll of toSave) {
-        const result = await saveFinishConfig(uuid, roll.uuid, configForRoll(roll))
-        finishCount += result.finishRollNos?.length ?? 0
-      }
-      const extra = []
-      if (skippedConfigured.length > 0) extra.push(`${skippedConfigured.join('、')} 已配置（跳过）`)
-      if (skippedSource.length > 0) extra.push(`${skippedSource.join('、')} 为合并来源（跳过）`)
-      message.success(`保存成功，新生成 ${finishCount} 个正式成品号${extra.length > 0 ? '；' + extra.join('；') : ''}`)
+      const finishCount = await saveRolls(uuid, plan.toSave, selection.configs)
+      message.success(`保存成功，新生成 ${finishCount} 个正式成品号${skipSuffix(plan)}`)
       navigate('/process-orders')
     } finally {
       setSaving(false)
     }
   }
 
-  const getProcessModeText = (mode?: number) => (mode ? PROCESS_MODE[mode] ?? '-' : '-')
-  const getStepTypeText = (type?: number) => (type ? STEP_TYPE[type] ?? '-' : '-')
+  const copyToChecked = () => {
+    if (!selection.currentRoll || selection.checkedUuids.length === 0) {
+      message.warning('请先勾选要复制到的母卷')
+      return
+    }
+    const config = configForRoll(selection.currentRoll, selection.configs)
+    selection.copyToChecked(config)
+    message.success(`已复制配置到 ${selection.checkedUuids.length} 个母卷`)
+  }
 
   return (
-    <div style={{ padding: 24 }}>
-      <Card
-        title={
-          <Space>
-            <Typography.Title level={4} style={{ margin: 0 }}>
-              成品规格配置
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              加工单：{detail?.order.orderNo} | 客户：{detail?.order.customerName}
-            </Typography.Text>
-          </Space>
-        }
-        extra={
-          <Space>
-            <Button onClick={() => navigate('/process-orders')}>取消</Button>
-            <Button type="primary" loading={saving} onClick={handleSaveAll}>
-              保存全部并完成
-            </Button>
-          </Space>
-        }
-      >
-        <Spin spinning={loading}>
-          <div style={{ display: 'flex', gap: 24, minHeight: 600 }}>
-            <div style={{ width: 280, borderRight: '1px solid #f0f0f0', paddingRight: 16 }}>
-              <div style={{ marginBottom: 12, padding: 8, background: '#fafafa', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text strong>
-                  原纸列表 ({originalRolls.length})
-                </Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  已配 {originalRolls.filter((r) => getFinishCount(r.uuid) > 0).length}/{originalRolls.length}
-                </Typography.Text>
-              </div>
-              <List
-                size="small"
-                dataSource={originalRolls}
-                renderItem={(roll, index) => {
-                  const finishCount = getFinishCount(roll.uuid)
-                  const isConfigured = finishCount > 0
-                  const isSourceOnly = !isConfigured && sourceOnlyUuids.has(roll.uuid)
-                  return (
-                  <List.Item
-                    key={roll.uuid}
-                    style={{
-                      cursor: 'pointer',
-                      padding: 12,
-                      background: selectedRollIndex === index ? '#e6f7ff' : isConfigured ? '#f6ffed' : 'transparent',
-                      borderRadius: 4,
-                      marginBottom: 4,
-                      border: selectedRollIndex === index ? '1px solid #1890ff' : isConfigured ? '1px solid #b7eb8f' : '1px solid #f0f0f0',
-                    }}
-                    onClick={() => {
-                      selectRollIndex(index)
-                    }}
-                  >
-                    <div style={{ width: '100%' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                        <Checkbox
-                          checked={selectedRollUuids.includes(roll.uuid)}
-                          onChange={(e) => handleRollSelect(roll.uuid, e.target.checked)}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{ marginRight: 8 }}
-                        />
-                        <Typography.Text strong>
-                          原纸{index + 1}
-                        </Typography.Text>
-                        {isConfigured && (
-                          <Tag color="success" style={{ marginLeft: 8, fontSize: 11 }}>已配 {finishCount}件</Tag>
-                        )}
-                        {isSourceOnly && (
-                          <Tag color="processing" style={{ marginLeft: 8, fontSize: 11 }}>已作为合并来源</Tag>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#666' }}>
-                        <div>{roll.paperName}</div>
-                        <div>
-                          {formatGram(roll.gramWeight)} | {formatMm(roll.originalWidth)}
-                        </div>
-                        <div>
-                          {formatKg(roll.rollWeight)} × {roll.pieceNum || 1}件
-                        </div>
-                        <div style={{ marginTop: 4 }}>
-                          <Typography.Text type="secondary">{getProcessModeText(roll.processMode)}</Typography.Text>
-                          {' / '}
-                          <Typography.Text type="secondary">{getStepTypeText(roll.mainStepType)}</Typography.Text>
-                        </div>
-                      </div>
-                    </div>
-                  </List.Item>
-                  )
-                }}
-              />
-              {selectedRollUuids.length > 0 && (
-                <div style={{ marginTop: 12 }}>
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    已选中 {selectedRollUuids.length} 项
-                  </Typography.Text>
-                </div>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              {currentRoll ? (
-                <FinishConfigPanel
-                  key={currentRoll.uuid}
-                  roll={currentRoll}
-                  originalRolls={originalRolls}
-                  order={detail!.order}
-                  config={activeConfig ?? buildDefaultConfig(currentRoll)}
-                  onCopyToSelected={handleCopyToSelected}
-                  selectedCount={selectedRollUuids.length}
-                  onConfigChange={handleConfigChange}
-                  onSaveCurrent={handleSaveCurrent}
-                />
-              ) : (
-                <div style={{ textAlign: 'center', padding: 48, color: '#999' }}>
-                  请选择原纸进行配置
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div
-            style={{
-              marginTop: 24,
-              paddingTop: 16,
-              borderTop: '1px solid #f0f0f0',
-              display: 'flex',
-              justifyContent: 'space-between',
+    <div className="config-finish-page">
+      <MesPageHeader
+        actions={<HeaderActions saving={saving} onCancel={() => navigate('/process-orders')} onSaveAll={saveAll} />}
+        description={`加工单：${detail?.order.orderNo ?? '-'} · 客户：${detail?.order.customerName ?? '-'}`}
+        title="成品规格配置"
+      />
+      <Spin spinning={isLoading}>
+        <div className="config-finish-workspace">
+          <ConfigFinishRollList
+            onSelect={selection.selectIndex}
+            onToggle={selection.toggleChecked}
+            rolls={rolls}
+            selection={{ checkedUuids: selection.checkedUuids, selectedIndex: selection.selectedIndex }}
+            status={{ finishCounts, sourceOnlyUuids }}
+          />
+          <ConfigFinishEditor
+            actions={{
+              onConfigChange: selection.updateCurrentConfig,
+              onCopy: copyToChecked,
+              onNext: () => selection.selectIndex(selection.selectedIndex + 1),
+              onPrevious: () => selection.selectIndex(selection.selectedIndex - 1),
+              onSave: saveCurrent,
             }}
-          >
-            <Button icon={<ArrowLeftOutlined />} onClick={handlePrevRoll} disabled={selectedRollIndex === 0}>
-              上一个原纸
-            </Button>
-            <Button
-              icon={<ArrowRightOutlined />}
-              onClick={handleNextRoll}
-              disabled={selectedRollIndex >= originalRolls.length - 1}
-            >
-              下一个原纸
-            </Button>
-          </div>
-        </Spin>
-      </Card>
+            detail={detail}
+            state={{
+              checkedCount: selection.checkedUuids.length,
+              config: selection.currentRoll ? selection.configs[selection.currentRoll.uuid] ?? buildDefaultConfig(selection.currentRoll) : undefined,
+              currentRoll: selection.currentRoll,
+              saving,
+              selectedIndex: selection.selectedIndex,
+            }}
+          />
+        </div>
+      </Spin>
     </div>
   )
+}
+
+function HeaderActions(props: { saving: boolean; onCancel: () => void; onSaveAll: () => void }) {
+  return (
+    <Space>
+      <Button onClick={props.onCancel}>取消</Button>
+      <Button icon={<SaveOutlined />} loading={props.saving} type="primary" onClick={props.onSaveAll}>保存全部并完成</Button>
+    </Space>
+  )
+}
+
+async function saveRolls(uuid: string, rolls: OriginalRoll[], configs: Record<string, FinishConfigSaveDTO>) {
+  let count = 0
+  for (const roll of rolls) {
+    const result = await saveFinishConfig(uuid, roll.uuid, configForRoll(roll, configs))
+    count += result.finishRollNos?.length ?? 0
+  }
+  return count
+}
+
+function emptyPlanMessage(plan: ConfigFinishSavePlan) {
+  const parts = skipParts(plan)
+  return parts.length ? `无需保存：${parts.join('；')}` : '没有需要保存的母卷'
+}
+
+function skipSuffix(plan: ConfigFinishSavePlan) {
+  const parts = skipParts(plan)
+  return parts.length ? `；${parts.join('；')}` : ''
+}
+
+function skipParts(plan: ConfigFinishSavePlan) {
+  const parts: string[] = []
+  if (plan.skippedConfigured.length) parts.push(`${plan.skippedConfigured.join('、')} 已配置（跳过）`)
+  if (plan.skippedSources.length) parts.push(`${plan.skippedSources.join('、')} 为合并来源（跳过）`)
+  return parts
 }

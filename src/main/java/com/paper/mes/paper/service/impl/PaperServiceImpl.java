@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
+import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.paper.dto.PaperQuery;
 import com.paper.mes.paper.dto.PaperSaveDTO;
 import com.paper.mes.paper.entity.Paper;
@@ -36,7 +37,7 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
                     .or().like(Paper::getPaperName, kw));
         }
         wrapper.orderByDesc(Paper::getCreateTime);
-        Page<Paper> page = page(Page.of(query.getCurrent(), query.getSize()), wrapper);
+        Page<Paper> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.of(page);
     }
 

@@ -1,0 +1,189 @@
+:root {
+  --mes-color-surface-subtle: #fbfcfd;
+  --mes-color-surface-selected: #f1f7ff;
+  --mes-color-border-subtle: #edf1f5;
+  --mes-shadow-panel: 0 2px 8px rgb(15 23 42 / 4%);
+  --mes-shadow-emphasis: 0 8px 22px rgb(15 23 42 / 5%);
+}
+
+/* Desktop MES data should remain readable without loosening table density. */
+.app-shell__content .ant-table {
+  color: var(--mes-color-text);
+  font-size: 13px;
+}
+
+.app-shell__content .ant-table-thead > tr > th {
+  color: var(--mes-color-text-secondary);
+  font-size: 13px;
+}
+
+.app-shell__content .ant-table-cell [style*='font-size: 10px'],
+.app-shell__content .ant-table-cell [style*='font-size: 11px'] {
+  font-size: 12px !important;
+}
+
+.app-shell__content .ant-statistic-content,
+.app-shell__content .ant-table-cell,
+.app-shell__content .ant-input-number-input,
+.app-shell__content .mes-metric strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell__content .ant-form-item-label > label,
+.app-shell__content .ant-descriptions-item-label {
+  color: var(--mes-color-text-secondary);
+}
+
+.app-shell__content .ant-table-tbody > tr > td {
+  border-bottom-color: var(--mes-color-border-subtle);
+}
+
+.app-shell__content .ant-table-tbody > tr:hover > td {
+  background: var(--mes-color-surface-subtle);
+}
+
+.app-shell__content .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: var(--mes-color-surface-selected);
+}
+
+/* Keep list filters and results visually connected as one work surface. */
+.mes-pro-table-page > .ant-pro-table-search {
+  border-color: var(--mes-color-border-subtle);
+  background: var(--mes-color-soft);
+  box-shadow: none;
+}
+
+.mes-pro-table-page > .ant-pro-table-search .ant-form-item-label > label {
+  color: var(--mes-color-text-secondary);
+  font-size: 13px;
+}
+
+.mes-pro-table-page .ant-pro-table-list-toolbar-container {
+  border-bottom-color: var(--mes-color-border-subtle);
+}
+
+.app-shell__content .ant-table-cell-fix-right-first {
+  border-left: 1px solid var(--mes-color-border-subtle);
+}
+
+.app-shell__content .ant-table-tbody > tr.ant-table-row-selected > td:first-child,
+.app-shell__content .document-table-row--selected > td:first-child,
+.app-shell__content .process-order-list__row--selected > td:first-child {
+  box-shadow: inset 3px 0 0 var(--mes-color-primary);
+}
+
+.mes-table-actions .ant-btn {
+  color: var(--mes-color-primary);
+  font-weight: 500;
+}
+
+.mes-table-actions .ant-btn:hover {
+  color: var(--mes-color-primary-hover);
+}
+
+.mes-table-actions .ant-btn-dangerous,
+.mes-table-actions .ant-btn-dangerous:hover {
+  color: var(--mes-color-danger);
+}
+
+.mes-pro-table-page .ant-table-pagination.ant-pagination,
+.mes-pagination,
+.mes-inline-pagination-table .ant-table-pagination.ant-pagination {
+  background: var(--mes-color-surface-subtle);
+}
+
+/* Metrics carry emphasis; ordinary dashboard sections stay quiet and scannable. */
+.dashboard-page {
+  --dashboard-text: var(--mes-color-text);
+  --dashboard-muted: var(--mes-color-text-muted);
+  --dashboard-line: var(--mes-color-border-subtle);
+  --dashboard-soft: var(--mes-color-soft);
+}
+
+.dashboard-header {
+  border-color: var(--mes-color-border);
+  box-shadow: var(--mes-shadow-panel);
+}
+
+.dashboard-metric {
+  border-color: var(--mes-color-border);
+  box-shadow: var(--mes-shadow-emphasis);
+}
+
+.dashboard-panel {
+  border-color: var(--mes-color-border-subtle);
+  box-shadow: none;
+}
+
+.dashboard-panel:hover {
+  border-color: var(--mes-color-border);
+}
+
+.dashboard-panel__head {
+  border-bottom-color: var(--mes-color-border-subtle);
+}
+
+.dashboard-header__main p,
+.dashboard-header__fact span,
+.dashboard-panel__head p,
+.dashboard-metric .ant-statistic-title,
+.dashboard-metric .ant-pro-card-statistic-description,
+.dashboard-metric__footer {
+  font-size: 12px;
+}
+
+.dashboard-trend__point-label,
+.dashboard-trend__month-axis,
+.dashboard-rank-row__label span,
+.dashboard-order-row__meta {
+  font-size: 12px;
+}
+
+/* Detail and form pages share one quiet document hierarchy. */
+.mes-page-header {
+  border-color: var(--mes-color-border);
+  border-left-color: var(--mes-color-primary);
+  box-shadow: var(--mes-shadow-panel);
+}
+
+.document-module-card,
+.mes-form-page__steps {
+  border-color: var(--mes-color-border);
+  box-shadow: none;
+}
+
+.document-module-card .ant-card-head,
+.mes-form-page__steps .ant-card-head {
+  min-height: 44px;
+  border-bottom-color: var(--mes-color-border-subtle);
+}
+
+.document-module-card .ant-card-head-title,
+.mes-form-page__steps .ant-card-head-title {
+  color: var(--mes-color-text);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.app-shell__content .ant-descriptions-item-label {
+  color: var(--mes-color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.app-shell__content .ant-descriptions-item-content {
+  color: var(--mes-color-text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell__content .ant-divider-horizontal.ant-divider-with-text {
+  margin-block: 16px;
+  color: var(--mes-color-text);
+  font-size: 14px;
+}
+
+.app-shell__content .ant-divider-horizontal::before,
+.app-shell__content .ant-divider-horizontal::after {
+  border-block-start-color: var(--mes-color-border-subtle);
+}

@@ -40,6 +40,9 @@ CREATE TABLE `sys_customer` (
   `export_template`   VARCHAR(50)   DEFAULT NULL            COMMENT '客户Excel导入导出模板标识',
   `remark`            VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
   `is_deleted`        TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `customer_code_active` VARCHAR(50)
+    GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN NULLIF(TRIM(`customer_code`), '') ELSE NULL END)
+    STORED COMMENT '启用客户唯一编码',
   `create_by`         VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
   `update_by`         VARCHAR(50)   DEFAULT NULL            COMMENT '更新人',
   `create_time`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -52,6 +55,7 @@ CREATE TABLE `sys_customer` (
   PRIMARY KEY (`uuid`),
   KEY `idx_customer_code` (`customer_code`),
   KEY `idx_customer_name` (`customer_name`),
+  UNIQUE KEY `uk_sys_customer_active_code` (`customer_code_active`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户档案表';
 
@@ -67,6 +71,9 @@ CREATE TABLE `sys_paper` (
   `paper_type`   VARCHAR(50)  DEFAULT NULL            COMMENT '纸张类型',
   `remark`       VARCHAR(255) DEFAULT NULL            COMMENT '备注',
   `is_deleted`   TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `paper_code_active` VARCHAR(50)
+    GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN NULLIF(TRIM(`paper_code`), '') ELSE NULL END)
+    STORED COMMENT '启用纸张唯一编码',
   `create_by`    VARCHAR(50)  DEFAULT NULL            COMMENT '创建人',
   `update_by`    VARCHAR(50)  DEFAULT NULL            COMMENT '更新人',
   `create_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -77,6 +84,7 @@ CREATE TABLE `sys_paper` (
   `ext_num1`     DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值1',
   `ext_num2`     DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_sys_paper_active_code` (`paper_code_active`),
   KEY `idx_paper_name` (`paper_name`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='纸张档案表';
@@ -93,6 +101,9 @@ CREATE TABLE `sys_machine` (
   `status`        TINYINT      NOT NULL DEFAULT 1      COMMENT '1启用 2停用',
   `remark`        VARCHAR(255) DEFAULT NULL            COMMENT '备注',
   `is_deleted`    TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `machine_code_active` VARCHAR(50)
+    GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN NULLIF(TRIM(`machine_code`), '') ELSE NULL END)
+    STORED COMMENT '启用机台唯一编码',
   `create_by`     VARCHAR(50)  DEFAULT NULL            COMMENT '创建人',
   `update_by`     VARCHAR(50)  DEFAULT NULL            COMMENT '更新人',
   `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -103,6 +114,7 @@ CREATE TABLE `sys_machine` (
   `ext_num1`      DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值1',
   `ext_num2`      DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_sys_machine_active_code` (`machine_code_active`),
   KEY `idx_machine_name` (`machine_name`),
   KEY `idx_status` (`status`),
   KEY `idx_is_deleted` (`is_deleted`)
@@ -120,6 +132,9 @@ CREATE TABLE `sys_warehouse` (
   `status`          TINYINT      NOT NULL DEFAULT 1      COMMENT '1启用 2停用',
   `remark`          VARCHAR(255) DEFAULT NULL            COMMENT '备注',
   `is_deleted`      TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `warehouse_code_active` VARCHAR(50)
+    GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN NULLIF(TRIM(`warehouse_code`), '') ELSE NULL END)
+    STORED COMMENT '启用仓库唯一编码',
   `create_by`       VARCHAR(50)  DEFAULT NULL            COMMENT '创建人',
   `update_by`       VARCHAR(50)  DEFAULT NULL            COMMENT '更新人',
   `create_time`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -130,6 +145,7 @@ CREATE TABLE `sys_warehouse` (
   `ext_num1`        DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值1',
   `ext_num2`        DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_sys_warehouse_active_code` (`warehouse_code_active`),
   KEY `idx_warehouse_name` (`warehouse_name`),
   KEY `idx_status` (`status`),
   KEY `idx_is_deleted` (`is_deleted`)
@@ -206,6 +222,7 @@ CREATE TABLE `biz_process_order` (
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `uk_order_no` (`order_no`),
   KEY `idx_customer_uuid` (`customer_uuid`),
+  KEY `idx_customer_deleted_ctime` (`customer_uuid`, `is_deleted`, `create_time`),
   KEY `idx_order_status` (`order_status`),
   KEY `idx_order_date` (`order_date`),
   KEY `idx_is_deleted` (`is_deleted`)
@@ -743,7 +760,7 @@ CREATE TABLE `sys_operation_log` (
   `new_value`    TEXT          DEFAULT NULL            COMMENT '修改后值',
   `operator`     VARCHAR(50)   NOT NULL                COMMENT '操作人',
   `operate_time` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
-  `remark`       VARCHAR(255)  DEFAULT NULL            COMMENT '备注（如补打原因、超差放行原因）',
+  `remark`       TEXT          DEFAULT NULL            COMMENT '备注（如补打原因、超差放行原因）',
   `is_deleted`   TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
   `create_by`    VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
   `update_by`    VARCHAR(50)   DEFAULT NULL            COMMENT '更新人',
@@ -861,10 +878,162 @@ VALUES
 ('no-rule-machine', 'machine', '机台编码', 'JT', 2, 'yyyyMMdd', 6, 0, 1, '默认机台编码：JT+6位全局流水'),
 ('no-rule-warehouse', 'warehouse', '仓库编码', 'CKD', 2, 'yyyyMMdd', 6, 0, 1, '默认仓库编码：CKD+6位全局流水');
 
+-- -----------------------------------------------------------------------------
+-- 当前版本补充表：工艺草稿、卷号序列、系统配置、备份任务和站内通知
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `biz_process_config_draft`;
+CREATE TABLE `biz_process_config_draft` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `order_uuid` VARCHAR(36) NOT NULL,
+  `original_uuid` VARCHAR(36) NOT NULL,
+  `process_mode` TINYINT NOT NULL,
+  `main_step_type` TINYINT DEFAULT NULL,
+  `config_json` JSON NOT NULL,
+  `preview_json` JSON DEFAULT NULL,
+  `config_status` TINYINT NOT NULL DEFAULT 0,
+  `last_error` VARCHAR(500) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(64) DEFAULT NULL,
+  `update_by` VARCHAR(64) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(18,6) DEFAULT NULL,
+  `ext_num2` DECIMAL(18,6) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_config_draft_roll` (`order_uuid`, `original_uuid`, `is_deleted`),
+  KEY `idx_config_draft_order_status` (`order_uuid`, `config_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单单卷工艺配置草稿';
+
+DROP TABLE IF EXISTS `sys_roll_no_sequence`;
+CREATE TABLE `sys_roll_no_sequence` (
+  `sequence_key` VARCHAR(50) NOT NULL,
+  `current_value` BIGINT NOT NULL DEFAULT 0,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`sequence_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='全局卷号序列表';
+
+DROP TABLE IF EXISTS `sys_dict_item`;
+CREATE TABLE `sys_dict_item` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `dict_type` VARCHAR(50) NOT NULL,
+  `dict_name` VARCHAR(80) NOT NULL,
+  `item_code` VARCHAR(50) NOT NULL,
+  `item_name` VARCHAR(80) NOT NULL,
+  `item_value` INT DEFAULT NULL,
+  `sort_no` INT NOT NULL DEFAULT 100,
+  `status` TINYINT NOT NULL DEFAULT 1,
+  `built_in` TINYINT NOT NULL DEFAULT 0,
+  `remark` VARCHAR(255) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_sys_dict_item_code` (`dict_type`, `item_code`, `is_deleted`),
+  KEY `idx_sys_dict_item_type` (`dict_type`),
+  KEY `idx_sys_dict_item_status` (`status`),
+  KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统数据字典项';
+
+DROP TABLE IF EXISTS `sys_config_item`;
+CREATE TABLE `sys_config_item` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `config_group` VARCHAR(50) NOT NULL,
+  `config_key` VARCHAR(80) NOT NULL,
+  `config_name` VARCHAR(80) NOT NULL,
+  `config_value` VARCHAR(255) NOT NULL,
+  `value_type` VARCHAR(20) NOT NULL DEFAULT 'string',
+  `unit` VARCHAR(20) DEFAULT NULL,
+  `sort_no` INT NOT NULL DEFAULT 100,
+  `status` TINYINT NOT NULL DEFAULT 1,
+  `built_in` TINYINT NOT NULL DEFAULT 0,
+  `remark` VARCHAR(255) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_sys_config_key` (`config_key`, `is_deleted`),
+  KEY `idx_sys_config_group` (`config_group`),
+  KEY `idx_sys_config_status` (`status`),
+  KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统参数配置';
+
+DROP TABLE IF EXISTS `sys_backup_task`;
+CREATE TABLE `sys_backup_task` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `task_type` VARCHAR(20) NOT NULL,
+  `backup_id` VARCHAR(15) DEFAULT NULL,
+  `task_status` VARCHAR(20) NOT NULL,
+  `started_at` DATETIME NOT NULL,
+  `finished_at` DATETIME DEFAULT NULL,
+  `duration_ms` BIGINT DEFAULT NULL,
+  `operator` VARCHAR(50) NOT NULL,
+  `message` VARCHAR(255) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  KEY `idx_backup_task_started` (`started_at`),
+  KEY `idx_backup_task_status` (`task_status`, `started_at`),
+  KEY `idx_backup_task_backup` (`backup_id`),
+  KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='备份与恢复演练任务记录';
+
+DROP TABLE IF EXISTS `sys_notification`;
+CREATE TABLE `sys_notification` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `recipient_uuid` VARCHAR(36) NOT NULL,
+  `notification_type` VARCHAR(30) NOT NULL,
+  `severity` VARCHAR(10) NOT NULL,
+  `title` VARCHAR(100) NOT NULL,
+  `content` VARCHAR(500) NOT NULL,
+  `source_type` VARCHAR(30) NOT NULL,
+  `source_uuid` VARCHAR(36) NOT NULL,
+  `read_at` DATETIME DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_notification_source` (`recipient_uuid`, `notification_type`, `source_uuid`),
+  KEY `idx_notification_recipient_time` (`recipient_uuid`, `create_time`),
+  KEY `idx_notification_recipient_read` (`recipient_uuid`, `read_at`),
+  KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统站内通知';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================
--- 建表脚本结束  共 18 张表
+-- 建表脚本结束  共 27 张表
 --   基础档案 4: sys_customer / sys_paper / sys_machine / sys_warehouse
 --   加工核心 8: biz_process_order / biz_original_roll / biz_process_step /
 --               biz_process_stage_output / biz_process_stage_input_rel /
@@ -872,5 +1041,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 --               biz_finish_original_rel
 --   出库     2: biz_delivery_order / biz_delivery_detail
 --   结算收款 3: biz_settle_order / biz_settle_detail / biz_receive_record
---   系统辅助 4: sys_operation_log / sys_user / sys_user_session / sys_no_rule
+--   工艺草稿 2: biz_process_config_draft / sys_roll_no_sequence
+--   系统辅助 8: sys_operation_log / sys_user / sys_user_session / sys_no_rule /
+--               sys_dict_item / sys_config_item / sys_backup_task / sys_notification
 -- =============================================================================

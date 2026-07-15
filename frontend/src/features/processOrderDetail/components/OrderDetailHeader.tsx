@@ -2,7 +2,7 @@ import { Button, Tag } from 'antd'
 import { DownloadOutlined } from '@ant-design/icons'
 import MesPageHeader from '../../../components/layout/MesPageHeader'
 import type { ProcessOrder } from '../../../types/processOrder'
-import { IS_INVOICE, ORDER_STATUS, PRIORITY } from '../../../constants/processOrder'
+import { ORDER_STATUS, PRIORITY } from '../../../constants/processOrder'
 import { dict } from '../../../components/processOrder/shared/detailHelpers'
 
 interface Props {
@@ -20,7 +20,6 @@ export default function OrderDetailHeader({ exporting, order, onBack, onExport }
     <MesPageHeader
       actions={(
         <Button
-          type="primary"
           aria-label="导出加工单资料"
           icon={<DownloadOutlined />}
           loading={exporting}
@@ -46,7 +45,6 @@ export default function OrderDetailHeader({ exporting, order, onBack, onExport }
           <span>制单：{order?.orderDate ?? '-'}</span>
           <span>期望：{order?.expectFinishDate ?? '-'}</span>
           <span>优先级：{dict(PRIORITY, order?.priority)}</span>
-          <span>开票：{dict(IS_INVOICE, order?.isInvoice)}</span>
         </span>
       )}
     />

@@ -24,7 +24,7 @@ import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/system/no-rules")
-@RequirePermission(Permissions.USER_MANAGE)
+@RequirePermission(Permissions.SYSTEM_CONFIG)
 @RequiredArgsConstructor
 public class SystemNoRuleController {
 

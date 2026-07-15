@@ -5,7 +5,7 @@
   margin-bottom: 16px;
   padding: 16px;
   border: 1px solid #b7eb8f;
-  border-radius: 8px;
+  border-radius: var(--mes-radius);
   background: #f6ffed;
 }
 
@@ -40,7 +40,7 @@
   min-width: 0;
   padding: 10px 12px;
   border: 1px solid #d9f7be;
-  border-radius: 6px;
+  border-radius: var(--mes-radius-sm);
   background: #fff;
 }
 
@@ -54,7 +54,7 @@
   min-width: 0;
   padding: 12px;
   border: 1px solid #d9f7be;
-  border-radius: 6px;
+  border-radius: var(--mes-radius-sm);
   background: #fff;
 }
 

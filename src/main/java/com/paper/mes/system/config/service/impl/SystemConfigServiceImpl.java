@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
+import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.system.config.dto.ConfigItemQuery;
 import com.paper.mes.system.config.dto.ConfigItemSaveDTO;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
@@ -34,7 +36,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
 
     @Override
     public PageResult<SysConfigItem> page(ConfigItemQuery query) {
-        Page<SysConfigItem> page = page(Page.of(query.getCurrent(), query.getSize()), buildWrapper(query));
+        Page<SysConfigItem> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), buildWrapper(query));
         return PageResult.of(page);
     }
 
@@ -69,6 +71,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
     public String create(ConfigItemSaveDTO dto) {
         ensureStatus(dto.getStatus());
         ensureValueType(dto.getValueType());
+        ensureConfigValue(dto.getConfigValue(), dto.getValueType());
         ensureUnique(dto.getConfigKey(), null);
         SysConfigItem item = new SysConfigItem();
         applyDto(item, dto);
@@ -83,6 +86,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
     public void update(String uuid, ConfigItemSaveDTO dto) {
         ensureStatus(dto.getStatus());
         ensureValueType(dto.getValueType());
+        ensureConfigValue(dto.getConfigValue(), dto.getValueType());
         SysConfigItem item = getByUuid(uuid);
         ensureUnique(dto.getConfigKey(), uuid);
         Integer version = item.getVersion();
@@ -158,6 +162,28 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
     private void ensureValueType(String valueType) {
         if (!StringUtils.hasText(valueType) || !VALUE_TYPES.contains(valueType.trim())) {
             throw new BusinessException("参数值类型不正确");
+        }
+    }
+
+    private void ensureConfigValue(String configValue, String valueType) {
+        if (!StringUtils.hasText(configValue)) {
+            throw new BusinessException("参数值不能为空");
+        }
+        String value = configValue.trim();
+        String type = valueType.trim();
+        if ("number".equals(type)) {
+            ensureNumberValue(value);
+        }
+        if ("boolean".equals(type) && !"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
+            throw new BusinessException("布尔参数值只能填写 true 或 false");
+        }
+    }
+
+    private void ensureNumberValue(String value) {
+        try {
+            new BigDecimal(value);
+        } catch (NumberFormatException exception) {
+            throw new BusinessException("数字参数值格式不正确");
         }
     }
 

@@ -75,8 +75,9 @@ export default function ReportTrendPanel({ monthly }: Props) {
 }
 
 function buildDots(values: number[], max: number) {
-  if (values.length === 1) {
-    return [{ x: 50, y: pointY(values[0], max) }]
+  const first = values[0]
+  if (values.length === 1 && first != null) {
+    return [{ x: 50, y: pointY(first, max) }]
   }
   return values.map((value, index) => ({
     x: (index / (values.length - 1)) * 100,
@@ -85,8 +86,9 @@ function buildDots(values: number[], max: number) {
 }
 
 function buildPath(values: number[], max: number) {
-  if (values.length === 1) {
-    const y = pointY(values[0], max)
+  const first = values[0]
+  if (values.length === 1 && first != null) {
+    const y = pointY(first, max)
     return `M 0 ${y} L 100 ${y}`
   }
   return values

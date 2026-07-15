@@ -262,12 +262,31 @@
   margin-bottom: 14px;
 }
 
+.ant-modal {
+  top: 24px;
+  padding-bottom: 24px;
+}
+
 .ant-modal .ant-modal-title {
   color: var(--mes-color-text);
   font-weight: 650;
 }
 
+.ant-modal .ant-modal-content {
+  display: flex;
+  max-height: calc(100vh - 48px);
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ant-modal .ant-modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 .ant-modal .ant-modal-footer {
+  flex: 0 0 auto;
   margin-top: 16px;
 }
 

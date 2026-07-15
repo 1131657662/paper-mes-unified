@@ -8,14 +8,15 @@ interface Props {
   editing: boolean
   form: FormInstance<UserSaveDTO>
   onFinish?: (values: UserSaveDTO) => void
+  onValuesChange?: () => void
 }
 
 const userFormDefaults: Partial<UserSaveDTO> = {
-  roleCode: 'operator',
+  roleCode: 'order_clerk',
   status: 1,
 }
 
-export default function UserProfileForm({ editing, form, onFinish }: Props) {
+export default function UserProfileForm({ editing, form, onFinish, onValuesChange }: Props) {
   return (
     <Form
       className="mes-modal-form user-profile-form"
@@ -23,6 +24,7 @@ export default function UserProfileForm({ editing, form, onFinish }: Props) {
       initialValues={userFormDefaults}
       layout="vertical"
       onFinish={onFinish}
+      onValuesChange={onValuesChange}
     >
       <section className="user-profile-form__section">
         <h3>账号信息</h3>

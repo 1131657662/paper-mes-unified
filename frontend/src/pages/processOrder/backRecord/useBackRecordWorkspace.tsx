@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Form, message } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import type { ProcessStepDTO } from '../../../api/processOrder'
@@ -15,8 +15,12 @@ import {
   initialBackRecordValues,
   type BackRecordAuthorization,
   type BackRecordFormValues,
+  type BackRecordVarianceConfirmation,
 } from './backRecordUtils'
 import { showBackRecordResult } from './backRecordResultModal'
+import { buildInitialOnSiteOutputGroups } from './backRecordOnSiteOutputModel'
+import { buildBackRecordWorkbench } from './backRecordWorkbenchUtils'
+import { useBackRecordDisplayValues } from './useBackRecordDisplayValues'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 
 interface Params {
@@ -30,7 +34,9 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
   const navigate = useNavigate()
   const [form] = Form.useForm<BackRecordFormValues>()
   const [authForm] = Form.useForm<BackRecordAuthorization>()
+  const [varianceForm] = Form.useForm<BackRecordVarianceConfirmation>()
   const [authOpen, setAuthOpen] = useState(false)
+  const [varianceOpen, setVarianceOpen] = useState(false)
   const [changeOpen, setChangeOpen] = useState(false)
   const [changeItem, setChangeItem] = useState<BackRecordWorkItem | null>(null)
   const [stepFormOpen, setStepFormOpen] = useState(false)
@@ -39,32 +45,39 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
   const addStepMutation = useAddProcessStep()
   const changeStatusMutation = useChangeOrderStatus()
   const rollbackDraftMutation = useRollbackProcessOrderToDraft()
-  const values = useBackRecordFormValues(form)
   const [filledValues, setFilledValues] = useState<BackRecordFormValues>({})
-  const displayValues = mergeBackRecordValues(values, filledValues)
+  const initializedOrderRef = useRef<string | null>(null)
+  const displayValues = useBackRecordDisplayValues(form, filledValues)
 
   useEffect(() => {
-    if (enabled && detailQuery.data) {
+    const detailUuid = detailQuery.data?.order.uuid
+    if (enabled && detailQuery.data && initializedOrderRef.current !== detailUuid) {
       const initialValues = initialBackRecordValues(detailQuery.data)
+      const workbench = buildBackRecordWorkbench(detailQuery.data)
+      initialValues.onSiteOutputs = buildInitialOnSiteOutputGroups(detailQuery.data, workbench.items)
       form.setFieldsValue(initialValues)
       setFilledValues(initialValues)
+      initializedOrderRef.current = detailUuid ?? null
     }
     if (!enabled) {
+      initializedOrderRef.current = null
       form.resetFields()
       setFilledValues({})
       authForm.resetFields()
+      varianceForm.resetFields()
       setAuthOpen(false)
+      setVarianceOpen(false)
       setChangeOpen(false)
       setChangeItem(null)
       setStepFormOpen(false)
     }
-  }, [enabled, detailQuery.data, form, authForm])
+  }, [enabled, detailQuery.data, form, authForm, varianceForm])
 
-  const submit = async (authorization?: BackRecordAuthorization) => {
+  const submit = async (authorization?: BackRecordAuthorization, variance?: BackRecordVarianceConfirmation) => {
     if (!detailQuery.data) return
     await form.validateFields()
     const formValues = form.getFieldsValue(true) as BackRecordFormValues
-    const payload = buildBackRecordDTO(detailQuery.data, formValues, authorization)
+    const payload = buildBackRecordDTO(detailQuery.data, formValues, authorization, variance)
     await submitPayload(payload)
   }
 
@@ -83,6 +96,7 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
   const handleSubmitError = async (error: unknown) => {
     const bizError = error as BizError
     if (bizError.errorCode === 'E005') return setAuthOpen(true)
+    if (bizError.errorCode === 'E007') return setVarianceOpen(true)
     if (bizError.errorCode === 'E006') {
       await detailQuery.refetch()
       return
@@ -96,6 +110,12 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
     await submit(authorization)
   }
 
+  const submitVariance = async () => {
+    const variance = await varianceForm.validateFields()
+    setVarianceOpen(false)
+    await submit(undefined, variance)
+  }
+
   const openChangeGuide = (item: BackRecordWorkItem | null) => {
     setChangeItem(item)
     setChangeOpen(true)
@@ -107,6 +127,7 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
     message.success('追加工序已记录，计费已重算')
     setStepFormOpen(false)
     setChangeOpen(false)
+    initializedOrderRef.current = null
     await detailQuery.refetch()
   }
 
@@ -156,6 +177,8 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
     modals: <BackRecordWorkspaceModals
         authForm={authForm}
         authOpen={authOpen}
+        varianceForm={varianceForm}
+        varianceOpen={varianceOpen}
         changeItem={changeItem}
         changeOpen={changeOpen}
         detail={detailQuery.data ?? null}
@@ -163,37 +186,19 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
         rollingBack={changeStatusMutation.isPending || rollbackDraftMutation.isPending}
         onAddExtraStep={addExtraStep}
         onCancelAuth={() => setAuthOpen(false)}
+        onCancelVariance={() => setVarianceOpen(false)}
         onCancelChange={() => setChangeOpen(false)}
         onCancelStep={() => setStepFormOpen(false)}
         onOpenStep={() => setStepFormOpen(true)}
         onRollbackToDraft={rollbackToDraft}
         onRollbackToConfig={rollbackToConfig}
         onSubmitAuth={submitAuthorization}
+        onSubmitVariance={submitVariance}
         stepFormOpen={stepFormOpen}
       />,
     values: displayValues,
     syncFilledValues: setFilledValues,
     openChangeGuide,
     submit,
-  }
-}
-
-function useBackRecordFormValues(form: ReturnType<typeof Form.useForm<BackRecordFormValues>>[0]) {
-  const rolls = Form.useWatch('rolls', form)
-  const finishes = Form.useWatch('finishes', form)
-  const steps = Form.useWatch('steps', form)
-  return { finishes, rolls, steps }
-}
-
-function mergeBackRecordValues(
-  watched: BackRecordFormValues,
-  fallback: BackRecordFormValues,
-): BackRecordFormValues {
-  return {
-    ...fallback,
-    ...watched,
-    finishes: { ...fallback.finishes, ...watched.finishes },
-    rolls: { ...fallback.rolls, ...watched.rolls },
-    steps: { ...fallback.steps, ...watched.steps },
   }
 }

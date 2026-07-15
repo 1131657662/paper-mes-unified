@@ -1,4 +1,5 @@
 import { Space, Tag } from 'antd'
+import { DownOutlined, RightOutlined } from '@ant-design/icons'
 import type { DisplayRow } from '../../../components/processOrder/shared/types'
 import {
   buildConditionText,
@@ -12,7 +13,7 @@ import {
 } from '../../../components/processOrder/shared/detailHelpers'
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import type { RollProductionVO } from '../../../types/processOrder'
-import { formatMm } from '../../../utils/numberFormatters'
+import { formatGram, formatMm } from '../../../utils/numberFormatters'
 import { formatProductionKg, sumProductionEstimateWeight } from '../orderDetailUtils'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import ProductionFinishColumn from './ProductionFinishColumn'
@@ -26,12 +27,14 @@ interface Props {
   onConfigureRoute?: (target: ProcessRouteConfigTarget) => void
   onEditRollRemark?: (roll: RollProductionVO) => void
   row: DisplayRow
+  collapse?: { expanded: boolean; onToggle: () => void }
 }
 
 export default function ProductionRollCard({
   canAppendRoute,
   canEditPending,
   canEditRemark,
+  collapse,
   onConfigureRoute,
   onEditRollRemark,
   row,
@@ -42,8 +45,13 @@ export default function ProductionRollCard({
   const finishCount = row.finishes.filter(isDeliverableProductionFinish).length
   const originalUuid = resolveOriginalUuid(row)
 
+  if (collapse && !collapse.expanded) {
+    return <CollapsedRoll row={row} finishCount={finishCount} onToggle={collapse.onToggle} />
+  }
+
   return (
     <div className="production-roll">
+      {collapse && <RollToggle expanded label={rollTitle(row)} onToggle={collapse.onToggle} />}
       <div className="production-roll__summary">
         <ProductionRollSourceColumn
           canEditPending={canEditPending}
@@ -72,6 +80,35 @@ export default function ProductionRollCard({
         production={row.mainProduction}
       />
     </div>
+  )
+}
+
+function CollapsedRoll({ finishCount, onToggle, row }: { finishCount: number; onToggle: () => void; row: DisplayRow }) {
+  const production = row.mainProduction
+  return (
+    <div className="production-roll production-roll--collapsed">
+      <button className="production-roll__toggle" type="button" onClick={onToggle}>
+        <RightOutlined />
+        <strong>{rollTitle(row)}</strong>
+        <span>{production.paperName || '-'} / {formatGram(production.gramWeight)} / {formatMm(production.originalWidth)}</span>
+        <span>成品 {finishCount} 件</span>
+      </button>
+    </div>
+  )
+}
+
+function rollTitle(row: DisplayRow): string {
+  if (row.isMergeGroup) return `合并复卷 ${row.rollProductions.length} 卷`
+  return row.mainProduction.rollNo || row.mainProduction.extraNo || `母卷 ${row.seq}`
+}
+
+function RollToggle({ expanded, label, onToggle }: { expanded: boolean; label: string; onToggle: () => void }) {
+  return (
+    <button className="production-roll__toggle production-roll__toggle--expanded" type="button" onClick={onToggle}>
+      {expanded ? <DownOutlined /> : <RightOutlined />}
+      <strong>{label}</strong>
+      <span>收起</span>
+    </button>
   )
 }
 

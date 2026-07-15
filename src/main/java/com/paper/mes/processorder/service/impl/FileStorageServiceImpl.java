@@ -8,6 +8,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -41,6 +42,7 @@ public class FileStorageServiceImpl implements FileStorageService {
         if (!ALLOWED_EXT.contains(ext)) {
             throw new BusinessException("仅允许上传 jpg/jpeg/png/webp/gif 图片");
         }
+        validateContent(file, ext);
 
         String day = LocalDate.now().format(DAY_FMT);
         String fileName = UUID.randomUUID().toString().replace("-", "") + "." + ext;
@@ -67,6 +69,38 @@ public class FileStorageServiceImpl implements FileStorageService {
             return "";
         }
         return originalName.substring(dot + 1).toLowerCase();
+    }
+
+    private void validateContent(MultipartFile file, String extension) {
+        byte[] header = new byte[12];
+        int length;
+        try (InputStream input = file.getInputStream()) {
+            length = input.read(header);
+        } catch (IOException e) {
+            throw new BusinessException("图片读取失败");
+        }
+        if (!matchesImageSignature(header, length, extension)) {
+            throw new BusinessException("图片内容与文件扩展名不匹配");
+        }
+    }
+
+    private boolean matchesImageSignature(byte[] bytes, int length, String extension) {
+        return switch (extension) {
+            case "jpg", "jpeg" -> length >= 3 && unsigned(bytes[0]) == 0xFF
+                    && unsigned(bytes[1]) == 0xD8 && unsigned(bytes[2]) == 0xFF;
+            case "png" -> length >= 8 && unsigned(bytes[0]) == 0x89 && bytes[1] == 'P'
+                    && bytes[2] == 'N' && bytes[3] == 'G';
+            case "gif" -> length >= 6 && bytes[0] == 'G' && bytes[1] == 'I' && bytes[2] == 'F'
+                    && bytes[3] == '8' && (bytes[4] == '7' || bytes[4] == '9') && bytes[5] == 'a';
+            case "webp" -> length >= 12 && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F'
+                    && bytes[3] == 'F' && bytes[8] == 'W' && bytes[9] == 'E'
+                    && bytes[10] == 'B' && bytes[11] == 'P';
+            default -> false;
+        };
+    }
+
+    private int unsigned(byte value) {
+        return Byte.toUnsignedInt(value);
     }
 
     private String trimSlash(String prefix) {

@@ -15,10 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,7 +24,10 @@ import java.util.Map;
 @Component
 public class OriginalRollImportParser {
 
+    private static final int MAX_IMPORT_ROWS = 500;
     private final DataFormatter formatter = new DataFormatter();
+    private final OriginalRollCsvReader csvReader = new OriginalRollCsvReader();
+    private final OriginalRollCsvRowMapper csvRowMapper = new OriginalRollCsvRowMapper();
 
     public OriginalRollImportPreviewVO parse(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -44,28 +44,22 @@ public class OriginalRollImportParser {
     }
 
     private OriginalRollImportPreviewVO parseCsv(MultipartFile file) {
-        try {
-            String text = new String(file.getBytes(), StandardCharsets.UTF_8).replace("\uFEFF", "");
-            List<String[]> rows = text.lines()
-                    .filter(StringUtils::hasText)
-                    .map(line -> line.split(",", -1))
-                    .toList();
-            if (rows.isEmpty()) {
-                throw new BusinessException("导入模板缺少表头");
-            }
-            Map<String, Integer> columns = csvColumns(rows.get(0));
-            OriginalRollImportPreviewVO preview = new OriginalRollImportPreviewVO();
-            for (int index = 1; index < rows.size(); index++) {
-                parseCsvRow(rows.get(index), index + 1, columns, preview);
-            }
-            return preview;
-        } catch (IOException e) {
-            throw new BusinessException("导入文件读取失败");
+        List<String[]> rows = csvReader.read(file, MAX_IMPORT_ROWS);
+        if (rows.isEmpty()) {
+            throw new BusinessException("导入模板缺少表头");
         }
+        requireRowLimit(rows.size() - 1);
+        Map<String, Integer> columns = csvRowMapper.columns(rows.get(0));
+        OriginalRollImportPreviewVO preview = new OriginalRollImportPreviewVO();
+        for (int index = 1; index < rows.size(); index++) {
+            parseCsvRow(rows.get(index), index + 1, columns, preview);
+        }
+        return preview;
     }
 
     private OriginalRollImportPreviewVO parseWorkbook(Workbook workbook) {
         Sheet sheet = workbook.getSheetAt(0);
+        requireRowLimit(sheet.getLastRowNum());
         Row header = sheet.getRow(0);
         if (header == null) {
             throw new BusinessException("导入模板缺少表头");
@@ -80,6 +74,12 @@ public class OriginalRollImportParser {
             parseRow(row, rowIndex + 1, columns, preview);
         }
         return preview;
+    }
+
+    private void requireRowLimit(int rowCount) {
+        if (rowCount > MAX_IMPORT_ROWS) {
+            throw new BusinessException("单次导入原纸不能超过500行");
+        }
     }
 
     private Map<String, Integer> columns(Row header) {
@@ -116,21 +116,9 @@ public class OriginalRollImportParser {
     }
 
     private void parseCsvRow(String[] row, int rowNumber, Map<String, Integer> columns, OriginalRollImportPreviewVO preview) {
-        Map<String, String> raw = rawCsvRow(row, columns);
+        Map<String, String> raw = csvRowMapper.rawRow(row, columns);
         try {
-            OriginalRollDTO dto = new OriginalRollDTO();
-            dto.setPaperName(csvText(row, columns, "品名"));
-            dto.setGramWeight(csvInteger(row, columns, "克重"));
-            dto.setOriginalWidth(csvInteger(row, columns, "门幅"));
-            dto.setRollNo(csvText(row, columns, "卷号"));
-            dto.setRollWeight(csvDecimal(row, columns, "单重"));
-            dto.setExtraNo(csvText(row, columns, "编号"));
-            dto.setBatchNo(csvText(row, columns, "批次"));
-            dto.setOriginalDiameter(csvInteger(row, columns, "直径"));
-            dto.setCoreDiameter(csvInteger(row, columns, "纸芯"));
-            dto.setDamageDesc(csvText(row, columns, "损伤"));
-            dto.setRemark(csvText(row, columns, "备注"));
-            dto.setPieceNum(defaultInt(csvInteger(row, columns, "件数"), 1));
+            OriginalRollDTO dto = csvRowMapper.toDto(row, columns);
             validateRow(dto, rowNumber, raw, preview);
         } catch (NumberFormatException e) {
             addError(preview, rowNumber, "数字格式", "克重、门幅、直径、纸芯、件数、单重必须是数字", raw);
@@ -174,23 +162,6 @@ public class OriginalRollImportParser {
         return raw;
     }
 
-    private Map<String, Integer> csvColumns(String[] header) {
-        Map<String, Integer> columns = new HashMap<>();
-        for (int index = 0; index < header.length; index++) {
-            String label = header[index].trim().replace(" ", "");
-            if (StringUtils.hasText(label)) {
-                columns.put(label, index);
-            }
-        }
-        return columns;
-    }
-
-    private Map<String, String> rawCsvRow(String[] row, Map<String, Integer> columns) {
-        Map<String, String> raw = new LinkedHashMap<>();
-        columns.forEach((label, index) -> raw.put(label, index < row.length ? row[index].trim() : ""));
-        return raw;
-    }
-
     private String text(Row row, Map<String, Integer> columns, String label) {
         Integer index = columns.get(label);
         return index == null ? null : value(row.getCell(index));
@@ -206,21 +177,6 @@ public class OriginalRollImportParser {
 
     private BigDecimal decimal(Row row, Map<String, Integer> columns, String label) {
         String value = text(row, columns, label);
-        return StringUtils.hasText(value) ? new BigDecimal(value) : null;
-    }
-
-    private String csvText(String[] row, Map<String, Integer> columns, String label) {
-        Integer index = columns.get(label);
-        return index == null || index >= row.length ? null : row[index].trim();
-    }
-
-    private Integer csvInteger(String[] row, Map<String, Integer> columns, String label) {
-        String value = csvText(row, columns, label);
-        return StringUtils.hasText(value) ? new BigDecimal(value).intValue() : null;
-    }
-
-    private BigDecimal csvDecimal(String[] row, Map<String, Integer> columns, String label) {
-        String value = csvText(row, columns, label);
         return StringUtils.hasText(value) ? new BigDecimal(value) : null;
     }
 

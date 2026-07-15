@@ -1,37 +1,14 @@
 import { Spin } from 'antd'
-import { useEffect, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { getCurrentUser } from '../api/auth'
-import { useAuthActions, useAuthUser } from '../stores/authStore'
+import { useCurrentUser } from '../features/auth/hooks/useCurrentUser'
+import { useAuthUser } from '../stores/authStore'
 
 export default function AuthGuard() {
   const user = useAuthUser()
-  const { signOut, syncCurrentUser } = useAuthActions()
   const location = useLocation()
-  const [checking, setChecking] = useState(Boolean(user?.accessToken))
+  const { isError: isSessionInvalid, isPending: isCheckingSession } = useCurrentUser(Boolean(user))
 
-  useEffect(() => {
-    if (!user?.accessToken) {
-      setChecking(false)
-      return
-    }
-    let alive = true
-    getCurrentUser()
-      .then((currentUser) => {
-        if (alive) syncCurrentUser(currentUser)
-      })
-      .catch(() => {
-        if (alive) signOut()
-      })
-      .finally(() => {
-        if (alive) setChecking(false)
-      })
-    return () => {
-      alive = false
-    }
-  }, [signOut, syncCurrentUser, user?.accessToken])
-
-  if (checking) {
+  if (user && isCheckingSession) {
     return (
       <div className="app-shell__auth-loading">
         <Spin />
@@ -40,7 +17,7 @@ export default function AuthGuard() {
     )
   }
 
-  if (!user) {
+  if (!user || isSessionInvalid) {
     return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
   }
 

@@ -5,6 +5,7 @@ import TooltipText from '../../../components/biz/TooltipText'
 import { ORDER_STATUS } from '../../../constants/processOrder'
 import type { ReportDetailVO, ReportDimension, ReportDimensionVO } from '../../../types/report'
 import { formatMoney, formatNumber, formatPercent, formatTonFromKg } from '../utils/reportFormatters'
+import { hasWeightGain, weightGain } from '../utils/reportWeightBalance'
 
 export function dimensionColumns(dimension: ReportDimension): ColumnsType<ReportDimensionVO> {
   return [
@@ -14,6 +15,7 @@ export function dimensionColumns(dimension: ReportDimension): ColumnsType<Report
     { title: '成品', dataIndex: 'finishRollCount', key: 'finishRollCount', width: 88, align: 'right', render: countCell('卷') },
     { title: '原纸吨位', dataIndex: 'originalWeight', key: 'originalWeight', width: 128, align: 'right', render: formatTonFromKg },
     { title: '成品吨位', dataIndex: 'finishWeight', key: 'finishWeight', width: 128, align: 'right', render: formatTonFromKg },
+    { title: '重量校验', key: 'weightBalance', width: 118, render: (_, record) => balanceCell(record.originalWeight, record.finishWeight) },
     { title: '损耗吨位', dataIndex: 'lossWeight', key: 'lossWeight', width: 120, align: 'right', render: formatTonFromKg },
     { title: '损耗率', dataIndex: 'lossRatio', key: 'lossRatio', width: 98, align: 'right', render: formatPercent },
     { title: '刀数', dataIndex: 'knifeCount', key: 'knifeCount', width: 88, align: 'right', render: numberCell },
@@ -45,6 +47,7 @@ export function detailColumns(onOpenOrder: (uuid: string) => void): ColumnsType<
     { title: '成品', dataIndex: 'finishRollCount', key: 'finishRollCount', width: 88, align: 'right', render: countCell('卷') },
     { title: '原纸吨位', dataIndex: 'originalWeight', key: 'originalWeight', width: 128, align: 'right', render: formatTonFromKg },
     { title: '成品吨位', dataIndex: 'finishWeight', key: 'finishWeight', width: 128, align: 'right', render: formatTonFromKg },
+    { title: '重量校验', key: 'weightBalance', width: 118, render: (_, record) => balanceCell(record.originalWeight, record.finishWeight) },
     { title: '损耗吨位', dataIndex: 'lossWeight', key: 'lossWeight', width: 118, align: 'right', render: formatTonFromKg },
     { title: '损耗率', dataIndex: 'lossRatio', key: 'lossRatio', width: 98, align: 'right', render: formatPercent },
     { title: '刀数', dataIndex: 'knifeCount', key: 'knifeCount', width: 88, align: 'right', render: numberCell },
@@ -108,6 +111,12 @@ function settleTypeCell(value?: number) {
 
 function invoiceCell(value?: number) {
   return <Tag color={value === 1 ? 'gold' : 'default'}>{value === 1 ? '开票' : '不开票'}</Tag>
+}
+
+function balanceCell(originalWeight?: number, finishWeight?: number) {
+  const difference = weightGain(originalWeight, finishWeight)
+  if (hasWeightGain(originalWeight, finishWeight)) return <Tag color="error">产出超出 {formatTonFromKg(difference)}</Tag>
+  return <Tag color="success">正常</Tag>
 }
 
 function dimensionTitle(dimension: ReportDimension) {

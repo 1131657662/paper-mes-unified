@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
+import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.machine.dto.MachineQuery;
 import com.paper.mes.machine.dto.MachineSaveDTO;
 import com.paper.mes.machine.entity.Machine;
@@ -41,7 +42,7 @@ public class MachineServiceImpl extends ServiceImpl<MachineMapper, Machine> impl
             wrapper.eq(Machine::getStatus, query.getStatus());
         }
         wrapper.orderByDesc(Machine::getCreateTime);
-        Page<Machine> page = page(Page.of(query.getCurrent(), query.getSize()), wrapper);
+        Page<Machine> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.of(page);
     }
 

@@ -16,15 +16,46 @@ spring:
       max-request-size: 50MB
 
 app:
+  auth:
+    session-hours: ${PAPER_MES_SESSION_HOURS:12}
+    session-retention-days: ${PAPER_MES_SESSION_RETENTION_DAYS:7}
+    session-cleanup-cron: "${PAPER_MES_SESSION_CLEANUP_CRON:0 30 3 * * *}"
+    cookie-secure: ${PAPER_MES_COOKIE_SECURE:false}
+  data-health:
+    back-record-overdue-days: ${PAPER_MES_BACK_RECORD_OVERDUE_DAYS:3}
+    receivable-overdue-days: ${PAPER_MES_RECEIVABLE_OVERDUE_DAYS:30}
+    initial-delay-ms: ${PAPER_MES_DATA_HEALTH_INITIAL_DELAY_MS:60000}
+    scan-delay-ms: ${PAPER_MES_DATA_HEALTH_SCAN_DELAY_MS:900000}
   upload:
     dir: ./upload
-    url-prefix: /files
+    url-prefix: /api/files
+  backup:
+    enabled: ${PAPER_MES_BACKUP_ENABLED:true}
+    root-dir: ${PAPER_MES_BACKUP_ROOT:}
+    backup-script: ${PAPER_MES_BACKUP_SCRIPT:}
+    verify-script: ${PAPER_MES_VERIFY_SCRIPT:}
+    env-file: ${PAPER_MES_BACKUP_ENV_FILE:}
+    source-db-name: ${PAPER_MES_DB_NAME:paper_processing}
+    command-timeout: ${PAPER_MES_BACKUP_TIMEOUT:30m}
+    cleanup-cron: "${PAPER_MES_BACKUP_CLEANUP_CRON:0 15 3 * * *}"
+    automatic-check-delay: ${PAPER_MES_BACKUP_CHECK_DELAY_MS:60000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
   global-config:
     banner: false
     db-config:

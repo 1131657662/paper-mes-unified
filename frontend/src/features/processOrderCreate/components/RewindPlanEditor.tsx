@@ -46,6 +46,7 @@ export default function RewindPlanEditor({ plan, roll, rolls, onChange }: Props)
   return (
     <Space className="create-editor-stack" direction="vertical" size={12}>
       <Select
+        aria-label="复卷模式"
         value={mode}
         options={modeOptions}
         className="create-editor-mode-select"
@@ -84,10 +85,10 @@ function SegmentCard({ index, mode, roll, rolls, segment, sourceOptions, onChang
       )}
     >
       <Space wrap className="create-editor-row-gap">
-        <InputNumber addonBefore="比例" min={0.01} value={segment.segmentRatio ?? 1} onChange={(value) => onChange({ ...segment, segmentRatio: value ?? 1 })} />
-        <InputNumber addonBefore="直径" min={0} value={segment.targetDiameter} onChange={(value) => onChange({ ...segment, targetDiameter: value ?? undefined })} />
-        <InputNumber addonBefore="纸芯" min={0} value={segment.finishCoreDiameter} onChange={(value) => onChange({ ...segment, finishCoreDiameter: value ?? undefined })} />
-        <InputNumber addonBefore="重复" min={1} value={segment.repeatCount ?? 1} onChange={(value) => onChange({ ...segment, repeatCount: value ?? 1 })} />
+        <InputNumber aria-label={`分段 ${index + 1} 比例`} addonBefore="比例" min={0.01} value={segment.segmentRatio ?? 1} onChange={(value) => onChange({ ...segment, segmentRatio: value ?? 1 })} />
+        <InputNumber aria-label={`分段 ${index + 1} 直径`} addonBefore="直径" min={0} value={segment.targetDiameter} onChange={(value) => onChange({ ...segment, targetDiameter: value ?? undefined })} />
+        <InputNumber aria-label={`分段 ${index + 1} 纸芯`} addonBefore="纸芯" min={0} value={segment.finishCoreDiameter} onChange={(value) => onChange({ ...segment, finishCoreDiameter: value ?? undefined })} />
+        <InputNumber aria-label={`分段 ${index + 1} 重复次数`} addonBefore="重复" min={1} value={segment.repeatCount ?? 1} onChange={(value) => onChange({ ...segment, repeatCount: value ?? 1 })} />
       </Space>
       <RewindWidthSummary
         mode={mode}
@@ -120,9 +121,9 @@ function LayoutItemsEditor({ mode, segment, onChange }: LayoutItemsEditorProps) 
       {items.map((item, index) => (
         <Space key={index} className="create-editor-stack" direction="vertical">
           <Space wrap>
-            <Select value={item.itemType ?? 'FINISH'} className="create-editor-kind-select" options={[{ label: '成品', value: 'FINISH' }, { label: '修边', value: 'TRIM' }]} onChange={(value) => update(patchItem(items, index, { itemType: value }))} />
-            <InputNumber addonBefore="门幅" min={1} value={item.width} onChange={(value) => update(patchItem(items, index, { width: value ?? 1 }))} />
-            <InputNumber addonBefore="数量" min={1} value={item.quantity ?? 1} onChange={(value) => update(patchItem(items, index, { quantity: value ?? 1 }))} />
+            <Select aria-label={`排布 ${index + 1} 类型`} value={item.itemType ?? 'FINISH'} className="create-editor-kind-select" options={[{ label: '成品', value: 'FINISH' }, { label: '修边', value: 'TRIM' }]} onChange={(value) => update(patchItem(items, index, { itemType: value }))} />
+            <InputNumber aria-label={`排布 ${index + 1} 门幅`} addonBefore="门幅" min={1} value={item.width} onChange={(value) => update(patchItem(items, index, { width: value ?? 1 }))} />
+            <InputNumber aria-label={`排布 ${index + 1} 数量`} addonBefore="数量" min={1} value={item.quantity ?? 1} onChange={(value) => update(patchItem(items, index, { quantity: value ?? 1 }))} />
             <MesTooltip title="删除排布">
               <Button
                 danger

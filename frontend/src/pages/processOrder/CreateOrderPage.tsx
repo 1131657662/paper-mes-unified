@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Alert, Card, Spin, Steps } from 'antd'
+import { Card, Spin, Steps } from 'antd'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import BaseInfoStep from '../../features/processOrderCreate/components/BaseInfoStep'
@@ -31,11 +31,10 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
   }, [state.current, state.submitResult?.orderUuid])
 
   return (
-    <Spin className="mes-spin-fill" spinning={state.loadingDraft}>
+    <Spin wrapperClassName="mes-spin-fill process-order-create-spin" spinning={state.loadingDraft}>
       <div ref={pageRef} className="mes-scroll-page mes-form-page">
         <MesPageHeader
           backText="返回列表"
-          description="草稿阶段可反复调整；预览、重量、来源关系、正式卷号都以后端为准，最终提交后才生成真实成品卷号。"
           eyebrow="加工单"
           onBack={() => navigate('/process-orders')}
           title="新建加工单"
@@ -43,12 +42,6 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
         <Card className="mes-form-page__steps">
           <Steps current={state.current} items={steps.map((title) => ({ title }))} />
         </Card>
-        <Alert
-          type="info"
-          showIcon
-          message="母卷加工方案工作台"
-          description="按基础信息、原纸录入、加工方式、工艺配置、预览确认五步完成开单，关键计算与提交校验由后端统一处理。"
-        />
         {state.current === 0 && (
           <BaseInfoStep
             customers={state.customerOptions}
@@ -116,6 +109,10 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             onBackToList={() => navigate('/process-orders')}
             onCreateAnother={createAnother}
             onPrev={() => state.setCurrent(3)}
+            onEditRoll={(localId) => {
+              state.setSelectedId(localId)
+              state.setCurrent(3)
+            }}
             onSubmit={state.handleSubmit}
             onViewDetail={(orderUuid) => navigate(`/process-orders/${orderUuid}`)}
           />

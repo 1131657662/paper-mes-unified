@@ -21,6 +21,7 @@ export default function MesPaginationBar({
       <div className="mes-pagination__size">
         <span>每页</span>
         <Select
+          aria-label="每页显示条数"
           value={pageSize}
           options={mesPageSizeOptions.map((value) => ({ value, label: value }))}
           onChange={(value) => onChange(1, value)}

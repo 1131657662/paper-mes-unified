@@ -96,7 +96,12 @@ class ProcessOrderServiceImplPageOrdersTest {
                     mock(ProcessOrderExportService.class),
                     mock(BusinessLockService.class),
                     mock(MachineMapper.class),
-                    mock(WeightCheckThresholdService.class));
+                    mock(WeightCheckThresholdService.class),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
         }
 
         @Override

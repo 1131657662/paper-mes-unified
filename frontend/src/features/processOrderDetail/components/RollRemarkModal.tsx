@@ -14,7 +14,7 @@ export default function RollRemarkModal({ loading, open, roll, onCancel, onSubmi
 
   return (
     <Modal
-      destroyOnClose
+      destroyOnHidden
       title="编辑原纸备注"
       open={open}
       confirmLoading={loading}

@@ -4,13 +4,16 @@ import ProcessStepFormModal from '../../../components/processOrder/ProcessStepFo
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import BackRecordAuthModal from './BackRecordAuthModal'
 import BackRecordChangeModal from './BackRecordChangeModal'
-import type { BackRecordAuthorization } from './backRecordUtils'
+import BackRecordVarianceModal from './BackRecordVarianceModal'
+import type { BackRecordAuthorization, BackRecordVarianceConfirmation } from './backRecordUtils'
 import { buildBackRecordRollOptions } from './backRecordRollOptions'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 
 interface Props {
   authForm: ReturnType<typeof Form.useForm<BackRecordAuthorization>>[0]
   authOpen: boolean
+  varianceForm: ReturnType<typeof Form.useForm<BackRecordVarianceConfirmation>>[0]
+  varianceOpen: boolean
   changeItem: BackRecordWorkItem | null
   changeOpen: boolean
   detail: ProcessOrderDetailVO | null
@@ -19,12 +22,14 @@ interface Props {
   stepFormOpen: boolean
   onAddExtraStep: (values: ProcessStepDTO) => Promise<void>
   onCancelAuth: () => void
+  onCancelVariance: () => void
   onCancelChange: () => void
   onCancelStep: () => void
   onOpenStep: () => void
   onRollbackToDraft: () => Promise<void>
   onRollbackToConfig: () => Promise<void>
   onSubmitAuth: () => Promise<void>
+  onSubmitVariance: () => Promise<void>
 }
 
 export default function BackRecordWorkspaceModals(props: Props) {
@@ -35,6 +40,12 @@ export default function BackRecordWorkspaceModals(props: Props) {
         form={props.authForm}
         onCancel={props.onCancelAuth}
         onSubmit={props.onSubmitAuth}
+      />
+      <BackRecordVarianceModal
+        open={props.varianceOpen}
+        form={props.varianceForm}
+        onCancel={props.onCancelVariance}
+        onSubmit={props.onSubmitVariance}
       />
       <BackRecordChangeModal
         open={props.changeOpen}

@@ -1,5 +1,6 @@
 import {
   appendDeliveryDetails,
+  cancelPendingDeliveryOrder,
   confirmDeliveryOrder,
   createDeliveryOrder,
   exportDeliveryOrder,
@@ -11,6 +12,7 @@ import {
 } from '../../../api/delivery'
 import type {
   DeliveryAppendItemsDTO,
+  DeliveryCancelDTO,
   DeliveryConfirmDTO,
   DeliveryCreateDTO,
   DeliveryQuery,
@@ -22,6 +24,8 @@ export const deliveryService = {
   appendDetails: (params: { uuid: string; data: DeliveryAppendItemsDTO }) =>
     appendDeliveryDetails(params.uuid, params.data),
   availableFinishes: (customerUuid: string) => getAvailableFinishes(customerUuid),
+  cancelPending: (params: { uuid: string; data: DeliveryCancelDTO }) =>
+    cancelPendingDeliveryOrder(params.uuid, params.data),
   create: (data: DeliveryCreateDTO) => createDeliveryOrder(data),
   confirm: (params: { uuid: string; data?: DeliveryConfirmDTO }) =>
     confirmDeliveryOrder(params.uuid, params.data),

@@ -2,7 +2,9 @@ package com.paper.mes.processorder.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
+import lombok.ToString;
 
 import java.util.List;
 
@@ -16,24 +18,34 @@ import java.util.List;
 @Data
 public class BackRecordDTO {
 
-    /** 回录操作人（无鉴权体系，前端传入；空则落 system）。 */
-    private String operator;
+    @Size(max = 50, message = "管理员账号长度不能超过50")
+    private String releaseAdminUsername;
 
-    /**
-     * >5% 超差放行授权。任一卷闭合校验命中 BLOCK 时：
-     *  - authorized=true 且 releaseReason 非空 → 放行并写 sys_operation_log(超差放行)；
-     *  - 否则拦截回录。
-     */
-    private boolean overToleranceAuthorized;
+    @ToString.Exclude
+    @Size(max = 128, message = "管理员密码长度不能超过128")
+    private String releaseAdminPassword;
+
+    @Size(max = 500, message = "放行原因长度不能超过500")
     private String releaseReason;
 
+    @Size(max = 500, message = "偏差原因长度不能超过500")
+    private String varianceReason;
+
     @NotEmpty(message = "原纸回录明细不能为空")
+    @Size(max = 500, message = "单次原纸回录不能超过500条")
     @Valid
     private List<BackRecordRollDTO> rolls;
 
     @Valid
+    @Size(max = 500, message = "单次成品回录不能超过500条")
     private List<BackRecordFinishDTO> finishes;
 
+    /** 现场定尺回录时实际保留并进入余料库存的切边。 */
     @Valid
+    @Size(max = 500, message = "单次余料回录不能超过500条")
+    private List<BackRecordTrimDTO> trims;
+
+    @Valid
+    @Size(max = 100, message = "单次工序回录不能超过100条")
     private List<BackRecordStepDTO> steps;
 }

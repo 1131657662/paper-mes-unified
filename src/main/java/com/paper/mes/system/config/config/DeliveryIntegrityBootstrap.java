@@ -3,6 +3,7 @@ package com.paper.mes.system.config.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 @Order(31)
+@ConditionalOnProperty(prefix = "app.schema-bootstrap", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class DeliveryIntegrityBootstrap implements ApplicationRunner {
 
     private static final String FINISH_TABLE = "biz_finish_roll";
@@ -26,10 +28,8 @@ public class DeliveryIntegrityBootstrap implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        addRemainingWeightColumn();
-        syncRemainingWeight();
-        addStockLockColumn();
-        syncStockLockStatus();
+        if (addRemainingWeightColumn()) syncRemainingWeight();
+        if (addStockLockColumn()) syncStockLockStatus();
         normalizeDuplicateDeliveryDetails();
         rebuildActiveFinishColumn();
         addActiveFinishIndex();
@@ -82,15 +82,16 @@ public class DeliveryIntegrityBootstrap implements ApplicationRunner {
                 """, LocalDateTime.now(), uuid);
     }
 
-    private void addRemainingWeightColumn() {
+    private boolean addRemainingWeightColumn() {
         if (columnExists(FINISH_TABLE, REMAINING_WEIGHT_COLUMN)) {
-            return;
+            return false;
         }
         jdbcTemplate.execute("""
                 ALTER TABLE `biz_finish_roll`
                 ADD COLUMN `remaining_weight` DECIMAL(10,3) DEFAULT NULL
                 COMMENT '剩余可出库重量kg，NULL按actual_weight兼容旧数据'
                 """);
+        return true;
     }
 
     private void syncRemainingWeight() {
@@ -105,15 +106,16 @@ public class DeliveryIntegrityBootstrap implements ApplicationRunner {
                 """);
     }
 
-    private void addStockLockColumn() {
+    private boolean addStockLockColumn() {
         if (columnExists(DETAIL_TABLE, STOCK_LOCK_COLUMN)) {
-            return;
+            return false;
         }
         jdbcTemplate.execute("""
                 ALTER TABLE `biz_delivery_detail`
                 ADD COLUMN `stock_lock_status` TINYINT NOT NULL DEFAULT 1
                 COMMENT '库存占用状态：1待出库占用 0历史明细不占用'
                 """);
+        return true;
     }
 
     private void syncStockLockStatus() {

@@ -27,6 +27,8 @@ export default function LoginPage() {
       })
       signIn(authUser, authUser.permissions)
       navigate(redirectPath, { replace: true })
+    } catch {
+      // request interceptor already shows the business error message
     } finally {
       setSubmitting(false)
     }

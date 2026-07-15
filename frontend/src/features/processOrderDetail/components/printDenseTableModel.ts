@@ -3,6 +3,7 @@ import type {
   PrintRouteOutput,
   PrintRouteStage,
 } from './printPreviewModel'
+import { buildRewindGroupDetail } from './printRewindSummaryModel'
 
 export type DenseRow = DenseGroupRow | DenseItemRow
 
@@ -28,6 +29,7 @@ interface DenseEntry {
   processKey: string
   processTitle: string
   processDetail: string
+  processType?: number
   widthSort: number
   titleSort: number
   sourceIndex: number
@@ -68,24 +70,39 @@ function buildEntries(blocks: PrintRollBlock[]): DenseEntry[] {
 
 function groupedRows(entries: DenseEntry[]): DenseRow[] {
   const rows: DenseRow[] = []
-  let previousProcessKey = ''
-  for (const entry of entries) {
-    if (entry.processKey !== previousProcessKey) {
-      rows.push(groupRow(entry))
-      previousProcessKey = entry.processKey
-    }
-    rows.push(...entryRows(entry))
+  for (let index = 0; index < entries.length;) {
+    const groupEntries = entriesForProcess(entries, index)
+    const firstEntry = groupEntries[0]
+    if (!firstEntry) break
+    rows.push(groupRow(firstEntry, groupEntries))
+    for (const entry of groupEntries) rows.push(...entryRows(entry))
+    index += groupEntries.length
   }
   return rows
 }
 
-function groupRow(entry: DenseEntry): DenseGroupRow {
+function entriesForProcess(entries: DenseEntry[], start: number): DenseEntry[] {
+  const firstEntry = entries[start]
+  if (!firstEntry) return []
+  const processKey = firstEntry.processKey
+  let end = start + 1
+  while (entries[end]?.processKey === processKey) end += 1
+  return entries.slice(start, end)
+}
+
+function groupRow(entry: DenseEntry, entries: DenseEntry[]): DenseGroupRow {
   return {
     kind: 'group',
     key: `process__${entry.processKey}`,
     processTitle: entry.processTitle,
-    processDetail: entry.processDetail,
+    processDetail: entry.processType === 2
+      ? buildRewindGroupDetail(entries.flatMap((item) => item.outputs).filter(isPrintOutput))
+      : entry.processDetail,
   }
+}
+
+function isPrintOutput(output?: PrintRouteOutput): output is PrintRouteOutput {
+  return output != null
 }
 
 function entryRows(entry: DenseEntry): DenseItemRow[] {
@@ -110,6 +127,7 @@ function processInfo(stage?: PrintRouteStage): {
   processKey: string
   processTitle: string
   processDetail: string
+  processType?: number
 } {
   if (!stage) {
     return {
@@ -118,20 +136,22 @@ function processInfo(stage?: PrintRouteStage): {
       processDetail: '未配置加工路线',
     }
   }
-  const detail = normalizedRequirement(stage.requirement)
+  const widthKey = outputWidthKey(stage.outputs)
   return {
-    processKey: `${stage.title}__${detail}`,
+    processKey: `${stage.title}__${widthKey}`,
     processTitle: stage.title,
-    processDetail: detail,
+    processDetail: stage.requirement.trim(),
+    processType: stage.stepType,
   }
 }
 
-function normalizedRequirement(text: string): string {
-  return text
-    .replace(/，来源重量\s*[\d,.]+t/g, '')
-    .replace(/\s*\/\s*[\d,.]+\s*kg/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+function outputWidthKey(outputs: PrintRouteOutput[]): string {
+  const widths = outputs
+    .filter((output) => output.status !== 'trim')
+    .map((output) => output.width)
+    .filter((width): width is number => width != null)
+  const uniqueWidths = Array.from(new Set(widths)).sort((a, b) => a - b)
+  return uniqueWidths.length ? uniqueWidths.join('+') : 'unknown-width'
 }
 
 function stagesForBlock(block: PrintRollBlock): Array<PrintRouteStage | undefined> {

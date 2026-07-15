@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Button, DatePicker, Form, Input, Modal, Select, message } from 'antd'
-import { CheckOutlined, DownloadOutlined, PrinterOutlined, ReloadOutlined, RollbackOutlined, SearchOutlined } from '@ant-design/icons'
+import { Button, DatePicker, Form, Input, Modal, Select, Tooltip, message } from 'antd'
+import { CheckOutlined, DownloadOutlined, PrinterOutlined, ReloadOutlined, RollbackOutlined, SearchOutlined, StopOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import DocumentListShell from '../../components/biz/DocumentListShell'
 import { useDocumentRowSelection } from '../../components/biz/useDocumentRowSelection'
 import { DELIVERY_STATUS, SETTLE_BLOCK_ACTION } from '../../constants/delivery'
@@ -11,6 +12,7 @@ import { PERMISSIONS } from '../../constants/permissions'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import DeliveryOrderTable from '../../features/delivery/components/DeliveryOrderTable'
 import { useConfirmDelivery } from '../../features/delivery/hooks/useConfirmDelivery'
+import { useCancelPendingDelivery } from '../../features/delivery/hooks/useCancelPendingDelivery'
 import { useDeliveryOrders } from '../../features/delivery/hooks/useDeliveryOrders'
 import { useConfiguredPageSize } from '../../features/systemConfig/hooks/useConfiguredPageSize'
 import { exportDeliveryOrder, getDeliveryOrderList, rollbackDeliveryOrder } from '../../api/delivery'
@@ -19,6 +21,7 @@ import type { DeliveryOrder, DeliveryQuery } from '../../types/delivery'
 import { datedCsvFilename, exportRowsToCsv } from '../../utils/exportCsv'
 import { formatTonFromKg } from '../../utils/numberFormatters'
 import './DeliveryOrderList.css'
+import { askDeliveryCancelReason } from './deliveryDetailDialogs'
 
 type QueueFilter = 'all' | 'pending' | 'done'
 const EXPORT_PAGE_SIZE = 10000
@@ -35,6 +38,7 @@ export default function DeliveryOrderList() {
   const navigate = useNavigate()
   const customersQuery = useCustomers()
   const confirmMutation = useConfirmDelivery()
+  const cancelMutation = useCancelPendingDelivery()
   const [queueFilter, setQueueFilter] = useState<QueueFilter>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useConfiguredPageSize(20)
@@ -154,6 +158,15 @@ export default function DeliveryOrderList() {
     }
   }
 
+  const handleCancelSelected = async () => {
+    if (!canManageDelivery || !selectedSingle || selectedSingle.deliveryStatus !== 1) return
+    const reason = await askDeliveryCancelReason(selectedSingle.deliveryNo)
+    if (!reason) return
+    await cancelMutation.mutateAsync({ uuid: selectedSingle.uuid, data: { reason } })
+    message.success('待出库单已作废，成品库存已释放')
+    rowSelection.clear()
+  }
+
   const handlePageChange = (nextPage: number, nextPageSize: number) => {
     setPage(nextPage)
     setPageSize(nextPageSize)
@@ -183,28 +196,55 @@ export default function DeliveryOrderList() {
       leftActions={(
         <>
           {canManageDelivery && (
-            <Button
-              icon={<CheckOutlined />}
-              disabled={selectedPendingOrders.length === 0}
-              loading={confirmMutation.isPending}
-              onClick={handleBatchConfirm}
-            >
-              批量签收
-            </Button>
+            <Tooltip title={selectedPendingOrders.length === 0 ? '请至少选择一张待出库单' : undefined}>
+              <span>
+                <Button
+                  icon={<CheckOutlined />}
+                  disabled={selectedPendingOrders.length === 0}
+                  loading={confirmMutation.isPending}
+                  onClick={handleBatchConfirm}
+                >
+                  批量签收
+                </Button>
+              </span>
+            </Tooltip>
           )}
-          <Button icon={<PrinterOutlined />} disabled={!selectedSingle} onClick={handlePrintSelected}>打印出库单</Button>
-          <Button icon={<DownloadOutlined />} disabled={!selectedSingle} onClick={handleExportSelected}>导出 Excel</Button>
+          <Tooltip title={!selectedSingle ? '请选择一张出库单后打印' : undefined}>
+            <span><Button icon={<PrinterOutlined />} disabled={!selectedSingle} onClick={handlePrintSelected}>打印出库单</Button></span>
+          </Tooltip>
+          <Tooltip title={!selectedSingle ? '请选择一张出库单后导出' : undefined}>
+            <span><Button icon={<DownloadOutlined />} disabled={!selectedSingle} onClick={handleExportSelected}>导出 Excel</Button></span>
+          </Tooltip>
           <Button icon={<DownloadOutlined />} loading={exportingList} onClick={handleExportList}>导出对账</Button>
           {canManageDelivery && (
-            <Button
-              danger
-              icon={<RollbackOutlined />}
-              disabled={!selectedSingle || selectedSingle.deliveryStatus !== 2}
-              loading={rollingBackSelected}
-              onClick={handleRollbackSelected}
-            >
-              回退出库
-            </Button>
+            <Tooltip title={!selectedSingle || selectedSingle.deliveryStatus !== 1 ? '请选择一张待出库单' : undefined}>
+              <span>
+                <Button
+                  danger
+                  icon={<StopOutlined />}
+                  disabled={!selectedSingle || selectedSingle.deliveryStatus !== 1}
+                  loading={cancelMutation.isPending}
+                  onClick={handleCancelSelected}
+                >
+                  作废待出库单
+                </Button>
+              </span>
+            </Tooltip>
+          )}
+          {canManageDelivery && (
+            <Tooltip title={!selectedSingle || selectedSingle.deliveryStatus !== 2 ? '请选择一张已出库单' : undefined}>
+              <span>
+                <Button
+                  danger
+                  icon={<RollbackOutlined />}
+                  disabled={!selectedSingle || selectedSingle.deliveryStatus !== 2}
+                  loading={rollingBackSelected}
+                  onClick={handleRollbackSelected}
+                >
+                  回退出库
+                </Button>
+              </span>
+            </Tooltip>
           )}
         </>
       )}
@@ -216,6 +256,20 @@ export default function DeliveryOrderList() {
         rowSelection.clear()
       }}
     >
+      {ordersQuery.isError && (
+        <QueryLoadErrorAlert
+          description="出库单未成功加载，当前空表不代表没有出库记录。"
+          message="出库单加载失败"
+          onRetry={() => void ordersQuery.refetch()}
+        />
+      )}
+      {customersQuery.isError && (
+        <QueryLoadErrorAlert
+          description="客户筛选项未成功加载，当前客户选项可能不完整。"
+          message="客户资料加载失败"
+          onRetry={() => void customersQuery.refetch()}
+        />
+      )}
       <div className="document-page-table" data-table-density={tableDensity}>
         <DeliveryOrderTable
           canManageDelivery={canManageDelivery}

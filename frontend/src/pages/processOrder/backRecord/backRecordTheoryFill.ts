@@ -72,6 +72,9 @@ function theoreticalRollValue(roll: OriginalRoll): RollRecordValues {
 
 function theoreticalFinishValue(finish: FinishRoll, fallbackWeight?: number): FinishRecordValues {
   return {
+    finishWidth: finish.finishWidth && finish.finishWidth > 0 ? finish.finishWidth : undefined,
+    finishDiameter: finish.finishDiameter,
+    finishCoreDiameter: finish.finishCoreDiameter,
     actualWeight: finish.isRemain === 1 || finish.isSpare === 1
       ? finish.actualWeight
       : finish.actualWeight ?? firstPositive(fallbackWeight, finish.estimateWeight),

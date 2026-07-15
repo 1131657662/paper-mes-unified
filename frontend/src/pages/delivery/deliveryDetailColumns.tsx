@@ -4,6 +4,7 @@ import { SOURCE_TYPE } from '../../constants/delivery'
 import TooltipText from '../../components/biz/TooltipText'
 import {
   deliveryDetailSpecText,
+  deliveryOriginalIdentityText,
   deliveryOriginalSnapshotText,
   deliveryProcessSnapshotText,
   formatKg,
@@ -58,7 +59,7 @@ export function buildDeliveryDetailColumns(options: {
         return item ? <Tag className="mes-status-tag" color={item.color}>{item.text}</Tag> : '-'
       },
     },
-    { title: '原纸卷号', dataIndex: 'originalRollNos', width: 150, render: textCell },
+    { title: '原纸卷号', dataIndex: 'originalRollNos', width: 180, render: (_, record) => textCell(deliveryOriginalIdentityText(record)) },
     { title: '备注', dataIndex: 'remark', width: 150, render: textCell },
     { title: '回录备注', dataIndex: 'actualRemark', width: 150, render: textCell },
   ]

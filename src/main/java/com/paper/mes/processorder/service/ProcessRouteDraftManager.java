@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ErrorCode;
+import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.OriginalRoll;
@@ -17,6 +18,8 @@ import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -36,6 +39,7 @@ public class ProcessRouteDraftManager {
     private final ProcessRoutePriceResolver priceResolver;
     private final ProcessRoutePersistenceService persistenceService;
     private final ObjectMapper objectMapper;
+    private final BusinessLockService businessLockService;
 
     public ProcessRoutePreviewVO preview(String orderUuid, ProcessRoutePreviewDTO dto) {
         ProcessOrder order = requireDraft(orderUuid);
@@ -51,6 +55,7 @@ public class ProcessRouteDraftManager {
 
     @Transactional(rollbackFor = Exception.class)
     public ProcessRoutePreviewVO save(String orderUuid, ProcessRoutePreviewDTO dto) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         OriginalRoll roll = requireRoll(orderUuid, dto.getOriginalUuid());
         ProcessRoutePreviewVO preview = routePreview(order, roll, dto);

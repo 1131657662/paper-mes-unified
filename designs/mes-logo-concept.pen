@@ -1,0 +1,237 @@
+{
+  "version": "2.8",
+  "themes": {
+    "mode": ["light", "dark"]
+  },
+  "variables": {
+    "color.primary": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#2563EB" },
+        { "theme": { "mode": "dark" }, "value": "#4096FF" }
+      ]
+    },
+    "color.secondary": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#4F8EFF" },
+        { "theme": { "mode": "dark" }, "value": "#7EB4FF" }
+      ]
+    },
+    "color.surface": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#FFFFFF" },
+        { "theme": { "mode": "dark" }, "value": "#111827" }
+      ]
+    },
+    "color.text": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#111827" },
+        { "theme": { "mode": "dark" }, "value": "#F9FAFB" }
+      ]
+    },
+    "color.muted": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#6B7280" },
+        { "theme": { "mode": "dark" }, "value": "#9CA3AF" }
+      ]
+    }
+  },
+  "children": [
+    {
+      "type": "frame",
+      "id": "logo-concept",
+      "name": "Logo Concept",
+      "x": 0,
+      "y": 0,
+      "width": 1400,
+      "height": 900,
+      "fill": "#F8FBFF",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "card",
+          "name": "Card",
+          "x": 80,
+          "y": 70,
+          "width": 1240,
+          "height": 760,
+          "fill": "#FFFFFF",
+          "stroke": "#E7EFFA",
+          "strokeWidth": 1,
+          "rx": 32,
+          "ry": 32
+        },
+        {
+          "type": "rectangle",
+          "id": "icon-wrap",
+          "name": "Icon Wrap",
+          "x": 170,
+          "y": 180,
+          "width": 220,
+          "height": 220,
+          "fill": "#2563EB",
+          "rx": 56,
+          "ry": 56
+        },
+        {
+          "type": "ellipse",
+          "id": "ring-outer",
+          "name": "Outer Ring",
+          "cx": 280,
+          "cy": 290,
+          "rx": 72,
+          "ry": 72,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 10,
+          "fill": "none"
+        },
+        {
+          "type": "ellipse",
+          "id": "ring-inner",
+          "name": "Inner Ring",
+          "cx": 280,
+          "cy": 290,
+          "rx": 32,
+          "ry": 32,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 10,
+          "fill": "none"
+        },
+        {
+          "type": "line",
+          "id": "line-a",
+          "name": "Processing Line A",
+          "x1": 216,
+          "y1": 218,
+          "x2": 348,
+          "y2": 360,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 10,
+          "linecap": "round"
+        },
+        {
+          "type": "line",
+          "id": "line-b",
+          "name": "Processing Line B",
+          "x1": 232,
+          "y1": 350,
+          "x2": 330,
+          "y2": 229,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 10,
+          "linecap": "round"
+        },
+        {
+          "type": "line",
+          "id": "line-c",
+          "name": "Track Line",
+          "x1": 212,
+          "y1": 290,
+          "x2": 352,
+          "y2": 290,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 8,
+          "linecap": "round"
+        },
+        {
+          "type": "ellipse",
+          "id": "dot",
+          "name": "Core Dot",
+          "cx": 280,
+          "cy": 290,
+          "rx": 9,
+          "ry": 9,
+          "fill": "#FFFFFF"
+        },
+        {
+          "type": "text",
+          "id": "headline",
+          "name": "Headline",
+          "x": 470,
+          "y": 240,
+          "fontFamily": "Inter, PingFang SC, Microsoft YaHei, sans-serif",
+          "fontSize": 58,
+          "fontWeight": "700",
+          "fill": "#111827",
+          "text": "纸品加工 MES"
+        },
+        {
+          "type": "text",
+          "id": "sub",
+          "name": "Supporting Copy",
+          "x": 470,
+          "y": 320,
+          "fontFamily": "Inter, PingFang SC, Microsoft YaHei, sans-serif",
+          "fontSize": 22,
+          "fontWeight": "400",
+          "fill": "#6B7280",
+          "text": "Smart production control for paper processing"
+        },
+        {
+          "type": "rectangle",
+          "id": "tab-icon",
+          "name": "Tab Icon",
+          "x": 170,
+          "y": 520,
+          "width": 120,
+          "height": 120,
+          "fill": "#2563EB",
+          "rx": 32,
+          "ry": 32
+        },
+        {
+          "type": "ellipse",
+          "id": "tab-ring",
+          "name": "Tab Ring",
+          "cx": 230,
+          "cy": 580,
+          "rx": 34,
+          "ry": 34,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 8,
+          "fill": "none"
+        },
+        {
+          "type": "line",
+          "id": "tab-line",
+          "name": "Tab Line",
+          "x1": 196,
+          "y1": 548,
+          "x2": 266,
+          "y2": 612,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 8,
+          "linecap": "round"
+        },
+        {
+          "type": "text",
+          "id": "variants",
+          "name": "Variants",
+          "x": 360,
+          "y": 540,
+          "fontFamily": "Inter, PingFang SC, Microsoft YaHei, sans-serif",
+          "fontSize": 24,
+          "fontWeight": "600",
+          "fill": "#111827",
+          "text": "适用于登录页 / 浏览器标签 / 侧边栏"
+        },
+        {
+          "type": "text",
+          "id": "note",
+          "name": "Note",
+          "x": 360,
+          "y": 585,
+          "fontFamily": "Inter, PingFang SC, Microsoft YaHei, sans-serif",
+          "fontSize": 18,
+          "fontWeight": "400",
+          "fill": "#6B7280",
+          "text": "白底蓝色主视觉，尺寸缩小时仍保持辨识度"
+        }
+      ]
+    }
+  ]
+}

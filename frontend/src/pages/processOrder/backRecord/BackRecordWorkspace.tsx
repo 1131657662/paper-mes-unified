@@ -6,6 +6,7 @@ import BackRecordWorkbench from './BackRecordWorkbench'
 import { useBackRecordWorkspace } from './useBackRecordWorkspace'
 import type { BackRecordFormValues } from './backRecordUtils'
 import './BackRecordWorkspace.css'
+import './BackRecordDesktopLayout.css'
 
 interface Props {
   uuid?: string | null

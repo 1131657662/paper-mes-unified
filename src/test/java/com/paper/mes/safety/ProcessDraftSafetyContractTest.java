@@ -15,11 +15,14 @@ class ProcessDraftSafetyContractTest {
             "src/main/java/com/paper/mes/processorder/service/impl/ProcessOrderDraftServiceImpl.java";
     private static final String PLAN_DRAFT_MANAGER =
             "src/main/java/com/paper/mes/processorder/service/ProcessPlanDraftManager.java";
+    private static final String ROUTE_DRAFT_MANAGER =
+            "src/main/java/com/paper/mes/processorder/service/ProcessRouteDraftManager.java";
 
     @Test
     void draftPreviewSaveAndSubmit_useFormalProcessPlanEntryPoints() throws IOException {
         String draftService = source(DRAFT_SERVICE);
         String planManager = source(PLAN_DRAFT_MANAGER);
+        String routeManager = source(ROUTE_DRAFT_MANAGER);
 
         assertContainsAll(slice(draftService, "public void saveProcessConfig", "public PlanPreviewVO previewProcessPlan"),
                 "saveProcessPlan(orderUuid, rollUuid, processPlanMapper.fromSaveDto(dto));");
@@ -31,7 +34,17 @@ class ProcessDraftSafetyContractTest {
                 "routeDraftManager.submit(order, roll, draft)",
                 "readConfig(draft)");
         assertContainsAll(draftService,
-                "routeDraftManager.isRouteDraft(draft)");
+                "routeDraftManager.isRouteDraft(draft)",
+                "businessLockService.lockProcessOrders(List.of(orderUuid));",
+                "ConcurrencyGuard.requireRowUpdated(processOrderMapper.updateById(order));");
+        assertContainsAll(planManager,
+                "businessLockService.lockProcessOrders(List.of(orderUuid));",
+                "upsertDraft(orderUuid, rollUuid, plan, preview)");
+        assertContainsAll(slice(routeManager,
+                        "public ProcessRoutePreviewVO save(String orderUuid, ProcessRoutePreviewDTO dto)",
+                        "public boolean isRouteDraft"),
+                "businessLockService.lockProcessOrders(List.of(orderUuid));",
+                "upsertDraft(orderUuid, roll.getUuid(), dto, preview)");
 
         assertTrue(!draftService.contains("private String previewJson("),
                 "draft service must not keep a second preview JSON path");

@@ -454,6 +454,20 @@ body,
   padding-right: 0;
 }
 
+.app-shell__content--edge-scroll > .process-order-create-spin,
+.app-shell__content--edge-scroll > .process-order-create-spin > .ant-spin-container {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell__content--edge-scroll .process-order-create-spin .mes-scroll-page {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .app-shell__auth-loading {
   display: flex;
   width: 100%;

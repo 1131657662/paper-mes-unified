@@ -32,11 +32,12 @@ export function useProcessOrderRowSelection() {
 
   const toggleRecord = (record: ProcessOrder) => {
     const selected = selectedRowKeys.includes(record.uuid)
-    setSelectedRowKeys(selected ? selectedRowKeys.filter((key) => key !== record.uuid) : [...selectedRowKeys, record.uuid])
-    setSelectedRows(selected ? selectedRows.filter((row) => row.uuid !== record.uuid) : [...selectedRows, record])
+    setSelectedRowKeys(selected ? [] : [record.uuid])
+    setSelectedRows(selected ? [] : [record])
   }
 
   const rowSelection: TableRowSelection<ProcessOrder> = {
+    type: 'radio',
     selectedRowKeys,
     columnWidth: 42,
     onChange: (keys, rows) => {

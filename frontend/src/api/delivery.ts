@@ -3,6 +3,7 @@ import type { PageResult } from '../types/common'
 import type {
   DeliveryOrder,
   DeliveryAppendItemsDTO,
+  DeliveryCancelDTO,
   DeliveryQuery,
   AvailableFinishVO,
   DeliveryCreateDTO,
@@ -59,6 +60,14 @@ export function confirmDeliveryOrder(uuid: string, data?: DeliveryConfirmDTO) {
 export function rollbackDeliveryOrder(uuid: string, data: DeliveryRollbackDTO) {
   return request<void>({
     url: `/api/delivery-orders/${uuid}/rollback`,
+    method: 'post',
+    data,
+  })
+}
+
+export function cancelPendingDeliveryOrder(uuid: string, data: DeliveryCancelDTO) {
+  return request<void>({
+    url: `/api/delivery-orders/${uuid}/cancel`,
     method: 'post',
     data,
   })

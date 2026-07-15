@@ -1,6 +1,6 @@
 package com.paper.mes.report.service;
 
-import com.paper.mes.report.dto.ReportDetailVO;
+import com.paper.mes.report.dto.ReportDetailsVO;
 import com.paper.mes.report.dto.ReportDimensionVO;
 import com.paper.mes.report.dto.ReportOverviewVO;
 import com.paper.mes.report.dto.ReportQuery;
@@ -17,7 +17,7 @@ public interface ReportService {
 
     List<ReportDimensionVO> dimensionSummary(ReportQuery query);
 
-    List<ReportDetailVO> detailRows(ReportQuery query);
+    ReportDetailsVO detailRows(ReportQuery query);
 
     void exportWorkbook(ReportQuery query, HttpServletResponse response);
 }

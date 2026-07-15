@@ -9,12 +9,16 @@ import type {
   RewindSegmentPreview,
 } from '../../../types/processOrder'
 import { formatKg, formatMm } from '../../../utils/numberFormatters'
+import type { RollWeightBalance } from '../weightBalanceModel'
+import WeightBalanceStrip from './WeightBalanceStrip'
 import './PlanPreviewPanel.css'
+import './WeightBalanceStrip.css'
 
 interface Props {
   preview?: PlanPreviewVO
   loading?: boolean
   onPreview?: () => void
+  balance?: RollWeightBalance
 }
 
 const segmentColumns: ColumnsType<RewindSegmentPreview> = [
@@ -37,11 +41,11 @@ const finishColumns: ColumnsType<RewindFinishItemPreview> = [
   { title: '来源', dataIndex: 'sourceSummary', width: 160, render: textCell },
 ]
 
-export default function PlanPreviewPanel({ preview, loading, onPreview }: Props) {
+export default function PlanPreviewPanel({ preview, loading, onPreview, balance }: Props) {
   return (
     <div className="plan-preview-panel">
       <PreviewToolbar preview={preview} loading={loading} onPreview={onPreview} />
-      {!preview ? <EmptyPreview /> : <PreviewContent preview={preview} />}
+      {!preview ? <EmptyPreview /> : <PreviewContent preview={preview} balance={balance} />}
     </div>
   )
 }
@@ -70,7 +74,7 @@ function EmptyPreview() {
   )
 }
 
-function PreviewContent({ preview }: { preview: PlanPreviewVO }) {
+function PreviewContent({ preview, balance }: { preview: PlanPreviewVO; balance?: RollWeightBalance }) {
   const isRewind = preview.mainStepType === 2
   return (
     <div className="plan-preview-panel__content">
@@ -78,6 +82,7 @@ function PreviewContent({ preview }: { preview: PlanPreviewVO }) {
       <Typography.Paragraph className="plan-preview-panel__summary">
         {preview.summary || '暂无摘要'}
       </Typography.Paragraph>
+      {balance && <WeightBalanceStrip balance={balance} compact />}
       <PreviewStats preview={preview} />
       <PreviewTableSection
         title="排布数据"

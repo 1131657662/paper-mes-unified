@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import DashboardActivityTimeline from '../../features/dashboard/components/DashboardActivityTimeline'
 import DashboardHeader from '../../features/dashboard/components/DashboardHeader'
 import DashboardMetricGrid from '../../features/dashboard/components/DashboardMetricGrid'
@@ -19,6 +20,7 @@ export default function DashboardPage() {
   const {
     data: overview,
     isFetching: isRefreshingOverview,
+    isError: isOverviewError,
     isLoading: isLoadingOverview,
     refetch: refreshOverview,
   } = useDashboardOverview()
@@ -37,7 +39,13 @@ export default function DashboardPage() {
         userName={user?.realName ?? user?.username ?? '操作员'}
       />
 
-      {showInitialSkeleton ? (
+      {isOverviewError && !overview ? (
+        <QueryLoadErrorAlert
+          description="经营指标和待办未成功加载，当前空白不代表没有业务数据。"
+          message="仪表盘数据加载失败"
+          onRetry={() => void refreshOverview()}
+        />
+      ) : showInitialSkeleton ? (
         <DashboardSkeleton />
       ) : (
         <div className="dashboard-page__content">

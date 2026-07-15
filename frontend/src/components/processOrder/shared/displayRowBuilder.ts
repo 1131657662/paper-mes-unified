@@ -34,10 +34,13 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
 
   // 先处理合并组
   for (const group of mergeGroups) {
-    const allProds = group.allUuids.map((uuid) => prodByUuid.get(uuid)!).filter(Boolean)
+    const allProds = group.allUuids
+      .map((uuid) => prodByUuid.get(uuid))
+      .filter((production): production is RollProductionVO => production != null)
     if (allProds.length < 2) continue
 
-    const mainProd = allProds.find((p) => p.originalUuid === group.mainUuid) || allProds[0]
+    const mainProd = allProds.find((p) => p.originalUuid === group.mainUuid) ?? allProds[0]
+    if (!mainProd) continue
     const sourceProds = allProds.filter((p) => p.originalUuid !== group.mainUuid)
 
     // 去重成品
@@ -228,7 +231,8 @@ function findMergeGroups(productions: RollProductionVO[]): MergeGroup[] {
       const prod = prodMap.get(uuid)
       return prod?.rewindParams?.some((p) => p.paramMode === 5)
     })
-    const mainUuid = mainMember || memberList[0]
+    const mainUuid = mainMember ?? memberList[0]
+    if (!mainUuid) continue
     groups.push({
       mainUuid,
       sourceUuids: memberList.filter((u) => u !== mainUuid),

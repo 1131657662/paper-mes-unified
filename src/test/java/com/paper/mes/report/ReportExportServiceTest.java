@@ -7,6 +7,7 @@ import com.paper.mes.report.service.ReportExportService;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -35,6 +36,7 @@ class ReportExportServiceTest {
             assertEquals("已结清", details.getRow(0).getCell(22).getStringCellValue());
             assertEquals("现金实收", details.getRow(0).getCell(23).getStringCellValue());
             assertEquals("废纸抵扣", details.getRow(0).getCell(24).getStringCellValue());
+            workbook.write(OutputStream.nullOutputStream());
         }
     }
 
@@ -70,6 +72,7 @@ class ReportExportServiceTest {
             assertEquals(3.255, dimensionSheet.getRow(1).getCell(4).getNumericCellValue(), 0.0001);
             assertEquals("原纸吨位", detailSheet.getRow(0).getCell(10).getStringCellValue());
             assertEquals(6.51, detailSheet.getRow(1).getCell(10).getNumericCellValue(), 0.0001);
+            workbook.write(OutputStream.nullOutputStream());
         }
     }
 }

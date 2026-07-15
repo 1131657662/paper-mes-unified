@@ -3,6 +3,8 @@ package com.paper.mes.settle.service.impl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ErrorCode;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
@@ -29,15 +31,22 @@ final class SettleSnapshotPrintLineReader {
             JsonNode root = objectMapper.readTree(snapBill);
             for (String name : List.of("print_line_items", "printLineItems", "print_lines", "printLines")) {
                 List<SettlePrintLineVO> lines = readNode(root.get(name), objectMapper);
-                if (hasUsableSnapshotLines(lines)) {
+                if (hasReadableSnapshotLines(lines)) {
                     return lines;
                 }
             }
-            return null;
+            throw corruptedSnapshot();
+        } catch (BusinessException ex) {
+            throw ex;
         } catch (Exception ex) {
-            log.warn("结算打印行快照解析失败，将回退到当前明细：{}", ex.getMessage());
-            return null;
+            log.error("结算历史打印快照解析失败：{}", ex.getMessage());
+            throw corruptedSnapshot();
         }
+    }
+
+    private static BusinessException corruptedSnapshot() {
+        return new BusinessException(ErrorCode.E008,
+                "结算单历史打印快照损坏，已禁止使用当前加工数据替代，请联系管理员处理");
     }
 
     private static List<SettlePrintLineVO> readNode(JsonNode node, ObjectMapper objectMapper) {
@@ -45,7 +54,7 @@ final class SettleSnapshotPrintLineReader {
             return null;
         }
         List<SettlePrintLineVO> lines = readCamelCaseLines(node, objectMapper);
-        if (hasUsableSnapshotLines(lines)) {
+        if (hasReadableSnapshotLines(lines)) {
             return lines;
         }
         return readSnakeCaseLines(node);
@@ -114,10 +123,10 @@ final class SettleSnapshotPrintLineReader {
         return lines;
     }
 
-    private static boolean hasUsableSnapshotLines(List<SettlePrintLineVO> lines) {
-        return lines != null && !lines.isEmpty()
-                && lines.stream().anyMatch(line -> StringUtils.hasText(line.getOrderUuid())
-                || StringUtils.hasText(line.getOrderNo()));
+    private static boolean hasReadableSnapshotLines(List<SettlePrintLineVO> lines) {
+        return lines != null && (lines.isEmpty()
+                || lines.stream().anyMatch(line -> StringUtils.hasText(line.getOrderUuid())
+                || StringUtils.hasText(line.getOrderNo())));
     }
 
     private static String text(JsonNode node, String fieldName) {

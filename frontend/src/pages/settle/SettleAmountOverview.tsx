@@ -9,14 +9,17 @@ interface Props {
 export default function SettleAmountOverview({ order }: Props) {
   const items: SettleOverviewItem[] = [
     { label: '应收总额', tone: 'primary', value: formatMoney(order.totalAmount) },
-    { label: '已结清金额', tone: 'success', value: formatMoney(order.receivedAmount) },
-    { label: '现金实收', value: formatMoney(order.cashReceivedAmount) },
-    { label: '废纸抵扣', value: formatMoney(order.scrapOffsetAmount) },
+    {
+      hint: `现金 ${formatMoney(order.cashReceivedAmount)} / 废纸 ${formatMoney(order.scrapOffsetAmount)}`,
+      label: '已收金额',
+      tone: 'success',
+      value: formatMoney(order.receivedAmount),
+    },
     { label: '未收金额', tone: 'warning', value: formatMoney(order.unreceivedAmount) },
     {
-      hint: '锯纸费 / 复卷费 / 额外费',
+      hint: `锯纸 ${formatMoney(order.sawAmount)} / 复卷 ${formatMoney(order.rewindAmount)} / 额外 ${formatMoney(order.extraAmount)}`,
       label: '费用构成',
-      value: `${formatMoney(order.sawAmount)} / ${formatMoney(order.rewindAmount)} / ${formatMoney(order.extraAmount)}`,
+      value: formatMoney(Number(order.sawAmount ?? 0) + Number(order.rewindAmount ?? 0) + Number(order.extraAmount ?? 0)),
     },
   ]
 
@@ -25,7 +28,7 @@ export default function SettleAmountOverview({ order }: Props) {
       {items.map((item) => (
         <StatisticCard
           className={`document-amount-card ${item.tone ? `document-amount-card--${item.tone}` : ''}`}
-          colSpan={{ xs: 24, md: 12, xl: 4 }}
+          colSpan={{ xs: 24, md: 12, xl: 6 }}
           key={item.label}
           statistic={{
             description: item.hint,

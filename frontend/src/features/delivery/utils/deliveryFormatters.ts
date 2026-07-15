@@ -51,6 +51,14 @@ export function deliveryOriginalSnapshotText(item: DeliveryDetail) {
   return item.originalSummary || item.originalRollNos || '-'
 }
 
+export function deliveryOriginalIdentityText(item: DeliveryDetail) {
+  const identities = (item.originalItems ?? []).map(originalIdentity).filter(Boolean)
+  if (identities.length > 0) return identities.join('；')
+  const legacyValue = item.originalRollNos?.trim()
+  if (!legacyValue || looksLikeInternalId(legacyValue)) return '未记录卷号'
+  return legacyValue
+}
+
 export function deliveryProcessSnapshotText(item: DeliveryDetail) {
   const items = item.processStepItems ?? []
   if (items.length > 0) {
@@ -77,6 +85,16 @@ function originalSourceText(item: DeliveryOriginalSourceItem) {
     item.machineName ? `机台${item.machineName}` : undefined,
   ].filter(Boolean)
   return `${label}｜${identity.length ? identity.join(' / ') : '无卷号'}｜${spec.join(' / ')}`
+}
+
+function originalIdentity(item: DeliveryOriginalSourceItem) {
+  const label = item.rowSort ? `母卷${item.rowSort}` : '母卷'
+  const identity = item.rollNo || item.extraNo
+  return identity ? `${label} ${identity}` : `${label} 未记录卷号`
+}
+
+function looksLikeInternalId(value: string) {
+  return /^[0-9a-f]{32}$/i.test(value) || /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value)
 }
 
 function processStepText(item: DeliveryProcessStepItem) {

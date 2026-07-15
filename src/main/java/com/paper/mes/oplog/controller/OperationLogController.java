@@ -10,6 +10,7 @@ import com.paper.mes.oplog.dto.OperationLogQuery;
 import com.paper.mes.oplog.entity.OperationLog;
 import com.paper.mes.oplog.mapper.OperationLogMapper;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,7 +34,7 @@ public class OperationLogController {
      * 分页查询操作日志
      */
     @GetMapping
-    public R<PageResult<OperationLog>> page(OperationLogQuery query) {
+    public R<PageResult<OperationLog>> page(@Valid OperationLogQuery query) {
         LambdaQueryWrapper<OperationLog> wrapper = new LambdaQueryWrapper<>();
 
         // 业务类型筛选
@@ -54,6 +55,14 @@ public class OperationLogController {
         // 操作人筛选
         if (StringUtils.hasText(query.getOperator())) {
             wrapper.like(OperationLog::getOperator, query.getOperator());
+        }
+
+        if (StringUtils.hasText(query.getFieldName())) {
+            wrapper.like(OperationLog::getFieldName, query.getFieldName());
+        }
+
+        if (StringUtils.hasText(query.getRemark())) {
+            wrapper.like(OperationLog::getRemark, query.getRemark());
         }
 
         // 操作日期范围

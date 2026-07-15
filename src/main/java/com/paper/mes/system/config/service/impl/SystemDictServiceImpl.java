@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
+import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.system.config.dto.DictItemQuery;
 import com.paper.mes.system.config.dto.DictItemSaveDTO;
@@ -32,7 +33,7 @@ public class SystemDictServiceImpl extends ServiceImpl<SysDictItemMapper, SysDic
 
     @Override
     public PageResult<SysDictItem> page(DictItemQuery query) {
-        Page<SysDictItem> page = page(Page.of(query.getCurrent(), query.getSize()), buildWrapper(query));
+        Page<SysDictItem> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), buildWrapper(query));
         return PageResult.of(page);
     }
 

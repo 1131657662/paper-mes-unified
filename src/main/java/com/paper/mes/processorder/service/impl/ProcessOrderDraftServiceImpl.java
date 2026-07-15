@@ -5,7 +5,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
+import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.service.CustomerService;
 import com.paper.mes.processorder.calc.FeeCalculator;
@@ -78,6 +80,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     private final OriginalRollImportParser importParser;
     private final ObjectMapper objectMapper;
     private final DocumentNoService documentNoService;
+    private final BusinessLockService businessLockService;
 
     @Override
     public List<DraftSummaryVO> listDrafts() {
@@ -105,6 +108,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveBaseInfo(String orderUuid, DraftOrderBaseDTO dto) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         Customer customer = requireCustomer(dto.getCustomerUuid());
         copyBaseFields(dto, order, customer);
@@ -115,6 +119,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveDraftProgress(String orderUuid, Integer currentStep) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         order.setExtNum1(currentStep == null ? BigDecimal.ZERO : BigDecimal.valueOf(currentStep));
         processOrderMapper.updateById(order);
@@ -123,6 +128,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<String> replaceOriginalRolls(String orderUuid, List<OriginalRollDTO> rolls) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         deleteDraftRolls(orderUuid);
         List<String> rollUuids = new ArrayList<>(rolls.size());
@@ -163,6 +169,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ProcessOrderSubmitVO submit(String orderUuid) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireOrder(orderUuid);
         if (STATUS_PENDING == order.getOrderStatus()) {
             return submittedResult(order);
@@ -174,7 +181,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         Map<String, ProcessConfigDraft> drafts = draftMap(orderUuid);
         validateSubmit(rolls, drafts);
         order.setOrderStatus(STATUS_PENDING);
-        processOrderMapper.updateById(order);
+        ConcurrencyGuard.requireRowUpdated(processOrderMapper.updateById(order));
         return generateFinishConfigs(order, rolls, drafts);
     }
 

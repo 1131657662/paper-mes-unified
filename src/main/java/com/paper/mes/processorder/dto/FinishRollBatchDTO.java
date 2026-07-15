@@ -17,6 +17,9 @@ public class FinishRollBatchDTO {
     @Max(value = 500, message = "单次生成数量不超过 500")
     private Integer count;
 
+    /** 来源母卷；多母卷加工单必填，单母卷可由后端自动解析。 */
+    private String originalUuid;
+
     /** 成品品名（模板，可空，回录时再补全）。 */
     private String paperName;
     private String customerPaperName;

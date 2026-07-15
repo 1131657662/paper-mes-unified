@@ -75,6 +75,21 @@ class BusinessFlowSafetyContractTest {
     }
 
     @Test
+    void deliveryCancel_whenPending_releasesReservationsBeforeSoftDelete() throws IOException {
+        String source = source(DELIVERY_SERVICE);
+        String cancel = slice(source, "public void cancelPending", "private String nextDeliveryNo");
+
+        assertContainsAll(cancel,
+                "businessLockService.lockDeliveryOrder(uuid);",
+                "order.getDeliveryStatus() != DELIVERY_STATUS_PENDING",
+                "updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED)",
+                "deliveryDetailMapper.delete",
+                "ConcurrencyGuard.requireUpdated(removeById(uuid))");
+        assertTrue(cancel.indexOf("updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED)")
+                < cancel.indexOf("ConcurrencyGuard.requireUpdated(removeById(uuid))"));
+    }
+
+    @Test
     void deliverySnapshot_whenGenerated_keepsTraceableFields() throws IOException {
         String source = source(DELIVERY_SERVICE);
         String snapshot = slice(source,

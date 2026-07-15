@@ -1,4 +1,5 @@
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
+import type { PrintViewVersion } from '../../../types/processOrder'
 import { CONFIG_KEYS } from '../../systemConfig/configFallbacks'
 import { useSystemConfigValue } from '../../systemConfig/hooks/useSystemConfigValue'
 import {
@@ -15,28 +16,32 @@ import './PrintPreviewSheet.print.css'
 
 interface Props {
   detail: ProcessOrderDetailVO
+  snapshotTime?: string
+  snapshotUser?: string
+  versionLabel?: string
+  version?: PrintViewVersion
 }
 
-export default function PrintPreviewSheet({ detail }: Props) {
+export default function PrintPreviewSheet({ detail, snapshotTime, snapshotUser, version, versionLabel }: Props) {
   const blocks = buildPrintRollBlocks(detail)
   const summary = buildPrintSummary(detail)
   const { value: printTitle } = useSystemConfigValue(CONFIG_KEYS.processOrderTitle, '车间加工单')
 
   return (
     <div className="print-preview-sheet">
-      <PrintHeader detail={detail} title={printTitle} />
+      <PrintHeader detail={detail} title={printTitle} snapshotTime={snapshotTime} snapshotUser={snapshotUser} versionLabel={versionLabel} />
       {orderRemark(detail) && <OrderRemarkBlock remark={orderRemark(detail)} />}
       <SummaryStrip items={summary} />
       <section className="print-preview-sheet__routes">
-        {blocks.map((block) => <RollBlock block={block} key={block.key} />)}
+        {blocks.map((block) => <RollBlock block={block} key={block.key} showActuals={version === 'FINISHED'} />)}
       </section>
-      <PrintDenseTable blocks={blocks} />
+      <PrintDenseTable blocks={blocks} showActuals={version === 'FINISHED'} />
       <PrintFooter />
     </div>
   )
 }
 
-function PrintHeader({ detail, title }: { detail: ProcessOrderDetailVO; title: string }) {
+function PrintHeader({ detail, snapshotTime, snapshotUser, title, versionLabel }: Props & { title: string }) {
   const { order } = detail
   return (
     <header className="print-preview-sheet__header">
@@ -46,6 +51,9 @@ function PrintHeader({ detail, title }: { detail: ProcessOrderDetailVO; title: s
         <span>客户：{order.customerName ?? '-'}</span>
         <span>日期：{order.orderDate ?? '-'}</span>
         <span>打印：{order.printStatus === 1 ? `${order.printCount ?? 1} 次` : '未打印'}</span>
+        {versionLabel && <span>版本：{versionLabel}</span>}
+        {snapshotTime && <span>版本时间：{snapshotTime}</span>}
+        {snapshotUser && <span>版本操作人：{snapshotUser}</span>}
       </div>
     </header>
   )
@@ -73,7 +81,7 @@ function SummaryStrip({ items }: { items: PrintSummaryItem[] }) {
   )
 }
 
-function RollBlock({ block }: { block: PrintRollBlock }) {
+function RollBlock({ block, showActuals }: { block: PrintRollBlock; showActuals: boolean }) {
   return (
     <article className="print-roll-block">
       <aside className="print-roll-block__source">
@@ -82,7 +90,7 @@ function RollBlock({ block }: { block: PrintRollBlock }) {
         <WriteGrid />
       </aside>
       <div className="print-roll-block__main">
-        <RouteStages stages={block.routeStages} />
+        <RouteStages stages={block.routeStages} showActuals={showActuals} />
       </div>
     </article>
   )
@@ -107,16 +115,16 @@ function SourceList({ block }: { block: PrintRollBlock }) {
   )
 }
 
-function RouteStages({ stages }: { stages: PrintRouteStage[] }) {
+function RouteStages({ stages, showActuals }: { stages: PrintRouteStage[]; showActuals: boolean }) {
   if (!stages.length) return <div className="print-route-empty">未配置加工路线</div>
   return (
     <div className="print-route-stage-list">
-      {stages.map((stage) => <RouteStage stage={stage} key={stage.key} />)}
+      {stages.map((stage) => <RouteStage stage={stage} key={stage.key} showActuals={showActuals} />)}
     </div>
   )
 }
 
-function RouteStage({ stage }: { stage: PrintRouteStage }) {
+function RouteStage({ stage, showActuals }: { stage: PrintRouteStage; showActuals: boolean }) {
   return (
     <section className="print-route-stage">
       <div className="print-route-stage__head">
@@ -128,12 +136,12 @@ function RouteStage({ stage }: { stage: PrintRouteStage }) {
         <strong>工艺要求：</strong>
         {stage.requirement}
       </p>
-      <OutputList outputs={stage.outputs} />
+      <OutputList outputs={stage.outputs} showActuals={showActuals} />
     </section>
   )
 }
 
-function OutputList({ outputs }: { outputs: PrintRouteOutput[] }) {
+function OutputList({ outputs, showActuals }: { outputs: PrintRouteOutput[]; showActuals: boolean }) {
   if (!outputs.length) return <div className="print-route-output-empty">暂无产出</div>
   return (
     <table className="print-route-output-table">
@@ -148,13 +156,13 @@ function OutputList({ outputs }: { outputs: PrintRouteOutput[] }) {
         </tr>
       </thead>
       <tbody>
-        {outputs.map((output) => <OutputRow output={output} key={output.key} />)}
+        {outputs.map((output) => <OutputRow output={output} key={output.key} showActuals={showActuals} />)}
       </tbody>
     </table>
   )
 }
 
-function OutputRow({ output }: { output: PrintRouteOutput }) {
+function OutputRow({ output, showActuals }: { output: PrintRouteOutput; showActuals: boolean }) {
   const fillable = output.status === 'final'
   return (
     <tr className={`print-route-output-row print-route-output-row--${output.status}`}>
@@ -162,7 +170,7 @@ function OutputRow({ output }: { output: PrintRouteOutput }) {
       <td>{output.spec}</td>
       <td>{output.weight}</td>
       <td><strong>{outputStatusText(output.status)}</strong></td>
-      <td className={fillable ? 'print-write-cell' : 'print-muted-cell'}>{fillable ? '' : '-'}</td>
+      <td className={fillable ? 'print-write-cell' : 'print-muted-cell'}>{showActuals ? output.actualWeight ?? '-' : fillable ? '' : '-'}</td>
       <td className={fillable ? 'print-write-cell' : 'print-muted-cell'}>{fillable ? '' : '-'}</td>
     </tr>
   )

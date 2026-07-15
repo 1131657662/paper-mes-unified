@@ -205,8 +205,7 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
   const additionalSteps = (record.steps ?? [])
     .filter((s) => s.isMain !== 1)
     .sort((a, b) => (a.stepSort ?? 0) - (b.stepSort ?? 0))
-  for (let i = 0; i < additionalSteps.length; i++) {
-    const step = additionalSteps[i]
+  for (const [i, step] of additionalSteps.entries()) {
     const numChar = String.fromCodePoint(0x2460 + i + 1) // ①=2460
     const label = step.stepType === 1 ? '追切纸' : step.stepName || '追加'
     const header = `${numChar} ${label}`

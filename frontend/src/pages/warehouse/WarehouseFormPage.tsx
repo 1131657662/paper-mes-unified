@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createWarehouse, getWarehouse, updateWarehouse } from '../../api/warehouse'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { Warehouse, WarehouseSaveDTO } from '../../types/warehouse'
 import '../documentModule.css'
 import WarehouseProfileForm from './WarehouseProfileForm'
@@ -19,6 +20,7 @@ export default function WarehouseFormPage({ mode }: Props) {
   const [loading, setLoading] = useState(mode === 'edit')
   const [submitting, setSubmitting] = useState(false)
   const isEdit = mode === 'edit'
+  const { clearDirty, markDirty } = useUnsavedChangesGuard()
 
   useEffect(() => {
     if (!isEdit || !uuid) return
@@ -33,6 +35,7 @@ export default function WarehouseFormPage({ mode }: Props) {
     try {
       const savedUuid = isEdit && uuid ? uuid : await createWarehouse(values)
       if (isEdit && uuid) await updateWarehouse(uuid, values)
+      clearDirty()
       message.success(isEdit ? '仓库档案已保存' : '仓库档案已新增')
       navigate(`/warehouses/${savedUuid}`)
     } finally {
@@ -46,7 +49,6 @@ export default function WarehouseFormPage({ mode }: Props) {
     <div className="document-module-page warehouse-profile-page">
       <MesPageHeader
         title={isEdit ? '编辑仓库档案' : '新增仓库档案'}
-        description="维护加工、成品和出库相关仓库资料，出库和库存视图会按这里的仓库名称与状态识别。"
         onBack={() => navigate(backPath)}
         actions={(
           <Space>
@@ -62,7 +64,7 @@ export default function WarehouseFormPage({ mode }: Props) {
         {loading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : (
-          <WarehouseProfileForm editing={isEdit} form={form} onFinish={submit} />
+          <WarehouseProfileForm editing={isEdit} form={form} onFinish={submit} onValuesChange={markDirty} />
         )}
       </Card>
     </div>

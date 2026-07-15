@@ -2,6 +2,7 @@ package com.paper.mes.settle.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -14,6 +15,7 @@ import java.util.List;
 public class SettleByOrdersDTO {
 
     @NotEmpty(message = "加工单不能为空")
+    @Size(max = 500, message = "单次结算加工单不能超过500条")
     private List<@NotBlank(message = "加工单uuid不能为空") String> orderUuids;
 
     private LocalDate periodStart;

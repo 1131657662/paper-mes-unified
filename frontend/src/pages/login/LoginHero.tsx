@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { BarChartOutlined, ClusterOutlined, SafetyCertificateOutlined, TeamOutlined } from '@ant-design/icons'
 import AppLogoMark from '../../components/brand/AppLogoMark'
 import { APP_BRAND } from '../../config/brand'
-import loginHeroScene from '../../assets/login-paper-hero.png'
+import loginHeroScene from '../../assets/login-paper-hero.webp'
 import './LoginHero.css'
 
 interface FeatureItem {

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createPaper, getPaper, updatePaper } from '../../api/paper'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { Paper, PaperSaveDTO } from '../../types/paper'
 import '../documentModule.css'
 import PaperProfileForm from './PaperProfileForm'
@@ -19,6 +20,7 @@ export default function PaperFormPage({ mode }: Props) {
   const [loading, setLoading] = useState(mode === 'edit')
   const [submitting, setSubmitting] = useState(false)
   const isEdit = mode === 'edit'
+  const { clearDirty, markDirty } = useUnsavedChangesGuard()
 
   useEffect(() => {
     if (!isEdit || !uuid) return
@@ -33,6 +35,7 @@ export default function PaperFormPage({ mode }: Props) {
     try {
       const savedUuid = isEdit && uuid ? uuid : await createPaper(values)
       if (isEdit && uuid) await updatePaper(uuid, values)
+      clearDirty()
       message.success(isEdit ? '纸张档案已保存' : '纸张档案已新增')
       navigate(`/papers/${savedUuid}`)
     } finally {
@@ -46,7 +49,6 @@ export default function PaperFormPage({ mode }: Props) {
     <div className="document-module-page paper-profile-page">
       <MesPageHeader
         title={isEdit ? '编辑纸张档案' : '新增纸张档案'}
-        description="维护纸张品名、常用克重和类型。新建加工单录入原纸时可参考这里的规范名称，减少同纸不同名。"
         onBack={() => navigate(backPath)}
         actions={(
           <Space>
@@ -62,7 +64,7 @@ export default function PaperFormPage({ mode }: Props) {
         {loading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : (
-          <PaperProfileForm editing={isEdit} form={form} onFinish={submit} />
+          <PaperProfileForm editing={isEdit} form={form} onFinish={submit} onValuesChange={markDirty} />
         )}
       </Card>
     </div>

@@ -36,6 +36,9 @@ export const PERMISSION_ITEMS: PermissionItem[] = [
   { code: PERMISSIONS.settleManage, label: '结算办理', description: '生成结算单、作废结算单' },
   { code: PERMISSIONS.settleReceive, label: '收款登记', description: '登记收款、取消收款记录' },
   { code: PERMISSIONS.reportView, label: '经营报表', description: '查看仪表盘和统计报表' },
+  { code: PERMISSIONS.systemConfig, label: '系统配置', description: '维护字典、系统参数和单号规则' },
+  { code: PERMISSIONS.dataBackup, label: '数据备份', description: '执行备份、恢复演练和保留策略' },
+  { code: PERMISSIONS.dataHealth, label: '数据巡检', description: '查看并处理业务数据一致性异常' },
   { code: PERMISSIONS.systemAudit, label: '操作日志', description: '查看系统操作留痕和审计记录' },
   { code: PERMISSIONS.userManage, label: '用户权限维护', description: '维护系统账号、角色、状态和密码' },
 ]
@@ -74,8 +77,14 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     key: 'system',
     title: '系统管理',
-    description: '用户权限和操作审计',
-    permissions: [PERMISSIONS.userManage, PERMISSIONS.systemAudit],
+    description: '用户、配置、数据安全和操作审计',
+    permissions: [
+      PERMISSIONS.userManage,
+      PERMISSIONS.systemConfig,
+      PERMISSIONS.dataBackup,
+      PERMISSIONS.dataHealth,
+      PERMISSIONS.systemAudit,
+    ],
   },
 ]
 
@@ -88,13 +97,21 @@ export const ROLE_PROFILES: Record<UserRoleCode, RoleProfile> = {
     description: '可维护全部业务数据、用户权限、操作日志和系统配置。',
     permissions: [PERMISSIONS.all],
   },
-  operator: {
-    code: 'operator',
-    label: '录单员',
+  order_clerk: {
+    code: 'order_clerk',
+    label: '制单员',
     tone: 'cyan',
-    summary: '加工单与回录',
-    description: '负责新建加工单、配置加工方案、查看基础档案并完成生产回录。',
-    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.orderCreate, PERMISSIONS.orderBackRecord, PERMISSIONS.reportView],
+    summary: '制单、下发与改单',
+    description: '负责新建加工单、配置方案、打印下发、工序维护和无后续业务时的回退改单。',
+    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.orderCreate, PERMISSIONS.orderManage, PERMISSIONS.reportView],
+  },
+  recorder: {
+    code: 'recorder',
+    label: '回录员',
+    tone: 'geekblue',
+    summary: '生产数据回录',
+    description: '负责查看加工单并填写母卷、成品、切边、异常和实际加工结果。',
+    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.orderBackRecord, PERMISSIONS.reportView],
   },
   finance: {
     code: 'finance',
@@ -114,11 +131,27 @@ export const ROLE_PROFILES: Record<UserRoleCode, RoleProfile> = {
   },
   warehouse: {
     code: 'warehouse',
-    label: '仓库',
+    label: '出库员',
     tone: 'green',
     summary: '出库办理',
     description: '负责查看加工单、办理出库、确认签收和出库回退。',
     permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.deliveryView, PERMISSIONS.deliveryManage, PERMISSIONS.reportView],
+  },
+  viewer: {
+    code: 'viewer',
+    label: '只读人员',
+    tone: 'default',
+    summary: '业务只读查看',
+    description: '可查看基础档案、加工单、出库单、结算单和经营报表，不可执行新增、修改或状态操作。',
+    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.deliveryView, PERMISSIONS.settleView, PERMISSIONS.reportView],
+  },
+  operator: {
+    code: 'operator',
+    label: '录单员（兼容）',
+    tone: 'default',
+    summary: '历史兼容角色',
+    description: '保留现有账号原权限，不再作为新岗位的推荐选择。',
+    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.orderCreate, PERMISSIONS.orderBackRecord, PERMISSIONS.reportView],
   },
 }
 

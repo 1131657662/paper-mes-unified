@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button, Popconfirm, message } from 'antd'
+import { Button, Modal, Popconfirm, Tooltip, message } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { pageConfigItems } from '../../api/systemConfig'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
+import { renderCompatibleTableOptions } from '../../components/biz/tableToolbarOptionsRender'
 import TooltipText from '../../components/biz/TooltipText'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import type { ConfigItem, ConfigItemSaveDTO, ConfigStatus } from '../../types/systemConfig'
@@ -15,15 +16,20 @@ import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { builtInTag, statusOptions, statusTag, valueTypeTag } from './systemConfigDisplay'
 import { ConfigItemModal } from './SystemConfigModal'
 
-export default function ConfigItemPanel() {
+interface ConfigItemPanelProps {
+  onDirtyChange?: (dirty: boolean) => void
+}
+
+export default function ConfigItemPanel({ onDirtyChange }: ConfigItemPanelProps) {
   const actionRef = useRef<ActionType>(null)
   const [editing, setEditing] = useState<ConfigItem>()
   const [modalOpen, setModalOpen] = useState(false)
+  const [dirty, setDirty] = useState(false)
   const columnsState = useTableColumnsState('table-columns-system-config')
   const { mutateAsync: createItem, isPending: isCreating } = useCreateConfigItem()
   const { mutateAsync: updateItem, isPending: isUpdating } = useUpdateConfigItem()
   const { mutateAsync: deleteItem } = useDeleteConfigItem()
-  const columns = useConfigColumns({ deleteItem, onEdit: openEdit })
+  const columns = useConfigColumns({ onDelete: removeItem, onEdit: openEdit })
   const resizable = useResizableTableColumns<ConfigItem, ProColumns<ConfigItem>>(columns, 'system-config')
 
   async function submit(values: ConfigItemSaveDTO) {
@@ -34,14 +40,52 @@ export default function ConfigItemPanel() {
       await createItem(values)
       message.success('系统参数已新增')
     }
+    setDirty(false)
+    onDirtyChange?.(false)
     setModalOpen(false)
     setEditing(undefined)
     actionRef.current?.reload()
   }
 
   function openEdit(record: ConfigItem) {
+    setDirty(false)
+    onDirtyChange?.(false)
     setEditing(record)
     setModalOpen(true)
+  }
+
+  async function removeItem(uuid: string) {
+    await deleteItem(uuid)
+    message.success('系统参数已删除')
+    actionRef.current?.reload()
+  }
+
+  function openCreate() {
+    setDirty(false)
+    onDirtyChange?.(false)
+    setEditing(undefined)
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    if (!dirty) {
+      finishClose()
+      return
+    }
+    Modal.confirm({
+      title: '放弃未保存修改？',
+      content: '当前系统参数尚未保存，关闭后修改会丢失。',
+      okText: '放弃修改',
+      cancelText: '继续编辑',
+      onOk: finishClose,
+    })
+  }
+
+  function finishClose() {
+    setDirty(false)
+    onDirtyChange?.(false)
+    setModalOpen(false)
+    setEditing(undefined)
   }
 
   return (
@@ -55,7 +99,7 @@ export default function ConfigItemPanel() {
         components={resizable.components}
         headerTitle="系统参数"
         toolBarRender={() => [
-          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
             新增参数
           </Button>,
         ]}
@@ -74,15 +118,17 @@ export default function ConfigItemPanel() {
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         scroll={{ x: resizable.scrollX, y: '100%' }}
         options={mesProTableOptions()}
+        optionsRender={renderCompatibleTableOptions}
         tableLayout="fixed"
       />
       <ConfigItemModal
         item={editing}
         open={modalOpen}
         submitting={isCreating || isUpdating}
-        onCancel={() => {
-          setModalOpen(false)
-          setEditing(undefined)
+        onCancel={closeModal}
+        onDirtyChange={(nextDirty) => {
+          setDirty(nextDirty)
+          onDirtyChange?.(nextDirty)
         }}
         onSubmit={submit}
       />
@@ -90,7 +136,7 @@ export default function ConfigItemPanel() {
   )
 }
 
-function useConfigColumns(options: { deleteItem: (uuid: string) => Promise<void>; onEdit: (record: ConfigItem) => void }) {
+function useConfigColumns(options: { onDelete: (uuid: string) => Promise<void>; onEdit: (record: ConfigItem) => void }) {
   return [
     { title: '参数分组', dataIndex: 'configGroup', width: 130, render: textCell },
     { title: '关键字', dataIndex: 'keyword', hideInTable: true },
@@ -114,16 +160,18 @@ function useConfigColumns(options: { deleteItem: (uuid: string) => Promise<void>
             编辑
           </Button>
           <Popconfirm
+            disabled={record.builtIn === 1}
             title="确认删除该系统参数？"
             description={record.builtIn === 1 ? '内置系统参数不能删除，可以改为停用或修改参数值。' : '删除后系统不再读取该参数。'}
-            onConfirm={async () => {
-              await options.deleteItem(record.uuid)
-              message.success('系统参数已删除')
-            }}
+            onConfirm={() => options.onDelete(record.uuid)}
           >
-            <Button danger type="link" size="small" disabled={record.builtIn === 1}>
-              删除
-            </Button>
+            <Tooltip title={record.builtIn === 1 ? '内置系统参数不能删除，可以修改参数值或停用' : undefined}>
+              <span>
+                <Button className="system-config-delete-action" danger type="link" size="small" disabled={record.builtIn === 1}>
+                  删除
+                </Button>
+              </span>
+            </Tooltip>
           </Popconfirm>
         </div>
       ),

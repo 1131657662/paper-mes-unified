@@ -1,0 +1,115 @@
+.direct-ship-info__guide {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: var(--mes-radius-sm);
+  background: var(--mes-color-soft);
+}
+
+.direct-ship-info__steps {
+  margin-bottom: 0;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+.layout-bar {
+  display: flex;
+  width: 100%;
+  max-width: 400px;
+  height: 24px;
+  overflow: hidden;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius-sm);
+}
+
+.layout-bar__empty {
+  font-size: 12px;
+}
+
+.layout-bar__segment {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: var(--mes-color-panel);
+  font-size: 12px;
+  font-weight: 500;
+  transition: filter .16s ease;
+}
+
+.layout-bar__segment:hover {
+  filter: brightness(.94);
+}
+
+.layout-bar__segment--finish {
+  background: var(--mes-color-primary);
+}
+
+.layout-bar__segment--trim {
+  background: var(--mes-color-danger);
+}
+
+.process-roll-option.ant-list-item {
+  margin-bottom: 8px;
+  padding: 10px;
+  cursor: pointer;
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius-sm);
+  background: var(--mes-color-panel);
+}
+
+.process-roll-option.ant-list-item:hover {
+  border-color: var(--mes-color-border);
+  background: var(--mes-color-soft);
+}
+
+.process-roll-option--selected.ant-list-item,
+.process-roll-option--selected.ant-list-item:hover {
+  border-color: var(--mes-color-primary);
+  background: var(--mes-color-surface-selected);
+}
+
+.process-roll-option__content {
+  width: 100%;
+}
+
+.process-roll-option__status {
+  margin-left: 8px;
+}
+
+.process-roll-option__meta {
+  margin-top: 4px;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+.process-roll-option__tags {
+  margin-top: 6px;
+}
+
+.process-roll-option--locked.ant-list-item,
+.process-roll-option--locked.ant-list-item:hover {
+  cursor: not-allowed;
+  background: var(--mes-color-soft);
+  opacity: .78;
+}
+
+.process-roll-option__route {
+  margin-top: 8px;
+}
+
+.workbench-roll-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workbench-roll-toolbar__sort .ant-select {
+  width: 116px;
+}
+
+.workbench-roll-toolbar__direction--hidden {
+  visibility: hidden;
+}

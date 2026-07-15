@@ -7,6 +7,7 @@ import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
 import { defaultPlanForRoll, type DefaultPlanOptions } from '../draftMappers'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
+import { calculateRollWeightBalance } from '../weightBalanceModel'
 import PlanPreviewPanel from './PlanPreviewPanel'
 import ProcessPlanEditor from './ProcessPlanEditor'
 import ResizableWorkspace from './ResizableWorkspace'
@@ -67,6 +68,13 @@ export default function ConfigStep({
   const planDefaults = defaultPlanOptions ?? { spareCount: defaultSpareCount }
   const selectedPlan = selected ? plans[selected.localId] ?? defaultPlanForRoll(selected, planDefaults) : undefined
   const selectedRoutePreview = selected?.uuid ? routePreviews[selected.uuid] : undefined
+  const selectedBalance = selected ? calculateRollWeightBalance({
+    roll: selected,
+    rolls,
+    plan: selectedPlan,
+    preview: previews[selected.localId],
+    routePreview: selectedRoutePreview,
+  }) : undefined
   useAutoPlanPreview({ orderUuid, selected: selectedRoutePreview ? undefined : selected, selectedPlan, onPreviewPlan })
 
   const toggle = (localId: string, checked: boolean) => {
@@ -124,19 +132,16 @@ export default function ConfigStep({
 
   const rollList = (
     <WorkbenchRollList
-      machines={machines}
-      rolls={rolls}
-      selectedId={selected?.localId}
-      checkedIds={checkedIds}
-      previews={previews}
-      routePreviews={routePreviews}
-      lockedRolls={lockedRolls}
-      onClearSelection={() => setCheckedIds([])}
-      onSelect={selectRoll}
-      onLockedSelect={(_, lock) => message.info(`该母卷已被 ${lock.ownerLabel} 合并使用，无需单独配置`)}
-      onToggle={toggle}
-      onSelectSameSpec={selectSameSpec}
-      onOpenRouteDesigner={onOpenRouteDesigner}
+      data={{ lockedRolls, machines, previews, rolls, routePreviews }}
+      selection={{ checkedIds, selectedId: selected?.localId }}
+      actions={{
+        onClearSelection: () => setCheckedIds([]),
+        onLockedSelect: (_, lock) => message.info(`该母卷已被 ${lock.ownerLabel} 合并使用，无需单独配置`),
+        onOpenRouteDesigner,
+        onSelect: selectRoll,
+        onSelectSameSpec: selectSameSpec,
+        onToggle: toggle,
+      }}
     />
   )
 
@@ -173,7 +178,12 @@ export default function ConfigStep({
           rightTitle="后端预览"
           left={rollList}
           main={editor}
-          right={<PlanPreviewPanel preview={selected ? previews[selected.localId] : undefined} loading={saving} onPreview={previewCurrent} />}
+          right={<PlanPreviewPanel
+            balance={selectedBalance}
+            preview={selected ? previews[selected.localId] : undefined}
+            loading={saving}
+            onPreview={previewCurrent}
+          />}
           leftInitial={24}
           rightInitial={30}
         />

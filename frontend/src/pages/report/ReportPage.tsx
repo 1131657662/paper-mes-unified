@@ -1,4 +1,5 @@
 import { Card, Spin, message } from 'antd'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import ReportBarList from '../../features/report/components/ReportBarList'
@@ -37,6 +38,9 @@ export default function ReportPage() {
   const papersQuery = useReportPapers()
   const exportMutation = useExportReport()
   const loading = overviewQuery.isFetching || dimensionQuery.isFetching || detailsQuery.isFetching
+  const resultError = [overviewQuery, dimensionQuery, detailsQuery, monthlyQuery, customerRankQuery, productRankQuery]
+    .some((item) => item.isError)
+  const referenceError = customersQuery.isError || machinesQuery.isError || papersQuery.isError
 
   const refresh = () => {
     overviewQuery.refetch()
@@ -66,6 +70,17 @@ export default function ReportPage() {
   return (
     <div className="report-workbench mes-workbench">
       <Card className="report-filter-card" title="统计报表">
+        {referenceError && (
+          <QueryLoadErrorAlert
+            description="客户、纸张或机台筛选项未完整加载，当前筛选范围可能不完整。"
+            message="报表筛选资料加载失败"
+            onRetry={() => {
+              void customersQuery.refetch()
+              void machinesQuery.refetch()
+              void papersQuery.refetch()
+            }}
+          />
+        )}
         <ReportFilterBar
           customers={customersQuery.data?.records ?? []}
           exporting={exportMutation.isPending}
@@ -80,6 +95,13 @@ export default function ReportPage() {
       </Card>
 
       <Card className="report-result-card" title="分析结果">
+        {resultError && (
+          <QueryLoadErrorAlert
+            description="部分或全部统计结果未成功加载，当前空图表不代表没有业务数据。"
+            message="报表数据加载失败"
+            onRetry={refresh}
+          />
+        )}
         <Spin spinning={loading}>
           <div className="report-workbench__content">
             <ReportFilterSummary
@@ -89,7 +111,7 @@ export default function ReportPage() {
               query={query}
             />
             <ReportMetricStrip overview={overviewQuery.data} />
-            <ReportInsightStrip overview={overviewQuery.data} />
+            <ReportInsightStrip overview={overviewQuery.data} details={detailsQuery.data?.rows} />
             <div className="report-workbench__grid">
               <ReportTrendPanel monthly={monthlyQuery.data ?? []} />
               <ReportBarList
@@ -116,7 +138,7 @@ export default function ReportPage() {
               />
             </div>
             <ReportTables
-              details={detailsQuery.data ?? []}
+              details={detailsQuery.data}
               dimension={dimension}
               dimensions={dimensionQuery.data ?? []}
               loading={loading}

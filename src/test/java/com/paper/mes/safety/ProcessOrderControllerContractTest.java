@@ -65,7 +65,7 @@ class ProcessOrderControllerContractTest {
         mvc.perform(post("/api/process-orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(orderPayload()))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
 
         verify(processOrderService, never()).create(any());
@@ -79,7 +79,7 @@ class ProcessOrderControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(orderPayload())
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(403));
 
         verify(processOrderService, never()).create(any());
@@ -128,7 +128,7 @@ class ProcessOrderControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"targetStatus\":3,\"reason\":\"转待回录\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(403));
 
         verify(processOrderService, never()).changeStatus(any(), any(), any());
@@ -152,6 +152,18 @@ class ProcessOrderControllerContractTest {
     }
 
     @Test
+    void print_withOperatorRole_returnsForbidden() throws Exception {
+        authorizeAs("operator");
+
+        mvc.perform(post("/api/process-orders/order-uuid/print")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+
+        verify(processOrderService, never()).print(any(), any());
+    }
+
+    @Test
     void backRecord_withOperatorRole_bindsPayloadAndReturnsResult() throws Exception {
         authorizeAs("operator");
         BackRecordResultVO result = new BackRecordResultVO();
@@ -167,7 +179,6 @@ class ProcessOrderControllerContractTest {
 
         ArgumentCaptor<BackRecordDTO> captor = ArgumentCaptor.forClass(BackRecordDTO.class);
         verify(processOrderService).backRecord(eq("order-uuid"), captor.capture());
-        assertEquals("车间A", captor.getValue().getOperator());
         assertEquals(new BigDecimal("1198.00"), captor.getValue().getRolls().getFirst().getActualWeight());
     }
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createMachine, getMachine, updateMachine } from '../../api/machine'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { Machine, MachineSaveDTO } from '../../types/machine'
 import '../documentModule.css'
 import MachineProfileForm from './MachineProfileForm'
@@ -19,6 +20,7 @@ export default function MachineFormPage({ mode }: Props) {
   const [loading, setLoading] = useState(mode === 'edit')
   const [submitting, setSubmitting] = useState(false)
   const isEdit = mode === 'edit'
+  const { clearDirty, markDirty } = useUnsavedChangesGuard()
 
   useEffect(() => {
     if (!isEdit || !uuid) return
@@ -33,6 +35,7 @@ export default function MachineFormPage({ mode }: Props) {
     try {
       const savedUuid = isEdit && uuid ? uuid : await createMachine(values)
       if (isEdit && uuid) await updateMachine(uuid, values)
+      clearDirty()
       message.success(isEdit ? '机台档案已保存' : '机台档案已新增')
       navigate(`/machines/${savedUuid}`)
     } finally {
@@ -46,7 +49,6 @@ export default function MachineFormPage({ mode }: Props) {
     <div className="document-module-page machine-profile-page">
       <MesPageHeader
         title={isEdit ? '编辑机台档案' : '新增机台档案'}
-        description="维护锯纸、复卷和通用机台资料。加工单下发和回录时可按机台状态与类型识别可用设备。"
         onBack={() => navigate(backPath)}
         actions={(
           <Space>
@@ -62,7 +64,7 @@ export default function MachineFormPage({ mode }: Props) {
         {loading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : (
-          <MachineProfileForm editing={isEdit} form={form} onFinish={submit} />
+          <MachineProfileForm editing={isEdit} form={form} onFinish={submit} onValuesChange={markDirty} />
         )}
       </Card>
     </div>

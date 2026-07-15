@@ -872,7 +872,6 @@
                            SUM(COALESCE(r.total_loss_weight, 0)) AS lossWeight
                     FROM biz_original_roll r
                     WHERE r.is_deleted = 0
-                      AND COALESCE(r.process_mode, 0) != 3
                     <include refid="RollFilters"/>
                     GROUP BY r.order_uuid
                 ) orig ON orig.order_uuid = o.uuid
@@ -912,7 +911,15 @@
         </choose>
     </select>
 
-    <select id="detailRows" resultType="com.paper.mes.report.dto.ReportDetailVO">
+    <select id="detailCount" resultType="long">
+        SELECT COUNT(*)
+        FROM biz_process_order o
+        <where>
+            <include refid="OrderFilters"/>
+        </where>
+    </select>
+
+    <sql id="DetailRowsQuery">
         SELECT o.uuid AS orderUuid,
                o.order_no AS orderNo,
                o.order_date AS orderDate,
@@ -1032,6 +1039,18 @@
             <include refid="OrderFilters"/>
         </where>
         ORDER BY o.order_date DESC, o.order_no DESC
+    </sql>
+
+    <select id="detailRows" resultType="com.paper.mes.report.dto.ReportDetailVO">
+        <include refid="DetailRowsQuery"/>
+        LIMIT #{limit}
+    </select>
+
+    <select id="detailCursor"
+            resultType="com.paper.mes.report.dto.ReportDetailVO"
+            fetchSize="500"
+            resultSetType="FORWARD_ONLY">
+        <include refid="DetailRowsQuery"/>
     </select>
 
 </mapper>

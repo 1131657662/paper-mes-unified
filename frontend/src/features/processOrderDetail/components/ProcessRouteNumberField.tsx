@@ -19,6 +19,7 @@ export default function ProcessRouteNumberField({
     <label className="process-route-number">
       <span>{label}</span>
       <InputNumber
+        aria-label={label}
         min={min}
         precision={precision}
         value={value}

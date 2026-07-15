@@ -1,0 +1,73 @@
+.settle-create-page {
+  height: max(560px, calc(100vh - 126px));
+  min-height: 0;
+  overflow: hidden;
+}
+
+.settle-create-page__info .ant-card-body {
+  padding-block: 12px;
+}
+
+.settle-create-page__form {
+  grid-template-columns:
+    minmax(230px, 1.25fr)
+    minmax(140px, .8fr)
+    minmax(180px, 1fr)
+    minmax(130px, .75fr)
+    minmax(135px, .75fr)
+    minmax(150px, .85fr);
+  gap: 10px;
+}
+
+.settle-create-page__selection {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settle-create-page__selection > .ant-card-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settle-create-page__selection .document-module-table {
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+.settle-create-footer {
+  display: flex;
+  flex: 0 0 auto;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius);
+  background: var(--mes-color-panel);
+  box-shadow: 0 -3px 12px rgb(15 23 42 / 5%);
+}
+
+.settle-create-footer__summary,
+.settle-create-footer__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.settle-create-footer__summary {
+  color: var(--mes-color-text-secondary);
+  font-size: 13px;
+}
+
+.settle-create-footer__summary strong {
+  color: var(--mes-color-text);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}

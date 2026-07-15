@@ -16,14 +16,17 @@ DB_NAME="${DB_NAME:-paper_processing}"
 DB_USER="${DB_USER:-paper_mes_backup}"
 DB_PASSWORD="${DB_PASSWORD:?set DB_PASSWORD or BACKUP_ENV_FILE before running backup}"
 UPLOAD_DIR="${UPLOAD_DIR:-/opt/paper-mes/upload}"
-RETENTION_DAYS="${RETENTION_DAYS:-14}"
 
 timestamp="$(date +%Y%m%d-%H%M%S)"
 target_dir="${BACKUP_ROOT}/${timestamp}"
+temp_dir="${BACKUP_ROOT}/.tmp-${timestamp}-$$"
 mysql_cnf="$(mktemp)"
 
 cleanup() {
   rm -f "${mysql_cnf}"
+  if [ -n "${temp_dir:-}" ] && [[ "${temp_dir}" == "${BACKUP_ROOT}"/.tmp-* ]]; then
+    rm -rf -- "${temp_dir}"
+  fi
 }
 trap cleanup EXIT
 
@@ -58,10 +61,17 @@ require_safe_backup_root
 require_safe_identifier "DB_NAME" "${DB_NAME}"
 require_safe_identifier "DB_USER" "${DB_USER}"
 require_non_negative_integer "DB_PORT" "${DB_PORT}"
-require_non_negative_integer "RETENTION_DAYS" "${RETENTION_DAYS}"
 
-mkdir -p "${target_dir}"
-chmod 700 "${target_dir}"
+for command_name in mysqldump gzip tar sha256sum flock; do
+  command -v "${command_name}" >/dev/null 2>&1 || fail "required command not found: ${command_name}"
+done
+
+mkdir -p "${BACKUP_ROOT}"
+exec 9>"${BACKUP_ROOT}/.backup.lock"
+flock -n 9 || fail "another backup is already running"
+[ ! -e "${target_dir}" ] || fail "backup target already exists: ${target_dir}"
+mkdir -p "${temp_dir}"
+chmod 700 "${temp_dir}"
 
 cat > "${mysql_cnf}" <<EOF
 [client]
@@ -81,24 +91,28 @@ mysqldump \
   --routines \
   --triggers \
   --events \
-  "${DB_NAME}" | gzip > "${target_dir}/${DB_NAME}.sql.gz"
+  "${DB_NAME}" | gzip > "${temp_dir}/${DB_NAME}.sql.gz"
 
 if [ -d "${UPLOAD_DIR}" ]; then
-  tar -C "$(dirname "${UPLOAD_DIR}")" -czf "${target_dir}/upload.tar.gz" "$(basename "${UPLOAD_DIR}")"
+  tar -C "$(dirname "${UPLOAD_DIR}")" -czf "${temp_dir}/upload.tar.gz" "$(basename "${UPLOAD_DIR}")"
 fi
 
 {
+  echo "script_version=2"
   echo "timestamp=${timestamp}"
   echo "db_host=${DB_HOST}"
   echo "db_port=${DB_PORT}"
   echo "db_name=${DB_NAME}"
   echo "upload_dir=${UPLOAD_DIR}"
-} > "${target_dir}/backup-info.txt"
+  echo "hostname=$(hostname)"
+} > "${temp_dir}/backup-info.txt"
 
-if command -v sha256sum >/dev/null 2>&1; then
-  (cd "${target_dir}" && sha256sum ./*.gz > SHA256SUMS)
+(cd "${temp_dir}" && sha256sum ./*.gz > SHA256SUMS)
+gzip -t "${temp_dir}/${DB_NAME}.sql.gz"
+if [ -f "${temp_dir}/upload.tar.gz" ]; then
+  tar -tzf "${temp_dir}/upload.tar.gz" >/dev/null
 fi
-
-find "${BACKUP_ROOT}" -mindepth 1 -maxdepth 1 -type d -mtime +"${RETENTION_DAYS}" -exec rm -rf {} +
+mv "${temp_dir}" "${target_dir}"
+temp_dir=""
 
 echo "backup completed: ${target_dir}"

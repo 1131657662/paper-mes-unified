@@ -1,0 +1,83 @@
+.process-order-base .ant-card-head {
+  min-height: 44px;
+}
+
+.process-order-base {
+  display: flex;
+  min-height: 420px;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.process-order-base .ant-card-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  padding: 12px 16px;
+}
+
+.process-order-base .ant-card-body > form {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.process-order-base__sections {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  gap: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
+
+.process-order-base__section {
+  min-width: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--mes-color-border-light);
+}
+
+.process-order-base__section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.process-order-base__section-title {
+  margin-bottom: 8px;
+  color: var(--mes-color-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.process-order-base .ant-form-item {
+  margin-bottom: 8px;
+}
+
+.process-order-base .ant-picker,
+.process-order-base .ant-input-number {
+  width: 100%;
+}
+
+.process-order-base__defaults {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+.process-order-base__footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  padding-top: 10px;
+  border-top: 1px solid var(--mes-color-border-light);
+}

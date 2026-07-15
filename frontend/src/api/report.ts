@@ -1,7 +1,7 @@
 import request, { rawRequest } from './request'
 import type {
   ReportQuery,
-  ReportDetailVO,
+  ReportDetailsVO,
   ReportDimensionVO,
   ReportDimension,
   ReportOverviewVO,
@@ -42,7 +42,7 @@ export function getReportDimensions(query: ReportQuery) {
 }
 
 export function getReportDetails(query: ReportQuery) {
-  return request<ReportDetailVO[]>({
+  return request<ReportDetailsVO>({
     url: '/api/reports/details',
     method: 'get',
     params: query,

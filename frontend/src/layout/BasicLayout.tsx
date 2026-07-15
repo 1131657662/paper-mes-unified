@@ -26,6 +26,7 @@ import AppBreadcrumb from './AppBreadcrumb'
 import PageTabs from './PageTabs'
 import AppLogoMark from '../components/brand/AppLogoMark'
 import GeneratedUserAvatar from '../components/user/GeneratedUserAvatar'
+import NotificationBell from './NotificationBell'
 import { findRouteMeta, selectedMenuKey } from '../router/routeMeta'
 import { APP_BRAND } from '../config/brand'
 import { useAuthActions, useAuthUser } from '../stores/authStore'
@@ -61,7 +62,7 @@ export default function BasicLayout() {
 
   return (
     <Layout className="app-shell">
-      <Sider theme="dark" collapsible>
+      <Sider theme="dark" collapsible breakpoint="xl" collapsedWidth={80} width={216}>
         <div className="app-shell__brand" aria-label={APP_BRAND.name}>
           <AppLogoMark className="app-shell__brand-mark" title={`${APP_BRAND.name} 图标`} />
           <span className="app-shell__brand-name">{APP_BRAND.name}</span>
@@ -78,7 +79,9 @@ export default function BasicLayout() {
       <Layout className="app-shell__main">
         <Header className="app-shell__header">
           <AppBreadcrumb />
-          <Dropdown
+          <div className="app-shell__header-actions">
+            <NotificationBell />
+            <Dropdown
             menu={{
               items: [
                 {
@@ -115,7 +118,8 @@ export default function BasicLayout() {
               </span>
               <DownOutlined className="app-shell__user-caret" />
             </button>
-          </Dropdown>
+            </Dropdown>
+          </div>
         </Header>
         <PageTabs />
         {!isOnline && (
@@ -145,15 +149,12 @@ function buildMenuItems(permissions?: string[]): MenuProps['items'] {
     can([PERMISSIONS.baseView]) && { key: '/machines', icon: <ToolOutlined />, label: '机台档案' },
     can([PERMISSIONS.baseView]) && { key: '/warehouses', icon: <InboxOutlined />, label: '仓库档案' },
   ].filter(Boolean) as MenuItem[]
-  const systemChildren = can([PERMISSIONS.userManage])
-    ? [
-        { key: '/users', icon: <TeamOutlined />, label: '用户权限' },
-        { key: '/system-config', icon: <ControlOutlined />, label: '系统配置' },
-        { key: '/operation-logs', icon: <FileTextOutlined />, label: '操作日志' },
-      ]
-    : can([PERMISSIONS.systemAudit]) ? [
-        { key: '/operation-logs', icon: <FileTextOutlined />, label: '操作日志' },
-      ] : []
+  const systemChildren = [
+    can([PERMISSIONS.userManage]) && { key: '/users', icon: <TeamOutlined />, label: '用户权限' },
+    can([PERMISSIONS.systemConfig, PERMISSIONS.dataBackup, PERMISSIONS.dataHealth])
+      && { key: '/system-config', icon: <ControlOutlined />, label: '系统配置' },
+    can([PERMISSIONS.systemAudit]) && { key: '/operation-logs', icon: <FileTextOutlined />, label: '操作日志' },
+  ].filter(Boolean) as MenuItem[]
 
   return [
     can([PERMISSIONS.reportView]) && { key: '/dashboard', icon: <DashboardOutlined />, label: '仪表盘' },
@@ -216,8 +217,11 @@ function isProfileRoute(pathname: string) {
 
 function roleLabel(roleCode?: string) {
   if (roleCode === 'admin') return '管理员'
-  if (roleCode === 'operator') return '录单员'
+  if (roleCode === 'order_clerk') return '制单员'
+  if (roleCode === 'recorder') return '回录员'
   if (roleCode === 'finance') return '财务'
-  if (roleCode === 'warehouse') return '仓库'
+  if (roleCode === 'warehouse') return '出库员'
+  if (roleCode === 'viewer') return '只读人员'
+  if (roleCode === 'operator') return '录单员（兼容）'
   return '访客'
 }

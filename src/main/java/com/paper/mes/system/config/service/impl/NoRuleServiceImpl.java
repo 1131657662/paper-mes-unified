@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
+import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.system.config.dto.NoRulePreviewVO;
 import com.paper.mes.system.config.dto.NoRuleQuery;
@@ -38,7 +39,7 @@ public class NoRuleServiceImpl extends ServiceImpl<SysNoRuleMapper, SysNoRule> i
 
     @Override
     public PageResult<SysNoRule> page(NoRuleQuery query) {
-        Page<SysNoRule> page = page(Page.of(query.getCurrent(), query.getSize()), buildWrapper(query));
+        Page<SysNoRule> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), buildWrapper(query));
         return PageResult.of(page);
     }
 

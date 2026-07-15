@@ -7,6 +7,7 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { useNavigate } from 'react-router-dom'
 import { pageMachines, deleteMachine } from '../../api/machine'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
+import { renderCompatibleTableOptions } from '../../components/biz/tableToolbarOptionsRender'
 import TooltipText from '../../components/biz/TooltipText'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
@@ -146,6 +147,7 @@ export default function MachineList() {
       scroll={{ x: resizable.scrollX, y: '100%' }}
       tableLayout="fixed"
       options={mesProTableOptions()}
+      optionsRender={renderCompatibleTableOptions}
     />
   )
 }

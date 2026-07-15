@@ -4,6 +4,7 @@ import { WalletOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import DocumentListShell from '../../components/biz/DocumentListShell'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { useDocumentRowSelection } from '../../components/biz/useDocumentRowSelection'
 import { PERMISSIONS } from '../../constants/permissions'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
@@ -62,7 +63,8 @@ export default function SettleOrderList() {
       message.warning('请选择一张未结清结算单登记收款')
       return
     }
-    setReceiveRecord(selectedReceivable[0])
+    const record = selectedReceivable[0]
+    if (record) setReceiveRecord(record)
   }
 
   return (
@@ -99,6 +101,20 @@ export default function SettleOrderList() {
         rowSelection.clear()
       }}
     >
+      {ordersQuery.isError && (
+        <QueryLoadErrorAlert
+          description="结算单未成功加载，当前空表不代表没有待收款或已结算记录。"
+          message="结算单加载失败"
+          onRetry={() => void ordersQuery.refetch()}
+        />
+      )}
+      {customersQuery.isError && (
+        <QueryLoadErrorAlert
+          description="客户筛选项未成功加载，当前客户选项可能不完整。"
+          message="客户资料加载失败"
+          onRetry={() => void customersQuery.refetch()}
+        />
+      )}
       <div className="document-page-table" data-table-density={tableDensity}>
         <SettleOrderTable
           canReceiveSettle={canReceiveSettle}

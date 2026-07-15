@@ -9,10 +9,13 @@ import type { BackRecordWorkItem, BackRecordWorkbenchData, WorkbenchFinish } fro
 export interface WorkItemMetrics {
   rollActual?: number
   finishActual: number
+  productActual: number
+  trimActual: number
   loss: number
   scrap: number
   missingRoll: boolean
   missingFinishes: number
+  missingFinishWidths: number
   diff?: number
   diffRatio?: number
 }
@@ -28,21 +31,65 @@ export function buildWorkItemMetrics(
   item: BackRecordWorkItem,
   values: BackRecordFormValues,
 ): WorkItemMetrics {
+  if (item.roll?.processMode === 2) return buildOnSiteMetrics(item, values)
   const rollActual = item.roll ? values.rolls?.[item.roll.uuid]?.actualWeight ?? item.roll.actualWeight : undefined
   const official = item.finishes.filter(({ finish }) => finish.isSpare !== 1)
-  const finishActual = sum(official.map(({ finish }) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight))
+  const products = official.filter(({ finish }) => finish.isRemain !== 1)
+  const remains = official.filter(({ finish }) => finish.isRemain === 1)
+  const trims = values.trims?.[item.key] ?? []
+  const productActual = sum(products.map(({ finish }) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight))
+  const trimActual = sum(remains.map(({ finish }) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight))
+    + sum(trims.map((trim) => trim.actualWeight))
+  const finishActual = productActual + trimActual
   const loss = sum(processSteps(item).map((step) => values.steps?.[step.uuid]?.lossWeight ?? step.lossWeight))
   const scrap = sum(item.finishes.map(({ finish }) => values.finishes?.[finish.uuid]?.scrapWeight ?? finish.scrapWeight))
   const missingFinishes = official.filter(({ finish }) => !positive(values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight)).length
+    + trims.filter((trim) => !positive(trim.actualWeight)).length
+  const missingFinishWidths = item.roll?.processMode === 2
+    ? official.filter(({ finish }) => !positive(values.finishes?.[finish.uuid]?.finishWidth ?? validWidth(finish.finishWidth))).length
+    : 0
+  const missingTrimWidths = trims.filter((trim) => !positive(trim.finishWidth)).length
   const diff = rollActual == null ? undefined : rollActual - finishActual - loss - scrap
 
   return {
     rollActual,
     finishActual,
+    productActual,
+    trimActual,
     loss,
     scrap,
     missingRoll: item.kind === 'roll' && !positive(rollActual),
     missingFinishes,
+    missingFinishWidths: missingFinishWidths + missingTrimWidths,
+    diff,
+    diffRatio: rollActual != null && rollActual > 0 && diff != null ? Math.abs(diff) / rollActual : undefined,
+  }
+}
+
+function buildOnSiteMetrics(item: BackRecordWorkItem, values: BackRecordFormValues): WorkItemMetrics {
+  const rollActual = item.roll ? values.rolls?.[item.roll.uuid]?.actualWeight ?? item.roll.actualWeight : undefined
+  const outputs = (values.onSiteOutputs?.[item.key] ?? [])
+    .filter((output): output is NonNullable<typeof output> => output != null)
+  const products = outputs.filter((output) => output.outputType === 'FINISH')
+  const trims = outputs.filter((output) => output.outputType === 'TRIM')
+  const productActual = sum(products.map((output) => output.actualWeight))
+  const trimActual = sum(trims.map((output) => output.actualWeight))
+  const finishActual = productActual + trimActual
+  const loss = sum(processSteps(item).map((step) => values.steps?.[step.uuid]?.lossWeight ?? step.lossWeight))
+  const scrap = sum(products.map((output) => output.scrapWeight))
+  const missingRows = outputs.filter((output) => !positive(output.actualWeight)).length
+  const missingWidths = outputs.filter((output) => !positive(output.finishWidth)).length
+  const diff = rollActual == null ? undefined : rollActual - finishActual - loss - scrap
+  return {
+    rollActual,
+    finishActual,
+    productActual,
+    trimActual,
+    loss,
+    scrap,
+    missingRoll: !positive(rollActual),
+    missingFinishes: products.length === 0 ? missingRows + 1 : missingRows,
+    missingFinishWidths: missingWidths,
     diff,
     diffRatio: rollActual != null && rollActual > 0 && diff != null ? Math.abs(diff) / rollActual : undefined,
   }
@@ -52,7 +99,7 @@ export function workItemStatus(item: BackRecordWorkItem, values: BackRecordFormV
   if (item.kind === 'pool') return { text: '待核对', color: 'warning' }
   if (item.roll?.processMode === 3) return { text: '直发', color: 'blue' }
   const metrics = buildWorkItemMetrics(item, values)
-  if (metrics.missingRoll || metrics.missingFinishes > 0) return { text: '待补', color: 'warning' }
+  if (metrics.missingRoll || metrics.missingFinishes > 0 || metrics.missingFinishWidths > 0) return { text: '待补', color: 'warning' }
   return { text: '已录', color: 'success' }
 }
 
@@ -118,8 +165,10 @@ function inferOneToOne(items: BackRecordWorkItem[], unassigned: FinishRoll[]) {
   official
     .sort((a, b) => (a.rowSort ?? 0) - (b.rowSort ?? 0))
     .forEach((finish, index) => {
-      targets[index].finishes.push({ finish, bindMode: 'inferred' })
-      targets[index].sourceMode = 'inferred'
+      const target = targets[index]
+      if (!target) return
+      target.finishes.push({ finish, bindMode: 'inferred' })
+      target.sourceMode = 'inferred'
     })
 }
 
@@ -159,6 +208,10 @@ function sum(values: Array<number | undefined>): number {
 
 function positive(value?: number) {
   return value != null && value > 0
+}
+
+function validWidth(value?: number) {
+  return positive(value) ? value : undefined
 }
 
 function processSteps(item: BackRecordWorkItem) {

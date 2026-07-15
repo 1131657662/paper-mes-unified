@@ -9,6 +9,7 @@ import type { RollDraft } from './types'
 
 const STORAGE_KEY = 'paper-mes:create-order-local-draft:v1'
 const VERSION = 1
+const MAX_DRAFT_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 export interface CreateOrderLocalDraftInput {
   baseInfo?: DraftOrderBaseDTO
@@ -34,11 +35,21 @@ export function loadCreateOrderLocalDraft(): CreateOrderLocalDraft | undefined {
   if (!rawValue) return undefined
 
   try {
-    return parseLocalDraft(JSON.parse(rawValue) as unknown)
+    const draft = parseLocalDraft(JSON.parse(rawValue) as unknown)
+    if (!draft || isExpired(draft.savedAt)) {
+      storage.removeItem(STORAGE_KEY)
+      return undefined
+    }
+    return draft
   } catch {
     storage.removeItem(STORAGE_KEY)
     return undefined
   }
+}
+
+function isExpired(savedAt: string) {
+  const savedTime = Date.parse(savedAt)
+  return !Number.isFinite(savedTime) || Date.now() - savedTime > MAX_DRAFT_AGE_MS
 }
 
 export function saveCreateOrderLocalDraft(input: CreateOrderLocalDraftInput) {

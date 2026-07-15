@@ -84,15 +84,17 @@ function ReceivableLineChart({ hasReceivable, points }: { hasReceivable: boolean
 }
 
 function buildSmoothPath(points: ChartPoint[]) {
-  if (points.length === 0) return ''
-  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+  const first = points[0]
+  if (!first) return ''
+  if (points.length === 1) return `M ${first.x} ${first.y}`
 
-  const segments = [`M ${points[0].x} ${points[0].y}`]
+  const segments = [`M ${first.x} ${first.y}`]
   for (let index = 0; index < points.length - 1; index += 1) {
     const previous = points[index - 1] ?? points[index]
     const current = points[index]
     const next = points[index + 1]
     const afterNext = points[index + 2] ?? next
+    if (!previous || !current || !next || !afterNext) continue
     const controlOne = {
       x: current.x + (next.x - previous.x) / 6,
       y: current.y + (next.y - previous.y) / 6,

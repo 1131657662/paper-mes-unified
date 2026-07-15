@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -16,8 +17,10 @@ public class RewindSegmentPlanDTO {
     private Integer repeatCount;
 
     @Valid
+    @Size(max = 100, message = "复卷来源不能超过100条")
     private List<RewindSourcePlanDTO> sources;
 
     @Valid
+    @Size(max = 500, message = "复卷排版项不能超过500条")
     private List<RewindLayoutItemPlanDTO> layoutItems;
 }

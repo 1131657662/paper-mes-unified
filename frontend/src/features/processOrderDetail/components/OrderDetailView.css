@@ -380,7 +380,7 @@
 
 .process-route-config__source-summary {
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--mes-radius);
   background: #fbfdff;
 }
 

@@ -3,5 +3,5 @@ import { useResizableTableColumns } from '../../components/useResizableTableColu
 import type { ProcessOrder } from '../../types/processOrder'
 
 export function useResizableProcessColumns(columns: ProColumns<ProcessOrder>[]) {
-  return useResizableTableColumns<ProcessOrder, ProColumns<ProcessOrder>>(columns, 'process-order')
+  return useResizableTableColumns<ProcessOrder, ProColumns<ProcessOrder>>(columns, 'process-order-v2')
 }

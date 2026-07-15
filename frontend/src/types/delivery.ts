@@ -102,10 +102,24 @@ export interface AvailableFinishVO {
   isRemain?: number
   sourceType: number
   finishStatus: number
+  originalRollNos?: string
+  sourceMotherRolls?: AvailableFinishSourceMotherRoll[]
   settleType?: number
   settleDay?: number
   isInvoice?: number
   settlementRisk?: boolean
+}
+
+export interface AvailableFinishSourceMotherRoll {
+  originalUuid: string
+  rowSort?: number
+  rollNo?: string
+  extraNo?: string
+  paperName?: string
+  gramWeight?: number
+  originalWidth?: number
+  actualWeight?: number
+  allocationWeight?: number
 }
 
 export interface DeliveryDetailVO {
@@ -156,6 +170,10 @@ export interface DeliveryConfirmDTO {
 }
 
 export interface DeliveryRollbackDTO {
+  reason: string
+}
+
+export interface DeliveryCancelDTO {
   reason: string
 }
 

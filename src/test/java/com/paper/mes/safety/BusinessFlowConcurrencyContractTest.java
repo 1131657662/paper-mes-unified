@@ -162,6 +162,19 @@ class BusinessFlowConcurrencyContractTest {
     }
 
     @Test
+    void processOrderPrint_locksOrderAndRejectsLostUpdate() throws IOException {
+        String print = slice(source(PROCESS_ORDER_SERVICE),
+                "public PrintResultVO print", "private String buildSnapPrint");
+
+        assertContainsAll(print,
+                "businessLockService.lockProcessOrders(List.of(uuid));",
+                "ConcurrencyGuard.requireUpdated(updateById(order));");
+        assertBefore(print,
+                "businessLockService.lockProcessOrders(List.of(uuid));",
+                "ProcessOrder order = getById(uuid);");
+    }
+
+    @Test
     void processOrderRemark_whenFinishedBeforeSettlement_allowsSafeRemarkEdits() throws IOException {
         String source = source(PROCESS_ORDER_SERVICE);
         String editableRule = slice(source, "private void validateRemarkEditable", "private void recordFieldIfChanged");

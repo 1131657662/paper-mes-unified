@@ -38,6 +38,38 @@
   flex-direction: column;
 }
 
+.system-config-card .system-config-tabs {
+  flex-direction: row;
+}
+
+.system-config-tabs > .ant-tabs-nav {
+  width: 148px;
+  min-width: 148px;
+  margin: 0 16px 0 0;
+}
+
+.system-config-tabs > .ant-tabs-nav .ant-tabs-tab {
+  min-height: 40px;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.system-config-tabs > .ant-tabs-nav .ant-tabs-tab-btn {
+  width: 100%;
+}
+
+.system-config-section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.system-config-section-label .ant-badge {
+  line-height: 1;
+}
+
 .system-config-card .ant-tabs-content,
 .system-config-card .ant-tabs-tabpane {
   height: 100%;
@@ -46,4 +78,111 @@
 
 .system-config-table {
   height: 100%;
+}
+
+.system-config-page .system-config-delete-action:not(:disabled) {
+  color: var(--mes-color-danger) !important;
+}
+
+.system-config-page .system-config-delete-action:not(:disabled):hover {
+  color: var(--mes-color-danger) !important;
+}
+
+.system-config-page .system-config-delete-action:disabled {
+  color: var(--mes-color-text-muted) !important;
+}
+
+.data-backup-panel {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.data-backup-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.data-backup-toolbar .ant-typography {
+  margin: 0;
+}
+
+.data-backup-summary {
+  padding: 12px 14px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: 6px;
+  background: var(--mes-color-surface-subtle);
+}
+
+.data-backup-panel > .ant-table-wrapper {
+  min-height: 0;
+  flex: 1;
+}
+
+.data-backup-retention {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: 6px;
+}
+
+.data-backup-automatic {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: 6px;
+}
+
+.data-backup-time-input {
+  width: 112px;
+}
+
+.data-backup-content-tabs {
+  min-height: 0;
+  flex: 1;
+}
+
+.data-backup-content-tabs .ant-tabs-content,
+.data-backup-content-tabs .ant-tabs-tabpane {
+  height: 100%;
+  min-height: 0;
+}
+
+.backup-task-row--focused > td {
+  background: #fffbe6 !important;
+}
+
+.backup-task-row--focused:hover > td {
+  background: #fff7cc !important;
+}
+
+@media (max-width: 760px) {
+  .data-backup-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .data-backup-summary .ant-descriptions-view table {
+    min-width: 520px;
+  }
+
+  .data-backup-retention {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .data-backup-automatic {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

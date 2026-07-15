@@ -7,13 +7,14 @@ interface Props {
   editing: boolean
   form: FormInstance<WarehouseSaveDTO>
   onFinish?: (values: WarehouseSaveDTO) => void
+  onValuesChange?: () => void
 }
 
 const warehouseFormDefaults: Partial<WarehouseSaveDTO> = {
   status: 1,
 }
 
-export default function WarehouseProfileForm({ editing, form, onFinish }: Props) {
+export default function WarehouseProfileForm({ editing, form, onFinish, onValuesChange }: Props) {
   return (
     <Form
       className="mes-modal-form warehouse-profile-form"
@@ -21,6 +22,7 @@ export default function WarehouseProfileForm({ editing, form, onFinish }: Props)
       initialValues={warehouseFormDefaults}
       layout="vertical"
       onFinish={onFinish}
+      onValuesChange={onValuesChange}
     >
       <section className="warehouse-profile-form__section">
         <h3>基础信息</h3>

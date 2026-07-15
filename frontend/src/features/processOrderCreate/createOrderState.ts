@@ -72,7 +72,7 @@ export function plansForRolls(
 ) {
   return rolls.reduce<Record<string, ProcessPlanDTO>>((next, roll) => {
     const existing = currentPlans[roll.localId]
-    next[roll.localId] = planMatchesRoll(existing, roll)
+    next[roll.localId] = existing && planMatchesRoll(existing, roll)
       ? rebasePlanForRoll(applyLegacyPlanPriceDefaults(existing, options), roll)
       : defaultPlanForRoll(roll, options)
     return next
@@ -120,7 +120,10 @@ export function plansFromBatch(rolls: RollDraft[], plan: ProcessPlanDTO) {
 }
 
 export function previewsFromBatch(rolls: RollDraft[], previews: PlanPreviewVO[]) {
-  return Object.fromEntries(rolls.map((roll, index) => [roll.localId, previews[index]]))
+  return Object.fromEntries(rolls.flatMap((roll, index) => {
+    const preview = previews[index]
+    return preview ? [[roll.localId, preview]] : []
+  }))
 }
 
 function planMatchesRoll(plan: ProcessPlanDTO | undefined, roll: RollDraft) {

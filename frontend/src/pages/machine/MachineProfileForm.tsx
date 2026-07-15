@@ -7,13 +7,14 @@ interface Props {
   editing: boolean
   form: FormInstance<MachineSaveDTO>
   onFinish?: (values: MachineSaveDTO) => void
+  onValuesChange?: () => void
 }
 
 const machineFormDefaults: Partial<MachineSaveDTO> = {
   status: 1,
 }
 
-export default function MachineProfileForm({ editing, form, onFinish }: Props) {
+export default function MachineProfileForm({ editing, form, onFinish, onValuesChange }: Props) {
   return (
     <Form
       className="mes-modal-form machine-profile-form"
@@ -21,6 +22,7 @@ export default function MachineProfileForm({ editing, form, onFinish }: Props) {
       initialValues={machineFormDefaults}
       layout="vertical"
       onFinish={onFinish}
+      onValuesChange={onValuesChange}
     >
       <section className="machine-profile-form__section">
         <h3>基础信息</h3>

@@ -9,6 +9,7 @@ import { formatMoney, formatNumber } from '../orderDetailUtils'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 
 interface Props {
+  canManageOrder: boolean
   detail?: ProcessOrderDetailVO
   onAdd: () => void
   onConfigureRoute: (target: ProcessRouteConfigTarget) => void
@@ -16,11 +17,11 @@ interface Props {
   onDelete: (stepUuid: string) => void
 }
 
-export default function StepTableSection({ detail, onAdd, onConfigureRoute, onEdit, onDelete }: Props) {
+export default function StepTableSection({ canManageOrder, detail, onAdd, onConfigureRoute, onEdit, onDelete }: Props) {
   const status = detail?.order.orderStatus
-  const canEditPending = status === 1
-  const canAppendRoute = status === 1 || status === 3
-  const columns = buildColumns({ detail, onEdit, onDelete })
+  const canEditPending = canManageOrder && status === 1
+  const canAppendRoute = canManageOrder && (status === 1 || status === 3)
+  const columns = buildColumns({ canManageOrder, detail, onEdit, onDelete })
 
   return (
     <section className="order-detail-section">
@@ -62,6 +63,7 @@ export default function StepTableSection({ detail, onAdd, onConfigureRoute, onEd
 }
 
 function buildColumns(options: {
+  canManageOrder: boolean
   detail?: ProcessOrderDetailVO
   onEdit: (step: ProcessStep) => void
   onDelete: (stepUuid: string) => void
@@ -96,12 +98,13 @@ function buildColumns(options: {
 }
 
 function renderActions(options: {
+  canManageOrder: boolean
   detail?: ProcessOrderDetailVO
   step: ProcessStep
   onEdit: (step: ProcessStep) => void
   onDelete: (stepUuid: string) => void
 }) {
-  if (options.detail?.order.orderStatus !== 1 || options.step.isMain === 1) return null
+  if (!options.canManageOrder || options.detail?.order.orderStatus !== 1 || options.step.isMain === 1) return null
 
   return (
     <Space size={4}>

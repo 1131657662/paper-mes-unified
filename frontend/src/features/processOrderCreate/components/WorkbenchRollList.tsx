@@ -1,116 +1,74 @@
-import { Button, Checkbox, List, Space, Tag, Typography } from 'antd'
-import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
+import { List } from 'antd'
 import type { Machine } from '../../../types/machine'
 import type { PlanPreviewVO, ProcessRoutePreviewVO } from '../../../types/processOrder'
-import { formatGram, formatMm } from '../../../utils/numberFormatters'
+import '../../../components/processOrder/ProcessOrderShared.css'
+import { useWorkbenchRollSort } from '../hooks/useWorkbenchRollSort'
 import { rollPreviewStatus } from '../previewStatusUtils'
 import type { MergedSourceLock } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
+import WorkbenchRollItem, { type WorkbenchRollItemActions } from './WorkbenchRollItem'
+import WorkbenchRollToolbar from './WorkbenchRollToolbar'
 
-interface Props {
-  machines: Machine[]
-  rolls: RollDraft[]
-  selectedId?: string
-  checkedIds: string[]
-  previews: Record<string, PlanPreviewVO>
-  routePreviews?: Record<string, ProcessRoutePreviewVO>
+export interface WorkbenchRollListData {
   lockedRolls?: Record<string, MergedSourceLock>
-  onClearSelection: () => void
-  onSelect: (localId: string) => void
-  onLockedSelect?: (roll: RollDraft, lock: MergedSourceLock) => void
-  onToggle: (localId: string, checked: boolean) => void
-  onSelectSameSpec: () => void
-  onOpenRouteDesigner?: (roll: RollDraft) => void
+  machines: Machine[]
+  previews: Record<string, PlanPreviewVO>
+  rolls: RollDraft[]
+  routePreviews?: Record<string, ProcessRoutePreviewVO>
 }
 
-export default function WorkbenchRollList({
-  machines,
-  rolls,
-  selectedId,
-  checkedIds,
-  previews,
-  routePreviews = {},
-  lockedRolls = {},
-  onClearSelection,
-  onSelect,
-  onLockedSelect,
-  onToggle,
-  onSelectSameSpec,
-  onOpenRouteDesigner,
-}: Props) {
+export interface WorkbenchRollListSelection {
+  checkedIds: string[]
+  selectedId?: string
+}
+
+export interface WorkbenchRollListActions extends WorkbenchRollItemActions {
+  onClearSelection: () => void
+  onSelectSameSpec: () => void
+}
+
+interface Props {
+  actions: WorkbenchRollListActions
+  data: WorkbenchRollListData
+  selection: WorkbenchRollListSelection
+}
+
+export default function WorkbenchRollList({ actions, data, selection }: Props) {
+  const { preference, sortedRolls, setPreference } = useWorkbenchRollSort(data.rolls)
+  const lockedRolls = data.lockedRolls ?? {}
+  const routePreviews = data.routePreviews ?? {}
   return (
-    <div>
-      <Space wrap style={{ marginBottom: 8 }}>
-        <Button size="small" onClick={onSelectSameSpec}>全选同规格</Button>
-        <Button size="small" disabled={!checkedIds.length} onClick={onClearSelection}>全不选</Button>
-      </Space>
+    <div className="workbench-roll-list">
+      <WorkbenchRollToolbar
+        checkedCount={selection.checkedIds.length}
+        preference={preference}
+        onClearSelection={actions.onClearSelection}
+        onSelectSameSpec={actions.onSelectSameSpec}
+        onSortChange={setPreference}
+      />
       <List
         size="small"
-        dataSource={rolls}
-        renderItem={(roll, index) => {
+        dataSource={sortedRolls}
+        renderItem={(roll) => {
           const lock = lockedRolls[roll.localId]
-          const disabled = Boolean(lock)
-          const status = rollPreviewStatus({ roll, preview: previews[roll.localId], lock })
-          const routePreview = roll.uuid ? routePreviews[roll.uuid] : undefined
+          const originalIndex = data.rolls.findIndex((item) => item.localId === roll.localId)
           return (
-            <List.Item
-              onClick={() => disabled && lock ? onLockedSelect?.(roll, lock) : onSelect(roll.localId)}
-              style={{
-                cursor: disabled ? 'not-allowed' : 'pointer',
-                border: selectedId === roll.localId ? '1px solid #1677ff' : '1px solid #f0f0f0',
-                borderRadius: 6,
-                marginBottom: 8,
-                padding: 10,
-                background: disabled ? '#f5f5f5' : selectedId === roll.localId ? '#e6f4ff' : '#fff',
-                opacity: disabled ? 0.78 : 1,
+            <WorkbenchRollItem
+              actions={actions}
+              state={{
+                checked: selection.checkedIds.includes(roll.localId),
+                index: originalIndex,
+                lock,
+                machines: data.machines,
+                previewStatus: rollPreviewStatus({ roll, preview: data.previews[roll.localId], lock }),
+                roll,
+                routePreview: roll.uuid ? routePreviews[roll.uuid] : undefined,
+                selected: selection.selectedId === roll.localId,
               }}
-            >
-              <div style={{ width: '100%' }}>
-                <Space align="start">
-                  <Checkbox
-                    checked={!disabled && checkedIds.includes(roll.localId)}
-                    disabled={disabled}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={(event) => onToggle(roll.localId, event.target.checked)}
-                  />
-                  <div>
-                    <Typography.Text strong>母卷 {index + 1}</Typography.Text>
-                    <div style={{ color: '#666', fontSize: 12 }}>
-                      {roll.rollNo || roll.paperName || '-'} / {formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)}
-                    </div>
-                  </div>
-                </Space>
-                <div style={{ marginTop: 6 }}>
-                  <Tag color={roll.processMode === 3 ? 'default' : 'blue'}>
-                    {PROCESS_MODE[roll.processMode ?? 1]}
-                  </Tag>
-                  {roll.processMode !== 3 && <Tag color="green">{STEP_TYPE[roll.mainStepType ?? 2]}</Tag>}
-                  {roll.processMode !== 3 && <Tag color={roll.machineUuid ? 'cyan' : 'default'}>{machineName(roll.machineUuid, machines)}</Tag>}
-                  {routePreview ? <Tag color="blue">链式 {routePreview.stages?.length ?? 0} 道</Tag> : <Tag color={status.color}>{status.label}</Tag>}
-                </div>
-                {roll.processMode !== 3 && (
-                  <Button
-                    size="small"
-                    type={routePreview ? 'primary' : 'default'}
-                    style={{ marginTop: 8 }}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onOpenRouteDesigner?.(roll)
-                    }}
-                  >
-                    {routePreview ? '编辑链式工艺' : '链式工艺'}
-                  </Button>
-                )}
-              </div>
-            </List.Item>
+            />
           )
         }}
       />
     </div>
   )
-}
-
-function machineName(machineUuid: string | undefined, machines: Machine[]) {
-  if (!machineUuid) return '未选机台'
-  return machines.find((machine) => machine.uuid === machineUuid)?.machineName ?? '未知机台'
 }

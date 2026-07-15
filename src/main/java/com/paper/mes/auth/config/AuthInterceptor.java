@@ -14,16 +14,31 @@ import org.springframework.web.servlet.HandlerInterceptor;
 @RequiredArgsConstructor
 public class AuthInterceptor implements HandlerInterceptor {
 
+    private static final String CSRF_HEADER = "X-Requested-With";
+    private static final String CSRF_HEADER_VALUE = "XMLHttpRequest";
     private final AuthService authService;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        requireCookieRequestHeader(request);
         String token = authService.resolveToken(request);
         if (token == null) {
             throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
         }
         AuthContextHolder.setCurrentUser(authService.currentUser(token));
         return true;
+    }
+
+    private void requireCookieRequestHeader(HttpServletRequest request) {
+        if (!isUnsafeMethod(request.getMethod()) || !authService.isCookieAuthentication(request)) return;
+        if (!CSRF_HEADER_VALUE.equals(request.getHeader(CSRF_HEADER))) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "请求来源校验失败");
+        }
+    }
+
+    private boolean isUnsafeMethod(String method) {
+        return "POST".equals(method) || "PUT".equals(method)
+                || "PATCH".equals(method) || "DELETE".equals(method);
     }
 
     @Override

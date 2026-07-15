@@ -19,4 +19,6 @@ public interface AuthService {
     void logout(String token);
 
     String resolveToken(HttpServletRequest request);
+
+    boolean isCookieAuthentication(HttpServletRequest request);
 }

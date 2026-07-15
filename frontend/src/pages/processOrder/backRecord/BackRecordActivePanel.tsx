@@ -7,18 +7,22 @@ import { formatGram, formatMm } from '../../../utils/numberFormatters'
 import type { ProcessStep } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import BackRecordFinishEntryList from './BackRecordFinishEntryList'
+import BackRecordOnSiteOutputList from './BackRecordOnSiteOutputList'
+import BackRecordTrimEntryList from './BackRecordTrimEntryList'
 import { focusNextBackRecordField } from './backRecordKeyboard'
 import { processLines } from './backRecordWorkbenchUtils'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
+import type { BackRecordSourceOption } from './BackRecordFinishFields'
 
 interface Props {
   item: BackRecordWorkItem
   onNext: () => void
   onPrevious: () => void
   onProcessChange: (item: BackRecordWorkItem) => void
+  sourceOptions: BackRecordSourceOption[]
 }
 
-export default function BackRecordActivePanel({ item, onNext, onPrevious, onProcessChange }: Props) {
+export default function BackRecordActivePanel({ item, onNext, onPrevious, onProcessChange, sourceOptions }: Props) {
   const form = Form.useFormInstance<BackRecordFormValues>()
 
   return (
@@ -38,7 +42,14 @@ export default function BackRecordActivePanel({ item, onNext, onPrevious, onProc
 
       {item.kind === 'roll' && <RollActualPanel item={item} form={form} onFieldExhausted={onNext} />}
       <ProcessPanel item={item} onFieldExhausted={onNext} onProcessChange={onProcessChange} />
-      <BackRecordFinishEntryList item={item} onFieldExhausted={onNext} />
+      {item.roll?.processMode === 2 ? (
+        <BackRecordOnSiteOutputList item={item} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
+      ) : (
+        <>
+          <BackRecordFinishEntryList item={item} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
+          <BackRecordTrimEntryList item={item} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
+        </>
+      )}
     </main>
   )
 }
@@ -78,13 +89,13 @@ function RollActualPanel({
       </div>
       <div className="back-record-input-grid">
         <Form.Item name={['rolls', roll.uuid, 'actualGramWeight']} label="实测克重">
-          <InputNumber data-back-record-field="true" min={1} placeholder="g" addonAfter="g" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
+          <InputNumber data-back-record-field="true" min={1} placeholder="g" suffix="g" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['rolls', roll.uuid, 'actualWidth']} label="实测门幅">
-          <InputNumber data-back-record-field="true" min={1} placeholder="mm" addonAfter="mm" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
+          <InputNumber data-back-record-field="true" min={1} placeholder="mm" suffix="mm" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['rolls', roll.uuid, 'actualWeight']} label="复称重量" rules={[{ required: true, message: '必填' }]}>
-          <InputNumber data-back-record-field="true" min={0.001} placeholder="kg" addonAfter="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
+          <InputNumber data-back-record-field="true" min={0.001} placeholder="kg" suffix="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['rolls', roll.uuid, 'remark']} label="复核说明">
           <Input data-back-record-field="true" placeholder="破损、水湿、复称差异" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
@@ -139,24 +150,33 @@ function ProcessPanel({
           </div>
         ))}
       </div>
-      {steps.length > 0 && <StepLossEditor steps={steps} onFieldExhausted={onFieldExhausted} />}
+      {steps.length > 0 && <StepLossEditor onSite={item.roll?.processMode === 2} steps={steps} onFieldExhausted={onFieldExhausted} />}
     </section>
   )
 }
 
 function StepLossEditor({
   steps,
+  onSite,
   onFieldExhausted,
 }: {
   steps: ProcessStep[]
+  onSite: boolean
   onFieldExhausted: () => void
 }) {
   return (
     <div className="back-record-step-loss-grid">
       {steps.map((step) => (
-        <Form.Item key={step.uuid} name={['steps', step.uuid, 'lossWeight']} label={`${stepLabel(step)}损耗`}>
-          <InputNumber data-back-record-field="true" min={0} precision={3} placeholder="kg" addonAfter="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
-        </Form.Item>
+        <div key={step.uuid} className="back-record-step-actuals">
+          {onSite && step.stepType === 1 && (
+            <Form.Item name={['steps', step.uuid, 'knifeCount']} label={`${stepLabel(step)}实际刀数`} rules={[{ required: true, message: '请输入实际刀数' }]}>
+              <InputNumber data-back-record-field="true" min={1} precision={0} suffix="刀" />
+            </Form.Item>
+          )}
+          <Form.Item name={['steps', step.uuid, 'lossWeight']} label={`${stepLabel(step)}损耗`}>
+            <InputNumber data-back-record-field="true" min={0} precision={3} placeholder="kg" suffix="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
+          </Form.Item>
+        </div>
       ))}
     </div>
   )

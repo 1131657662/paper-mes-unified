@@ -105,6 +105,8 @@ export interface FinishRoll {
   paperName?: string
   gramWeight?: number
   finishWidth?: number
+  finishDiameter?: number
+  finishCoreDiameter?: number
   trimWidthShare?: number
   estimateWeight?: number
   actualWeight?: number
@@ -216,7 +218,9 @@ export interface RollProductionVO {
   damageImages?: string[]
   paperName?: string
   gramWeight?: number
+  actualGramWeight?: number
   originalWidth?: number
+  actualWidth?: number
   rollWeight?: number
   actualWeight?: number
   processAmount?: number
@@ -239,6 +243,20 @@ export interface ProcessOrderDetailVO {
   finishRolls: FinishRoll[]
   steps: ProcessStep[]
   rollProductions?: RollProductionVO[]
+}
+
+export type PrintViewVersion = 'ISSUED' | 'FINISHED'
+export type PrintViewSource = 'LIVE_PREVIEW' | 'SNAPSHOT' | 'LEGACY_FALLBACK'
+
+export interface ProcessOrderPrintViewVO {
+  version: PrintViewVersion
+  availableVersions: PrintViewVersion[]
+  source: PrintViewSource
+  schemaVersion?: string
+  snapshotTime?: string
+  snapshotUser?: string
+  warning?: string
+  detail: ProcessOrderDetailVO
 }
 
 /** 原纸明细行入参，与后端 OriginalRollDTO 对应。 */
@@ -703,6 +721,12 @@ export interface RollDiff {
 export interface FinishDiff {
   uuid?: string
   finishRollNo?: string
+  printWidth?: number
+  finishWidth?: number
+  widthChanged?: boolean
+  printDiameter?: number
+  finishDiameter?: number
+  diameterChanged?: boolean
   estimateWeight?: number
   actualWeight?: number
   weightChanged?: boolean
@@ -736,7 +760,11 @@ export interface BackRecordRollDTO {
 
 /** 成品卷回录入参。 */
 export interface BackRecordFinishDTO {
-  uuid: string
+  uuid?: string
+  originalUuid?: string
+  finishWidth?: number
+  finishDiameter?: number
+  finishCoreDiameter?: number
   actualWeight?: number
   scrapWeight?: number
   isRemain?: number
@@ -745,19 +773,29 @@ export interface BackRecordFinishDTO {
   actualRemark?: string
 }
 
+export interface BackRecordTrimDTO {
+  originalUuid: string
+  finishWidth: number
+  actualWeight: number
+  actualRemark?: string
+}
+
 /** 工序损耗回录入参。 */
 export interface BackRecordStepDTO {
   uuid: string
   lossWeight?: number
+  knifeCount?: number
 }
 
 /** 整单回录入参。 */
 export interface BackRecordDTO {
-  operator?: string
-  overToleranceAuthorized?: boolean
+  releaseAdminUsername?: string
+  releaseAdminPassword?: string
   releaseReason?: string
+  varianceReason?: string
   rolls: BackRecordRollDTO[]
   finishes?: BackRecordFinishDTO[]
+  trims?: BackRecordTrimDTO[]
   steps?: BackRecordStepDTO[]
 }
 
@@ -787,6 +825,7 @@ export interface BackRecordResultVO {
 /** 批量生成正式成品卷号入参。 */
 export interface FinishRollBatchDTO {
   count: number
+  originalUuid?: string
   paperName?: string
   customerPaperName?: string
   gramWeight?: number
@@ -800,6 +839,7 @@ export interface FinishRollBatchDTO {
 /** 追加备用卷号入参。 */
 export interface SpareRollAppendDTO {
   count: number
+  originalUuid?: string
 }
 
 /** 批量作废卷号入参。 */

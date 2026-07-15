@@ -11,6 +11,7 @@ const ERROR_CODE_TEXT: Record<string, string> = {
   E004: '数据已锁定，不可修改',
   E005: '重量偏差超差，需授权放行',
   E006: '数据已被他人修改，请刷新后重试',
+  E007: '重量偏差较大，需填写原因',
 }
 
 const ERROR_NOTIFIED_KEY = '__paperMesErrorNotified'
@@ -39,17 +40,10 @@ export function notifyErrorOnce(error: unknown, fallbackText = '请求失败'): 
 const instance = axios.create({
   baseURL: '/',
   timeout: 15000,
+  headers: { 'X-Requested-With': 'XMLHttpRequest' },
 })
 
-instance.interceptors.request.use((config) => {
-  const token = getAuthSnapshot().user?.accessToken
-  if (token && shouldAttachAuthorization(config.url)) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-// 后端恒回 HTTP 200，真实结果在 body.code；这里统一解包 R<T>，成功直出 data。
+// 成功和普通业务错误仍按 R<T> 解包；认证/授权错误使用真实 HTTP 401/403。
 instance.interceptors.response.use(
   (resp) => {
     if (resp.config.responseType === 'blob') {
@@ -59,19 +53,14 @@ instance.interceptors.response.use(
     if (body && body.code === 200) {
       return body.data as unknown as AxiosResponse
     }
-    const text =
-      body?.message || (body?.errorCode && ERROR_CODE_TEXT[body.errorCode]) || '请求失败'
-    const bizError = new BizError(text, body?.code ?? -1, body?.errorCode)
-    notifyErrorOnce(bizError, text)
-    if (body?.code === 401) {
-      getAuthSnapshot().actions.signOut()
-      if (window.location.pathname !== '/login' && !configUrlEndsWith(resp.config.url, '/api/auth/me')) {
-        window.location.href = `/login?from=${encodeURIComponent(window.location.pathname + window.location.search)}`
-      }
-    }
-    return Promise.reject(bizError)
+    return rejectBusinessError(body, resp.config.url)
   },
   (error) => {
+    const bizError = businessErrorFromResponse(error?.response?.data)
+    if (bizError) {
+      notifyAndHandleUnauthorized(bizError, error?.config?.url)
+      return Promise.reject(bizError)
+    }
     // HTTP 层异常（网络断、超时、非 200 的传输错误）。
     const text = error?.message?.includes('timeout')
       ? '请求超时，请重试'
@@ -90,18 +79,35 @@ export const rawRequest = instance
 
 export default request
 
-function configUrlEndsWith(url: string | undefined, suffix: string) {
-  return typeof url === 'string' && url.endsWith(suffix)
+export function businessErrorFromResponse(value: unknown): BizError | null {
+  if (!isBusinessErrorBody(value)) return null
+  const text = value.message || (value.errorCode && ERROR_CODE_TEXT[value.errorCode]) || '请求失败'
+  return new BizError(text, value.code, value.errorCode)
 }
 
-function shouldAttachAuthorization(url: string | undefined) {
-  if (!url) return true
-  try {
-    const target = new URL(url, window.location.origin)
-    return target.origin === window.location.origin
-  } catch {
-    return false
+function rejectBusinessError(body: unknown, url?: string) {
+  const bizError = businessErrorFromResponse(body) ?? new BizError('请求失败', -1)
+  notifyAndHandleUnauthorized(bizError, url)
+  return Promise.reject(bizError)
+}
+
+function notifyAndHandleUnauthorized(error: BizError, url?: string) {
+  notifyErrorOnce(error, error.message)
+  if (error.code !== 401) return
+  getAuthSnapshot().actions.signOut()
+  if (window.location.pathname !== '/login' && !configUrlEndsWith(url, '/api/auth/me')) {
+    window.location.href = `/login?from=${encodeURIComponent(window.location.pathname + window.location.search)}`
   }
+}
+
+function isBusinessErrorBody(value: unknown): value is Pick<R<unknown>, 'code' | 'message' | 'errorCode'> {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as Partial<R<unknown>>
+  return typeof candidate.code === 'number' && candidate.code !== 200
+}
+
+function configUrlEndsWith(url: string | undefined, suffix: string) {
+  return typeof url === 'string' && url.endsWith(suffix)
 }
 
 function errorText(error: unknown, fallbackText: string) {

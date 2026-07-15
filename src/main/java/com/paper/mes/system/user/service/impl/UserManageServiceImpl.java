@@ -7,10 +7,12 @@ import com.paper.mes.auth.context.AuthContextHolder;
 import com.paper.mes.auth.dto.CurrentUser;
 import com.paper.mes.auth.entity.SysUser;
 import com.paper.mes.auth.mapper.SysUserMapper;
+import com.paper.mes.auth.permission.RoleCodes;
 import com.paper.mes.auth.service.PasswordService;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
+import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.common.ResultCode;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.system.user.dto.UserPasswordDTO;
@@ -23,15 +25,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
-
 @Service
 public class UserManageServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements UserManageService {
 
     private static final int ENABLED = 1;
     private static final int DISABLED = 0;
-    private static final List<String> ROLES = List.of("admin", "operator", "finance", "warehouse");
-
     private final PasswordService passwordService;
     private final OperationLogService operationLogService;
 
@@ -44,7 +42,7 @@ public class UserManageServiceImpl extends ServiceImpl<SysUserMapper, SysUser> i
     public PageResult<UserVO> pageUsers(UserQuery query) {
         requireAdmin();
         LambdaQueryWrapper<SysUser> wrapper = buildWrapper(query);
-        Page<SysUser> page = page(Page.of(query.getCurrent(), query.getSize()), wrapper);
+        Page<SysUser> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
         PageResult<UserVO> result = new PageResult<>();
         result.setRecords(page.getRecords().stream().map(this::toVO).toList());
         result.setTotal(page.getTotal());
@@ -165,7 +163,7 @@ public class UserManageServiceImpl extends ServiceImpl<SysUserMapper, SysUser> i
     }
 
     private void ensureValidRole(String roleCode) {
-        if (!StringUtils.hasText(roleCode) || !ROLES.contains(roleCode.trim())) {
+        if (!StringUtils.hasText(roleCode) || !RoleCodes.ALLOWED.contains(roleCode.trim())) {
             throw new BusinessException("角色不正确");
         }
     }

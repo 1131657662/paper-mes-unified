@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button, Popconfirm, message } from 'antd'
+import { Button, Modal, Popconfirm, Tooltip, message } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { pageDictItems } from '../../api/systemConfig'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
+import { renderCompatibleTableOptions } from '../../components/biz/tableToolbarOptionsRender'
 import TooltipText from '../../components/biz/TooltipText'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import type { ConfigStatus, DictItem, DictItemSaveDTO } from '../../types/systemConfig'
@@ -15,15 +16,20 @@ import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { builtInTag, statusOptions, statusTag } from './systemConfigDisplay'
 import { DictItemModal } from './SystemConfigModal'
 
-export default function DictItemPanel() {
+interface DictItemPanelProps {
+  onDirtyChange?: (dirty: boolean) => void
+}
+
+export default function DictItemPanel({ onDirtyChange }: DictItemPanelProps) {
   const actionRef = useRef<ActionType>(null)
   const [editing, setEditing] = useState<DictItem>()
   const [modalOpen, setModalOpen] = useState(false)
+  const [dirty, setDirty] = useState(false)
   const columnsState = useTableColumnsState('table-columns-system-dict')
   const { mutateAsync: createItem, isPending: isCreating } = useCreateDictItem()
   const { mutateAsync: updateItem, isPending: isUpdating } = useUpdateDictItem()
   const { mutateAsync: deleteItem } = useDeleteDictItem()
-  const columns = useDictColumns({ deleteItem, onEdit: openEdit })
+  const columns = useDictColumns({ onDelete: removeItem, onEdit: openEdit })
   const resizable = useResizableTableColumns<DictItem, ProColumns<DictItem>>(columns, 'system-dict')
 
   async function submit(values: DictItemSaveDTO) {
@@ -34,14 +40,52 @@ export default function DictItemPanel() {
       await createItem(values)
       message.success('字典项已新增')
     }
+    setDirty(false)
+    onDirtyChange?.(false)
     setModalOpen(false)
     setEditing(undefined)
     actionRef.current?.reload()
   }
 
   function openEdit(record: DictItem) {
+    setDirty(false)
+    onDirtyChange?.(false)
     setEditing(record)
     setModalOpen(true)
+  }
+
+  async function removeItem(uuid: string) {
+    await deleteItem(uuid)
+    message.success('字典项已删除')
+    actionRef.current?.reload()
+  }
+
+  function openCreate() {
+    setDirty(false)
+    onDirtyChange?.(false)
+    setEditing(undefined)
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    if (!dirty) {
+      finishClose()
+      return
+    }
+    Modal.confirm({
+      title: '放弃未保存修改？',
+      content: '当前字典项尚未保存，关闭后修改会丢失。',
+      okText: '放弃修改',
+      cancelText: '继续编辑',
+      onOk: finishClose,
+    })
+  }
+
+  function finishClose() {
+    setDirty(false)
+    onDirtyChange?.(false)
+    setModalOpen(false)
+    setEditing(undefined)
   }
 
   return (
@@ -55,7 +99,7 @@ export default function DictItemPanel() {
         components={resizable.components}
         headerTitle="数据字典"
         toolBarRender={() => [
-          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
             新增字典项
           </Button>,
         ]}
@@ -74,15 +118,17 @@ export default function DictItemPanel() {
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         scroll={{ x: resizable.scrollX, y: '100%' }}
         options={mesProTableOptions()}
+        optionsRender={renderCompatibleTableOptions}
         tableLayout="fixed"
       />
       <DictItemModal
         item={editing}
         open={modalOpen}
         submitting={isCreating || isUpdating}
-        onCancel={() => {
-          setModalOpen(false)
-          setEditing(undefined)
+        onCancel={closeModal}
+        onDirtyChange={(nextDirty) => {
+          setDirty(nextDirty)
+          onDirtyChange?.(nextDirty)
         }}
         onSubmit={submit}
       />
@@ -90,7 +136,7 @@ export default function DictItemPanel() {
   )
 }
 
-function useDictColumns(options: { deleteItem: (uuid: string) => Promise<void>; onEdit: (record: DictItem) => void }) {
+function useDictColumns(options: { onDelete: (uuid: string) => Promise<void>; onEdit: (record: DictItem) => void }) {
   return [
     { title: '字典分类', dataIndex: 'dictType', width: 150, render: textCell },
     { title: '分类名称', dataIndex: 'dictName', width: 150, search: false, render: textCell },
@@ -113,16 +159,18 @@ function useDictColumns(options: { deleteItem: (uuid: string) => Promise<void>; 
             编辑
           </Button>
           <Popconfirm
+            disabled={record.builtIn === 1}
             title="确认删除该字典项？"
             description={record.builtIn === 1 ? '内置字典项不能删除，可以改为停用。' : '删除后业务下拉不会再使用该项。'}
-            onConfirm={async () => {
-              await options.deleteItem(record.uuid)
-              message.success('字典项已删除')
-            }}
+            onConfirm={() => options.onDelete(record.uuid)}
           >
-            <Button danger type="link" size="small" disabled={record.builtIn === 1}>
-              删除
-            </Button>
+            <Tooltip title={record.builtIn === 1 ? '内置字典项不能删除，可以改为停用' : undefined}>
+              <span>
+                <Button className="system-config-delete-action" danger type="link" size="small" disabled={record.builtIn === 1}>
+                  删除
+                </Button>
+              </span>
+            </Tooltip>
           </Popconfirm>
         </div>
       ),

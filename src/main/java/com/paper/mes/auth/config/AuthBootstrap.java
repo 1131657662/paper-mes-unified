@@ -30,8 +30,14 @@ public class AuthBootstrap implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        createTablesIfMissing();
+        if (schemaBootstrapEnabled()) {
+            createTablesIfMissing();
+        }
         createDefaultUsersIfMissing();
+    }
+
+    private boolean schemaBootstrapEnabled() {
+        return !"false".equalsIgnoreCase(environment.getProperty("app.schema-bootstrap.enabled"));
     }
 
     private void createTablesIfMissing() {

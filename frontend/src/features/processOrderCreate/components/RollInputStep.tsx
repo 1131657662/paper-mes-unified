@@ -36,80 +36,80 @@ export default function RollInputStep({ rolls, loading, onChange, onImportPrevie
       title: '品名',
       dataIndex: 'paperName',
       width: 130,
-      render: (_, roll) => (
-        <Input value={roll.paperName} onChange={(event) => onChange(updateField(rolls, roll.localId, 'paperName', event.target.value))} />
+      render: (_, roll, index) => (
+        <Input aria-label={`母卷 ${index + 1} 品名`} value={roll.paperName} onChange={(event) => onChange(updateField(rolls, roll.localId, 'paperName', event.target.value))} />
       ),
     },
     {
       title: '克重(g)',
       dataIndex: 'gramWeight',
       width: 90,
-      render: (_, roll) => (
-        <InputNumber min={1} value={roll.gramWeight} onChange={(value) => onChange(updateField(rolls, roll.localId, 'gramWeight', value ?? 1))} />
+      render: (_, roll, index) => (
+        <InputNumber aria-label={`母卷 ${index + 1} 克重`} min={1} value={roll.gramWeight} onChange={(value) => onChange(updateField(rolls, roll.localId, 'gramWeight', value ?? 1))} />
       ),
     },
     {
       title: '门幅(mm)',
       dataIndex: 'originalWidth',
       width: 100,
-      render: (_, roll) => (
-        <InputNumber min={1} value={roll.originalWidth} onChange={(value) => onChange(updateField(rolls, roll.localId, 'originalWidth', value ?? 1))} />
+      render: (_, roll, index) => (
+        <InputNumber aria-label={`母卷 ${index + 1} 门幅`} min={1} value={roll.originalWidth} onChange={(value) => onChange(updateField(rolls, roll.localId, 'originalWidth', value ?? 1))} />
       ),
     },
     {
       title: '直径(in)',
       dataIndex: 'originalDiameter',
       width: 95,
-      render: (_, roll) => (
-        <InputNumber min={0} value={roll.originalDiameter} onChange={(value) => onChange(updateField(rolls, roll.localId, 'originalDiameter', value ?? undefined))} />
+      render: (_, roll, index) => (
+        <InputNumber aria-label={`母卷 ${index + 1} 直径`} min={0} value={roll.originalDiameter} onChange={(value) => onChange(updateField(rolls, roll.localId, 'originalDiameter', value ?? undefined))} />
       ),
     },
     {
       title: '纸芯(in)',
       dataIndex: 'coreDiameter',
       width: 90,
-      render: (_, roll) => (
-        <InputNumber min={0} value={roll.coreDiameter} onChange={(value) => onChange(updateField(rolls, roll.localId, 'coreDiameter', value ?? undefined))} />
+      render: (_, roll, index) => (
+        <InputNumber aria-label={`母卷 ${index + 1} 纸芯`} min={0} value={roll.coreDiameter} onChange={(value) => onChange(updateField(rolls, roll.localId, 'coreDiameter', value ?? undefined))} />
       ),
     },
     {
       title: '母卷号',
       dataIndex: 'rollNo',
       width: 120,
-      render: (_, roll) => (
-        <Input value={roll.rollNo} onChange={(event) => onChange(updateField(rolls, roll.localId, 'rollNo', event.target.value))} />
+      render: (_, roll, index) => (
+        <Input aria-label={`母卷 ${index + 1} 卷号`} value={roll.rollNo} onChange={(event) => onChange(updateField(rolls, roll.localId, 'rollNo', event.target.value))} />
       ),
     },
     {
       title: '编号',
       dataIndex: 'extraNo',
       width: 110,
-      render: (_, roll) => (
-        <Input value={roll.extraNo} onChange={(event) => onChange(updateField(rolls, roll.localId, 'extraNo', event.target.value))} />
+      render: (_, roll, index) => (
+        <Input aria-label={`母卷 ${index + 1} 编号`} value={roll.extraNo} onChange={(event) => onChange(updateField(rolls, roll.localId, 'extraNo', event.target.value))} />
       ),
     },
     {
       title: '件数',
       dataIndex: 'pieceNum',
       width: 80,
-      render: (_, roll) => (
-        <InputNumber min={1} value={roll.pieceNum} onChange={(value) => onChange(updateField(rolls, roll.localId, 'pieceNum', value ?? 1))} />
+      render: (_, roll, index) => (
+        <InputNumber aria-label={`母卷 ${index + 1} 件数`} min={1} value={roll.pieceNum} onChange={(value) => onChange(updateField(rolls, roll.localId, 'pieceNum', value ?? 1))} />
       ),
     },
     {
       title: '单重(kg)',
       dataIndex: 'rollWeight',
       width: 100,
-      render: (_, roll) => (
-        <InputNumber min={0} precision={3} value={roll.rollWeight} onChange={(value) => onChange(updateField(rolls, roll.localId, 'rollWeight', value ?? 0))} />
+      render: (_, roll, index) => (
+        <InputNumber aria-label={`母卷 ${index + 1} 单重`} min={0} precision={3} value={roll.rollWeight} onChange={(value) => onChange(updateField(rolls, roll.localId, 'rollWeight', value ?? 0))} />
       ),
     },
     {
       title: '备注',
       dataIndex: 'remark',
       width: 140,
-      render: (_, roll) => (
-        <Input value={roll.remark} onChange={(event) => onChange(updateField(rolls, roll.localId, 'remark', event.target.value))} />
+      render: (_, roll, index) => (
+        <Input aria-label={`母卷 ${index + 1} 备注`} value={roll.remark} onChange={(event) => onChange(updateField(rolls, roll.localId, 'remark', event.target.value))} />
       ),
     },
     {

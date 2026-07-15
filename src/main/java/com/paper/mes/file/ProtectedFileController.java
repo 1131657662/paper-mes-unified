@@ -13,12 +13,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/files")
+@RequestMapping({"/api/files", "/files"})
 @RequiredArgsConstructor
 @RequirePermission(Permissions.ORDER_VIEW)
 public class ProtectedFileController {
 
     private static final String API_FILES_PREFIX = "/api/files/";
+    private static final String LEGACY_FILES_PREFIX = "/files/";
 
     private final ProtectedFileService protectedFileService;
 
@@ -33,8 +34,12 @@ public class ProtectedFileController {
     }
 
     private String relativePath(HttpServletRequest request) {
-        String prefix = request.getContextPath() + API_FILES_PREFIX;
         String uri = request.getRequestURI();
-        return uri.startsWith(prefix) ? uri.substring(prefix.length()) : "";
+        String apiPrefix = request.getContextPath() + API_FILES_PREFIX;
+        if (uri.startsWith(apiPrefix)) {
+            return uri.substring(apiPrefix.length());
+        }
+        String legacyPrefix = request.getContextPath() + LEGACY_FILES_PREFIX;
+        return uri.startsWith(legacyPrefix) ? uri.substring(legacyPrefix.length()) : "";
     }
 }

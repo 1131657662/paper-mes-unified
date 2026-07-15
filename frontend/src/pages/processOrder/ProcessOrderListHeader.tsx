@@ -33,7 +33,7 @@ export default function ProcessOrderListHeader({
       className="process-order-shell"
     >
       {search && <div className="process-order-shell__search">{search}</div>}
-      <div className="process-order-shell__toolbar">
+      <div className={`process-order-shell__toolbar${selectedRows.length > 0 ? ' has-selection' : ''}`}>
         <div className="process-order-shell__actions">
           <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>新建</Button>
           <ProcessOrderBatchToolbar selectedRows={selectedRows} actions={actions} />

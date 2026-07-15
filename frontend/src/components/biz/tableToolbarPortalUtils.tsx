@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { TableToolbarPortal } from './TableToolbarPortal'
+import { renderCompatibleTableOptions } from './tableToolbarOptionsRender'
 
 export function renderTableToolbarPortal(_: unknown, defaultDom: ReactNode[]) {
-  return [<TableToolbarPortal key="table-toolbar-options">{defaultDom}</TableToolbarPortal>]
+  const options = renderCompatibleTableOptions(undefined, defaultDom)
+  return [<TableToolbarPortal key="table-toolbar-options">{options}</TableToolbarPortal>]
 }

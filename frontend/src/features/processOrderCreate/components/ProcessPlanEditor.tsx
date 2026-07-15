@@ -51,6 +51,7 @@ export default function ProcessPlanEditor({
       <Space wrap>
         <Typography.Text strong>加工方式</Typography.Text>
         <Select
+          aria-label="加工方式"
           value={processMode}
           options={processOptions}
           style={{ width: 160 }}
@@ -58,6 +59,7 @@ export default function ProcessPlanEditor({
         />
         {processMode !== 3 && (
           <Radio.Group
+            aria-label="主工艺"
             value={mainStepType}
             options={stepOptions}
             optionType="button"
@@ -76,14 +78,14 @@ export default function ProcessPlanEditor({
       )}
       {processMode !== 3 && (
         <Space wrap>
-          <InputNumber addonBefore="备用号" min={0} value={plan.spareCount ?? 0} onChange={(value) => patch({ spareCount: value ?? 0 })} />
-          <InputNumber addonBefore="单价" min={0} precision={2} value={plan.unitPrice} onChange={(value) => patch({ unitPrice: value ?? undefined })} />
+          {processMode === 1 && <InputNumber aria-label="备用卷号数量" addonBefore="备用号" min={0} value={plan.spareCount ?? 0} onChange={(value) => patch({ spareCount: value ?? 0 })} />}
+          <InputNumber aria-label="加工单价" addonBefore="单价" min={0} precision={2} value={plan.unitPrice} onChange={(value) => patch({ unitPrice: value ?? undefined })} />
         </Space>
       )}
       {processMode === 3 && (
         <Typography.Text type="secondary">直发卷无需配置工艺，最终预览中会保留该母卷。</Typography.Text>
       )}
-      {processMode === 2 && mainStepType && <OnSiteCountEditor plan={planForMode({ defaultPlanOptions: planDefaults, machines, plan, roll, processMode, mainStepType })} onChange={onChange} />}
+      {processMode === 2 && mainStepType && <OnSiteCountEditor />}
       {processMode === 1 && mainStepType === 1 && <SawPlanEditor plan={plan} roll={roll} onChange={onChange} />}
       {processMode === 1 && mainStepType === 2 && <RewindPlanEditor plan={plan} roll={roll} rolls={rolls} onChange={onChange} />}
     </Space>

@@ -4,6 +4,7 @@ import com.paper.mes.system.config.constant.NoRuleBizType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -19,10 +20,15 @@ public class SystemNoRuleBootstrap implements ApplicationRunner {
 
     private final JdbcTemplate jdbcTemplate;
 
+    @Value("${app.schema-bootstrap.enabled:true}")
+    private boolean schemaBootstrapEnabled = true;
+
     @Override
     public void run(ApplicationArguments args) {
-        createTableIfMissing();
-        createSequenceTableIfMissing();
+        if (schemaBootstrapEnabled) {
+            createTableIfMissing();
+            createSequenceTableIfMissing();
+        }
         seedRules();
     }
 

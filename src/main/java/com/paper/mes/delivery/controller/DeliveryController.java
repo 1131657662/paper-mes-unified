@@ -6,6 +6,7 @@ import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.delivery.dto.AvailableFinishVO;
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
+import com.paper.mes.delivery.dto.DeliveryCancelDTO;
 import com.paper.mes.delivery.dto.DeliveryConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
 import com.paper.mes.delivery.dto.DeliveryDetailVO;
@@ -93,6 +94,14 @@ public class DeliveryController {
     public R<Void> removeDetail(@PathVariable String uuid,
                                 @PathVariable String detailUuid) {
         deliveryService.removeDetail(uuid, detailUuid);
+        return R.success();
+    }
+
+    @PostMapping("/{uuid}/cancel")
+    @RequirePermission(Permissions.DELIVERY_MANAGE)
+    public R<Void> cancelPending(@PathVariable String uuid,
+                                 @Valid @RequestBody DeliveryCancelDTO dto) {
+        deliveryService.cancelPending(uuid, dto);
         return R.success();
     }
 }

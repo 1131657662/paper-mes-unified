@@ -1,0 +1,5 @@
+# Database backup is scheduled by the backend and must not be duplicated here.
+# Install only offsite sync and restore verification with: sudo crontab -e
+# Logs remain local; connect the failure path to the server monitoring system.
+15 3 * * * BACKUP_ENV_FILE=/etc/paper-mes/backup.env /usr/local/bin/sync-paper-mes-backups >> /var/log/paper-mes-backup-sync.log 2>&1
+30 4 * * 0 BACKUP_ENV_FILE=/etc/paper-mes/backup.env BACKUP_DIR="$(find /opt/backups/paper-mes -mindepth 1 -maxdepth 1 -type d -name '????????-??????' | sort | tail -1)" /usr/local/bin/verify-paper-mes-backup >> /var/log/paper-mes-restore-check.log 2>&1

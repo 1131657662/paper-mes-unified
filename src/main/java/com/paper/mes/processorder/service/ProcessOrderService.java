@@ -11,9 +11,11 @@ import com.paper.mes.processorder.dto.FinishPreviewVO;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
 import com.paper.mes.processorder.dto.OriginalRollRemarkDTO;
 import com.paper.mes.processorder.dto.PrintDTO;
+import com.paper.mes.processorder.dto.PrintViewVersion;
 import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
+import com.paper.mes.processorder.dto.ProcessOrderPrintViewVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
@@ -31,6 +33,9 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
     PageResult<ProcessOrder> pageOrders(ProcessOrderQuery query);
 
     ProcessOrderDetailVO getDetail(String uuid);
+
+    /** 读取下发冻结版本或完工实际版本的只读打印详情。 */
+    ProcessOrderPrintViewVO getPrintView(String uuid, PrintViewVersion version);
 
     /** 导出加工单详情资料 Excel。 */
     void exportDetail(String uuid, HttpServletResponse response);

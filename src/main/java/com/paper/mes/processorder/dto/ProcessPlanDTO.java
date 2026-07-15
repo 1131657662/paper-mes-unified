@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -26,8 +27,10 @@ public class ProcessPlanDTO {
     private String remark;
 
     @Valid
+    @Size(max = 500, message = "成品规格不能超过500条")
     private List<FinishConfigSpecDTO> finishSpecs;
 
     @Valid
+    @Size(max = 100, message = "复卷段不能超过100条")
     private List<RewindSegmentPlanDTO> segments;
 }

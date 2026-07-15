@@ -1,6 +1,7 @@
-import { Table } from 'antd'
+import { Table, Tag } from 'antd'
 import type { ReportDimensionVO } from '../../../types/report'
 import { formatMoney, formatNumber, formatPercent, formatTonFromKg } from '../utils/reportFormatters'
+import { hasWeightGain } from '../utils/reportWeightBalance'
 
 interface Props {
   rows: ReportDimensionVO[]
@@ -18,20 +19,25 @@ export default function ReportDimensionSummaryRow({ rows }: Props) {
         <Table.Summary.Cell index={3} align="right">{formatNumber(totals.finishRollCount)}</Table.Summary.Cell>
         <Table.Summary.Cell index={4} align="right">{formatTonFromKg(totals.originalWeight)}</Table.Summary.Cell>
         <Table.Summary.Cell index={5} align="right">{formatTonFromKg(totals.finishWeight)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={6} align="right">{formatTonFromKg(totals.lossWeight)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={7} align="right">{formatPercent(totals.lossRatio)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={8} align="right">{formatNumber(totals.knifeCount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={9} align="right">{formatMoney(totals.sawAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={10} align="right">{formatMoney(totals.rewindAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={11} align="right">{formatMoney(totals.processAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={12} align="right">{formatMoney(totals.extraAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={13} align="right">{formatMoney(totals.totalAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={14} align="right">{formatMoney(totals.settledAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={15} align="right">{formatMoney(totals.pendingSettleAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={16} align="right">{formatMoney(totals.receivedAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={17} align="right">{formatMoney(totals.cashReceivedAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={18} align="right">{formatMoney(totals.scrapOffsetAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={19} align="right">{formatMoney(totals.unreceivedAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={6} align="center">
+          {hasWeightGain(totals.originalWeight, totals.finishWeight)
+            ? <Tag color="error">产出超出</Tag>
+            : <Tag color="success">正常</Tag>}
+        </Table.Summary.Cell>
+        <Table.Summary.Cell index={7} align="right">{formatTonFromKg(totals.lossWeight)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={8} align="right">{formatPercent(totals.lossRatio)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={9} align="right">{formatNumber(totals.knifeCount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={10} align="right">{formatMoney(totals.sawAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={11} align="right">{formatMoney(totals.rewindAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={12} align="right">{formatMoney(totals.processAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={13} align="right">{formatMoney(totals.extraAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={14} align="right">{formatMoney(totals.totalAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={15} align="right">{formatMoney(totals.settledAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={16} align="right">{formatMoney(totals.pendingSettleAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={17} align="right">{formatMoney(totals.receivedAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={18} align="right">{formatMoney(totals.cashReceivedAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={19} align="right">{formatMoney(totals.scrapOffsetAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={20} align="right">{formatMoney(totals.unreceivedAmount)}</Table.Summary.Cell>
       </Table.Summary.Row>
     </Table.Summary>
   )

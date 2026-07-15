@@ -1,0 +1,131 @@
+.finish-roll-drawer .ant-drawer-body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.finish-roll-drawer .ant-spin-nested-loading,
+.finish-roll-drawer .ant-spin-container {
+  height: 100%;
+  min-height: 0;
+}
+
+.finish-roll-manager {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.finish-roll-summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius);
+  background: var(--mes-color-panel);
+}
+
+.finish-roll-summary__item {
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid var(--mes-color-border-light);
+}
+
+.finish-roll-summary__item:last-child {
+  border-right: 0;
+}
+
+.finish-roll-summary__item span,
+.finish-roll-summary__item strong {
+  display: block;
+}
+
+.finish-roll-summary__item span {
+  margin-bottom: 4px;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+.finish-roll-summary__item strong {
+  overflow: hidden;
+  color: var(--mes-color-text);
+  font-size: 18px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finish-roll-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius);
+  background: var(--mes-color-soft);
+}
+
+.finish-roll-toolbar__actions,
+.finish-roll-toolbar__filters {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.finish-roll-toolbar__filters > span {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.finish-roll-toolbar__filters .ant-select {
+  width: 126px;
+}
+
+.finish-roll-manager__table {
+  min-height: 0;
+  flex: 1;
+}
+
+.finish-roll-manager__table .ant-table-wrapper,
+.finish-roll-manager__table .ant-spin-nested-loading,
+.finish-roll-manager__table .ant-spin-container {
+  height: 100%;
+}
+
+.finish-roll-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.finish-roll-cell--inline {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.finish-roll-cell .ant-tag {
+  margin-inline-end: 0;
+}
+
+.finish-roll-cell span {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finish-roll-cell.is-voided strong {
+  color: var(--mes-color-text-muted);
+  text-decoration: line-through;
+}

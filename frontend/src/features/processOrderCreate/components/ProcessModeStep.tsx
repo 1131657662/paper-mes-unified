@@ -90,6 +90,7 @@ function ProcessModeEditor({ machines, selected, patchSelected, batchApply }: Ed
       <div>
         <Typography.Text strong>加工方式</Typography.Text>
         <Select
+          aria-label="当前母卷加工方式"
           value={selected?.processMode ?? 1}
           options={processOptions}
           style={{ width: 180, marginLeft: 12 }}
@@ -117,6 +118,7 @@ function MainStepSelector({ selected, patchSelected }: Pick<EditorProps, 'select
     <div>
       <Typography.Text strong>主工艺</Typography.Text>
       <Radio.Group
+        aria-label="当前母卷主工艺"
         value={selected?.mainStepType ?? 2}
         options={stepOptions}
         optionType="button"

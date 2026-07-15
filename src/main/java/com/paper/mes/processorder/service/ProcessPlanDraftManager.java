@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ErrorCode;
+import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.processorder.calc.FeeCalculator;
 import com.paper.mes.processorder.dto.FinishConfigSpecDTO;
 import com.paper.mes.processorder.dto.FinishPreviewVO;
@@ -44,6 +45,7 @@ public class ProcessPlanDraftManager {
     private final SawPlanPreviewer sawPlanPreviewer;
     private final OnSitePlanPreviewer onSitePlanPreviewer;
     private final ObjectMapper objectMapper;
+    private final BusinessLockService businessLockService;
 
     public PlanPreviewVO previewProcessPlan(String orderUuid, String rollUuid, ProcessPlanDTO plan) {
         requireDraft(orderUuid);
@@ -53,6 +55,7 @@ public class ProcessPlanDraftManager {
 
     @Transactional(rollbackFor = Exception.class)
     public PlanPreviewVO saveProcessPlan(String orderUuid, String rollUuid, ProcessPlanDTO plan) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
         requireDraft(orderUuid);
         OriginalRoll roll = requireRoll(orderUuid, rollUuid);
         updateRollProcess(roll, plan);

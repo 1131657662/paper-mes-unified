@@ -4,10 +4,10 @@ import { Button, Popconfirm, Space, Tag, message } from 'antd'
 import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
-import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import { pageUsers } from '../../api/user'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
+import { renderCompatibleTableOptions } from '../../components/biz/tableToolbarOptionsRender'
 import TooltipText from '../../components/biz/TooltipText'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
@@ -17,7 +17,8 @@ import { useResetUserPassword, useUpdateUserStatus } from '../../features/user/h
 import { getRoleModuleNames, getRoleProfile } from '../../constants/permissionMeta'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { datedCsvFilename, exportRowsToCsv } from '../../utils/exportCsv'
-import { roleTag, roleText, statusTag } from './userDisplay'
+import { formatDateTime } from '../../utils/dateTime'
+import { roleTag, roleText, statusTag, userRoleValueEnum } from './userDisplay'
 import UserPasswordModal from './UserPasswordModal'
 import '../documentModule.css'
 import './UserProfile.css'
@@ -63,12 +64,7 @@ export default function UserList() {
       key: 'role',
       width: 120,
       valueType: 'select',
-      valueEnum: {
-        admin: { text: '管理员' },
-        operator: { text: '录单员' },
-        finance: { text: '财务' },
-        warehouse: { text: '仓库' },
-      },
+      valueEnum: userRoleValueEnum,
       render: (_, record) => <RoleCell roleCode={record.roleCode} />,
     },
     { title: '权限范围', dataIndex: 'roleCode', key: 'roleScope', width: 260, search: false, render: (_, record) => <RoleScope roleCode={record.roleCode} /> },
@@ -165,6 +161,7 @@ export default function UserList() {
         scroll={{ x: resizable.scrollX, y: '100%' }}
         tableLayout="fixed"
         options={mesProTableOptions()}
+        optionsRender={renderCompatibleTableOptions}
       />
       <UserPasswordModal
         open={!!passwordUser}
@@ -191,9 +188,7 @@ function dateCell(value?: string) {
 }
 
 function formatDate(value?: string) {
-  if (!value) return '-'
-  const date = dayjs(value)
-  return date.isValid() ? date.format('YYYY-MM-DD HH:mm:ss') : value
+  return formatDateTime(value)
 }
 
 export function UserRoleSummary({ roleCode }: { roleCode?: string }) {

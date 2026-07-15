@@ -212,14 +212,12 @@ export default function ProcessOrderList() {
           tableAlertRender={false}
           tableAlertOptionRender={false}
           request={async (params) => {
-            const hasSearchStatus = params.orderStatus != null && params.orderStatus !== ''
-            const statusFromSearch = hasSearchStatus ? Number(params.orderStatus) : undefined
             const statusFromQueue = quickStatus === 'all' ? undefined : Number(quickStatus)
             const res = await pageProcessOrders({
               current: orderPagination.pagination.current,
               size: orderPagination.pagination.pageSize,
               keyword: params.keyword,
-              orderStatus: statusFromSearch ?? statusFromQueue,
+              orderStatus: statusFromQueue,
               customerUuid: params.customerUuid,
               dateFrom: params.dateFrom,
               dateTo: params.dateTo,

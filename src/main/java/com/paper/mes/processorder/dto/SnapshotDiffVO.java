@@ -37,6 +37,12 @@ public class SnapshotDiffVO {
     public static class FinishDiff {
         private String uuid;
         private String finishRollNo;
+        private Integer printWidth;
+        private Integer finishWidth;
+        private boolean widthChanged;
+        private Integer printDiameter;
+        private Integer finishDiameter;
+        private boolean diameterChanged;
         /** 预估重量 kg */
         private BigDecimal estimateWeight;
         /** 实际重量 kg */

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
+import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.customer.dto.CustomerQuery;
 import com.paper.mes.customer.dto.CustomerSaveDTO;
 import com.paper.mes.customer.entity.Customer;
@@ -39,7 +40,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
                     .or().like(Customer::getCustomerName, kw));
         }
         wrapper.orderByDesc(Customer::getCreateTime);
-        Page<Customer> page = page(Page.of(query.getCurrent(), query.getSize()), wrapper);
+        Page<Customer> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.of(page);
     }
 

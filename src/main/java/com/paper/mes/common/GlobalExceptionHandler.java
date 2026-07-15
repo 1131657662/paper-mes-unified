@@ -1,6 +1,8 @@
 package com.paper.mes.common;
 
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -8,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -26,8 +29,9 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
-    public R<Void> handleBusiness(BusinessException ex) {
-        return R.fail(ex.getCode(), ex.getErrorCode(), ex.getMessage());
+    public ResponseEntity<R<Void>> handleBusiness(BusinessException ex) {
+        R<Void> body = R.fail(ex.getCode(), ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(authStatus(ex.getCode())).body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -101,6 +105,7 @@ public class GlobalExceptionHandler {
 
     /** 未匹配到任何处理器/静态资源（Spring Boot 3 默认对未知路径抛此异常）。 */
     @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
     public R<Void> handleNoResource(NoResourceFoundException ex) {
         return R.fail(ResultCode.NOT_FOUND, "资源不存在");
     }
@@ -113,5 +118,11 @@ public class GlobalExceptionHandler {
 
     private String formatFieldError(FieldError error) {
         return error.getField() + ": " + error.getDefaultMessage();
+    }
+
+    private HttpStatus authStatus(int code) {
+        if (code == ResultCode.UNAUTHORIZED) return HttpStatus.UNAUTHORIZED;
+        if (code == ResultCode.FORBIDDEN) return HttpStatus.FORBIDDEN;
+        return HttpStatus.OK;
     }
 }

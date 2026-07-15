@@ -1,13 +1,14 @@
 import { Alert, Tag } from 'antd'
-import type { ReportOverviewVO } from '../../../types/report'
+import type { ReportDetailVO, ReportOverviewVO } from '../../../types/report'
 import { formatMoney, formatPercent } from '../utils/reportFormatters'
 
 interface Props {
+  details?: ReportDetailVO[]
   overview?: ReportOverviewVO
 }
 
-export default function ReportInsightStrip({ overview }: Props) {
-  const insights = buildInsights(overview)
+export default function ReportInsightStrip({ details = [], overview }: Props) {
+  const insights = buildInsights(overview, details)
 
   return (
     <div className="report-insights">
@@ -41,7 +42,7 @@ function InsightMessage({ item }: { item: Insight }) {
   )
 }
 
-function buildInsights(overview?: ReportOverviewVO): Insight[] {
+function buildInsights(overview: ReportOverviewVO | undefined, details: ReportDetailVO[]): Insight[] {
   const settled = Number(overview?.settledAmount ?? 0)
   const unreceived = Number(overview?.unreceivedAmount ?? 0)
   const pendingSettle = Number(overview?.pendingSettleAmount ?? 0)
@@ -49,26 +50,45 @@ function buildInsights(overview?: ReportOverviewVO): Insight[] {
   const rewind = Number(overview?.rewindAmount ?? 0)
   const saw = Number(overview?.sawAmount ?? 0)
   const unreceivedRatio = settled > 0 ? (unreceived / settled) * 100 : 0
-  return [
-    {
-      detail: `已结算未收 ${formatMoney(unreceived)}，占已结算 ${formatPercent(unreceivedRatio)}；待结算 ${formatMoney(pendingSettle)}`,
-      tag: unreceivedRatio >= 35 ? '关注' : '回款',
-      title: unreceivedRatio >= 35 ? '未收占比较高' : '回款压力可控',
-      type: unreceivedRatio >= 35 ? 'warning' : 'success',
-    },
-    {
-      detail: `当前损耗率 ${formatPercent(lossRatio)}，建议结合产品和工艺维度定位高损耗来源`,
-      tag: lossRatio >= 5 ? '异常' : '损耗',
-      title: lossRatio >= 5 ? '损耗率偏高' : '损耗处于常规范围',
-      type: lossRatio >= 5 ? 'error' : 'info',
-    },
-    {
-      detail: `锯纸费 ${formatMoney(saw)}，复卷费 ${formatMoney(rewind)}`,
-      tag: '结构',
-      title: rewind > saw ? '复卷贡献更高' : '锯纸贡献更高',
-      type: 'info',
-    },
-  ]
+  const base = [cashInsight(unreceived, pendingSettle, unreceivedRatio), lossInsight(lossRatio), processInsight(saw, rewind)]
+  const anomaly = balanceInsight(details)
+  return anomaly ? [anomaly, ...base] : base
+}
+
+function cashInsight(unreceived: number, pending: number, ratio: number): Insight {
+  return {
+    detail: `已结算未收 ${formatMoney(unreceived)}，占已结算 ${formatPercent(ratio)}；待结算 ${formatMoney(pending)}`,
+    tag: ratio >= 35 ? '关注' : '回款',
+    title: ratio >= 35 ? '未收占比较高' : '回款压力可控',
+    type: ratio >= 35 ? 'warning' : 'success',
+  }
+}
+
+function lossInsight(ratio: number): Insight {
+  return {
+    detail: `当前损耗率 ${formatPercent(ratio)}，建议结合产品和工艺维度定位高损耗来源`,
+    tag: ratio >= 5 ? '异常' : '损耗',
+    title: ratio >= 5 ? '损耗率偏高' : '损耗处于常规范围',
+    type: ratio >= 5 ? 'error' : 'info',
+  }
+}
+
+function processInsight(saw: number, rewind: number): Insight {
+  return {
+    detail: `锯纸费 ${formatMoney(saw)}，复卷费 ${formatMoney(rewind)}`,
+    tag: '结构',
+    title: rewind > saw ? '复卷贡献更高' : '锯纸贡献更高',
+    type: 'info',
+  }
+}
+
+function balanceInsight(details: ReportDetailVO[]): Insight | undefined {
+  const abnormal = details.filter((item) => Number(item.finishWeight ?? 0) > Number(item.originalWeight ?? 0) + 0.001)
+  if (abnormal.length === 0) return undefined
+  return {
+    detail: `${abnormal.length} 张加工单的成品重量高于原纸重量，请先核对回录和来源重量`,
+    tag: '重量', title: '存在重量守恒异常', type: 'error',
+  }
 }
 
 function tagColor(type: Insight['type']) {

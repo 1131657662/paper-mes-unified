@@ -26,6 +26,7 @@ export default function DashboardRankList({ emptyText, items, mode, subtitle, ti
       <DashboardPanelHead
         extra={canSwitch && (
           <Segmented
+            aria-label={`${title}统计周期`}
             className="dashboard-rank__range"
             options={[
               { label: '本月', value: 'month' },

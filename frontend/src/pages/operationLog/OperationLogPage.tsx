@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { getOperationLogs } from '../../api/operationLog'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
+import { renderCompatibleTableOptions } from '../../components/biz/tableToolbarOptionsRender'
 import TooltipText from '../../components/biz/TooltipText'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import type { OperationLog } from '../../types/operationLog'
@@ -22,6 +23,7 @@ const BIZ_ROUTE_PREFIX: Record<string, string> = {
   结算单: '/settle-orders',
   系统用户: '/users',
   系统配置: '/system-config',
+  数据安全: '/system-config',
 }
 
 export default function OperationLogPage() {
@@ -55,7 +57,7 @@ export default function OperationLogPage() {
       render: (_, record) => actionTag(record.actionType),
     },
     { title: '操作人', dataIndex: 'operator', width: 110, render: (_, record) => textCell(record.operator) },
-    { title: '字段名', dataIndex: 'fieldName', width: 130, hideInSearch: true, render: (_, record) => textCell(record.fieldName) },
+    { title: '字段名', dataIndex: 'fieldName', width: 130, render: (_, record) => textCell(record.fieldName) },
     {
       title: '变更内容',
       dataIndex: 'change',
@@ -63,7 +65,7 @@ export default function OperationLogPage() {
       hideInSearch: true,
       render: (_, record) => <ChangeCell log={record} />,
     },
-    { title: '备注', dataIndex: 'remark', width: 220, hideInSearch: true, render: (_, record) => textCell(record.remark) },
+    { title: '备注', dataIndex: 'remark', width: 220, render: (_, record) => textCell(record.remark) },
     {
       title: '操作',
       key: 'actions',
@@ -96,7 +98,9 @@ export default function OperationLogPage() {
             current: params.current,
             dateFrom: params.dateFrom,
             dateTo: params.dateTo,
+            fieldName: params.fieldName,
             operator: params.operator,
+            remark: params.remark,
             size: params.pageSize,
           })
           return { data: res.records || [], total: res.total || 0, success: true }
@@ -106,11 +110,20 @@ export default function OperationLogPage() {
         scroll={{ x: resizable.scrollX, y: '100%' }}
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         options={mesProTableOptions()}
+        optionsRender={renderCompatibleTableOptions}
         tableLayout="fixed"
         dateFormatter="string"
       />
 
-      <OperationLogDetailDrawer log={selectedLog} onClose={() => setSelectedLog(undefined)} />
+      <OperationLogDetailDrawer
+        log={selectedLog}
+        businessPath={selectedLog ? businessPath(selectedLog) : undefined}
+        onClose={() => setSelectedLog(undefined)}
+        onOpenBusiness={(path) => {
+          setSelectedLog(undefined)
+          navigate(path)
+        }}
+      />
     </>
   )
 }
@@ -135,13 +148,20 @@ function ChangeCell({ log }: { log: OperationLog }) {
 
 function bizNoCell(record: OperationLog, navigate: (path: string) => void) {
   if (!record.bizNo) return '-'
-  const prefix = BIZ_ROUTE_PREFIX[record.bizType]
-  if (!prefix || !record.bizUuid) return <TooltipText value={logText(record.bizNo)} />
+  const path = businessPath(record)
+  if (!path) return <TooltipText value={logText(record.bizNo)} />
   return (
-    <Button className="operation-log-biz-link" type="link" size="small" onClick={() => navigate(`${prefix}/${record.bizUuid}`)}>
+    <Button className="operation-log-biz-link" type="link" size="small" onClick={() => navigate(path)}>
       {logText(record.bizNo)}
     </Button>
   )
+}
+
+function businessPath(record: OperationLog): string | undefined {
+  const prefix = BIZ_ROUTE_PREFIX[record.bizType]
+  if (!prefix) return undefined
+  if (record.bizType === '系统配置' || record.bizType === '数据安全') return prefix
+  return record.bizUuid ? `${prefix}/${record.bizUuid}` : undefined
 }
 
 function textCell(text?: unknown) {

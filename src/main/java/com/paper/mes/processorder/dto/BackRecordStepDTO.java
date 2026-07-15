@@ -2,6 +2,7 @@ package com.paper.mes.processorder.dto;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -18,4 +19,8 @@ public class BackRecordStepDTO {
     /** 本工序损耗重量 kg，参与三级闭合与损耗报表。 */
     @DecimalMin(value = "0.000", message = "工序损耗不能为负数")
     private BigDecimal lossWeight;
+
+    /** 现场定尺锯纸的实际刀数。 */
+    @Positive(message = "实际刀数必须大于0")
+    private Integer knifeCount;
 }

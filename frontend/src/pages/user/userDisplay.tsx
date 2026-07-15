@@ -1,13 +1,13 @@
 import { Tag } from 'antd'
 import type { UserRoleCode, UserStatus } from '../../types/user'
-import { getRoleProfile } from '../../constants/permissionMeta'
+import { getRoleProfile, ROLE_PROFILES } from '../../constants/permissionMeta'
 
-export const userRoleOptions: Array<{ label: string; value: UserRoleCode }> = [
-  { value: 'admin', label: '管理员' },
-  { value: 'operator', label: '录单员' },
-  { value: 'finance', label: '财务' },
-  { value: 'warehouse', label: '仓库' },
-]
+export const userRoleOptions: Array<{ label: string; value: UserRoleCode }> = Object.values(ROLE_PROFILES)
+  .map(({ code, label }) => ({ label, value: code }))
+
+export const userRoleValueEnum = Object.fromEntries(
+  userRoleOptions.map(({ label, value }) => [value, { text: label }]),
+)
 
 export const userStatusOptions: Array<{ label: string; value: UserStatus }> = [
   { value: 1, label: '启用' },

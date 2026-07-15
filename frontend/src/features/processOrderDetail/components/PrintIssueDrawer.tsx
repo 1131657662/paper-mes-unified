@@ -1,10 +1,16 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Alert, Button, Descriptions, Drawer, Form, Input, Space, Tag, message } from 'antd'
+import { Alert, Button, Drawer, Form, Input, InputNumber, Spin, message } from 'antd'
 import { PrinterOutlined, SendOutlined } from '@ant-design/icons'
-import type { PrintResultVO, ProcessOrderDetailVO } from '../../../types/processOrder'
+import type { PrintResultVO, ProcessOrderDetailVO, ProcessOrderPrintViewVO, PrintViewVersion } from '../../../types/processOrder'
 import { usePrintProcessOrder } from '../hooks/usePrintProcessOrder'
+import { useProcessOrderPrintView } from '../hooks/useProcessOrderPrintView'
+import { resolvePrintIssueMode, type PrintIssueMode } from '../printIssueMode'
+import { printVersionProps } from '../printVersionModel'
+import PrintOnlySheet from './PrintOnlySheet'
 import PrintPreviewSheet from './PrintPreviewSheet'
+import PrintResultSummary from './PrintResultSummary'
+import PrintVersionControl from './PrintVersionControl'
 import './PrintIssueDrawer.css'
 
 interface Props {
@@ -17,59 +23,76 @@ interface Props {
 export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: Props) {
   const [form] = Form.useForm()
   const [result, setResult] = useState<PrintResultVO | null>(null)
+  const [copies, setCopies] = useState(1)
+  const [version, setVersion] = useState<PrintViewVersion>('ISSUED')
   const { mutateAsync: printOrder, isPending: isPrinting } = usePrintProcessOrder(detail.order.uuid)
-  const isReprint = (detail.order.printCount ?? 0) > 0
+  const { data: printView, isLoading: isLoadingPrintView, isError: isPrintViewError } = useProcessOrderPrintView(
+    detail.order.uuid,
+    version,
+    open,
+  )
+  const mode = resolvePrintIssueMode(detail.order.orderStatus, detail.order.printCount, version)
+  const printDetail = printView?.detail ?? detail
 
   const handleIssue = async () => {
-    const values = isReprint ? await form.validateFields() : {}
-    const printResult = await printOrder(isReprint ? { reason: values.reason } : undefined)
+    if (mode === 'preview') return
+    const values = mode === 'reprint' ? await form.validateFields() : {}
+    const printResult = await printOrder(mode === 'reprint' ? { reason: values.reason } : undefined)
     setResult(printResult)
-    message.success(isReprint ? '补打完成' : '打印下发完成')
+    message.success(mode === 'reprint' ? '补打完成' : '打印下发完成')
     onPrinted()
+    window.setTimeout(() => window.print(), 0)
   }
 
   return (
     <>
       <Drawer
-        title={isReprint ? '补打加工单' : '打印预览并下发'}
+        title={drawerTitle(mode, version)}
         rootClassName="print-issue-drawer-root"
         className="print-issue-drawer"
         width="88vw"
         open={open}
         onClose={onClose}
         destroyOnHidden
-        extra={<PrintActions isPrinting={isPrinting} isReprint={isReprint} result={result} onIssue={handleIssue} />}
+        extra={<PrintActions disabled={isLoadingPrintView || isPrintViewError} isPrinting={isPrinting} mode={mode} result={result} version={version} onIssue={handleIssue} />}
       >
-        <PrintDrawerContent detail={detail} form={form} isReprint={isReprint} result={result} />
+        <PrintDrawerContent copies={copies} detail={printDetail} form={form} loading={isLoadingPrintView} mode={mode} result={result} version={version} view={printView} onCopiesChange={setCopies} onVersionChange={setVersion} />
+        {isPrintViewError && <Alert type="error" showIcon message="打印版本加载失败" description="请关闭预览后重试；系统不会使用未确认的当前数据代替历史快照。" />}
       </Drawer>
-      {open && createPortal(<PrintOnlySheet detail={detail} />, document.body)}
+      {open && createPortal(<PrintOnlySheet copies={copies} detail={printDetail} version={version} view={printView} />, document.body)}
     </>
   )
 }
 
-function PrintActions({ isPrinting, isReprint, result, onIssue }: ActionProps) {
+function PrintActions({ disabled, isPrinting, mode, result, version, onIssue }: ActionProps) {
+  if (mode === 'preview') {
+    return <Button type="primary" icon={<PrinterOutlined />} disabled={disabled} onClick={() => window.print()}>打印{version === 'FINISHED' ? '完工版本' : '下发版本'}</Button>
+  }
+  if (result) {
+    return <Button icon={<PrinterOutlined />} onClick={() => window.print()}>再次打开打印</Button>
+  }
+
   return (
-    <Space>
-      <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-        浏览器打印
-      </Button>
-      <Button type="primary" icon={<SendOutlined />} loading={isPrinting} disabled={!!result} onClick={onIssue}>
-        {isReprint ? '确认补打' : '确认下发'}
-      </Button>
-    </Space>
+    <Button type="primary" icon={mode === 'reprint' ? <PrinterOutlined /> : <SendOutlined />} loading={isPrinting} onClick={onIssue}>
+      {mode === 'reprint' ? '确认补打并打印' : '确认下发并打印'}
+    </Button>
   )
 }
 
-function PrintDrawerContent({ detail, form, isReprint, result }: ContentProps) {
+function PrintDrawerContent({ copies, detail, form, loading, mode, result, version, view, onCopiesChange, onVersionChange }: ContentProps) {
   return (
     <div className="print-issue__content">
+      <PrintVersionControl value={version} view={view} onChange={onVersionChange} />
       <div className="print-issue__screen-only">
-        <IssueNotice isReprint={isReprint} result={result} />
+        <IssueNotice mode={mode} result={result} />
       </div>
-      {isReprint && !result && <ReprintReasonForm form={form} />}
-      <div className="print-issue__sheet-frame">
-        <PrintPreviewSheet detail={detail} />
-      </div>
+      {!result && <PrintCopies value={copies} onChange={onCopiesChange} />}
+      {mode === 'reprint' && !result && <ReprintReasonForm form={form} />}
+      <Spin spinning={loading}>
+        <div className="print-issue__sheet-frame">
+          <PrintPreviewSheet detail={detail} {...printVersionProps(version, view)} />
+        </div>
+      </Spin>
     </div>
   )
 }
@@ -84,36 +107,57 @@ function ReprintReasonForm({ form }: { form: ReturnType<typeof Form.useForm>[0] 
   )
 }
 
-function PrintOnlySheet({ detail }: { detail: ProcessOrderDetailVO }) {
+function PrintCopies({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   return (
-    <div className="print-issue-print-root">
-      <PrintPreviewSheet detail={detail} />
+    <div className="print-issue__copies print-issue__screen-only">
+      <span>打印份数</span>
+      <InputNumber aria-label="打印份数" min={1} max={10} precision={0} value={value} onChange={(next) => onChange(next ?? 1)} />
+      <span className="print-issue__copies-hint">仅影响本次纸张输出，不改变下发次数</span>
     </div>
   )
 }
 
 interface ActionProps {
+  disabled: boolean
   isPrinting: boolean
-  isReprint: boolean
+  mode: PrintIssueMode
   result: PrintResultVO | null
+  version: PrintViewVersion
   onIssue: () => void
 }
 
 interface ContentProps {
+  copies: number
   detail: ProcessOrderDetailVO
   form: ReturnType<typeof Form.useForm>[0]
-  isReprint: boolean
+  loading: boolean
+  mode: PrintIssueMode
+  onCopiesChange: (value: number) => void
   result: PrintResultVO | null
+  version: PrintViewVersion
+  view?: ProcessOrderPrintViewVO
+  onVersionChange: (version: PrintViewVersion) => void
 }
 
-function IssueNotice({ isReprint, result }: { isReprint: boolean; result: PrintResultVO | null }) {
+function IssueNotice({ mode, result }: { mode: PrintIssueMode; result: PrintResultVO | null }) {
   if (result) {
     return (
       <Alert
         type="success"
         showIcon
-        message={isReprint ? '补打已完成' : '单据已下发到加工中'}
+        message={mode === 'reprint' ? '补打已完成' : '单据已下发到加工中'}
         description={<PrintResultSummary result={result} />}
+      />
+    )
+  }
+
+  if (mode === 'preview') {
+    return (
+      <Alert
+        type="info"
+        showIcon
+        message="当前单据为只读打印预览"
+        description="本次打印不会重新下发，也不会增加补打次数或改变单据状态。"
       />
     )
   }
@@ -122,20 +166,14 @@ function IssueNotice({ isReprint, result }: { isReprint: boolean; result: PrintR
     <Alert
       type="info"
       showIcon
-      message={isReprint ? '补打不会改变单据状态' : '首打将锁定下发快照并流转为加工中'}
+      message={mode === 'reprint' ? '补打不会改变单据状态' : '首打将锁定下发快照并流转为加工中'}
       description="请先核对下方车间加工单。正式保存后，后端会生成不可变下发快照，用于回录对账。"
     />
   )
 }
 
-function PrintResultSummary({ result }: { result: PrintResultVO }) {
-  return (
-    <Descriptions size="small" column={3} className="print-issue__result">
-      <Descriptions.Item label="打印次数">{result.printCount ?? '-'}</Descriptions.Item>
-      <Descriptions.Item label="打印时间">{result.printTime ?? '-'}</Descriptions.Item>
-      <Descriptions.Item label="正式号">
-        <Tag color="blue">{result.finishRollNos?.length ?? 0} 个</Tag>
-      </Descriptions.Item>
-    </Descriptions>
-  )
+function drawerTitle(mode: PrintIssueMode, version: PrintViewVersion): string {
+  if (mode === 'issue') return '首次打印并下发'
+  if (mode === 'reprint') return '补打加工单'
+  return version === 'FINISHED' ? '完工版本打印预览' : '下发版本打印预览'
 }

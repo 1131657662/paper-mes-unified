@@ -8,11 +8,53 @@
   padding: 12px 14px 0;
   background: #fff;
   border: 1px solid #d4dde7;
-  border-radius: 8px;
+  border-radius: var(--mes-radius);
+}
+
+.print-issue__copies {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid #d4dde7;
+  border-radius: var(--mes-radius);
+}
+
+.print-issue__copies-hint {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
 }
 
 .print-issue__result {
   margin-top: 8px;
+}
+
+.print-version {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--mes-color-soft);
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius);
+}
+
+.print-version__switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .print-version__switch-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .print-issue-print-root {

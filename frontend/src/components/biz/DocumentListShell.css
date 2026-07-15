@@ -87,7 +87,7 @@
   cursor: pointer;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--mes-radius-sm);
 }
 
 .document-list-shell__queue-tabs button:hover {
@@ -242,7 +242,7 @@
 .document-page-table .ant-table-header {
   flex: 0 0 auto;
   overflow: hidden !important;
-  background: #f7f9fc;
+  background: var(--mes-color-soft);
 }
 
 .document-page-table .ant-table-header table,
@@ -251,7 +251,7 @@
 }
 
 .document-page-table .document-table-row--selected > td {
-  background: #f1f7ff !important;
+  background: var(--mes-color-surface-selected) !important;
 }
 
 .document-page-table .ant-table-row {

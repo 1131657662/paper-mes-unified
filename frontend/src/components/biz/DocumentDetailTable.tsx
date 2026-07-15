@@ -7,6 +7,7 @@ import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useResizableTableColumns } from '../useResizableTableColumns'
 import { mesTablePagination } from './mesPaginationUtils'
 import { mesProTableOptions } from './mesProTableOptions'
+import { renderCompatibleTableOptions } from './tableToolbarOptionsRender'
 
 interface DocumentDetailTableProps<RecordType extends object>
   extends Omit<TableProps<RecordType>, 'bordered' | 'columns' | 'size'> {
@@ -45,6 +46,7 @@ export default function DocumentDetailTable<RecordType extends object>({
         defaultSize={defaultSize}
         headerTitle={false}
         options={mesProTableOptions(onReload)}
+        optionsRender={renderCompatibleTableOptions}
         pagination={pagination === false ? false : mesTablePagination(10, typeof pagination === 'object' ? pagination : undefined)}
         search={false}
         scroll={{

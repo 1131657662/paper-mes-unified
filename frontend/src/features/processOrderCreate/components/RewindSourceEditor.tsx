@@ -76,8 +76,9 @@ export function RewindSourceEditor({ segment, roll, rolls, sourceOptions, onChan
           <Tag>{index + 1}</Tag>
           <TooltipText className="rewind-source-editor__source-label" value={labelForSource(source, sourceOptions)} />
           <InputNumber
+            aria-label={`来源母卷 ${index + 1} 消耗比例`}
             addonBefore="消耗"
-            addonAfter="%"
+            suffix="%"
             min={0.01}
             max={100}
             value={sourceConsumptionValue(source)}

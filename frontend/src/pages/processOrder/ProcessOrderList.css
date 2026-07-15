@@ -17,6 +17,20 @@
   line-height: 1.35;
 }
 
+.process-order-list__order-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.process-order-list__order-meta .process-order-priority {
+  min-width: 0;
+  height: 20px;
+  padding: 0 6px;
+  line-height: 18px;
+}
+
 .process-order-list__summary span,
 .process-order-list__schedule span,
 .process-order-list__billing span {
@@ -29,6 +43,43 @@
   width: fit-content;
   max-width: 100%;
   margin-inline-end: 0;
+}
+
+.process-order-list__billing-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.process-order-list__billing-meta .ant-tag {
+  padding-inline: 5px;
+}
+
+.process-order-list__billing > strong {
+  color: var(--mes-color-text);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.process-order-list__status {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.process-order-list__status .ant-tag {
+  margin-inline-end: 0;
+}
+
+.process-order-list__status span {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .process-order-list__billing-tag {
@@ -131,6 +182,18 @@
   flex-wrap: nowrap;
 }
 
+.process-order-batchbar__selection {
+  flex: 0 0 auto;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.process-order-batchbar__selection strong {
+  color: var(--mes-color-text);
+  font-weight: 650;
+}
+
 .process-order-resize-handle {
   position: absolute;
   top: 0;
@@ -212,7 +275,6 @@
     minmax(200px, 1.25fr)
     minmax(180px, 1fr)
     minmax(240px, 1.15fr)
-    minmax(140px, .8fr)
     auto;
   align-items: end;
   gap: 12px;
@@ -310,7 +372,7 @@
   flex: 1 1 0;
   flex-direction: column;
   border: 1px solid #d9e2ec;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--mes-radius) var(--mes-radius) 0 0;
   overflow: hidden;
 }
 

@@ -3,12 +3,12 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DocumentDetailTable from '../../../components/biz/DocumentDetailTable'
 import { mesTablePagination } from '../../../components/biz/mesPaginationUtils'
-import type { ReportDetailVO, ReportDimension, ReportDimensionVO } from '../../../types/report'
+import type { ReportDetailVO, ReportDetailsVO, ReportDimension, ReportDimensionVO } from '../../../types/report'
 import ReportDimensionSummaryRow from './ReportDimensionSummaryRow'
 import { detailColumns, dimensionColumns } from './reportTableColumns'
 
 interface Props {
-  details: ReportDetailVO[]
+  details?: ReportDetailsVO
   dimension: ReportDimension
   dimensions: ReportDimensionVO[]
   loading: boolean
@@ -34,6 +34,7 @@ export default function ReportTables({
           <p>维度汇总与加工单明细均支持列宽拖拽、列设置和刷新。</p>
         </div>
         <Segmented
+          aria-label="报表汇总维度"
           value={dimension}
           options={dimensionOptions}
           onChange={(value) => onDimensionChange(value as ReportDimension)}
@@ -48,26 +49,32 @@ export default function ReportTables({
             onReload={onRefresh}
             pagination={false}
             rowKey={(record) => `${dimension}-${record.dimensionKey}`}
-            scroll={{ x: 1952, y: 260 }}
+            scroll={{ x: 2070, y: 260 }}
             storageKey={`report-dimension-${dimension}`}
             summary={() => <ReportDimensionSummaryRow rows={dimensions} />}
           />
         </ReportTableBlock>
-        <ReportTableBlock title="加工单明细" hint="点击加工单号可进入详情核对来源、成品和结算链路。">
+        <ReportTableBlock title="加工单明细" hint={detailHint(details)}>
           <DocumentDetailTable<ReportDetailVO>
             columns={detailColumns((uuid) => navigate(`/process-orders/${uuid}`))}
-            dataSource={details}
+            dataSource={details?.rows ?? []}
             loading={loading}
             onReload={onRefresh}
             pagination={mesTablePagination(20)}
             rowKey="orderUuid"
-            scroll={{ x: 2388, y: 560 }}
+            scroll={{ x: 2506, y: 560 }}
             storageKey="report-order-details"
           />
         </ReportTableBlock>
       </div>
     </section>
   )
+}
+
+function detailHint(details?: ReportDetailsVO) {
+  if (!details) return '点击加工单号可进入详情核对来源、成品和结算链路。'
+  if (!details.truncated) return `当前筛选共 ${details.total} 条，点击加工单号可进入详情。`
+  return `共 ${details.total} 条，页面显示前 ${details.displayLimit} 条；导出包含完整筛选结果。`
 }
 
 function ReportTableBlock({ children, hint, title }: { children: ReactNode; hint: string; title: string }) {

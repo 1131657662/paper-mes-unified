@@ -1,6 +1,7 @@
 package com.paper.mes.settle.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.settle.entity.SettleDetail;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +11,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SettleSnapshotDetailReaderTest {
 
@@ -86,7 +88,21 @@ class SettleSnapshotDetailReaderTest {
     }
 
     @Test
-    void read_whenSnapshotInvalid_returnsNull() {
-        assertNull(SettleSnapshotDetailReader.read("{bad-json", objectMapper));
+    void read_whenSnapshotAbsent_returnsNullForLegacyCompatibility() {
+        assertNull(SettleSnapshotDetailReader.read(null, objectMapper));
+    }
+
+    @Test
+    void read_whenSnapshotInvalid_rejectsCurrentDetailFallback() {
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> SettleSnapshotDetailReader.read("{bad-json", objectMapper));
+
+        assertEquals("E008", error.getErrorCode());
+    }
+
+    @Test
+    void read_whenSnapshotHasNoTraceableDetails_rejectsCurrentDetailFallback() {
+        assertThrows(BusinessException.class,
+                () -> SettleSnapshotDetailReader.read("{\"detail_items\":[]}", objectMapper));
     }
 }

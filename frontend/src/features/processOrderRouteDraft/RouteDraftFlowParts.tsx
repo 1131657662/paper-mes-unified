@@ -1,5 +1,6 @@
 import { Button, Popover, Tag } from 'antd'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import type { KeyboardEvent } from 'react'
 import {
   BaseEdge,
   Handle,
@@ -10,17 +11,28 @@ import {
 } from '@xyflow/react'
 import MesTooltip from '../../components/biz/MesTooltip'
 import type { RouteDraftEdge, RouteOutputNode, RouteProcessNode } from './routeDraftFlowModel'
+import { isRouteNodeActivationKey } from './routeDraftFlowKeyboard'
 
 export function RouteFlowNode({ data }: NodeProps<RouteOutputNode>) {
   return (
-    <div className={data.selected ? 'route-draft-node route-draft-node--selected' : 'route-draft-node'} onClick={data.onSelect}>
+    <div className={data.selected ? 'route-draft-node route-draft-node--selected' : 'route-draft-node'}>
       <Handle type="target" position={Position.Left} className="route-draft-node__handle" />
-      <div className="route-draft-node__head">
-        <strong>{data.title}</strong>
-        <Tag color={data.status === '最终成品' ? 'green' : data.status === '母卷' ? 'purple' : 'blue'}>{data.status}</Tag>
-      </div>
-      <div className="route-draft-node__body">
-        {data.lines.map((line) => <span key={line}>{line}</span>)}
+      <div
+        aria-label={`${data.title} ${data.status}`}
+        aria-pressed={data.selected}
+        className="route-draft-node__select"
+        role="button"
+        tabIndex={0}
+        onClick={data.onSelect}
+        onKeyDown={(event) => selectRouteNodeOnKeyboard(event, data.onSelect)}
+      >
+        <div className="route-draft-node__head">
+          <strong>{data.title}</strong>
+          <Tag color={data.status === '最终成品' ? 'green' : data.status === '母卷' ? 'purple' : 'blue'}>{data.status}</Tag>
+        </div>
+        <div className="route-draft-node__body">
+          {data.lines.map((line) => <span key={line}>{line}</span>)}
+        </div>
       </div>
       <div className="route-draft-node__actions">
         {data.appendable && <QuickAppendButton onAppend={data.onQuickAppend} />}
@@ -41,6 +53,12 @@ export function RouteFlowNode({ data }: NodeProps<RouteOutputNode>) {
       <Handle type="source" position={Position.Right} className="route-draft-node__handle" />
     </div>
   )
+}
+
+function selectRouteNodeOnKeyboard(event: KeyboardEvent<HTMLDivElement>, onSelect?: () => void) {
+  if (!onSelect || !isRouteNodeActivationKey(event.key)) return
+  event.preventDefault()
+  onSelect()
 }
 
 export function RouteFlowProcessNode({ data }: NodeProps<RouteProcessNode>) {

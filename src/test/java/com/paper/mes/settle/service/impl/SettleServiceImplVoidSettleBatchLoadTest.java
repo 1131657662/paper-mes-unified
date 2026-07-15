@@ -62,6 +62,7 @@ class SettleServiceImplVoidSettleBatchLoadTest {
     @Mock private OperationLogMapper operationLogMapper;
     @Mock private OperationLogService operationLogService;
     @Mock private SettleCandidateStatsLoader statsLoader;
+    @Mock private SettlePageDataLoader pageDataLoader;
     @Mock private SettleExportService settleExportService;
     @Mock private DocumentNoService documentNoService;
     @Mock private BusinessLockService businessLockService;
@@ -82,7 +83,8 @@ class SettleServiceImplVoidSettleBatchLoadTest {
         service = new SettleServiceImpl(settleDetailMapper, receiveRecordMapper, originalRollMapper,
                 finishRollMapper, finishOriginalRelMapper, processStepMapper, processStageOutputMapper,
                 processOrderService, customerService, machineMapper, operationLogMapper, operationLogService,
-                statsLoader, settleExportService, documentNoService, businessLockService, new ObjectMapper());
+                statsLoader, pageDataLoader, settleExportService, documentNoService, businessLockService,
+                new ObjectMapper());
         ReflectionTestUtils.setField(service, "baseMapper", settleOrderMapper);
     }
 

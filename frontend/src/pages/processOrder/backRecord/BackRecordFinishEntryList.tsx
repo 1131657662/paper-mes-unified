@@ -1,30 +1,32 @@
-import { useEffect, useRef } from 'react'
-import { Alert, Button, Form, Input, InputNumber, Select, Tag, Typography } from 'antd'
-import { CopyOutlined } from '@ant-design/icons'
-import { IS_REMAIN } from '../../../constants/processOrder'
+import { useEffect, useRef, useState } from 'react'
+import { Alert, Button, Form, message, Space, Tag, Typography } from 'antd'
+import { CopyOutlined, EditOutlined } from '@ant-design/icons'
 import { DICT_TYPES, abnormalFallbackOptions } from '../../../features/systemConfig/configFallbacks'
 import { useDictOptions } from '../../../features/systemConfig/hooks/useRuntimeDictOptions'
-import type { FinishRoll } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import { formatKg, formatMm } from '../../../utils/numberFormatters'
-import { focusNextBackRecordField } from './backRecordKeyboard'
 import type { BackRecordWorkItem, WorkbenchFinish } from './backRecordWorkbenchTypes'
 import { autoTrimWeights } from './backRecordAutoTrim'
 import { theoreticalItemFinishValues } from './backRecordTheoryFill'
+import BackRecordBatchSpecModal, { type BatchSpecValues } from './BackRecordBatchSpecModal'
+import BackRecordFinishFields, { type BackRecordSourceOption } from './BackRecordFinishFields'
 
 interface Props {
   item: BackRecordWorkItem
   onFieldExhausted: () => void
+  sourceOptions: BackRecordSourceOption[]
 }
 
-export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Props) {
+export default function BackRecordFinishEntryList({ item, onFieldExhausted, sourceOptions }: Props) {
   const form = Form.useFormInstance<BackRecordFormValues>()
   const finishes = Form.useWatch('finishes', form)
   const rolls = Form.useWatch('rolls', form)
   const steps = Form.useWatch('steps', form)
   const autoTrimUuids = useRef(new Set<string>())
   const manualTrimUuids = useRef(new Set<string>())
+  const [batchOpen, setBatchOpen] = useState(false)
   const { options: abnormalTypeOptions } = useDictOptions(DICT_TYPES.abnormalType, abnormalFallbackOptions)
+  const onSite = item.roll?.processMode === 2
 
   useEffect(() => {
     const patches = autoTrimWeights(item, { finishes, rolls, steps }, {
@@ -50,13 +52,28 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Pr
     }
   }
 
+  const applyBatchSpecs = (values: BatchSpecValues) => {
+    const targets = item.finishes.filter(({ finish }) => finish.isSpare !== 1 && finish.isRemain !== 1 && finish.rollNoStatus !== 3)
+    let applied = 0
+    for (const { finish } of targets) {
+      const path: ['finishes', string] = ['finishes', finish.uuid]
+      const current = form.getFieldValue(path)
+      if (values.target === 'missing' && current?.finishWidth && current.finishWidth > 0) continue
+      form.setFieldValue(path, { ...current, finishWidth: values.finishWidth, finishDiameter: values.finishDiameter ?? current?.finishDiameter, finishCoreDiameter: values.finishCoreDiameter ?? current?.finishCoreDiameter })
+      applied += 1
+    }
+    setBatchOpen(false)
+    message.success(`已填写 ${applied} 件正式成品的现场规格`)
+  }
+
   return (
     <section className="back-record-panel">
       <div className="back-record-panel__head">
-        <Typography.Text strong>成品实重</Typography.Text>
-        <Button size="small" icon={<CopyOutlined />} onClick={fillFinishes} disabled={item.finishes.length === 0}>
-          带入预估
-        </Button>
+        <Typography.Text strong>成品 / 已配置余料</Typography.Text>
+        <Space wrap size={8}>
+          {onSite && <Button size="small" icon={<EditOutlined />} onClick={() => setBatchOpen(true)}>批量填写门幅</Button>}
+          <Button size="small" icon={<CopyOutlined />} onClick={fillFinishes} disabled={item.finishes.length === 0}>带入预估</Button>
+        </Space>
       </div>
       {item.finishes.length === 0 ? (
         <Alert showIcon type="info" message="当前母卷没有已绑定成品。直发卷会在提交回录时由后端生成出库用记录。" />
@@ -67,6 +84,9 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Pr
               key={entry.finish.uuid}
               abnormalTypeOptions={abnormalTypeOptions}
               entry={entry}
+              maxWidth={item.roll?.actualWidth ?? item.roll?.originalWidth}
+              onSite={onSite}
+              sourceOptions={sourceOptions}
               onActualWeightChange={(value) => {
                 if (entry.finish.isRemain !== 1) return
                 if (value == null) {
@@ -82,6 +102,7 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Pr
           ))}
         </div>
       )}
+      <BackRecordBatchSpecModal maxWidth={item.roll?.actualWidth ?? item.roll?.originalWidth} open={batchOpen} onCancel={() => setBatchOpen(false)} onApply={applyBatchSpecs} />
     </section>
   )
 }
@@ -89,11 +110,17 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted }: Pr
 function FinishEntryRow({
   abnormalTypeOptions,
   entry,
+  maxWidth,
+  onSite,
+  sourceOptions,
   onActualWeightChange,
   onFieldExhausted,
 }: {
   abnormalTypeOptions: Array<{ label: string; value: number | string }>
   entry: WorkbenchFinish
+  maxWidth?: number
+  onSite: boolean
+  sourceOptions: BackRecordSourceOption[]
   onActualWeightChange: (value: number | null) => void
   onFieldExhausted: () => void
 }) {
@@ -103,52 +130,28 @@ function FinishEntryRow({
     <div className="back-record-finish-row">
       <div className="back-record-finish-row__identity">
         <Typography.Text strong>{finish.finishRollNo || '-'}</Typography.Text>
-        <span>{finishSpec(finish)}</span>
+        <span>{finishSpec(finish, onSite)}</span>
         <div>
-          <Tag color={finish.isSpare === 1 ? 'orange' : 'blue'}>{finish.isSpare === 1 ? '备用' : '正式'}</Tag>
+          <Tag color={finish.isRemain === 1 ? 'orange' : finish.isSpare === 1 ? 'gold' : 'blue'}>
+            {finish.isRemain === 1 ? '余料' : finish.isSpare === 1 ? '备用' : '正式'}
+          </Tag>
           {entry.bindMode === 'inferred' && <Tag color="warning">辅助匹配</Tag>}
           {entry.bindMode === 'pool' && <Tag color="warning">待核对</Tag>}
         </div>
       </div>
-      <div className="back-record-finish-row__fields">
-        <Form.Item
-          name={['finishes', finish.uuid, 'actualWeight']}
-          label="实际重量"
-          rules={finish.isSpare === 1 ? undefined : [
-            { required: true, message: '必填' },
-            { type: 'number', min: 0.001, message: '需大于0' },
-          ]}
-        >
-          <InputNumber data-back-record-field="true" min={0} placeholder={finish.isSpare === 1 ? '未用留空' : 'kg'} addonAfter="kg" onChange={onActualWeightChange} onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
-        </Form.Item>
-        <Form.Item name={['finishes', finish.uuid, 'scrapWeight']} label="报废/损耗">
-          <InputNumber data-back-record-field="true" min={0} placeholder="kg" addonAfter="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
-        </Form.Item>
-        <Form.Item name={['finishes', finish.uuid, 'isRemain']} label="属性">
-          <Select options={remainOptions} />
-        </Form.Item>
-        <Form.Item name={['finishes', finish.uuid, 'isAbnormal']} label="异常">
-          <Select options={abnormalOptions} />
-        </Form.Item>
-        <Form.Item name={['finishes', finish.uuid, 'abnormalType']} label="异常类型">
-          <Select allowClear options={abnormalTypeOptions} placeholder="请选择" />
-        </Form.Item>
-        <Form.Item name={['finishes', finish.uuid, 'actualRemark']} label="备注">
-          <Input data-back-record-field="true" placeholder="车间说明" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
-        </Form.Item>
-      </div>
+      <BackRecordFinishFields
+        abnormalTypeOptions={abnormalTypeOptions}
+        context={{ maxWidth, needsSource: entry.bindMode === 'pool', onSite, sourceOptions }}
+        finish={finish}
+        onActualWeightChange={onActualWeightChange}
+        onFieldExhausted={onFieldExhausted}
+      />
     </div>
   )
 }
 
-function finishSpec(finish: FinishRoll) {
-  const width = formatMm(finish.finishWidth)
+function finishSpec(finish: WorkbenchFinish['finish'], onSite: boolean) {
+  const width = onSite && !finish.finishWidth ? '待现场确认' : formatMm(finish.finishWidth)
   const weight = finish.estimateWeight ? formatKg(finish.estimateWeight) : '无预估'
   return `${finish.paperName || '-'} / ${width} / ${weight}`
 }
-
-const remainOptions = Object.entries(IS_REMAIN).map(([value, label]) => ({ value: Number(value), label }))
-const abnormalOptions = [
-  { value: 0, label: '否' },
-  { value: 1, label: '是' },
-]

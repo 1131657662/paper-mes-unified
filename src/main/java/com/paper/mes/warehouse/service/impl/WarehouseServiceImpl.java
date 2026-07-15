@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
+import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.warehouse.dto.WarehouseQuery;
 import com.paper.mes.warehouse.dto.WarehouseSaveDTO;
 import com.paper.mes.warehouse.entity.Warehouse;
@@ -41,7 +42,7 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
             wrapper.eq(Warehouse::getStatus, query.getStatus());
         }
         wrapper.orderByDesc(Warehouse::getCreateTime);
-        Page<Warehouse> page = page(Page.of(query.getCurrent(), query.getSize()), wrapper);
+        Page<Warehouse> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.of(page);
     }
 

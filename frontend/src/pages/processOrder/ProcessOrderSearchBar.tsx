@@ -1,14 +1,12 @@
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
 import { Button, DatePicker, Form, Input, Select } from 'antd'
 import type { Dayjs } from 'dayjs'
-import { ORDER_STATUS } from '../../constants/processOrder'
 
 const { RangePicker } = DatePicker
 
 export interface ProcessOrderSearchFilters {
   keyword?: string
   customerUuid?: string
-  orderStatus?: number
   dateFrom?: string
   dateTo?: string
 }
@@ -16,7 +14,6 @@ export interface ProcessOrderSearchFilters {
 interface SearchFormValues {
   keyword?: string
   customerUuid?: string
-  orderStatus?: number
   dateRange?: [Dayjs, Dayjs] | null
 }
 
@@ -32,7 +29,6 @@ export default function ProcessOrderSearchBar({ customerEnum, onSearch }: Props)
     onSearch({
       keyword: normalizeText(values.keyword),
       customerUuid: values.customerUuid,
-      orderStatus: values.orderStatus,
       dateFrom: values.dateRange?.[0]?.format('YYYY-MM-DD'),
       dateTo: values.dateRange?.[1]?.format('YYYY-MM-DD'),
     })
@@ -55,9 +51,6 @@ export default function ProcessOrderSearchBar({ customerEnum, onSearch }: Props)
         <Form.Item name="dateRange" label="制单日期">
           <RangePicker placeholder={['开始日期', '结束日期']} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item name="orderStatus" label="状态">
-          <Select allowClear placeholder="全部状态" options={statusOptions()} />
-        </Form.Item>
         <div className="process-order-searchbar__actions">
           <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>查询</Button>
           <Button icon={<ReloadOutlined />} onClick={handleReset}>重置</Button>
@@ -74,8 +67,4 @@ function normalizeText(value?: string) {
 
 function customerOptions(customerEnum: Record<string, { text: string }>) {
   return Object.entries(customerEnum).map(([value, item]) => ({ value, label: item.text }))
-}
-
-function statusOptions() {
-  return Object.entries(ORDER_STATUS).map(([value, item]) => ({ value: Number(value), label: item.text }))
 }

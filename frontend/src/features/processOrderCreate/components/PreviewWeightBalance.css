@@ -1,0 +1,68 @@
+.order-weight-balance {
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius);
+  background: var(--mes-color-panel);
+}
+
+.order-weight-balance__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--mes-color-border-light);
+  background: var(--mes-color-soft);
+}
+
+.order-weight-balance__heading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.order-weight-balance__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
+.order-weight-balance__metric {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-right: 1px solid var(--mes-color-border-light);
+}
+
+.order-weight-balance__metric:last-child {
+  border-right: 0;
+}
+
+.order-weight-balance__metric span {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+.order-weight-balance__metric strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-weight-balance__value--danger {
+  color: var(--mes-color-danger);
+}
+
+.weight-balance-cell {
+  width: 100%;
+}
+
+.weight-balance-cell .ant-btn-link {
+  height: 22px;
+  padding-inline: 2px;
+}

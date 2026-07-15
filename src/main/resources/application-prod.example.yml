@@ -8,9 +8,9 @@ server:
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/paper_processing?useSSL=false&useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
-    username: paper_mes_app
-    password: CHANGE_ME_STRONG_PASSWORD
+    url: ${PAPER_MES_DB_URL:jdbc:mysql://127.0.0.1:3306/paper_processing?useSSL=false&useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=false}
+    username: ${PAPER_MES_DB_USER:paper_mes_app}
+    password: ${PAPER_MES_DB_PASSWORD}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -21,9 +21,16 @@ spring:
       max-request-size: 50MB
 
 app:
+  schema-bootstrap:
+    enabled: false
+  auth:
+    session-hours: 12
+    session-retention-days: 7
+    session-cleanup-cron: "0 30 3 * * *"
+    cookie-secure: true
   upload:
     dir: /opt/paper-mes/upload
-    url-prefix: /files
+    url-prefix: /api/files
 
 mybatis-plus:
   configuration:
@@ -35,3 +42,14 @@ logging:
   level:
     root: INFO
     com.paper.mes: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true

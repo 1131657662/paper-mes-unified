@@ -12,7 +12,10 @@ export const PERMISSIONS = {
   settleManage: 'settle:manage',
   settleReceive: 'settle:receive',
   settleView: 'settle:view',
+  dataBackup: 'system:data-backup',
+  dataHealth: 'system:data-health',
   systemAudit: 'system:audit',
+  systemConfig: 'system:config',
   userManage: 'user:manage',
 } as const
 

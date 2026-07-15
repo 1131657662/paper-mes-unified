@@ -11,6 +11,7 @@ import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.service.FinishRollService;
+import com.paper.mes.processorder.service.FinishRollSourceBinder;
 import com.paper.mes.processorder.service.RollNoSequenceService;
 import com.paper.mes.processorder.statemachine.FinishStatus;
 import com.paper.mes.processorder.statemachine.StateMachine;
@@ -42,6 +43,7 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
 
     private final ProcessOrderMapper processOrderMapper;
     private final RollNoSequenceService rollNoSequenceService;
+    private final FinishRollSourceBinder sourceBinder;
 
     @Override
     public void changeFinishStatus(String uuid, Integer targetStatus) {
@@ -83,7 +85,7 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
             roll.setFinishCoreDiameter(dto.getFinishCoreDiameter());
             roll.setWarehouseUuid(dto.getWarehouseUuid());
             roll.setRemark(dto.getRemark());
-            result.add(allocAndInsert(roll));
+            result.add(insertWithSource(orderUuid, roll, dto.getOriginalUuid(), "手工批量生成"));
         }
         return result;
     }
@@ -96,7 +98,7 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
         int rowSort = nextRowSort(orderUuid);
         for (int i = 0; i < dto.getCount(); i++) {
             FinishRoll roll = newRoll(order, rowSort++, IS_SPARE_YES);
-            result.add(allocAndInsert(roll));
+            result.add(insertWithSource(orderUuid, roll, dto.getOriginalUuid(), "追加备用号"));
         }
         return result;
     }
@@ -174,6 +176,14 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
             }
         }
         throw new BusinessException("卷号分配冲突，请重试");
+    }
+
+    private String insertWithSource(String orderUuid, FinishRoll roll,
+                                    String originalUuid, String remark) {
+        String rollNo = allocAndInsert(roll);
+        sourceBinder.bind(new FinishRollSourceBinder.BindRequest(
+                orderUuid, roll, originalUuid, remark));
+        return rollNo;
     }
 
     /** 由系统单号规则生成下一成品卷号，唯一索引兜底防并发重复。 */

@@ -146,11 +146,11 @@ export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions 
       processMode: 2,
       mainStepType,
       machineUuid: roll.machineUuid,
-      rewindMode: mainStepType === 2 ? 2 : undefined,
-      knifeCount: mainStepType === 1 ? 0 : undefined,
+      rewindMode: undefined,
+      knifeCount: undefined,
       unitPrice: defaultUnitPrice(mainStepType, options),
-      spareCount,
-      finishSpecs: [{ itemType: 'FINISH', count: 1, finishWidth: 0, estimateWeight: 0 }],
+      spareCount: 0,
+      finishSpecs: [],
       segments: [],
     }
   }

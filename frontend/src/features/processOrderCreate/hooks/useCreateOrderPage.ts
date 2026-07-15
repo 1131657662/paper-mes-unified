@@ -219,10 +219,12 @@ export function useCreateOrderPage(draftUuid?: string, options: UseCreateOrderPa
       message.warning('请选择已保存的母卷')
       return
     }
+    const firstSavedRoll = savedRolls[0]
+    if (!firstSavedRoll) return
     const pricedPlan = applyLegacyPlanPriceDefaults(plan, defaultPlanOptions)
     const batchPlan = normalizeLayeredRewindPlan(
       applyDefaultMachineToPlan(pricedPlan, machines),
-      savedRolls[0],
+      firstSavedRoll,
     )
     const result = await savePlanBatch({
       orderUuid,

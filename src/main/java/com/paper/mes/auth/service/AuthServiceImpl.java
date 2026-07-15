@@ -7,6 +7,7 @@ import com.paper.mes.auth.dto.AuthUserVO;
 import com.paper.mes.auth.dto.ChangePasswordDTO;
 import com.paper.mes.auth.dto.CurrentUser;
 import com.paper.mes.auth.dto.LoginDTO;
+import com.paper.mes.auth.config.AuthProperties;
 import com.paper.mes.auth.entity.SysUser;
 import com.paper.mes.auth.entity.SysUserSession;
 import com.paper.mes.auth.mapper.SysUserMapper;
@@ -29,11 +30,11 @@ import java.util.UUID;
 public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements AuthService {
 
     private static final int ENABLED = 1;
-    private static final int SESSION_HOURS = 12;
-
     private final PasswordService passwordService;
     private final SysUserSessionMapper sessionMapper;
     private final OperationLogService operationLogService;
+    private final AuthCookieService cookieService;
+    private final AuthProperties authProperties;
 
     @Override
     @Transactional
@@ -96,17 +97,23 @@ public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
     @Override
     public String resolveToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
-        if (!StringUtils.hasText(header) || !header.startsWith("Bearer ")) {
-            return null;
+        if (StringUtils.hasText(header) && header.startsWith("Bearer ")) {
+            return header.substring(7).trim();
         }
-        return header.substring(7).trim();
+        return cookieService.read(request);
+    }
+
+    @Override
+    public boolean isCookieAuthentication(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        return !StringUtils.hasText(header) && StringUtils.hasText(cookieService.read(request));
     }
 
     private String createSession(String userUuid) {
         SysUserSession session = new SysUserSession();
         session.setToken(UUID.randomUUID().toString().replace("-", ""));
         session.setUserUuid(userUuid);
-        session.setExpireTime(LocalDateTime.now().plusHours(SESSION_HOURS));
+        session.setExpireTime(LocalDateTime.now().plusHours(authProperties.getSessionHours()));
         sessionMapper.insert(session);
         return session.getToken();
     }

@@ -10,9 +10,7 @@ export function usePrintProcessOrder(orderUuid?: string) {
     mutationFn: (dto?: PrintDTO) => printProcessOrder(orderUuid!, dto),
     onSuccess: async () => {
       if (!orderUuid) return
-      await queryClient.invalidateQueries({
-        queryKey: queries.processOrderDetail.detail(orderUuid).queryKey,
-      })
+      await queryClient.invalidateQueries({ queryKey: queries.processOrderDetail._def })
     },
   })
 }

@@ -1,6 +1,5 @@
 package com.paper.mes.processorder.service;
 
-import com.paper.mes.processorder.dto.FinishConfigSpecDTO;
 import com.paper.mes.processorder.dto.PlanPreviewVO;
 import com.paper.mes.processorder.dto.ProcessPlanDTO;
 import org.junit.jupiter.api.Test;
@@ -15,25 +14,17 @@ class OnSitePlanPreviewerTest {
     private final OnSitePlanPreviewer previewer = new OnSitePlanPreviewer();
 
     @Test
-    void preview_countsExpectedFinishRowsWithoutWidth() {
+    void preview_withoutExpectedOutputs_isReadyForBackRecordDrivenProduction() {
         ProcessPlanDTO plan = new ProcessPlanDTO();
         plan.setProcessMode(2);
         plan.setMainStepType(1);
-        plan.setFinishSpecs(List.of(spec(3)));
+        plan.setFinishSpecs(List.of());
 
         PlanPreviewVO preview = previewer.preview(plan, "roll-1");
 
         assertTrue(preview.isReady());
-        assertEquals(3, preview.getFinishCount());
-        assertEquals(3, preview.getFinishes().size());
-        assertEquals(0, preview.getFinishes().getFirst().getFinishWidth());
-    }
-
-    private FinishConfigSpecDTO spec(int count) {
-        FinishConfigSpecDTO spec = new FinishConfigSpecDTO();
-        spec.setItemType("FINISH");
-        spec.setFinishWidth(0);
-        spec.setCount(count);
-        return spec;
+        assertEquals(0, preview.getFinishCount());
+        assertTrue(preview.getFinishes().isEmpty());
+        assertEquals("现场定尺不预生成成品号，实际成品和切边在回录时录入", preview.getSummary());
     }
 }

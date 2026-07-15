@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Input, Modal, message } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { PERMISSIONS } from '../../../constants/permissions'
+import { useHasPermission } from '../../../stores/authStore'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import FinishRollManageDrawer from '../../../pages/processOrder/FinishRollManageDrawer'
 import SnapshotDiffModal from '../../../pages/processOrder/SnapshotDiffModal'
@@ -29,6 +31,13 @@ export default function OrderExecutionHost({ detail }: Props) {
   const { mutateAsync: rollbackToDraft, isPending: isRollingBackDraft } = useRollbackProcessOrderToDraft()
   const { mutateAsync: calcFee, isPending: isCalculatingFee } = useCalcProcessOrderFee(orderUuid)
   const { mutateAsync: voidOrder, isPending: isVoidingOrder } = useVoidProcessOrder()
+  const capabilities = {
+    canManageOrder: useHasPermission(PERMISSIONS.orderManage),
+    canCreateOrder: useHasPermission(PERMISSIONS.orderCreate),
+    canBackRecord: useHasPermission(PERMISSIONS.orderBackRecord),
+    canManageDelivery: useHasPermission(PERMISSIONS.deliveryManage),
+    canManageSettlement: useHasPermission(PERMISSIONS.settleManage),
+  }
 
   if (!detail || !orderUuid) return null
 
@@ -103,6 +112,7 @@ export default function OrderExecutionHost({ detail }: Props) {
     <>
       <OrderExecutionPanel
         detail={detail}
+        capabilities={capabilities}
         actions={{
           onPrint: () => setPrintOpen(true),
           onBackRecord: () => navigate(`/process-orders/${orderUuid}/back-record`),

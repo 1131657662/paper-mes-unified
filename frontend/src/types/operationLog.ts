@@ -19,6 +19,8 @@ export interface OperationLogQuery {
   bizNo?: string
   actionType?: string
   operator?: string
+  fieldName?: string
+  remark?: string
   dateFrom?: string
   dateTo?: string
 }

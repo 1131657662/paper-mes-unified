@@ -178,7 +178,10 @@ function sourceCenterY(roots: PositionedRouteNode[]) {
 }
 
 function midpoint(nodes: PositionedRouteNode[]) {
-  return (nodes[0].y + nodes[nodes.length - 1].y) / 2
+  const first = nodes[0]
+  const last = nodes.at(-1)
+  if (!first || !last) return TOP_PADDING
+  return (first.y + last.y) / 2
 }
 
 function maxNodeY(node: PositionedRouteNode): number {

@@ -1,6 +1,7 @@
 package com.paper.mes.settle.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +12,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SettleSnapshotPrintLineReaderTest {
 
@@ -189,8 +191,28 @@ class SettleSnapshotPrintLineReaderTest {
     }
 
     @Test
-    void read_whenSnapshotInvalid_returnsNull() {
-        assertNull(SettleSnapshotPrintLineReader.read("{bad-json", objectMapper));
+    void read_whenSnapshotAbsent_returnsNullForLegacyCompatibility() {
+        assertNull(SettleSnapshotPrintLineReader.read("", objectMapper));
+    }
+
+    @Test
+    void read_whenSnapshotInvalid_rejectsCurrentPrintDataFallback() {
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> SettleSnapshotPrintLineReader.read("{bad-json", objectMapper));
+
+        assertEquals("E008", error.getErrorCode());
+    }
+
+    @Test
+    void read_whenSnapshotHasEmptyPrintLines_returnsFrozenEmptyResult() {
+        assertEquals(0, SettleSnapshotPrintLineReader.read(
+                "{\"print_line_items\":[]}", objectMapper).size());
+    }
+
+    @Test
+    void read_whenSnapshotHasNoPrintLineSection_rejectsCurrentPrintDataFallback() {
+        assertThrows(BusinessException.class,
+                () -> SettleSnapshotPrintLineReader.read("{\"detail_items\":[]}", objectMapper));
     }
 
     private void assertDecimal(String expected, BigDecimal actual) {

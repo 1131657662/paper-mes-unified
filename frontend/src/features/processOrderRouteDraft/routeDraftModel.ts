@@ -285,6 +285,7 @@ function rewindOutputTarget(segments: RewindSegmentPlanDTO[], outputIndex: numbe
     const items = segments[segmentIndex]?.layoutItems ?? []
     for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
       const item = items[itemIndex]
+      if (!item) continue
       if ((item.itemType ?? 'FINISH') === 'TRIM') continue
       const count = Math.max(1, Number(item.quantity ?? 1)) * Math.max(1, Number(segments[segmentIndex]?.repeatCount ?? 1))
       if (outputIndex < cursor + count) return { itemIndex, segmentIndex }

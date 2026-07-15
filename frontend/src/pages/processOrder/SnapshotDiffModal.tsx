@@ -53,6 +53,16 @@ export default function SnapshotDiffModal({ uuid, open, onClose }: Props) {
 
   const finishColumns: ColumnsType<FinishDiff> = [
     { title: '成品卷号', dataIndex: 'finishRollNo', width: 140 },
+    {
+      title: '门幅(mm)',
+      width: 150,
+      render: (_, r) => <>{r.printWidth || '现场确认'} → {diffCell(r.widthChanged, r.finishWidth)}</>,
+    },
+    {
+      title: '直径(英寸)',
+      width: 150,
+      render: (_, r) => <>{r.printDiameter ?? '-'} → {diffCell(r.diameterChanged, r.finishDiameter)}</>,
+    },
     { title: '预估(kg)', dataIndex: 'estimateWeight', width: 110 },
     {
       title: '实际(kg)',
@@ -67,7 +77,7 @@ export default function SnapshotDiffModal({ uuid, open, onClose }: Props) {
       open={open}
       onCancel={onClose}
       footer={null}
-      width={860}
+      width={1040}
       destroyOnHidden
     >
       <Spin spinning={loading}>

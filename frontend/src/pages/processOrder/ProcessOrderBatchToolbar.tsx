@@ -10,7 +10,6 @@ import {
   StopOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
-import MesTooltip from '../../components/biz/MesTooltip'
 import type { ProcessOrder } from '../../types/processOrder'
 
 type MenuItems = NonNullable<MenuProps['items']>
@@ -34,47 +33,24 @@ interface Props {
 
 export default function ProcessOrderBatchToolbar({ selectedRows, actions }: Props) {
   const record = selectedRows.length === 1 ? selectedRows[0] : undefined
+  if (!record) return null
+  const moreItems = buildMoreItems(record, actions)
 
   return (
-    <div className={selectedRows.length > 0 ? 'process-order-batchbar is-active' : 'process-order-batchbar'}>
+    <div className="process-order-batchbar is-active">
+      <span className="process-order-batchbar__selection">已选 <strong>{record.orderNo}</strong></span>
       <Space size={8}>
-        <ActionButton icon={<PrinterOutlined />} disabled={!canPrint(record)} onClick={() => record && actions.onPrint(record)}>
-          打印/补打
-        </ActionButton>
-        <ActionButton icon={<FileDoneOutlined />} disabled={record?.orderStatus !== 3} onClick={() => record && actions.onBackRecord(record.uuid)}>
-          进入回录
-        </ActionButton>
-        <ActionButton icon={<NumberOutlined />} disabled={!canManageRolls(record)} onClick={() => record && actions.onManageRolls(record.uuid)}>
-          成品号
-        </ActionButton>
-        <ActionButton icon={<CalculatorOutlined />} disabled={!canCalcFee(record)} onClick={() => record && confirmFee(record, actions)}>
-          重算计费
-        </ActionButton>
-        <Dropdown menu={{ items: buildMoreItems(record, actions) }} trigger={['click']} disabled={!record}>
-          <Button>更多处理</Button>
-        </Dropdown>
+        {canPrint(record) && <Button icon={<PrinterOutlined />} onClick={() => actions.onPrint(record)}>打印/补打</Button>}
+        {record.orderStatus === 3 && <Button icon={<FileDoneOutlined />} onClick={() => actions.onBackRecord(record.uuid)}>进入回录</Button>}
+        {canManageRolls(record) && <Button icon={<NumberOutlined />} onClick={() => actions.onManageRolls(record.uuid)}>成品号</Button>}
+        {canCalcFee(record) && <Button icon={<CalculatorOutlined />} onClick={() => confirmFee(record, actions)}>重算计费</Button>}
+        {moreItems.length > 0 && (
+          <Dropdown menu={{ items: moreItems }} trigger={['click']}>
+            <Button>更多处理</Button>
+          </Dropdown>
+        )}
       </Space>
     </div>
-  )
-}
-
-function ActionButton({
-  children,
-  disabled,
-  icon,
-  onClick,
-}: {
-  children: React.ReactNode
-  disabled: boolean
-  icon: React.ReactNode
-  onClick: () => void
-}) {
-  return (
-    <MesTooltip title={disabled ? '请选择一张符合状态的加工单' : undefined}>
-      <Button icon={icon} disabled={disabled} onClick={onClick}>
-        {children}
-      </Button>
-    </MesTooltip>
   )
 }
 

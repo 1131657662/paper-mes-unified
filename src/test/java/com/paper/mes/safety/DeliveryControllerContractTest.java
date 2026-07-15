@@ -8,6 +8,7 @@ import com.paper.mes.auth.service.AuthService;
 import com.paper.mes.common.GlobalExceptionHandler;
 import com.paper.mes.delivery.controller.DeliveryController;
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
+import com.paper.mes.delivery.dto.DeliveryCancelDTO;
 import com.paper.mes.delivery.dto.DeliveryConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
 import com.paper.mes.delivery.dto.DeliveryRollbackDTO;
@@ -59,7 +60,7 @@ class DeliveryControllerContractTest {
         mvc.perform(post("/api/delivery-orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(deliveryPayload()))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
 
         verify(deliveryService, never()).create(any());
@@ -73,7 +74,7 @@ class DeliveryControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(deliveryPayload())
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(403));
 
         verify(deliveryService, never()).create(any());
@@ -174,6 +175,36 @@ class DeliveryControllerContractTest {
         ArgumentCaptor<DeliveryRollbackDTO> captor = ArgumentCaptor.forClass(DeliveryRollbackDTO.class);
         verify(deliveryService).rollback(eq("delivery-uuid"), captor.capture());
         assertEquals("signed by mistake", captor.getValue().getReason());
+    }
+
+    @Test
+    void cancelPendingDelivery_withoutReason_returnsBadRequest() throws Exception {
+        authorizeAs("warehouse");
+
+        mvc.perform(post("/api/delivery-orders/delivery-uuid/cancel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        verify(deliveryService, never()).cancelPending(any(), any());
+    }
+
+    @Test
+    void cancelPendingDelivery_withWarehouseRole_bindsReason() throws Exception {
+        authorizeAs("warehouse");
+
+        mvc.perform(post("/api/delivery-orders/delivery-uuid/cancel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"wrong finish rolls\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        ArgumentCaptor<DeliveryCancelDTO> captor = ArgumentCaptor.forClass(DeliveryCancelDTO.class);
+        verify(deliveryService).cancelPending(eq("delivery-uuid"), captor.capture());
+        assertEquals("wrong finish rolls", captor.getValue().getReason());
     }
 
     private void authorizeAs(String roleCode) {

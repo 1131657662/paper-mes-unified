@@ -1,13 +1,16 @@
-import { Descriptions, Drawer, Typography } from 'antd'
+import { LinkOutlined } from '@ant-design/icons'
+import { Button, Descriptions, Drawer, Typography } from 'antd'
 import type { OperationLog } from '../../types/operationLog'
 import { actionTag, dateText, logText } from './operationLogDisplay'
 
 interface Props {
   log?: OperationLog
+  businessPath?: string
   onClose: () => void
+  onOpenBusiness: (path: string) => void
 }
 
-export default function OperationLogDetailDrawer({ log, onClose }: Props) {
+export default function OperationLogDetailDrawer({ businessPath, log, onClose, onOpenBusiness }: Props) {
   return (
     <Drawer
       className="mes-detail-drawer operation-log-drawer"
@@ -16,6 +19,11 @@ export default function OperationLogDetailDrawer({ log, onClose }: Props) {
       width={760}
       onClose={onClose}
       destroyOnHidden
+      extra={businessPath && (
+        <Button icon={<LinkOutlined />} onClick={() => onOpenBusiness(businessPath)}>
+          打开关联业务
+        </Button>
+      )}
     >
       {log && (
         <div className="operation-log-drawer__body">

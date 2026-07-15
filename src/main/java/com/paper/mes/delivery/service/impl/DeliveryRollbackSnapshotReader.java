@@ -2,6 +2,8 @@ package com.paper.mes.delivery.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ErrorCode;
 import com.paper.mes.delivery.dto.DeliveryDetailItemVO;
 import com.paper.mes.delivery.dto.DeliveryRollbackSnapshotVO;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +33,7 @@ final class DeliveryRollbackSnapshotReader {
             }
             JsonNode previous = firstExisting(root, "previous_confirm_snapshot", "previousConfirmSnapshot");
             if (previous == null || !previous.isObject()) {
-                return null;
+                throw corruptedSnapshot();
             }
             List<DeliveryDetailItemVO> details = readPreviousDetails(previous, objectMapper);
             DeliveryRollbackSnapshotVO snapshot = new DeliveryRollbackSnapshotVO();
@@ -45,19 +47,21 @@ final class DeliveryRollbackSnapshotReader {
             snapshot.setTotalWeight(decimal(previous, "total_weight", "totalWeight"));
             snapshot.setDetails(details == null ? List.of() : details);
             return snapshot;
+        } catch (BusinessException ex) {
+            throw ex;
         } catch (Exception ex) {
-            log.warn("出库回退快照解析失败，将回退到实时明细：{}", ex.getMessage());
-            return null;
+            log.error("出库回退历史快照解析失败：{}", ex.getMessage());
+            throw corruptedSnapshot();
         }
     }
 
     private static List<DeliveryDetailItemVO> readPreviousDetails(JsonNode previous, ObjectMapper objectMapper) {
-        try {
-            return DeliverySnapshotItemReader.read(objectMapper.writeValueAsString(previous), objectMapper);
-        } catch (Exception ex) {
-            log.warn("出库回退快照中的原确认明细解析失败：{}", ex.getMessage());
-            return null;
-        }
+        return DeliverySnapshotItemReader.read(previous.toString(), objectMapper);
+    }
+
+    private static BusinessException corruptedSnapshot() {
+        return new BusinessException(ErrorCode.E008,
+                "出库回退历史快照损坏，无法核对原签收内容，请联系管理员处理");
     }
 
     private static boolean isSnapshotType(JsonNode root, String type) {

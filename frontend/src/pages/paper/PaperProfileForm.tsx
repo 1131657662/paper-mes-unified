@@ -7,11 +7,18 @@ interface Props {
   editing: boolean
   form: FormInstance<PaperSaveDTO>
   onFinish?: (values: PaperSaveDTO) => void
+  onValuesChange?: () => void
 }
 
-export default function PaperProfileForm({ editing, form, onFinish }: Props) {
+export default function PaperProfileForm({ editing, form, onFinish, onValuesChange }: Props) {
   return (
-    <Form className="mes-modal-form paper-profile-form" form={form} layout="vertical" onFinish={onFinish}>
+    <Form
+      className="mes-modal-form paper-profile-form"
+      form={form}
+      layout="vertical"
+      onFinish={onFinish}
+      onValuesChange={onValuesChange}
+    >
       <section className="paper-profile-form__section">
         <h3>基础信息</h3>
         <div className="mes-form-grid">

@@ -7,6 +7,7 @@ export interface PageTabItem {
 }
 
 export const DEFAULT_PAGE_TAB_PATH = '/dashboard'
+const MAX_PAGE_TABS = 12
 
 export function createTab(pathname: string): PageTabItem {
   const path = normalizePageTabPath(pathname)
@@ -23,7 +24,10 @@ export function ensurePageTabs(tabs: PageTabItem[], fallbackPath = DEFAULT_PAGE_
     const nextTab = createTab(tab.path)
     return [...result.filter((item) => item.path !== nextTab.path), nextTab]
   }, [])
-  return normalizedTabs.length > 0 ? normalizedTabs : [createTab(fallbackPath)]
+  if (normalizedTabs.length === 0) return [createTab(fallbackPath)]
+  const pinnedTabs = normalizedTabs.filter((tab) => !tab.closable)
+  const recentTabs = normalizedTabs.filter((tab) => tab.closable).slice(-(MAX_PAGE_TABS - pinnedTabs.length))
+  return [...pinnedTabs, ...recentTabs]
 }
 
 export function normalizePageTabPath(pathname: string) {

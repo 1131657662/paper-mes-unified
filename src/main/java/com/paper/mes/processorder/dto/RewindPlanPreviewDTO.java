@@ -2,6 +2,7 @@ package com.paper.mes.processorder.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -18,6 +19,7 @@ public class RewindPlanPreviewDTO {
     private Integer spareCount;
 
     @Valid
+    @Size(max = 100, message = "复卷段不能超过100条")
     private List<RewindSegmentDTO> segments;
 
     @Data
@@ -29,9 +31,11 @@ public class RewindPlanPreviewDTO {
         private Integer repeatCount;
 
         @Valid
+        @Size(max = 100, message = "复卷来源不能超过100条")
         private List<FinishConfigSpecDTO.FinishSourceDTO> sources;
 
         @Valid
+        @Size(max = 500, message = "复卷排版项不能超过500条")
         private List<RewindLayoutItemDTO> layoutItems;
     }
 
@@ -47,6 +51,7 @@ public class RewindPlanPreviewDTO {
         private String itemType;
 
         @Valid
+        @Size(max = 100, message = "复卷层不能超过100层")
         private List<FinishConfigSpecDTO.FinishLayerDTO> layers;
     }
 }

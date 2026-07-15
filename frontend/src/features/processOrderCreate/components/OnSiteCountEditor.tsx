@@ -1,33 +1,12 @@
-import { Alert, InputNumber, Space, Typography } from 'antd'
-import type { ProcessPlanDTO } from '../../../types/processOrder'
-import { onSiteCount, toOnSitePlan } from '../onSitePlanUtils'
+import { Alert } from 'antd'
 
-interface Props {
-  plan: ProcessPlanDTO
-  onChange: (plan: ProcessPlanDTO) => void
-}
-
-export default function OnSiteCountEditor({ plan, onChange }: Props) {
-  const count = onSiteCount(plan.finishSpecs)
+export default function OnSiteCountEditor() {
   return (
-    <Space direction="vertical" size={12} style={{ width: '100%' }}>
-      <Alert
-        type="info"
-        showIcon
-        message="现场定尺只预占成品卷号"
-        description="开单时填写预计成品件数；门幅、直径、重量由车间现场确认，并在回录时补齐。"
-      />
-      <div>
-        <Typography.Text strong>预计成品件数</Typography.Text>
-        <InputNumber
-          min={1}
-          precision={0}
-          value={count}
-          addonAfter="件"
-          style={{ width: 180, marginLeft: 12 }}
-          onChange={(value) => onChange(toOnSitePlan(plan, value ?? 1))}
-        />
-      </div>
-    </Space>
+    <Alert
+      type="info"
+      showIcon
+      message="实际产出由车间回录"
+      description="此处只确定母卷、主工艺、设备和单价；成品与切边数量、门幅、直径、纸芯和重量均按现场结果录入。"
+    />
   )
 }

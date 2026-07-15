@@ -2,7 +2,6 @@ import { IS_INVOICE, ORDER_SETTLE_TYPE, PROCESS_MODE, STEP_TYPE } from '../../..
 import { buildDisplayRows } from '../../../components/processOrder/shared/displayRowBuilder'
 import {
   calcTrimWidth,
-  fmtDiameter,
   isDeliverableProductionFinish,
   isRemainProductionFinish,
   isVisibleProductionOutput,
@@ -12,7 +11,6 @@ import {
   buildFinishLayers,
   buildStageOutputLayers,
   layerItemMap,
-  layersSummaryText,
   type LayeredRewindLayer,
 } from '../../../components/processOrder/shared/layeredRewindView'
 import {
@@ -40,12 +38,15 @@ export interface PrintRouteOutput {
   name: string
   spec: string
   weight: string
+  actualWeight?: string
+  weightValue?: number
   width?: number
   status: 'next' | 'final' | 'trim'
 }
 
 export interface PrintRouteStage {
   key: string
+  stepType?: number
   title: string
   source: string
   metric: string
@@ -115,6 +116,7 @@ function routeStagesFromOutputs(
     const stageOutputsWithTrim = outputsWithTrim(production, step, levelOutputs, outputs)
     return {
       key: `${production.originalUuid ?? 'roll'}-${level}`,
+      stepType: step?.stepType ?? levelOutputs[0]?.sourceStepType,
       title: stageTitle(level, step, levelOutputs),
       source: sourceText(step, outputs, levelOutputs),
       metric: stepMetric(step, levelOutputs, outputs),
@@ -137,6 +139,7 @@ function routeStagesFromFinishes(production: RollProductionVO, steps: ProcessSte
   )
   return [{
     key: `${production.originalUuid ?? 'roll'}-single`,
+    stepType: step?.stepType ?? production.mainStepType,
     title: `第1道 ${step?.stepName || STEP_TYPE[production.mainStepType ?? step?.stepType ?? 1] || '加工'}`,
     source: '原卷',
     metric: stepMetric(step, [], []),
@@ -163,6 +166,8 @@ function finishRouteOutput(finish: FinishProductionVO, production: RollProductio
     name: remain ? trimTitle(finish.finishRollNo) : finish.finishRollNo || '预生成成品',
     spec: finishSpec(finish),
     weight: formatProductionKg(finish.estimateWeight, production),
+    actualWeight: finish.actualWeight == null ? undefined : formatProductionKg(finish.actualWeight, production),
+    weightValue: finish.estimateWeight,
     width: finish.finishWidth,
     status: remain ? 'trim' : 'final',
   }
@@ -185,6 +190,7 @@ function fallbackSingleStageTrim(
     name: '修边',
     spec: trimWidth > 0 ? formatMm(trimWidth) : '-',
     weight: estimateWeight == null ? '-' : formatProductionKg(estimateWeight, production),
+    weightValue: estimateWeight,
     width: trimWidth,
     status: 'trim',
   }
@@ -197,6 +203,8 @@ function routeOutput(output: StageOutputVO, production: RollProductionVO): Print
     name: trim ? trimTitle(output.outputNo) : output.outputNo || '-',
     spec: outputSpec(output),
     weight: formatProductionKg(output.estimateWeight, production),
+    actualWeight: output.actualWeight == null ? undefined : formatProductionKg(output.actualWeight, production),
+    weightValue: output.estimateWeight,
     width: output.finishWidth,
     status: trim ? 'trim' : isFinalOutput(output) ? 'final' : 'next',
   }
@@ -321,6 +329,7 @@ function trimOutput(params: {
     name: '修边',
     spec: formatMm(trimWidth),
     weight: trimWeight == null ? '-' : formatProductionKg(trimWeight, params.production),
+    weightValue: trimWeight,
     status: 'trim',
   }
 }
@@ -355,7 +364,7 @@ function stageRequirement(
 ): string {
   const stepType = step?.stepType ?? outputs[0]?.sourceStepType ?? production.mainStepType
   if (stepType === 1) return sawRequirement(production, step, outputs, allOutputs)
-  if (stepType === 2) return rewindRequirement(production, step, outputs, allOutputs)
+  if (stepType === 2) return rewindRequirement(outputs)
   return '按本阶段产物规格加工，完成后填写实际重量和异常说明。'
 }
 
@@ -378,15 +387,9 @@ function singleStageRequirement(
     })
   }
   const text = rewindText({
-    source: '原卷',
-    sourceWeight: (production.rollWeight ?? 0) * (production.pieceNum ?? 1),
-    outputs: deliverableOutputs.map((item) => ({
-      width: item.finishWidth,
-      diameter: item.finishDiameter,
-      core: item.finishCoreDiameter,
-    })),
+    outputs: deliverableOutputs.map((item) => ({ width: item.finishWidth })),
   })
-  return appendLayerRequirement(text, layersSummaryText(buildFinishLayers(production, outputs)))
+  return text
 }
 
 function sawRequirement(
@@ -408,28 +411,13 @@ function sawRequirement(
   })
 }
 
-function rewindRequirement(
-  production: RollProductionVO,
-  step: ProcessStep | undefined,
-  outputs: StageOutputVO[],
-  allOutputs: StageOutputVO[],
-): string {
-  const source = sourceText(step, allOutputs, outputs)
+function rewindRequirement(outputs: StageOutputVO[]): string {
   const text = rewindText({
-    source,
-    sourceWeight: rewindSourceWeight(outputs, allOutputs, step),
     outputs: outputs.filter((item) => !isTrimOutput(item)).map((item) => ({
       width: item.finishWidth,
-      diameter: item.finishDiameter,
-      core: item.finishCoreDiameter,
     })),
   })
-  return appendLayerRequirement(text, layersSummaryText(buildStageOutputLayers(production, outputs)))
-}
-
-function appendLayerRequirement(text: string, layerText: string): string {
-  if (!layerText) return text
-  return `${text.replace(/。$/, '')}；内外层分层：${layerText}。`
+  return text
 }
 
 function sawText(params: {
@@ -443,21 +431,22 @@ function sawText(params: {
   const trimWidth = params.sourceWidth == null ? 0 : Math.max(0, params.sourceWidth - usedWidth)
   const layout = groupedWidths(params.outputs)
   const sourceWidth = params.sourceWidth ? `原幅 ${formatMm(params.sourceWidth)}` : '按来源门幅'
-  const knife = params.knifeCount != null ? `刀数 ${params.knifeCount} 刀` : '刀数按排布执行'
+  const derivedKnifeCount = Math.max(0, params.outputs.length - 1) + (trimWidth > 0 ? 1 : 0)
+  const knifeCount = params.knifeCount != null && params.knifeCount > 0
+    ? params.knifeCount
+    : derivedKnifeCount
+  const knife = knifeCount > 0 ? `共 ${knifeCount} 刀` : '刀数按排布执行'
   const trim = trimWidth > 0
-    ? `切边 ${formatMm(trimWidth)}${params.sourceWeight > 0 ? ` / ${formatProductionKg(params.sourceWeight * trimWidth / (params.sourceWidth ?? 1), params.production)}` : ''}`
+    ? `切边 ${formatMm(trimWidth)}${params.sourceWeight > 0 ? `，约 ${formatProductionKg(params.sourceWeight * trimWidth / (params.sourceWidth ?? 1), params.production)}` : ''}`
     : '无切边'
-  return `${sourceWidth}，锯成 ${layout || '按产物表规格'}，${knife}，${trim}。`
+  return `${sourceWidth}；产出 ${layout || '按产物表规格'}；${trim}；${knife}。`
 }
 
 function rewindText(params: {
-  source: string
-  sourceWeight: number
-  outputs: Array<{ width?: number; diameter?: number; core?: number }>
+  outputs: Array<{ width?: number }>
 }): string {
-  const sourceWeight = params.sourceWeight > 0 ? `，来源重量 ${formatRawTon(params.sourceWeight)}` : ''
   const layout = groupedRewindOutputs(params.outputs)
-  return `复卷 ${params.source}${sourceWeight}，产出 ${layout || '按产物表规格'}。`
+  return layout || '复卷门幅按产物表执行。'
 }
 
 function groupedWidths(outputs: Array<{ width?: number; status: 'next' | 'final' }>): string {
@@ -473,44 +462,36 @@ function groupedWidths(outputs: Array<{ width?: number; status: 'next' | 'final'
     })
   }
   return Array.from(groups.values()).map((item) => {
-    return `${item.text} ×${item.count}（${outputStatusLabel(item.status)}）`
+    const nextStage = item.status === 'next' ? '（进下道）' : ''
+    return `${item.text} ×${item.count} 件${nextStage}`
   }).join(' + ')
 }
 
-function groupedRewindOutputs(outputs: Array<{ width?: number; diameter?: number; core?: number }>): string {
+function groupedRewindOutputs(outputs: Array<{ width?: number }>): string {
   const groups = new Map<string, { text: string; count: number }>()
   for (const output of [...outputs].sort((a, b) => (a.width ?? 0) - (b.width ?? 0))) {
-    const text = [
-      output.width ? formatMm(output.width) : '沿用门幅',
-      output.diameter ? fmtDiameter(output.diameter, 'φ') : '直径按配置',
-      output.core ? `纸芯 ${output.core}` : '纸芯按配置',
-    ].join(' / ')
+    const text = output.width ? formatMm(output.width) : '沿用门幅'
     groups.set(text, { text, count: (groups.get(text)?.count ?? 0) + 1 })
   }
-  return Array.from(groups.values()).map((item) => `${item.text} ×${item.count}`).join(' + ')
-}
-
-function outputStatusLabel(status: 'next' | 'final'): string {
-  return status === 'next' ? '进入下道' : '最终交付'
-}
-
-function rewindSourceWeight(
-  outputs: StageOutputVO[],
-  allOutputs: StageOutputVO[],
-  step?: ProcessStep,
-): number {
-  if (step?.processWeight != null && step.processWeight > 0) return step.processWeight
-  const parentWeightKg = sumParentWeights(outputs, allOutputs)
-  if (parentWeightKg > 0) return parentWeightKg / 1000
-  return outputs.reduce((sum, output) => sum + (output.estimateWeight ?? 0), 0) / 1000
+  const items = Array.from(groups.values())
+  const totalCount = items.reduce((sum, item) => sum + item.count, 0)
+  const onlyItem = items[0]
+  if (items.length === 1 && onlyItem) return `加工门幅 ${onlyItem.text}，产出 ${totalCount} 件。`
+  const widths = items.map((item) => `${item.text} ×${item.count} 件`).join(' + ')
+  return `加工门幅 ${widths}，共产出 ${totalCount} 件。`
 }
 
 function sourceItems(production: RollProductionVO): Array<{ label: string; value: string }> {
+  const gramWeight = production.actualGramWeight ?? production.gramWeight
+  const width = production.actualWidth ?? production.originalWidth
+  const weight = production.actualWeight ?? (production.rollWeight ?? 0) * (production.pieceNum ?? 1)
+  const gramText = `${formatGram(gramWeight)}${production.actualGramWeight == null ? '' : '（实）'}`
+  const widthText = `${formatMm(width)}${production.actualWidth == null ? '' : '（实）'}`
   return [
     { label: '卷号/编号', value: [production.rollNo, production.extraNo].filter(Boolean).join(' / ') || '-' },
     { label: '品名', value: production.paperName || '-' },
-    { label: '克重/门幅', value: `${formatGram(production.gramWeight)} / ${formatMm(production.originalWidth)}` },
-    { label: '标重', value: formatProductionKg((production.rollWeight ?? 0) * (production.pieceNum ?? 1), production) },
+    { label: '克重/门幅', value: `${gramText} / ${widthText}` },
+    { label: production.actualWeight == null ? '标重' : '实重', value: formatProductionKg(weight, production) },
     { label: '方式', value: `${PROCESS_MODE[production.processMode ?? 1] ?? '-'} / ${STEP_TYPE[production.mainStepType ?? 1] ?? '-'}` },
   ]
 }
@@ -621,20 +602,18 @@ function rollTitle(seq: number, production: RollProductionVO, isMergeGroup: bool
 }
 
 function outputSpec(output: StageOutputVO): string {
-  return specText(output.paperName, output.gramWeight, output.finishWidth, output.finishDiameter, output.finishCoreDiameter)
+  return specText(output.paperName, output.gramWeight, output.finishWidth)
 }
 
 function finishSpec(finish: FinishProductionVO): string {
-  return specText(finish.paperName, finish.gramWeight, finish.finishWidth, finish.finishDiameter, finish.finishCoreDiameter)
+  return specText(finish.paperName, finish.gramWeight, finish.finishWidth)
 }
 
-function specText(paperName?: string, gramWeight?: number, width?: number, diameter?: number, core?: number): string {
+function specText(paperName?: string, gramWeight?: number, width?: number): string {
   const parts = [
     paperName || '-',
     gramWeight ? formatGram(gramWeight) : undefined,
     width ? formatMm(width) : undefined,
-    diameter ? fmtDiameter(diameter, 'φ') : undefined,
-    core ? `纸芯 ${core}` : undefined,
   ].filter(Boolean)
   return parts.join(' / ')
 }

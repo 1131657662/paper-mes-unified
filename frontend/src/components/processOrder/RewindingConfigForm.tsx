@@ -322,6 +322,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
           现场定尺模式：请输入预计成品件数，保存后由后端生成对应数量的正式成品号
         </Typography.Text>
         <InputNumber
+          aria-label="预计成品件数"
           min={1}
           value={totalFinishCount || 1}
           onChange={(value) => {
@@ -336,7 +337,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
             })
           }}
           addonBefore="预计成品件数"
-          addonAfter="件"
+          suffix="件"
         />
       </div>
     )
@@ -351,6 +352,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
               <Space wrap>
                 <Typography.Text strong>复卷模式</Typography.Text>
                 <Select
+                  aria-label="复卷模式"
                   value={rewindMode}
                   onChange={(value) => {
                     const nextSegments = value === 2 ? buildDefaultSegments(roll.originalWidth ?? 1000, roll.uuid, value) : segments
@@ -377,28 +379,31 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                       {segments.length > 1 ? (
                         <MesTooltip title="该分段占母卷总直径/重量的比例，所有分段合计应为100%">
                           <InputNumber
+                            aria-label={`分段 ${index + 1} 占比`}
                             min={0}
                             max={100}
                             precision={0}
                             value={segment.segmentRatio}
                             onChange={(value) => updateSegment(segment.key, { segmentRatio: value ?? 0 })}
                             addonBefore="分段占比"
-                            addonAfter="%"
+                            suffix="%"
                           />
                         </MesTooltip>
                       ) : (
                         <Tag color="default">单分段 100%</Tag>
                       )}
                       <InputNumber
+                        aria-label={`分段 ${index + 1} 成品直径上限`}
                         min={0}
                         value={segment.targetDiameter}
                         onChange={(value) => updateSegment(segment.key, { targetDiameter: value ?? undefined })}
                         addonBefore="成品直径 ≤"
-                        addonAfter="cm"
+                        suffix="cm"
                         placeholder="不限"
                         disabled={rewindMode === 1}
                       />
                       <Select
+                        aria-label={`分段 ${index + 1} 成品纸芯`}
                         value={segment.finishCoreDiameter ?? 3}
                         onChange={(value) => updateSegment(segment.key, { finishCoreDiameter: value })}
                         style={{ width: 100 }}
@@ -406,13 +411,19 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                         options={CORE_DIAMETER_OPTIONS.map((v) => ({ value: v, label: `纸芯 ${v}"` }))}
                       />
                       <InputNumber
+                        aria-label={`分段 ${index + 1} 重复次数`}
                         min={1}
                         value={segment.repeatCount}
                         onChange={(value) => updateSegment(segment.key, { repeatCount: value ?? 1 })}
                         addonBefore="重复"
-                        addonAfter="次"
+                        suffix="次"
                       />
-                      <Button danger icon={<DeleteOutlined />} onClick={() => removeSegment(segment.key)} />
+                      <Button
+                        danger
+                        aria-label={`删除复卷分段 ${index + 1}`}
+                        icon={<DeleteOutlined />}
+                        onClick={() => removeSegment(segment.key)}
+                      />
                     </Space>
 
                     {rewindMode === 5 && (
@@ -425,6 +436,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                             </Typography.Text>
                           </Space>
                           <Select
+                            aria-label={`分段 ${index + 1} 来源母卷`}
                             mode="multiple"
                             value={segment.sources.map((source) => source.originalUuid)}
                             options={sourceRollOptions}
@@ -442,12 +454,13 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                                     value={option?.label ?? source.originalUuid}
                                   />
                                   <InputNumber
+                                    aria-label={`分段 ${index + 1} 来源母卷分摊比例`}
                                     min={0}
                                     max={100}
                                     precision={2}
                                     value={source.shareRatio}
                                     onChange={(value) => updateSourceRatio(segment.key, source.originalUuid, value ?? 0)}
-                                    addonAfter="%"
+                                    suffix="%"
                                     style={{ width: 120 }}
                                   />
                                 </Space>
@@ -477,6 +490,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                       {segment.layoutItems.map((item) => (
                         <Space key={item.key} wrap>
                           <Select
+                            aria-label={`分段 ${index + 1} 排布类型`}
                             value={item.itemType}
                             onChange={(value) => updateLayoutItem(segment.key, item.key, { itemType: value })}
                             style={{ width: 96 }}
@@ -486,13 +500,15 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                             ]}
                           />
                           <InputNumber
+                            aria-label={`分段 ${index + 1} 排布门幅`}
                             min={1}
                             value={item.width}
                             onChange={(value) => updateLayoutItem(segment.key, item.key, { width: value ?? 1 })}
                             addonBefore="门幅"
-                            addonAfter="mm"
+                            suffix="mm"
                           />
                           <InputNumber
+                            aria-label={`分段 ${index + 1} 排布数量`}
                             min={1}
                             value={item.quantity}
                             onChange={(value) => updateLayoutItem(segment.key, item.key, { quantity: value ?? 1 })}
@@ -501,6 +517,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                           <Button
                             type="text"
                             danger
+                            aria-label={`删除${item.itemType === 'FINISH' ? '成品' : '切边'}排布`}
                             icon={<DeleteOutlined />}
                             onClick={() => removeLayoutItem(segment.key, item.key)}
                           />
@@ -529,6 +546,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
               <Divider style={{ margin: '8px 0' }} />
               <Space wrap>
                 <InputNumber
+                  aria-label="复卷单价"
                   min={0}
                   precision={2}
                   value={unitPrice}
@@ -538,9 +556,10 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                     emitConfig({ nextUnitPrice })
                   }}
                   addonBefore="复卷单价"
-                  addonAfter="元/吨"
+                  suffix="元/吨"
                 />
                 <InputNumber
+                  aria-label="备用卷号数量"
                   min={0}
                   max={10}
                   value={spareCount}
@@ -550,7 +569,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                     emitConfig({ nextSpareCount })
                   }}
                   addonBefore="备用卷号"
-                  addonAfter="个"
+                  suffix="个"
                 />
                 <Typography.Text type="secondary">母卷吨位：{tonnage}</Typography.Text>
               </Space>

@@ -112,11 +112,23 @@ class ReportMapperSqlContractTest {
     }
 
     @Test
-    void reportSql_whenCountingProcessingWeights_excludesDirectShipOriginals() throws IOException {
+    void reportSql_whenCountingProcessingWeights_includesDirectShipInBusinessDimensions() throws IOException {
         String sql = resourceText("mapper/report/ReportMapper.xml");
 
-        assertEquals(8, count(sql, "COALESCE(r.process_mode, 0) != 3"));
+        assertEquals(7, count(sql, "COALESCE(r.process_mode, 0) != 3"));
         assertEquals(2, count(sql, "COALESCE(process_mode, 0) != 3"));
+    }
+
+    @Test
+    void reportSql_whenLoadingDetails_limitsPageAndStreamsExport() throws IOException {
+        String sql = resourceText("mapper/report/ReportMapper.xml");
+
+        assertTrue(sql.contains("<select id=\"detailCount\""));
+        assertTrue(sql.contains("<sql id=\"DetailRowsQuery\""));
+        assertTrue(sql.contains("LIMIT #{limit}"));
+        assertTrue(sql.contains("<select id=\"detailCursor\""));
+        assertTrue(sql.contains("fetchSize=\"500\""));
+        assertTrue(sql.contains("resultSetType=\"FORWARD_ONLY\""));
     }
 
     @Test

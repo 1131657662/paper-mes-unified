@@ -36,7 +36,9 @@ public class ProcessOrderDetailVO {
         private List<String> damageImages;
         private String paperName;
         private Integer gramWeight;
+        private Integer actualGramWeight;
         private Integer originalWidth;
+        private Integer actualWidth;
         private BigDecimal rollWeight;
         private BigDecimal actualWeight;
         private BigDecimal processAmount;

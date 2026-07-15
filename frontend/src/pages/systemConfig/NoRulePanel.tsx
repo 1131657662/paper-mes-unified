@@ -6,6 +6,7 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { pageNoRules, previewNoRule } from '../../api/systemConfig'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
+import { renderCompatibleTableOptions } from '../../components/biz/tableToolbarOptionsRender'
 import TooltipText from '../../components/biz/TooltipText'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import { useUpdateNoRule } from '../../features/systemConfig/hooks/useSystemConfigMutations'
@@ -13,20 +14,53 @@ import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import type { ConfigStatus, NoRule, NoRuleSaveDTO } from '../../types/systemConfig'
 import { statusOptions, statusTag } from './systemConfigDisplay'
 
-export default function NoRulePanel() {
+interface NoRulePanelProps {
+  onDirtyChange?: (dirty: boolean) => void
+}
+
+export default function NoRulePanel({ onDirtyChange }: NoRulePanelProps) {
   const actionRef = useRef<ActionType>(null)
   const [editing, setEditing] = useState<NoRule>()
+  const [dirty, setDirty] = useState(false)
   const columnsState = useTableColumnsState('table-columns-system-no-rule')
   const { mutateAsync: updateRule, isPending } = useUpdateNoRule()
-  const columns = useNoRuleColumns({ onEdit: setEditing })
+  const columns = useNoRuleColumns({ onEdit: openEdit })
   const resizable = useResizableTableColumns<NoRule, ProColumns<NoRule>>(columns, 'system-no-rule')
 
   async function submit(values: NoRuleSaveDTO) {
     if (!editing) return
     await updateRule({ uuid: editing.uuid, data: values })
     message.success('单号规则已保存')
+    setDirty(false)
+    onDirtyChange?.(false)
     setEditing(undefined)
     actionRef.current?.reload()
+  }
+
+  function openEdit(record: NoRule) {
+    setDirty(false)
+    onDirtyChange?.(false)
+    setEditing(record)
+  }
+
+  function closeModal() {
+    if (!dirty) {
+      finishClose()
+      return
+    }
+    Modal.confirm({
+      title: '放弃未保存修改？',
+      content: '当前单号规则尚未保存，关闭后修改会丢失。',
+      okText: '放弃修改',
+      cancelText: '继续编辑',
+      onOk: finishClose,
+    })
+  }
+
+  function finishClose() {
+    setDirty(false)
+    onDirtyChange?.(false)
+    setEditing(undefined)
   }
 
   return (
@@ -54,13 +88,18 @@ export default function NoRulePanel() {
         search={{ defaultCollapsed: false, labelWidth: 'auto' }}
         scroll={{ x: resizable.scrollX, y: '100%' }}
         options={mesProTableOptions()}
+        optionsRender={renderCompatibleTableOptions}
         tableLayout="fixed"
       />
       <NoRuleModal
         item={editing}
         open={Boolean(editing)}
         submitting={isPending}
-        onCancel={() => setEditing(undefined)}
+        onCancel={closeModal}
+        onDirtyChange={(nextDirty) => {
+          setDirty(nextDirty)
+          onDirtyChange?.(nextDirty)
+        }}
         onSubmit={submit}
       />
     </>
@@ -123,11 +162,12 @@ function PreviewButton({ bizType }: { bizType: string }) {
   )
 }
 
-function NoRuleModal({ item, onCancel, onSubmit, open, submitting }: {
+function NoRuleModal({ item, onCancel, onDirtyChange, onSubmit, open, submitting }: {
   item?: NoRule
   open: boolean
   submitting: boolean
   onCancel: () => void
+  onDirtyChange?: (dirty: boolean) => void
   onSubmit: (values: NoRuleSaveDTO) => Promise<void>
 }) {
   const [form] = Form.useForm<NoRuleSaveDTO>()
@@ -141,7 +181,7 @@ function NoRuleModal({ item, onCancel, onSubmit, open, submitting }: {
       onCancel={onCancel}
       onOk={() => form.submit()}
     >
-      <Form className="mes-modal-form" form={form} initialValues={item ? toValues(item) : undefined} layout="vertical" onFinish={onSubmit}>
+      <Form className="mes-modal-form" form={form} initialValues={item ? toValues(item) : undefined} layout="vertical" onFieldsChange={() => onDirtyChange?.(form.isFieldsTouched())} onFinish={onSubmit}>
         <div className="mes-form-grid">
           <Form.Item name="bizType" label="业务类型" rules={[{ required: true, message: '业务类型不能为空' }]}>
             <Input disabled />

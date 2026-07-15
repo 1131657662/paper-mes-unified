@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ public class ProcessRoutePreviewDTO {
 
     @Valid
     @NotEmpty(message = "工艺路线不能为空")
+    @Size(max = 20, message = "工艺路线不能超过20个阶段")
     private List<RouteStageDTO> stages;
 
     @Data
@@ -29,6 +31,7 @@ public class ProcessRoutePreviewDTO {
         @Min(value = 1, message = "阶段层级至少为1")
         private Integer stageLevel;
 
+        @Size(max = 100, message = "阶段输入不能超过100条")
         private List<String> inputOutputKeys;
 
         @NotNull(message = "工序类型不能为空")
@@ -42,6 +45,7 @@ public class ProcessRoutePreviewDTO {
         private ProcessPlanDTO plan;
 
         @Valid
+        @Size(max = 500, message = "阶段产出不能超过500条")
         private List<RouteOutputDTO> outputs;
     }
 

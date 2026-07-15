@@ -1,6 +1,7 @@
 package com.paper.mes.delivery.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.delivery.dto.DeliveryDetailItemVO;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +11,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class DeliverySnapshotItemReaderTest {
 
@@ -148,7 +150,21 @@ class DeliverySnapshotItemReaderTest {
     }
 
     @Test
-    void read_whenSnapshotInvalid_returnsNull() {
-        assertNull(DeliverySnapshotItemReader.read("{bad-json", objectMapper));
+    void read_whenSnapshotAbsent_returnsNullForLegacyCompatibility() {
+        assertNull(DeliverySnapshotItemReader.read(" ", objectMapper));
+    }
+
+    @Test
+    void read_whenSnapshotInvalid_rejectsLiveDataFallback() {
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> DeliverySnapshotItemReader.read("{bad-json", objectMapper));
+
+        assertEquals("E008", error.getErrorCode());
+    }
+
+    @Test
+    void read_whenSnapshotHasNoTraceableDetails_rejectsLiveDataFallback() {
+        assertThrows(BusinessException.class,
+                () -> DeliverySnapshotItemReader.read("{\"detail_items\":[]}", objectMapper));
     }
 }

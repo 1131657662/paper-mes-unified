@@ -2,8 +2,10 @@
 .claude/
 .mimocode/
 .codex-run-logs/
+.codex-runtime/
 AGENTS.md
 logs/
+/nul
 
 # 系统/编辑器
 .DS_Store
@@ -36,6 +38,7 @@ src/main/resources/application-prod.yml
 
 # 上传文件本地存储产物
 /upload/
+/backup/
 
 # 前端构建产物与依赖
 frontend/node_modules/

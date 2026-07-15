@@ -1,12 +1,10 @@
-import { Tag } from 'antd'
 import type { ReactNode } from 'react'
 import type { ProColumns } from '@ant-design/pro-components'
 import type { ProcessOrder } from '../../types/processOrder'
 import TooltipText from '../../components/biz/TooltipText'
-import { ORDER_STATUS, PRIORITY } from '../../constants/processOrder'
+import { ORDER_STATUS } from '../../constants/processOrder'
 import ProcessOrderRowActions from './ProcessOrderRowActions'
-import { BillingCell, OrderNoCell, OrderScheduleCell, PriorityPill, ProductionSummary } from './ProcessOrderListCells'
-import { formatMoney } from '../../utils/numberFormatters'
+import { BillingCell, OrderDateScheduleCell, OrderNoCell, OrderStatusCell, ProductionSummary } from './ProcessOrderListCells'
 
 interface ColumnOptions {
   customerEnum: Record<string, { text: string }>
@@ -27,45 +25,20 @@ const statusValueEnum = Object.fromEntries(
   Object.entries(ORDER_STATUS).map(([k, v]) => [k, { text: v.text }]),
 )
 
-const priorityValueEnum = Object.fromEntries(
-  Object.entries(PRIORITY).map(([k, v]) => [k, { text: v }]),
-)
-
 export function buildProcessOrderColumns(options: ColumnOptions): ProColumns<ProcessOrder>[] {
   return [
-    { title: '加工单', dataIndex: 'orderNo', width: 190, minWidth: 180, hideInSearch: true, render: (_, record) => <OrderNoCell record={record} /> },
+    { title: '加工单', dataIndex: 'orderNo', width: 150, minWidth: 140, hideInSearch: true, render: (_, record) => <OrderNoCell onDetail={options.onDetail} record={record} /> },
     { title: '加工单号/客户', dataIndex: 'keyword', hideInTable: true },
-    { title: '客户', dataIndex: 'customerName', width: 180, minWidth: 160, hideInSearch: true, render: textCell },
+    { title: '客户', dataIndex: 'customerName', width: 125, minWidth: 120, hideInSearch: true, render: textCell },
     { title: '客户', dataIndex: 'customerUuid', hideInTable: true, valueType: 'select', valueEnum: options.customerEnum },
-    { title: '制单日期', dataIndex: 'orderDate', width: 124, hideInSearch: true },
-    { title: '制单日期', dataIndex: 'dateRange', valueType: 'dateRange', hideInTable: true },
-    { title: '优先级', dataIndex: 'priority', width: 96, valueType: 'select', valueEnum: priorityValueEnum, hideInSearch: true, render: (_, record) => <PriorityPill value={record.priority} /> },
-    { title: '安排', dataIndex: 'schedule', width: 170, minWidth: 150, hideInSearch: true, render: (_, record) => <OrderScheduleCell record={record} /> },
-    { title: '结算/开票', dataIndex: 'billing', width: 138, minWidth: 128, hideInSearch: true, render: (_, record) => <BillingCell record={record} /> },
-    { title: '状态', dataIndex: 'orderStatus', width: 112, valueType: 'select', valueEnum: statusValueEnum, render: (_, record) => renderStatus(record) },
-    { title: '下发', dataIndex: 'printStatus', width: 122, hideInSearch: true, render: (_, record) => renderPrintStatus(record) },
-    { title: '生产统计', dataIndex: 'productionSummary', width: 286, minWidth: 260, hideInSearch: true, render: (_, record) => <ProductionSummary record={record} /> },
-    { title: '费用', dataIndex: 'totalAmount', width: 128, hideInSearch: true, render: (_, record) => renderMoney(record.totalAmount) },
-    { title: '操作', key: 'actions', valueType: 'option', width: 168, minWidth: 168, fixed: 'right', render: (_, record) => <ProcessOrderRowActions record={record} {...options} /> },
+    { title: '日期/安排', dataIndex: 'schedule', width: 125, minWidth: 120, hideInSearch: true, render: (_, record) => <OrderDateScheduleCell record={record} /> },
+    { title: '结算/费用', dataIndex: 'billing', width: 150, minWidth: 145, hideInSearch: true, render: (_, record) => <BillingCell record={record} /> },
+    { title: '状态/下发', dataIndex: 'orderStatus', width: 110, minWidth: 105, valueType: 'select', valueEnum: statusValueEnum, render: (_, record) => <OrderStatusCell record={record} /> },
+    { title: '生产统计', dataIndex: 'productionSummary', width: 200, minWidth: 190, hideInSearch: true, render: (_, record) => <ProductionSummary record={record} /> },
+    { title: '操作', key: 'actions', valueType: 'option', width: 85, minWidth: 85, fixed: 'right', render: (_, record) => <ProcessOrderRowActions record={record} {...options} /> },
   ]
 }
 
 function textCell(value?: ReactNode) {
   return <TooltipText value={value} />
-}
-
-function renderStatus(record: ProcessOrder) {
-  if (record.orderStatus == null) return '-'
-  const status = ORDER_STATUS[record.orderStatus]
-  return <Tag color={status?.color}>{status?.text ?? '-'}</Tag>
-}
-
-function renderPrintStatus(record: ProcessOrder) {
-  if (record.printStatus !== 1) return <Tag>未下发</Tag>
-  return <Tag color="processing">已下发 {record.printCount ?? 1} 次</Tag>
-}
-
-function renderMoney(value?: number) {
-  if (value == null || value === 0) return '-'
-  return formatMoney(value)
 }

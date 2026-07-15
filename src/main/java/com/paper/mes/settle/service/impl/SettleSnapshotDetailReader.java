@@ -3,6 +3,8 @@ package com.paper.mes.settle.service.impl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ErrorCode;
 import com.paper.mes.settle.entity.SettleDetail;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
@@ -32,11 +34,18 @@ final class SettleSnapshotDetailReader {
                     return items;
                 }
             }
-            return null;
+            throw corruptedSnapshot();
+        } catch (BusinessException ex) {
+            throw ex;
         } catch (Exception ex) {
-            log.warn("结算明细快照解析失败，将回退到当前明细：{}", ex.getMessage());
-            return null;
+            log.error("结算历史明细快照解析失败：{}", ex.getMessage());
+            throw corruptedSnapshot();
         }
+    }
+
+    private static BusinessException corruptedSnapshot() {
+        return new BusinessException(ErrorCode.E008,
+                "结算单历史明细快照损坏，已禁止使用当前结算数据替代，请联系管理员处理");
     }
 
     private static List<SettleDetail> readNode(JsonNode node, ObjectMapper objectMapper) {

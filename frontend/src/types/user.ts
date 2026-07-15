@@ -1,6 +1,13 @@
 import type { PageQuery } from './common'
 
-export type UserRoleCode = 'admin' | 'operator' | 'finance' | 'warehouse'
+export type UserRoleCode =
+  | 'admin'
+  | 'order_clerk'
+  | 'recorder'
+  | 'warehouse'
+  | 'finance'
+  | 'viewer'
+  | 'operator'
 export type UserStatus = 0 | 1
 
 export interface SystemUser {

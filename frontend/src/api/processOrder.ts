@@ -29,7 +29,9 @@ import type {
   ProcessOrder,
   ProcessOrderCreateDTO,
   ProcessOrderDetailVO,
+  ProcessOrderPrintViewVO,
   ProcessOrderQuery,
+  PrintViewVersion,
   ProcessOrderRemarkDTO,
   ProcessOrderRollbackDTO,
   ProcessOrderVoidDTO,
@@ -57,6 +59,14 @@ export function getProcessOrder(uuid: string) {
   return request<ProcessOrderDetailVO>({
     url: `/api/process-orders/${uuid}`,
     method: 'get',
+  })
+}
+
+export function getProcessOrderPrintView(uuid: string, version: PrintViewVersion) {
+  return request<ProcessOrderPrintViewVO>({
+    url: `/api/process-orders/${uuid}/print-view`,
+    method: 'get',
+    params: { version },
   })
 }
 

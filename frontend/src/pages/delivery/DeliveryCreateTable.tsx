@@ -1,167 +1,138 @@
-import { Input, InputNumber, Space, Table, Tag, Typography } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
-import { SOURCE_TYPE } from '../../constants/delivery'
-import {
-  availableFinishWeight,
-  finishSpecText,
-  formatKg,
-  settleText,
-} from '../../features/delivery/utils/deliveryFormatters'
+import { useCallback, useMemo, useState } from 'react'
+import { Table, Tooltip } from 'antd'
+import type { ColumnType } from 'antd/es/table'
+import { useResizableTableColumns } from '../../components/useResizableTableColumns'
 import type { AvailableFinishVO } from '../../types/delivery'
-
-export interface DeliveryLineEdit {
-  outWeight?: number
-  remark?: string
-}
+import { createDeliverySelectionColumns } from './deliveryCreateColumns'
+import {
+  buildDeliveryOrderGroups,
+  isDeliveryGroupRow,
+  type DeliveryOrderGroupRow,
+  type DeliverySelectionTableRow,
+} from './deliveryFinishGrouping'
+import { DELIVERY_SELECTION_TABLE_STORAGE_KEY } from './deliverySelectionTableConfig'
+import type { DeliveryFinishScope } from './deliveryFinishScope'
+import type { DeliveryLineEdit } from './deliverySelectionModel'
 
 interface Props {
   data: AvailableFinishVO[]
   edits: Record<string, DeliveryLineEdit>
+  emptyText: string
   loading: boolean
+  scope: DeliveryFinishScope
   selectedRowKeys: React.Key[]
   onEditChange: (finishUuid: string, value: DeliveryLineEdit) => void
   onSelectionChange: (keys: React.Key[]) => void
 }
 
-export default function DeliveryCreateTable({
-  data,
-  edits,
-  loading,
-  onEditChange,
-  onSelectionChange,
-  selectedRowKeys,
-}: Props) {
+export default function DeliveryCreateTable(props: Props) {
+  const {
+    data,
+    edits,
+    emptyText,
+    loading,
+    onEditChange,
+    onSelectionChange,
+    scope,
+    selectedRowKeys,
+  } = props
+  const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set())
+  const selectGroup = useCallback((group: DeliveryOrderGroupRow) => {
+    const next = new Set(selectedRowKeys)
+    group.children.forEach((item) => next.add(item.finishUuid))
+    onSelectionChange(Array.from(next))
+  }, [onSelectionChange, selectedRowKeys])
+  const clearGroup = useCallback((group: DeliveryOrderGroupRow) => {
+    const groupKeys = new Set(group.children.map((item) => item.finishUuid))
+    onSelectionChange(selectedRowKeys.filter((key) => !groupKeys.has(String(key))))
+  }, [onSelectionChange, selectedRowKeys])
+  const groups = useMemo(
+    () => buildDeliveryOrderGroups(data, scope, selectedRowKeys, edits),
+    [data, edits, scope, selectedRowKeys],
+  )
+  const columns = useMemo(
+    () => createDeliverySelectionColumns({
+      edits,
+      onClearGroup: clearGroup,
+      onEditChange,
+      onSelectGroup: selectGroup,
+      selectedRowKeys,
+    }),
+    [clearGroup, edits, onEditChange, selectGroup, selectedRowKeys],
+  )
+  const resizable = useResizableTableColumns<DeliverySelectionTableRow, ColumnType<DeliverySelectionTableRow>>(
+    columns,
+    DELIVERY_SELECTION_TABLE_STORAGE_KEY,
+  )
+  const expandedRowKeys = groups
+    .map((group) => group.key)
+    .filter((key) => !collapsedGroupKeys.has(key))
+  const selectedKeys = new Set(selectedRowKeys.map(String))
+
+  const handleExpand = (expanded: boolean, row: DeliverySelectionTableRow) => {
+    if (!isDeliveryGroupRow(row)) return
+    setCollapsedGroupKeys((current) => {
+      const next = new Set(current)
+      if (expanded) next.delete(row.key)
+      else next.add(row.key)
+      return next
+    })
+  }
+
   return (
-    <Table<AvailableFinishVO>
-      rowKey="finishUuid"
+    <Table<DeliverySelectionTableRow>
+      className={`delivery-create-table${data.length === 0 ? ' delivery-create-table--empty' : ''}`}
+      rowKey="key"
       size="small"
       loading={loading}
-      columns={buildColumns(edits, onEditChange)}
-      dataSource={data}
+      columns={resizable.columns}
+      components={resizable.components}
+      dataSource={groups}
+      locale={{ emptyText }}
       pagination={false}
-      rowSelection={{ selectedRowKeys, onChange: onSelectionChange }}
-      rowClassName={(record) => (selectedRowKeys.includes(record.finishUuid) ? 'is-selected' : '')}
-      onRow={(record) => ({
-        onClick: () => toggleKey(record.finishUuid, selectedRowKeys, onSelectionChange),
+      expandable={{
+        childrenColumnName: 'children',
+        expandRowByClick: true,
+        expandedRowKeys,
+        indentSize: 0,
+        onExpand: handleExpand,
+      }}
+      rowSelection={{
+        checkStrictly: false,
+        columnWidth: 44,
+        fixed: true,
+        preserveSelectedRowKeys: true,
+        selectedRowKeys,
+        onChange: (keys) => onSelectionChange(removeGroupKeys(keys)),
+        renderCell: (_, row, _index, originNode) => isDeliveryGroupRow(row)
+          ? <Tooltip title={groupSelectionTitle(row)}><span>{originNode}</span></Tooltip>
+          : originNode,
+      }}
+      rowClassName={(row) => rowClassName(row, selectedKeys)}
+      onRow={(row) => isDeliveryGroupRow(row) ? {} : ({
+        onClick: () => toggleKey(row.finishUuid, selectedRowKeys, onSelectionChange),
       })}
-      scroll={{ x: 1220, y: 460 }}
+      scroll={data.length > 0
+        ? { x: resizable.scrollX + 44, y: 'calc(100vh - 550px)' }
+        : { y: 'calc(100vh - 550px)' }}
     />
   )
 }
 
-function buildColumns(
-  edits: Record<string, DeliveryLineEdit>,
-  onEditChange: (finishUuid: string, value: DeliveryLineEdit) => void,
-): ColumnsType<AvailableFinishVO> {
-  return [
-    {
-      title: '成品卷号',
-      dataIndex: 'finishRollNo',
-      fixed: 'left',
-      width: 150,
-      render: (value, record) => (
-        <Space size={4} wrap>
-          <Typography.Text strong>{value}</Typography.Text>
-          {record.isRemain === 1 ? <Tag color="orange">余料</Tag> : <Tag color="green">成品</Tag>}
-        </Space>
-      ),
-    },
-    {
-      title: '加工单',
-      dataIndex: 'orderNo',
-      width: 150,
-      render: (value, record) => (
-        <div className="delivery-cell-stack mes-cell-stack">
-          <Typography.Text>{value}</Typography.Text>
-          <span>{record.orderDate ?? '-'}</span>
-        </div>
-      ),
-    },
-    {
-      title: '品名/规格',
-      dataIndex: 'paperName',
-      width: 230,
-      render: (value, record) => (
-        <div className="delivery-cell-stack mes-cell-stack">
-          <Typography.Text>{value}</Typography.Text>
-          <span>{finishSpecText(record)}</span>
-        </div>
-      ),
-    },
-    {
-      title: '重量',
-      dataIndex: 'actualWeight',
-      align: 'right',
-      width: 140,
-      render: (_, record) => (
-        <div className="delivery-cell-stack mes-cell-stack">
-          <Typography.Text>{formatKg(record.actualWeight)}</Typography.Text>
-          <span>可出库 {formatKg(availableFinishWeight(record))}</span>
-        </div>
-      ),
-    },
-    {
-      title: '出库重量',
-      dataIndex: 'outWeight',
-      width: 130,
-      render: (_, record) => {
-        const maxWeight = availableFinishWeight(record)
-        return (
-          <InputNumber
-            min={0}
-            max={maxWeight}
-            precision={3}
-            disabled={record.sourceType === 2}
-            value={edits[record.finishUuid]?.outWeight ?? maxWeight}
-            onChange={(value) => onEditChange(record.finishUuid, { outWeight: value ?? 0 })}
-            onClick={(event) => event.stopPropagation()}
-            style={{ width: '100%' }}
-          />
-        )
-      },
-    },
-    {
-      title: '来源',
-      dataIndex: 'sourceType',
-      width: 105,
-      render: (value) => {
-        const source = SOURCE_TYPE[value]
-        return source ? <Tag className="mes-status-tag" color={source.color}>{source.text}</Tag> : '-'
-      },
-    },
-    {
-      title: '结算/开票',
-      dataIndex: 'settleType',
-      width: 150,
-      render: (_, record) => (
-        <div className="delivery-cell-stack mes-cell-stack">
-          <span>{settleText(record.settleType, record.settleDay)}</span>
-          <span>{record.isInvoice === 1 ? '开票' : '不开票'}</span>
-        </div>
-      ),
-    },
-    {
-      title: '风险',
-      dataIndex: 'settlementRisk',
-      width: 112,
-      render: (value) => value
-        ? <Tag className="mes-status-tag" color="orange">待收款确认</Tag>
-        : <Tag className="mes-status-tag">正常</Tag>,
-    },
-    {
-      title: '备注',
-      dataIndex: 'remark',
-      width: 180,
-      render: (_, record) => (
-        <Input
-          placeholder="本次出库备注"
-          value={edits[record.finishUuid]?.remark}
-          onChange={(event) => onEditChange(record.finishUuid, { remark: event.target.value })}
-          onClick={(event) => event.stopPropagation()}
-        />
-      ),
-    },
-  ]
+function groupSelectionTitle(group: DeliveryOrderGroupRow) {
+  const scopeName = group.scope === 'remain' ? '余料' : '成品'
+  return group.selectedCount === group.totalCount
+    ? `清空本加工单${scopeName}选择`
+    : `全选本加工单${scopeName}`
+}
+
+function removeGroupKeys(keys: React.Key[]) {
+  return keys.filter((key) => !String(key).startsWith('delivery-order-group:'))
+}
+
+function rowClassName(row: DeliverySelectionTableRow, selectedKeys: Set<string>) {
+  if (isDeliveryGroupRow(row)) return 'delivery-order-group-row'
+  return selectedKeys.has(row.finishUuid) ? 'delivery-finish-row is-selected' : 'delivery-finish-row'
 }
 
 function toggleKey(

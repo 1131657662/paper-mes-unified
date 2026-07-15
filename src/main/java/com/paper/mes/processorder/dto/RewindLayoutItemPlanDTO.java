@@ -3,6 +3,7 @@ package com.paper.mes.processorder.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.util.List;
@@ -21,5 +22,6 @@ public class RewindLayoutItemPlanDTO {
     private String itemType;
 
     @Valid
+    @Size(max = 100, message = "复卷层不能超过100层")
     private List<FinishConfigSpecDTO.FinishLayerDTO> layers;
 }

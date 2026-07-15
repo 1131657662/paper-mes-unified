@@ -1,4 +1,3 @@
-import { StatisticCard } from '@ant-design/pro-components'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import {
   buildDetailMetrics,
@@ -37,20 +36,15 @@ export default function OrderMetricStrip({ detail }: Props) {
   ]
 
   return (
-    <StatisticCard.Group className="order-detail-metrics" gutter={[10, 10]} ghost>
+    <div className="order-execution__metrics">
       {items.map((item) => (
-        <StatisticCard
-          className="order-detail-metric"
-          colSpan={{ xs: 24, sm: 12, lg: 6 }}
-          key={item.label}
-          statistic={{
-            description: item.hint,
-            title: item.label,
-            value: item.value,
-          }}
-        />
+        <div className="order-execution-metric" key={item.label}>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+          <small>{item.hint}</small>
+        </div>
       ))}
-    </StatisticCard.Group>
+    </div>
   )
 }
 

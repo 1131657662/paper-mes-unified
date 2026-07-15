@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createCustomer, getCustomer, updateCustomer } from '../../api/customer'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { Customer, CustomerSaveDTO } from '../../types/customer'
 import CustomerProfileForm from './CustomerProfileForm'
 import '../documentModule.css'
@@ -19,6 +20,7 @@ export default function CustomerFormPage({ mode }: Props) {
   const [loading, setLoading] = useState(mode === 'edit')
   const [submitting, setSubmitting] = useState(false)
   const isEdit = mode === 'edit'
+  const { clearDirty, markDirty } = useUnsavedChangesGuard()
 
   useEffect(() => {
     if (!isEdit || !uuid) return
@@ -35,6 +37,7 @@ export default function CustomerFormPage({ mode }: Props) {
     try {
       const savedUuid = isEdit && uuid ? uuid : await createCustomer(values)
       if (isEdit && uuid) await updateCustomer(uuid, values)
+      clearDirty()
       message.success(isEdit ? '客户资料已保存' : '客户已新增')
       navigate(`/customers/${savedUuid}`)
     } finally {
@@ -46,7 +49,6 @@ export default function CustomerFormPage({ mode }: Props) {
     <div className="document-module-page customer-profile-page">
       <MesPageHeader
         title={isEdit ? '编辑客户档案' : '新增客户档案'}
-        description="维护客户基础资料、默认结算方式、默认开票和物流资料。新建加工单会按这里的默认值带出，但本单仍可覆盖。"
         onBack={() => navigate(isEdit && uuid ? `/customers/${uuid}` : '/customers')}
         actions={(
           <Space>
@@ -62,7 +64,7 @@ export default function CustomerFormPage({ mode }: Props) {
         {loading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : (
-          <CustomerProfileForm editing={isEdit} form={form} onFinish={submit} />
+          <CustomerProfileForm editing={isEdit} form={form} onFinish={submit} onValuesChange={markDirty} />
         )}
       </Card>
     </div>

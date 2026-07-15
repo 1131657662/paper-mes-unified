@@ -1,5 +1,6 @@
 package com.paper.mes.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Builder;
 import lombok.Data;
 
@@ -13,6 +14,7 @@ public class AuthUserVO {
     private String username;
     private String realName;
     private String roleCode;
+    @JsonIgnore
     private String accessToken;
     private List<String> permissions;
 }

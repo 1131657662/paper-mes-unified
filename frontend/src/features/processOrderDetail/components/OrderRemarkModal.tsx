@@ -14,7 +14,7 @@ export default function OrderRemarkModal({ loading, open, order, onCancel, onSub
 
   return (
     <Modal
-      destroyOnClose
+      destroyOnHidden
       title="编辑主单备注"
       open={open}
       confirmLoading={loading}

@@ -1,0 +1,127 @@
+.production-output-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.production-output-switch .ant-segmented {
+  border-radius: var(--mes-radius-sm);
+}
+
+.finished-products-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.finished-products-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+}
+
+.finished-products-toolbar .ant-segmented {
+  border-radius: var(--mes-radius-sm);
+}
+
+.finished-product-cell,
+.finished-product-sources,
+.finished-product-sources > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.finished-product-cell span,
+.finished-product-sources span {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.finished-product-sources {
+  gap: 7px;
+}
+
+.finished-product-sources > div + div {
+  padding-top: 7px;
+  border-top: 1px dashed var(--mes-color-border-light);
+}
+
+.finished-product-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.finished-product-tags .ant-tag {
+  margin-inline-end: 0;
+}
+
+.finished-product-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.finished-product-name .ant-tag {
+  margin-inline-end: 0;
+}
+
+.customer-source-rolls {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.customer-source-rolls > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.customer-source-rolls > div + div {
+  padding-top: 7px;
+  border-top: 1px dashed var(--mes-color-border-light);
+}
+
+.customer-source-rolls span {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.finished-products-table .ant-table-tbody > tr:nth-child(even) > td {
+  background: #f8fafc;
+}
+
+.finished-products-table .ant-table-tbody > tr:hover > td {
+  background: #eef5fc !important;
+}
+
+.finished-products-table .ant-table-cell {
+  border-color: var(--mes-color-border) !important;
+}
+
+.finished-products-table .is-positive {
+  color: var(--mes-color-warning);
+}
+
+.finished-products-table .is-negative {
+  color: var(--mes-color-success);
+}
+
+.finished-products-summary > td {
+  background: var(--mes-color-soft) !important;
+  font-weight: 650;
+}
+
+.finished-products-summary--customer > td {
+  color: var(--mes-color-text);
+  font-size: 14px;
+}

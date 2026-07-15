@@ -55,7 +55,7 @@ class SettleCreateControllerContractTest {
         mvc.perform(post("/api/settle-orders/by-order")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"orderUuid\":\"order-1\"}"))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
 
         verify(settleService, never()).createByOrder(any());
@@ -69,7 +69,7 @@ class SettleCreateControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"orderUuid\":\"order-1\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(403));
 
         verify(settleService, never()).createByOrder(any());

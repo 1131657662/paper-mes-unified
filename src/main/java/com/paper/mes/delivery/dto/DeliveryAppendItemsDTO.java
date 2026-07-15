@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -19,6 +20,7 @@ public class DeliveryAppendItemsDTO {
     private boolean forceRelease;
 
     @NotEmpty(message = "追加成品不能为空")
+    @Size(max = 500, message = "单次追加成品不能超过500条")
     @Valid
     private List<Item> items;
 

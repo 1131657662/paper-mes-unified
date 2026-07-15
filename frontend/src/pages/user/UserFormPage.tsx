@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import { useCreateUser, useUpdateUser } from '../../features/user/hooks/useUserMutations'
 import { useUserDetail } from '../../features/user/hooks/useUserDetail'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { SystemUser, UserSaveDTO } from '../../types/user'
 import RolePermissionPreview from './RolePermissionPreview'
 import UserProfileForm from './UserProfileForm'
@@ -23,6 +24,7 @@ export default function UserFormPage({ mode }: Props) {
   const { mutateAsync: createSystemUser, isPending: isCreatingUser } = useCreateUser()
   const { mutateAsync: updateSystemUser, isPending: isUpdatingUser } = useUpdateUser()
   const roleCode = Form.useWatch('roleCode', form)
+  const { clearDirty, markDirty } = useUnsavedChangesGuard()
 
   useEffect(() => {
     if (user) form.setFieldsValue(toFormValues(user))
@@ -31,6 +33,7 @@ export default function UserFormPage({ mode }: Props) {
   const submit = async (values: UserSaveDTO) => {
     const savedUuid = isEdit && uuid ? uuid : await createSystemUser(values)
     if (isEdit && uuid) await updateSystemUser({ uuid, data: values })
+    clearDirty()
     message.success(isEdit ? '用户信息已保存' : '用户已新增')
     navigate(`/users/${savedUuid}`)
   }
@@ -41,7 +44,6 @@ export default function UserFormPage({ mode }: Props) {
     <div className="document-module-page user-profile-page">
       <MesPageHeader
         title={isEdit ? '编辑用户权限' : '新增系统用户'}
-        description="维护系统登录账号、角色和启停状态。密码仅用于登录验证，不会在系统中明文展示。"
         onBack={() => navigate(backPath)}
         actions={(
           <Space>
@@ -58,7 +60,7 @@ export default function UserFormPage({ mode }: Props) {
           {isLoadingUser ? (
             <Skeleton active paragraph={{ rows: 6 }} />
           ) : (
-            <UserProfileForm editing={isEdit} form={form} onFinish={submit} />
+            <UserProfileForm editing={isEdit} form={form} onFinish={submit} onValuesChange={markDirty} />
           )}
         </Card>
         <RolePermissionPreview compact roleCode={roleCode} />

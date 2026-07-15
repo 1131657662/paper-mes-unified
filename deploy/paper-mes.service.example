@@ -9,6 +9,7 @@ Group=paper-mes
 WorkingDirectory=/opt/paper-mes/app
 Environment=SPRING_PROFILES_ACTIVE=prod
 Environment=SPRING_CONFIG_ADDITIONAL_LOCATION=file:/etc/paper-mes/
+EnvironmentFile=/etc/paper-mes/paper-mes.env
 ExecStart=/usr/bin/java -Xms256m -Xmx768m -jar /opt/paper-mes/app/paper-mes.jar
 SuccessExitStatus=143
 Restart=on-failure

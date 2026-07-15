@@ -1,0 +1,46 @@
+.data-health-panel {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.data-health-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.data-health-metrics {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, minmax(150px, 220px));
+  gap: 12px;
+}
+
+.data-health-metrics .ant-statistic {
+  padding: 10px 14px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: 6px;
+  background: var(--mes-color-surface-subtle);
+}
+
+.data-health-repair-warning {
+  padding: 10px 12px;
+  border-left: 3px solid var(--mes-color-danger);
+  background: var(--mes-color-danger-bg);
+  color: var(--mes-color-text-secondary);
+}
+
+@media (max-width: 900px) {
+  .data-health-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .data-health-metrics {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+}

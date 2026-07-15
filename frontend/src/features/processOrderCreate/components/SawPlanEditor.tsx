@@ -81,6 +81,7 @@ function columns(
       width: 96,
       render: (_, spec, index) => (
         <Select
+          aria-label={`规格 ${index + 1} 类型`}
           value={spec.itemType ?? 'FINISH'}
           options={itemTypeOptions}
           className="create-editor-kind-select--compact"
@@ -93,7 +94,7 @@ function columns(
       dataIndex: 'finishWidth',
       width: 130,
       render: (_, spec, index) => (
-        <InputNumber min={1} addonAfter="mm" value={spec.finishWidth} onChange={(value) => updateSpecs(patchSpec(specs, index, { finishWidth: value ?? 1 }))} />
+        <InputNumber aria-label={`规格 ${index + 1} 门幅`} min={1} suffix="mm" value={spec.finishWidth} onChange={(value) => updateSpecs(patchSpec(specs, index, { finishWidth: value ?? 1 }))} />
       ),
     },
     {
@@ -101,7 +102,7 @@ function columns(
       dataIndex: 'finishDiameter',
       width: 120,
       render: (_, spec, index) => (
-        <InputNumber disabled={isTrimSpec(spec)} min={0} value={spec.finishDiameter} onChange={(value) => updateSpecs(patchSpec(specs, index, { finishDiameter: value ?? undefined }))} />
+        <InputNumber aria-label={`规格 ${index + 1} 直径`} disabled={isTrimSpec(spec)} min={0} value={spec.finishDiameter} onChange={(value) => updateSpecs(patchSpec(specs, index, { finishDiameter: value ?? undefined }))} />
       ),
     },
     {
@@ -109,7 +110,7 @@ function columns(
       dataIndex: 'finishCoreDiameter',
       width: 120,
       render: (_, spec, index) => (
-        <InputNumber disabled={isTrimSpec(spec)} min={0} value={spec.finishCoreDiameter} onChange={(value) => updateSpecs(patchSpec(specs, index, { finishCoreDiameter: value ?? undefined }))} />
+        <InputNumber aria-label={`规格 ${index + 1} 纸芯`} disabled={isTrimSpec(spec)} min={0} value={spec.finishCoreDiameter} onChange={(value) => updateSpecs(patchSpec(specs, index, { finishCoreDiameter: value ?? undefined }))} />
       ),
     },
     {
@@ -117,7 +118,7 @@ function columns(
       dataIndex: 'count',
       width: 110,
       render: (_, spec, index) => (
-        <InputNumber min={1} value={spec.count} onChange={(value) => updateSpecs(patchSpec(specs, index, { count: value ?? 1 }))} />
+        <InputNumber aria-label={`规格 ${index + 1} 数量`} min={1} value={spec.count} onChange={(value) => updateSpecs(patchSpec(specs, index, { count: value ?? 1 }))} />
       ),
     },
     {

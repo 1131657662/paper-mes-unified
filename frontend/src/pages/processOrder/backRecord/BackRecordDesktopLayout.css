@@ -1,0 +1,105 @@
+.app-shell__content--edge-scroll > .back-record-page {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+.back-record-page > .ant-spin-nested-loading,
+.back-record-page > .ant-spin-nested-loading > .ant-spin-container {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.back-record-page .back-record-drawer {
+  min-height: 0;
+  flex: 1;
+  overflow: visible;
+}
+
+.back-record-page .back-record-drawer__topbar {
+  flex: 0 0 auto;
+}
+
+.back-record-page .back-record-commandbar {
+  flex-direction: row;
+  align-items: center;
+  padding-block: 8px;
+}
+
+.back-record-page .back-record-commandbar__caption {
+  flex: 0 0 auto;
+}
+
+.back-record-page .back-record-commandbar__actions {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.back-record-page .back-record-workbench {
+  grid-template-columns: minmax(208px, 232px) minmax(0, 1fr) minmax(220px, 244px);
+  height: 600px;
+  min-height: 600px;
+  max-height: 600px;
+  flex: 0 0 600px;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.back-record-page .back-record-nav,
+.back-record-page .back-record-active,
+.back-record-page .back-record-close {
+  position: static;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+}
+
+.back-record-page .back-record-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.back-record-page .back-record-nav__list {
+  min-height: 0;
+  max-height: none;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.back-record-page .back-record-active,
+.back-record-page .back-record-close {
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.back-record-page .back-record-close {
+  grid-column: auto;
+}
+
+.back-record-page .back-record-close__numbers {
+  grid-template-columns: 1fr;
+}
+
+.back-record-page .back-record-active > * {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 1181px) and (max-width: 1380px) {
+  .back-record-page .back-record-drawer__topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .back-record-page .back-record-workbench {
+    grid-template-columns: minmax(208px, 232px) minmax(0, 1fr) minmax(220px, 244px);
+  }
+
+  .back-record-page .back-record-close {
+    grid-column: auto;
+  }
+
+  .back-record-page .back-record-close__numbers {
+    grid-template-columns: 1fr;
+  }
+}

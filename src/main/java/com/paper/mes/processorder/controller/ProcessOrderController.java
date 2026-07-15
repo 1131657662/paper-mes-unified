@@ -14,8 +14,10 @@ import com.paper.mes.processorder.dto.OriginalRollDTO;
 import com.paper.mes.processorder.dto.OriginalRollRemarkDTO;
 import com.paper.mes.processorder.dto.PrintDTO;
 import com.paper.mes.processorder.dto.PrintResultVO;
+import com.paper.mes.processorder.dto.PrintViewVersion;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
+import com.paper.mes.processorder.dto.ProcessOrderPrintViewVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessOrderRollbackDTO;
@@ -65,6 +67,14 @@ public class ProcessOrderController {
     @RequirePermission(Permissions.ORDER_VIEW)
     public R<ProcessOrderDetailVO> detail(@PathVariable String uuid) {
         return R.success(processOrderService.getDetail(uuid));
+    }
+
+    @GetMapping("/{uuid}/print-view")
+    @RequirePermission(Permissions.ORDER_VIEW)
+    public R<ProcessOrderPrintViewVO> printView(
+            @PathVariable String uuid,
+            @RequestParam(defaultValue = "ISSUED") PrintViewVersion version) {
+        return R.success(processOrderService.getPrintView(uuid, version));
     }
 
     @GetMapping("/{uuid}/export")

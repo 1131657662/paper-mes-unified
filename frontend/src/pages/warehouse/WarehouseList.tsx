@@ -10,6 +10,7 @@ import {
   deleteWarehouse,
 } from '../../api/warehouse'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
+import { renderCompatibleTableOptions } from '../../components/biz/tableToolbarOptionsRender'
 import TooltipText from '../../components/biz/TooltipText'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
@@ -137,6 +138,7 @@ export default function WarehouseList() {
       scroll={{ x: resizable.scrollX, y: '100%' }}
       tableLayout="fixed"
       options={mesProTableOptions()}
+      optionsRender={renderCompatibleTableOptions}
     />
   )
 }

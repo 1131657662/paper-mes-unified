@@ -9,6 +9,8 @@ import type {
   ProcessStep,
   ProcessOrderDetailVO,
 } from '../../../types/processOrder'
+import { buildOnSiteOutputSubmission, toLegacyTrimDTOs, type OnSiteOutputRecordValues } from './backRecordOnSiteOutputModel'
+export type { OnSiteOutputRecordValues } from './backRecordOnSiteOutputModel'
 
 export interface RollRecordValues {
   actualGramWeight?: number
@@ -18,6 +20,10 @@ export interface RollRecordValues {
 }
 
 export interface FinishRecordValues {
+  originalUuid?: string
+  finishWidth?: number
+  finishDiameter?: number
+  finishCoreDiameter?: number
   actualWeight?: number
   scrapWeight?: number
   isRemain?: number
@@ -28,30 +34,32 @@ export interface FinishRecordValues {
 
 export interface StepRecordValues {
   lossWeight?: number
+  knifeCount?: number
+}
+
+export interface TrimRecordValues {
+  originalUuid?: string
+  finishWidth?: number
+  actualWeight?: number
+  actualRemark?: string
 }
 
 export interface BackRecordFormValues {
-  operator?: string
   rolls?: Record<string, RollRecordValues>
   finishes?: Record<string, FinishRecordValues>
+  trims?: Record<string, TrimRecordValues[]>
+  onSiteOutputs?: Record<string, Array<OnSiteOutputRecordValues | undefined>>
   steps?: Record<string, StepRecordValues>
 }
 
-export interface BackRecordMetrics {
-  rollCount: number
-  finishCount: number
-  directShipCount: number
-  originalActualTotal: number
-  finishActualTotal: number
-  lossTotal: number
-  scrapTotal: number
-  missingRollWeight: number
-  missingOfficialFinishWeight: number
+export interface BackRecordAuthorization {
+  releaseAdminUsername: string
+  releaseAdminPassword: string
+  releaseReason: string
 }
 
-export interface BackRecordAuthorization {
-  operator: string
-  releaseReason: string
+export interface BackRecordVarianceConfirmation {
+  varianceReason: string
 }
 
 export function activeFinishRolls(detail?: ProcessOrderDetailVO | null): FinishRoll[] {
@@ -60,9 +68,10 @@ export function activeFinishRolls(detail?: ProcessOrderDetailVO | null): FinishR
 
 export function initialBackRecordValues(detail: ProcessOrderDetailVO): BackRecordFormValues {
   return {
-    operator: '',
     rolls: Object.fromEntries(detail.originalRolls.map((roll) => [roll.uuid, rollValues(roll)])),
     finishes: Object.fromEntries(activeFinishRolls(detail).map((finish) => [finish.uuid, finishValues(finish)])),
+    trims: {},
+    onSiteOutputs: {},
     steps: Object.fromEntries(detail.steps.map((step) => [step.uuid, stepValues(step)])),
   }
 }
@@ -71,14 +80,22 @@ export function buildBackRecordDTO(
   detail: ProcessOrderDetailVO,
   values: BackRecordFormValues,
   authorization?: BackRecordAuthorization,
+  variance?: BackRecordVarianceConfirmation,
 ): BackRecordDTO {
-  const finishes = activeFinishRolls(detail).map((finish) => toFinishDTO(finish, values.finishes?.[finish.uuid]))
+  const onSite = buildOnSiteOutputSubmission(detail, values.onSiteOutputs)
+  const finishes = activeFinishRolls(detail)
+    .filter((finish) => !onSite.configuredUuids.has(finish.uuid) && !onSite.managedUuids.has(finish.uuid))
+    .map((finish) => toFinishDTO(finish, values.finishes?.[finish.uuid]))
+  finishes.push(...onSite.finishes)
+  const trims = [...toLegacyTrimDTOs(values.trims), ...onSite.trims]
   return {
-    operator: authorization?.operator || values.operator || undefined,
-    overToleranceAuthorized: !!authorization,
+    releaseAdminUsername: authorization?.releaseAdminUsername,
+    releaseAdminPassword: authorization?.releaseAdminPassword,
     releaseReason: authorization?.releaseReason,
+    varianceReason: variance?.varianceReason,
     rolls: detail.originalRolls.map((roll) => toRollDTO(roll, values.rolls?.[roll.uuid])),
     finishes: finishes.length > 0 ? finishes : undefined,
+    trims: trims.length > 0 ? trims : undefined,
     steps: detail.steps.map((step) => toStepDTO(step, values.steps?.[step.uuid])),
   }
 }
@@ -103,25 +120,6 @@ export function fillFinishActuals(detail: ProcessOrderDetailVO): BackRecordFormV
   }]))
 }
 
-export function buildBackRecordMetrics(
-  detail: ProcessOrderDetailVO | null,
-  values: BackRecordFormValues,
-): BackRecordMetrics {
-  const rolls = detail?.originalRolls ?? []
-  const finishes = activeFinishRolls(detail)
-  return {
-    rollCount: rolls.length,
-    finishCount: finishes.filter((finish) => finish.isSpare !== 1).length,
-    directShipCount: rolls.filter((roll) => roll.processMode === 3).length,
-    originalActualTotal: sum(rolls.map((roll) => values.rolls?.[roll.uuid]?.actualWeight ?? roll.actualWeight)),
-    finishActualTotal: sum(finishes.map((finish) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight)),
-    lossTotal: sum((detail?.steps ?? []).map((step) => values.steps?.[step.uuid]?.lossWeight ?? step.lossWeight)),
-    scrapTotal: sum(finishes.map((finish) => values.finishes?.[finish.uuid]?.scrapWeight ?? finish.scrapWeight)),
-    missingRollWeight: rolls.filter((roll) => !positive(values.rolls?.[roll.uuid]?.actualWeight ?? roll.actualWeight)).length,
-    missingOfficialFinishWeight: finishes.filter((finish) => finish.isSpare !== 1 && !positive(values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight)).length,
-  }
-}
-
 export function worstRollCheck(result?: BackRecordResultVO | null) {
   const checks = result?.rollChecks ?? []
   return checks.find((check) => check.level === 'BLOCK')
@@ -140,6 +138,9 @@ function rollValues(roll: OriginalRoll): RollRecordValues {
 
 function finishValues(finish: FinishRoll): FinishRecordValues {
   return {
+    finishWidth: validWidth(finish.finishWidth),
+    finishDiameter: finish.finishDiameter,
+    finishCoreDiameter: finish.finishCoreDiameter,
     actualWeight: finish.actualWeight,
     scrapWeight: finish.scrapWeight,
     isRemain: finish.isRemain,
@@ -152,6 +153,7 @@ function finishValues(finish: FinishRoll): FinishRecordValues {
 function stepValues(step: ProcessStep): StepRecordValues {
   return {
     lossWeight: step.lossWeight,
+    knifeCount: step.knifeCount,
   }
 }
 
@@ -168,6 +170,10 @@ function toRollDTO(roll: OriginalRoll, values?: RollRecordValues): BackRecordRol
 function toFinishDTO(finish: FinishRoll, values?: FinishRecordValues): BackRecordFinishDTO {
   return {
     uuid: finish.uuid,
+    originalUuid: values?.originalUuid,
+    finishWidth: values?.finishWidth,
+    finishDiameter: values?.finishDiameter,
+    finishCoreDiameter: values?.finishCoreDiameter,
     actualWeight: values?.actualWeight,
     scrapWeight: values?.scrapWeight,
     isRemain: values?.isRemain,
@@ -181,6 +187,7 @@ function toStepDTO(step: ProcessStep, values?: StepRecordValues): BackRecordStep
   return {
     uuid: step.uuid,
     lossWeight: values?.lossWeight,
+    knifeCount: values?.knifeCount,
   }
 }
 
@@ -193,6 +200,6 @@ function positive(value?: number) {
   return value != null && value > 0
 }
 
-function sum(values: Array<number | undefined>) {
-  return values.reduce<number>((total, value) => total + (value ?? 0), 0)
+function validWidth(value?: number) {
+  return positive(value) ? value : undefined
 }

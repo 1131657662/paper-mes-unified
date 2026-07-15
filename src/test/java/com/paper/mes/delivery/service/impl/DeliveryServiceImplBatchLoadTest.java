@@ -1,10 +1,13 @@
 package com.paper.mes.delivery.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.service.CustomerService;
+import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
+import com.paper.mes.delivery.dto.AvailableFinishVO;
 import com.paper.mes.delivery.entity.DeliveryDetail;
 import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
@@ -12,6 +15,7 @@ import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import com.paper.mes.delivery.service.DeliveryCashSettlementGuard;
 import com.paper.mes.delivery.service.DeliveryExportService;
 import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
+import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
 import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.mapper.OperationLogMapper;
 import com.paper.mes.oplog.service.OperationLogService;
@@ -38,6 +42,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -52,6 +57,7 @@ class DeliveryServiceImplBatchLoadTest {
     @Mock private DeliveryOrderMapper deliveryOrderMapper;
     @Mock private DeliveryDetailMapper deliveryDetailMapper;
     @Mock private FinishRollMapper finishRollMapper;
+    @Mock private AvailableFinishSourceLoader availableFinishSourceLoader;
     @Mock private FinishOriginalRelMapper finishOriginalRelMapper;
     @Mock private OriginalRollMapper originalRollMapper;
     @Mock private ProcessOrderMapper processOrderMapper;
@@ -71,7 +77,7 @@ class DeliveryServiceImplBatchLoadTest {
 
     @BeforeEach
     void setUp() {
-        service = new DeliveryServiceImpl(deliveryDetailMapper, finishRollMapper,
+        service = new DeliveryServiceImpl(deliveryDetailMapper, finishRollMapper, availableFinishSourceLoader,
                 finishOriginalRelMapper, originalRollMapper, processOrderMapper, processStepMapper,
                 settleDetailMapper, machineMapper, customerService, cashSettlementGuard,
                 settlementBlockPolicy, deliveryExportService, operationLogMapper, operationLogService,
@@ -110,11 +116,61 @@ class DeliveryServiceImplBatchLoadTest {
         verify(processOrderMapper, never()).selectById(any());
     }
 
+    @Test
+    void listAvailable_attachesBatchLoadedMotherRollSources() {
+        ProcessOrder order = order("order-1", "customer-1");
+        FinishRoll finish = finish("finish-1", "order-1", "P000001");
+        AvailableFinishVO.SourceMotherRollVO source = new AvailableFinishVO.SourceMotherRollVO();
+        source.setOriginalUuid("original-1");
+        source.setRowSort(1);
+
+        when(processOrderMapper.selectList(any())).thenReturn(List.of(order));
+        when(deliveryDetailMapper.selectList(any())).thenReturn(List.of());
+        when(cashSettlementGuard.unsettledCashOrderUuids(any())).thenReturn(java.util.Set.of());
+        when(finishRollMapper.selectList(any())).thenReturn(List.of(finish));
+        when(availableFinishSourceLoader.load(any())).thenReturn(
+                java.util.Map.of("finish-1", List.of(source)));
+
+        List<AvailableFinishVO> result = service.listAvailable("customer-1");
+
+        assertEquals("original-1", result.getFirst().getSourceMotherRolls().getFirst().getOriginalUuid());
+        verify(availableFinishSourceLoader).load(any());
+    }
+
+    @Test
+    void appendDetails_withNonDeliverableProcessOrder_rejectsFinish() {
+        DeliveryOrder delivery = new DeliveryOrder();
+        delivery.setUuid("delivery-1");
+        delivery.setCustomerUuid("customer-1");
+        delivery.setDeliveryStatus(1);
+        ProcessOrder processing = order("order-2", "customer-1");
+        processing.setOrderStatus(3);
+        when(deliveryOrderMapper.selectById("delivery-1")).thenReturn(delivery);
+        when(deliveryDetailMapper.selectList(any())).thenReturn(List.of());
+        when(finishRollMapper.selectBatchIds(any())).thenReturn(List.of(
+                finish("finish-2", "order-2", "P000002")));
+        when(processOrderMapper.selectBatchIds(any())).thenReturn(List.of(processing));
+
+        assertThrows(BusinessException.class,
+                () -> service.appendDetails("delivery-1", appendDto()));
+
+        verify(deliveryDetailMapper, never()).insert(any(DeliveryDetail.class));
+    }
+
     private DeliveryCreateDTO createDto() {
         DeliveryCreateDTO dto = new DeliveryCreateDTO();
         dto.setCustomerUuid("customer-1");
         dto.setDeliveryDate(LocalDate.of(2026, 7, 7));
         dto.setItems(List.of(item("finish-1", "10.00"), item("finish-2", "12.50")));
+        return dto;
+    }
+
+    private DeliveryAppendItemsDTO appendDto() {
+        DeliveryAppendItemsDTO.Item item = new DeliveryAppendItemsDTO.Item();
+        item.setFinishUuid("finish-2");
+        item.setOutWeight(new BigDecimal("12.50"));
+        DeliveryAppendItemsDTO dto = new DeliveryAppendItemsDTO();
+        dto.setItems(List.of(item));
         return dto;
     }
 

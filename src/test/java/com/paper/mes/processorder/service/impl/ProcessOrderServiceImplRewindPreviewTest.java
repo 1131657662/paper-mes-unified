@@ -103,7 +103,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
     }
 
     @Test
-    void buildRewindSaveSpecs_whenOnSite_reservesNumbersWithoutTrimOrWeights() {
+    void buildRewindSaveSpecs_whenOnSite_defersAllOutputsUntilBackRecord() {
         ProcessOrderServiceImpl service = service();
         OriginalRoll roll = roll();
         roll.setProcessMode(2);
@@ -114,9 +114,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
         List<FinishConfigSpecDTO> specs = ReflectionTestUtils.invokeMethod(
                 service, "buildRewindSaveSpecs", "order-1", roll, dto);
 
-        assertEquals(2, specs.size());
-        assertEquals("FINISH", specs.getFirst().getItemType());
-        assertEquals(new BigDecimal("0.000"), specs.getFirst().getEstimateWeight());
+        assertEquals(List.of(), specs);
     }
 
     private FinishPreviewVO preview(int rewindMode, RewindPlanPreviewDTO.RewindSegmentDTO segment) {
@@ -182,6 +180,11 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 mock(ProcessOrderExportService.class),
                 mock(BusinessLockService.class),
                 mock(MachineMapper.class),
-                mock(WeightCheckThresholdService.class));
+                mock(WeightCheckThresholdService.class),
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 }

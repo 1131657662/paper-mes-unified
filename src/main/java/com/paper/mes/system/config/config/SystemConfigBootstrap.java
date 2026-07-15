@@ -3,6 +3,7 @@ package com.paper.mes.system.config.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -12,9 +13,14 @@ public class SystemConfigBootstrap implements ApplicationRunner {
 
     private final JdbcTemplate jdbcTemplate;
 
+    @Value("${app.schema-bootstrap.enabled:true}")
+    private boolean schemaBootstrapEnabled = true;
+
     @Override
     public void run(ApplicationArguments args) {
-        createTablesIfMissing();
+        if (schemaBootstrapEnabled) {
+            createTablesIfMissing();
+        }
         seedDictItems();
         seedConfigItems();
     }
@@ -102,6 +108,10 @@ public class SystemConfigBootstrap implements ApplicationRunner {
         seedConfig("cfg-page-size", "ui", "ui.defaultPageSize", "默认每页条数", "20", "number", "条", 10, "列表默认分页条数");
         seedConfig("cfg-company-name", "print", "print.companyName", "公司名称", "纸品加工 MES", "string", null, 20, "出库单、结算单和打印页展示");
         seedConfig("cfg-delivery-cash-block-mode", "delivery", "delivery.cashSettleBlockMode", "次结出库拦截模式", "1", "number", null, 10, "0关闭拦截，1警告放行，2强制拦截");
+        seedConfig("cfg-backup-management-enabled", "backup", "backup.managementEnabled", "管理端备份功能", "true", "boolean", null, 10, "控制管理员手动备份和恢复演练入口，默认开启");
+        seedConfig("cfg-backup-retention-days", "backup", "backup.retentionDays", "本地备份保留天数", "30", "number", "天", 20, "每天自动清理超过保留期的备份，至少保留一份");
+        seedConfig("cfg-backup-auto-enabled", "backup", "backup.autoEnabled", "自动备份", "true", "boolean", null, 30, "后端统一调度自动备份，默认开启");
+        seedConfig("cfg-backup-auto-time", "backup", "backup.autoTime", "自动备份时间", "02:35", "string", null, 40, "每天自动备份执行时间，格式HH:mm");
     }
 
     private void seedDict(String uuid, String dictType, String dictName, String itemCode,

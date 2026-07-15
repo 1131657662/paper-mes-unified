@@ -12,6 +12,7 @@ import { totalWeight } from '../draftMappers'
 import { rollPreviewStatus } from '../previewStatusUtils'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
+import { calculateRollWeightBalance, summarizeWeightBalances } from '../weightBalanceModel'
 import {
   PreviewActions,
   PreviewStatusCell,
@@ -20,8 +21,10 @@ import {
   type PreviewStatusDisplay,
 } from './PreviewStepParts'
 import RoutePreviewInline from './RoutePreviewInline'
+import OrderWeightBalanceSummary from './OrderWeightBalanceSummary'
 import { routeFinalCount, routePreviewSummary } from './routePreviewInlineUtils'
 import SubmitSuccessPanel from './SubmitSuccessPanel'
+import WeightBalanceCell from './WeightBalanceCell'
 
 interface Props {
   rolls: RollDraft[]
@@ -34,13 +37,16 @@ interface Props {
   onCreateAnother: () => void
   onPrev: () => void
   onSubmit: () => void
+  onEditRoll: (localId: string) => void
   onViewDetail: (orderUuid: string) => void
 }
 
 export default function PreviewStep(props: Props) {
   const lockedRolls = mergedSourceLocks(props.rolls, props.plans)
-  const blockers = blockingStatuses(props, lockedRolls)
-  const columns = previewColumns(props, lockedRolls)
+  const balances = rollBalances(props, lockedRolls)
+  const orderBalance = summarizeWeightBalances(Object.values(balances))
+  const blockers = blockingStatuses(props, lockedRolls).length + orderBalance.unbalancedCount
+  const columns = previewColumns(props, lockedRolls, balances)
 
   return (
     <Card title="预览确认">
@@ -49,7 +55,8 @@ export default function PreviewStep(props: Props) {
         <Descriptions.Item label="来料总重">{formatKg(totalWeight(props.rolls))}</Descriptions.Item>
         <Descriptions.Item label="预计正式号">{estimateFinishCount(props)}</Descriptions.Item>
       </Descriptions>
-      {!props.submitResult && blockers.length > 0 && <SubmitBlockerAlert count={blockers.length} />}
+      {!props.submitResult && <OrderWeightBalanceSummary balance={orderBalance} />}
+      {!props.submitResult && blockers > 0 && <SubmitBlockerAlert count={blockers} />}
       {props.submitResult && <SubmitSuccessPanel
         result={props.submitResult}
         onBackToList={props.onBackToList}
@@ -62,10 +69,11 @@ export default function PreviewStep(props: Props) {
         pagination={false}
         columns={columns}
         dataSource={props.rolls}
+        scroll={{ x: 1180 }}
         expandable={{ expandedRowRender: (roll) => <RollPreview roll={roll} state={props} locks={lockedRolls} /> }}
       />
       {!props.submitResult && <PreviewActions
-        disabled={blockers.length > 0}
+        disabled={blockers > 0}
         submitting={props.submitting}
         onPrev={props.onPrev}
         onSubmit={props.onSubmit}
@@ -86,7 +94,11 @@ function RollPreview({ locks, roll, state }: RollPreviewProps) {
   return <SinglePlanPreview roll={roll} plan={state.plans[roll.localId]} preview={preview} />
 }
 
-function previewColumns(state: Props, locks: ReturnType<typeof mergedSourceLocks>): ColumnsType<RollDraft> {
+function previewColumns(
+  state: Props,
+  locks: ReturnType<typeof mergedSourceLocks>,
+  balances: Record<string, ReturnType<typeof calculateRollWeightBalance>>,
+): ColumnsType<RollDraft> {
   return [
     { title: '母卷', width: 150, render: (_, roll) => roll.rollNo || roll.paperName || '-' },
     { title: '原纸规格', width: 160, render: (_, roll) => `${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}` },
@@ -102,7 +114,27 @@ function previewColumns(state: Props, locks: ReturnType<typeof mergedSourceLocks
       width: 300,
       render: (_, roll) => <PreviewStatusCell status={previewStatusForRoll({ locks, roll, state })} />,
     },
+    {
+      title: '重量平衡',
+      width: 280,
+      render: (_, roll) => {
+        const balance = balances[roll.localId]
+        if (!balance) return null
+        return <WeightBalanceCell balance={balance} onEdit={() => state.onEditRoll(roll.localId)} />
+      },
+    },
   ]
+}
+
+function rollBalances(state: Props, locks: ReturnType<typeof mergedSourceLocks>) {
+  return Object.fromEntries(state.rolls.map((roll) => [roll.localId, calculateRollWeightBalance({
+    roll,
+    rolls: state.rolls,
+    plan: state.plans[roll.localId],
+    preview: state.previews[roll.localId],
+    routePreview: roll.uuid ? state.routePreviews[roll.uuid] : undefined,
+    lock: locks[roll.localId],
+  })]))
 }
 
 function previewStatusForRoll({ locks, roll, state }: PreviewStatusOptions): PreviewStatusDisplay {

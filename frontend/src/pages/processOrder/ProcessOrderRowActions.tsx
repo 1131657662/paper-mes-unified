@@ -1,11 +1,10 @@
-import { Button, Space } from 'antd'
+import { Button } from 'antd'
 import type { ProcessOrder } from '../../types/processOrder'
 
 interface Props {
   record: ProcessOrder
   onBackRecord: (uuid: string) => void
   onChangeStatus: (record: ProcessOrder, target: number, title: string) => void
-  onDetail: (uuid: string) => void
   onEditDraft: (uuid: string) => void
   onGoDelivery: () => void
   onPrint: (record: ProcessOrder) => void
@@ -13,19 +12,8 @@ interface Props {
 
 export default function ProcessOrderRowActions({ record, ...actions }: Props) {
   const primary = primaryAction(record, actions)
-
-  return (
-    <Space size={6} wrap={false} className="process-order-list__actions">
-      <Button type="link" size="small" onClick={() => actions.onDetail(record.uuid)}>
-        详情
-      </Button>
-      {primary && (
-        <Button type="link" size="small" onClick={primary.onClick}>
-          {primary.label}
-        </Button>
-      )}
-    </Space>
-  )
+  if (!primary) return null
+  return <Button type="link" size="small" onClick={primary.onClick}>{primary.label}</Button>
 }
 
 function primaryAction(record: ProcessOrder, actions: Omit<Props, 'record'>) {

@@ -1,4 +1,5 @@
 import { Alert, Typography } from 'antd'
+import './ProcessOrderShared.css'
 
 export default function DirectShipInfo() {
   return (
@@ -10,11 +11,11 @@ export default function DirectShipInfo() {
         showIcon
       />
 
-      <div style={{ marginTop: 16, padding: 16, background: '#fafafa', borderRadius: 4 }}>
+      <div className="direct-ship-info__guide">
         <Typography.Paragraph>
           <Typography.Text strong>流程说明：</Typography.Text>
         </Typography.Paragraph>
-        <Typography.Paragraph style={{ fontSize: 12, color: '#666', marginBottom: 0 }}>
+        <Typography.Paragraph className="direct-ship-info__steps">
           1. 此原纸将不经过加工环节，直接作为成品入库
           <br />
           2. 打印加工单时，该原纸将标记为直发

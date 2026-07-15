@@ -112,7 +112,14 @@ export const router = createBrowserRouter([
           { path: 'users/create', element: guardedPage(<UserFormPage mode="create" />, [PERMISSIONS.userManage]) },
           { path: 'users/:uuid', element: guardedPage(<UserDetailPage />, [PERMISSIONS.userManage]) },
           { path: 'users/:uuid/edit', element: guardedPage(<UserFormPage mode="edit" />, [PERMISSIONS.userManage]) },
-          { path: 'system-config', element: guardedPage(<SystemConfigPage />, [PERMISSIONS.userManage]) },
+          {
+            path: 'system-config',
+            element: guardedPage(<SystemConfigPage />, [
+              PERMISSIONS.systemConfig,
+              PERMISSIONS.dataBackup,
+              PERMISSIONS.dataHealth,
+            ]),
+          },
           { path: 'operation-logs', element: guardedPage(<OperationLogPage />, [PERMISSIONS.systemAudit]) },
           { path: 'profile', element: lazyPage(<ProfilePage />) },
           { path: '*', element: lazyPage(<NotFoundPage />) },

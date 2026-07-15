@@ -105,7 +105,7 @@ export default function RouteDraftStagePanel({
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Space wrap>
               <Typography.Text strong>工艺类型</Typography.Text>
-              <Select value={draftStage.stepType} options={stepOptions} style={{ width: 120 }} onChange={changeType} />
+              <Select aria-label="工艺类型" value={draftStage.stepType} options={stepOptions} style={{ width: 120 }} onChange={changeType} />
             </Space>
             <ProcessPlanEditor
               defaultPlanOptions={defaultPlanOptions}

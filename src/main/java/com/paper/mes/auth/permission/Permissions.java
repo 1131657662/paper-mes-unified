@@ -17,24 +17,36 @@ public final class Permissions {
     public static final String SETTLE_MANAGE = "settle:manage";
     public static final String SETTLE_RECEIVE = "settle:receive";
     public static final String SETTLE_VIEW = "settle:view";
+    public static final String DATA_BACKUP = "system:data-backup";
+    public static final String DATA_HEALTH = "system:data-health";
     public static final String SYSTEM_AUDIT = "system:audit";
+    public static final String SYSTEM_CONFIG = "system:config";
     public static final String USER_MANAGE = "user:manage";
 
     private Permissions() {
     }
 
     public static List<String> resolve(String roleCode) {
-        if ("admin".equals(roleCode)) {
+        if (RoleCodes.ADMIN.equals(roleCode)) {
             return List.of(ALL);
         }
-        if ("operator".equals(roleCode)) {
+        if (RoleCodes.ORDER_CLERK.equals(roleCode)) {
+            return List.of(BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_MANAGE, REPORT_VIEW);
+        }
+        if (RoleCodes.RECORDER.equals(roleCode)) {
+            return List.of(BASE_VIEW, ORDER_VIEW, ORDER_BACK_RECORD, REPORT_VIEW);
+        }
+        if (RoleCodes.OPERATOR.equals(roleCode)) {
             return List.of(BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_BACK_RECORD, REPORT_VIEW);
         }
-        if ("finance".equals(roleCode)) {
+        if (RoleCodes.FINANCE.equals(roleCode)) {
             return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, SETTLE_VIEW, SETTLE_MANAGE, SETTLE_RECEIVE, REPORT_VIEW);
         }
-        if ("warehouse".equals(roleCode)) {
+        if (RoleCodes.WAREHOUSE.equals(roleCode)) {
             return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, DELIVERY_MANAGE, REPORT_VIEW);
+        }
+        if (RoleCodes.VIEWER.equals(roleCode)) {
+            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, SETTLE_VIEW, REPORT_VIEW);
         }
         return List.of();
     }

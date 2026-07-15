@@ -6,6 +6,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 
@@ -38,9 +39,11 @@ public class FinishConfigSpecDTO {
     private BigDecimal splitRatio;
 
     @Valid
+    @Size(max = 100, message = "成品来源不能超过100条")
     private List<FinishSourceDTO> sources;
 
     @Valid
+    @Size(max = 100, message = "成品层不能超过100层")
     private List<FinishLayerDTO> layers;
 
     @Data

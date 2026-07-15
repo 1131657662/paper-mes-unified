@@ -20,8 +20,8 @@ export default function RewindLayerEditor({ item, defaultCoreDiameter, defaultOu
       {layers.map((layer, index) => (
         <Space key={`layer-${index}`} wrap>
           <Tag color="blue">第 {index + 1} 层</Tag>
-          <InputNumber addonBefore="外径" min={1} value={layer.outDiameter} onChange={(value) => updateLayers(patchLayer(layers, index, { outDiameter: value ?? undefined }))} />
-          <InputNumber addonBefore="纸芯" min={1} value={layer.coreDiameter} onChange={(value) => updateLayers(patchLayer(layers, index, { coreDiameter: value ?? undefined }))} />
+          <InputNumber aria-label={`第 ${index + 1} 层外径`} addonBefore="外径" min={1} value={layer.outDiameter} onChange={(value) => updateLayers(patchLayer(layers, index, { outDiameter: value ?? undefined }))} />
+          <InputNumber aria-label={`第 ${index + 1} 层纸芯`} addonBefore="纸芯" min={1} value={layer.coreDiameter} onChange={(value) => updateLayers(patchLayer(layers, index, { coreDiameter: value ?? undefined }))} />
           <MesTooltip title="删除分层">
             <Button
               danger

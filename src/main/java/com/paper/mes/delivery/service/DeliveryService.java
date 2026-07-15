@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.delivery.dto.AvailableFinishVO;
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
+import com.paper.mes.delivery.dto.DeliveryCancelDTO;
 import com.paper.mes.delivery.dto.DeliveryConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
 import com.paper.mes.delivery.dto.DeliveryDetailVO;
@@ -45,4 +46,7 @@ public interface DeliveryService extends IService<DeliveryOrder> {
 
     /** 待出库改单：从单据中移出一条明细，并重算件数与重量。 */
     void removeDetail(String uuid, String detailUuid);
+
+    /** 作废待出库单并释放全部库存占用。 */
+    void cancelPending(String uuid, DeliveryCancelDTO dto);
 }

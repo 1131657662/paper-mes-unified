@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, DatePicker, Form, Input, Radio, Select, Space, message } from 'antd'
+import { Card, DatePicker, Form, Input, Radio, Select, message } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
@@ -14,7 +14,9 @@ import { selectedTotals } from '../../features/settle/utils/settleFormatters'
 import { DICT_TYPES, invoiceFallbackOptions } from '../../features/systemConfig/configFallbacks'
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
 import type { SettleCandidateQuery } from '../../types/settle'
+import SettleCreateFooter from './SettleCreateFooter'
 import '../documentModule.css'
+import './SettleCreatePage.css'
 
 interface SettleCreateForm {
   customerUuid?: string
@@ -43,6 +45,7 @@ export default function SettleCreatePage() {
   const selectedCandidates = candidates.filter((item) => selectedRowKeys.includes(item.orderUuid))
   const previewCandidates = isMonthMode ? candidates : selectedCandidates
   const totals = selectedTotals(previewCandidates)
+  const pendingPriceCount = previewCandidates.filter((item) => Number(item.totalAmount ?? 0) <= 0).length
 
   const handleValuesChange = (_: Partial<SettleCreateForm>, values: SettleCreateForm) => {
     setCandidateQuery({
@@ -111,27 +114,21 @@ export default function SettleCreatePage() {
   const isSubmitting = createByOrdersMutation.isPending || createByMonthMutation.isPending
 
   return (
-    <div className="document-module-page">
+    <div className="document-module-page settle-create-page">
       <MesPageHeader
         title="新建结算单"
-        description="从已完成且未结算的加工单中勾选生成客户结算单，费用仍以后端计算和加工单落库金额为准。"
+        eyebrow="结算管理"
         onBack={() => navigate('/settle-orders')}
-        actions={(
-          <Space>
-            <Button onClick={() => navigate('/settle-orders')}>取消</Button>
-            <Button type="primary" loading={isSubmitting} onClick={handleSubmit}>生成结算单</Button>
-          </Space>
-        )}
       />
 
-      <Card className="document-module-card" title="基础信息">
+      <Card className="document-module-card settle-create-page__info" title="结算条件">
         <Form
           form={form}
           layout="vertical"
           initialValues={{ createMode: 'selected', isInvoice: 2, settleDate: dayjs() }}
           onValuesChange={handleValuesChange}
         >
-          <div className="document-module-grid">
+          <div className="document-module-grid settle-create-page__form">
             <Form.Item name="createMode" label="创建方式">
               <Radio.Group>
                 <Radio.Button value="selected">勾选加工单</Radio.Button>
@@ -170,15 +167,15 @@ export default function SettleCreatePage() {
                 ))}
               </Radio.Group>
             </Form.Item>
-            <Form.Item className="document-module-grid__full" name="remark" label="备注">
-              <Input.TextArea rows={2} placeholder="结算备注" />
+            <Form.Item name="remark" label="备注">
+              <Input placeholder="结算备注" />
             </Form.Item>
           </div>
         </Form>
       </Card>
 
       <Card
-        className="document-module-card"
+        className="document-module-card settle-create-page__selection"
         title={isMonthMode ? '账期候选预览' : '选择加工单'}
         extra={<SettleSelectedSummary label={isMonthMode ? '候选' : '已选'} count={totals.orderCount} amount={totals.total} />}
       >
@@ -187,12 +184,20 @@ export default function SettleCreatePage() {
             data={candidates}
             loading={candidatesQuery.isLoading || candidatesQuery.isFetching}
             selectable={!isMonthMode}
-            scrollY={460}
+            scrollY="calc(100vh - 550px)"
             selectedRowKeys={selectedRowKeys}
             onSelectionChange={setSelectedRowKeys}
           />
         </div>
       </Card>
+      <SettleCreateFooter
+        amount={totals.total}
+        count={totals.orderCount}
+        loading={isSubmitting}
+        pendingPriceCount={pendingPriceCount}
+        onCancel={() => navigate('/settle-orders')}
+        onSubmit={handleSubmit}
+      />
     </div>
   )
 }

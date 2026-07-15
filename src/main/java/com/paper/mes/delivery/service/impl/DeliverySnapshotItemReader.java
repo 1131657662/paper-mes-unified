@@ -3,6 +3,8 @@ package com.paper.mes.delivery.service.impl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ErrorCode;
 import com.paper.mes.delivery.dto.DeliveryDetailItemVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
@@ -28,18 +30,28 @@ final class DeliverySnapshotItemReader {
             JsonNode root = objectMapper.readTree(snapDelivery);
             JsonNode node = firstExisting(root, "detail_items", "detailItems", "details");
             if (node == null || !node.isArray()) {
-                return null;
+                throw corruptedSnapshot();
             }
             List<DeliveryDetailItemVO> items = readCamelCaseItems(node, objectMapper);
             if (hasUsableSnapshotItems(items)) {
                 return items;
             }
             items = readSnakeCaseItems(node);
-            return hasUsableSnapshotItems(items) ? items : null;
+            if (!hasUsableSnapshotItems(items)) {
+                throw corruptedSnapshot();
+            }
+            return items;
+        } catch (BusinessException ex) {
+            throw ex;
         } catch (Exception ex) {
-            log.warn("出库明细快照解析失败，将回退到实时明细：{}", ex.getMessage());
-            return null;
+            log.error("出库历史快照解析失败：{}", ex.getMessage());
+            throw corruptedSnapshot();
         }
+    }
+
+    private static BusinessException corruptedSnapshot() {
+        return new BusinessException(ErrorCode.E008,
+                "出库单历史快照损坏，已禁止使用当前库存数据替代，请联系管理员处理");
     }
 
     private static List<DeliveryDetailItemVO> readCamelCaseItems(JsonNode node, ObjectMapper objectMapper) {

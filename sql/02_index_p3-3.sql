@@ -22,3 +22,4 @@ CREATE INDEX idx_order_row_sort ON biz_finish_roll (order_uuid, row_sort);
 
 -- 结算关联加工单高频组合：客户 + 已完成(order_status=4) + 日期范围 + 排序。
 CREATE INDEX idx_cust_status_ctime ON biz_process_order (customer_uuid, order_status, create_time);
+CREATE INDEX idx_customer_deleted_ctime ON biz_process_order (customer_uuid, is_deleted, create_time);

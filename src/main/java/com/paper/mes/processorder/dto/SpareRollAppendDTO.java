@@ -15,4 +15,7 @@ public class SpareRollAppendDTO {
     @Min(value = 1, message = "追加数量至少为 1")
     @Max(value = 500, message = "单次追加数量不超过 500")
     private Integer count;
+
+    /** 来源母卷；多母卷加工单必填，单母卷可由后端自动解析。 */
+    private String originalUuid;
 }

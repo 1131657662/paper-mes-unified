@@ -8,9 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
-/**
- * 操作日志写入服务。operator 优先取调用方传入值，缺省取当前登录用户。
- */
+/** 操作日志写入服务。登录请求始终以当前登录用户作为审计主体。 */
 @Service
 @RequiredArgsConstructor
 public class OperationLogService {
@@ -21,10 +19,14 @@ public class OperationLogService {
     public static final String ACTION_VOID_ROLL_NO = "作废卷号";
     public static final String ACTION_VOID_ORDER = "作废加工单";
     public static final String ACTION_OVER_TOLERANCE_RELEASE = "超差放行";
+    public static final String ACTION_WEIGHT_VARIANCE_CONFIRM = "重量偏差确认";
     public static final String ACTION_DELIVERY_CONFIRM = "出库确认";
     public static final String ACTION_DELIVERY_RELEASE = "出库放行";
+    public static final String ACTION_DELIVERY_CANCEL = "取消出库";
     public static final String ACTION_SETTLE = "结算";
+    public static final String ACTION_SETTLE_VOID = "作废结算";
     public static final String ACTION_RECEIVE = "收款";
+    public static final String ACTION_RECEIVE_CANCEL = "取消收款";
     public static final String ACTION_ROLLBACK = "回退";
     public static final String ACTION_FIELD_MODIFY = "字段修改";
     public static final String ACTION_USER_CREATE = "新增用户";
@@ -32,6 +34,11 @@ public class OperationLogService {
     public static final String ACTION_USER_STATUS = "账号启停";
     public static final String ACTION_PASSWORD_RESET = "重置密码";
     public static final String ACTION_PASSWORD_CHANGE = "修改密码";
+    public static final String ACTION_BACKUP = "数据备份";
+    public static final String ACTION_BACKUP_VERIFY = "恢复演练";
+    public static final String ACTION_BACKUP_DELETE = "删除备份";
+    public static final String ACTION_BACKUP_CLEANUP = "清理备份";
+    public static final String ACTION_DATA_REPAIR = "数据修复";
 
     /** 业务类型常量。 */
     public static final String BIZ_TYPE_ORDER = "加工单";
@@ -39,6 +46,7 @@ public class OperationLogService {
     public static final String BIZ_TYPE_SETTLE = "结算单";
     public static final String BIZ_TYPE_USER = "系统用户";
     public static final String BIZ_TYPE_SYSTEM_CONFIG = "系统配置";
+    public static final String BIZ_TYPE_BACKUP = "数据安全";
 
     private final OperationLogMapper operationLogMapper;
 
@@ -54,12 +62,25 @@ public class OperationLogService {
      */
     public void record(String bizType, String bizUuid, String bizNo,
                        String actionType, String operator, String remark) {
+        insert(bizType, bizUuid, bizNo, actionType, resolveOperator(operator), remark);
+    }
+
+    public void recordVerifiedActor(String bizType, String bizUuid, String bizNo,
+                                    String actionType, String verifiedActor, String remark) {
+        if (verifiedActor == null || verifiedActor.isBlank()) {
+            throw new IllegalArgumentException("verified actor is required");
+        }
+        insert(bizType, bizUuid, bizNo, actionType, verifiedActor, remark);
+    }
+
+    private void insert(String bizType, String bizUuid, String bizNo,
+                        String actionType, String operator, String remark) {
         OperationLog log = new OperationLog();
         log.setBizType(bizType);
         log.setBizUuid(bizUuid);
         log.setBizNo(bizNo);
         log.setActionType(actionType);
-        log.setOperator(resolveOperator(operator));
+        log.setOperator(operator);
         log.setOperateTime(LocalDateTime.now());
         log.setRemark(remark);
         operationLogMapper.insert(log);
@@ -92,9 +113,15 @@ public class OperationLogService {
     }
 
     private String resolveOperator(String operator) {
+        if (AuthContextHolder.getCurrentUser() != null) {
+            String current = AuthContextHolder.currentDisplayName();
+            if (current != null && !current.isBlank()) {
+                return current;
+            }
+        }
         if (operator != null && !operator.isBlank()) {
             return operator;
         }
-        return AuthContextHolder.currentDisplayName();
+        return "system";
     }
 }

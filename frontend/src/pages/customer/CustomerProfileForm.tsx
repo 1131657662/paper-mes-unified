@@ -9,6 +9,7 @@ interface Props {
   editing: boolean
   form: FormInstance<CustomerSaveDTO>
   onFinish?: (values: CustomerSaveDTO) => void
+  onValuesChange?: () => void
 }
 
 const customerFormDefaults: Partial<CustomerSaveDTO> = {
@@ -18,7 +19,7 @@ const customerFormDefaults: Partial<CustomerSaveDTO> = {
   taxRate: 13,
 }
 
-export default function CustomerProfileForm({ editing, form, onFinish }: Props) {
+export default function CustomerProfileForm({ editing, form, onFinish, onValuesChange }: Props) {
   const { options: settleOptions } = useNumberDictOptions(DICT_TYPES.settleType, settleFallbackOptions)
   const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
 
@@ -29,6 +30,7 @@ export default function CustomerProfileForm({ editing, form, onFinish }: Props) 
       layout="vertical"
       initialValues={customerFormDefaults}
       onFinish={onFinish}
+      onValuesChange={onValuesChange}
     >
       <section className="customer-profile-form__section">
         <h3>基础信息</h3>

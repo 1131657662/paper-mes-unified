@@ -1,4 +1,5 @@
 import { Button, Progress, Space, Tag, Typography } from 'antd'
+import dayjs from 'dayjs'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 import type { ReactNode } from 'react'
@@ -93,7 +94,7 @@ function buildColumns(actions: {
     { title: '结算日期', dataIndex: 'settleDate', width: 124 },
     { title: '应收', dataIndex: 'totalAmount', align: 'right', width: 128, render: (_, record) => formatMoney(record.totalAmount) },
     {
-      title: '结清进度',
+      title: '收款进度',
       dataIndex: 'receivedAmount',
       width: 268,
       minWidth: 248,
@@ -105,7 +106,13 @@ function buildColumns(actions: {
       width: 112,
       render: (_, record) => {
         const status = SETTLE_STATUS[record.settleStatus]
-        return status ? <Tag className="mes-status-tag" color={status.color}>{status.text}</Tag> : '-'
+        if (!status) return '-'
+        return (
+          <Space size={4} wrap>
+            <Tag className="mes-status-tag" color={status.color}>{status.text}</Tag>
+            {isOverdue(record) && <Tag color="error">已逾期</Tag>}
+          </Space>
+        )
       },
     },
     {
@@ -132,7 +139,7 @@ function ReceiveProgress({ record }: { record: SettleOrder }) {
   return (
     <div className="settle-cell-stack mes-cell-stack">
       <Progress percent={percent} size="small" />
-      <span>已结清 {formatMoney(record.receivedAmount)} / 未收 {formatMoney(record.unreceivedAmount)}</span>
+      <span>已收 {formatMoney(record.receivedAmount)} / 未收 {formatMoney(record.unreceivedAmount)}</span>
       <span>现金 {formatMoney(record.cashReceivedAmount)} / 废纸 {formatMoney(record.scrapOffsetAmount)}</span>
     </div>
   )
@@ -140,4 +147,11 @@ function ReceiveProgress({ record }: { record: SettleOrder }) {
 
 function textCell(value?: ReactNode) {
   return <TooltipText value={value} />
+}
+
+function isOverdue(record: SettleOrder) {
+  return record.settleStatus !== 3
+    && Number(record.unreceivedAmount ?? 0) > 0
+    && Boolean(record.periodEnd)
+    && dayjs(record.periodEnd).isBefore(dayjs(), 'day')
 }

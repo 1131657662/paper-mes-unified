@@ -129,7 +129,7 @@ export default function ProcessRouteConfigDrawer({
       open={open}
       width={1180}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       footer={<DrawerFooter appendMode={appendMode} loading={appendMode ? isSavingAppend : isSaving} onClose={onClose} onSave={handleSave} />}
     >
       {!roll || !form ? (
@@ -162,6 +162,7 @@ function RouteBaseControls({ roll, rolls, onRollChange }: BaseControlProps) {
     <Card size="small" title="来源母卷">
       <Space direction="vertical" size={10} className="process-route-config">
         <Select
+          aria-label="来源母卷"
           showSearch
           value={roll.uuid}
           optionFilterProp="label"
@@ -267,6 +268,7 @@ function RouteStageEditor({ form, prices, setForm, stage }: StageEditorProps) {
   if (!source) return <Empty description="暂无可选择的来源产物" />
   const sourceRolls = sources.length ? sources.map(sourceRollFromOutput) : [sourceRollFromOutput(source)]
   const sourceRoll = mergeSourceRolls(sourceRolls)
+  if (!sourceRoll) return <Empty description="暂无可用的来源母卷" />
 
   const updatePlan = (plan: ProcessPlanDTO) => {
     setForm((prev) => prev && updateDetailRouteStagePlan(prev, stage.id, plan))
@@ -282,6 +284,7 @@ function RouteStageEditor({ form, prices, setForm, stage }: StageEditorProps) {
       <Space wrap className="process-route-config__stage-head">
         <Typography.Text strong>本段工艺</Typography.Text>
         <Segmented
+          aria-label={`第 ${stage.stageLevel} 段工艺类型`}
           value={stage.stepType}
           options={stepOptions}
           onChange={(value) => setForm((prev) => prev && changeDetailRouteStageType(prev, stage.id, Number(value), prices))}

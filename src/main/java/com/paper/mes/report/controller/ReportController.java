@@ -3,7 +3,7 @@ package com.paper.mes.report.controller;
 import com.paper.mes.common.R;
 import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
-import com.paper.mes.report.dto.ReportDetailVO;
+import com.paper.mes.report.dto.ReportDetailsVO;
 import com.paper.mes.report.dto.ReportDimensionVO;
 import com.paper.mes.report.dto.ReportOverviewVO;
 import com.paper.mes.report.dto.ReportQuery;
@@ -35,7 +35,7 @@ public class ReportController {
     }
 
     @GetMapping("/details")
-    public R<List<ReportDetailVO>> details(ReportQuery query) {
+    public R<ReportDetailsVO> details(ReportQuery query) {
         return R.success(reportService.detailRows(query));
     }
 

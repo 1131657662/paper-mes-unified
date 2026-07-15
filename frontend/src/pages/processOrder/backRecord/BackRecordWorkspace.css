@@ -157,7 +157,7 @@
   margin-bottom: 6px;
   text-align: left;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--mes-radius);
 }
 
 .back-record-nav-item > span {
@@ -347,6 +347,12 @@
   width: 100%;
 }
 
+.back-record-step-actuals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
 .back-record-process-lines {
   display: flex;
   flex-direction: column;
@@ -386,9 +392,9 @@
 
 .back-record-finish-row {
   display: grid;
-  grid-template-columns: minmax(170px, 210px) minmax(760px, max-content);
+  grid-template-columns: minmax(170px, 210px) minmax(0, 1fr);
   gap: 12px;
-  width: max-content;
+  width: 100%;
   min-width: 100%;
   padding: 10px;
   background: var(--mes-color-panel);
@@ -410,10 +416,119 @@
 
 .back-record-finish-row__fields {
   display: grid;
-  grid-template-columns: repeat(6, minmax(112px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   width: 100%;
-  min-width: 760px;
+  min-width: 0;
+}
+
+.back-record-optional-specs {
+  display: grid;
+  width: 320px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.back-record-optional-specs .ant-form-item {
+  margin-bottom: 0;
+}
+
+.back-record-trim-panel .ant-empty {
+  margin: 8px 0;
+}
+
+.back-record-trim-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.back-record-trim-row {
+  display: grid;
+  grid-template-columns: 84px minmax(180px, 1.4fr) minmax(130px, 1fr) minmax(130px, 1fr) minmax(180px, 1.5fr) 36px;
+  gap: 10px;
+  align-items: end;
+  padding: 10px 12px;
+  border: 1px solid var(--mes-color-border-secondary);
+  background: var(--mes-color-fill-subtle);
+}
+
+.back-record-trim-row .ant-form-item {
+  margin-bottom: 0;
+}
+
+.back-record-trim-row .ant-input-number-group-wrapper {
+  width: 100%;
+}
+
+.back-record-trim-row__identity {
+  align-self: center;
+  color: var(--mes-color-warning-text);
+  font-weight: 600;
+}
+
+.back-record-trim-row__action {
+  min-height: 32px;
+}
+
+.back-record-output-panel__hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.back-record-output-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.back-record-output-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.8fr) minmax(170px, 1.25fr) repeat(3, minmax(120px, 1fr)) minmax(180px, 1.4fr) 36px;
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--mes-color-border);
+  border-left: 3px solid var(--mes-color-primary);
+  background: var(--mes-color-fill-subtle);
+}
+
+.back-record-output-row.is-trim {
+  grid-template-columns: minmax(110px, 0.8fr) minmax(180px, 1.25fr) minmax(130px, 1fr) minmax(130px, 1fr) minmax(200px, 1.5fr) 36px;
+  border-left-color: var(--mes-color-warning);
+}
+
+.back-record-output-row .ant-form-item {
+  margin-bottom: 0;
+}
+
+.back-record-output-row .ant-input-number-group-wrapper {
+  width: 100%;
+}
+
+.back-record-output-row__identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-self: center;
+  gap: 4px;
+}
+
+.back-record-output-row__identity .ant-tag {
+  width: fit-content;
+  margin: 0;
+}
+
+.back-record-output-row__identity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.back-record-output-row__identity span {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
 }
 
 .back-record-close {
@@ -521,6 +636,15 @@
   .back-record-finish-row__fields {
     grid-template-columns: repeat(3, minmax(120px, 1fr));
   }
+
+  .back-record-trim-row {
+    grid-template-columns: 76px repeat(2, minmax(150px, 1fr));
+  }
+
+  .back-record-output-row,
+  .back-record-output-row.is-trim {
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+  }
 }
 
 @media (min-width: 761px) {
@@ -586,6 +710,15 @@
   .back-record-finish-row,
   .back-record-finish-row__fields,
   .back-record-process-line {
+    grid-template-columns: 1fr;
+  }
+
+  .back-record-trim-row {
+    grid-template-columns: 1fr;
+  }
+
+  .back-record-output-row,
+  .back-record-output-row.is-trim {
     grid-template-columns: 1fr;
   }
 }

@@ -4,7 +4,7 @@ type ReloadHandler = () => Promise<void> | void
 
 export function mesProTableOptions(onReload?: ReloadHandler): OptionConfig {
   return {
-    density: true,
+    density: false,
     reload: onReload ? () => { void onReload() } : true,
     setting: true,
   }

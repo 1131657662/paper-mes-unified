@@ -97,3 +97,10 @@ export interface ReportDetailVO {
   scrapOffsetAmount: number
   unreceivedAmount: number
 }
+
+export interface ReportDetailsVO {
+  rows: ReportDetailVO[]
+  total: number
+  displayLimit: number
+  truncated: boolean
+}

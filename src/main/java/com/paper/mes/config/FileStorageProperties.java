@@ -14,5 +14,5 @@ public class FileStorageProperties {
     private String dir = "./upload";
 
     /** 对外访问 URL 前缀，静态资源映射用，默认 /files。 */
-    private String urlPrefix = "/files";
+    private String urlPrefix = "/api/files";
 }

@@ -109,7 +109,10 @@ export default function SawingConfigForm({ roll, processMode, config, onChange }
 
   const handleCalculate = () => {
     const weights = calculateEstimateWeights()
-    updateSpecs(finishSpecs.map((spec, index) => ({ ...spec, estimateWeight: weights[index] })))
+    updateSpecs(finishSpecs.map((spec, index) => ({
+      ...spec,
+      estimateWeight: weights[index] ?? spec.estimateWeight,
+    })))
     message.success('已重新计算预估重量')
   }
 
@@ -120,6 +123,7 @@ export default function SawingConfigForm({ roll, processMode, config, onChange }
       width: 150,
       render: (value, record) => (
         <InputNumber
+          aria-label={`成品规格 ${record.finishWidth} mm 门幅`}
           min={1}
           value={value}
           onChange={(val) => handleWidthChange(record.key, val)}
@@ -134,6 +138,7 @@ export default function SawingConfigForm({ roll, processMode, config, onChange }
       width: 100,
       render: (value, record) => (
         <InputNumber
+          aria-label={`成品规格 ${record.finishWidth} mm 数量`}
           min={1}
           value={value}
           onChange={(val) => handleCountChange(record.key, val)}
@@ -156,6 +161,7 @@ export default function SawingConfigForm({ roll, processMode, config, onChange }
           type="link"
           danger
           size="small"
+          aria-label={`删除成品规格 ${record.finishWidth} mm`}
           icon={<DeleteOutlined />}
           onClick={() => handleRemoveSpec(record.key)}
           disabled={finishSpecs.length <= 1}
@@ -211,6 +217,7 @@ export default function SawingConfigForm({ roll, processMode, config, onChange }
             <div>
               <Typography.Text strong>实际刀数：</Typography.Text>
               <InputNumber
+                aria-label="实际刀数"
                 min={0}
                 precision={0}
                 value={knifeCount}
@@ -229,6 +236,7 @@ export default function SawingConfigForm({ roll, processMode, config, onChange }
             <div>
               <Typography.Text strong>锯纸单价：</Typography.Text>
               <InputNumber
+                aria-label="锯纸单价"
                 min={0}
                 precision={2}
                 value={unitPrice}
@@ -263,6 +271,7 @@ export default function SawingConfigForm({ roll, processMode, config, onChange }
           <div style={{ marginBottom: 16 }}>
             <Typography.Text strong>预计成品件数：</Typography.Text>
             <InputNumber
+              aria-label="预计成品件数"
               min={1}
               value={totalFinishCount}
               onChange={(val) => {
@@ -292,6 +301,7 @@ export default function SawingConfigForm({ roll, processMode, config, onChange }
       <Space>
         <Typography.Text>备用卷号数量：</Typography.Text>
         <InputNumber
+          aria-label="备用卷号数量"
           min={0}
           max={10}
           value={spareCount}

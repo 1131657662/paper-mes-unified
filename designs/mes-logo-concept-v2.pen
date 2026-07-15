@@ -1,0 +1,218 @@
+{
+  "version": "2.8",
+  "themes": {
+    "mode": ["light", "dark"]
+  },
+  "variables": {
+    "color.primary": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#2563EB" },
+        { "theme": { "mode": "dark" }, "value": "#4F8EFF" }
+      ]
+    },
+    "color.secondary": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#5B8CFF" },
+        { "theme": { "mode": "dark" }, "value": "#8AB4FF" }
+      ]
+    },
+    "color.surface": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#F7FAFF" },
+        { "theme": { "mode": "dark" }, "value": "#0F172A" }
+      ]
+    },
+    "color.text": {
+      "type": "color",
+      "value": [
+        { "theme": { "mode": "light" }, "value": "#111827" },
+        { "theme": { "mode": "dark" }, "value": "#F8FAFC" }
+      ]
+    }
+  },
+  "children": [
+    {
+      "type": "frame",
+      "id": "logo-v2",
+      "name": "Logo V2",
+      "x": 0,
+      "y": 0,
+      "width": 1400,
+      "height": 900,
+      "fill": "#F7FAFF",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "background-card",
+          "name": "Background Card",
+          "x": 90,
+          "y": 80,
+          "width": 1220,
+          "height": 740,
+          "fill": "#FFFFFF",
+          "stroke": "#E8F0FB",
+          "strokeWidth": 1,
+          "rx": 28,
+          "ry": 28
+        },
+        {
+          "type": "rectangle",
+          "id": "badge",
+          "name": "Badge",
+          "x": 180,
+          "y": 180,
+          "width": 220,
+          "height": 220,
+          "fill": "#2563EB",
+          "rx": 56,
+          "ry": 56
+        },
+        {
+          "type": "ellipse",
+          "id": "roll-outer",
+          "name": "Roll Outer",
+          "cx": 290,
+          "cy": 290,
+          "rx": 70,
+          "ry": 70,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 10,
+          "fill": "none"
+        },
+        {
+          "type": "ellipse",
+          "id": "roll-inner",
+          "name": "Roll Inner",
+          "cx": 290,
+          "cy": 290,
+          "rx": 28,
+          "ry": 28,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 10,
+          "fill": "none"
+        },
+        {
+          "type": "line",
+          "id": "flow-line-1",
+          "name": "Flow Line 1",
+          "x1": 220,
+          "y1": 248,
+          "x2": 362,
+          "y2": 332,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 8,
+          "linecap": "round"
+        },
+        {
+          "type": "line",
+          "id": "flow-line-2",
+          "name": "Flow Line 2",
+          "x1": 234,
+          "y1": 332,
+          "x2": 346,
+          "y2": 248,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 8,
+          "linecap": "round"
+        },
+        {
+          "type": "ellipse",
+          "id": "center-dot",
+          "name": "Center Dot",
+          "cx": 290,
+          "cy": 290,
+          "rx": 8,
+          "ry": 8,
+          "fill": "#FFFFFF"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "name": "Title",
+          "x": 460,
+          "y": 240,
+          "fontFamily": "Inter, PingFang SC, Microsoft YaHei, sans-serif",
+          "fontSize": 56,
+          "fontWeight": "700",
+          "fill": "#111827",
+          "text": "Paper MES"
+        },
+        {
+          "type": "text",
+          "id": "subtitle",
+          "name": "Subtitle",
+          "x": 460,
+          "y": 316,
+          "fontFamily": "Inter, PingFang SC, Microsoft YaHei, sans-serif",
+          "fontSize": 22,
+          "fontWeight": "400",
+          "fill": "#6B7280",
+          "text": "Clear workflow for modern paper processing"
+        },
+        {
+          "type": "rectangle",
+          "id": "favicon-demo",
+          "name": "Favicon Demo",
+          "x": 180,
+          "y": 520,
+          "width": 96,
+          "height": 96,
+          "fill": "#2563EB",
+          "rx": 24,
+          "ry": 24
+        },
+        {
+          "type": "ellipse",
+          "id": "favicon-roll",
+          "name": "Favicon Roll",
+          "cx": 228,
+          "cy": 568,
+          "rx": 28,
+          "ry": 28,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 7,
+          "fill": "none"
+        },
+        {
+          "type": "line",
+          "id": "favicon-line",
+          "name": "Favicon Line",
+          "x1": 205,
+          "y1": 545,
+          "x2": 252,
+          "y2": 593,
+          "stroke": "#FFFFFF",
+          "strokeWidth": 7,
+          "linecap": "round"
+        },
+        {
+          "type": "text",
+          "id": "usage",
+          "name": "Usage",
+          "x": 330,
+          "y": 546,
+          "fontFamily": "Inter, PingFang SC, Microsoft YaHei, sans-serif",
+          "fontSize": 24,
+          "fontWeight": "600",
+          "fill": "#111827",
+          "text": "适配登录页 / 浏览器标签 / 侧边栏"
+        },
+        {
+          "type": "text",
+          "id": "note",
+          "name": "Note",
+          "x": 330,
+          "y": 590,
+          "fontFamily": "Inter, PingFang SC, Microsoft YaHei, sans-serif",
+          "fontSize": 18,
+          "fontWeight": "400",
+          "fill": "#6B7280",
+          "text": "更偏品牌感，视觉更稳、更像正式产品"
+        }
+      ]
+    }
+  ]
+}
