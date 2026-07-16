@@ -11,6 +11,8 @@ import type {
   SettleDetailVO,
   ReceiveDTO,
   SettleActionReasonDTO,
+  SettleQuoteVO,
+  SettleListSummary,
 } from '../types/settle'
 import { downloadFileFromResponse } from '../utils/downloadFile'
 import {
@@ -27,11 +29,35 @@ export function getSettleOrderList(query: SettleQuery) {
   })
 }
 
+export function getSettleOrderSummary(query: SettleQuery) {
+  return request<SettleListSummary>({
+    url: '/api/settle-orders/summary',
+    method: 'get',
+    params: query,
+  })
+}
+
 export function getSettleCandidates(query: SettleCandidateQuery) {
-  return request<SettleCandidateVO[]>({
+  return request<PageResult<SettleCandidateVO>>({
     url: '/api/settle-orders/candidates',
     method: 'get',
     params: query,
+  })
+}
+
+export function quoteSettleByOrders(data: SettleByOrdersDTO) {
+  return request<SettleQuoteVO>({
+    url: '/api/settle-orders/quote/by-orders',
+    method: 'post',
+    data,
+  })
+}
+
+export function quoteSettleByMonth(data: SettleByMonthDTO) {
+  return request<SettleQuoteVO>({
+    url: '/api/settle-orders/quote/by-month',
+    method: 'post',
+    data,
   })
 }
 

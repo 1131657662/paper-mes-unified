@@ -3,7 +3,9 @@ package com.paper.mes.settle.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -11,12 +13,16 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 登记一笔收款，可由现金实收和废纸抵扣共同组成。
+ * 登记一笔收款，可由现金实收、废纸抵扣和优惠核销共同组成。
  */
 @Data
 public class ReceiveDTO {
 
-    /** 兼容旧接口：未传 cashAmount/scrapOffsetAmount 时按现金收款处理。 */
+    @NotBlank(message = "请求号不能为空")
+    @Size(max = 64, message = "请求号不能超过64个字符")
+    private String requestId;
+
+    /** 兼容旧接口：未传明细金额时按现金收款处理。 */
     @PositiveOrZero(message = "收款金额不能为负")
     private BigDecimal receiveAmount;
 
@@ -31,6 +37,9 @@ public class ReceiveDTO {
     @PositiveOrZero(message = "废纸抵扣金额不能为负")
     private BigDecimal scrapOffsetAmount;
 
+    @PositiveOrZero(message = "优惠金额不能为负")
+    private BigDecimal discountAmount;
+
     @PositiveOrZero(message = "废纸重量不能为负")
     private BigDecimal scrapWeight;
 
@@ -42,6 +51,7 @@ public class ReceiveDTO {
 
     /** 收款时间，可为空，默认使用当前时间。 */
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @PastOrPresent(message = "收款时间不能晚于当前时间")
     private LocalDateTime receiveDate;
 
     @Size(max = 255, message = "备注不能超过255个字符")

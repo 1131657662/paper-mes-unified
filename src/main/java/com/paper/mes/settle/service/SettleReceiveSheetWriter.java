@@ -13,7 +13,7 @@ import java.util.List;
 
 final class SettleReceiveSheetWriter {
 
-    private static final int COLUMN_COUNT = 14;
+    private static final int COLUMN_COUNT = 15;
 
     private SettleReceiveSheetWriter() {
     }
@@ -38,15 +38,17 @@ final class SettleReceiveSheetWriter {
         row.createCell(6).setCellValue(text(detail.getOrder().getCashReceivedAmount()));
         row.createCell(7).setCellValue("废纸抵扣");
         row.createCell(8).setCellValue(text(detail.getOrder().getScrapOffsetAmount()));
-        row.createCell(10).setCellValue("未收金额");
-        row.createCell(11).setCellValue(text(detail.getOrder().getUnreceivedAmount()));
+        row.createCell(9).setCellValue("优惠核销");
+        row.createCell(10).setCellValue(text(detail.getOrder().getDiscountAmount()));
+        row.createCell(12).setCellValue("未收金额");
+        row.createCell(13).setCellValue(text(detail.getOrder().getUnreceivedAmount()));
     }
 
     private static void writeHeader(Sheet sheet, CellStyle style) {
         Row row = sheet.createRow(3);
         String[] labels = {
-                "序号", "收款时间", "类型", "本次结清", "现金实收", "废纸抵扣", "废纸重量kg", "折算单价",
-                "收款方式", "流水号", "经办人", "状态", "备注", "撤销信息"
+                "序号", "收款时间", "类型", "本次结清", "现金实收", "废纸抵扣", "优惠核销",
+                "废纸重量kg", "折算单价", "收款方式", "流水号", "经办人", "状态", "备注", "撤销信息"
         };
         for (int i = 0; i < labels.length; i++) {
             row.createCell(i).setCellValue(labels[i]);
@@ -74,14 +76,15 @@ final class SettleReceiveSheetWriter {
         row.createCell(3).setCellValue(text(record.getReceiveAmount()));
         row.createCell(4).setCellValue(text(record.getCashAmount()));
         row.createCell(5).setCellValue(text(record.getScrapOffsetAmount()));
-        row.createCell(6).setCellValue(text(record.getScrapWeight()));
-        row.createCell(7).setCellValue(text(record.getScrapUnitPrice()));
-        row.createCell(8).setCellValue(payMethodText(record.getPayMethod()));
-        row.createCell(9).setCellValue(text(record.getPayNo()));
-        row.createCell(10).setCellValue(text(record.getOperator()));
-        row.createCell(11).setCellValue(statusText(record.getRecordStatus()));
-        row.createCell(12).setCellValue(text(record.getRemark()));
-        row.createCell(13).setCellValue(cancelText(record));
+        row.createCell(6).setCellValue(text(record.getDiscountAmount()));
+        row.createCell(7).setCellValue(text(record.getScrapWeight()));
+        row.createCell(8).setCellValue(text(record.getScrapUnitPrice()));
+        row.createCell(9).setCellValue(payMethodText(record.getPayMethod()));
+        row.createCell(10).setCellValue(text(record.getPayNo()));
+        row.createCell(11).setCellValue(text(record.getOperator()));
+        row.createCell(12).setCellValue(statusText(record.getRecordStatus()));
+        row.createCell(13).setCellValue(text(record.getRemark()));
+        row.createCell(14).setCellValue(cancelText(record));
     }
 
     private static CellStyle headerStyle(Workbook workbook) {
@@ -100,7 +103,10 @@ final class SettleReceiveSheetWriter {
             return "废纸抵扣";
         }
         if (value == 3) {
-            return "混合收款";
+            return "混合结清";
+        }
+        if (value == 4) {
+            return "优惠核销";
         }
         return String.valueOf(value);
     }

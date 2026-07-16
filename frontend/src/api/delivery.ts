@@ -9,6 +9,8 @@ import type {
   DeliveryCreateDTO,
   DeliveryDetailVO,
   DeliveryConfirmDTO,
+  DeliveryBatchConfirmDTO,
+  DeliveryListSummary,
   DeliveryRollbackDTO,
 } from '../types/delivery'
 import { downloadFileFromResponse } from '../utils/downloadFile'
@@ -21,6 +23,14 @@ import {
 export function getDeliveryOrderList(query: DeliveryQuery) {
   return request<PageResult<DeliveryOrder>>({
     url: '/api/delivery-orders',
+    method: 'get',
+    params: query,
+  })
+}
+
+export function getDeliveryOrderSummary(query: DeliveryQuery) {
+  return request<DeliveryListSummary>({
+    url: '/api/delivery-orders/summary',
     method: 'get',
     params: query,
   })
@@ -54,6 +64,14 @@ export function confirmDeliveryOrder(uuid: string, data?: DeliveryConfirmDTO) {
     url: `/api/delivery-orders/${uuid}/confirm`,
     method: 'post',
     data: data || {},
+  })
+}
+
+export function confirmDeliveryOrders(data: DeliveryBatchConfirmDTO) {
+  return request<void>({
+    url: '/api/delivery-orders/batch-confirm',
+    method: 'post',
+    data,
   })
 }
 
@@ -96,4 +114,14 @@ export async function exportDeliveryOrder(input: DocumentExportInput) {
     responseType: 'blob',
   })
   await downloadFileFromResponse(response, readableExportFilename('出库单', documentNo))
+}
+
+export async function exportDeliveryOrderList(query: DeliveryQuery) {
+  const response = await rawRequest.request<Blob, { data: Blob; headers: Record<string, string> }>({
+    url: '/api/delivery-orders/export',
+    method: 'get',
+    params: query,
+    responseType: 'blob',
+  })
+  await downloadFileFromResponse(response, readableExportFilename('出库对账'))
 }

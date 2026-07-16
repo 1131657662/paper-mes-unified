@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.delivery.dto.AvailableFinishVO;
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
+import com.paper.mes.delivery.dto.DeliveryBatchConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCancelDTO;
 import com.paper.mes.delivery.dto.DeliveryConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
@@ -33,10 +34,16 @@ public interface DeliveryService extends IService<DeliveryOrder> {
     /** 导出出库单详情 Excel。 */
     void exportDetail(String uuid, HttpServletResponse response);
 
+    /** 按当前筛选条件导出全部出库单。 */
+    void exportList(DeliveryQuery query, HttpServletResponse response);
+
     /**
      * 出库确认：成品 已入库(2)→已出库(3)，出库单 待出库(1)→已出库签收(2)，写操作日志。
      */
     void confirm(String uuid, DeliveryConfirmDTO dto);
+
+    /** 原子批量签收：任一单据校验失败时全部回滚。 */
+    void confirmBatch(DeliveryBatchConfirmDTO dto);
 
     /** 已出库签收回退：出库单 2→1，明细成品 已出库(3)→已入库(2)。 */
     void rollback(String uuid, DeliveryRollbackDTO dto);

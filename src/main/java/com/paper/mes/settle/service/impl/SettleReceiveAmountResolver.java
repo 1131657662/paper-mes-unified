@@ -11,6 +11,7 @@ final class SettleReceiveAmountResolver {
     static final int RECEIVE_TYPE_CASH = 1;
     static final int RECEIVE_TYPE_SCRAP = 2;
     static final int RECEIVE_TYPE_MIXED = 3;
+    static final int RECEIVE_TYPE_DISCOUNT = 4;
 
     private static final int MONEY_SCALE = 2;
     private static final int WEIGHT_SCALE = 3;
@@ -22,41 +23,51 @@ final class SettleReceiveAmountResolver {
     static Resolved resolve(ReceiveDTO dto, BigDecimal unreceivedAmount) {
         BigDecimal cash = cashAmount(dto);
         BigDecimal scrap = money(dto.getScrapOffsetAmount());
-        BigDecimal total = cash.add(scrap).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        BigDecimal discount = money(dto.getDiscountAmount());
+        BigDecimal total = cash.add(scrap).add(discount).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         BigDecimal weight = weight(dto.getScrapWeight());
-        validate(dto, cash, scrap, total, weight, unreceivedAmount);
-        return new Resolved(total, cash, scrap, weight, unitPrice(scrap, weight), receiveType(cash, scrap));
+        Amounts amounts = new Amounts(cash, scrap, discount, total, weight);
+        validate(dto, amounts, unreceivedAmount);
+        return new Resolved(total, cash, scrap, discount, weight,
+                unitPrice(scrap, weight), receiveType(amounts));
     }
 
     private static BigDecimal cashAmount(ReceiveDTO dto) {
         BigDecimal explicitCash = money(dto.getCashAmount());
-        if (explicitCash.signum() > 0 || dto.getScrapOffsetAmount() != null) {
+        if (dto.getCashAmount() != null || dto.getScrapOffsetAmount() != null || dto.getDiscountAmount() != null) {
             return explicitCash;
         }
         return money(dto.getReceiveAmount());
     }
 
-    private static void validate(ReceiveDTO dto, BigDecimal cash, BigDecimal scrap, BigDecimal total,
-                                 BigDecimal weight, BigDecimal unreceivedAmount) {
-        if (total.signum() <= 0) {
+    private static void validate(ReceiveDTO dto, Amounts amounts, BigDecimal unreceivedAmount) {
+        if (amounts.total().signum() <= 0) {
             throw new BusinessException("本次结清金额必须大于 0");
         }
-        if (total.compareTo(money(unreceivedAmount)) > 0) {
-            throw new BusinessException("本次结清金额超过未收金额，禁止超收");
+        if (amounts.total().compareTo(money(unreceivedAmount)) > 0) {
+            throw new BusinessException("本次结清金额超过未收金额，禁止超额核销");
         }
-        if (scrap.signum() > 0 && weight.signum() <= 0) {
+        if (amounts.scrap().signum() > 0 && amounts.weight().signum() <= 0) {
             throw new BusinessException("废纸抵扣金额大于 0 时，废纸重量必须大于 0");
         }
-        if (cash.signum() > 0 && dto.getPayMethod() == null) {
+        if (amounts.cash().signum() > 0 && dto.getPayMethod() == null) {
             throw new BusinessException("现金实收金额大于 0 时必须选择收款方式");
         }
     }
 
-    private static int receiveType(BigDecimal cash, BigDecimal scrap) {
-        if (cash.signum() > 0 && scrap.signum() > 0) {
+    private static int receiveType(Amounts amounts) {
+        int componentCount = positive(amounts.cash()) + positive(amounts.scrap()) + positive(amounts.discount());
+        if (componentCount > 1) {
             return RECEIVE_TYPE_MIXED;
         }
-        return scrap.signum() > 0 ? RECEIVE_TYPE_SCRAP : RECEIVE_TYPE_CASH;
+        if (amounts.scrap().signum() > 0) {
+            return RECEIVE_TYPE_SCRAP;
+        }
+        return amounts.discount().signum() > 0 ? RECEIVE_TYPE_DISCOUNT : RECEIVE_TYPE_CASH;
+    }
+
+    private static int positive(BigDecimal amount) {
+        return amount.signum() > 0 ? 1 : 0;
     }
 
     private static BigDecimal unitPrice(BigDecimal scrap, BigDecimal weight) {
@@ -75,6 +86,11 @@ final class SettleReceiveAmountResolver {
     }
 
     record Resolved(BigDecimal receiveAmount, BigDecimal cashAmount, BigDecimal scrapOffsetAmount,
-                    BigDecimal scrapWeight, BigDecimal scrapUnitPrice, int receiveType) {
+                    BigDecimal discountAmount, BigDecimal scrapWeight, BigDecimal scrapUnitPrice,
+                    int receiveType) {
+    }
+
+    private record Amounts(BigDecimal cash, BigDecimal scrap, BigDecimal discount,
+                           BigDecimal total, BigDecimal weight) {
     }
 }

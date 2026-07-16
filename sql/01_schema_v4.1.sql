@@ -562,7 +562,10 @@ CREATE TABLE `biz_delivery_order` (
   `sign_user`           VARCHAR(50)   DEFAULT NULL            COMMENT '签收人',
   `sign_time`           DATETIME      DEFAULT NULL            COMMENT '签收时间',
   `settle_block_action` TINYINT       NOT NULL DEFAULT 0      COMMENT '现结拦截结果 0无 1警告放行 2拦截',
-  `delivery_status`     TINYINT       NOT NULL DEFAULT 1      COMMENT '1待出库 2已出库签收',
+  `delivery_status`     TINYINT       NOT NULL DEFAULT 1      COMMENT '1待出库 2已出库签收 3已作废',
+  `void_reason`         VARCHAR(255)  DEFAULT NULL            COMMENT '作废原因',
+  `void_by`             VARCHAR(50)   DEFAULT NULL            COMMENT '作废操作人',
+  `void_time`           DATETIME      DEFAULT NULL            COMMENT '作废时间',
   `snap_delivery`        JSON          DEFAULT NULL            COMMENT '出库确认快照JSON',
   `snap_delivery_time`   DATETIME      DEFAULT NULL            COMMENT '出库确认快照时间',
   `remark`              VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
@@ -647,9 +650,13 @@ CREATE TABLE `biz_settle_order` (
   `received_amount`   DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '已结清金额',
   `cash_received_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '现金实收金额',
   `scrap_offset_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '废纸抵扣金额',
+  `discount_amount`   DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '优惠及尾差核销金额',
   `unreceived_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '待收金额',
   `is_invoice`        TINYINT       NOT NULL DEFAULT 2      COMMENT '1开票 2不开票',
-  `settle_status`     TINYINT       NOT NULL DEFAULT 1      COMMENT '1待结算 2部分收款 3全部结清',
+  `settle_status`     TINYINT       NOT NULL DEFAULT 1      COMMENT '1待收款 2部分收款 3全部结清 4已作废',
+  `void_reason`       VARCHAR(255)  DEFAULT NULL            COMMENT '作废原因',
+  `void_by`           VARCHAR(50)   DEFAULT NULL            COMMENT '作废操作人',
+  `void_time`         DATETIME      DEFAULT NULL            COMMENT '作废时间',
   `snap_bill`         JSON          DEFAULT NULL            COMMENT '结算单快照JSON',
   `snap_bill_time`    DATETIME      DEFAULT NULL            COMMENT '结算单快照时间',
   `remark`            VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
@@ -668,7 +675,8 @@ CREATE TABLE `biz_settle_order` (
   KEY `idx_customer_uuid` (`customer_uuid`),
   KEY `idx_settle_status` (`settle_status`),
   KEY `idx_settle_date` (`settle_date`),
-  KEY `idx_is_deleted` (`is_deleted`)
+  KEY `idx_is_deleted` (`is_deleted`),
+  CONSTRAINT `chk_settle_discount_nonnegative` CHECK (`discount_amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='结算单主表';
 
 -- -----------------------------------------------------------------------------
@@ -708,10 +716,12 @@ DROP TABLE IF EXISTS `biz_receive_record`;
 CREATE TABLE `biz_receive_record` (
   `uuid`           VARCHAR(36)   NOT NULL                COMMENT '收款流水主键',
   `settle_uuid`    VARCHAR(36)   NOT NULL                COMMENT '关联结算单',
+  `request_id`     VARCHAR(64)   DEFAULT NULL            COMMENT '客户端幂等请求号',
   `receive_date`   DATETIME      NOT NULL                COMMENT '收款时间',
   `receive_amount` DECIMAL(12,2) NOT NULL                COMMENT '本次结清金额',
   `cash_amount`    DECIMAL(12,2) NOT NULL DEFAULT 0.00   COMMENT '现金实收金额',
   `scrap_offset_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '废纸抵扣金额',
+  `discount_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '优惠及尾差核销金额',
   `scrap_weight`   DECIMAL(12,3) NOT NULL DEFAULT 0.000  COMMENT '废纸抵扣重量kg',
   `scrap_unit_price` DECIMAL(12,4) NOT NULL DEFAULT 0.0000 COMMENT '废纸抵扣折算单价',
   `receive_type`   TINYINT       NOT NULL DEFAULT 1      COMMENT '1普通收款 2废纸抵扣 3混合收款',
@@ -734,11 +744,13 @@ CREATE TABLE `biz_receive_record` (
   `ext_num1`       DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值1',
   `ext_num2`       DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_receive_settle_request` (`settle_uuid`, `request_id`),
   KEY `idx_settle_uuid` (`settle_uuid`),
   KEY `idx_receive_date` (`receive_date`),
   KEY `idx_receive_record_status` (`record_status`),
   KEY `idx_receive_record_type` (`receive_type`),
-  KEY `idx_is_deleted` (`is_deleted`)
+  KEY `idx_is_deleted` (`is_deleted`),
+  CONSTRAINT `chk_receive_discount_nonnegative` CHECK (`discount_amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分次收款流水表';
 
 -- =============================================================================

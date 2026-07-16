@@ -60,9 +60,48 @@ class SettleReceiveAmountResolverTest {
     }
 
     @Test
+    void resolve_withCashAndDiscount_closesExactOutstandingAmount() {
+        ReceiveDTO dto = new ReceiveDTO();
+        dto.setCashAmount(new BigDecimal("1790"));
+        dto.setDiscountAmount(new BigDecimal("1"));
+        dto.setPayMethod(2);
+
+        SettleReceiveAmountResolver.Resolved resolved =
+                SettleReceiveAmountResolver.resolve(dto, new BigDecimal("1791"));
+
+        assertThat(resolved.receiveAmount()).isEqualByComparingTo("1791.00");
+        assertThat(resolved.cashAmount()).isEqualByComparingTo("1790.00");
+        assertThat(resolved.discountAmount()).isEqualByComparingTo("1.00");
+        assertThat(resolved.receiveType()).isEqualTo(SettleReceiveAmountResolver.RECEIVE_TYPE_MIXED);
+    }
+
+    @Test
+    void resolve_withOnlyDiscount_marksDiscountWriteOff() {
+        ReceiveDTO dto = new ReceiveDTO();
+        dto.setDiscountAmount(new BigDecimal("1"));
+
+        SettleReceiveAmountResolver.Resolved resolved =
+                SettleReceiveAmountResolver.resolve(dto, new BigDecimal("1"));
+
+        assertThat(resolved.receiveAmount()).isEqualByComparingTo("1.00");
+        assertThat(resolved.receiveType()).isEqualTo(SettleReceiveAmountResolver.RECEIVE_TYPE_DISCOUNT);
+    }
+
+    @Test
     void resolve_whenTotalExceedsUnreceived_rejectsOverpay() {
         ReceiveDTO dto = new ReceiveDTO();
         dto.setCashAmount(new BigDecimal("1001"));
+        dto.setPayMethod(2);
+
+        assertThatThrownBy(() -> SettleReceiveAmountResolver.resolve(dto, new BigDecimal("1000")))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void resolve_whenCashAndDiscountExceedUnreceived_rejectsWriteOff() {
+        ReceiveDTO dto = new ReceiveDTO();
+        dto.setCashAmount(new BigDecimal("1000"));
+        dto.setDiscountAmount(new BigDecimal("1"));
         dto.setPayMethod(2);
 
         assertThatThrownBy(() -> SettleReceiveAmountResolver.resolve(dto, new BigDecimal("1000")))

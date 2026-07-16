@@ -1,0 +1,39 @@
+import { Button, Tooltip } from 'antd'
+import { CheckOutlined, DownloadOutlined, PrinterOutlined, RollbackOutlined, StopOutlined } from '@ant-design/icons'
+import type { DeliveryListActions } from './useDeliveryListActions'
+
+export default function DeliveryListToolbar({ actions }: { actions: DeliveryListActions }) {
+  const selected = actions.selected
+  return <>
+    {actions.canManage && <ActionTip title={actions.selectedPendingCount === 0 ? '请至少选择一张待出库单' : undefined}>
+      <Button icon={<CheckOutlined />} disabled={actions.selectedPendingCount === 0}
+        loading={actions.batchConfirmLoading} onClick={actions.confirmBatch}>批量签收</Button>
+    </ActionTip>}
+    <ActionTip title={!selected ? '请选择一张出库单后打印' : undefined}>
+      <Button icon={<PrinterOutlined />} disabled={!selected} onClick={actions.print}>打印出库单</Button>
+    </ActionTip>
+    <ActionTip title={!selected ? '请选择一张出库单后导出' : undefined}>
+      <Button icon={<DownloadOutlined />} disabled={!selected} onClick={actions.exportSelected}>导出 Excel</Button>
+    </ActionTip>
+    <Button icon={<DownloadOutlined />} loading={actions.exportingList} onClick={actions.exportList}>导出对账</Button>
+    {actions.canManage && <LifecycleButtons actions={actions} />}
+  </>
+}
+
+function LifecycleButtons({ actions }: { actions: DeliveryListActions }) {
+  const selected = actions.selected
+  return <>
+    <ActionTip title={!selected || selected.deliveryStatus !== 1 ? '请选择一张待出库单' : undefined}>
+      <Button danger icon={<StopOutlined />} disabled={!selected || selected.deliveryStatus !== 1}
+        loading={actions.cancelLoading} onClick={actions.cancel}>作废待出库单</Button>
+    </ActionTip>
+    <ActionTip title={!selected || selected.deliveryStatus !== 2 ? '请选择一张已出库单' : undefined}>
+      <Button danger icon={<RollbackOutlined />} disabled={!selected || selected.deliveryStatus !== 2}
+        loading={actions.rollingBack} onClick={actions.rollback}>回退出库</Button>
+    </ActionTip>
+  </>
+}
+
+function ActionTip({ children, title }: { children: React.ReactNode; title?: string }) {
+  return <Tooltip title={title}><span>{children}</span></Tooltip>
+}

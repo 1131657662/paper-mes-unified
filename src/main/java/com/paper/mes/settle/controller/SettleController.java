@@ -13,7 +13,10 @@ import com.paper.mes.settle.dto.SettleCandidateQuery;
 import com.paper.mes.settle.dto.SettleCandidateVO;
 import com.paper.mes.settle.dto.SettleDetailVO;
 import com.paper.mes.settle.dto.SettleQuery;
+import com.paper.mes.settle.dto.SettleQuoteVO;
+import com.paper.mes.settle.dto.SettleListSummaryVO;
 import com.paper.mes.settle.entity.SettleOrder;
+import com.paper.mes.settle.service.SettleListSummaryService;
 import com.paper.mes.settle.service.SettleService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -33,6 +36,7 @@ import java.util.List;
 public class SettleController {
 
     private final SettleService settleService;
+    private final SettleListSummaryService settleListSummaryService;
 
     @GetMapping
     @RequirePermission(Permissions.SETTLE_VIEW)
@@ -40,10 +44,28 @@ public class SettleController {
         return R.success(settleService.page(query));
     }
 
+    @GetMapping("/summary")
+    @RequirePermission(Permissions.SETTLE_VIEW)
+    public R<SettleListSummaryVO> summary(SettleQuery query) {
+        return R.success(settleListSummaryService.summarize(query));
+    }
+
     @GetMapping("/candidates")
     @RequirePermission(Permissions.SETTLE_MANAGE)
-    public R<List<SettleCandidateVO>> candidates(SettleCandidateQuery query) {
+    public R<PageResult<SettleCandidateVO>> candidates(SettleCandidateQuery query) {
         return R.success(settleService.listCandidates(query));
+    }
+
+    @PostMapping("/quote/by-orders")
+    @RequirePermission(Permissions.SETTLE_MANAGE)
+    public R<SettleQuoteVO> quoteByOrders(@Valid @RequestBody SettleByOrdersDTO dto) {
+        return R.success(settleService.quoteByOrders(dto));
+    }
+
+    @PostMapping("/quote/by-month")
+    @RequirePermission(Permissions.SETTLE_MANAGE)
+    public R<SettleQuoteVO> quoteByMonth(@Valid @RequestBody SettleByMonthDTO dto) {
+        return R.success(settleService.quoteByMonth(dto));
     }
 
     @PostMapping("/by-order")

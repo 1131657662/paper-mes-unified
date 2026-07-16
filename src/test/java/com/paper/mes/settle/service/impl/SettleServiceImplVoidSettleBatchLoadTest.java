@@ -24,6 +24,8 @@ import com.paper.mes.settle.mapper.ReceiveRecordMapper;
 import com.paper.mes.settle.mapper.SettleDetailMapper;
 import com.paper.mes.settle.mapper.SettleOrderMapper;
 import com.paper.mes.settle.service.SettleCandidateStatsLoader;
+import com.paper.mes.settle.service.SettleCandidateAmountLoader;
+import com.paper.mes.settle.service.SettlementAmountCalculator;
 import com.paper.mes.settle.service.SettleExportService;
 import com.paper.mes.system.config.service.DocumentNoService;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
@@ -62,6 +64,8 @@ class SettleServiceImplVoidSettleBatchLoadTest {
     @Mock private OperationLogMapper operationLogMapper;
     @Mock private OperationLogService operationLogService;
     @Mock private SettleCandidateStatsLoader statsLoader;
+    @Mock private SettleCandidateAmountLoader candidateAmountLoader;
+    @Mock private SettlementAmountCalculator settlementAmountCalculator;
     @Mock private SettlePageDataLoader pageDataLoader;
     @Mock private SettleExportService settleExportService;
     @Mock private DocumentNoService documentNoService;
@@ -83,7 +87,8 @@ class SettleServiceImplVoidSettleBatchLoadTest {
         service = new SettleServiceImpl(settleDetailMapper, receiveRecordMapper, originalRollMapper,
                 finishRollMapper, finishOriginalRelMapper, processStepMapper, processStageOutputMapper,
                 processOrderService, customerService, machineMapper, operationLogMapper, operationLogService,
-                statsLoader, pageDataLoader, settleExportService, documentNoService, businessLockService,
+                statsLoader, candidateAmountLoader, settlementAmountCalculator, pageDataLoader,
+                settleExportService, documentNoService, businessLockService,
                 new ObjectMapper());
         ReflectionTestUtils.setField(service, "baseMapper", settleOrderMapper);
     }

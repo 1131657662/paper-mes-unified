@@ -2,16 +2,19 @@ import {
   appendDeliveryDetails,
   cancelPendingDeliveryOrder,
   confirmDeliveryOrder,
+  confirmDeliveryOrders,
   createDeliveryOrder,
   exportDeliveryOrder,
   getAvailableFinishes,
   getDeliveryOrderDetail,
   getDeliveryOrderList,
+  getDeliveryOrderSummary,
   removeDeliveryDetail,
   rollbackDeliveryOrder,
 } from '../../../api/delivery'
 import type {
   DeliveryAppendItemsDTO,
+  DeliveryBatchConfirmDTO,
   DeliveryCancelDTO,
   DeliveryConfirmDTO,
   DeliveryCreateDTO,
@@ -29,9 +32,11 @@ export const deliveryService = {
   create: (data: DeliveryCreateDTO) => createDeliveryOrder(data),
   confirm: (params: { uuid: string; data?: DeliveryConfirmDTO }) =>
     confirmDeliveryOrder(params.uuid, params.data),
+  confirmBatch: (data: DeliveryBatchConfirmDTO) => confirmDeliveryOrders(data),
   detail: (uuid: string) => getDeliveryOrderDetail(uuid),
   export: (params: DocumentExportInput) => exportDeliveryOrder(params),
   list: (query: DeliveryQuery) => getDeliveryOrderList(query),
+  summary: (query: DeliveryQuery) => getDeliveryOrderSummary(query),
   removeDetail: (params: { uuid: string; detailUuid: string }) =>
     removeDeliveryDetail(params.uuid, params.detailUuid),
   rollback: (params: { uuid: string; data: DeliveryRollbackDTO }) =>

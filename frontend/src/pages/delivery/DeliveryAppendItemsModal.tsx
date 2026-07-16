@@ -83,7 +83,8 @@ export default function DeliveryAppendItemsModal({
     }
     const hasRisk = selectedFinishes.some((item) => item.settlementRisk)
     if (hasRisk) {
-      await confirmCashRelease()
+      const confirmed = await confirmCashRelease()
+      if (!confirmed) return
     }
     await appendMutation.mutateAsync({
       uuid: deliveryUuid,
@@ -163,14 +164,14 @@ function buildAppendDTO(
 }
 
 function confirmCashRelease() {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<boolean>((resolve) => {
     Modal.confirm({
       title: '次结出库确认',
       content: '本次追加包含次结且有待收款风险的加工单。确认后将按“警告放行”追加到本张出库单。',
       okText: '警告放行',
       cancelText: '取消',
-      onOk: () => resolve(),
-      onCancel: () => reject(new Error('cancel')),
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
     })
   })
 }

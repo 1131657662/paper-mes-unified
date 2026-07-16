@@ -11,6 +11,7 @@ import com.paper.mes.settle.dto.SettleCandidateQuery;
 import com.paper.mes.settle.dto.SettleCandidateVO;
 import com.paper.mes.settle.dto.SettleDetailVO;
 import com.paper.mes.settle.dto.SettleQuery;
+import com.paper.mes.settle.dto.SettleQuoteVO;
 import com.paper.mes.settle.entity.SettleOrder;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -21,7 +22,11 @@ public interface SettleService extends IService<SettleOrder> {
     PageResult<SettleOrder> page(SettleQuery query);
 
     /** 列出已完成且未结算的加工单，作为结算工作台的候选范围。 */
-    List<SettleCandidateVO> listCandidates(SettleCandidateQuery query);
+    PageResult<SettleCandidateVO> listCandidates(SettleCandidateQuery query);
+
+    SettleQuoteVO quoteByOrders(SettleByOrdersDTO dto);
+
+    SettleQuoteVO quoteByMonth(SettleByMonthDTO dto);
 
     /**
      * 按单生成结算单：校验加工单 已完成(4)，分项汇总锯纸/复卷费，装配结算单，

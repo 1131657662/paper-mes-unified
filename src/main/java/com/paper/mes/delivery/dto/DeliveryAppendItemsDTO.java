@@ -31,6 +31,7 @@ public class DeliveryAppendItemsDTO {
         /** 本件出库重量，留空则取成品实际重量。 */
         @Positive(message = "出库重量必须大于0")
         private BigDecimal outWeight;
+        @Size(max = 255, message = "单卷备注不能超过255个字符")
         private String remark;
     }
 }

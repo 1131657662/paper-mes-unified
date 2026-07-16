@@ -5,6 +5,7 @@ import { formatMoney } from '../../features/settle/utils/settleFormatters'
 interface Props {
   amount: number
   count: number
+  disabled?: boolean
   loading: boolean
   pendingPriceCount: number
   onCancel: () => void
@@ -25,7 +26,7 @@ export default function SettleCreateFooter(props: Props) {
           type="primary"
           icon={<FileDoneOutlined />}
           loading={props.loading}
-          disabled={props.count === 0 || props.pendingPriceCount > 0}
+          disabled={props.disabled || props.count === 0 || props.pendingPriceCount > 0}
           onClick={props.onSubmit}
         >
           生成结算单

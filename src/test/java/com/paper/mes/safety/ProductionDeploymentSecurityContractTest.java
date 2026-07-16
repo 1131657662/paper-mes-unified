@@ -16,6 +16,7 @@ class ProductionDeploymentSecurityContractTest {
             "src/main/java/com/paper/mes/notification/config/NotificationIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/ArchiveCodeIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/DeliveryIntegrityBootstrap.java",
+            "src/main/java/com/paper/mes/system/config/config/DocumentTrustIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/DocumentSnapshotBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/OperationLogIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/ProcessDraftIntegrityBootstrap.java",
@@ -58,6 +59,8 @@ class ProductionDeploymentSecurityContractTest {
     void migrations_coverInfrastructureNeededByDmlOnlyApplicationAccount() throws Exception {
         String runtime = source("sql/V2.8__add_runtime_safety_infrastructure.sql");
         String archive = source("sql/V2.9__add_active_archive_code_constraints.sql");
+        String settlementDiscount = source("sql/V3.1__add_settlement_discount_amount.sql");
+        String documentTrust = source("sql/V3.2__add_document_void_and_receive_idempotency.sql");
 
         assertContainsAll(runtime,
                 "CREATE TABLE IF NOT EXISTS `sys_backup_task`",
@@ -68,6 +71,14 @@ class ProductionDeploymentSecurityContractTest {
         assertContainsAll(archive,
                 "customer_code_active", "paper_code_active",
                 "machine_code_active", "warehouse_code_active");
+        assertContainsAll(settlementDiscount,
+                "biz_settle_order", "biz_receive_record",
+                "discount_amount", "chk_settle_discount_nonnegative",
+                "chk_receive_discount_nonnegative");
+        assertContainsAll(documentTrust,
+                "biz_delivery_order", "biz_settle_order", "biz_receive_record",
+                "void_reason", "void_by", "void_time", "request_id",
+                "uk_receive_settle_request", "innodb_lock_wait_timeout");
     }
 
     @Test

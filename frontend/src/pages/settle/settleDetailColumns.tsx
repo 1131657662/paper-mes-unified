@@ -5,6 +5,7 @@ import TooltipText from '../../components/biz/TooltipText'
 import { formatMoney } from '../../features/settle/utils/settleFormatters'
 import type { ReceiveRecord, SettleDetail } from '../../types/settle'
 import { formatTrimmedNumber } from '../../utils/numberFormatters'
+import { formatDateTime } from '../../utils/dateTime'
 
 export { settlePrintLineColumns } from './settlePrintLineColumns'
 
@@ -39,7 +40,7 @@ export function buildReceiveColumns(options: {
   onCancelReceive?: (record: ReceiveRecord) => void
 } = {}): ColumnsType<ReceiveRecord> {
   const columns: ColumnsType<ReceiveRecord> = [
-    { title: '收款时间', dataIndex: 'receiveDate', fixed: 'left', width: 170 },
+    { title: '收款时间', dataIndex: 'receiveDate', fixed: 'left', width: 170, render: formatDateTime },
     { title: '类型', dataIndex: 'receiveType', width: 100, render: receiveTypeCell },
     {
       title: '本次结清',
@@ -50,12 +51,8 @@ export function buildReceiveColumns(options: {
         <Typography.Text delete={record.recordStatus === 2}>{formatMoney(value)}</Typography.Text>
       ),
     },
-    { title: '现金实收', dataIndex: 'cashAmount', align: 'right', width: 118, render: formatMoney },
-    { title: '废纸抵扣', dataIndex: 'scrapOffsetAmount', align: 'right', width: 118, render: formatMoney },
-    { title: '废纸重量kg', dataIndex: 'scrapWeight', align: 'right', width: 116, render: numberText },
-    { title: '折算单价', dataIndex: 'scrapUnitPrice', align: 'right', width: 108, render: unitPriceText },
-    { title: '收款方式', dataIndex: 'payMethod', width: 90, render: (value) => PAY_METHOD[value] || '-' },
-    { title: '流水号', dataIndex: 'payNo', width: 150, render: textCell },
+    { title: '结清构成', key: 'breakdown', width: 250, render: (_, record) => receiveBreakdown(record) },
+    { title: '支付信息', key: 'payment', width: 180, render: (_, record) => paymentText(record) },
     { title: '经办人', dataIndex: 'operator', width: 100, render: textCell },
     { title: '状态', dataIndex: 'recordStatus', width: 96, render: statusCell },
     {
@@ -116,6 +113,24 @@ function numberText(value?: number) {
 function unitPriceText(value?: number) {
   if (value == null || Number(value) <= 0) return '-'
   return `${formatTrimmedNumber(value, 4)} 元/kg`
+}
+
+function receiveBreakdown(record: ReceiveRecord) {
+  const scrapDetail = record.scrapWeight && record.scrapUnitPrice
+    ? `（${numberText(record.scrapWeight)} kg × ${unitPriceText(record.scrapUnitPrice)}）`
+    : ''
+  return <div className="document-money-stack">
+    <span>现金 {formatMoney(record.cashAmount)}</span>
+    <span>废纸 {formatMoney(record.scrapOffsetAmount)}{scrapDetail}</span>
+    <span>优惠 {formatMoney(record.discountAmount)}</span>
+  </div>
+}
+
+function paymentText(record: ReceiveRecord) {
+  return <div className="document-money-stack">
+    <span>{record.payMethod ? PAY_METHOD[record.payMethod] || '-' : '-'}</span>
+    <TooltipText value={record.payNo} />
+  </div>
 }
 
 function amountWithHint({

@@ -10,14 +10,16 @@ import { PERMISSIONS } from '../../constants/permissions'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import SettleOrderTable from '../../features/settle/components/SettleOrderTable'
 import { useSettleOrders } from '../../features/settle/hooks/useSettleOrders'
+import { useSettleListSummary } from '../../features/settle/hooks/useSettleListSummary'
 import { useConfiguredPageSize } from '../../features/systemConfig/hooks/useConfiguredPageSize'
 import { useHasPermission } from '../../stores/authStore'
 import type { SettleOrder, SettleQuery } from '../../types/settle'
 import ReceiveModal from './ReceiveModal'
 import SettleSearchBar, { type SettleSearchFormValues } from './SettleSearchBar'
+import SettleListSummary from './SettleListSummary'
 import './SettleOrderList.css'
 
-type QueueFilter = 'all' | 'pending' | 'partial' | 'paid'
+type QueueFilter = 'all' | 'pending' | 'partial' | 'paid' | 'void'
 
 export default function SettleOrderList() {
   const [form] = Form.useForm<SettleSearchFormValues>()
@@ -31,11 +33,13 @@ export default function SettleOrderList() {
   const canManageSettle = useHasPermission(PERMISSIONS.settleManage)
   const canReceiveSettle = useHasPermission(PERMISSIONS.settleReceive)
   const rowSelection = useDocumentRowSelection<SettleOrder>()
-  const query = { ...filters, current: page, settleStatus: settleStatus(queueFilter, filters), size: pageSize }
+  const query = { ...filters, current: page, settleStatus: settleStatus(queueFilter), size: pageSize }
   const ordersQuery = useSettleOrders(query)
+  const summaryQuery = useSettleListSummary(filters)
+  const summary = summaryQuery.data
   const orders = ordersQuery.data?.records ?? []
   const tableDensity = tableDensityMode(orders.length, pageSize, ordersQuery.isLoading)
-  const selectedReceivable = rowSelection.selectedRows.filter((record) => record.settleStatus !== 3)
+  const selectedReceivable = rowSelection.selectedRows.filter((record) => [1, 2].includes(record.settleStatus))
 
   const handleSearch = (values: SettleSearchFormValues) => {
     setFilters({
@@ -43,7 +47,6 @@ export default function SettleOrderList() {
       dateFrom: values.dateRange?.[0]?.format('YYYY-MM-DD'),
       dateTo: values.dateRange?.[1]?.format('YYYY-MM-DD'),
       keyword: values.keyword?.trim() || undefined,
-      settleStatus: values.settleStatus,
       settleType: values.settleType,
     })
     setPage(1)
@@ -74,10 +77,11 @@ export default function SettleOrderList() {
       canCreate={canManageSettle}
       queue={queueFilter}
       queueOptions={[
-        { label: '全部', value: 'all' },
-        { label: '待收款', value: 'pending' },
-        { label: '部分收款', value: 'partial' },
-        { label: '已结清', value: 'paid' },
+        { label: `全部 ${summary?.totalDocumentCount ?? '-'}`, value: 'all' },
+        { label: `待收款 ${summary?.pendingDocumentCount ?? '-'}`, value: 'pending' },
+        { label: `部分收款 ${summary?.partialDocumentCount ?? '-'}`, value: 'partial' },
+        { label: `已结清 ${summary?.paidDocumentCount ?? '-'}`, value: 'paid' },
+        { label: `已作废 ${summary?.voidDocumentCount ?? '-'}`, value: 'void' },
       ]}
       search={(
         <SettleSearchBar
@@ -115,6 +119,14 @@ export default function SettleOrderList() {
           onRetry={() => void customersQuery.refetch()}
         />
       )}
+      {summaryQuery.isError && (
+        <QueryLoadErrorAlert
+          description="结算汇总未成功加载，表格数据仍可继续查看。"
+          message="结算汇总加载失败"
+          onRetry={() => void summaryQuery.refetch()}
+        />
+      )}
+      <SettleListSummary summary={summary} />
       <div className="document-page-table" data-table-density={tableDensity}>
         <SettleOrderTable
           canReceiveSettle={canReceiveSettle}
@@ -160,10 +172,10 @@ function tableDensityMode(rowCount: number, pageSize: number, loading: boolean) 
   return rowCount < pageSize ? 'short' : 'fill'
 }
 
-function settleStatus(filter: QueueFilter, filters: SettleQuery) {
-  if (filters.settleStatus) return filters.settleStatus
+function settleStatus(filter: QueueFilter) {
   if (filter === 'pending') return 1
   if (filter === 'partial') return 2
   if (filter === 'paid') return 3
+  if (filter === 'void') return 4
   return undefined
 }

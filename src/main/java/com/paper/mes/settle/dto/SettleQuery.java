@@ -13,7 +13,7 @@ public class SettleQuery {
     /** 关键字：命中结算单号或客户名 */
     private String keyword;
     private String customerUuid;
-    /** 1待结算 2部分收款 3全部结清 */
+    /** 1待收款 2部分收款 3全部结清 4已作废 */
     private Integer settleStatus;
     /** 1按单 2按月批量 */
     private Integer settleType;

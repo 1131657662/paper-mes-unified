@@ -37,8 +37,6 @@ export function finishSpecText(item: AvailableFinishVO) {
 export function deliveryDetailSpecText(item: DeliveryDetail) {
   const parts = [
     item.finishWidth ? formatMm(item.finishWidth) : undefined,
-    item.finishDiameter ? `φ${item.finishDiameter} mm` : undefined,
-    item.finishCoreDiameter ? `芯 ${item.finishCoreDiameter} mm` : undefined,
   ].filter(Boolean)
   return parts.length ? parts.join(' / ') : '-'
 }

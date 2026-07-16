@@ -45,6 +45,8 @@ class SettlePageDataLoaderTest {
         assertEquals(2, data.customerByUuid().size());
         assertEquals(0, new BigDecimal("50.00").compareTo(
                 data.receiveTotalsBySettle().get("settle-1").receiveAmount()));
+        assertEquals(0, new BigDecimal("2.00").compareTo(
+                data.receiveTotalsBySettle().get("settle-1").discountAmount()));
         verify(detailMapper).selectList(any());
         verify(receiveMapper).selectList(any());
         verify(orderService).listByIds(any());
@@ -70,8 +72,9 @@ class SettlePageDataLoaderTest {
         value.setSettleUuid(settleUuid);
         value.setRecordStatus(1);
         value.setReceiveAmount(new BigDecimal(amount));
-        value.setCashAmount(new BigDecimal(amount));
+        value.setCashAmount(new BigDecimal(amount).subtract(BigDecimal.ONE));
         value.setScrapOffsetAmount(BigDecimal.ZERO);
+        value.setDiscountAmount(BigDecimal.ONE);
         return value;
     }
 

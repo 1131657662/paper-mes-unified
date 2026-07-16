@@ -12,6 +12,7 @@ export default function SettlementInfoCard({ detail }: { detail: SettleDetailVO 
         <Descriptions.Item label="是否开票">{INVOICE_TYPE[detail.order.isInvoice] || '-'}</Descriptions.Item>
         <Descriptions.Item label="未税金额">{formatMoney(detail.order.amountNoTax)}</Descriptions.Item>
         <Descriptions.Item label="税点加价">{formatMoney(detail.order.taxAmount)}</Descriptions.Item>
+        <Descriptions.Item label="优惠核销">{formatMoney(detail.order.discountAmount)}</Descriptions.Item>
         <Descriptions.Item label="备注" span="filled">{detail.order.remark || '-'}</Descriptions.Item>
       </Descriptions>
     </Card>

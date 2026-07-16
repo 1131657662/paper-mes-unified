@@ -1,5 +1,5 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
-import type { SettleCandidateQuery, SettleQuery } from '../../../types/settle'
+import type { SettleByMonthDTO, SettleByOrdersDTO, SettleCandidateQuery, SettleQuery } from '../../../types/settle'
 import { settleService } from '../services/settleService'
 
 export const settleKeys = createQueryKeys('settle', {
@@ -14,5 +14,17 @@ export const settleKeys = createQueryKeys('settle', {
   list: (query: SettleQuery) => ({
     queryKey: [query],
     queryFn: () => settleService.list(query),
+  }),
+  summary: (query: SettleQuery) => ({
+    queryKey: [query],
+    queryFn: () => settleService.summary(query),
+  }),
+  quoteByMonth: (data: SettleByMonthDTO) => ({
+    queryKey: [data],
+    queryFn: () => settleService.quoteByMonth(data),
+  }),
+  quoteByOrders: (data: SettleByOrdersDTO) => ({
+    queryKey: [data],
+    queryFn: () => settleService.quoteByOrders(data),
   }),
 })

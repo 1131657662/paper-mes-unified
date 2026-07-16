@@ -13,6 +13,7 @@ import com.paper.mes.delivery.dto.DeliveryConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
 import com.paper.mes.delivery.dto.DeliveryRollbackDTO;
 import com.paper.mes.delivery.service.DeliveryService;
+import com.paper.mes.delivery.service.DeliveryListSummaryService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,7 +49,8 @@ class DeliveryControllerContractTest {
     void setUp() {
         authService = mock(AuthService.class);
         deliveryService = mock(DeliveryService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new DeliveryController(deliveryService))
+        mvc = MockMvcBuilders.standaloneSetup(new DeliveryController(
+                        deliveryService, mock(DeliveryListSummaryService.class)))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())

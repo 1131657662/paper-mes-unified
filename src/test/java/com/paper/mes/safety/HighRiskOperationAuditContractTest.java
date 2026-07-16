@@ -58,7 +58,7 @@ class HighRiskOperationAuditContractTest {
                 "OperationLogService.ACTION_RECEIVE");
         assertAudit(slice(source, "public void cancelReceive", "public void voidSettle"),
                 "OperationLogService.ACTION_RECEIVE_CANCEL");
-        assertAudit(slice(source, "public void voidSettle", "private SettleDetail buildDetail"),
+        assertAudit(slice(source, "public void voidSettle", "private List<SettleDetail> normalizeDetailsForInvoiceView"),
                 "OperationLogService.ACTION_SETTLE_VOID");
     }
 

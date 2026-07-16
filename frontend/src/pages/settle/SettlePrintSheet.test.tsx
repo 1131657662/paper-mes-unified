@@ -12,6 +12,9 @@ describe('客户结算单预览', () => {
     expect(markup).toContain('6刀 × 24元/刀 = ¥144.00')
     expect(markup).toContain('额外费：¥80.00（装卸费 80.00）')
     expect(markup).toContain('税费：¥29.12')
+    expect(markup).toContain('优惠核销：¥1.00')
+    expect(markup).toContain('现金到账：¥0.00')
+    expect(markup).toContain('废纸抵扣：¥0.00')
     expect(markup).not.toContain('加工内容')
     expect(markup).not.toContain('演示锯纸机')
     expect(markup).not.toContain('直径 1300')
@@ -35,6 +38,7 @@ function detail(): SettleDetailVO {
       taxAmount: 0,
       totalAmount: 253.12,
       receivedAmount: 0,
+      discountAmount: 1,
       unreceivedAmount: 253.12,
       isInvoice: 1,
       settleStatus: 1,

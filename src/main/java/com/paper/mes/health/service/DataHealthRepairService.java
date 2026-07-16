@@ -73,7 +73,8 @@ public class DataHealthRepairService {
         return jdbcTemplate.query(RECEIVE_AMOUNTS_SQL, rs -> {
             rs.next();
             return new ReceiveAmounts(rs.getBigDecimal("received_amount"),
-                    rs.getBigDecimal("cash_amount"), rs.getBigDecimal("scrap_amount"));
+                    rs.getBigDecimal("cash_amount"), rs.getBigDecimal("scrap_amount"),
+                    rs.getBigDecimal("discount_amount"));
         }, uuid);
     }
 
@@ -88,8 +89,9 @@ public class DataHealthRepairService {
                                   ReceiveAmounts received, SettleReceiveStatusResolver.State state) {
         int updated = jdbcTemplate.update(UPDATE_SETTLEMENT_SQL,
                 amounts.saw(), amounts.rewind(), amounts.extra(), amounts.noTax(), amounts.tax(), amounts.total(),
-                state.receivedAmount(), received.cash(), received.scrap(), state.unreceivedAmount(), state.status(),
-                AuthContextHolder.currentDisplayName(), row.number(), row.version());
+                state.receivedAmount(), received.cash(), received.scrap(), received.discount(),
+                state.unreceivedAmount(), state.status(), AuthContextHolder.currentDisplayName(),
+                row.number(), row.version());
         requireUpdated(updated);
     }
 
@@ -123,7 +125,8 @@ public class DataHealthRepairService {
     private record ProcessOrderRow(String number, int status, int version) { }
     private record SettlementAmounts(BigDecimal saw, BigDecimal rewind, BigDecimal extra,
                                      BigDecimal noTax, BigDecimal tax, BigDecimal total) { }
-    private record ReceiveAmounts(BigDecimal received, BigDecimal cash, BigDecimal scrap) { }
+    private record ReceiveAmounts(BigDecimal received, BigDecimal cash, BigDecimal scrap,
+                                  BigDecimal discount) { }
 
     private static final String SETTLEMENT_SQL = """
             SELECT settle_no, version FROM biz_settle_order WHERE uuid = ? AND is_deleted = 0 FOR UPDATE
@@ -154,14 +157,15 @@ public class DataHealthRepairService {
     private static final String RECEIVE_AMOUNTS_SQL = """
             SELECT COALESCE(SUM(receive_amount), 0) received_amount,
                    COALESCE(SUM(cash_amount), 0) cash_amount,
-                   COALESCE(SUM(scrap_offset_amount), 0) scrap_amount
+                   COALESCE(SUM(scrap_offset_amount), 0) scrap_amount,
+                   COALESCE(SUM(discount_amount), 0) discount_amount
             FROM biz_receive_record WHERE settle_uuid = ? AND is_deleted = 0 AND record_status = 1
             """;
     private static final String UPDATE_SETTLEMENT_SQL = """
             UPDATE biz_settle_order SET saw_amount = ?, rewind_amount = ?, extra_amount = ?,
                    amount_no_tax = ?, tax_amount = ?, total_amount = ?, received_amount = ?,
-                   cash_received_amount = ?, scrap_offset_amount = ?, unreceived_amount = ?,
-                   settle_status = ?, snap_bill = NULL, snap_bill_time = NULL,
+                   cash_received_amount = ?, scrap_offset_amount = ?, discount_amount = ?,
+                   unreceived_amount = ?, settle_status = ?, snap_bill = NULL, snap_bill_time = NULL,
                    update_by = ?, update_time = NOW(), version = version + 1
             WHERE settle_no = ? AND version = ? AND is_deleted = 0
             """;

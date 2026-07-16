@@ -43,6 +43,18 @@
   font-size: 13px;
 }
 
+.order-detail-copy-no.ant-btn {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  color: var(--mes-color-text-secondary);
+}
+
+.order-detail-copy-no.ant-btn:hover,
+.order-detail-copy-no.ant-btn:focus-visible {
+  color: var(--mes-color-primary);
+}
+
 .order-detail-hero__actions {
   display: flex;
   align-items: flex-start;

@@ -10,7 +10,10 @@ import java.time.LocalDate;
 @Data
 public class SettleCandidateQuery {
 
+    private String keyword;
     private String customerUuid;
     private LocalDate periodStart;
     private LocalDate periodEnd;
+    private long current = 1;
+    private long size = 20;
 }

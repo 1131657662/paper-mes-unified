@@ -10,8 +10,8 @@ export default function SettleAmountOverview({ order }: Props) {
   const items: SettleOverviewItem[] = [
     { label: '应收总额', tone: 'primary', value: formatMoney(order.totalAmount) },
     {
-      hint: `现金 ${formatMoney(order.cashReceivedAmount)} / 废纸 ${formatMoney(order.scrapOffsetAmount)}`,
-      label: '已收金额',
+      hint: `现金 ${formatMoney(order.cashReceivedAmount)} / 废纸 ${formatMoney(order.scrapOffsetAmount)} / 优惠 ${formatMoney(order.discountAmount)}`,
+      label: '已结清金额',
       tone: 'success',
       value: formatMoney(order.receivedAmount),
     },

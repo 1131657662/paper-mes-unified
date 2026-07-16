@@ -24,9 +24,13 @@ public class DeliveryCreateDTO {
     @NotNull(message = "出库日期不能为空")
     private LocalDate deliveryDate;
 
+    @Size(max = 50, message = "提货人不能超过50个字符")
     private String pickerName;
+    @Size(max = 50, message = "车牌号不能超过50个字符")
     private String carNo;
+    @Size(max = 50, message = "柜号不能超过50个字符")
     private String containerNo;
+    @Size(max = 255, message = "备注不能超过255个字符")
     private String remark;
 
     /** 现结客户存在未结清款项时，前端确认后传 true；后端默认按配置警告放行或强制拦截。 */
@@ -44,6 +48,7 @@ public class DeliveryCreateDTO {
         /** 本件出库重量，留空则取成品实际重量。 */
         @Positive(message = "出库重量必须大于0")
         private BigDecimal outWeight;
+        @Size(max = 255, message = "单卷备注不能超过255个字符")
         private String remark;
     }
 }

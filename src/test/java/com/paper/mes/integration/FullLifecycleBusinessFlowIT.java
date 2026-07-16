@@ -7,6 +7,7 @@ import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.settle.dto.ReceiveDTO;
 import com.paper.mes.settle.dto.SettleByOrderDTO;
+import com.paper.mes.settle.dto.SettleByOrdersDTO;
 import com.paper.mes.settle.service.SettleService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -51,6 +53,43 @@ class FullLifecycleBusinessFlowIT {
         assertThat(received.getUnreceivedAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
+    @Test
+    void settlement_whenCashIsOneYuanShortAndDiscounted_closesWithoutInflatingCash() {
+        var scenario = fixture.createStandardSaw();
+        fixture.issueAndComplete(scenario);
+        String settleUuid = settleService.createByOrder(settleRequest(scenario.orderUuid()));
+        BigDecimal total = settleService.getById(settleUuid).getTotalAmount();
+
+        settleService.receive(settleUuid, discountedReceiveRequest(total));
+
+        var detail = settleService.getDetail(settleUuid);
+        assertThat(detail.getOrder().getSettleStatus()).isEqualTo(3);
+        assertThat(detail.getOrder().getReceivedAmount()).isEqualByComparingTo(total);
+        assertThat(detail.getOrder().getCashReceivedAmount()).isEqualByComparingTo(total.subtract(BigDecimal.ONE));
+        assertThat(detail.getOrder().getDiscountAmount()).isEqualByComparingTo(BigDecimal.ONE);
+        assertThat(detail.getOrder().getUnreceivedAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(detail.getReceives()).singleElement()
+                .satisfies(record -> assertThat(record.getDiscountAmount()).isEqualByComparingTo(BigDecimal.ONE));
+    }
+
+    @Test
+    void settlementQuote_whenCreated_usesExactlyTheQuotedAmounts() {
+        var scenario = fixture.createStandardSaw();
+        fixture.issueAndComplete(scenario);
+        SettleByOrdersDTO request = new SettleByOrdersDTO();
+        request.setOrderUuids(List.of(scenario.orderUuid()));
+        request.setSettleDate(LocalDate.now());
+        request.setIsInvoice(2);
+
+        var quote = settleService.quoteByOrders(request);
+        String settleUuid = settleService.createByOrders(request);
+        var settlement = settleService.getById(settleUuid);
+
+        assertThat(settlement.getAmountNoTax()).isEqualByComparingTo(quote.getAmountNoTax());
+        assertThat(settlement.getTaxAmount()).isEqualByComparingTo(quote.getTaxAmount());
+        assertThat(settlement.getTotalAmount()).isEqualByComparingTo(quote.getTotalAmount());
+    }
+
     private DeliveryCreateDTO deliveryRequest(String customerUuid,
                                               com.paper.mes.processorder.dto.ProcessOrderDetailVO detail) {
         DeliveryCreateDTO dto = new DeliveryCreateDTO();
@@ -84,7 +123,18 @@ class FullLifecycleBusinessFlowIT {
 
     private ReceiveDTO receiveRequest(BigDecimal amount) {
         ReceiveDTO dto = new ReceiveDTO();
+        dto.setRequestId("full-receive-" + System.nanoTime());
         dto.setReceiveAmount(amount);
+        dto.setPayMethod(2);
+        dto.setOperator("业务流收款人");
+        return dto;
+    }
+
+    private ReceiveDTO discountedReceiveRequest(BigDecimal amount) {
+        ReceiveDTO dto = new ReceiveDTO();
+        dto.setRequestId("discount-receive-" + System.nanoTime());
+        dto.setCashAmount(amount.subtract(BigDecimal.ONE));
+        dto.setDiscountAmount(BigDecimal.ONE);
         dto.setPayMethod(2);
         dto.setOperator("业务流收款人");
         return dto;

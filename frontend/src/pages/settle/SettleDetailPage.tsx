@@ -1,5 +1,4 @@
-import { Button, Card, Form, Space, Spin, Tag, message } from 'antd'
-import dayjs from 'dayjs'
+import { Button, Card, Form, Space, Spin, message } from 'antd'
 import { DeleteOutlined, DownloadOutlined, PrinterOutlined, WalletOutlined } from '@ant-design/icons'
 import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -7,13 +6,12 @@ import MesPageHeader from '../../components/layout/MesPageHeader'
 import DocumentAuditTimeline from '../../components/biz/DocumentAuditTimeline'
 import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
 import { PERMISSIONS } from '../../constants/permissions'
-import { SETTLE_STATUS } from '../../constants/settle'
 import { useCancelReceive } from '../../features/settle/hooks/useCancelReceive'
 import { useExportSettle } from '../../features/settle/hooks/useExportSettle'
 import { useSettleDetail } from '../../features/settle/hooks/useSettleDetail'
 import { useVoidSettle } from '../../features/settle/hooks/useVoidSettle'
 import { useHasPermission } from '../../stores/authStore'
-import type { ReceiveRecord, SettleOrder, SettlePrintLine } from '../../types/settle'
+import type { ReceiveRecord } from '../../types/settle'
 import ReceiveModal from './ReceiveModal'
 import SettleActionReasonModal, { type SettleActionTarget } from './SettleActionReasonModal'
 import SettleAmountOverview from './SettleAmountOverview'
@@ -21,6 +19,8 @@ import SettleGroupedBill from './SettleGroupedBill'
 import SettlePrintSheet from './SettlePrintSheet'
 import SettlementInfoCard from './SettlementInfoCard'
 import { buildReceiveColumns, buildSettleDetailColumns } from './settleDetailColumns'
+import SettleDetailHeader from './SettleDetailHeader'
+import { buildExtraFeeByOrder } from './settleExtraFeeMap'
 import '../documentModule.css'
 
 export default function SettleDetailPage() {
@@ -88,10 +88,10 @@ export default function SettleDetailPage() {
         title={order?.settleNo ?? '结算单详情'}
         description={order ? `${order.customerName || '-'} · ${order.settleDate || '-'}` : undefined}
         onBack={() => navigate('/settle-orders')}
-        tags={order && <SettleHeaderTags order={order} />}
+        tags={order && <SettleDetailHeader order={order} />}
         actions={order && (
           <Space wrap>
-            {canReceiveSettle && order.settleStatus !== 3 && (
+            {canReceiveSettle && [1, 2].includes(order.settleStatus) && (
               <Button type="primary" icon={<WalletOutlined />} onClick={() => setReceiveOpen(true)}>
                 登记收款
               </Button>
@@ -100,7 +100,7 @@ export default function SettleDetailPage() {
             <Button icon={<DownloadOutlined />} loading={exportMutation.isPending} onClick={handleExport}>
               导出 Excel
             </Button>
-            {canManageSettle && !hasActiveReceive && (
+            {canManageSettle && order.settleStatus !== 4 && !hasActiveReceive && (
               <Button danger icon={<DeleteOutlined />} onClick={openVoidSettle}>作废结算单</Button>
             )}
           </Space>
@@ -134,7 +134,7 @@ export default function SettleDetailPage() {
                 dataSource={detail.receives}
                 onReload={() => detailQuery.refetch()}
                 pagination={false}
-                scroll={{ x: 1420 }}
+                scroll={{ x: 1050 }}
               />
             </Card>
             <Card className="document-module-card" title="业务追踪">
@@ -168,35 +168,4 @@ export default function SettleDetailPage() {
       />
     </div>
   )
-}
-
-function SettleHeaderTags({ order }: { order: SettleOrder }) {
-  return (
-    <Space size={6} wrap>
-      <SettleStatusTag status={order.settleStatus} />
-      {isOverdue(order) && <Tag color="error">已逾期</Tag>}
-    </Space>
-  )
-}
-
-function SettleStatusTag({ status }: { status?: number }) {
-  const item = status ? SETTLE_STATUS[status] : undefined
-  return item ? <Tag className="mes-status-tag" color={item.color}>{item.text}</Tag> : <>-</>
-}
-
-function isOverdue(order: SettleOrder) {
-  return order.settleStatus !== 3
-    && Number(order.unreceivedAmount ?? 0) > 0
-    && Boolean(order.periodEnd)
-    && dayjs(order.periodEnd).isBefore(dayjs(), 'day')
-}
-
-function buildExtraFeeByOrder(lines: SettlePrintLine[]) {
-  const map: Record<string, string> = {}
-  for (const line of lines ?? []) {
-    if (line.orderUuid && line.extraFeeSummary && !map[line.orderUuid]) {
-      map[line.orderUuid] = line.extraFeeSummary
-    }
-  }
-  return map
 }

@@ -9,6 +9,10 @@ export interface DictSelectOption {
   remark?: string
 }
 
+export interface NumberDictSelectOption extends Omit<DictSelectOption, 'value'> {
+  value: number
+}
+
 export function useRuntimeDictOptions(types: string[]) {
   return useQuery({
     ...queries.systemConfig.runtimeDictOptions(types),
@@ -26,8 +30,12 @@ export function useDictOptions(dictType: string, fallback: DictSelectOption[] = 
 
 export function useNumberDictOptions(dictType: string, fallback: DictSelectOption[] = []) {
   const query = useDictOptions(dictType, fallback)
-  const options = query.options.filter((item) => typeof item.value === 'number')
+  const options = query.options.filter(isNumberDictOption)
   return { ...query, options }
+}
+
+function isNumberDictOption(option: DictSelectOption): option is NumberDictSelectOption {
+  return typeof option.value === 'number'
 }
 
 function groupOptionsByType(items: RuntimeDictOption[]) {

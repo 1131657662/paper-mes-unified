@@ -6,13 +6,16 @@ import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.delivery.dto.AvailableFinishVO;
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
+import com.paper.mes.delivery.dto.DeliveryBatchConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCancelDTO;
 import com.paper.mes.delivery.dto.DeliveryConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
 import com.paper.mes.delivery.dto.DeliveryDetailVO;
 import com.paper.mes.delivery.dto.DeliveryQuery;
 import com.paper.mes.delivery.dto.DeliveryRollbackDTO;
+import com.paper.mes.delivery.dto.DeliveryListSummaryVO;
 import com.paper.mes.delivery.entity.DeliveryOrder;
+import com.paper.mes.delivery.service.DeliveryListSummaryService;
 import com.paper.mes.delivery.service.DeliveryService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -34,11 +37,18 @@ import java.util.List;
 public class DeliveryController {
 
     private final DeliveryService deliveryService;
+    private final DeliveryListSummaryService deliveryListSummaryService;
 
     @GetMapping
     @RequirePermission(Permissions.DELIVERY_VIEW)
     public R<PageResult<DeliveryOrder>> page(DeliveryQuery query) {
         return R.success(deliveryService.page(query));
+    }
+
+    @GetMapping("/summary")
+    @RequirePermission(Permissions.DELIVERY_VIEW)
+    public R<DeliveryListSummaryVO> summary(DeliveryQuery query) {
+        return R.success(deliveryListSummaryService.summarize(query));
     }
 
     @GetMapping("/available")
@@ -65,11 +75,24 @@ public class DeliveryController {
         deliveryService.exportDetail(uuid, response);
     }
 
+    @GetMapping("/export")
+    @RequirePermission(Permissions.DELIVERY_VIEW)
+    public void exportList(DeliveryQuery query, HttpServletResponse response) {
+        deliveryService.exportList(query, response);
+    }
+
     @PostMapping("/{uuid}/confirm")
     @RequirePermission(Permissions.DELIVERY_MANAGE)
     public R<Void> confirm(@PathVariable String uuid,
                            @Valid @RequestBody(required = false) DeliveryConfirmDTO dto) {
         deliveryService.confirm(uuid, dto == null ? new DeliveryConfirmDTO() : dto);
+        return R.success();
+    }
+
+    @PostMapping("/batch-confirm")
+    @RequirePermission(Permissions.DELIVERY_MANAGE)
+    public R<Void> confirmBatch(@Valid @RequestBody DeliveryBatchConfirmDTO dto) {
+        deliveryService.confirmBatch(dto);
         return R.success();
     }
 

@@ -28,7 +28,10 @@ export default function SettlePrintSheet({ detail }: Props) {
           </div>
           <div className="document-print-sheet__summary">
             <span>应收：{formatMoney(order.totalAmount)}</span>
-            <span>已收：{formatMoney(order.receivedAmount)}</span>
+            <span>累计结清：{formatMoney(order.receivedAmount)}</span>
+            <span>现金到账：{formatMoney(order.cashReceivedAmount)}</span>
+            <span>废纸抵扣：{formatMoney(order.scrapOffsetAmount)}</span>
+            <span>优惠核销：{formatMoney(order.discountAmount)}</span>
             <span>未收：{formatMoney(order.unreceivedAmount)}</span>
           </div>
         </header>

@@ -126,7 +126,9 @@ class DeliveryStateBusinessFlowIT {
 
         assertThatThrownBy(() -> deliveryService.cancelPending(deliveryUuid, cancelRequest()))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("出库单不存在");
+                .hasMessageContaining("仅待出库单允许作废");
+        assertThat(deliveryService.getById(deliveryUuid).getDeliveryStatus()).isEqualTo(3);
+        assertThat(deliveryService.getById(deliveryUuid).getVoidReason()).isEqualTo("state test cancellation");
     }
 
     private DeliveryCreateDTO createRequest(BusinessFlowFixtureFactory.Scenario scenario) {

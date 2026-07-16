@@ -18,6 +18,7 @@ import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.service.CustomerService;
 import com.paper.mes.delivery.dto.AvailableFinishVO;
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
+import com.paper.mes.delivery.dto.DeliveryBatchConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCancelDTO;
 import com.paper.mes.delivery.dto.DeliveryConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
@@ -32,6 +33,7 @@ import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import com.paper.mes.delivery.service.DeliveryCashSettlementGuard;
 import com.paper.mes.delivery.service.DeliveryExportService;
+import com.paper.mes.delivery.service.DeliveryListExportService;
 import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
 import com.paper.mes.delivery.service.DeliveryService;
 import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
@@ -90,6 +92,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private static final int FINISH_STATUS_OUT = 3;
     private static final int DELIVERY_STATUS_PENDING = 1;
     private static final int DELIVERY_STATUS_OUT = 2;
+    private static final int DELIVERY_STATUS_VOID = 3;
     private static final int STOCK_LOCK_RELEASED = 0;
     private static final int STOCK_LOCK_ACTIVE = 1;
     private static final int ORDER_STATUS_FINISHED = 4;
@@ -110,6 +113,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private final DeliveryCashSettlementGuard cashSettlementGuard;
     private final DeliverySettlementBlockPolicy settlementBlockPolicy;
     private final DeliveryExportService deliveryExportService;
+    private final DeliveryListExportService deliveryListExportService;
     private final OperationLogMapper operationLogMapper;
     private final OperationLogService operationLogService;
     private final DocumentNoService documentNoService;
@@ -118,26 +122,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
     @Override
     public PageResult<DeliveryOrder> page(DeliveryQuery query) {
-        LambdaQueryWrapper<DeliveryOrder> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(query.getKeyword())) {
-            String kw = query.getKeyword().trim();
-            wrapper.and(w -> w.like(DeliveryOrder::getDeliveryNo, kw)
-                    .or().like(DeliveryOrder::getCustomerName, kw));
-        }
-        if (StringUtils.hasText(query.getCustomerUuid())) {
-            wrapper.eq(DeliveryOrder::getCustomerUuid, query.getCustomerUuid());
-        }
-        if (query.getDeliveryStatus() != null) {
-            wrapper.eq(DeliveryOrder::getDeliveryStatus, query.getDeliveryStatus());
-        }
-        if (query.getDateFrom() != null) {
-            wrapper.ge(DeliveryOrder::getDeliveryDate, query.getDateFrom());
-        }
-        if (query.getDateTo() != null) {
-            wrapper.le(DeliveryOrder::getDeliveryDate, query.getDateTo());
-        }
-        wrapper.orderByDesc(DeliveryOrder::getCreateTime);
-        Page<DeliveryOrder> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
+        Page<DeliveryOrder> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()),
+                DeliveryOrderQueryBuilder.build(query));
         return PageResult.of(page);
     }
 
@@ -334,6 +320,11 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     @Override
+    public void exportList(DeliveryQuery query, HttpServletResponse response) {
+        deliveryListExportService.export(query, response);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void confirm(String uuid, DeliveryConfirmDTO dto) {
         businessLockService.lockDeliveryOrder(uuid);
@@ -376,6 +367,19 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 order.getUuid(), order.getDeliveryNo(),
                 OperationLogService.ACTION_DELIVERY_CONFIRM,
                 dto == null ? null : dto.getSignUser(), "出库确认签收");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void confirmBatch(DeliveryBatchConfirmDTO dto) {
+        List<String> orderedUuids = dto.getDeliveryUuids().stream().distinct().sorted().toList();
+        if (orderedUuids.size() != dto.getDeliveryUuids().size()) {
+            throw new BusinessException(ErrorCode.E004, "出库单重复勾选，不可批量签收");
+        }
+        DeliveryConfirmDTO confirmData = dto.confirmData();
+        for (String deliveryUuid : orderedUuids) {
+            confirm(deliveryUuid, confirmData);
+        }
     }
 
     @Override
@@ -514,16 +518,14 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         List<DeliveryDetail> details = deliveryDetails(uuid);
         updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED);
-        int deletedDetails = deliveryDetailMapper.delete(new LambdaQueryWrapper<DeliveryDetail>()
-                .eq(DeliveryDetail::getDeliveryUuid, uuid));
-        if (deletedDetails != details.size()) {
-            throw new BusinessException(ErrorCode.E006);
-        }
         String reason = dto.getReason().trim();
-        ConcurrencyGuard.requireUpdated(removeById(uuid));
+        order.setVoidReason(reason);
+        order.setVoidBy(currentOperator());
+        order.setVoidTime(LocalDateTime.now());
+        updateDeliveryForCancel(order);
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                 order.getUuid(), order.getDeliveryNo(), OperationLogService.ACTION_DELIVERY_CANCEL,
-                null, "作废待出库单：" + reason);
+                order.getVoidBy(), "作废待出库单：" + reason);
     }
 
     private String nextDeliveryNo(LocalDate date) {
@@ -1437,6 +1439,20 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                         .set(DeliveryOrder::getSnapDelivery, order.getSnapDelivery())
                         .set(DeliveryOrder::getSnapDeliveryTime, order.getSnapDeliveryTime())
                         .set(DeliveryOrder::getRemark, order.getRemark())
+                        .set(DeliveryOrder::getUpdateTime, LocalDateTime.now())
+                        .set(DeliveryOrder::getUpdateBy, currentOperator())
+                        .setSql("version = version + 1")));
+    }
+
+    private void updateDeliveryForCancel(DeliveryOrder order) {
+        ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null,
+                new LambdaUpdateWrapper<DeliveryOrder>()
+                        .eq(DeliveryOrder::getUuid, order.getUuid())
+                        .eq(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_PENDING)
+                        .set(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_VOID)
+                        .set(DeliveryOrder::getVoidReason, order.getVoidReason())
+                        .set(DeliveryOrder::getVoidBy, order.getVoidBy())
+                        .set(DeliveryOrder::getVoidTime, order.getVoidTime())
                         .set(DeliveryOrder::getUpdateTime, LocalDateTime.now())
                         .set(DeliveryOrder::getUpdateBy, currentOperator())
                         .setSql("version = version + 1")));

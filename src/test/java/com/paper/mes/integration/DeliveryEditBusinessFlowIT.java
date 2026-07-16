@@ -37,7 +37,7 @@ class DeliveryEditBusinessFlowIT {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void pendingDelivery_whenEditedAndCancelled_releasesAllStockLocks() {
+    void pendingDelivery_whenCancelled_recordsTraceableVoidWithoutHoldingStock() {
         BusinessFlowFixtureFactory.Scenario scenario = fixtures.createCompletedOrderWithTwoFinishes();
         assertThat(availableFinishIds(scenario.customer().getUuid()))
                 .containsExactlyInAnyOrder(scenario.first().getUuid(), scenario.second().getUuid());
@@ -59,7 +59,12 @@ class DeliveryEditBusinessFlowIT {
 
         deliveryService.cancelPending(deliveryUuid, cancelRequest());
 
-        assertThat(deliveryService.getById(deliveryUuid)).isNull();
+        DeliveryOrder voidedOrder = deliveryService.getById(deliveryUuid);
+        assertThat(voidedOrder).isNotNull();
+        assertThat(voidedOrder.getDeliveryStatus()).isEqualTo(3);
+        assertThat(voidedOrder.getVoidReason()).isEqualTo("integration test cancellation");
+        assertThat(voidedOrder.getVoidBy()).isEqualTo("system");
+        assertThat(voidedOrder.getVoidTime()).isNotNull();
         assertThat(activeLockCount(scenario)).isZero();
         assertThat(availableFinishIds(scenario.customer().getUuid()))
                 .containsExactlyInAnyOrder(scenario.first().getUuid(), scenario.second().getUuid());

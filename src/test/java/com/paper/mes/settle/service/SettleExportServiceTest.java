@@ -66,9 +66,11 @@ class SettleExportServiceTest {
             assertEquals("现金实收", text(billSheet.getRow(5).getCell(0)));
             assertEquals("400", text(billSheet.getRow(5).getCell(1)));
             assertEquals("废纸抵扣", text(billSheet.getRow(5).getCell(3)));
-            assertEquals("100", text(billSheet.getRow(5).getCell(4)));
-            assertEquals("未收金额", text(billSheet.getRow(6).getCell(0)));
-            assertEquals("676", text(billSheet.getRow(6).getCell(1)));
+            assertEquals("90", text(billSheet.getRow(5).getCell(4)));
+            assertEquals("优惠核销", text(billSheet.getRow(6).getCell(0)));
+            assertEquals("10", text(billSheet.getRow(6).getCell(1)));
+            assertEquals("未收金额", text(billSheet.getRow(6).getCell(3)));
+            assertEquals("676", text(billSheet.getRow(6).getCell(4)));
 
             var receiveSheet = workbook.getSheet("收款流水");
             assertEquals("收款流水", text(receiveSheet.getRow(0).getCell(0)));
@@ -76,17 +78,19 @@ class SettleExportServiceTest {
             assertEquals("本次结清", text(receiveSheet.getRow(3).getCell(3)));
             assertEquals("现金实收", text(receiveSheet.getRow(3).getCell(4)));
             assertEquals("废纸抵扣", text(receiveSheet.getRow(3).getCell(5)));
-            assertEquals("状态", text(receiveSheet.getRow(3).getCell(11)));
-            assertEquals("混合收款", text(receiveSheet.getRow(4).getCell(2)));
+            assertEquals("优惠核销", text(receiveSheet.getRow(3).getCell(6)));
+            assertEquals("状态", text(receiveSheet.getRow(3).getCell(12)));
+            assertEquals("混合结清", text(receiveSheet.getRow(4).getCell(2)));
             assertEquals("500", text(receiveSheet.getRow(4).getCell(3)));
             assertEquals("400", text(receiveSheet.getRow(4).getCell(4)));
-            assertEquals("100", text(receiveSheet.getRow(4).getCell(5)));
-            assertEquals("50", text(receiveSheet.getRow(4).getCell(6)));
-            assertEquals("2", text(receiveSheet.getRow(4).getCell(7)));
-            assertEquals("转账", text(receiveSheet.getRow(4).getCell(8)));
-            assertEquals("有效", text(receiveSheet.getRow(4).getCell(11)));
-            assertEquals("已撤销", text(receiveSheet.getRow(5).getCell(11)));
-            assertEquals("主管 / 客户重复付款", text(receiveSheet.getRow(5).getCell(13)));
+            assertEquals("90", text(receiveSheet.getRow(4).getCell(5)));
+            assertEquals("10", text(receiveSheet.getRow(4).getCell(6)));
+            assertEquals("45", text(receiveSheet.getRow(4).getCell(7)));
+            assertEquals("2", text(receiveSheet.getRow(4).getCell(8)));
+            assertEquals("转账", text(receiveSheet.getRow(4).getCell(9)));
+            assertEquals("有效", text(receiveSheet.getRow(4).getCell(12)));
+            assertEquals("已撤销", text(receiveSheet.getRow(5).getCell(12)));
+            assertEquals("主管 / 客户重复付款", text(receiveSheet.getRow(5).getCell(14)));
         }
     }
 
@@ -101,7 +105,8 @@ class SettleExportServiceTest {
         order.setTotalAmount(new BigDecimal("1176"));
         order.setReceivedAmount(new BigDecimal("500"));
         order.setCashReceivedAmount(new BigDecimal("400"));
-        order.setScrapOffsetAmount(new BigDecimal("100"));
+        order.setScrapOffsetAmount(new BigDecimal("90"));
+        order.setDiscountAmount(new BigDecimal("10"));
         order.setUnreceivedAmount(new BigDecimal("676"));
         vo.setOrder(order);
         vo.setPrintLines(List.of(line()));
@@ -162,8 +167,9 @@ class SettleExportServiceTest {
         record.setReceiveDate(LocalDateTime.of(2026, 7, 2, 9, 30));
         record.setReceiveAmount(new BigDecimal("500"));
         record.setCashAmount(new BigDecimal("400"));
-        record.setScrapOffsetAmount(new BigDecimal("100"));
-        record.setScrapWeight(new BigDecimal("50"));
+        record.setScrapOffsetAmount(new BigDecimal("90"));
+        record.setDiscountAmount(new BigDecimal("10"));
+        record.setScrapWeight(new BigDecimal("45"));
         record.setScrapUnitPrice(new BigDecimal("2"));
         record.setReceiveType(3);
         record.setPayMethod(2);

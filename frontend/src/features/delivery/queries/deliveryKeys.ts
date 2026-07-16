@@ -15,4 +15,8 @@ export const deliveryKeys = createQueryKeys('delivery', {
     queryKey: [query],
     queryFn: () => deliveryService.list(query),
   }),
+  summary: (query: DeliveryQuery) => ({
+    queryKey: [query],
+    queryFn: () => deliveryService.summary(query),
+  }),
 })

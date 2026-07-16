@@ -70,7 +70,8 @@ class DeliverySettleRollbackBusinessFlowIT {
 
         settleService.voidSettle(settleUuid, voidRequest());
 
-        assertThat(settleService.getById(settleUuid)).isNull();
+        assertThat(settleService.getById(settleUuid).getSettleStatus()).isEqualTo(4);
+        assertThat(settleService.getById(settleUuid).getVoidReason()).isEqualTo("integration test void");
         assertThat(processOrderMapper.selectById(scenario.order().getUuid()).getOrderStatus()).isEqualTo(4);
         assertThat(settleDetailMapper.selectCount(new LambdaQueryWrapper<SettleDetail>()
                 .eq(SettleDetail::getSettleUuid, settleUuid))).isZero();

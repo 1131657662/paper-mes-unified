@@ -199,7 +199,7 @@ class BusinessFlowConcurrencyContractTest {
         String source = source(SETTLE_SERVICE);
         String receive = slice(source, "public void receive", "public void cancelReceive");
         String cancel = slice(source, "public void cancelReceive", "public void voidSettle");
-        String voidSettle = slice(source, "public void voidSettle", "private SettleDetail buildDetail");
+        String voidSettle = slice(source, "public void voidSettle", "private List<SettleDetail> normalizeDetailsForInvoiceView");
 
         assertContainsAll(receive,
                 "businessLockService.lockSettleOrder(uuid);",
@@ -207,9 +207,10 @@ class BusinessFlowConcurrencyContractTest {
                 "record.setReceiveAmount(amount.receiveAmount())",
                 "record.setCashAmount(amount.cashAmount())",
                 "record.setScrapOffsetAmount(amount.scrapOffsetAmount())",
+                "record.setDiscountAmount(amount.discountAmount())",
                 "record.setRecordStatus(RECEIVE_STATUS_ACTIVE)",
                 "refreshReceiveState(settle)");
-        assertBefore(receive, "businessLockService.lockSettleOrder(uuid);", "receiveRecordMapper.insert(record)");
+        assertBefore(receive, "businessLockService.lockSettleOrder(uuid);", "insertReceiveRecord(record)");
 
         assertContainsAll(cancel,
                 "businessLockService.lockSettleOrder(uuid);",
@@ -229,19 +230,20 @@ class BusinessFlowConcurrencyContractTest {
     }
 
     @Test
-    void settleVoid_whenSubmittedRepeatedly_usesStatusGuardAndDeletesOnlyOwnDetails() throws IOException {
+    void settleVoid_whenSubmittedRepeatedly_keepsMasterAndDeletesOnlyOwnActiveDetails() throws IOException {
         String source = source(SETTLE_SERVICE);
 
-        assertContainsAll(slice(source, "public void voidSettle", "private SettleDetail buildDetail"),
+        assertContainsAll(slice(source, "public void voidSettle", "private List<SettleDetail> normalizeDetailsForInvoiceView"),
                 "settleDetailMapper.delete(new LambdaQueryWrapper<SettleDetail>()",
                 ".eq(SettleDetail::getUuid, detail.getUuid())",
                 ".eq(SettleDetail::getSettleUuid, uuid)",
-                "deleteSettleOrderForVoid(settle)");
-        assertContainsAll(slice(source, "private void deleteSettleOrderForVoid", "private String buildSettleSnapshot"),
+                "markSettleVoided(settle, dto.getReason())");
+        assertContainsAll(slice(source, "private void markSettleVoided", "private String buildSettleSnapshot"),
                 "ConcurrencyGuard.requireRowUpdated",
                 ".eq(SettleOrder::getUuid, settle.getUuid())",
                 ".eq(SettleOrder::getSettleStatus, settle.getSettleStatus())",
-                ".set(SettleOrder::getIsDeleted, 1)",
+                ".set(SettleOrder::getSettleStatus, SETTLE_STATUS_VOID)",
+                ".set(SettleOrder::getVoidReason, reason.trim())",
                 ".setSql(\"version = version + 1\")");
     }
 

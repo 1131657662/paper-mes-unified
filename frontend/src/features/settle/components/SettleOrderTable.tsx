@@ -125,7 +125,7 @@ function buildColumns(actions: {
       render: (_, record) => (
         <Space className="mes-action-buttons">
           <Button type="link" size="small" onClick={() => actions.onDetail(record)}>详情</Button>
-          {actions.canReceiveSettle && record.settleStatus !== 3 && (
+          {actions.canReceiveSettle && [1, 2].includes(record.settleStatus) && (
             <Button type="link" size="small" onClick={() => actions.onReceive(record)}>收款</Button>
           )}
         </Space>
@@ -139,8 +139,8 @@ function ReceiveProgress({ record }: { record: SettleOrder }) {
   return (
     <div className="settle-cell-stack mes-cell-stack">
       <Progress percent={percent} size="small" />
-      <span>已收 {formatMoney(record.receivedAmount)} / 未收 {formatMoney(record.unreceivedAmount)}</span>
-      <span>现金 {formatMoney(record.cashReceivedAmount)} / 废纸 {formatMoney(record.scrapOffsetAmount)}</span>
+      <span>已结清 {formatMoney(record.receivedAmount)} / 未收 {formatMoney(record.unreceivedAmount)}</span>
+      <span>现金 {formatMoney(record.cashReceivedAmount)} / 废纸 {formatMoney(record.scrapOffsetAmount)} / 优惠 {formatMoney(record.discountAmount)}</span>
     </div>
   )
 }
@@ -150,7 +150,7 @@ function textCell(value?: ReactNode) {
 }
 
 function isOverdue(record: SettleOrder) {
-  return record.settleStatus !== 3
+  return [1, 2].includes(record.settleStatus)
     && Number(record.unreceivedAmount ?? 0) > 0
     && Boolean(record.periodEnd)
     && dayjs(record.periodEnd).isBefore(dayjs(), 'day')

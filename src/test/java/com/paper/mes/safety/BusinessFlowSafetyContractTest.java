@@ -75,7 +75,7 @@ class BusinessFlowSafetyContractTest {
     }
 
     @Test
-    void deliveryCancel_whenPending_releasesReservationsBeforeSoftDelete() throws IOException {
+    void deliveryCancel_whenPending_releasesReservationsAndKeepsVoidedDocument() throws IOException {
         String source = source(DELIVERY_SERVICE);
         String cancel = slice(source, "public void cancelPending", "private String nextDeliveryNo");
 
@@ -83,10 +83,14 @@ class BusinessFlowSafetyContractTest {
                 "businessLockService.lockDeliveryOrder(uuid);",
                 "order.getDeliveryStatus() != DELIVERY_STATUS_PENDING",
                 "updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED)",
-                "deliveryDetailMapper.delete",
-                "ConcurrencyGuard.requireUpdated(removeById(uuid))");
+                "order.setVoidReason(reason)",
+                "updateDeliveryForCancel(order)");
         assertTrue(cancel.indexOf("updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED)")
-                < cancel.indexOf("ConcurrencyGuard.requireUpdated(removeById(uuid))"));
+                < cancel.indexOf("updateDeliveryForCancel(order)"));
+        assertContainsAll(slice(source, "private void updateDeliveryForCancel", "private String currentOperator"),
+                ".set(DeliveryOrder::getDeliveryStatus, DELIVERY_STATUS_VOID)",
+                ".set(DeliveryOrder::getVoidReason, order.getVoidReason())",
+                ".setSql(\"version = version + 1\")");
     }
 
     @Test
@@ -159,25 +163,17 @@ class BusinessFlowSafetyContractTest {
     }
 
     @Test
-    void settleAmounts_whenBuiltFromProcessOrder_useLockedProcessOrderAmounts() throws IOException {
+    void settleAmounts_whenCreated_useUnifiedCalculatorAndRejectPendingPrices() throws IOException {
         String source = source(SETTLE_SERVICE);
 
-        assertContainsAll(slice(source, "private SettleDetail buildDetail",
-                        "private List<SettleDetail> normalizeDetailsForInvoiceView"),
-                "d.setOrderAmount(settleOrderAmount(order, fallbackAmount))");
-        assertContainsAll(slice(source, "private SettleDetail normalizedDetail",
-                        "private void applySettlementAmountView"),
-                "detail.setOrderAmount(settleOrderAmount(order, fallbackAmount))");
         assertContainsAll(slice(source, "private SettlementAmounts sumAmounts",
-                        "private BigDecimal detailBaseAmount"),
-                "noTax = noTax.add(settleNoTaxAmount(order, baseAmount))",
-                "tax = tax.add(settleTaxAmount(order, fallbackTax))",
-                "total = total.add(detail.getOrderAmount())");
-        assertContainsAll(slice(source, "private BigDecimal settleOrderAmount",
-                        "private BigDecimal detailBaseAmount"),
-                "order.getTotalAmount()",
-                "order.getTotalAmountNoTax()",
-                "order.getTotalAmountTax()");
+                        "private SettleQuoteVO quote"),
+                "settlementAmountCalculator.calculate(orders, isInvoice, customer)",
+                "amount.pendingPriceCount() > 0",
+                "amount.noTax()",
+                "amount.tax()",
+                "amount.total()",
+                "amount.details()");
     }
 
     @Test
@@ -190,6 +186,7 @@ class BusinessFlowSafetyContractTest {
                 "record.setReceiveAmount(amount.receiveAmount())",
                 "record.setCashAmount(amount.cashAmount())",
                 "record.setScrapOffsetAmount(amount.scrapOffsetAmount())",
+                "record.setDiscountAmount(amount.discountAmount())",
                 "refreshReceiveState(settle)");
         assertContainsAll(slice(source, "public void cancelReceive", "public void voidSettle"),
                 "businessLockService.lockSettleOrder(uuid);",
@@ -207,7 +204,8 @@ class BusinessFlowSafetyContractTest {
         assertContainsAll(slice(source, "private void applyReceiveState", "private void updateReceiveRecordForCancel"),
                 "SettleReceiveStatusResolver.resolve(totalAmount, totals.receiveAmount())",
                 "settle.setCashReceivedAmount(totals.cashAmount())",
-                "settle.setScrapOffsetAmount(totals.scrapOffsetAmount())");
+                "settle.setScrapOffsetAmount(totals.scrapOffsetAmount())",
+                "settle.setDiscountAmount(totals.discountAmount())");
         assertContainsAll(slice(source, "private BigDecimal activeReceiveAmount", "private List<SettleDetail> settleDetails"),
                 ".eq(ReceiveRecord::getIsDeleted, 0)",
                 ".eq(ReceiveRecord::getSettleUuid, settleUuid)",
@@ -225,7 +223,7 @@ class BusinessFlowSafetyContractTest {
         String printLineItems = slice(source, "private SettlePrintLineVO buildPrintLine",
                 "private void applyOrderAmountClosure");
 
-        assertContainsAll(slice(source, "public void voidSettle", "private SettleDetail buildDetail"),
+        assertContainsAll(slice(source, "public void voidSettle", "private List<SettleDetail> normalizeDetailsForInvoiceView"),
                 "businessLockService.lockSettleOrder(uuid);",
                 "activeReceiveAmount(uuid)",
                 "businessLockService.lockProcessOrders",

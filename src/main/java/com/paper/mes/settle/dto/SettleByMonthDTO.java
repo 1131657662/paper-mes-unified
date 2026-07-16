@@ -2,6 +2,9 @@ package com.paper.mes.settle.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -25,7 +28,10 @@ public class SettleByMonthDTO {
     private LocalDate settleDate;
 
     /** 是否开票 1开票 2不开票，可空则取客户缺省 */
+    @Min(value = 1, message = "开票状态不正确")
+    @Max(value = 2, message = "开票状态不正确")
     private Integer isInvoice;
 
+    @Size(max = 255, message = "备注不能超过255个字符")
     private String remark;
 }

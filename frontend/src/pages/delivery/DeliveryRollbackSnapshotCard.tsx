@@ -3,6 +3,7 @@ import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
 import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryDetail, DeliveryRollbackSnapshotVO } from '../../types/delivery'
 import { buildDeliveryDetailColumns } from './deliveryDetailColumns'
+import { formatDateTime } from '../../utils/dateTime'
 
 interface DeliveryRollbackSnapshotCardProps {
   snapshot: DeliveryRollbackSnapshotVO
@@ -25,12 +26,12 @@ export default function DeliveryRollbackSnapshotCard({ snapshot }: DeliveryRollb
       >
         <Descriptions.Item label="原出库单">{snapshot.deliveryNo || '-'}</Descriptions.Item>
         <Descriptions.Item label="原签收人">{snapshot.signUser || '-'}</Descriptions.Item>
-        <Descriptions.Item label="原签收时间">{snapshot.signTime || '-'}</Descriptions.Item>
+        <Descriptions.Item label="原签收时间">{formatDateTime(snapshot.signTime)}</Descriptions.Item>
         <Descriptions.Item label="原签收统计">
           {snapshot.totalCount ?? details.length} 卷 / {formatTon(snapshot.totalWeight)}
         </Descriptions.Item>
         <Descriptions.Item label="回退人">{snapshot.rollbackOperator || '-'}</Descriptions.Item>
-        <Descriptions.Item label="回退时间">{snapshot.rollbackTime || '-'}</Descriptions.Item>
+        <Descriptions.Item label="回退时间">{formatDateTime(snapshot.rollbackTime)}</Descriptions.Item>
         <Descriptions.Item label="回退原因" span="filled">{snapshot.rollbackReason || '-'}</Descriptions.Item>
       </Descriptions>
 

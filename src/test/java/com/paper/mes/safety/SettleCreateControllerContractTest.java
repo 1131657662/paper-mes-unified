@@ -10,6 +10,10 @@ import com.paper.mes.settle.controller.SettleController;
 import com.paper.mes.settle.dto.SettleByMonthDTO;
 import com.paper.mes.settle.dto.SettleByOrderDTO;
 import com.paper.mes.settle.dto.SettleByOrdersDTO;
+import com.paper.mes.settle.dto.SettleCandidateQuery;
+import com.paper.mes.common.PageResult;
+import com.paper.mes.settle.dto.SettleCandidateVO;
+import com.paper.mes.settle.service.SettleListSummaryService;
 import com.paper.mes.settle.service.SettleService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +32,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -43,7 +48,8 @@ class SettleCreateControllerContractTest {
     void setUp() {
         authService = mock(AuthService.class);
         settleService = mock(SettleService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new SettleController(settleService))
+        mvc = MockMvcBuilders.standaloneSetup(new SettleController(
+                        settleService, mock(SettleListSummaryService.class)))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -161,6 +167,25 @@ class SettleCreateControllerContractTest {
         verify(settleService).createByMonth(captor.capture());
         assertEquals("customer-1", captor.getValue().getCustomerUuid());
         assertEquals(LocalDate.of(2026, 7, 31), captor.getValue().getPeriodEnd());
+    }
+
+    @Test
+    void candidates_withPagination_bindsKeywordAndPageBounds() throws Exception {
+        authorizeAs("finance");
+        when(settleService.listCandidates(any())).thenReturn(new PageResult<SettleCandidateVO>());
+
+        mvc.perform(get("/api/settle-orders/candidates")
+                        .param("keyword", "JG2026")
+                        .param("current", "3")
+                        .param("size", "20")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<SettleCandidateQuery> captor = ArgumentCaptor.forClass(SettleCandidateQuery.class);
+        verify(settleService).listCandidates(captor.capture());
+        assertEquals("JG2026", captor.getValue().getKeyword());
+        assertEquals(3, captor.getValue().getCurrent());
+        assertEquals(20, captor.getValue().getSize());
     }
 
     private void authorizeAs(String roleCode) {

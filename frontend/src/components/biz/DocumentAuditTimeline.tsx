@@ -1,5 +1,6 @@
 import { Empty, Tag, Timeline, Typography } from 'antd'
 import type { OperationLog } from '../../types/operationLog'
+import { formatDateTime } from '../../utils/dateTime'
 
 interface Props {
   logs: OperationLog[]
@@ -27,7 +28,7 @@ function AuditItem({ log }: { log: OperationLog }) {
       <div className="document-audit-timeline__head">
         <Tag className="mes-status-tag" color={toneColor(log.actionType)}>{log.actionType || '操作'}</Tag>
         <Typography.Text strong>{log.operator || '-'}</Typography.Text>
-        <span>{log.operateTime || '-'}</span>
+        <span>{formatDateTime(log.operateTime)}</span>
       </div>
       {log.remark && <p>{log.remark}</p>}
       {log.fieldName && (

@@ -11,6 +11,7 @@ interface MesPageHeaderProps {
   onBack?: () => void
   tags?: ReactNode
   title: ReactNode
+  titleExtra?: ReactNode
 }
 
 export default function MesPageHeader({
@@ -22,6 +23,7 @@ export default function MesPageHeader({
   onBack,
   tags,
   title,
+  titleExtra,
 }: MesPageHeaderProps) {
   const mergedClassName = className ? `mes-page-header ${className}` : 'mes-page-header'
 
@@ -36,6 +38,7 @@ export default function MesPageHeader({
             </Button>
           )}
           <h1>{title}</h1>
+          {titleExtra}
           {tags}
         </div>
         {description && <p className="mes-page-header__description">{description}</p>}

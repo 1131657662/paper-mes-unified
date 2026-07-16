@@ -19,9 +19,13 @@ export interface SettleOrder {
   receivedAmount: number
   cashReceivedAmount?: number
   scrapOffsetAmount?: number
+  discountAmount?: number
   unreceivedAmount: number
   isInvoice: number
   settleStatus: number
+  voidReason?: string
+  voidBy?: string
+  voidTime?: string
   remark?: string
   createTime?: string
   updateTime?: string
@@ -108,10 +112,12 @@ export interface SettleFeeLine {
 export interface ReceiveRecord {
   uuid: string
   settleUuid: string
+  requestId?: string
   receiveDate: string
   receiveAmount: number
   cashAmount?: number
   scrapOffsetAmount?: number
+  discountAmount?: number
   scrapWeight?: number
   scrapUnitPrice?: number
   receiveType?: number
@@ -134,9 +140,12 @@ export interface SettleDetailVO {
 }
 
 export interface SettleCandidateQuery {
+  keyword?: string
   customerUuid?: string
   periodStart?: string
   periodEnd?: string
+  current?: number
+  size?: number
 }
 
 export interface SettleCandidateVO {
@@ -183,10 +192,24 @@ export interface SettleByMonthDTO {
   remark?: string
 }
 
+export interface SettleQuoteVO {
+  orderCount: number
+  pendingPriceCount: number
+  isInvoice: number
+  sawAmount: number
+  rewindAmount: number
+  extraAmount: number
+  amountNoTax: number
+  taxAmount: number
+  totalAmount: number
+}
+
 export interface ReceiveDTO {
+  requestId: string
   receiveAmount?: number
   cashAmount?: number
   scrapOffsetAmount?: number
+  discountAmount?: number
   scrapWeight?: number
   payMethod?: number
   payNo?: string
@@ -206,4 +229,16 @@ export interface SettleQuery extends PageQuery {
   settleType?: number
   dateFrom?: string
   dateTo?: string
+}
+
+export interface SettleListSummary {
+  totalDocumentCount: number
+  pendingDocumentCount: number
+  partialDocumentCount: number
+  paidDocumentCount: number
+  voidDocumentCount: number
+  activeTotalAmount: number
+  activeReceivedAmount: number
+  activeUnreceivedAmount: number
+  activeDiscountAmount: number
 }

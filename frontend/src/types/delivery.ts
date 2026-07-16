@@ -16,6 +16,9 @@ export interface DeliveryOrder {
   signTime?: string
   settleBlockAction: number
   deliveryStatus: number
+  voidReason?: string
+  voidBy?: string
+  voidTime?: string
   remark?: string
   createTime?: string
   updateTime?: string
@@ -169,6 +172,10 @@ export interface DeliveryConfirmDTO {
   remark?: string
 }
 
+export interface DeliveryBatchConfirmDTO extends DeliveryConfirmDTO {
+  deliveryUuids: string[]
+}
+
 export interface DeliveryRollbackDTO {
   reason: string
 }
@@ -183,4 +190,15 @@ export interface DeliveryQuery extends PageQuery {
   deliveryStatus?: number
   dateFrom?: string
   dateTo?: string
+}
+
+export interface DeliveryListSummary {
+  totalDocumentCount: number
+  pendingDocumentCount: number
+  deliveredDocumentCount: number
+  voidDocumentCount: number
+  activeRollCount: number
+  activeWeight: number
+  pendingWeight: number
+  deliveredWeight: number
 }

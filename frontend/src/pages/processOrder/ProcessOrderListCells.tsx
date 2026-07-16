@@ -1,4 +1,6 @@
-import { Tag, Typography } from 'antd'
+import type { MouseEvent } from 'react'
+import { Button, Tag, Tooltip, Typography, message } from 'antd'
+import { CopyOutlined } from '@ant-design/icons'
 import type { ProcessOrder } from '../../types/processOrder'
 import { ORDER_STATUS } from '../../constants/processOrder'
 import { formatMoney, formatTonFromKg } from '../../utils/numberFormatters'
@@ -6,21 +8,54 @@ import { formatMoney, formatTonFromKg } from '../../utils/numberFormatters'
 export function OrderNoCell({ onDetail, record }: { onDetail: (uuid: string) => void; record: ProcessOrder }) {
   return (
     <div className="process-order-list__order">
-      <Typography.Link
-        href={`/process-orders/${record.uuid}`}
-        strong
-        onClick={(event) => {
-          event.preventDefault()
-          onDetail(record.uuid)
-        }}
-      >
-        {record.orderNo || '-'}
-      </Typography.Link>
+      <div className="process-order-list__order-line">
+        <Typography.Link
+          className="process-order-list__order-link"
+          href={`/process-orders/${record.uuid}`}
+          strong
+          onClick={(event) => {
+            event.preventDefault()
+            onDetail(record.uuid)
+          }}
+        >
+          {record.orderNo || '-'}
+        </Typography.Link>
+        <OrderNoCopyButton orderNo={record.orderNo} />
+      </div>
       <div className="process-order-list__order-meta">
         <Typography.Text type="secondary">{record.isMixProcess === 1 ? '混合工艺' : '单一工艺'}</Typography.Text>
         {(record.priority ?? 1) > 1 && <PriorityPill value={record.priority} />}
       </div>
     </div>
+  )
+}
+
+function OrderNoCopyButton({ orderNo }: { orderNo?: string }) {
+  if (!orderNo) return <span aria-hidden className="process-order-list__copy-slot" />
+
+  const copyOrderNo = async (event: MouseEvent<HTMLElement>) => {
+    event.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(orderNo)
+      message.success('加工单号已复制')
+    } catch {
+      message.error('复制失败，请手动复制')
+    }
+  }
+
+  return (
+    <span className="process-order-list__copy-slot">
+      <Tooltip title="复制加工单号">
+        <Button
+          aria-label={`复制加工单号 ${orderNo}`}
+          className="process-order-list__copy-button"
+          icon={<CopyOutlined />}
+          size="small"
+          type="text"
+          onClick={copyOrderNo}
+        />
+      </Tooltip>
+    </span>
   )
 }
 

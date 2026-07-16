@@ -6,7 +6,10 @@ import {
   getSettleCandidates,
   getSettleOrderDetail,
   getSettleOrderList,
+  getSettleOrderSummary,
   receivePayment,
+  quoteSettleByMonth,
+  quoteSettleByOrders,
   voidSettleOrder,
 } from '../../../api/settle'
 import type {
@@ -21,11 +24,14 @@ import type { DocumentExportInput } from '../../../utils/documentExport'
 
 export const settleService = {
   candidates: (query: SettleCandidateQuery) => getSettleCandidates(query),
+  quoteByMonth: (data: SettleByMonthDTO) => quoteSettleByMonth(data),
+  quoteByOrders: (data: SettleByOrdersDTO) => quoteSettleByOrders(data),
   createByMonth: (data: SettleByMonthDTO) => createSettleByMonth(data),
   createByOrders: (data: SettleByOrdersDTO) => createSettleByOrders(data),
   detail: (uuid: string) => getSettleOrderDetail(uuid),
   export: (params: DocumentExportInput) => exportSettleOrder(params),
   list: (query: SettleQuery) => getSettleOrderList(query),
+  summary: (query: SettleQuery) => getSettleOrderSummary(query),
   receive: (params: { uuid: string; data: ReceiveDTO }) => receivePayment(params.uuid, params.data),
   cancelReceive: (params: { uuid: string; receiveUuid: string; data: SettleActionReasonDTO }) =>
     cancelReceivePayment(params.uuid, params.receiveUuid, params.data),

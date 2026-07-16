@@ -35,8 +35,11 @@ public class DeliveryOrder extends BaseEntity {
     private LocalDateTime signTime;
     /** 现结拦截结果 0无 1警告放行 2拦截 */
     private Integer settleBlockAction;
-    /** 1待出库 2已出库签收 */
+    /** 1待出库 2已出库签收 3已作废 */
     private Integer deliveryStatus;
+    private String voidReason;
+    private String voidBy;
+    private LocalDateTime voidTime;
     private String snapDelivery;
     private LocalDateTime snapDeliveryTime;
     private String remark;

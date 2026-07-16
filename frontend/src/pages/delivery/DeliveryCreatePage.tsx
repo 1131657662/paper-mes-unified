@@ -97,7 +97,8 @@ export default function DeliveryCreatePage() {
     }
     const hasRisk = selectedFinishes.some((item) => item.settlementRisk)
     if (hasRisk) {
-      await confirmDeliveryCashRelease()
+      const confirmed = await confirmDeliveryCashRelease()
+      if (!confirmed) return
     }
     const uuid = await createMutation.mutateAsync(buildDeliveryCreateDTO({
       forceRelease: hasRisk,

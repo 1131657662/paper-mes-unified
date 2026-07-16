@@ -10,6 +10,7 @@ import com.paper.mes.settle.controller.SettleController;
 import com.paper.mes.settle.dto.ReceiveDTO;
 import com.paper.mes.settle.dto.SettleActionReasonDTO;
 import com.paper.mes.settle.service.SettleService;
+import com.paper.mes.settle.service.SettleListSummaryService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +45,8 @@ class SettleReceiveControllerContractTest {
     void setUp() {
         authService = mock(AuthService.class);
         settleService = mock(SettleService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new SettleController(settleService))
+        mvc = MockMvcBuilders.standaloneSetup(new SettleController(
+                        settleService, mock(SettleListSummaryService.class)))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -79,6 +81,8 @@ class SettleReceiveControllerContractTest {
         ArgumentCaptor<ReceiveDTO> captor = ArgumentCaptor.forClass(ReceiveDTO.class);
         verify(settleService).receive(eq("settle-uuid"), captor.capture());
         assertEquals(new BigDecimal("100.50"), captor.getValue().getCashAmount());
+        assertEquals(new BigDecimal("1.00"), captor.getValue().getDiscountAmount());
+        assertEquals("receive-request-1", captor.getValue().getRequestId());
         assertEquals(LocalDateTime.of(2026, 7, 7, 10, 30), captor.getValue().getReceiveDate());
     }
 
@@ -140,7 +144,7 @@ class SettleReceiveControllerContractTest {
 
     private String receivePayload() {
         return """
-                {"cashAmount":100.50,"scrapOffsetAmount":0,"payMethod":2,"operator":"finance","receiveDate":"2026-07-07T10:30:00"}
+                {"requestId":"receive-request-1","cashAmount":100.50,"scrapOffsetAmount":0,"discountAmount":1.00,"payMethod":2,"operator":"finance","receiveDate":"2026-07-07T10:30:00"}
                 """;
     }
 }

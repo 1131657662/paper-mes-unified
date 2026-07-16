@@ -14,7 +14,10 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(prefix = "app.schema-bootstrap", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class SettleIntegrityBootstrap implements ApplicationRunner {
 
+    private static final String ORDER_TABLE = "biz_settle_order";
+    private static final String RECEIVE_TABLE = "biz_receive_record";
     private static final String DETAIL_TABLE = "biz_settle_detail";
+    private static final String DISCOUNT_COLUMN = "discount_amount";
     private static final String ACTIVE_ORDER_COLUMN = "active_order_uuid";
     private static final String ACTIVE_ORDER_INDEX = "uk_settle_detail_order_active";
 
@@ -22,8 +25,34 @@ public class SettleIntegrityBootstrap implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        addOrderDiscountColumn();
+        addReceiveDiscountColumn();
         addActiveOrderColumn();
         addActiveOrderIndex();
+    }
+
+    private void addOrderDiscountColumn() {
+        if (columnExists(ORDER_TABLE, DISCOUNT_COLUMN)) {
+            return;
+        }
+        jdbcTemplate.execute("""
+                ALTER TABLE `biz_settle_order`
+                ADD COLUMN `discount_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00
+                  COMMENT '优惠及尾差核销金额' AFTER `scrap_offset_amount`,
+                ADD CONSTRAINT `chk_settle_discount_nonnegative` CHECK (`discount_amount` >= 0)
+                """);
+    }
+
+    private void addReceiveDiscountColumn() {
+        if (columnExists(RECEIVE_TABLE, DISCOUNT_COLUMN)) {
+            return;
+        }
+        jdbcTemplate.execute("""
+                ALTER TABLE `biz_receive_record`
+                ADD COLUMN `discount_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00
+                  COMMENT '优惠及尾差核销金额' AFTER `scrap_offset_amount`,
+                ADD CONSTRAINT `chk_receive_discount_nonnegative` CHECK (`discount_amount` >= 0)
+                """);
     }
 
     private void addActiveOrderColumn() {

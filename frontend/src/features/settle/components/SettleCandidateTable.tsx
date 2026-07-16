@@ -3,10 +3,12 @@ import type { ColumnsType } from 'antd/es/table'
 import TooltipText from '../../../components/biz/TooltipText'
 import type { SettleCandidateVO } from '../../../types/settle'
 import { formatMoney, formatTon, settleModeText } from '../utils/settleFormatters'
+import { isSelectableCandidate } from '../../../pages/settle/settleCandidateSelectionModel'
 
 interface Props {
   data: SettleCandidateVO[]
   loading: boolean
+  lockedCustomerUuid?: string
   selectable?: boolean
   selectedRowKeys: React.Key[]
   scrollY?: number | string
@@ -16,6 +18,7 @@ interface Props {
 export default function SettleCandidateTable({
   data,
   loading,
+  lockedCustomerUuid,
   onSelectionChange,
   selectable = true,
   scrollY = 'calc(100vh - 520px)',
@@ -36,12 +39,13 @@ export default function SettleCandidateTable({
         selectedRowKeys: activeSelectedKeys,
         onChange: onSelectionChange,
         getCheckboxProps: (record) => ({
-          disabled: !isBillableCandidate(record),
+          disabled: !isSelectableCandidate(record, lockedCustomerUuid),
         }),
+        preserveSelectedRowKeys: true,
       } : undefined}
       rowClassName={(record) => (activeSelectedKeys.includes(record.orderUuid) ? 'is-selected' : '')}
       onRow={(record) => selectable ? ({
-        onClick: () => toggleKey(record.orderUuid, activeSelectedKeys, onSelectionChange, record),
+        onClick: () => toggleKey(record, activeSelectedKeys, onSelectionChange, lockedCustomerUuid),
       }) : {}}
       scroll={{ x: 1080, y: scrollY }}
     />
@@ -113,21 +117,16 @@ function textCell(value?: string | number) {
 }
 
 function toggleKey(
-  key: string,
+  record: SettleCandidateVO,
   selectedRowKeys: React.Key[],
   onSelectionChange: (keys: React.Key[]) => void,
-  record?: SettleCandidateVO,
+  lockedCustomerUuid?: string,
 ) {
-  if (record && !isBillableCandidate(record)) {
-    return
-  }
+  if (!isSelectableCandidate(record, lockedCustomerUuid)) return
+  const key = record.orderUuid
   if (selectedRowKeys.includes(key)) {
     onSelectionChange(selectedRowKeys.filter((item) => item !== key))
     return
   }
   onSelectionChange([...selectedRowKeys, key])
-}
-
-function isBillableCandidate(record: SettleCandidateVO) {
-  return Number(record.totalAmount ?? 0) > 0
 }

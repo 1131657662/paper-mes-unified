@@ -27,7 +27,7 @@ const statusValueEnum = Object.fromEntries(
 
 export function buildProcessOrderColumns(options: ColumnOptions): ProColumns<ProcessOrder>[] {
   return [
-    { title: '加工单', dataIndex: 'orderNo', width: 150, minWidth: 140, hideInSearch: true, render: (_, record) => <OrderNoCell onDetail={options.onDetail} record={record} /> },
+    { title: '加工单', dataIndex: 'orderNo', width: 180, minWidth: 170, hideInSearch: true, render: (_, record) => <OrderNoCell onDetail={options.onDetail} record={record} /> },
     { title: '加工单号/客户', dataIndex: 'keyword', hideInTable: true },
     { title: '客户', dataIndex: 'customerName', width: 125, minWidth: 120, hideInSearch: true, render: textCell },
     { title: '客户', dataIndex: 'customerUuid', hideInTable: true, valueType: 'select', valueEnum: options.customerEnum },

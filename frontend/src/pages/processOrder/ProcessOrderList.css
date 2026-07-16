@@ -24,6 +24,65 @@
   gap: 6px;
 }
 
+.process-order-list__order-line {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 4px;
+}
+
+.process-order-list__order-link {
+  justify-self: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.process-order-list__copy-slot {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+}
+
+.process-order-list__copy-button.ant-btn {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--mes-color-text-secondary);
+  opacity: 0;
+  pointer-events: none;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.process-order-table .ant-table-row:hover .process-order-list__copy-button,
+.process-order-list__order-line:focus-within .process-order-list__copy-button,
+.process-order-list__copy-button:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.process-order-list__copy-button.ant-btn:hover,
+.process-order-list__copy-button.ant-btn:focus-visible {
+  color: var(--mes-color-primary);
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 720px) {
+  .process-order-list__copy-button.ant-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .process-order-list__copy-button.ant-btn {
+    transition: none;
+  }
+}
+
 .process-order-list__order-meta .process-order-priority {
   min-width: 0;
   height: 20px;

@@ -39,11 +39,15 @@ public class SettleOrder extends BaseEntity {
     private BigDecimal receivedAmount;
     private BigDecimal cashReceivedAmount;
     private BigDecimal scrapOffsetAmount;
+    private BigDecimal discountAmount;
     private BigDecimal unreceivedAmount;
     /** 1开票 2不开票 */
     private Integer isInvoice;
-    /** 1待结算 2部分收款 3全部结清 */
+    /** 1待收款 2部分收款 3全部结清 4已作废 */
     private Integer settleStatus;
+    private String voidReason;
+    private String voidBy;
+    private LocalDateTime voidTime;
     private String snapBill;
     private LocalDateTime snapBillTime;
     private String remark;

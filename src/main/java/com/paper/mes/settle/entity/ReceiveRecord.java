@@ -22,12 +22,15 @@ public class ReceiveRecord extends BaseEntity {
     private String uuid;
 
     private String settleUuid;
+    private String requestId;
     private LocalDateTime receiveDate;
     private BigDecimal receiveAmount;
     private BigDecimal cashAmount;
     private BigDecimal scrapOffsetAmount;
+    private BigDecimal discountAmount;
     private BigDecimal scrapWeight;
     private BigDecimal scrapUnitPrice;
+    /** 1普通收款 2废纸抵扣 3混合结清 4优惠核销 */
     private Integer receiveType;
     /** 1现金 2转账 3微信 4支付宝 */
     private Integer payMethod;

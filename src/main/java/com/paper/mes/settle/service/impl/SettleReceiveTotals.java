@@ -5,19 +5,21 @@ import com.paper.mes.settle.entity.ReceiveRecord;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-record SettleReceiveTotals(BigDecimal receiveAmount, BigDecimal cashAmount, BigDecimal scrapOffsetAmount) {
+record SettleReceiveTotals(BigDecimal receiveAmount, BigDecimal cashAmount,
+                           BigDecimal scrapOffsetAmount, BigDecimal discountAmount) {
 
     private static final int MONEY_SCALE = 2;
 
     static SettleReceiveTotals zero() {
-        return new SettleReceiveTotals(money(null), money(null), money(null));
+        return new SettleReceiveTotals(money(null), money(null), money(null), money(null));
     }
 
     SettleReceiveTotals add(ReceiveRecord record) {
         return new SettleReceiveTotals(
                 receiveAmount.add(money(record.getReceiveAmount())),
                 cashAmount.add(cashAmount(record)),
-                scrapOffsetAmount.add(money(record.getScrapOffsetAmount())));
+                scrapOffsetAmount.add(money(record.getScrapOffsetAmount())),
+                discountAmount.add(money(record.getDiscountAmount())));
     }
 
     private static BigDecimal cashAmount(ReceiveRecord record) {

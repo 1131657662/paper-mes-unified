@@ -92,7 +92,8 @@ class SettlePageDataLoader {
     private static SettleReceiveTotals sumTotals(SettleReceiveTotals left, SettleReceiveTotals right) {
         return new SettleReceiveTotals(left.receiveAmount().add(right.receiveAmount()),
                 left.cashAmount().add(right.cashAmount()),
-                left.scrapOffsetAmount().add(right.scrapOffsetAmount()));
+                left.scrapOffsetAmount().add(right.scrapOffsetAmount()),
+                left.discountAmount().add(right.discountAmount()));
     }
 
     record PageData(Map<String, List<SettleDetail>> detailsBySettle,
