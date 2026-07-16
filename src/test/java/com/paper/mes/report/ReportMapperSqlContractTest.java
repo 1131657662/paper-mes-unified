@@ -112,11 +112,21 @@ class ReportMapperSqlContractTest {
     }
 
     @Test
-    void reportSql_whenCountingProcessingWeights_includesDirectShipInBusinessDimensions() throws IOException {
+    void reportSql_whenCountingProcessingWeights_excludesDirectShipAcrossAllViews() throws IOException {
         String sql = resourceText("mapper/report/ReportMapper.xml");
 
-        assertEquals(7, count(sql, "COALESCE(r.process_mode, 0) != 3"));
+        assertEquals(11, count(sql, "COALESCE(r.process_mode, 0) != 3"));
         assertEquals(2, count(sql, "COALESCE(process_mode, 0) != 3"));
+        assertTrue(sql.contains("COUNT(CASE WHEN COALESCE(r.process_mode, 0) != 3 THEN 1 END) AS originalRollCount"));
+    }
+
+    @Test
+    void reportSql_whenFilteringPeriods_usesBackRecordDateWithLegacyFallback() throws IOException {
+        String sql = resourceText("mapper/report/ReportMapper.xml");
+
+        assertEquals(5, count(sql, "DATE(COALESCE(o.back_record_time, o.order_date))"));
+        assertEquals(2, count(sql, "DATE_FORMAT(COALESCE(oi.back_record_time, oi.order_date), '%Y-%m')"));
+        assertTrue(sql.contains("ORDER BY COALESCE(o.back_record_time, o.order_date) DESC"));
     }
 
     @Test

@@ -160,6 +160,7 @@ export interface SettleCandidateVO {
   customerUuid: string
   customerName: string
   orderDate?: string
+  accountingDate?: string
   settleType?: number
   settleDay?: number
   isInvoice?: number

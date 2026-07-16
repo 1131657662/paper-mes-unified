@@ -72,6 +72,7 @@ export interface ReportDetailVO {
   orderUuid: string
   orderNo: string
   orderDate: string
+  accountingDate: string
   customerName: string
   settleType: number
   isInvoice: number

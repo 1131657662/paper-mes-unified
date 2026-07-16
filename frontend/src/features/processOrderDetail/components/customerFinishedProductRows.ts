@@ -1,4 +1,5 @@
 import type { FinishedProductRow } from './finishedProductRows'
+import { compareProductionSpecifications } from '../../../components/processOrder/shared/productionSpecificationOrder'
 
 export interface CustomerFinishedProductRow {
   count: number
@@ -29,7 +30,22 @@ export function buildCustomerFinishedProductRows(
     }
     groups.set(key, toCustomerRow(row, key))
   }
-  return Array.from(groups.values())
+  return Array.from(groups.values()).sort(compareCustomerRows)
+}
+
+function compareCustomerRows(left: CustomerFinishedProductRow, right: CustomerFinishedProductRow) {
+  return Number(left.isTrim) - Number(right.isTrim)
+    || compareProductionSpecifications({
+      paperName: left.paperName,
+      gramWeight: left.gramWeight,
+      width: left.width,
+      pieceWeight: left.count > 0 ? left.weight / left.count : undefined,
+    }, {
+      paperName: right.paperName,
+      gramWeight: right.gramWeight,
+      width: right.width,
+      pieceWeight: right.count > 0 ? right.weight / right.count : undefined,
+    })
 }
 
 export function calculateCustomerFinishedProductTotals(

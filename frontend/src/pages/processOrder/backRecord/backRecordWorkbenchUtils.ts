@@ -1,5 +1,9 @@
 import { buildDisplayRows } from '../../../components/processOrder/shared/displayRowBuilder'
 import { buildProcessingFlow } from '../../../components/processOrder/shared/detailHelpers'
+import {
+  compareFinishProductions,
+  compareOriginalRolls,
+} from '../../../components/processOrder/shared/productionSpecificationOrder'
 import type { DisplayRow } from '../../../components/processOrder/shared/types'
 import type { FinishRoll, OriginalRoll, ProcessOrderDetailVO } from '../../../types/processOrder'
 import { formatGram, formatMm } from '../../../utils/numberFormatters'
@@ -125,7 +129,7 @@ function fromDisplayRow(row: DisplayRow, detail: ProcessOrderDetailVO): BackReco
 }
 
 function fromOriginalRolls(detail: ProcessOrderDetailVO): BackRecordWorkItem[] {
-  return detail.originalRolls.map((roll, index) => ({
+  return [...detail.originalRolls].sort(compareOriginalRolls).map((roll, index) => ({
     key: `roll-${roll.uuid}`,
     kind: 'roll',
     title: rollName(roll, index + 1),
@@ -144,7 +148,8 @@ function attachFinishes(items: BackRecordWorkItem[], detail: ProcessOrderDetailV
   const assigned = new Set<string>()
 
   for (const item of items) {
-    for (const finish of item.production?.finishes ?? []) {
+    const finishes = [...(item.production?.finishes ?? [])].sort(compareFinishProductions)
+    for (const finish of finishes) {
       const matched = byUuid.get(finish.uuid)
       if (!matched) continue
       item.finishes.push({ finish: matched, bindMode: 'linked' })
@@ -174,7 +179,9 @@ function inferOneToOne(items: BackRecordWorkItem[], unassigned: FinishRoll[]) {
 
 function appendPool(items: BackRecordWorkItem[], detail: ProcessOrderDetailVO): BackRecordWorkItem[] {
   const used = new Set(items.flatMap((item) => item.finishes.map(({ finish }) => finish.uuid)))
-  const pool = activeFinishRolls(detail).filter((finish) => !used.has(finish.uuid))
+  const pool = activeFinishRolls(detail)
+    .filter((finish) => !used.has(finish.uuid))
+    .sort(compareFinishProductions)
   if (pool.length === 0) return items
 
   return [...items, {

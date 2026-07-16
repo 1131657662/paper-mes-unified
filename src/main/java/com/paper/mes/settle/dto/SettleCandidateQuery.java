@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDate;
 
 /**
- * 可结算加工单查询。当前结算模型按整张加工单入账，候选仅包含已完成且未结算的加工单。
+ * 可结算加工单查询。账期按回录完成日期归属，历史数据缺失时回退到制单日期。
  */
 @Data
 public class SettleCandidateQuery {

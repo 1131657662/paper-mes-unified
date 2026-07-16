@@ -20,6 +20,8 @@ class GlobalExceptionHandlerTest {
                 .getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(handler.handleBusiness(new BusinessException(ResultCode.FORBIDDEN, "无权限"))
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(handler.handleBusiness(new BusinessException(ResultCode.TOO_MANY_REQUESTS, "too many"))
+                .getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(handler.handleBusiness(new BusinessException(ResultCode.BAD_REQUEST, "参数错误"))
                 .getStatusCode()).isEqualTo(HttpStatus.OK);
     }

@@ -1,7 +1,9 @@
 .settle-create-page {
-  height: max(560px, calc(100vh - 126px));
+  display: grid;
+  height: max(720px, calc(100vh - 126px));
   min-height: 0;
-  overflow: hidden;
+  grid-template-rows: auto auto minmax(320px, 1fr) auto;
+  overflow: visible;
 }
 
 .settle-create-page__info .ant-card-body {
@@ -10,19 +12,18 @@
 
 .settle-create-page__form {
   grid-template-columns:
-    minmax(230px, 1.25fr)
-    minmax(140px, .8fr)
-    minmax(180px, 1fr)
-    minmax(130px, .75fr)
-    minmax(135px, .75fr)
-    minmax(150px, .85fr);
+    minmax(230px, 1.15fr)
+    minmax(160px, .8fr)
+    minmax(220px, 1fr)
+    minmax(150px, .75fr)
+    minmax(260px, 1.1fr)
+    minmax(200px, 1fr);
   gap: 10px;
 }
 
 .settle-create-page__selection {
   display: flex;
   min-height: 0;
-  flex: 1 1 0;
   flex-direction: column;
   overflow: hidden;
 }
@@ -35,8 +36,30 @@
   overflow: hidden;
 }
 
-.settle-create-page__selection .document-module-table {
+.settle-create-page__selection .mes-table-card {
+  display: flex;
   min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+}
+
+.settle-create-page__selection .mes-table-card .ant-table-wrapper,
+.settle-create-page__selection .mes-table-card > .ant-spin-nested-loading,
+.settle-create-page__selection .mes-table-card .ant-spin-container,
+.settle-create-page__selection .mes-table-card .ant-table,
+.settle-create-page__selection .mes-table-card .ant-table-container {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+}
+
+.settle-create-page__selection .mes-table-card .ant-table-header {
+  flex: 0 0 auto;
+}
+
+.settle-create-page__selection .mes-table-card .ant-table-body {
+  min-height: 220px;
   flex: 1 1 0;
 }
 
@@ -81,13 +104,20 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 1360px) {
+@media (max-width: 1500px) {
   .settle-create-page__form {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 860px) {
+  .settle-create-page {
+    height: auto;
+    min-height: 600px;
+    grid-template-rows: auto auto minmax(280px, 1fr) auto;
+    overflow: visible;
+  }
+
   .settle-create-page__form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

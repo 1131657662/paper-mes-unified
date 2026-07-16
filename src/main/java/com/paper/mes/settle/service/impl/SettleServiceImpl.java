@@ -56,6 +56,7 @@ import com.paper.mes.settle.mapper.SettleDetailMapper;
 import com.paper.mes.settle.mapper.SettleOrderMapper;
 import com.paper.mes.settle.service.SettleCandidateStatsLoader;
 import com.paper.mes.settle.service.SettleCandidateAmountLoader;
+import com.paper.mes.settle.service.SettleAccountingPeriodPolicy;
 import com.paper.mes.settle.service.SettleExportService;
 import com.paper.mes.settle.service.SettleReceiveStatusResolver;
 import com.paper.mes.settle.service.SettleService;
@@ -180,13 +181,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (StringUtils.hasText(query.getCustomerUuid())) {
             wrapper.eq(ProcessOrder::getCustomerUuid, query.getCustomerUuid());
         }
-        if (query.getPeriodStart() != null) {
-            wrapper.ge(ProcessOrder::getOrderDate, query.getPeriodStart());
-        }
-        if (query.getPeriodEnd() != null) {
-            wrapper.le(ProcessOrder::getOrderDate, query.getPeriodEnd());
-        }
-        wrapper.orderByAsc(ProcessOrder::getOrderDate).orderByAsc(ProcessOrder::getOrderNo);
+        SettleAccountingPeriodPolicy.applyPeriod(wrapper, query.getPeriodStart(), query.getPeriodEnd());
+        SettleAccountingPeriodPolicy.orderByAccountingDate(wrapper);
         Page<ProcessOrder> page = processOrderService.page(
                 PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
         List<ProcessOrder> orders = page.getRecords();
@@ -204,6 +200,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             vo.setCustomerUuid(order.getCustomerUuid());
             vo.setCustomerName(order.getCustomerName());
             vo.setOrderDate(order.getOrderDate());
+            vo.setAccountingDate(SettleAccountingPeriodPolicy.accountingDate(order));
             vo.setSettleType(order.getSettleType() == null ? SETTLE_TYPE_BY_MONTH : order.getSettleType());
             vo.setSettleDay(order.getSettleDay());
             vo.setIsInvoice(order.getIsInvoice() == null ? 2 : order.getIsInvoice());
@@ -310,14 +307,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (customer == null) {
             throw new BusinessException(ErrorCode.E002, "客户不存在");
         }
-        List<ProcessOrder> orders = processOrderService.list(
-                new LambdaQueryWrapper<ProcessOrder>()
-                        .eq(ProcessOrder::getCustomerUuid, dto.getCustomerUuid())
-                        .eq(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED)
-                        .ge(ProcessOrder::getOrderDate, dto.getPeriodStart())
-                        .le(ProcessOrder::getOrderDate, dto.getPeriodEnd())
-                        .orderByAsc(ProcessOrder::getOrderDate)
-                        .orderByAsc(ProcessOrder::getOrderNo));
+        List<ProcessOrder> orders = findMonthlyOrders(
+                dto.getCustomerUuid(), dto.getPeriodStart(), dto.getPeriodEnd());
         if (orders.isEmpty()) {
             throw new BusinessException("该期间无可结算加工单");
         }
@@ -1609,13 +1600,12 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private List<ProcessOrder> findMonthlyOrders(String customerUuid, LocalDate start, LocalDate end) {
-        return processOrderService.list(new LambdaQueryWrapper<ProcessOrder>()
+        LambdaQueryWrapper<ProcessOrder> wrapper = new LambdaQueryWrapper<ProcessOrder>()
                 .eq(ProcessOrder::getCustomerUuid, customerUuid)
-                .eq(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED)
-                .ge(ProcessOrder::getOrderDate, start)
-                .le(ProcessOrder::getOrderDate, end)
-                .orderByAsc(ProcessOrder::getOrderDate)
-                .orderByAsc(ProcessOrder::getOrderNo));
+                .eq(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED);
+        SettleAccountingPeriodPolicy.applyPeriod(wrapper, start, end);
+        SettleAccountingPeriodPolicy.orderByAccountingDate(wrapper);
+        return processOrderService.list(wrapper);
     }
 
     private BigDecimal settleOrderAmount(ProcessOrder order, BigDecimal fallbackAmount) {

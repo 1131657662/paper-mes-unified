@@ -14,8 +14,8 @@ export function exportRowsToCsv<T>({
   filename: string
   rows: T[]
 }): DownloadResult {
-  const header = columns.map((column) => csvCell(column.header)).join(',')
-  const body = rows.map((row) => columns.map((column) => csvCell(column.value(row))).join(','))
+  const header = columns.map((column) => formatCsvCell(column.header)).join(',')
+  const body = rows.map((row) => columns.map((column) => formatCsvCell(column.value(row))).join(','))
   const content = `\uFEFF${[header, ...body].join('\n')}`
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
   downloadBlob(blob, filename)
@@ -29,7 +29,13 @@ export function datedCsvFilename(prefix: string, date = new Date()) {
   return `${prefix}_${year}${month}${day}.csv`
 }
 
-function csvCell(value: string | number | null | undefined) {
-  const text = String(value ?? '')
+export function formatCsvCell(value: string | number | null | undefined): string {
+  const text = neutralizeFormula(value)
   return `"${text.replace(/"/g, '""')}"`
+}
+
+function neutralizeFormula(value: string | number | null | undefined): string {
+  const text = String(value ?? '')
+  if (typeof value !== 'string' || !/^[\t\r\n ]*[=+\-@]/.test(text)) return text
+  return `'${text}`
 }

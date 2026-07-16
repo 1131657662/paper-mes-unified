@@ -22,7 +22,7 @@ export default function ReportTrendPanel({ monthly }: Props) {
       <div className="report-panel__head">
         <div>
           <h3>月度加工应收曲线</h3>
-          <p>按制单月份汇总加工应收，辅助查看淡旺季、产能与回款压力。</p>
+          <p>按归属月份汇总加工应收，辅助查看淡旺季、产能与回款压力。</p>
         </div>
       </div>
       {points.length === 0 ? (

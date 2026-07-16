@@ -21,8 +21,8 @@ export default function ReportDimensionSummaryRow({ rows }: Props) {
         <Table.Summary.Cell index={5} align="right">{formatTonFromKg(totals.finishWeight)}</Table.Summary.Cell>
         <Table.Summary.Cell index={6} align="center">
           {hasWeightGain(totals.originalWeight, totals.finishWeight)
-            ? <Tag color="error">产出超出</Tag>
-            : <Tag color="success">正常</Tag>}
+            ? <Tag color="blue">成品较高</Tag>
+            : <Tag>无正差</Tag>}
         </Table.Summary.Cell>
         <Table.Summary.Cell index={7} align="right">{formatTonFromKg(totals.lossWeight)}</Table.Summary.Cell>
         <Table.Summary.Cell index={8} align="right">{formatPercent(totals.lossRatio)}</Table.Summary.Cell>

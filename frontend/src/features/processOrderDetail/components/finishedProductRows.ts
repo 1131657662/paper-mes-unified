@@ -1,4 +1,9 @@
 import { isDeliverableProductionFinish } from '../../../components/processOrder/shared/detailHelpers'
+import {
+  compareFinishProductions,
+  compareFinishSources,
+  compareRollProductions,
+} from '../../../components/processOrder/shared/productionSpecificationOrder'
 import type {
   FinishProductionVO,
   FinishSourceVO,
@@ -25,15 +30,15 @@ export function buildFinishedProductRows(
   const rows: FinishedProductRow[] = []
   const seen = new Set<string>()
 
-  for (const production of productions) {
-    for (const finish of production.finishes ?? []) {
+  for (const production of [...productions].sort(compareRollProductions)) {
+    for (const finish of [...(production.finishes ?? [])].sort(compareFinishProductions)) {
       if (seen.has(finish.uuid)) continue
       seen.add(finish.uuid)
       rows.push({
         finish,
         key: finish.uuid,
         sources: finish.sources?.length
-          ? finish.sources
+          ? [...finish.sources].sort(compareFinishSources)
           : fallbackSources(production),
       })
     }

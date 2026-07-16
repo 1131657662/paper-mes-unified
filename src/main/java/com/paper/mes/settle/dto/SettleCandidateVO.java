@@ -16,6 +16,8 @@ public class SettleCandidateVO {
     private String customerUuid;
     private String customerName;
     private LocalDate orderDate;
+    /** 回录完成日期；历史数据缺失回录时间时回退到制单日期。 */
+    private LocalDate accountingDate;
     /** 1次结 2月结，来自加工单快照。 */
     private Integer settleType;
     private Integer settleDay;

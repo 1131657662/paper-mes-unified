@@ -1,8 +1,9 @@
-import { Card, DatePicker, Form, Input, Radio, Select, Space, message } from 'antd'
-import type { Dayjs } from 'dayjs'
+import { Card, Form, Input, Space, message } from 'antd'
 import dayjs from 'dayjs'
+import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import SettleCandidateTable from '../../features/settle/components/SettleCandidateTable'
@@ -14,23 +15,15 @@ import { useSettleQuoteByOrders } from '../../features/settle/hooks/useSettleQuo
 import { selectedTotals } from '../../features/settle/utils/settleFormatters'
 import { DICT_TYPES, invoiceFallbackOptions } from '../../features/systemConfig/configFallbacks'
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
+import SettleConditionFields from './SettleConditionFields'
+import type { SettleCreateForm } from './SettleConditionFields'
 import SettleCreateFooter from './SettleCreateFooter'
 import SettleQuoteSummary from './SettleQuoteSummary'
 import SettleSelectionNotice from './SettleSelectionNotice'
 import { applyQuoteLines } from './settleQuoteModel'
 import { useSettleCandidateSelection } from './useSettleCandidateSelection'
-import { useRef } from 'react'
 import '../documentModule.css'
 import './SettleCreatePage.css'
-
-interface SettleCreateForm {
-  customerUuid?: string
-  createMode: 'selected' | 'month'
-  isInvoice: number
-  period?: [Dayjs, Dayjs] | null
-  remark?: string
-  settleDate: Dayjs
-}
 
 export default function SettleCreatePage() {
   const [form] = Form.useForm<SettleCreateForm>()
@@ -63,6 +56,10 @@ export default function SettleCreatePage() {
   const quotedCandidates = applyQuoteLines(selection.candidates, quote?.lines)
   const quoteRequired = isMonthMode ? canLoadCandidates : selectedOrderUuids.length > 0
   const quoteUnavailable = quoteRequired && (!quote || quoteQuery.isError || quoteQuery.isFetching)
+  const candidateTotal = canLoadCandidates ? selection.candidatesQuery.data?.total ?? 0 : 0
+  const awaitingMonthScope = isMonthMode && !canLoadCandidates
+  const emptyText = awaitingMonthScope ? '请选择客户和归属日期范围后查看候选' : undefined
+  const quoteEmptyText = awaitingMonthScope ? '选择客户和归属日期范围后显示准确试算' : '选择加工单后显示准确试算'
 
   const handleValuesChange = (changed: Partial<SettleCreateForm>, values: SettleCreateForm) => {
     if (!candidateScopeChanged(changed)) return
@@ -95,7 +92,7 @@ export default function SettleCreatePage() {
 
   const submitMonth = async (values: SettleCreateForm) => {
     if (!values.customerUuid || !values.period) {
-      message.warning('按月结算需要选择客户和账期')
+      message.warning('按账期结算需要选择客户和归属日期范围')
       return
     }
     const uuid = await createByMonthMutation.mutateAsync({
@@ -109,7 +106,7 @@ export default function SettleCreatePage() {
       remark: values.remark,
       settleDate: values.settleDate.format('YYYY-MM-DD'),
     })
-    message.success('月结结算单已生成')
+    message.success('账期结算单已生成')
     navigate(`/settle-orders/${uuid}`)
   }
 
@@ -130,23 +127,34 @@ export default function SettleCreatePage() {
         <Form form={form} layout="vertical" initialValues={{ createMode: 'selected', isInvoice: 0, settleDate: dayjs() }}
           onValuesChange={handleValuesChange}>
           <SettleConditionFields customers={customersQuery.data?.records ?? []} loading={customersQuery.isLoading}
-            invoiceOptions={invoiceOptions} />
+            invoiceOptions={invoiceOptions} isMonthMode={isMonthMode} />
         </Form>
       </Card>
-      <Card className="document-module-card settle-create-page__selection"
+      <Card className={
+        `document-module-card settle-create-page__selection${isMonthMode ? ' settle-create-page__selection--month' : ''}`
+      }
         title={isMonthMode ? '账期候选预览' : '选择加工单'}
-        extra={<Space wrap><Input.Search allowClear placeholder="搜索加工单或客户" onSearch={selection.setKeyword} />
+        extra={<Space wrap><Input.Search allowClear disabled={awaitingMonthScope}
+          placeholder={awaitingMonthScope ? '请先选择客户和日期范围' : '搜索加工单或客户'} onSearch={selection.setKeyword} />
           <SettleSelectedSummary label={isMonthMode ? '候选' : '已选'}
             count={quote?.orderCount ?? fallbackTotals.orderCount} amount={quote?.totalAmount ?? fallbackTotals.total} /></Space>}>
-        <SettleQuoteSummary error={quoteQuery.isError} quote={quote} loading={quoteQuery.isFetching} />
+        <SettleQuoteSummary error={quoteQuery.isError} quote={quote} loading={quoteQuery.isFetching}
+          emptyText={quoteEmptyText} onRetry={() => void quoteQuery.refetch()} />
         {!isMonthMode && <SettleSelectionNotice selectedCount={selection.selectedCandidates.length}
           customerName={selection.selectedCandidates[0]?.customerName} onClear={selection.clearSelection} />}
+        {canLoadCandidates && selection.candidatesQuery.isError && (
+          <QueryLoadErrorAlert message="结算候选加载失败"
+            description="本次未取得候选加工单，当前空表不代表没有可结算数据。"
+            onRetry={() => void selection.candidatesQuery.refetch()} />
+        )}
         <SettleCandidateTable data={quotedCandidates} loading={selection.candidatesQuery.isFetching}
           lockedCustomerUuid={isMonthMode ? undefined : selection.lockedCustomerUuid} selectable={!isMonthMode}
-          scrollY="calc(100vh - 610px)" selectedRowKeys={selection.selectedRowKeys}
+          emptyText={emptyText} scrollY="100%" selectedRowKeys={selection.selectedRowKeys}
           onSelectionChange={selection.updateSelection} />
-        <DocumentPaginationBar current={selection.query.current ?? 1} pageSize={selection.query.size ?? 20}
-          total={selection.candidatesQuery.data?.total ?? 0} onChange={selection.setPage} />
+        {!awaitingMonthScope && (
+          <DocumentPaginationBar current={selection.query.current ?? 1} pageSize={selection.query.size ?? 20}
+            total={candidateTotal} onChange={selection.setPage} />
+        )}
       </Card>
       <SettleCreateFooter amount={quote?.totalAmount ?? fallbackTotals.total}
         count={quote?.orderCount ?? fallbackTotals.orderCount} disabled={quoteUnavailable}
@@ -154,25 +162,6 @@ export default function SettleCreatePage() {
         pendingPriceCount={quote?.pendingPriceCount ?? 0} onCancel={() => navigate('/settle-orders')} onSubmit={handleSubmit} />
     </div>
   )
-}
-
-function SettleConditionFields({ customers, invoiceOptions, loading }: {
-  customers: { customerName: string; uuid: string }[]
-  invoiceOptions: { label: string; value: number }[]
-  loading: boolean
-}) {
-  return <div className="document-module-grid settle-create-page__form">
-    <Form.Item name="createMode" label="创建方式"><Radio.Group>
-      <Radio.Button value="selected">勾选加工单</Radio.Button><Radio.Button value="month">按月自动圈单</Radio.Button>
-    </Radio.Group></Form.Item>
-    <Form.Item name="customerUuid" label="客户"><Select allowClear showSearch loading={loading} placeholder="全部客户"
-      options={customers.map((item) => ({ label: item.customerName, value: item.uuid }))} optionFilterProp="label" /></Form.Item>
-    <Form.Item name="period" label="加工日期范围"><DatePicker.RangePicker /></Form.Item>
-    <Form.Item name="settleDate" label="结算日期" rules={[{ required: true, message: '请选择结算日期' }]}><DatePicker /></Form.Item>
-    <Form.Item name="isInvoice" label="是否开票"><Radio.Group><Radio.Button value={0}>沿用原单/客户</Radio.Button>
-      {invoiceOptions.map((item) => <Radio.Button key={item.value} value={item.value}>{item.label}</Radio.Button>)}</Radio.Group></Form.Item>
-    <Form.Item name="remark" label="备注"><Input maxLength={255} placeholder="结算备注" /></Form.Item>
-  </div>
 }
 
 function candidateScopeChanged(changed: Partial<SettleCreateForm>) {

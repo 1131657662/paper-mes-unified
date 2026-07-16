@@ -78,7 +78,6 @@ export default function ReceiveModal({
       okText="确认登记"
       cancelText="取消"
       destroyOnHidden
-      forceRender
     >
       <Form className="mes-modal-form" form={form} layout="vertical">
         <ReceiveAmountFields form={form} unreceivedAmount={usableUnreceivedAmount} />

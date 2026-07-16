@@ -1,6 +1,7 @@
 import type { RollProductionVO } from '../../../types/processOrder'
 import { isDeliverableProductionFinish } from './detailHelpers'
 import { sortFinishOutputs } from './outputOrder'
+import { compareRollProductions } from './productionSpecificationOrder'
 import type { DisplayRow, MergeGroup } from './types'
 
 /**
@@ -17,17 +18,7 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
   // Phase 1: 发现合并组
   const mergeGroups = findMergeGroups(productions)
 
-  // Phase 2: 构建集合便于查找
-  const mergeSourceUuids = new Set<string>()
-  const mergeMainUuidBySource = new Map<string, string>()
-  for (const group of mergeGroups) {
-    for (const uuid of group.sourceUuids) {
-      mergeSourceUuids.add(uuid)
-      mergeMainUuidBySource.set(uuid, group.mainUuid)
-    }
-  }
-
-  // Phase 3: 构建 DisplayRow
+  // Phase 2: 构建 DisplayRow
   const prodByUuid = new Map(productions.map((p) => [p.originalUuid!, p]))
   const usedInMerge = new Set<string>()
   const rows: DisplayRow[] = []
@@ -37,6 +28,7 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
     const allProds = group.allUuids
       .map((uuid) => prodByUuid.get(uuid))
       .filter((production): production is RollProductionVO => production != null)
+      .sort(compareRollProductions)
     if (allProds.length < 2) continue
 
     const mainProd = allProds.find((p) => p.originalUuid === group.mainUuid) ?? allProds[0]
@@ -117,50 +109,16 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
     })
   }
 
-  // 按原纸顺序排序并分配序号
-  // 将已被合并的 UUID 替换为合并组
-  const seqOrder: { uuid: string; isMerge: boolean }[] = []
-  const addedMerges = new Set<string>()
-  for (const prod of productions) {
-    const uuid = prod.originalUuid!
-    if (mergeMainUuidBySource.has(uuid)) {
-      // 这是来源卷，找到它的主卷
-      const mainUuid = mergeMainUuidBySource.get(uuid)!
-      if (!addedMerges.has(mainUuid)) {
-        addedMerges.add(mainUuid)
-        seqOrder.push({ uuid: mainUuid, isMerge: true })
-      }
-    } else if (mergeSourceUuids.has(uuid)) {
-      // 来源卷，已在上面处理
-    } else if (!usedInMerge.has(uuid)) {
-      seqOrder.push({ uuid, isMerge: false })
-    }
-  }
-  // 加上未被上面覆盖的合并组主卷
-  for (const group of mergeGroups) {
-    if (!addedMerges.has(group.mainUuid)) {
-      addedMerges.add(group.mainUuid)
-      seqOrder.push({ uuid: group.mainUuid, isMerge: true })
-    }
-  }
-
-  // 根据 seqOrder 排序 rows
-  const sortedRows: DisplayRow[] = []
-  const rowByMainUuid = new Map(
-    rows.map((r) => [r.isMergeGroup ? r.mainProduction.originalUuid! : r.originalUuids[0], r]),
-  )
-  for (const item of seqOrder) {
-    const row = rowByMainUuid.get(item.uuid)
-    if (row) sortedRows.push(row)
-  }
-  // 添加未在 seqOrder 中的行
-  for (const row of rows) {
-    if (!sortedRows.includes(row)) sortedRows.push(row)
-  }
-
+  const sortedRows = [...rows].sort(compareDisplayRows)
   sortedRows.forEach((row, i) => { row.seq = i + 1 })
 
   return sortedRows
+}
+
+function compareDisplayRows(left: DisplayRow, right: DisplayRow) {
+  const leftRoll = left.rollProductions[0] ?? left.mainProduction
+  const rightRoll = right.rollProductions[0] ?? right.mainProduction
+  return compareRollProductions(leftRoll, rightRoll)
 }
 
 /* ---------- 合并组发现 ---------- */

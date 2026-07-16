@@ -14,6 +14,7 @@ public class ReportDetailVO {
     private String orderUuid;
     private String orderNo;
     private LocalDate orderDate;
+    private LocalDate accountingDate;
     private String customerName;
     private Integer settleType;
     private Integer isInvoice;

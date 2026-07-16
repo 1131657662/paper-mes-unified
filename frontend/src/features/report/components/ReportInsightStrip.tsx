@@ -83,11 +83,11 @@ function processInsight(saw: number, rewind: number): Insight {
 }
 
 function balanceInsight(details: ReportDetailVO[]): Insight | undefined {
-  const abnormal = details.filter((item) => Number(item.finishWeight ?? 0) > Number(item.originalWeight ?? 0) + 0.001)
-  if (abnormal.length === 0) return undefined
+  const positiveDifferences = details.filter((item) => Number(item.finishWeight ?? 0) > Number(item.originalWeight ?? 0) + 0.001)
+  if (positiveDifferences.length === 0) return undefined
   return {
-    detail: `${abnormal.length} 张加工单的成品重量高于原纸重量，请先核对回录和来源重量`,
-    tag: '重量', title: '存在重量守恒异常', type: 'error',
+    detail: `${positiveDifferences.length} 张加工单的成品重量高于原纸重量；业务允许该情况，建议在明细备注中记录原因`,
+    tag: '重量', title: '存在成品重量正差', type: 'info',
   }
 }
 

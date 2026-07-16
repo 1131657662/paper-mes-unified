@@ -196,6 +196,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.75fr) minmax(340px, 1fr);
   gap: 14px;
+  align-items: stretch;
 }
 
 .dashboard-page__work-grid,
@@ -210,6 +211,8 @@
 }
 
 .dashboard-trend {
+  display: flex;
+  flex-direction: column;
   padding: 16px;
 }
 
@@ -554,52 +557,47 @@
 
 .dashboard-trend__line-chart {
   position: relative;
-  min-height: 244px;
-  padding: 4px 0 0;
+  min-height: 320px;
+  flex: 1;
 }
 
-.dashboard-trend__svg {
-  display: block;
+.dashboard-trend__chart-shell,
+.dashboard-trend__chart {
   width: 100%;
-  height: 244px;
+  height: 100% !important;
+  min-height: 320px;
 }
 
-.dashboard-trend__grid {
-  stroke: #edf2f7;
-  stroke-width: 1;
+.dashboard-trend__chart-shell {
+  position: relative;
 }
 
-.dashboard-trend__area {
-  fill: url("#dashboard-income-fill");
+.dashboard-trend__axis-pointer {
+  position: absolute;
+  z-index: 2;
+  top: 24px;
+  bottom: 30px;
+  left: 0;
+  border-left: 1px dashed #94a3b8;
+  pointer-events: none;
 }
 
-.dashboard-trend__line {
-  fill: none;
-  stroke: #1677ff;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 3;
+.dashboard-trend__chart-loading {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  background: linear-gradient(90deg, #f7f9fc 25%, #eef3f8 37%, #f7f9fc 63%);
+  background-size: 400% 100%;
+  animation: dashboard-chart-loading 1.4s ease infinite;
 }
 
-.dashboard-trend__line--empty {
-  stroke: #cbd8e6;
-  stroke-dasharray: 6 6;
+.dashboard-trend__chart-shell:not(:hover) .dashboard-trend__tooltip {
+  display: none !important;
 }
 
-.dashboard-trend__dot {
-  fill: #fff;
-  stroke: #1677ff;
-  stroke-width: 2.5;
-}
-
-.dashboard-trend__dot--empty {
-  stroke: #cbd8e6;
-}
-
-.dashboard-trend__point-label {
-  fill: #526579;
-  font-size: 11px;
-  font-weight: 650;
+@keyframes dashboard-chart-loading {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
 }
 
 .dashboard-trend__empty {
@@ -623,15 +621,6 @@
 
 .dashboard-trend__empty span {
   font-size: 12px;
-}
-
-.dashboard-trend__month-axis {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 2px;
-  color: var(--dashboard-muted);
-  font-size: 11px;
-  text-align: center;
 }
 
 .dashboard-order-row {

@@ -10,7 +10,7 @@ import lombok.Data;
 import java.time.LocalDate;
 
 /**
- * 按月批量生成结算单入参。自动圈出该客户该期间内 已完成(4) 且未结算的全部加工单。
+ * 按账期生成结算单。自动圈出归属日期在期间内、已完成且未结算的全部加工单。
  */
 @Data
 public class SettleByMonthDTO {

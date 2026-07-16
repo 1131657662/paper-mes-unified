@@ -7,6 +7,7 @@ import { isSelectableCandidate } from '../../../pages/settle/settleCandidateSele
 
 interface Props {
   data: SettleCandidateVO[]
+  emptyText?: React.ReactNode
   loading: boolean
   lockedCustomerUuid?: string
   selectable?: boolean
@@ -17,11 +18,12 @@ interface Props {
 
 export default function SettleCandidateTable({
   data,
+  emptyText,
   loading,
   lockedCustomerUuid,
   onSelectionChange,
   selectable = true,
-  scrollY = 'calc(100vh - 520px)',
+  scrollY = '100%',
   selectedRowKeys,
 }: Props) {
   const activeSelectedKeys = selectable ? selectedRowKeys : []
@@ -34,6 +36,7 @@ export default function SettleCandidateTable({
       loading={loading}
       columns={columns}
       dataSource={data}
+      locale={emptyText ? { emptyText } : undefined}
       pagination={false}
       rowSelection={selectable ? {
         selectedRowKeys: activeSelectedKeys,
@@ -47,7 +50,7 @@ export default function SettleCandidateTable({
       onRow={(record) => selectable ? ({
         onClick: () => toggleKey(record, activeSelectedKeys, onSelectionChange, lockedCustomerUuid),
       }) : {}}
-      scroll={{ x: 1080, y: scrollY }}
+      scroll={{ x: 1192, y: scrollY }}
     />
   )
 }
@@ -61,10 +64,11 @@ const columns: ColumnsType<SettleCandidateVO> = [
     render: (value, record) => (
       <div className="settle-cell-stack mes-cell-stack">
         <Typography.Text strong>{value}</Typography.Text>
-        <span>{record.orderDate ?? '-'}</span>
+        <span>制单 {record.orderDate ?? '-'}</span>
       </div>
     ),
   },
+  { title: '归属日期', dataIndex: 'accountingDate', width: 112, render: textCell },
   { title: '客户', dataIndex: 'customerName', width: 150, render: textCell },
   {
     title: '结算方式',
@@ -105,6 +109,7 @@ const columns: ColumnsType<SettleCandidateVO> = [
     title: '应收',
     dataIndex: 'totalAmount',
     align: 'right',
+    fixed: 'right',
     width: 125,
     render: (value) => Number(value ?? 0) > 0
       ? <Typography.Text strong>{formatMoney(value)}</Typography.Text>

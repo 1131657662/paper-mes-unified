@@ -123,6 +123,7 @@ public class GlobalExceptionHandler {
     private HttpStatus authStatus(int code) {
         if (code == ResultCode.UNAUTHORIZED) return HttpStatus.UNAUTHORIZED;
         if (code == ResultCode.FORBIDDEN) return HttpStatus.FORBIDDEN;
+        if (code == ResultCode.TOO_MANY_REQUESTS) return HttpStatus.TOO_MANY_REQUESTS;
         return HttpStatus.OK;
     }
 }

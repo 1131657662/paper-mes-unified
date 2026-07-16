@@ -16,5 +16,11 @@ public class AuthProperties {
     private int sessionHours = 12;
     @Min(1)
     private int sessionRetentionDays = 7;
+    @Min(1)
+    private int loginMaxFailures = 5;
+    @Min(1)
+    private int loginWindowSeconds = 300;
+    @Min(1)
+    private int loginLockSeconds = 900;
     private boolean cookieSecure;
 }

@@ -59,7 +59,7 @@ export function groupFinishes(finishes?: FinishProductionVO[]): FinishGroup[] {
     map.set(w, entry)
   }
   return Array.from(map.entries())
-    .sort(([a], [b]) => b - a)
+    .sort(([a], [b]) => a - b)
     .map(([width, { count, totalEstimate }]) => ({ width, count, totalEstimate }))
 }
 

@@ -32,8 +32,8 @@
             <when test="q.orderStatus != null">AND o.order_status = #{q.orderStatus}</when>
             <otherwise>AND o.order_status IN (4, 5)</otherwise>
         </choose>
-        <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
-        <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
+        <if test="q.dateFrom != null">AND DATE(COALESCE(o.back_record_time, o.order_date)) &gt;= #{q.dateFrom}</if>
+        <if test="q.dateTo != null">AND DATE(COALESCE(o.back_record_time, o.order_date)) &lt;= #{q.dateTo}</if>
         <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
         <if test="q.settleType != null">AND o.settle_type = #{q.settleType}</if>
         <if test="q.isInvoice != null">AND o.is_invoice = #{q.isInvoice}</if>
@@ -587,8 +587,8 @@
                             <when test="q.orderStatus != null">AND o.order_status = #{q.orderStatus}</when>
                             <otherwise>AND o.order_status IN (4, 5)</otherwise>
                         </choose>
-                        <if test="q.dateFrom != null">AND o.order_date &gt;= #{q.dateFrom}</if>
-                        <if test="q.dateTo != null">AND o.order_date &lt;= #{q.dateTo}</if>
+                        <if test="q.dateFrom != null">AND DATE(COALESCE(o.back_record_time, o.order_date)) &gt;= #{q.dateFrom}</if>
+                        <if test="q.dateTo != null">AND DATE(COALESCE(o.back_record_time, o.order_date)) &lt;= #{q.dateTo}</if>
                         <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
                         <if test="q.settleType != null">AND o.settle_type = #{q.settleType}</if>
                         <if test="q.isInvoice != null">AND o.is_invoice = #{q.isInvoice}</if>
@@ -833,8 +833,8 @@
                     SELECT oi.uuid AS order_uuid,
                            <choose>
                                <when test="dimension == 'month'">
-                                   DATE_FORMAT(oi.order_date, '%Y-%m') AS dimensionKey,
-                                   DATE_FORMAT(oi.order_date, '%Y-%m') AS dimensionName
+                                   DATE_FORMAT(COALESCE(oi.back_record_time, oi.order_date), '%Y-%m') AS dimensionKey,
+                                   DATE_FORMAT(COALESCE(oi.back_record_time, oi.order_date), '%Y-%m') AS dimensionName
                                </when>
                                <when test="dimension == 'invoice'">
                                    CAST(oi.is_invoice AS CHAR) AS dimensionKey,
@@ -870,10 +870,11 @@
                            COUNT(*) AS originalRollCount,
                            SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)) AS originalWeight,
                            SUM(COALESCE(r.total_loss_weight, 0)) AS lossWeight
-                    FROM biz_original_roll r
-                    WHERE r.is_deleted = 0
-                    <include refid="RollFilters"/>
-                    GROUP BY r.order_uuid
+                     FROM biz_original_roll r
+                     WHERE r.is_deleted = 0
+                       AND COALESCE(r.process_mode, 0) != 3
+                     <include refid="RollFilters"/>
+                     GROUP BY r.order_uuid
                 ) orig ON orig.order_uuid = o.uuid
                 LEFT JOIN (
                     SELECT f.order_uuid,
@@ -923,6 +924,7 @@
         SELECT o.uuid AS orderUuid,
                o.order_no AS orderNo,
                o.order_date AS orderDate,
+               DATE(COALESCE(o.back_record_time, o.order_date)) AS accountingDate,
                o.customer_name AS customerName,
                o.settle_type AS settleType,
                o.is_invoice AS isInvoice,
@@ -993,9 +995,11 @@
         FROM biz_process_order o
         LEFT JOIN (
             SELECT r.order_uuid,
-                   COUNT(*) AS originalRollCount,
-                   SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)) AS originalWeight,
-                   SUM(COALESCE(r.total_loss_weight, 0)) AS lossWeight,
+                   COUNT(CASE WHEN COALESCE(r.process_mode, 0) != 3 THEN 1 END) AS originalRollCount,
+                   SUM(CASE WHEN COALESCE(r.process_mode, 0) != 3
+                       THEN COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0) ELSE 0 END) AS originalWeight,
+                   SUM(CASE WHEN COALESCE(r.process_mode, 0) != 3
+                       THEN COALESCE(r.total_loss_weight, 0) ELSE 0 END) AS lossWeight,
                    GROUP_CONCAT(DISTINCT CONCAT(r.paper_name, '/', r.gram_weight, 'g/', r.original_width, 'mm')
                                 ORDER BY r.paper_name SEPARATOR '；') AS paperSummary,
                    GROUP_CONCAT(DISTINCT CASE
@@ -1038,7 +1042,7 @@
         <where>
             <include refid="OrderFilters"/>
         </where>
-        ORDER BY o.order_date DESC, o.order_no DESC
+        ORDER BY COALESCE(o.back_record_time, o.order_date) DESC, o.order_no DESC
     </sql>
 
     <select id="detailRows" resultType="com.paper.mes.report.dto.ReportDetailVO">

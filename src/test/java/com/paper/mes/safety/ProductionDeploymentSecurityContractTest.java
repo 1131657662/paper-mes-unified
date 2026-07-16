@@ -40,6 +40,17 @@ class ProductionDeploymentSecurityContractTest {
     }
 
     @Test
+    void baseProfile_disablesRuntimeDdlByDefault() throws Exception {
+        String application = source("src/main/resources/application.yml");
+        String environment = source("deploy/paper-mes.env.example");
+
+        assertContainsAll(application,
+                "schema-bootstrap:",
+                "enabled: ${PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED:false}");
+        assertContainsAll(environment, "PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED=false");
+    }
+
+    @Test
     void ddlBootstraps_areDisabledWhenProductionSchemaBootstrapIsOff() throws Exception {
         for (String path : DDL_BOOTSTRAPS) {
             assertContainsAll(source(path),

@@ -205,7 +205,7 @@
     </select>
 
     <select id="monthlyTrend" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardTrendVO">
-        SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month,
+        SELECT DATE_FORMAT(COALESCE(o.back_record_time, o.order_date), '%Y-%m') AS month,
                COUNT(*) AS orderCount,
                COALESCE(SUM(orig.originalWeight), 0) AS originalWeight,
                COALESCE(SUM(fin.finishWeight), 0) AS finishWeight,
@@ -231,9 +231,15 @@
         ) settle ON settle.order_uuid = o.uuid
         WHERE o.is_deleted = 0
           AND o.order_status IN (4, 5)
-          AND o.order_date &gt;= #{monthStart}
-          AND o.order_date &lt;= #{today}
-        GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
+          AND (
+              (o.back_record_time IS NOT NULL
+                  AND o.back_record_time &gt;= #{monthStart}
+                  AND o.back_record_time &lt; DATE_ADD(#{today}, INTERVAL 1 DAY))
+              OR (o.back_record_time IS NULL
+                  AND o.order_date &gt;= #{monthStart}
+                  AND o.order_date &lt;= #{today})
+          )
+        GROUP BY DATE_FORMAT(COALESCE(o.back_record_time, o.order_date), '%Y-%m')
         ORDER BY month
     </select>
 

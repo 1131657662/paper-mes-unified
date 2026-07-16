@@ -16,10 +16,15 @@ spring:
       max-request-size: 50MB
 
 app:
+  schema-bootstrap:
+    enabled: ${PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED:false}
   auth:
     session-hours: ${PAPER_MES_SESSION_HOURS:12}
     session-retention-days: ${PAPER_MES_SESSION_RETENTION_DAYS:7}
     session-cleanup-cron: "${PAPER_MES_SESSION_CLEANUP_CRON:0 30 3 * * *}"
+    login-max-failures: ${PAPER_MES_LOGIN_MAX_FAILURES:5}
+    login-window-seconds: ${PAPER_MES_LOGIN_WINDOW_SECONDS:300}
+    login-lock-seconds: ${PAPER_MES_LOGIN_LOCK_SECONDS:900}
     cookie-secure: ${PAPER_MES_COOKIE_SECURE:false}
   data-health:
     back-record-overdue-days: ${PAPER_MES_BACK_RECORD_OVERDUE_DAYS:3}

@@ -27,6 +27,9 @@ app:
     session-hours: 12
     session-retention-days: 7
     session-cleanup-cron: "0 30 3 * * *"
+    login-max-failures: 5
+    login-window-seconds: 300
+    login-lock-seconds: 900
     cookie-secure: true
   upload:
     dir: /opt/paper-mes/upload

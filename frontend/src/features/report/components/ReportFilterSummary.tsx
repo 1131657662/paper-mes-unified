@@ -28,8 +28,9 @@ export default function ReportFilterSummary({ customers, machines, papers, query
 
 function buildTags({ customers, machines, papers, query }: Props) {
   return [
-    `制单日期：${query.dateFrom ?? '-'} 至 ${query.dateTo ?? '-'}`,
-    '金额：应收按加工单制单日期归属，已收仅统计有效收款',
+    `归属日期：${query.dateFrom ?? '-'} 至 ${query.dateTo ?? '-'}`,
+    '归属规则：优先使用回录完成日期，历史数据缺失时回退制单日期',
+    '金额：应收按加工单归属日期统计，已收仅统计有效收款',
     `状态：${statusText(query.orderStatus)}`,
     labelByUuid('客户', query.customerUuid, customers, 'customerName'),
     labelByUuid('机台', query.machineUuid, machines, 'machineName'),

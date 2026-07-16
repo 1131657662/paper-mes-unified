@@ -9,9 +9,13 @@ import {
   layerItemSortMap,
   type LayeredRewindSort,
 } from './layeredRewindOrder'
+import { compareProductionSpecifications } from './productionSpecificationOrder'
 
 interface OrderedOutput {
+  actualWeight?: number
+  estimateWeight?: number
   finishWidth?: number
+  gramWeight?: number
   isRemain?: number
   outputNo?: string
   outputSort?: number
@@ -56,7 +60,17 @@ function compareOutputs<T extends OrderedOutput>(
 ): number {
   return compareLayerRows(layerSortMap.get(a.output.uuid), layerSortMap.get(b.output.uuid))
     || trimRank(a.output) - trimRank(b.output)
+    || compareProductionSpecifications(outputOrderValue(a.output), outputOrderValue(b.output))
     || sortValue(a.output, a.index) - sortValue(b.output, b.index)
+}
+
+function outputOrderValue(output: OrderedOutput) {
+  return {
+    paperName: output.paperName,
+    gramWeight: output.gramWeight,
+    width: output.finishWidth,
+    pieceWeight: output.actualWeight ?? output.estimateWeight,
+  }
 }
 
 function finishSortValue(output: OrderedOutput, index: number): number {

@@ -5,6 +5,8 @@ import com.paper.mes.auth.dto.ChangePasswordDTO;
 import com.paper.mes.auth.dto.LoginDTO;
 import com.paper.mes.auth.service.AuthService;
 import com.paper.mes.auth.service.AuthCookieService;
+import com.paper.mes.auth.service.LoginAttemptGuard;
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.R;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,12 +25,27 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuthCookieService cookieService;
+    private final LoginAttemptGuard loginAttemptGuard;
 
     @PostMapping("/login")
-    public R<AuthUserVO> login(@Valid @RequestBody LoginDTO dto, HttpServletResponse response) {
-        AuthUserVO user = authService.login(dto);
+    public R<AuthUserVO> login(@Valid @RequestBody LoginDTO dto, HttpServletRequest request,
+                              HttpServletResponse response) {
+        String clientId = request.getRemoteAddr();
+        loginAttemptGuard.ensureAllowed(clientId);
+        AuthUserVO user = authenticate(dto, clientId);
         cookieService.write(response, user.getAccessToken());
         return R.success(user);
+    }
+
+    private AuthUserVO authenticate(LoginDTO dto, String clientId) {
+        try {
+            AuthUserVO user = authService.login(dto);
+            loginAttemptGuard.recordSuccess(clientId);
+            return user;
+        } catch (BusinessException ex) {
+            loginAttemptGuard.recordFailure(clientId);
+            throw ex;
+        }
     }
 
     @GetMapping("/me")

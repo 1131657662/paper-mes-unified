@@ -58,7 +58,7 @@ export default function ReportFilterBar(props: Props) {
         layout="vertical"
         onFinish={props.onSubmit}
       >
-        <Form.Item label="统计周期（制单日期）" name="period">
+        <Form.Item label="统计周期（归属日期）" name="period">
           <RangePicker allowClear={false} />
         </Form.Item>
         <Form.Item label="汇总维度" name="dimension">
