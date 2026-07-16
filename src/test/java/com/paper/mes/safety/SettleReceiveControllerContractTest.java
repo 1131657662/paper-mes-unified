@@ -11,6 +11,7 @@ import com.paper.mes.settle.dto.ReceiveDTO;
 import com.paper.mes.settle.dto.SettleActionReasonDTO;
 import com.paper.mes.settle.service.SettleService;
 import com.paper.mes.settle.service.SettleListSummaryService;
+import com.paper.mes.settle.service.SettleDiscountApprovalService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,8 @@ class SettleReceiveControllerContractTest {
         authService = mock(AuthService.class);
         settleService = mock(SettleService.class);
         mvc = MockMvcBuilders.standaloneSetup(new SettleController(
-                        settleService, mock(SettleListSummaryService.class)))
+                        settleService, mock(SettleListSummaryService.class),
+                        mock(SettleDiscountApprovalService.class)))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -144,7 +146,7 @@ class SettleReceiveControllerContractTest {
 
     private String receivePayload() {
         return """
-                {"requestId":"receive-request-1","cashAmount":100.50,"scrapOffsetAmount":0,"discountAmount":1.00,"payMethod":2,"operator":"finance","receiveDate":"2026-07-07T10:30:00"}
+                {"requestId":"receive-request-1","cashAmount":100.50,"scrapOffsetAmount":0,"discountAmount":1.00,"discountReason":"尾差","payMethod":2,"payNo":"TX-1","operator":"spoofed","receiveDate":"2026-07-07T10:30:00"}
                 """;
     }
 }

@@ -14,6 +14,18 @@ import java.time.LocalDate;
 @Data
 public class SettleByOrderDTO {
 
+    @NotBlank(message = "请求号不能为空")
+    @Size(max = 64, message = "请求号不能超过64个字符")
+    private String requestId;
+
+    @NotBlank(message = "报价版本不能为空")
+    @Size(max = 32, message = "报价版本不能超过32个字符")
+    private String quoteVersion;
+
+    @NotBlank(message = "报价哈希不能为空")
+    @Size(min = 64, max = 64, message = "报价哈希格式不正确")
+    private String quoteHash;
+
     @NotBlank(message = "加工单不能为空")
     private String orderUuid;
 

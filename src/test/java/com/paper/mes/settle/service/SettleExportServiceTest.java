@@ -63,7 +63,7 @@ class SettleExportServiceTest {
             var billSheet = workbook.getSheet("结算单");
             assertEquals("已结清", text(billSheet.getRow(4).getCell(3)));
             assertEquals("500", text(billSheet.getRow(4).getCell(4)));
-            assertEquals("现金实收", text(billSheet.getRow(5).getCell(0)));
+            assertEquals("实际到账", text(billSheet.getRow(5).getCell(0)));
             assertEquals("400", text(billSheet.getRow(5).getCell(1)));
             assertEquals("废纸抵扣", text(billSheet.getRow(5).getCell(3)));
             assertEquals("90", text(billSheet.getRow(5).getCell(4)));
@@ -76,7 +76,7 @@ class SettleExportServiceTest {
             assertEquals("收款流水", text(receiveSheet.getRow(0).getCell(0)));
             assertEquals("类型", text(receiveSheet.getRow(3).getCell(2)));
             assertEquals("本次结清", text(receiveSheet.getRow(3).getCell(3)));
-            assertEquals("现金实收", text(receiveSheet.getRow(3).getCell(4)));
+            assertEquals("实际到账", text(receiveSheet.getRow(3).getCell(4)));
             assertEquals("废纸抵扣", text(receiveSheet.getRow(3).getCell(5)));
             assertEquals("优惠核销", text(receiveSheet.getRow(3).getCell(6)));
             assertEquals("状态", text(receiveSheet.getRow(3).getCell(12)));

@@ -36,17 +36,10 @@ export default function ReceiveAmountFields({ form, unreceivedAmount }: Props) {
           填入未收
         </Button>
       </div>
-      <Form.Item name="cashAmount" label="现金实收金额">
+      <Form.Item name="cashAmount" label="实际到账金额">
         <InputNumber style={{ width: '100%' }} min={0} max={unreceivedAmount} precision={2} />
       </Form.Item>
       <Form.Item name="scrapOffsetAmount" label="废纸抵扣金额">
-        <InputNumber style={{ width: '100%' }} min={0} max={unreceivedAmount} precision={2} />
-      </Form.Item>
-      <Form.Item
-        name="discountAmount"
-        label="优惠/尾差核销"
-        tooltip="不计入客户实际支付，仅用于核销双方确认的优惠或尾差"
-      >
         <InputNumber style={{ width: '100%' }} min={0} max={unreceivedAmount} precision={2} />
       </Form.Item>
       <Form.Item name="scrapWeight" label="废纸重量 kg" rules={[{

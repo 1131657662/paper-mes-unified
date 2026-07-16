@@ -17,6 +17,18 @@ import java.util.List;
 @Data
 public class SettleByOrdersDTO {
 
+    @NotBlank(message = "请求号不能为空")
+    @Size(max = 64, message = "请求号不能超过64个字符")
+    private String requestId;
+
+    @NotBlank(message = "报价版本不能为空")
+    @Size(max = 32, message = "报价版本不能超过32个字符")
+    private String quoteVersion;
+
+    @NotBlank(message = "报价哈希不能为空")
+    @Size(min = 64, max = 64, message = "报价哈希格式不正确")
+    private String quoteHash;
+
     @NotEmpty(message = "加工单不能为空")
     @Size(max = 500, message = "单次结算加工单不能超过500条")
     private List<@NotBlank(message = "加工单uuid不能为空") String> orderUuids;

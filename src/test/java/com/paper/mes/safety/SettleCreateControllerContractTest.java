@@ -15,6 +15,7 @@ import com.paper.mes.common.PageResult;
 import com.paper.mes.settle.dto.SettleCandidateVO;
 import com.paper.mes.settle.service.SettleListSummaryService;
 import com.paper.mes.settle.service.SettleService;
+import com.paper.mes.settle.service.SettleDiscountApprovalService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SettleCreateControllerContractTest {
 
     private static final String TOKEN = "test-token";
+    private static final String QUOTE_HASH = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     private AuthService authService;
     private SettleService settleService;
@@ -49,7 +51,8 @@ class SettleCreateControllerContractTest {
         authService = mock(AuthService.class);
         settleService = mock(SettleService.class);
         mvc = MockMvcBuilders.standaloneSetup(new SettleController(
-                        settleService, mock(SettleListSummaryService.class)))
+                        settleService, mock(SettleListSummaryService.class),
+                        mock(SettleDiscountApprovalService.class)))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -87,7 +90,7 @@ class SettleCreateControllerContractTest {
 
         mvc.perform(post("/api/settle-orders/by-order")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"orderUuid\":\"\"}")
+                        .content(createContract() + ",\"orderUuid\":\"\"}")
                         .header("Authorization", "Bearer " + TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400));
@@ -103,8 +106,8 @@ class SettleCreateControllerContractTest {
         mvc.perform(post("/api/settle-orders/by-order")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"orderUuid":"order-1","settleDate":"2026-07-07","isInvoice":2,"remark":"single"}
-                                """)
+                                {"requestId":"create-1","quoteVersion":"settlement-quote-v1","quoteHash":"%s","orderUuid":"order-1","settleDate":"2026-07-07","isInvoice":2,"remark":"single"}
+                                """.formatted(QUOTE_HASH))
                         .header("Authorization", "Bearer " + TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value("settle-uuid"));
@@ -123,8 +126,8 @@ class SettleCreateControllerContractTest {
         mvc.perform(post("/api/settle-orders/by-orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"orderUuids":["order-1","order-2"],"periodStart":"2026-07-01","periodEnd":"2026-07-31"}
-                                """)
+                                {"requestId":"create-2","quoteVersion":"settlement-quote-v1","quoteHash":"%s","orderUuids":["order-1","order-2"],"periodStart":"2026-07-01","periodEnd":"2026-07-31"}
+                                """.formatted(QUOTE_HASH))
                         .header("Authorization", "Bearer " + TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value("batch-settle-uuid"));
@@ -141,7 +144,7 @@ class SettleCreateControllerContractTest {
 
         mvc.perform(post("/api/settle-orders/by-month")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"customerUuid\":\"customer-1\",\"periodEnd\":\"2026-07-31\"}")
+                        .content(createContract() + ",\"customerUuid\":\"customer-1\",\"periodEnd\":\"2026-07-31\"}")
                         .header("Authorization", "Bearer " + TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400));
@@ -157,8 +160,8 @@ class SettleCreateControllerContractTest {
         mvc.perform(post("/api/settle-orders/by-month")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"customerUuid":"customer-1","periodStart":"2026-07-01","periodEnd":"2026-07-31","settleDate":"2026-08-01"}
-                                """)
+                                {"requestId":"create-3","quoteVersion":"settlement-quote-v1","quoteHash":"%s","customerUuid":"customer-1","periodStart":"2026-07-01","periodEnd":"2026-07-31","settleDate":"2026-08-01"}
+                                """.formatted(QUOTE_HASH))
                         .header("Authorization", "Bearer " + TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value("month-settle-uuid"));
@@ -196,5 +199,10 @@ class SettleCreateControllerContractTest {
                 .realName("tester")
                 .roleCode(roleCode)
                 .build());
+    }
+
+    private String createContract() {
+        return "{\"requestId\":\"create-test\",\"quoteVersion\":\"settlement-quote-v1\",\"quoteHash\":\""
+                + QUOTE_HASH + "\"";
     }
 }

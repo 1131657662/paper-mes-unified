@@ -8,6 +8,10 @@ import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.settle.dto.ReceiveDTO;
 import com.paper.mes.settle.dto.SettleByOrderDTO;
 import com.paper.mes.settle.dto.SettleByOrdersDTO;
+import com.paper.mes.settle.dto.SettleQuoteByOrderDTO;
+import com.paper.mes.settle.dto.SettleQuoteByOrdersDTO;
+import com.paper.mes.auth.context.AuthContextHolder;
+import com.paper.mes.auth.dto.CurrentUser;
 import com.paper.mes.settle.service.SettleService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +64,12 @@ class FullLifecycleBusinessFlowIT {
         String settleUuid = settleService.createByOrder(settleRequest(scenario.orderUuid()));
         BigDecimal total = settleService.getById(settleUuid).getTotalAmount();
 
-        settleService.receive(settleUuid, discountedReceiveRequest(total));
+        AuthContextHolder.setCurrentUser(financeUser());
+        try {
+            settleService.receive(settleUuid, discountedReceiveRequest(total));
+        } finally {
+            AuthContextHolder.clear();
+        }
 
         var detail = settleService.getDetail(settleUuid);
         assertThat(detail.getOrder().getSettleStatus()).isEqualTo(3);
@@ -81,7 +90,13 @@ class FullLifecycleBusinessFlowIT {
         request.setSettleDate(LocalDate.now());
         request.setIsInvoice(2);
 
-        var quote = settleService.quoteByOrders(request);
+        SettleQuoteByOrdersDTO quoteRequest = new SettleQuoteByOrdersDTO();
+        quoteRequest.setOrderUuids(request.getOrderUuids());
+        quoteRequest.setIsInvoice(request.getIsInvoice());
+        var quote = settleService.quoteByOrders(quoteRequest);
+        request.setRequestId("quote-create-" + System.nanoTime());
+        request.setQuoteVersion(quote.getQuoteVersion());
+        request.setQuoteHash(quote.getQuoteHash());
         String settleUuid = settleService.createByOrders(request);
         var settlement = settleService.getById(settleUuid);
 
@@ -114,11 +129,7 @@ class FullLifecycleBusinessFlowIT {
     }
 
     private SettleByOrderDTO settleRequest(String orderUuid) {
-        SettleByOrderDTO dto = new SettleByOrderDTO();
-        dto.setOrderUuid(orderUuid);
-        dto.setSettleDate(LocalDate.now());
-        dto.setIsInvoice(2);
-        return dto;
+        return SettlementTestRequestFactory.byOrder(settleService, orderUuid);
     }
 
     private ReceiveDTO receiveRequest(BigDecimal amount) {
@@ -126,7 +137,7 @@ class FullLifecycleBusinessFlowIT {
         dto.setRequestId("full-receive-" + System.nanoTime());
         dto.setReceiveAmount(amount);
         dto.setPayMethod(2);
-        dto.setOperator("业务流收款人");
+        dto.setPayNo("TX-FULL-1");
         return dto;
     }
 
@@ -135,8 +146,14 @@ class FullLifecycleBusinessFlowIT {
         dto.setRequestId("discount-receive-" + System.nanoTime());
         dto.setCashAmount(amount.subtract(BigDecimal.ONE));
         dto.setDiscountAmount(BigDecimal.ONE);
+        dto.setDiscountReason("双方确认尾差");
         dto.setPayMethod(2);
-        dto.setOperator("业务流收款人");
+        dto.setPayNo("TX-DISCOUNT-1");
         return dto;
+    }
+
+    private CurrentUser financeUser() {
+        return CurrentUser.builder().uuid("finance-user").username("finance")
+                .realName("业务流财务").roleCode("finance").build();
     }
 }

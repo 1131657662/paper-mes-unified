@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { queries } from '../../../queries'
-import type { SettleByOrdersDTO } from '../../../types/settle'
+import type { SettleQuoteByOrdersDTO } from '../../../types/settle'
 
-export function useSettleQuoteByOrders(data: SettleByOrdersDTO, enabled: boolean) {
+export function useSettleQuoteByOrders(data: SettleQuoteByOrdersDTO, enabled: boolean) {
   return useQuery({
     ...queries.settle.quoteByOrders(data),
     enabled,

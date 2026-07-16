@@ -26,15 +26,15 @@ class ReportExportServiceTest {
 
             assertEquals("应收合计", overview.getRow(8).getCell(0).getStringCellValue());
             assertEquals("已结清", overview.getRow(9).getCell(3).getStringCellValue());
-            assertEquals("现金实收", overview.getRow(10).getCell(0).getStringCellValue());
+            assertEquals("实际到账", overview.getRow(10).getCell(0).getStringCellValue());
             assertEquals("废纸抵扣", overview.getRow(10).getCell(3).getStringCellValue());
             assertEquals("应收合计", dimension.getRow(0).getCell(13).getStringCellValue());
             assertEquals("已结清", dimension.getRow(0).getCell(16).getStringCellValue());
-            assertEquals("现金实收", dimension.getRow(0).getCell(17).getStringCellValue());
+            assertEquals("实际到账", dimension.getRow(0).getCell(17).getStringCellValue());
             assertEquals("废纸抵扣", dimension.getRow(0).getCell(18).getStringCellValue());
             assertEquals("应收合计", details.getRow(0).getCell(19).getStringCellValue());
             assertEquals("已结清", details.getRow(0).getCell(22).getStringCellValue());
-            assertEquals("现金实收", details.getRow(0).getCell(23).getStringCellValue());
+            assertEquals("实际到账", details.getRow(0).getCell(23).getStringCellValue());
             assertEquals("废纸抵扣", details.getRow(0).getCell(24).getStringCellValue());
             workbook.write(OutputStream.nullOutputStream());
         }

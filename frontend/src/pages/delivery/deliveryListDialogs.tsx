@@ -16,11 +16,13 @@ export function askSignUser(record: DeliveryOrder) {
   })
 }
 
-export function confirmBatchSign(count: number) {
+export function confirmBatchSign(count: number, ignoredCount = 0) {
   return new Promise<boolean>((resolve) => {
     Modal.confirm({
       title: `批量签收 ${count} 张出库单`,
-      content: '确认后将逐张扣减所选出库单对应的成品库存。请确认这些单据均已完成司机签收。',
+      content: ignoredCount > 0
+        ? `将签收 ${count} 张待出库单，另有 ${ignoredCount} 张非待出库单不会处理。`
+        : '确认后将逐张扣减所选出库单对应的成品库存。请确认这些单据均已完成司机签收。',
       okText: '确认签收',
       cancelText: '取消',
       onOk: () => resolve(true),

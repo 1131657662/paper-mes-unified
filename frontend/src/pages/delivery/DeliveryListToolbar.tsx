@@ -1,10 +1,17 @@
-import { Button, Tooltip } from 'antd'
-import { CheckOutlined, DownloadOutlined, PrinterOutlined, RollbackOutlined, StopOutlined } from '@ant-design/icons'
+import { Button, Tag, Tooltip } from 'antd'
+import { CheckOutlined, DeleteOutlined, DownloadOutlined, PrinterOutlined, RollbackOutlined, StopOutlined } from '@ant-design/icons'
 import type { DeliveryListActions } from './useDeliveryListActions'
 
 export default function DeliveryListToolbar({ actions }: { actions: DeliveryListActions }) {
   const selected = actions.selected
   return <>
+    {actions.selectedCount > 0 && <>
+      <Tag color={actions.selectedIgnoredCount > 0 ? 'warning' : 'processing'}>
+        已选 {actions.selectedCount} 张 · 可签收 {actions.selectedPendingCount} 张
+        {actions.selectedIgnoredCount > 0 ? ` · 忽略 ${actions.selectedIgnoredCount} 张` : ''}
+      </Tag>
+      <Button icon={<DeleteOutlined />} onClick={actions.clearSelection}>清空选择</Button>
+    </>}
     {actions.canManage && <ActionTip title={actions.selectedPendingCount === 0 ? '请至少选择一张待出库单' : undefined}>
       <Button icon={<CheckOutlined />} disabled={actions.selectedPendingCount === 0}
         loading={actions.batchConfirmLoading} onClick={actions.confirmBatch}>批量签收</Button>

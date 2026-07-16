@@ -637,7 +637,10 @@ CREATE TABLE `biz_settle_order` (
   `settle_no`         VARCHAR(50)   NOT NULL                COMMENT '结算单号',
   `customer_uuid`     VARCHAR(36)   NOT NULL                COMMENT '关联客户',
   `customer_name`     VARCHAR(100)  NOT NULL                COMMENT '快照冗余客户名',
-  `settle_type`       TINYINT       NOT NULL DEFAULT 1      COMMENT '1按单 2按月批量',
+  `request_id`        VARCHAR(64)   DEFAULT NULL            COMMENT '客户端幂等请求号',
+  `quote_version`     VARCHAR(32)   DEFAULT NULL            COMMENT '创建时报价算法版本',
+  `quote_hash`        CHAR(64)      DEFAULT NULL            COMMENT '创建时报价SHA-256',
+  `settle_type`       TINYINT       NOT NULL DEFAULT 1      COMMENT '1按单 2按月批量 3勾选合并',
   `settle_date`       DATE          NOT NULL                COMMENT '结算日期',
   `period_start`      DATE          DEFAULT NULL            COMMENT '月结账期起',
   `period_end`        DATE          DEFAULT NULL            COMMENT '月结账期止',
@@ -648,7 +651,7 @@ CREATE TABLE `biz_settle_order` (
   `tax_amount`        DECIMAL(12,2) DEFAULT 0.00            COMMENT '税额',
   `total_amount`      DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '应收总金额（取整）',
   `received_amount`   DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '已结清金额',
-  `cash_received_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '现金实收金额',
+  `cash_received_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '实际到账金额',
   `scrap_offset_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '废纸抵扣金额',
   `discount_amount`   DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '优惠及尾差核销金额',
   `unreceived_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '待收金额',
@@ -672,6 +675,7 @@ CREATE TABLE `biz_settle_order` (
   `ext_num2`          DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `uk_settle_no` (`settle_no`),
+  UNIQUE KEY `uk_settle_request_id` (`request_id`),
   KEY `idx_customer_uuid` (`customer_uuid`),
   KEY `idx_settle_status` (`settle_status`),
   KEY `idx_settle_date` (`settle_date`),
@@ -719,9 +723,12 @@ CREATE TABLE `biz_receive_record` (
   `request_id`     VARCHAR(64)   DEFAULT NULL            COMMENT '客户端幂等请求号',
   `receive_date`   DATETIME      NOT NULL                COMMENT '收款时间',
   `receive_amount` DECIMAL(12,2) NOT NULL                COMMENT '本次结清金额',
-  `cash_amount`    DECIMAL(12,2) NOT NULL DEFAULT 0.00   COMMENT '现金实收金额',
+  `cash_amount`    DECIMAL(12,2) NOT NULL DEFAULT 0.00   COMMENT '实际到账金额',
   `scrap_offset_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '废纸抵扣金额',
   `discount_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '优惠及尾差核销金额',
+  `discount_reason` VARCHAR(255) DEFAULT NULL COMMENT '优惠及尾差核销原因',
+  `discount_approval_uuid` VARCHAR(36) DEFAULT NULL COMMENT '超过阈值时关联审批记录',
+  `discount_approved_by` VARCHAR(50) DEFAULT NULL COMMENT '优惠批准人或免审登记人',
   `scrap_weight`   DECIMAL(12,3) NOT NULL DEFAULT 0.000  COMMENT '废纸抵扣重量kg',
   `scrap_unit_price` DECIMAL(12,4) NOT NULL DEFAULT 0.0000 COMMENT '废纸抵扣折算单价',
   `receive_type`   TINYINT       NOT NULL DEFAULT 1      COMMENT '1普通收款 2废纸抵扣 3混合收款',
@@ -752,6 +759,41 @@ CREATE TABLE `biz_receive_record` (
   KEY `idx_is_deleted` (`is_deleted`),
   CONSTRAINT `chk_receive_discount_nonnegative` CHECK (`discount_amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分次收款流水表';
+
+-- -----------------------------------------------------------------------------
+-- 3.3.13 biz_settle_discount_approval 优惠审批
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `biz_settle_discount_approval`;
+CREATE TABLE `biz_settle_discount_approval` (
+  `uuid`              VARCHAR(36)   NOT NULL,
+  `settle_uuid`       VARCHAR(36)   NOT NULL,
+  `request_id`        VARCHAR(64)   NOT NULL,
+  `discount_amount`   DECIMAL(12,2) NOT NULL,
+  `reason`            VARCHAR(255)  NOT NULL,
+  `approval_status`   TINYINT       NOT NULL DEFAULT 1 COMMENT '1待审批 2已批准 3已使用 4已拒绝',
+  `request_by`        VARCHAR(36)   NOT NULL,
+  `request_by_name`   VARCHAR(50)   NOT NULL,
+  `request_time`      DATETIME      NOT NULL,
+  `approve_by`        VARCHAR(36)   DEFAULT NULL,
+  `approve_by_name`   VARCHAR(50)   DEFAULT NULL,
+  `approve_time`      DATETIME      DEFAULT NULL,
+  `used_receive_uuid` VARCHAR(36)   DEFAULT NULL,
+  `is_deleted`        TINYINT       NOT NULL DEFAULT 0,
+  `create_by`         VARCHAR(50)   DEFAULT NULL,
+  `update_by`         VARCHAR(50)   DEFAULT NULL,
+  `create_time`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version`           INT           NOT NULL DEFAULT 1,
+  `ext_str1`          VARCHAR(255)  DEFAULT NULL,
+  `ext_str2`          VARCHAR(255)  DEFAULT NULL,
+  `ext_num1`          DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2`          DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_discount_approval_request` (`settle_uuid`, `request_id`),
+  UNIQUE KEY `uk_discount_approval_receive` (`used_receive_uuid`),
+  KEY `idx_discount_approval_settle_status` (`settle_uuid`, `approval_status`),
+  CONSTRAINT `chk_discount_approval_amount_positive` CHECK (`discount_amount` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='结算优惠及尾差审批记录';
 
 -- =============================================================================
 -- 五、系统辅助

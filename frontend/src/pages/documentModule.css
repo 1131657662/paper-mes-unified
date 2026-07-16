@@ -292,6 +292,20 @@
   gap: 2px;
 }
 
+.receive-discount-approval {
+  display: grid;
+  gap: 10px;
+  margin-block: 4px 16px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--mes-color-warning) 28%, var(--mes-color-border));
+  border-radius: var(--mes-radius);
+  background: color-mix(in srgb, var(--mes-color-warning) 5%, var(--mes-color-panel));
+}
+
+.receive-discount-approval .ant-form-item {
+  margin-bottom: 0;
+}
+
 .document-money-stack span {
   max-width: 160px;
   color: var(--mes-color-text-muted);

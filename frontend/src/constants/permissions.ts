@@ -10,6 +10,8 @@ export const PERMISSIONS = {
   orderView: 'order:view',
   reportView: 'report:view',
   settleManage: 'settle:manage',
+  settleDiscount: 'settle:discount',
+  settleDiscountApprove: 'settle:discount-approve',
   settleReceive: 'settle:receive',
   settleView: 'settle:view',
   dataBackup: 'system:data-backup',

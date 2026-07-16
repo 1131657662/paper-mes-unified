@@ -40,6 +40,15 @@
   flex: 1 1 0;
 }
 
+.settle-selection-notice {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-block: 8px;
+}
+
 .settle-create-footer {
   display: flex;
   flex: 0 0 auto;

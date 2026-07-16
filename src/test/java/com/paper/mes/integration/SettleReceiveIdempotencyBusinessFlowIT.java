@@ -42,11 +42,7 @@ class SettleReceiveIdempotencyBusinessFlowIT {
     }
 
     private SettleByOrderDTO settleRequest(String orderUuid) {
-        SettleByOrderDTO request = new SettleByOrderDTO();
-        request.setOrderUuid(orderUuid);
-        request.setSettleDate(LocalDate.now());
-        request.setIsInvoice(2);
-        return request;
+        return SettlementTestRequestFactory.byOrder(settleService, orderUuid);
     }
 
     private ReceiveDTO receiveRequest(BigDecimal amount) {
@@ -54,6 +50,7 @@ class SettleReceiveIdempotencyBusinessFlowIT {
         request.setRequestId("idempotency-request-1");
         request.setCashAmount(amount);
         request.setPayMethod(2);
+        request.setPayNo("TX-IDEMPOTENT-1");
         return request;
     }
 }

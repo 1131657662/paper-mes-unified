@@ -6,6 +6,9 @@ export interface SettleOrder {
   settleNo: string
   customerUuid: string
   customerName: string
+  requestId?: string
+  quoteVersion?: string
+  quoteHash?: string
   settleType: number
   settleDate: string
   periodStart?: string
@@ -20,6 +23,9 @@ export interface SettleOrder {
   cashReceivedAmount?: number
   scrapOffsetAmount?: number
   discountAmount?: number
+  discountReason?: string
+  discountApprovalUuid?: string
+  discountApprovedBy?: string
   unreceivedAmount: number
   isInvoice: number
   settleStatus: number
@@ -175,6 +181,9 @@ export interface SettleByOrderDTO {
 }
 
 export interface SettleByOrdersDTO {
+  requestId: string
+  quoteVersion: string
+  quoteHash: string
   orderUuids: string[]
   periodStart?: string
   periodEnd?: string
@@ -184,6 +193,9 @@ export interface SettleByOrdersDTO {
 }
 
 export interface SettleByMonthDTO {
+  requestId: string
+  quoteVersion: string
+  quoteHash: string
   customerUuid: string
   periodStart: string
   periodEnd: string
@@ -193,6 +205,8 @@ export interface SettleByMonthDTO {
 }
 
 export interface SettleQuoteVO {
+  quoteVersion: string
+  quoteHash: string
   orderCount: number
   pendingPriceCount: number
   isInvoice: number
@@ -202,6 +216,29 @@ export interface SettleQuoteVO {
   amountNoTax: number
   taxAmount: number
   totalAmount: number
+  lines: SettleQuoteLine[]
+}
+
+export interface SettleQuoteLine {
+  orderUuid: string
+  sawAmount: number
+  rewindAmount: number
+  extraAmount: number
+  amountNoTax: number
+  taxAmount: number
+  totalAmount: number
+}
+
+export interface SettleQuoteByOrdersDTO {
+  orderUuids: string[]
+  isInvoice?: number
+}
+
+export interface SettleQuoteByMonthDTO {
+  customerUuid: string
+  periodStart: string
+  periodEnd: string
+  isInvoice?: number
 }
 
 export interface ReceiveDTO {
@@ -210,12 +247,31 @@ export interface ReceiveDTO {
   cashAmount?: number
   scrapOffsetAmount?: number
   discountAmount?: number
+  discountReason?: string
+  discountApprovalUuid?: string
   scrapWeight?: number
   payMethod?: number
   payNo?: string
-  operator?: string
   receiveDate?: string
   remark?: string
+}
+
+export interface SettleDiscountApprovalRequestDTO {
+  requestId: string
+  discountAmount: number
+  reason: string
+}
+
+export interface SettleDiscountApproval {
+  uuid: string
+  discountAmount: number
+  reason: string
+  approvalStatus: number
+  requestByName: string
+  requestTime: string
+  approveByName?: string
+  approveTime?: string
+  usedReceiveUuid?: string
 }
 
 export interface SettleActionReasonDTO {

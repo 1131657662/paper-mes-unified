@@ -27,7 +27,7 @@ export function dimensionColumns(dimension: ReportDimension): ColumnsType<Report
     { title: '已结算应收', dataIndex: 'settledAmount', key: 'settledAmount', width: 132, align: 'right', render: formatMoney },
     { title: '待结算应收', dataIndex: 'pendingSettleAmount', key: 'pendingSettleAmount', width: 132, align: 'right', render: formatMoney },
     { title: '已结清', dataIndex: 'receivedAmount', key: 'receivedAmount', width: 128, align: 'right', render: formatMoney },
-    { title: '现金实收', dataIndex: 'cashReceivedAmount', key: 'cashReceivedAmount', width: 128, align: 'right', render: formatMoney },
+    { title: '实际到账', dataIndex: 'cashReceivedAmount', key: 'cashReceivedAmount', width: 128, align: 'right', render: formatMoney },
     { title: '废纸抵扣', dataIndex: 'scrapOffsetAmount', key: 'scrapOffsetAmount', width: 128, align: 'right', render: formatMoney },
     { title: '已结算未收', dataIndex: 'unreceivedAmount', key: 'unreceivedAmount', width: 128, align: 'right', render: formatMoney },
   ]
@@ -59,7 +59,7 @@ export function detailColumns(onOpenOrder: (uuid: string) => void): ColumnsType<
     { title: '已结算应收', dataIndex: 'settledAmount', key: 'settledAmount', width: 132, align: 'right', render: formatMoney },
     { title: '待结算应收', dataIndex: 'pendingSettleAmount', key: 'pendingSettleAmount', width: 132, align: 'right', render: formatMoney },
     { title: '已结清', dataIndex: 'receivedAmount', key: 'receivedAmount', width: 124, align: 'right', render: formatMoney },
-    { title: '现金实收', dataIndex: 'cashReceivedAmount', key: 'cashReceivedAmount', width: 124, align: 'right', render: formatMoney },
+    { title: '实际到账', dataIndex: 'cashReceivedAmount', key: 'cashReceivedAmount', width: 124, align: 'right', render: formatMoney },
     { title: '废纸抵扣', dataIndex: 'scrapOffsetAmount', key: 'scrapOffsetAmount', width: 124, align: 'right', render: formatMoney },
     { title: '已结算未收', dataIndex: 'unreceivedAmount', key: 'unreceivedAmount', width: 124, align: 'right', render: formatMoney },
   ]

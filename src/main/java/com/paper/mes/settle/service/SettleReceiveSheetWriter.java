@@ -34,7 +34,7 @@ final class SettleReceiveSheetWriter {
         row.createCell(1).setCellValue(text(detail.getOrder().getSettleNo()));
         row.createCell(3).setCellValue("已结清");
         row.createCell(4).setCellValue(text(detail.getOrder().getReceivedAmount()));
-        row.createCell(5).setCellValue("现金实收");
+        row.createCell(5).setCellValue("实际到账");
         row.createCell(6).setCellValue(text(detail.getOrder().getCashReceivedAmount()));
         row.createCell(7).setCellValue("废纸抵扣");
         row.createCell(8).setCellValue(text(detail.getOrder().getScrapOffsetAmount()));
@@ -47,7 +47,7 @@ final class SettleReceiveSheetWriter {
     private static void writeHeader(Sheet sheet, CellStyle style) {
         Row row = sheet.createRow(3);
         String[] labels = {
-                "序号", "收款时间", "类型", "本次结清", "现金实收", "废纸抵扣", "优惠核销",
+                "序号", "收款时间", "类型", "本次结清", "实际到账", "废纸抵扣", "优惠核销",
                 "废纸重量kg", "折算单价", "收款方式", "流水号", "经办人", "状态", "备注", "撤销信息"
         };
         for (int i = 0; i < labels.length; i++) {

@@ -4,6 +4,8 @@ import type { ReceiveDTO } from '../../types/settle'
 export interface ReceiveFormValues {
   cashAmount?: number
   discountAmount?: number
+  discountReason?: string
+  discountApprovalUuid?: string
   scrapOffsetAmount?: number
   scrapWeight?: number
   payMethod?: number
@@ -19,6 +21,8 @@ export function buildReceiveDTO(values: ReceiveFormValues, requestId = crypto.ra
     cashAmount: roundMoney(values.cashAmount),
     scrapOffsetAmount: roundMoney(values.scrapOffsetAmount),
     discountAmount: roundMoney(values.discountAmount),
+    discountReason: cleanText(values.discountReason),
+    discountApprovalUuid: cleanText(values.discountApprovalUuid),
     scrapWeight: roundWeight(values.scrapWeight),
     payMethod: Number(values.cashAmount ?? 0) > 0 ? values.payMethod : undefined,
     payNo: cleanText(values.payNo),
@@ -50,7 +54,20 @@ export function scrapWeightError(values: ReceiveFormValues): string | undefined 
 
 export function payMethodError(values: ReceiveFormValues): string | undefined {
   if (Number(values.cashAmount ?? 0) > 0 && !values.payMethod) {
-    return '现金实收金额大于 0 时必须选择收款方式'
+    return '实际到账金额大于 0 时必须选择到账方式'
+  }
+  return undefined
+}
+
+export function payNoError(values: ReceiveFormValues): string | undefined {
+  const requiresPayNo = Number(values.cashAmount ?? 0) > 0 && [2, 3, 4].includes(values.payMethod ?? 0)
+  if (requiresPayNo && !values.payNo?.trim()) return '非现金到账必须填写交易流水号'
+  return undefined
+}
+
+export function discountReasonError(values: ReceiveFormValues): string | undefined {
+  if (Number(values.discountAmount ?? 0) > 0 && !values.discountReason?.trim()) {
+    return '优惠/尾差核销必须填写原因'
   }
   return undefined
 }

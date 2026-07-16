@@ -26,7 +26,10 @@ public class SystemRuntimeConfigController {
             "ui.defaultPageSize",
             "print.processOrderTitle",
             "process.spareRollNoCount",
-            "process.weightTolerancePercent"
+            "process.weightTolerancePercent",
+            "settle.discountAutoApproveLimit",
+            "settle.discountMaxAmount",
+            "settle.discountMaxPercent"
     );
 
     private final SystemDictService systemDictService;

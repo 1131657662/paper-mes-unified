@@ -18,6 +18,7 @@ export function useDeliveryConfirmActions(options: Options) {
     confirmLoading: confirmMutation.isPending,
     batchConfirmLoading: batchConfirmMutation.isPending,
     selectedPendingCount: pending.length,
+    selectedIgnoredCount: options.selectedRows.length - pending.length,
     confirm: (record: DeliveryOrder) => confirmOne(record, options, confirmMutation.mutateAsync),
     confirmBatch: () => confirmBatch(pending, options, batchConfirmMutation.mutateAsync),
   }
@@ -36,7 +37,8 @@ async function confirmBatch(records: DeliveryOrder[], options: Options,
   mutate: ReturnType<typeof useBatchConfirmDelivery>['mutateAsync']) {
   if (!options.canManage) return
   if (records.length === 0) return void message.warning('请先选择待出库单据')
-  if (!await confirmBatchSign(records.length)) return
+  const ignoredCount = options.selectedRows.length - records.length
+  if (!await confirmBatchSign(records.length, ignoredCount)) return
   await mutate({ deliveryUuids: records.map((record) => record.uuid) })
   message.success(`已签收 ${records.length} 张出库单`)
   options.clearSelection()

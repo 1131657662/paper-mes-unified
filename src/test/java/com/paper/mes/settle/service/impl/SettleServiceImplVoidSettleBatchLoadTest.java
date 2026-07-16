@@ -66,6 +66,9 @@ class SettleServiceImplVoidSettleBatchLoadTest {
     @Mock private SettleCandidateStatsLoader statsLoader;
     @Mock private SettleCandidateAmountLoader candidateAmountLoader;
     @Mock private SettlementAmountCalculator settlementAmountCalculator;
+    @Mock private com.paper.mes.settle.service.SettlementQuoteFactory settlementQuoteFactory;
+    @Mock private com.paper.mes.settle.service.SettlementQuoteGuard settlementQuoteGuard;
+    @Mock private com.paper.mes.settle.service.SettlementDiscountPolicy settlementDiscountPolicy;
     @Mock private SettlePageDataLoader pageDataLoader;
     @Mock private SettleExportService settleExportService;
     @Mock private DocumentNoService documentNoService;
@@ -87,7 +90,8 @@ class SettleServiceImplVoidSettleBatchLoadTest {
         service = new SettleServiceImpl(settleDetailMapper, receiveRecordMapper, originalRollMapper,
                 finishRollMapper, finishOriginalRelMapper, processStepMapper, processStageOutputMapper,
                 processOrderService, customerService, machineMapper, operationLogMapper, operationLogService,
-                statsLoader, candidateAmountLoader, settlementAmountCalculator, pageDataLoader,
+                statsLoader, candidateAmountLoader, settlementAmountCalculator, settlementQuoteFactory,
+                settlementQuoteGuard, settlementDiscountPolicy, pageDataLoader,
                 settleExportService, documentNoService, businessLockService,
                 new ObjectMapper());
         ReflectionTestUtils.setField(service, "baseMapper", settleOrderMapper);

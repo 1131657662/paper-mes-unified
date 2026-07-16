@@ -14,9 +14,15 @@ import com.paper.mes.settle.dto.SettleCandidateVO;
 import com.paper.mes.settle.dto.SettleDetailVO;
 import com.paper.mes.settle.dto.SettleQuery;
 import com.paper.mes.settle.dto.SettleQuoteVO;
+import com.paper.mes.settle.dto.SettleQuoteByOrderDTO;
+import com.paper.mes.settle.dto.SettleQuoteByOrdersDTO;
+import com.paper.mes.settle.dto.SettleQuoteByMonthDTO;
+import com.paper.mes.settle.dto.SettleDiscountApprovalRequestDTO;
+import com.paper.mes.settle.dto.SettleDiscountApprovalVO;
 import com.paper.mes.settle.dto.SettleListSummaryVO;
 import com.paper.mes.settle.entity.SettleOrder;
 import com.paper.mes.settle.service.SettleListSummaryService;
+import com.paper.mes.settle.service.SettleDiscountApprovalService;
 import com.paper.mes.settle.service.SettleService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -37,6 +43,7 @@ public class SettleController {
 
     private final SettleService settleService;
     private final SettleListSummaryService settleListSummaryService;
+    private final SettleDiscountApprovalService discountApprovalService;
 
     @GetMapping
     @RequirePermission(Permissions.SETTLE_VIEW)
@@ -58,13 +65,19 @@ public class SettleController {
 
     @PostMapping("/quote/by-orders")
     @RequirePermission(Permissions.SETTLE_MANAGE)
-    public R<SettleQuoteVO> quoteByOrders(@Valid @RequestBody SettleByOrdersDTO dto) {
+    public R<SettleQuoteVO> quoteByOrders(@Valid @RequestBody SettleQuoteByOrdersDTO dto) {
         return R.success(settleService.quoteByOrders(dto));
+    }
+
+    @PostMapping("/quote/by-order")
+    @RequirePermission(Permissions.SETTLE_MANAGE)
+    public R<SettleQuoteVO> quoteByOrder(@Valid @RequestBody SettleQuoteByOrderDTO dto) {
+        return R.success(settleService.quoteByOrder(dto));
     }
 
     @PostMapping("/quote/by-month")
     @RequirePermission(Permissions.SETTLE_MANAGE)
-    public R<SettleQuoteVO> quoteByMonth(@Valid @RequestBody SettleByMonthDTO dto) {
+    public R<SettleQuoteVO> quoteByMonth(@Valid @RequestBody SettleQuoteByMonthDTO dto) {
         return R.success(settleService.quoteByMonth(dto));
     }
 
@@ -102,6 +115,26 @@ public class SettleController {
     @RequirePermission(Permissions.SETTLE_RECEIVE)
     public R<Void> receive(@PathVariable String uuid, @Valid @RequestBody ReceiveDTO dto) {
         settleService.receive(uuid, dto);
+        return R.success();
+    }
+
+    @GetMapping("/{uuid}/discount-approvals")
+    @RequirePermission(Permissions.SETTLE_RECEIVE)
+    public R<List<SettleDiscountApprovalVO>> discountApprovals(@PathVariable String uuid) {
+        return R.success(discountApprovalService.list(uuid));
+    }
+
+    @PostMapping("/{uuid}/discount-approvals")
+    @RequirePermission(Permissions.SETTLE_DISCOUNT)
+    public R<String> requestDiscountApproval(@PathVariable String uuid,
+            @Valid @RequestBody SettleDiscountApprovalRequestDTO dto) {
+        return R.success(discountApprovalService.request(uuid, dto));
+    }
+
+    @PostMapping("/{uuid}/discount-approvals/{approvalUuid}/approve")
+    @RequirePermission(Permissions.SETTLE_DISCOUNT_APPROVE)
+    public R<Void> approveDiscount(@PathVariable String uuid, @PathVariable String approvalUuid) {
+        discountApprovalService.approve(uuid, approvalUuid);
         return R.success();
     }
 

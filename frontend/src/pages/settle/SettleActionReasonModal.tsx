@@ -27,7 +27,7 @@ export default function SettleActionReasonModal({ actionTarget, form, loading, o
     >
       <p className="document-action-warning">
         {actionTarget?.type === 'cancelReceive'
-          ? '撤销后系统会重新计算已结清、现金实收、废纸抵扣、未收和状态，原流水会保留为已撤销。'
+          ? '撤销后系统会重新计算已结清、实际到账、废纸抵扣、未收和状态，原流水会保留为已撤销。'
           : '作废后关联加工单会退回已完成可结算状态；已有有效收款的结算单不能作废。'}
       </p>
       <Form form={form} layout="vertical">

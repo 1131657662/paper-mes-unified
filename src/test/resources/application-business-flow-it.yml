@@ -1,9 +1,9 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${PAPER_MES_IT_DB_URL:jdbc:mysql://localhost:3306/paper_processing_test?useSSL=false&useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true}
-    username: ${PAPER_MES_IT_DB_USERNAME:root}
-    password: ${PAPER_MES_IT_DB_PASSWORD:}
+    url: ${PAPER_MES_IT_DB_URL}
+    username: ${PAPER_MES_IT_DB_USERNAME}
+    password: ${PAPER_MES_IT_DB_PASSWORD}
   task:
     scheduling:
       enabled: false

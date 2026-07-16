@@ -25,7 +25,10 @@ public class SettleOrder extends BaseEntity {
     private String settleNo;
     private String customerUuid;
     private String customerName;
-    /** 1按单 2按月批量 */
+    private String requestId;
+    private String quoteVersion;
+    private String quoteHash;
+    /** 1按单 2按月批量 3勾选合并 */
     private Integer settleType;
     private LocalDate settleDate;
     private LocalDate periodStart;

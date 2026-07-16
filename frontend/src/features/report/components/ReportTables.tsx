@@ -41,7 +41,7 @@ export default function ReportTables({
         />
       </div>
       <div className="report-table-stack">
-        <ReportTableBlock title="维度汇总" hint="应收按加工单制单日期归属；现金实收和废纸抵扣均只统计有效收款流水。">
+        <ReportTableBlock title="维度汇总" hint="应收按加工单制单日期归属；实际到账和废纸抵扣均只统计有效收款流水。">
           <DocumentDetailTable<ReportDimensionVO>
             columns={dimensionColumns(dimension)}
             dataSource={dimensions}

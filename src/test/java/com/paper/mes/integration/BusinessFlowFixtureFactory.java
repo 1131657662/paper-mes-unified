@@ -27,11 +27,16 @@ class BusinessFlowFixtureFactory {
     Scenario createCompletedOrderWithTwoFinishes() {
         String token = id();
         Customer customer = customer(token);
+        customerMapper.insert(customer);
+        return createCompletedOrderForCustomer(customer);
+    }
+
+    Scenario createCompletedOrderForCustomer(Customer customer) {
+        String token = id();
         ProcessOrder order = completedOrder(token, customer);
         FinishRoll first = finish(order, 1, token.substring(0, 6));
         FinishRoll second = finish(order, 2, token.substring(6, 12));
 
-        customerMapper.insert(customer);
         processOrderMapper.insert(order);
         processStepMapper.insert(sawStep(order));
         finishRollMapper.insert(first);

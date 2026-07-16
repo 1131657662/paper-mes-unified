@@ -28,6 +28,9 @@ public class ReceiveRecord extends BaseEntity {
     private BigDecimal cashAmount;
     private BigDecimal scrapOffsetAmount;
     private BigDecimal discountAmount;
+    private String discountReason;
+    private String discountApprovalUuid;
+    private String discountApprovedBy;
     private BigDecimal scrapWeight;
     private BigDecimal scrapUnitPrice;
     /** 1普通收款 2废纸抵扣 3混合结清 4优惠核销 */

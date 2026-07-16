@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { queries } from '../../../queries'
-import type { SettleByMonthDTO } from '../../../types/settle'
+import type { SettleQuoteByMonthDTO } from '../../../types/settle'
 
-export function useSettleQuoteByMonth(data: SettleByMonthDTO, enabled: boolean) {
+export function useSettleQuoteByMonth(data: SettleQuoteByMonthDTO, enabled: boolean) {
   return useQuery({
     ...queries.settle.quoteByMonth(data),
     enabled,

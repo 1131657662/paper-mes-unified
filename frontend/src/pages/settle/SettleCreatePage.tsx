@@ -16,7 +16,10 @@ import { DICT_TYPES, invoiceFallbackOptions } from '../../features/systemConfig/
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
 import SettleCreateFooter from './SettleCreateFooter'
 import SettleQuoteSummary from './SettleQuoteSummary'
+import SettleSelectionNotice from './SettleSelectionNotice'
+import { applyQuoteLines } from './settleQuoteModel'
 import { useSettleCandidateSelection } from './useSettleCandidateSelection'
+import { useRef } from 'react'
 import '../documentModule.css'
 import './SettleCreatePage.css'
 
@@ -32,6 +35,7 @@ interface SettleCreateForm {
 export default function SettleCreatePage() {
   const [form] = Form.useForm<SettleCreateForm>()
   const navigate = useNavigate()
+  const requestIdRef = useRef(crypto.randomUUID())
   const customersQuery = useCustomers()
   const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
   const createByOrdersMutation = useCreateSettleByOrders()
@@ -56,6 +60,7 @@ export default function SettleCreatePage() {
   const quoteQuery = isMonthMode ? monthQuote : ordersQuote
   const fallbackTotals = selectedTotals(selection.selectedCandidates)
   const quote = quoteQuery.data
+  const quotedCandidates = applyQuoteLines(selection.candidates, quote?.lines)
   const quoteRequired = isMonthMode ? canLoadCandidates : selectedOrderUuids.length > 0
   const quoteUnavailable = quoteRequired && (!quote || quoteQuery.isError || quoteQuery.isFetching)
 
@@ -74,6 +79,9 @@ export default function SettleCreatePage() {
       return
     }
     const uuid = await createByOrdersMutation.mutateAsync({
+      requestId: requestIdRef.current,
+      quoteVersion: requireQuote().quoteVersion,
+      quoteHash: requireQuote().quoteHash,
       isInvoice: invoiceValue(values.isInvoice),
       orderUuids: selectedOrderUuids,
       periodEnd: values.period?.[1]?.format('YYYY-MM-DD'),
@@ -91,6 +99,9 @@ export default function SettleCreatePage() {
       return
     }
     const uuid = await createByMonthMutation.mutateAsync({
+      requestId: requestIdRef.current,
+      quoteVersion: requireQuote().quoteVersion,
+      quoteHash: requireQuote().quoteHash,
       customerUuid: values.customerUuid,
       isInvoice: invoiceValue(values.isInvoice),
       periodEnd: values.period[1].format('YYYY-MM-DD'),
@@ -105,6 +116,11 @@ export default function SettleCreatePage() {
   const handleSubmit = async () => {
     const values = await form.validateFields()
     await (values.createMode === 'month' ? submitMonth(values) : submitSelected(values))
+  }
+
+  const requireQuote = () => {
+    if (!quote) throw new Error('结算报价尚未就绪')
+    return quote
   }
 
   return (
@@ -123,7 +139,9 @@ export default function SettleCreatePage() {
           <SettleSelectedSummary label={isMonthMode ? '候选' : '已选'}
             count={quote?.orderCount ?? fallbackTotals.orderCount} amount={quote?.totalAmount ?? fallbackTotals.total} /></Space>}>
         <SettleQuoteSummary error={quoteQuery.isError} quote={quote} loading={quoteQuery.isFetching} />
-        <SettleCandidateTable data={selection.candidates} loading={selection.candidatesQuery.isFetching}
+        {!isMonthMode && <SettleSelectionNotice selectedCount={selection.selectedCandidates.length}
+          customerName={selection.selectedCandidates[0]?.customerName} onClear={selection.clearSelection} />}
+        <SettleCandidateTable data={quotedCandidates} loading={selection.candidatesQuery.isFetching}
           lockedCustomerUuid={isMonthMode ? undefined : selection.lockedCustomerUuid} selectable={!isMonthMode}
           scrollY="calc(100vh - 610px)" selectedRowKeys={selection.selectedRowKeys}
           onSelectionChange={selection.updateSelection} />

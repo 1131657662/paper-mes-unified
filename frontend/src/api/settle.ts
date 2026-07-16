@@ -13,6 +13,10 @@ import type {
   SettleActionReasonDTO,
   SettleQuoteVO,
   SettleListSummary,
+  SettleQuoteByOrdersDTO,
+  SettleQuoteByMonthDTO,
+  SettleDiscountApproval,
+  SettleDiscountApprovalRequestDTO,
 } from '../types/settle'
 import { downloadFileFromResponse } from '../utils/downloadFile'
 import {
@@ -45,7 +49,7 @@ export function getSettleCandidates(query: SettleCandidateQuery) {
   })
 }
 
-export function quoteSettleByOrders(data: SettleByOrdersDTO) {
+export function quoteSettleByOrders(data: SettleQuoteByOrdersDTO) {
   return request<SettleQuoteVO>({
     url: '/api/settle-orders/quote/by-orders',
     method: 'post',
@@ -53,7 +57,7 @@ export function quoteSettleByOrders(data: SettleByOrdersDTO) {
   })
 }
 
-export function quoteSettleByMonth(data: SettleByMonthDTO) {
+export function quoteSettleByMonth(data: SettleQuoteByMonthDTO) {
   return request<SettleQuoteVO>({
     url: '/api/settle-orders/quote/by-month',
     method: 'post',
@@ -97,6 +101,28 @@ export function receivePayment(uuid: string, data: ReceiveDTO) {
     url: `/api/settle-orders/${uuid}/receive`,
     method: 'post',
     data,
+  })
+}
+
+export function getSettleDiscountApprovals(uuid: string) {
+  return request<SettleDiscountApproval[]>({
+    url: `/api/settle-orders/${uuid}/discount-approvals`,
+    method: 'get',
+  })
+}
+
+export function requestSettleDiscountApproval(uuid: string, data: SettleDiscountApprovalRequestDTO) {
+  return request<string>({
+    url: `/api/settle-orders/${uuid}/discount-approvals`,
+    method: 'post',
+    data,
+  })
+}
+
+export function approveSettleDiscount(uuid: string, approvalUuid: string) {
+  return request<void>({
+    url: `/api/settle-orders/${uuid}/discount-approvals/${approvalUuid}/approve`,
+    method: 'post',
   })
 }
 

@@ -51,7 +51,11 @@ final class SettleReceiveAmountResolver {
             throw new BusinessException("废纸抵扣金额大于 0 时，废纸重量必须大于 0");
         }
         if (amounts.cash().signum() > 0 && dto.getPayMethod() == null) {
-            throw new BusinessException("现金实收金额大于 0 时必须选择收款方式");
+            throw new BusinessException("实际到账金额大于 0 时必须选择收款方式");
+        }
+        if (amounts.cash().signum() > 0 && dto.getPayMethod() != null && dto.getPayMethod() != 1
+                && (dto.getPayNo() == null || dto.getPayNo().isBlank())) {
+            throw new BusinessException("转账、微信或支付宝到账必须填写交易流水号");
         }
     }
 

@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 登记一笔收款，可由现金实收、废纸抵扣和优惠核销共同组成。
+ * 登记一笔收款，可由实际到账、废纸抵扣和优惠核销共同组成。
  */
 @Data
 public class ReceiveDTO {
@@ -22,7 +22,7 @@ public class ReceiveDTO {
     @Size(max = 64, message = "请求号不能超过64个字符")
     private String requestId;
 
-    /** 兼容旧接口：未传明细金额时按现金收款处理。 */
+    /** 兼容旧接口：未传明细金额时按实际到账处理。 */
     @PositiveOrZero(message = "收款金额不能为负")
     private BigDecimal receiveAmount;
 
@@ -31,7 +31,7 @@ public class ReceiveDTO {
     @Max(value = 4, message = "收款方式不正确")
     private Integer payMethod;
 
-    @PositiveOrZero(message = "现金实收不能为负")
+    @PositiveOrZero(message = "实际到账不能为负")
     private BigDecimal cashAmount;
 
     @PositiveOrZero(message = "废纸抵扣金额不能为负")
@@ -40,14 +40,17 @@ public class ReceiveDTO {
     @PositiveOrZero(message = "优惠金额不能为负")
     private BigDecimal discountAmount;
 
+    @Size(max = 255, message = "优惠原因不能超过255个字符")
+    private String discountReason;
+
+    @Size(max = 36, message = "优惠审批编号不能超过36个字符")
+    private String discountApprovalUuid;
+
     @PositiveOrZero(message = "废纸重量不能为负")
     private BigDecimal scrapWeight;
 
     @Size(max = 80, message = "流水号不能超过80个字符")
     private String payNo;
-
-    @Size(max = 50, message = "经办人不能超过50个字符")
-    private String operator;
 
     /** 收款时间，可为空，默认使用当前时间。 */
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")

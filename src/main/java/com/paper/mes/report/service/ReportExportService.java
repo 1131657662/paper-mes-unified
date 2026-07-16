@@ -52,7 +52,7 @@ public class ReportExportService {
         row(sheet, 7, "加工费", overview.getProcessAmount(), "附加费", overview.getExtraAmount());
         row(sheet, 8, "应收合计", overview.getTotalAmount(), "已结算应收", overview.getSettledAmount());
         row(sheet, 9, "待结算应收", overview.getPendingSettleAmount(), "已结清", overview.getReceivedAmount());
-        row(sheet, 10, "现金实收", overview.getCashReceivedAmount(), "废纸抵扣", overview.getScrapOffsetAmount());
+        row(sheet, 10, "实际到账", overview.getCashReceivedAmount(), "废纸抵扣", overview.getScrapOffsetAmount());
         row(sheet, 11, "已结算未收", overview.getUnreceivedAmount(), "", "");
         autosize(sheet, 5);
     }
@@ -60,7 +60,7 @@ public class ReportExportService {
     private void writeDimensions(Sheet sheet, List<ReportDimensionVO> rows, String dimension, CellStyle style) {
         header(sheet, style, "维度", "加工单", "原卷", "成品", "原纸吨位", "成品吨位", "损耗吨位",
                 "损耗率%", "刀数", "锯纸费", "复卷费", "加工费", "附加费", "应收合计",
-                "已结算应收", "待结算应收", "已结清", "现金实收", "废纸抵扣", "已结算未收");
+                "已结算应收", "待结算应收", "已结清", "实际到账", "废纸抵扣", "已结算未收");
         int index = 1;
         for (ReportDimensionVO item : rows) {
             Row row = sheet.createRow(index++);
@@ -92,7 +92,7 @@ public class ReportExportService {
         header(sheet, style, "加工单号", "制单日期", "客户", "纸品", "工艺", "状态", "结算",
                 "开票", "原卷", "成品", "原纸吨位", "成品吨位", "损耗吨位", "损耗率%", "刀数",
                 "锯纸费", "复卷费", "加工费", "附加费", "应收合计", "已结算应收", "待结算应收",
-                "已结清", "现金实收", "废纸抵扣", "已结算未收");
+                "已结清", "实际到账", "废纸抵扣", "已结算未收");
         int index = 1;
         for (ReportDetailVO item : rows) {
             writeDetailRow(sheet.createRow(index++), item);

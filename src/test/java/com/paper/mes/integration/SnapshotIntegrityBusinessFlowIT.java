@@ -113,11 +113,7 @@ class SnapshotIntegrityBusinessFlowIT {
     }
 
     private SettleByOrderDTO settleRequest(String orderUuid) {
-        SettleByOrderDTO request = new SettleByOrderDTO();
-        request.setOrderUuid(orderUuid);
-        request.setSettleDate(LocalDate.now());
-        request.setIsInvoice(2);
-        return request;
+        return SettlementTestRequestFactory.byOrder(settleService, orderUuid);
     }
 
     private void addOriginalRoll(String orderUuid) {

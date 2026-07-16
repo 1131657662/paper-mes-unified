@@ -8,6 +8,7 @@ export const SETTLE_STATUS: Record<number, { text: string; color: string }> = {
 export const SETTLE_TYPE: Record<number, string> = {
   1: '按单生成',
   2: '按月批量',
+  3: '勾选合并',
 }
 
 export const PAY_METHOD: Record<number, string> = {
@@ -18,7 +19,7 @@ export const PAY_METHOD: Record<number, string> = {
 }
 
 export const RECEIVE_TYPE: Record<number, { text: string; color: string }> = {
-  1: { text: '普通收款', color: 'blue' },
+  1: { text: '到账收款', color: 'blue' },
   2: { text: '废纸抵扣', color: 'orange' },
   3: { text: '混合结清', color: 'purple' },
   4: { text: '优惠核销', color: 'cyan' },

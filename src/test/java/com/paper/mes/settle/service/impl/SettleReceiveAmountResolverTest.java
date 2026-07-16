@@ -16,6 +16,7 @@ class SettleReceiveAmountResolverTest {
         ReceiveDTO dto = new ReceiveDTO();
         dto.setReceiveAmount(new BigDecimal("1000"));
         dto.setPayMethod(2);
+        dto.setPayNo("TX-LEGACY");
 
         SettleReceiveAmountResolver.Resolved resolved =
                 SettleReceiveAmountResolver.resolve(dto, new BigDecimal("2000"));
@@ -49,6 +50,7 @@ class SettleReceiveAmountResolverTest {
         dto.setScrapOffsetAmount(new BigDecimal("200"));
         dto.setScrapWeight(new BigDecimal("50"));
         dto.setPayMethod(2);
+        dto.setPayNo("TX-MIXED");
 
         SettleReceiveAmountResolver.Resolved resolved =
                 SettleReceiveAmountResolver.resolve(dto, new BigDecimal("1000"));
@@ -65,6 +67,7 @@ class SettleReceiveAmountResolverTest {
         dto.setCashAmount(new BigDecimal("1790"));
         dto.setDiscountAmount(new BigDecimal("1"));
         dto.setPayMethod(2);
+        dto.setPayNo("TX-DISCOUNT");
 
         SettleReceiveAmountResolver.Resolved resolved =
                 SettleReceiveAmountResolver.resolve(dto, new BigDecimal("1791"));
@@ -124,5 +127,16 @@ class SettleReceiveAmountResolverTest {
 
         assertThatThrownBy(() -> SettleReceiveAmountResolver.resolve(dto, new BigDecimal("1000")))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void resolve_whenTransferHasNoPayNo_rejectsMissingTransactionNumber() {
+        ReceiveDTO dto = new ReceiveDTO();
+        dto.setCashAmount(new BigDecimal("100"));
+        dto.setPayMethod(2);
+
+        assertThatThrownBy(() -> SettleReceiveAmountResolver.resolve(dto, new BigDecimal("1000")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("交易流水号");
     }
 }

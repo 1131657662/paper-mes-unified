@@ -21,7 +21,15 @@ export function useDeliveryListActions(options: Options) {
   const confirm = useDeliveryConfirmActions({ ...shared, selectedRows: options.selectedRows })
   const lifecycle = useDeliveryLifecycleActions({ ...shared, refetch: options.refetch, selected })
   const exports = useDeliveryExportActions({ filters: options.filters, queue: options.queue, selected })
-  return { canManage, selected, ...confirm, ...lifecycle, ...exports }
+  return {
+    canManage,
+    clearSelection: options.clearSelection,
+    selected,
+    selectedCount: options.selectedRows.length,
+    ...confirm,
+    ...lifecycle,
+    ...exports,
+  }
 }
 
 export type DeliveryListActions = ReturnType<typeof useDeliveryListActions>

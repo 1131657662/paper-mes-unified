@@ -120,7 +120,7 @@ function receiveBreakdown(record: ReceiveRecord) {
     ? `（${numberText(record.scrapWeight)} kg × ${unitPriceText(record.scrapUnitPrice)}）`
     : ''
   return <div className="document-money-stack">
-    <span>现金 {formatMoney(record.cashAmount)}</span>
+    <span>到账 {formatMoney(record.cashAmount)}</span>
     <span>废纸 {formatMoney(record.scrapOffsetAmount)}{scrapDetail}</span>
     <span>优惠 {formatMoney(record.discountAmount)}</span>
   </div>

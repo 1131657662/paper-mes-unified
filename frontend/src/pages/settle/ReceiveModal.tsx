@@ -5,6 +5,7 @@ import { useReceiveSettle } from '../../features/settle/hooks/useReceiveSettle'
 import { useAuthUser } from '../../stores/authStore'
 import ReceiveAmountFields from './ReceiveAmountFields'
 import ReceivePaymentFields from './ReceivePaymentFields'
+import ReceiveDiscountFields from './ReceiveDiscountFields'
 import {
   buildReceiveDTO,
   receiveTotalError,
@@ -81,6 +82,8 @@ export default function ReceiveModal({
     >
       <Form className="mes-modal-form" form={form} layout="vertical">
         <ReceiveAmountFields form={form} unreceivedAmount={usableUnreceivedAmount} />
+        <ReceiveDiscountFields form={form} open={open} settleUuid={settleUuid ?? ''}
+          unreceivedAmount={usableUnreceivedAmount} />
         <ReceivePaymentFields form={form} operatorName={operatorName} />
       </Form>
     </Modal>

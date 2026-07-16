@@ -45,6 +45,9 @@ import com.paper.mes.settle.dto.SettleDetailVO;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
 import com.paper.mes.settle.dto.SettleQuery;
 import com.paper.mes.settle.dto.SettleQuoteVO;
+import com.paper.mes.settle.dto.SettleQuoteByOrderDTO;
+import com.paper.mes.settle.dto.SettleQuoteByOrdersDTO;
+import com.paper.mes.settle.dto.SettleQuoteByMonthDTO;
 import com.paper.mes.settle.entity.ReceiveRecord;
 import com.paper.mes.settle.entity.SettleDetail;
 import com.paper.mes.settle.entity.SettleOrder;
@@ -57,6 +60,9 @@ import com.paper.mes.settle.service.SettleExportService;
 import com.paper.mes.settle.service.SettleReceiveStatusResolver;
 import com.paper.mes.settle.service.SettleService;
 import com.paper.mes.settle.service.SettlementAmountCalculator;
+import com.paper.mes.settle.service.SettlementDiscountPolicy;
+import com.paper.mes.settle.service.SettlementQuoteFactory;
+import com.paper.mes.settle.service.SettlementQuoteGuard;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -95,6 +101,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     private static final int SETTLE_TYPE_BY_ORDER = 1;
     private static final int SETTLE_TYPE_BY_MONTH = 2;
+    private static final int SETTLE_TYPE_SELECTED_MERGE = 3;
 
     private static final int SETTLE_STATUS_PENDING = 1;
     private static final int SETTLE_STATUS_VOID = 4;
@@ -123,6 +130,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private final SettleCandidateStatsLoader statsLoader;
     private final SettleCandidateAmountLoader candidateAmountLoader;
     private final SettlementAmountCalculator settlementAmountCalculator;
+    private final SettlementQuoteFactory settlementQuoteFactory;
+    private final SettlementQuoteGuard settlementQuoteGuard;
+    private final SettlementDiscountPolicy settlementDiscountPolicy;
     private final SettlePageDataLoader pageDataLoader;
     private final SettleExportService settleExportService;
     private final DocumentNoService documentNoService;
@@ -213,13 +223,18 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     @Override
-    public SettleQuoteVO quoteByOrders(SettleByOrdersDTO dto) {
+    public SettleQuoteVO quoteByOrders(SettleQuoteByOrdersDTO dto) {
         ensureDistinctOrderUuids(dto.getOrderUuids());
         return quote(loadOrdersByUuid(dto.getOrderUuids()), dto.getIsInvoice());
     }
 
     @Override
-    public SettleQuoteVO quoteByMonth(SettleByMonthDTO dto) {
+    public SettleQuoteVO quoteByOrder(SettleQuoteByOrderDTO dto) {
+        return quote(loadOrdersByUuid(List.of(dto.getOrderUuid())), dto.getIsInvoice());
+    }
+
+    @Override
+    public SettleQuoteVO quoteByMonth(SettleQuoteByMonthDTO dto) {
         if (dto.getPeriodStart().isAfter(dto.getPeriodEnd())) {
             throw new BusinessException("账期开始日不能晚于结束日");
         }
@@ -231,17 +246,23 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String createByOrder(SettleByOrderDTO dto) {
+        SettleOrder replay = findCreateReplay(dto.getRequestId(), dto.getQuoteVersion(), dto.getQuoteHash());
+        if (replay != null) return replay.getUuid();
         businessLockService.lockProcessOrders(List.of(dto.getOrderUuid()));
         ProcessOrder order = processOrderService.getById(dto.getOrderUuid());
         validateFinishedOrder(order);
+        replay = findCreateReplay(dto.getRequestId(), dto.getQuoteVersion(), dto.getQuoteHash());
+        if (replay != null) return replay.getUuid();
+        settlementQuoteGuard.verify(dto.getQuoteVersion(), dto.getQuoteHash(),
+                quote(List.of(order), dto.getIsInvoice()));
         String settleUuid = createFromOrders(new SettlementBuildContext(
                 List.of(order),
                 dto.getSettleDate() != null ? dto.getSettleDate() : LocalDate.now(),
                 SETTLE_TYPE_BY_ORDER,
                 null,
                 null,
-                dto.getIsInvoice(),
-                dto.getRemark()));
+                dto.getIsInvoice(), dto.getRemark(), dto.getRequestId(),
+                dto.getQuoteVersion(), dto.getQuoteHash()));
         SettleOrder settle = getById(settleUuid);
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,
                 settle.getUuid(), settle.getSettleNo(),
@@ -254,16 +275,21 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     @Transactional(rollbackFor = Exception.class)
     public String createByOrders(SettleByOrdersDTO dto) {
         ensureDistinctOrderUuids(dto.getOrderUuids());
+        SettleOrder replay = findCreateReplay(dto.getRequestId(), dto.getQuoteVersion(), dto.getQuoteHash());
+        if (replay != null) return replay.getUuid();
         businessLockService.lockProcessOrders(dto.getOrderUuids());
         List<ProcessOrder> orders = loadOrdersByUuid(dto.getOrderUuids());
+        replay = findCreateReplay(dto.getRequestId(), dto.getQuoteVersion(), dto.getQuoteHash());
+        if (replay != null) return replay.getUuid();
+        settlementQuoteGuard.verify(dto.getQuoteVersion(), dto.getQuoteHash(), quote(orders, dto.getIsInvoice()));
         String settleUuid = createFromOrders(new SettlementBuildContext(
                 orders,
                 dto.getSettleDate() != null ? dto.getSettleDate() : LocalDate.now(),
-                orders.size() == 1 ? SETTLE_TYPE_BY_ORDER : SETTLE_TYPE_BY_MONTH,
+                orders.size() == 1 ? SETTLE_TYPE_BY_ORDER : SETTLE_TYPE_SELECTED_MERGE,
                 dto.getPeriodStart(),
                 dto.getPeriodEnd(),
-                dto.getIsInvoice(),
-                dto.getRemark()));
+                dto.getIsInvoice(), dto.getRemark(), dto.getRequestId(),
+                dto.getQuoteVersion(), dto.getQuoteHash()));
         SettleOrder settle = getById(settleUuid);
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,
                 settle.getUuid(), settle.getSettleNo(),
@@ -278,6 +304,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (dto.getPeriodStart().isAfter(dto.getPeriodEnd())) {
             throw new BusinessException("账期开始日不能晚于结束日");
         }
+        SettleOrder replay = findCreateReplay(dto.getRequestId(), dto.getQuoteVersion(), dto.getQuoteHash());
+        if (replay != null) return replay.getUuid();
         Customer customer = customerService.getById(dto.getCustomerUuid());
         if (customer == null) {
             throw new BusinessException(ErrorCode.E002, "客户不存在");
@@ -296,6 +324,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         List<String> orderUuids = orders.stream().map(ProcessOrder::getUuid).toList();
         businessLockService.lockProcessOrders(orderUuids);
         orders = loadOrdersByUuid(orderUuids);
+        replay = findCreateReplay(dto.getRequestId(), dto.getQuoteVersion(), dto.getQuoteHash());
+        if (replay != null) return replay.getUuid();
+        settlementQuoteGuard.verify(dto.getQuoteVersion(), dto.getQuoteHash(), quote(orders, dto.getIsInvoice()));
 
         String settleUuid = createFromOrders(new SettlementBuildContext(
                 orders,
@@ -303,8 +334,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 SETTLE_TYPE_BY_MONTH,
                 dto.getPeriodStart(),
                 dto.getPeriodEnd(),
-                dto.getIsInvoice() != null ? dto.getIsInvoice() : customer.getDefaultInvoice(),
-                dto.getRemark()));
+                dto.getIsInvoice(),
+                dto.getRemark(), dto.getRequestId(), dto.getQuoteVersion(), dto.getQuoteHash()));
         SettleOrder settle = getById(settleUuid);
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE,
                 settle.getUuid(), settle.getSettleNo(),
@@ -379,6 +410,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         }
         BigDecimal unreceived = nz(settle.getUnreceivedAmount());
         SettleReceiveAmountResolver.Resolved amount = SettleReceiveAmountResolver.resolve(dto, unreceived);
+        String operator = currentOperator();
+        SettlementDiscountPolicy.Decision discountDecision = settlementDiscountPolicy.authorize(
+                settle, dto, amount.discountAmount(), operator);
 
         ReceiveRecord record = new ReceiveRecord();
         record.setSettleUuid(uuid);
@@ -388,16 +422,19 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         record.setCashAmount(amount.cashAmount());
         record.setScrapOffsetAmount(amount.scrapOffsetAmount());
         record.setDiscountAmount(amount.discountAmount());
+        record.setDiscountReason(trimToNull(dto.getDiscountReason()));
+        record.setDiscountApprovalUuid(discountDecision.approvalUuid());
+        record.setDiscountApprovedBy(discountDecision.approvedBy());
         record.setScrapWeight(amount.scrapWeight());
         record.setScrapUnitPrice(amount.scrapUnitPrice());
         record.setReceiveType(amount.receiveType());
         record.setPayMethod(amount.cashAmount().signum() > 0 ? dto.getPayMethod() : null);
-        record.setPayNo(dto.getPayNo());
-        String operator = resolveOperator(dto.getOperator());
+        record.setPayNo(trimToNull(dto.getPayNo()));
         record.setOperator(operator);
         record.setRecordStatus(RECEIVE_STATUS_ACTIVE);
         record.setRemark(dto.getRemark());
         insertReceiveRecord(record);
+        settlementDiscountPolicy.consume(discountDecision, record.getUuid());
 
         refreshReceiveState(settle);
 
@@ -614,7 +651,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private String receiveLogText(String action, SettleReceiveAmountResolver.Resolved amount) {
-        return action + " " + amount.receiveAmount() + " 元，现金 "
+        return action + " " + amount.receiveAmount() + " 元，实际到账 "
                 + amount.cashAmount() + " 元，废纸抵扣 "
                 + amount.scrapOffsetAmount() + " 元，优惠核销 "
                 + amount.discountAmount() + " 元，废纸 "
@@ -622,7 +659,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private String cancelReceiveLogText(ReceiveRecord record, String reason) {
-        return "撤销收款 " + nz(record.getReceiveAmount()) + " 元，现金 "
+        return "撤销收款 " + nz(record.getReceiveAmount()) + " 元，实际到账 "
                 + nz(record.getCashAmount()) + " 元，废纸抵扣 "
                 + nz(record.getScrapOffsetAmount()) + " 元，优惠核销 "
                 + nz(record.getDiscountAmount()) + " 元，原因：" + reason;
@@ -1172,6 +1209,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         settle.setSettleNo(nextSettleNo(context.settleDate()));
         settle.setCustomerUuid(customer.getUuid());
         settle.setCustomerName(customer.getCustomerName());
+        settle.setRequestId(context.requestId().trim());
+        settle.setQuoteVersion(context.quoteVersion());
+        settle.setQuoteHash(context.quoteHash().toLowerCase());
         settle.setSettleType(context.settleType());
         settle.setSettleDate(context.settleDate());
         settle.setPeriodStart(context.periodStart());
@@ -1544,8 +1584,17 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         Integer isInvoice = resolveInvoice(orders, requestedInvoice, customer);
         SettlementAmountCalculator.Calculation amount =
                 settlementAmountCalculator.calculate(orders, isInvoice, customer);
-        return new SettleQuoteVO(orders.size(), amount.pendingPriceCount(), isInvoice,
-                amount.saw(), amount.rewind(), amount.extra(), amount.noTax(), amount.tax(), amount.total());
+        return settlementQuoteFactory.create(orders, isInvoice, amount);
+    }
+
+    private SettleOrder findCreateReplay(String requestId, String quoteVersion, String quoteHash) {
+        if (!StringUtils.hasText(requestId)) return null;
+        SettleOrder existing = getBaseMapper().selectOne(new LambdaQueryWrapper<SettleOrder>()
+                .eq(SettleOrder::getRequestId, requestId.trim()));
+        if (existing != null) {
+            settlementQuoteGuard.verifyIdempotentReplay(existing, quoteVersion, quoteHash);
+        }
+        return existing;
     }
 
     private Integer resolveInvoice(List<ProcessOrder> orders, Integer requestedInvoice, Customer customer) {
@@ -1618,15 +1667,12 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         return documentNoService.next(NoRuleBizType.SETTLE_ORDER, date);
     }
 
-    private String resolveOperator(String operator) {
-        if (operator != null && !operator.isBlank()) {
-            return operator;
-        }
-        return currentOperator();
-    }
-
     private String currentOperator() {
         return AuthContextHolder.currentDisplayName();
+    }
+
+    private String trimToNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     private static BigDecimal nz(BigDecimal v) {
@@ -1644,7 +1690,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             LocalDate periodStart,
             LocalDate periodEnd,
             Integer isInvoice,
-            String remark) {
+            String remark,
+            String requestId,
+            String quoteVersion,
+            String quoteHash) {
     }
 
     private record SettlementAmounts(

@@ -1,6 +1,6 @@
 import { DatePicker, Form, Input, Radio } from 'antd'
 import type { FormInstance } from 'antd'
-import { payMethodError, type ReceiveFormValues } from './receiveFormModel'
+import { payMethodError, payNoError, type ReceiveFormValues } from './receiveFormModel'
 
 interface Props {
   form: FormInstance<ReceiveFormValues>
@@ -17,7 +17,7 @@ export default function ReceivePaymentFields({ form, operatorName }: Props) {
         <strong>{operatorName}</strong>
         <span>将按当前登录账号记录</span>
       </div>
-      <Form.Item name="payMethod" label="现金收款方式" rules={[{
+      <Form.Item name="payMethod" label="到账方式" rules={[{
         validator: () => validatePayMethod(form.getFieldsValue()),
       }]}>
         <Radio.Group disabled={Number(cashAmount) <= 0}>
@@ -27,17 +27,24 @@ export default function ReceivePaymentFields({ form, operatorName }: Props) {
           <Radio value={4}>支付宝</Radio>
         </Radio.Group>
       </Form.Item>
-      <Form.Item name="payNo" label="流水号">
-        <Input placeholder="银行流水号或交易号" />
+      <Form.Item name="payNo" label="交易流水号" rules={[{
+        validator: () => validatePayNo(form.getFieldsValue()),
+      }]}>
+        <Input placeholder="转账、微信或支付宝到账时必填" />
       </Form.Item>
       <Form.Item name="receiveDate" label="收款时间">
         <DatePicker showTime placeholder="选择收款时间" style={{ width: '100%' }} />
       </Form.Item>
       <Form.Item name="remark" label="备注">
-        <Input.TextArea rows={2} placeholder="可填写优惠原因、废纸来源或收款备注" />
+        <Input.TextArea rows={2} placeholder="可填写废纸来源或到账备注" />
       </Form.Item>
     </>
   )
+}
+
+function validatePayNo(values: ReceiveFormValues): Promise<void> {
+  const error = payNoError(values)
+  return error ? Promise.reject(new Error(error)) : Promise.resolve()
 }
 
 function validatePayMethod(values: ReceiveFormValues): Promise<void> {

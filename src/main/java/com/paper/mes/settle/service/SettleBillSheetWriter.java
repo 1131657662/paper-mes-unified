@@ -43,7 +43,7 @@ final class SettleBillSheetWriter {
         summaryRow(sheet, 2, "结算日期", text(order.getSettleDate()), "账期", periodText(order));
         summaryRow(sheet, 3, "开票", invoiceText(order.getIsInvoice()), "状态", statusText(order.getSettleStatus()));
         summaryRow(sheet, 4, "应收合计", text(order.getTotalAmount()), "已结清", text(order.getReceivedAmount()));
-        summaryRow(sheet, 5, "现金实收", text(order.getCashReceivedAmount()), "废纸抵扣", text(order.getScrapOffsetAmount()));
+        summaryRow(sheet, 5, "实际到账", text(order.getCashReceivedAmount()), "废纸抵扣", text(order.getScrapOffsetAmount()));
         summaryRow(sheet, 6, "优惠核销", text(order.getDiscountAmount()), "未收金额", text(order.getUnreceivedAmount()));
         summaryRow(sheet, 7, "备注", order.getRemark(), "口径说明", "已结清由现金、废纸抵扣和优惠核销组成。");
     }
