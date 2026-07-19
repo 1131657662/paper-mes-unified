@@ -1,4 +1,4 @@
-import request, { rawRequest } from './request'
+import request from './request'
 import type { PageResult } from '../types/common'
 import type {
   SettleOrder,
@@ -9,6 +9,9 @@ import type {
   SettleByOrdersDTO,
   SettleByMonthDTO,
   SettleDetailVO,
+  SettleDetail,
+  ReceiveRecord,
+  SettlePrintLine,
   ReceiveDTO,
   SettleActionReasonDTO,
   SettleQuoteVO,
@@ -17,13 +20,11 @@ import type {
   SettleQuoteByMonthDTO,
   SettleDiscountApproval,
   SettleDiscountApprovalRequestDTO,
+  SettleCollectionReminder,
+  SettleCollectionReminderRequestDTO,
+  SettleCollectionSummary,
 } from '../types/settle'
-import { downloadFileFromResponse } from '../utils/downloadFile'
-import {
-  normalizeDocumentExportInput,
-  readableExportFilename,
-  type DocumentExportInput,
-} from '../utils/documentExport'
+import type { OperationLog } from '../types/operationLog'
 
 export function getSettleOrderList(query: SettleQuery) {
   return request<PageResult<SettleOrder>>({
@@ -36,6 +37,14 @@ export function getSettleOrderList(query: SettleQuery) {
 export function getSettleOrderSummary(query: SettleQuery) {
   return request<SettleListSummary>({
     url: '/api/settle-orders/summary',
+    method: 'get',
+    params: query,
+  })
+}
+
+export function getSettleCollectionSummary(query: SettleQuery) {
+  return request<SettleCollectionSummary>({
+    url: '/api/settle-orders/collection-summary',
     method: 'get',
     params: query,
   })
@@ -54,6 +63,7 @@ export function quoteSettleByOrders(data: SettleQuoteByOrdersDTO) {
     url: '/api/settle-orders/quote/by-orders',
     method: 'post',
     data,
+    silentBusinessErrorCodes: ['E001', 'E002', 'E004'],
   })
 }
 
@@ -62,6 +72,7 @@ export function quoteSettleByMonth(data: SettleQuoteByMonthDTO) {
     url: '/api/settle-orders/quote/by-month',
     method: 'post',
     data,
+    silentBusinessErrorCodes: ['E001', 'E002', 'E004'],
   })
 }
 
@@ -94,6 +105,41 @@ export function getSettleOrderDetail(uuid: string) {
     url: `/api/settle-orders/${uuid}`,
     method: 'get',
   })
+}
+
+export function getSettleOrderHeader(uuid: string) {
+  return request<SettleOrder>({ url: `/api/settle-orders/${uuid}/header`, method: 'get' })
+}
+
+export function getSettleDetails(uuid: string) {
+  return request<SettleDetail[]>({ url: `/api/settle-orders/${uuid}/details`, method: 'get' })
+}
+
+export function getSettleReceives(uuid: string) {
+  return request<ReceiveRecord[]>({ url: `/api/settle-orders/${uuid}/receives`, method: 'get' })
+}
+
+export function getSettleCollectionReminders(uuid: string) {
+  return request<SettleCollectionReminder[]>({
+    url: `/api/settle-orders/${uuid}/collection-reminders`,
+    method: 'get',
+  })
+}
+
+export function recordSettleCollectionReminder(uuid: string, data: SettleCollectionReminderRequestDTO) {
+  return request<string>({
+    url: `/api/settle-orders/${uuid}/collection-reminders`,
+    method: 'post',
+    data,
+  })
+}
+
+export function getSettlePrintLines(uuid: string) {
+  return request<SettlePrintLine[]>({ url: `/api/settle-orders/${uuid}/print-lines`, method: 'get' })
+}
+
+export function getSettleOperationLogs(uuid: string) {
+  return request<OperationLog[]>({ url: `/api/settle-orders/${uuid}/operation-logs`, method: 'get' })
 }
 
 export function receivePayment(uuid: string, data: ReceiveDTO) {
@@ -140,14 +186,4 @@ export function voidSettleOrder(uuid: string, data: SettleActionReasonDTO) {
     method: 'post',
     data,
   })
-}
-
-export async function exportSettleOrder(input: DocumentExportInput) {
-  const { documentNo, uuid } = normalizeDocumentExportInput(input)
-  const response = await rawRequest.request<Blob, { data: Blob; headers: Record<string, string> }>({
-    url: `/api/settle-orders/${uuid}/export`,
-    method: 'get',
-    responseType: 'blob',
-  })
-  await downloadFileFromResponse(response, readableExportFilename('结算单', documentNo))
 }

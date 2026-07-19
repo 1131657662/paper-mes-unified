@@ -6,8 +6,9 @@ export function useApproveSettleDiscount() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: settleService.approveDiscount,
-    onSuccess: (_, variables) => queryClient.invalidateQueries({
-      queryKey: queries.settle.discountApprovals(variables.uuid).queryKey,
-    }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queries.settle.discountApprovals(variables.uuid).queryKey })
+      queryClient.invalidateQueries({ queryKey: queries.settle.detail(variables.uuid).queryKey })
+    },
   })
 }

@@ -1,4 +1,4 @@
-import { Card, Spin, message } from 'antd'
+import { Card, Spin } from 'antd'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import dayjs from 'dayjs'
 import { useState } from 'react'
@@ -18,7 +18,6 @@ import { useReportOverview } from '../../features/report/hooks/useReportOverview
 import { useReportMachines, useReportPapers } from '../../features/report/hooks/useReportReferenceData'
 import { formatMoney, formatNumber, formatTonFromKg } from '../../features/report/utils/reportFormatters'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
-import { notifyErrorOnce } from '../../api/request'
 import type { ReportDimension, ReportQuery } from '../../types/report'
 import '../documentModule.css'
 import './ReportPage.css'
@@ -58,13 +57,7 @@ export default function ReportPage() {
   }
 
   const exportCurrent = () => {
-    exportMutation.mutate(
-      { ...query, dimension },
-      {
-        onError: (error) => notifyErrorOnce(error, '导出失败，请稍后重试'),
-        onSuccess: (result) => message.success(`已导出 ${result.filename}（${formatFileSize(result.size)}）`),
-      },
-    )
+    exportMutation.mutate({ ...query, dimension })
   }
 
   return (
@@ -173,10 +166,4 @@ function toQuery(values: ReportFilterValues): ReportQuery {
     processMode: values.processMode,
     settleType: values.settleType,
   }
-}
-
-function formatFileSize(size: number) {
-  if (size < 1024) return `${size} B`
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
-  return `${(size / 1024 / 1024).toFixed(1)} MB`
 }

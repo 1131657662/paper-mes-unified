@@ -15,6 +15,7 @@ import { formatMoney, formatPercent } from '../utils/settleFormatters'
 
 interface Props {
   canReceiveSettle?: boolean
+  collectionMode?: boolean
   data: SettleOrder[]
   fixedHeader?: boolean
   loading: boolean
@@ -24,10 +25,12 @@ interface Props {
   onDetail: (record: SettleOrder) => void
   onRow?: (record: SettleOrder) => React.HTMLAttributes<HTMLElement>
   onReceive: (record: SettleOrder) => void
+  onRemind?: (record: SettleOrder) => void
 }
 
 export default function SettleOrderTable({
   canReceiveSettle = false,
+  collectionMode = false,
   data,
   fixedHeader = false,
   loading,
@@ -35,10 +38,11 @@ export default function SettleOrderTable({
   onReload,
   onRow,
   onReceive,
+  onRemind,
   rowClassName,
   rowSelection,
 }: Props) {
-  const columns = buildColumns({ canReceiveSettle, onDetail, onReceive })
+  const columns = buildColumns({ canReceiveSettle, collectionMode, onDetail, onReceive, onRemind })
   const columnsState = useTableColumnsState('table-columns-settle-orders')
   const resizable = useResizableTableColumns<SettleOrder, ProColumns<SettleOrder>>(columns, 'settle-orders')
 
@@ -73,8 +77,10 @@ export default function SettleOrderTable({
 
 function buildColumns(actions: {
   canReceiveSettle: boolean
+  collectionMode: boolean
   onDetail: (record: SettleOrder) => void
   onReceive: (record: SettleOrder) => void
+  onRemind?: (record: SettleOrder) => void
 }): ProColumns<SettleOrder>[] {
   return [
     {
@@ -91,13 +97,26 @@ function buildColumns(actions: {
       ),
     },
     { title: '客户', dataIndex: 'customerName', width: 180, minWidth: 160, render: (_, record) => textCell(record.customerName) },
-    { title: '结算日期', dataIndex: 'settleDate', width: 124 },
-    { title: '应收', dataIndex: 'totalAmount', align: 'right', width: 128, render: (_, record) => formatMoney(record.totalAmount) },
+    { title: '结算日期', dataIndex: 'settleDate', width: 124, hideInTable: actions.collectionMode },
+    {
+      title: '到期 / 跟进',
+      dataIndex: 'dueDate',
+      width: 164,
+      render: (_, record) => <CollectionDueCell record={record} />,
+    },
+    {
+      title: actions.collectionMode ? '未收' : '应收',
+      dataIndex: 'totalAmount',
+      align: 'right',
+      width: 118,
+      render: (_, record) => formatMoney(actions.collectionMode ? record.unreceivedAmount : record.totalAmount),
+    },
     {
       title: '收款进度',
       dataIndex: 'receivedAmount',
       width: 268,
       minWidth: 248,
+      hideInTable: actions.collectionMode,
       render: (_, record) => <ReceiveProgress record={record} />,
     },
     {
@@ -120,18 +139,39 @@ function buildColumns(actions: {
       key: 'actions',
       className: 'settle-order-table__actions-cell',
       fixed: 'right',
-      width: 168,
-      minWidth: 168,
+      width: actions.collectionMode ? 190 : 210,
+      minWidth: actions.collectionMode ? 190 : 210,
       render: (_, record) => (
         <Space className="mes-action-buttons">
           <Button type="link" size="small" onClick={() => actions.onDetail(record)}>详情</Button>
           {actions.canReceiveSettle && [1, 2].includes(record.settleStatus) && (
             <Button type="link" size="small" onClick={() => actions.onReceive(record)}>收款</Button>
           )}
+          {actions.canReceiveSettle && actions.onRemind && [1, 2].includes(record.settleStatus) && (
+            <Button type="link" size="small" onClick={() => actions.onRemind?.(record)}>提醒</Button>
+          )}
         </Space>
       ),
     },
   ]
+}
+
+function CollectionDueCell({ record }: { record: SettleOrder }) {
+  const due = dueText(record.dueDate)
+  return (
+    <div className="settle-cell-stack mes-cell-stack">
+      <Typography.Text type={due.tone}>{due.text}</Typography.Text>
+      <span>{record.reminderCount ? `已提醒 ${record.reminderCount} 次 · ${record.lastReminderBy || '-'}` : '尚未提醒'}</span>
+    </div>
+  )
+}
+
+function dueText(value?: string): { text: string; tone?: 'danger' | 'warning' | 'secondary' } {
+  if (!value) return { text: '未设置到期日', tone: 'secondary' }
+  const days = dayjs(value).startOf('day').diff(dayjs().startOf('day'), 'day')
+  if (days < 0) return { text: `${value} · 逾期 ${Math.abs(days)} 天`, tone: 'danger' }
+  if (days === 0) return { text: `${value} · 今日到期`, tone: 'warning' }
+  return { text: `${value} · ${days} 天后` }
 }
 
 function ReceiveProgress({ record }: { record: SettleOrder }) {
@@ -152,6 +192,6 @@ function textCell(value?: ReactNode) {
 function isOverdue(record: SettleOrder) {
   return [1, 2].includes(record.settleStatus)
     && Number(record.unreceivedAmount ?? 0) > 0
-    && Boolean(record.periodEnd)
-    && dayjs(record.periodEnd).isBefore(dayjs(), 'day')
+    && Boolean(record.dueDate)
+    && dayjs(record.dueDate).isBefore(dayjs(), 'day')
 }

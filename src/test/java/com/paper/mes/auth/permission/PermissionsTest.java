@@ -12,6 +12,13 @@ class PermissionsTest {
 
         assertThat(permissions).contains(Permissions.ORDER_CREATE, Permissions.ORDER_MANAGE);
         assertThat(permissions).doesNotContain(Permissions.ORDER_BACK_RECORD);
+        assertThat(permissions).doesNotContain(Permissions.ORDER_PRICING_APPROVE);
+    }
+
+    @Test
+    void finance_canApproveLargePricingAdjustments() {
+        assertThat(Permissions.resolve(RoleCodes.FINANCE))
+                .contains(Permissions.ORDER_PRICING, Permissions.ORDER_PRICING_APPROVE);
     }
 
     @Test
@@ -28,7 +35,7 @@ class PermissionsTest {
 
         assertThat(permissions).contains(
                 Permissions.BASE_VIEW, Permissions.ORDER_VIEW, Permissions.DELIVERY_VIEW,
-                Permissions.SETTLE_VIEW, Permissions.REPORT_VIEW);
+                Permissions.SETTLE_VIEW, Permissions.REPORT_VIEW, Permissions.EXPORT_TASK_VIEW);
         assertThat(permissions).noneMatch(permission -> permission.endsWith(":manage"));
         assertThat(permissions).doesNotContain(Permissions.ORDER_CREATE, Permissions.ORDER_BACK_RECORD,
                 Permissions.SETTLE_RECEIVE, Permissions.SYSTEM_CONFIG);
@@ -38,6 +45,6 @@ class PermissionsTest {
     void legacyOperator_keepsExistingPermissionSet() {
         assertThat(Permissions.resolve(RoleCodes.OPERATOR)).containsExactly(
                 Permissions.BASE_VIEW, Permissions.ORDER_VIEW, Permissions.ORDER_CREATE,
-                Permissions.ORDER_BACK_RECORD, Permissions.REPORT_VIEW);
+                Permissions.ORDER_BACK_RECORD, Permissions.REPORT_VIEW, Permissions.EXPORT_TASK_VIEW);
     }
 }

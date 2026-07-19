@@ -6,5 +6,8 @@ export function useSettleQuoteByOrders(data: SettleQuoteByOrdersDTO, enabled: bo
   return useQuery({
     ...queries.settle.quoteByOrders(data),
     enabled,
+    refetchOnWindowFocus: 'always',
+    retry: false,
+    staleTime: 0,
   })
 }

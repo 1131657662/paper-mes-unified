@@ -76,6 +76,7 @@ function toFormValues(warehouse: Warehouse): WarehouseSaveDTO {
     location: warehouse.location,
     remark: warehouse.remark,
     status: warehouse.status,
+    isDefault: warehouse.isDefault,
     warehouseCode: warehouse.warehouseCode,
     warehouseName: warehouse.warehouseName,
   }

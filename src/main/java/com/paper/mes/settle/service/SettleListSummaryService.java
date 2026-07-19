@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -44,6 +45,7 @@ public class SettleListSummaryService {
             wrapper.and(item -> item.like("settle_no", keyword).or().like("customer_name", keyword));
         }
         wrapper.eq(StringUtils.hasText(query.getCustomerUuid()), "customer_uuid", query.getCustomerUuid());
+        wrapper.eq(query.getSettleStatus() != null, "settle_status", query.getSettleStatus());
         wrapper.eq(query.getSettleType() != null, "settle_type", query.getSettleType());
         wrapper.ge(query.getDateFrom() != null, "settle_date", query.getDateFrom());
         wrapper.le(query.getDateTo() != null, "settle_date", query.getDateTo());
@@ -80,7 +82,7 @@ public class SettleListSummaryService {
 
         SettleListSummaryVO toView() {
             return new SettleListSummaryVO(totalDocuments, pendingDocuments, partialDocuments, paidDocuments,
-                    voidDocuments, totalAmount, receivedAmount, unreceivedAmount, discountAmount);
+                    voidDocuments, totalAmount, receivedAmount, unreceivedAmount, discountAmount, LocalDateTime.now());
         }
     }
 

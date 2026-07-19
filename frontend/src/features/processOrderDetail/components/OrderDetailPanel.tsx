@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { Empty, Spin, message } from 'antd'
-import type { ProcessStepDTO } from '../../../api/processOrder'
+import type { ProcessStepDTO, ProcessStepPricingAdjustmentDTO } from '../../../api/processOrder'
 import type { OriginalRoll, ProcessStep } from '../../../types/processOrder'
 import ProcessStepFormModal from '../../../components/processOrder/ProcessStepFormModal'
 import { useAddProcessStep } from '../hooks/useAddProcessStep'
 import { useDeleteProcessStep } from '../hooks/useDeleteProcessStep'
 import { useProcessOrderDetail } from '../hooks/useProcessOrderDetail'
 import { useUpdateProcessStep } from '../hooks/useUpdateProcessStep'
+import { useAdjustProcessStepPricing } from '../hooks/useAdjustProcessStepPricing'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import OrderDetailView from './OrderDetailView'
 import ProcessRouteConfigDrawer from './ProcessRouteConfigDrawer'
+import ProcessStepPricingModal from './ProcessStepPricingModal'
 
 interface Props {
   uuid?: string | null
@@ -28,10 +30,12 @@ export default function OrderDetailPanel({
   const [routeConfigOpen, setRouteConfigOpen] = useState(false)
   const [routeConfigTarget, setRouteConfigTarget] = useState<ProcessRouteConfigTarget>({ mode: 'replace' })
   const [editingStep, setEditingStep] = useState<ProcessStep | null>(null)
+  const [pricingStep, setPricingStep] = useState<ProcessStep | null>(null)
   const { data: detail, isLoading: isLoadingDetail } = useProcessOrderDetail(uuid ?? undefined, { enabled })
   const { mutateAsync: addStep } = useAddProcessStep()
   const { mutateAsync: updateStep } = useUpdateProcessStep()
   const { mutateAsync: deleteStep } = useDeleteProcessStep()
+  const { mutateAsync: adjustPricing, isPending: isAdjustingPricing } = useAdjustProcessStepPricing()
 
   const handleAdd = () => {
     setEditingStep(null)
@@ -52,6 +56,13 @@ export default function OrderDetailPanel({
   const handleConfigureRoute = (target: ProcessRouteConfigTarget) => {
     setRouteConfigTarget(target)
     setRouteConfigOpen(true)
+  }
+
+  const handleAdjustPricing = async (values: ProcessStepPricingAdjustmentDTO) => {
+    if (!uuid || !pricingStep) return
+    await adjustPricing({ orderUuid: uuid, stepUuid: pricingStep.uuid, values })
+    message.success('计价核定已保存')
+    setPricingStep(null)
   }
 
   const handleStepFormOk = async (values: ProcessStepDTO, stepUuid?: string) => {
@@ -80,6 +91,7 @@ export default function OrderDetailPanel({
           onConfigureRoute={handleConfigureRoute}
           onEditStep={handleEdit}
           onDeleteStep={handleDelete}
+          onAdjustPricing={setPricingStep}
         />
       )}
 
@@ -103,6 +115,14 @@ export default function OrderDetailPanel({
           onClose={() => setRouteConfigOpen(false)}
         />
       )}
+      <ProcessStepPricingModal
+        key={pricingStep?.uuid ?? 'pricing-modal-closed'}
+        open={pricingStep != null}
+        step={pricingStep}
+        loading={isAdjustingPricing}
+        onCancel={() => setPricingStep(null)}
+        onSubmit={handleAdjustPricing}
+      />
     </Spin>
   )
 }

@@ -51,7 +51,11 @@ public class SettlePrintLineVO {
     private BigDecimal rewindInvoiceUnitPrice;
     private BigDecimal sawAmount;
     private BigDecimal rewindAmount;
-    /** 锯纸费 + 复卷费。 */
+    /** 优惠前的标准加工费（锯纸费 + 复卷费）。 */
+    private BigDecimal standardProcessAmount;
+    /** 最终加工费相对标准加工费的调整额，可为负数。 */
+    private BigDecimal pricingAdjustmentAmount;
+    /** 锯纸费 + 复卷费，已包含计价调整。 */
     private BigDecimal processAmount;
     /** 分摊到本原纸行的额外费用。 */
     private BigDecimal extraAmount;

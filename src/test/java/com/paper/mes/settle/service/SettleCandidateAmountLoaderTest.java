@@ -31,6 +31,22 @@ class SettleCandidateAmountLoaderTest {
         verify(mapper).selectList(any());
     }
 
+    @Test
+    void load_whenStepHasPricingOverride_exposesStandardAmountAndAdjustment() {
+        ProcessStepMapper mapper = mock(ProcessStepMapper.class);
+        ProcessStep step = step("order-1", 2, "100");
+        step.setStandardStepAmount(new BigDecimal("370"));
+        step.setPricingAdjustmentAmount(new BigDecimal("-270"));
+        when(mapper.selectList(any())).thenReturn(List.of(step));
+
+        var amount = new SettleCandidateAmountLoader(mapper)
+                .load(List.of(order("order-1", "100"))).get("order-1");
+
+        assertThat(amount.standardProcess()).isEqualByComparingTo("370.00");
+        assertThat(amount.pricingAdjustment()).isEqualByComparingTo("-270.00");
+        assertThat(amount.effectiveTotal()).isEqualByComparingTo("100.00");
+    }
+
     private ProcessOrder order(String uuid, String total) {
         ProcessOrder order = new ProcessOrder();
         order.setUuid(uuid);

@@ -1,5 +1,5 @@
 .app-shell__content--edge-scroll > .back-record-page {
-  height: auto;
+  height: 100%;
   min-height: 100%;
   overflow: visible;
 }
@@ -39,10 +39,10 @@
 
 .back-record-page .back-record-workbench {
   grid-template-columns: minmax(208px, 232px) minmax(0, 1fr) minmax(220px, 244px);
-  height: 600px;
+  height: auto;
   min-height: 600px;
-  max-height: 600px;
-  flex: 0 0 600px;
+  max-height: none;
+  flex: 1 0 600px;
   align-items: stretch;
   overflow: hidden;
 }

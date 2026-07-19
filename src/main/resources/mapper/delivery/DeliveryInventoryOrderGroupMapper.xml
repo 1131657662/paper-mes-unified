@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.paper.mes.delivery.mapper.DeliveryInventoryOrderGroupMapper">
+
+    <sql id="InventoryJoins">
+        INNER JOIN biz_process_order o ON o.uuid = f.order_uuid
+        <include refid="com.paper.mes.delivery.mapper.DeliveryInventoryMapper.ActiveLockJoin"/>
+    </sql>
+
+    <sql id="InventoryWhere">
+        <include refid="com.paper.mes.delivery.mapper.DeliveryInventoryMapper.InventoryWhere"/>
+        <include refid="com.paper.mes.delivery.mapper.DeliveryInventoryMapper.InventoryFilterWhere"/>
+    </sql>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(DISTINCT f.order_uuid)
+        FROM biz_finish_roll f
+        <include refid="InventoryJoins"/>
+        WHERE <include refid="InventoryWhere"/>
+    </select>
+
+    <select id="rows" resultType="com.paper.mes.delivery.dto.DeliveryInventoryOrderGroupVO">
+        SELECT o.uuid AS orderUuid,
+               o.order_no AS orderNo,
+               o.order_date AS orderDate,
+               COUNT(*) AS totalRollCount,
+               COALESCE(SUM(COALESCE(f.remaining_weight, f.actual_weight, 0)), 0) AS totalWeight,
+               SUM(CASE WHEN dd.uuid IS NULL THEN 1 ELSE 0 END) AS availableRollCount,
+               SUM(CASE WHEN dd.uuid IS NOT NULL THEN 1 ELSE 0 END) AS lockedRollCount
+        FROM biz_finish_roll f
+        <include refid="InventoryJoins"/>
+        WHERE <include refid="InventoryWhere"/>
+        GROUP BY o.uuid, o.order_no, o.order_date
+        ORDER BY CASE WHEN SUM(CASE WHEN dd.uuid IS NULL THEN 1 ELSE 0 END) &gt; 0 THEN 0 ELSE 1 END,
+                 o.order_date ASC,
+                 o.order_no ASC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="finishRows" resultType="com.paper.mes.delivery.dto.DeliveryInventoryFinishVO">
+        SELECT o.customer_uuid AS customerUuid,
+               o.customer_name AS customerName,
+               f.uuid AS finishUuid,
+               f.finish_roll_no AS finishRollNo,
+               o.uuid AS orderUuid,
+               o.order_no AS orderNo,
+               o.order_date AS orderDate,
+               f.warehouse_uuid AS warehouseUuid,
+               w.warehouse_name AS warehouseName,
+               w.location AS warehouseLocation,
+               f.paper_name AS paperName,
+               f.gram_weight AS gramWeight,
+               f.finish_width AS finishWidth,
+               f.finish_diameter AS finishDiameter,
+               f.finish_core_diameter AS finishCoreDiameter,
+               f.actual_weight AS actualWeight,
+               COALESCE(f.remaining_weight, f.actual_weight, 0) AS remainingWeight,
+               f.stock_in_time AS stockInTime,
+               CASE WHEN f.stock_in_time IS NULL THEN NULL
+                    ELSE TIMESTAMPDIFF(DAY, f.stock_in_time, NOW()) END AS stockAgeDays,
+               f.is_remain AS isRemain,
+               f.source_type AS sourceType,
+               CASE WHEN dd.uuid IS NULL THEN 1 ELSE 2 END AS stockState,
+               dd.out_weight AS plannedOutWeight,
+               d.uuid AS deliveryUuid,
+               d.delivery_no AS deliveryNo
+        FROM biz_finish_roll f
+        <include refid="InventoryJoins"/>
+        LEFT JOIN biz_delivery_order d ON d.uuid = dd.delivery_uuid AND d.is_deleted = 0
+        LEFT JOIN sys_warehouse w ON w.uuid = f.warehouse_uuid AND w.is_deleted = 0
+        WHERE <include refid="InventoryWhere"/>
+          AND f.order_uuid IN
+          <foreach collection="orderUuids" item="orderUuid" open="(" separator="," close=")">
+              #{orderUuid}
+          </foreach>
+        ORDER BY o.order_date ASC, o.order_no ASC,
+                 CASE WHEN dd.uuid IS NULL THEN 1 ELSE 2 END ASC,
+                 f.finish_roll_no ASC
+    </select>
+</mapper>

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.List;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +28,27 @@ public class BusinessLockService {
 
     public void lockProcessOrders(Collection<String> uuids) {
         lockMany("biz_process_order", uuids);
+    }
+
+    /** Locks the complete finished-order range used by a monthly settlement. */
+    public List<String> lockMonthlyFinishedProcessOrders(String customerUuid,
+                                                          LocalDate periodStart,
+                                                          LocalDate periodEnd) {
+        if (customerUuid == null || customerUuid.isBlank()
+                || periodStart == null || periodEnd == null) {
+            return List.of();
+        }
+        return jdbcTemplate.query("""
+                SELECT uuid
+                FROM biz_process_order FORCE INDEX (idx_order_customer_status_accounting)
+                WHERE customer_uuid = ?
+                  AND order_status = 4
+                  AND is_deleted = 0
+                  AND accounting_date BETWEEN ? AND ?
+                ORDER BY accounting_date ASC, order_no ASC, uuid ASC
+                FOR UPDATE
+                """, (resultSet, rowNumber) -> resultSet.getString("uuid"),
+                customerUuid, periodStart, periodEnd);
     }
 
     public void lockFinishRolls(Collection<String> uuids) {

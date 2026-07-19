@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 成品明细表 biz_finish_roll（全局唯一卷号）。
@@ -57,6 +58,8 @@ public class FinishRoll extends BaseEntity {
     private Integer qualityStatus;
     /** 1待入库 2已入库 3已出库 4报废 */
     private Integer finishStatus;
+    /** 首次正式入库时间；历史数据无法可靠推断时允许为空。 */
+    private LocalDateTime stockInTime;
     private String warehouseUuid;
     private String originalRollNos;
     private String actualRemark;

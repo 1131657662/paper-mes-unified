@@ -58,6 +58,9 @@ public class SettlementAmountCalculator {
         detail.setOrderNo(order.getOrderNo());
         detail.setSawAmount(steps.saw());
         detail.setRewindAmount(steps.rewind());
+        detail.setStandardProcessAmount(steps.standardProcess());
+        detail.setPricingAdjustmentAmount(steps.pricingAdjustment());
+        detail.setPricingAdjustmentReason(steps.reason());
         detail.setExtraAmount(money(order.getTotalExtraAmount()));
         BigDecimal noTax = noTax(order, detail);
         detail.setOrderAmount(noTax.add(tax(order, detail, isInvoice, customer)).setScale(MONEY_SCALE, RoundingMode.HALF_UP));
@@ -88,24 +91,37 @@ public class SettlementAmountCalculator {
                               List<SettleDetail> details) {
     }
 
-    private record StepAmounts(BigDecimal saw, BigDecimal rewind) {
+    private record StepAmounts(BigDecimal saw, BigDecimal rewind, BigDecimal standardProcess,
+                               BigDecimal pricingAdjustment, String reason) {
         static StepAmounts zero() {
-            return new StepAmounts(BigDecimal.ZERO, BigDecimal.ZERO);
+            return new StepAmounts(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null);
         }
 
         static StepAmounts of(ProcessStep step) {
             BigDecimal value = money(step.getStepAmount());
+            BigDecimal standard = money(step.getStandardStepAmount() == null
+                    ? step.getStepAmount() : step.getStandardStepAmount());
+            BigDecimal adjustment = money(step.getPricingAdjustmentAmount());
+            String reason = step.getPricingAdjustmentReason();
             if (step.getStepType() != null && step.getStepType() == STEP_TYPE_SAW) {
-                return new StepAmounts(value, BigDecimal.ZERO);
+                return new StepAmounts(value, BigDecimal.ZERO, standard, adjustment, reason);
             }
             if (step.getStepType() != null && step.getStepType() == STEP_TYPE_REWIND) {
-                return new StepAmounts(BigDecimal.ZERO, value);
+                return new StepAmounts(BigDecimal.ZERO, value, standard, adjustment, reason);
             }
             return zero();
         }
 
         StepAmounts add(StepAmounts other) {
-            return new StepAmounts(saw.add(other.saw), rewind.add(other.rewind));
+            return new StepAmounts(saw.add(other.saw), rewind.add(other.rewind),
+                    standardProcess.add(other.standardProcess), pricingAdjustment.add(other.pricingAdjustment),
+                    joinReason(reason, other.reason));
+        }
+
+        private static String joinReason(String left, String right) {
+            if (left == null || left.isBlank()) return right;
+            if (right == null || right.isBlank() || left.equals(right)) return left;
+            return left + "；" + right;
         }
     }
 

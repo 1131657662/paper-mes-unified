@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AvailableFinishVO } from '../../types/delivery'
 import { defaultDeliveryFinishFilters, filterDeliveryFinishes } from './deliveryFinishFilter'
+import { mergeAvailableFinishRows } from './deliverySelectionModel'
 
 describe('filterDeliveryFinishes', () => {
   const missingSource = finish({ finishUuid: 'missing-source', sourceMotherRolls: [], sourceType: 1 })
@@ -23,6 +24,17 @@ describe('filterDeliveryFinishes', () => {
   it('仅显示已选项时按成品 UUID 过滤', () => {
     const rows = filterDeliveryFinishes([healthy, direct], { ...defaultDeliveryFinishFilters, selectedOnly: true }, ['direct'])
     expect(rows).toEqual([direct])
+  })
+
+  it('分页切换时保留之前页已选卷并移除取消项', () => {
+    const first = finish({ finishUuid: 'first' })
+    const second = finish({ finishUuid: 'second' })
+
+    const merged = mergeAvailableFinishRows({ first }, ['first', 'second'], [second])
+    const afterClear = mergeAvailableFinishRows(merged, ['second'], [])
+
+    expect(Object.keys(merged)).toEqual(['first', 'second'])
+    expect(afterClear).toEqual({ second })
   })
 })
 

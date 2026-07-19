@@ -31,15 +31,15 @@ class SettleAccountingPeriodPolicyTest {
     }
 
     @Test
-    void applyPeriod_usesParameterizedAccountingDateExpression() {
+    void applyPeriod_usesParameterizedAccountingDateColumn() {
         LambdaQueryWrapper<ProcessOrder> wrapper = new LambdaQueryWrapper<>();
 
         SettleAccountingPeriodPolicy.applyPeriod(
                 wrapper, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31));
 
         assertThat(wrapper.getSqlSegment())
-                .contains("DATE(COALESCE(back_record_time, order_date)) >=")
-                .contains("DATE(COALESCE(back_record_time, order_date)) <=");
+                .contains("accounting_date >=")
+                .contains("accounting_date <=");
         assertThat(wrapper.getParamNameValuePairs()).hasSize(2);
     }
 

@@ -11,11 +11,12 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class WorkflowHealthInspector {
+public class WorkflowHealthInspector implements DataHealthInspector {
 
     private final JdbcTemplate jdbcTemplate;
     private final DataHealthProperties properties;
 
+    @Override
     public List<DataHealthIssueVO> inspect() {
         List<DataHealthIssueVO> issues = new ArrayList<>(overdueBackRecords());
         issues.addAll(overdueReceivables());

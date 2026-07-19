@@ -2,14 +2,15 @@ import { useEffect, useRef } from 'react'
 import { Alert, Dropdown, Layout, Menu } from 'antd'
 import type { MenuProps } from 'antd'
 import {
-  ExportOutlined,
+    ExportOutlined,
   AccountBookOutlined,
   BarChartOutlined,
   ContainerOutlined,
   DashboardOutlined,
   DownOutlined,
   FileOutlined,
-  FileTextOutlined,
+    FileTextOutlined,
+    FileDoneOutlined,
   ControlOutlined,
   InboxOutlined,
   LogoutOutlined,
@@ -27,6 +28,7 @@ import PageTabs from './PageTabs'
 import AppLogoMark from '../components/brand/AppLogoMark'
 import GeneratedUserAvatar from '../components/user/GeneratedUserAvatar'
 import NotificationBell from './NotificationBell'
+import DownloadTaskCenter from './DownloadTaskCenter'
 import { findRouteMeta, selectedMenuKey } from '../router/routeMeta'
 import { APP_BRAND } from '../config/brand'
 import { useAuthActions, useAuthUser } from '../stores/authStore'
@@ -67,11 +69,11 @@ export default function BasicLayout() {
           <AppLogoMark className="app-shell__brand-mark" title={`${APP_BRAND.name} 图标`} />
           <span className="app-shell__brand-name">{APP_BRAND.name}</span>
         </div>
-        <Menu
+      <Menu
           theme="dark"
           mode="inline"
           selectedKeys={[selectedMenuKey(location.pathname)]}
-          defaultOpenKeys={['base', 'system']}
+          defaultOpenKeys={['base', 'system', 'delivery']}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
         />
@@ -80,6 +82,7 @@ export default function BasicLayout() {
         <Header className="app-shell__header">
           <AppBreadcrumb />
           <div className="app-shell__header-actions">
+            <DownloadTaskCenter />
             <NotificationBell />
             <Dropdown
             menu={{
@@ -159,7 +162,12 @@ function buildMenuItems(permissions?: string[]): MenuProps['items'] {
   return [
     can([PERMISSIONS.reportView]) && { key: '/dashboard', icon: <DashboardOutlined />, label: '仪表盘' },
     can([PERMISSIONS.orderView]) && { key: '/process-orders', icon: <ContainerOutlined />, label: '加工单' },
-    can([PERMISSIONS.deliveryView]) && { key: '/delivery-orders', icon: <ExportOutlined />, label: '出库管理' },
+    can([PERMISSIONS.deliveryView]) && {
+      key: 'delivery', icon: <ExportOutlined />, label: '出库管理', children: [
+        { key: '/delivery-orders', icon: <FileDoneOutlined />, label: '出库单' },
+        { key: '/delivery-orders/inventory', icon: <InboxOutlined />, label: '成品库存' },
+      ],
+    },
     can([PERMISSIONS.settleView]) && { key: '/settle-orders', icon: <AccountBookOutlined />, label: '结算管理' },
     can([PERMISSIONS.reportView]) && { key: '/reports', icon: <BarChartOutlined />, label: '统计报表' },
     baseChildren.length > 0 && {

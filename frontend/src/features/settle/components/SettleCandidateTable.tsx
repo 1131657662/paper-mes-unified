@@ -1,4 +1,4 @@
-import { Table, Tag, Typography } from 'antd'
+import { Table, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import TooltipText from '../../../components/biz/TooltipText'
 import type { SettleCandidateVO } from '../../../types/settle'
@@ -48,9 +48,12 @@ export default function SettleCandidateTable({
       } : undefined}
       rowClassName={(record) => (activeSelectedKeys.includes(record.orderUuid) ? 'is-selected' : '')}
       onRow={(record) => selectable ? ({
-        onClick: () => toggleKey(record, activeSelectedKeys, onSelectionChange, lockedCustomerUuid),
+        onClick: (event) => {
+          if (isSelectionControlTarget(event.target)) return
+          toggleKey(record, activeSelectedKeys, onSelectionChange, lockedCustomerUuid)
+        },
       }) : {}}
-      scroll={{ x: 1192, y: scrollY }}
+      scroll={{ x: 1317, y: scrollY }}
     />
   )
 }
@@ -104,6 +107,17 @@ const columns: ColumnsType<SettleCandidateVO> = [
   },
   { title: '锯纸费', dataIndex: 'sawAmount', align: 'right', width: 105, render: (value) => formatMoney(value) },
   { title: '复卷费', dataIndex: 'rewindAmount', align: 'right', width: 105, render: (value) => formatMoney(value) },
+  {
+    title: '计价调整',
+    dataIndex: 'pricingAdjustmentAmount',
+    align: 'right',
+    width: 125,
+    render: (value, record) => Number(value ?? 0) !== 0
+      ? <Tooltip title={`标准加工费 ${formatMoney(record.standardProcessAmount)}`}>
+        <Tag color={Number(value) < 0 ? 'gold' : 'blue'}>{formatMoney(value)}</Tag>
+      </Tooltip>
+      : <Typography.Text type="secondary">-</Typography.Text>,
+  },
   { title: '额外费', dataIndex: 'extraAmount', align: 'right', width: 105, render: (value) => formatMoney(value) },
   {
     title: '应收',
@@ -119,6 +133,11 @@ const columns: ColumnsType<SettleCandidateVO> = [
 
 function textCell(value?: string | number) {
   return <TooltipText value={value} />
+}
+
+function isSelectionControlTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement
+    && Boolean(target.closest('.ant-checkbox-wrapper, .ant-checkbox, input[type="checkbox"]'))
 }
 
 function toggleKey(

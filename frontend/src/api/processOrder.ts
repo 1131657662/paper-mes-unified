@@ -1,11 +1,5 @@
-import request, { rawRequest } from './request'
+import request from './request'
 import type { PageResult } from '../types/common'
-import { downloadFileFromResponse } from '../utils/downloadFile'
-import {
-  normalizeDocumentExportInput,
-  readableExportFilename,
-  type DocumentExportInput,
-} from '../utils/documentExport'
 import type {
   BackRecordDTO,
   BackRecordResultVO,
@@ -68,16 +62,6 @@ export function getProcessOrderPrintView(uuid: string, version: PrintViewVersion
     method: 'get',
     params: { version },
   })
-}
-
-export async function exportProcessOrderDetail(input: DocumentExportInput) {
-  const { documentNo, uuid } = normalizeDocumentExportInput(input)
-  const response = await rawRequest.request<Blob, { data: Blob; headers: Record<string, string> }>({
-    url: `/api/process-orders/${uuid}/export`,
-    method: 'get',
-    responseType: 'blob',
-  })
-  await downloadFileFromResponse(response, readableExportFilename('加工单资料', documentNo))
 }
 
 export function createProcessOrder(dto: ProcessOrderCreateDTO) {
@@ -354,6 +338,55 @@ export interface ProcessStepDTO {
   remark?: string
 }
 
+export interface ProcessStepPricingAdjustmentDTO {
+  /** 1标准计价 2指定数量 3固定金额 4免收 */
+  billingMode: number
+  billingQuantity?: number
+  billingAmount?: number
+  reason: string
+}
+
+export interface ProcessStepPricingBatchGroupDTO {
+  stepType: 1 | 2
+  stepUuids: string[]
+  restoreStandard: boolean
+  billingUnitPrice?: number
+}
+
+export interface ProcessStepPricingBatchDTO {
+  expectedOrderVersion: number
+  reason: string
+  requestId?: string
+  groups: ProcessStepPricingBatchGroupDTO[]
+}
+
+export interface ProcessStepPricingBatchPreviewRow {
+  stepUuid: string
+  originalUuid?: string
+  stepType: 1 | 2
+  stepName?: string
+  quantity: number
+  standardUnitPrice: number
+  currentUnitPrice: number
+  finalUnitPrice: number
+  standardAmount: number
+  currentAmount: number
+  finalAmount: number
+  adjustmentAmount: number
+}
+
+export interface ProcessStepPricingBatchPreviewVO {
+  orderUuid: string
+  orderNo: string
+  orderVersion: number
+  stepCount: number
+  standardAmount: number
+  currentAmount: number
+  finalAmount: number
+  adjustmentAmount: number
+  rows: ProcessStepPricingBatchPreviewRow[]
+}
+
 /** 新增工序 */
 export function addProcessStep(orderUuid: string, data: ProcessStepDTO) {
   return request<void>({
@@ -377,5 +410,29 @@ export function deleteProcessStep(stepUuid: string) {
   return request<void>({
     url: `/api/process-orders/steps/${stepUuid}`,
     method: 'delete',
+  })
+}
+
+export function adjustProcessStepPricing(stepUuid: string, data: ProcessStepPricingAdjustmentDTO) {
+  return request<FeeResultVO>({
+    url: `/api/process-orders/steps/${stepUuid}/pricing`,
+    method: 'put',
+    data,
+  })
+}
+
+export function previewProcessStepPricingBatch(orderUuid: string, data: ProcessStepPricingBatchDTO) {
+  return request<ProcessStepPricingBatchPreviewVO>({
+    url: `/api/process-orders/${orderUuid}/pricing-adjustments/preview`,
+    method: 'post',
+    data,
+  })
+}
+
+export function applyProcessStepPricingBatch(orderUuid: string, data: ProcessStepPricingBatchDTO) {
+  return request<ProcessStepPricingBatchPreviewVO>({
+    url: `/api/process-orders/${orderUuid}/pricing-adjustments`,
+    method: 'put',
+    data,
   })
 }

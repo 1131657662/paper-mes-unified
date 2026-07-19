@@ -1,8 +1,8 @@
 .settle-create-page {
   display: grid;
-  height: max(720px, calc(100vh - 126px));
+  height: max(600px, calc(100vh - 126px));
   min-height: 0;
-  grid-template-rows: auto auto minmax(320px, 1fr) auto;
+  grid-template-rows: auto auto minmax(240px, 1fr) auto;
   overflow: visible;
 }
 
@@ -59,7 +59,7 @@
 }
 
 .settle-create-page__selection .mes-table-card .ant-table-body {
-  min-height: 220px;
+  min-height: 100px;
   flex: 1 1 0;
 }
 
@@ -73,6 +73,9 @@
 }
 
 .settle-create-footer {
+  position: sticky;
+  z-index: 5;
+  bottom: 0;
   display: flex;
   flex: 0 0 auto;
   min-height: 54px;
@@ -120,6 +123,10 @@
 
   .settle-create-page__form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settle-create-page__selection .mes-table-card .ant-table-body {
+    min-height: 220px;
   }
 
   .settle-create-footer {

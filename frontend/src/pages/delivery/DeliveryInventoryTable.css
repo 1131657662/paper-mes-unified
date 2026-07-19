@@ -1,0 +1,221 @@
+.delivery-inventory-grid {
+  display: flex;
+  min-height: 280px;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.delivery-inventory-table-shell {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+  background: var(--mes-color-panel);
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius) var(--mes-radius) 0 0;
+}
+
+.delivery-inventory-table-shell > .ant-pro-table,
+.delivery-inventory-table-shell > .ant-pro-card,
+.delivery-inventory-table-shell .ant-pro-card-body,
+.delivery-inventory-table-shell .ant-table-wrapper,
+.delivery-inventory-table-shell .ant-spin-nested-loading,
+.delivery-inventory-table-shell .ant-spin-container,
+.delivery-inventory-table-shell .ant-table,
+.delivery-inventory-table-shell .ant-table-container {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+}
+
+.delivery-inventory-table-shell > .ant-pro-table,
+.delivery-inventory-table-shell > .ant-pro-card,
+.delivery-inventory-table-shell .ant-pro-card-body,
+.delivery-inventory-table-shell .ant-table-wrapper,
+.delivery-inventory-table-shell .ant-spin-nested-loading,
+.delivery-inventory-table-shell .ant-spin-container {
+  height: 100%;
+}
+
+.delivery-inventory-table-shell .ant-pro-table-list-toolbar {
+  min-height: 44px;
+  flex: 0 0 44px;
+}
+
+.delivery-inventory-table-shell .ant-pro-table-list-toolbar-container {
+  height: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--mes-color-border-light);
+}
+
+.delivery-inventory-table-shell .ant-pro-table-list-toolbar-left {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  color: var(--mes-color-text);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.delivery-inventory-table-shell .ant-pro-table-list-toolbar-right,
+.delivery-inventory-table-shell .ant-pro-table-list-toolbar-setting-items,
+.delivery-inventory-table-shell .mes-table-options-portal {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.delivery-inventory-table-shell .ant-pro-table-list-toolbar-setting-item {
+  display: inline-flex;
+  width: auto;
+  min-width: 0;
+  height: 30px;
+  align-items: center;
+  gap: 4px;
+  margin-inline: 0;
+  background: transparent;
+}
+
+.delivery-inventory-table-shell .ant-pro-table-list-toolbar-setting-item > span {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--mes-radius-sm);
+}
+
+.delivery-inventory-table-shell .ant-pro-table-list-toolbar-setting-item > span:hover {
+  background: var(--mes-color-soft);
+}
+
+.delivery-inventory-table-shell .ant-table-content,
+.delivery-inventory-table-shell .ant-table-body {
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: auto !important;
+}
+
+.delivery-inventory-table-shell .ant-table-content > table,
+.delivery-inventory-table-shell .ant-table-body > table {
+  width: 100%;
+  min-width: 100%;
+}
+
+.delivery-inventory-table-shell .ant-table-thead > tr > th {
+  background: var(--mes-color-soft);
+  border-bottom-color: var(--mes-color-border);
+  color: var(--mes-color-text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.delivery-inventory-table-shell .ant-table-tbody > tr > td {
+  border-bottom-color: var(--mes-color-border-light);
+}
+
+.delivery-inventory-table-shell .ant-table-tbody > tr:hover > td {
+  background: var(--mes-color-surface-subtle);
+}
+
+.delivery-inventory-table-shell .delivery-inventory-finish-row--selectable > td {
+  transition: background-color .16s ease;
+}
+
+.delivery-inventory-table-shell .delivery-inventory-finish-row--selectable:focus-within > td {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mes-color-primary) 28%, transparent);
+}
+
+.delivery-inventory-table-shell .delivery-inventory-finish-row--disabled > td {
+  color: var(--mes-color-text-muted);
+  background: var(--mes-color-surface-subtle);
+}
+
+.delivery-inventory-table-shell .delivery-inventory-finish-row--selectable[aria-selected='true'] > td {
+  background: #e6f4ff !important;
+}
+
+.delivery-inventory-table-shell .delivery-inventory-finish-row--selectable[aria-selected='true']:hover > td {
+  background: #e6f4ff !important;
+}
+
+.delivery-inventory-table-shell .ant-table-tbody > tr.delivery-inventory-finish-row--selectable.ant-table-row-selected[aria-selected='true'] > td.ant-table-cell-fix-left,
+.delivery-inventory-table-shell .ant-table-tbody > tr.delivery-inventory-finish-row--selectable.ant-table-row-selected[aria-selected='true'] > td.ant-table-cell-fix-right {
+  background: #e6f4ff !important;
+}
+
+.delivery-inventory-table-shell .ant-table-tbody > tr.delivery-inventory-finish-row--selectable.ant-table-row-selected[aria-selected='true']:hover > td.ant-table-cell-fix-left,
+.delivery-inventory-table-shell .ant-table-tbody > tr.delivery-inventory-finish-row--selectable.ant-table-row-selected[aria-selected='true']:hover > td.ant-table-cell-fix-right {
+  background: #e6f4ff !important;
+}
+
+.delivery-inventory-grid > .document-pagination {
+  min-height: 54px;
+  flex: 0 0 auto;
+  margin: 0;
+  background: var(--mes-color-panel);
+  border: 1px solid var(--mes-color-border-light);
+  border-top: 0;
+  border-radius: 0 0 var(--mes-radius) var(--mes-radius);
+}
+
+.delivery-inventory-customer-link {
+  height: auto;
+  padding: 0;
+  color: var(--mes-color-primary);
+  font-weight: 600;
+}
+
+.delivery-inventory-weight {
+  display: flex;
+  min-width: 84px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.delivery-inventory-weight span {
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.delivery-inventory-tag {
+  margin-inline-end: 0;
+  border-color: var(--mes-color-border);
+  background: var(--mes-color-soft);
+  color: var(--mes-color-text-secondary);
+}
+
+.delivery-inventory-tag--primary {
+  border-color: color-mix(in srgb, var(--mes-color-primary) 28%, var(--mes-color-border));
+  background: color-mix(in srgb, var(--mes-color-primary) 7%, var(--mes-color-panel));
+  color: var(--mes-color-primary);
+}
+
+.delivery-inventory-tag--success {
+  border-color: color-mix(in srgb, var(--mes-color-success) 28%, var(--mes-color-border));
+  background: color-mix(in srgb, var(--mes-color-success) 7%, var(--mes-color-panel));
+  color: var(--mes-color-success);
+}
+
+.delivery-inventory-tag--warning {
+  border-color: color-mix(in srgb, var(--mes-color-warning) 30%, var(--mes-color-border));
+  background: color-mix(in srgb, var(--mes-color-warning) 7%, var(--mes-color-panel));
+  color: var(--mes-color-warning);
+}
+
+@media (max-width: 640px) {
+  .delivery-inventory-grid {
+    min-height: 420px;
+    flex: 0 0 auto;
+  }
+}

@@ -30,13 +30,13 @@ export default function OrderDetailHeader({ exporting, order, onBack, onExport }
     <MesPageHeader
       actions={(
         <Button
-          aria-label="导出加工单资料"
+          aria-label="后台导出加工单资料"
           icon={<DownloadOutlined />}
           loading={exporting}
           disabled={!order}
           onClick={onExport}
         >
-          导出资料
+          后台导出
         </Button>
       )}
       className="order-detail-hero"

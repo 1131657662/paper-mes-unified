@@ -2,7 +2,8 @@ import type {
   ProcessOrderDetailVO,
   ProcessStep,
 } from '../../../types/processOrder'
-import { useExportProcessOrder } from '../hooks/useExportProcessOrder'
+import { message } from 'antd'
+import { useCreateProcessOrderExportTask } from '../../exportTask/hooks/useCreateProcessOrderExportTask'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import OrderDetailContent from './OrderDetailContent'
 import OrderDetailRemarkModals from './OrderDetailRemarkModals'
@@ -18,6 +19,7 @@ interface Props {
   onConfigureRoute: (target: ProcessRouteConfigTarget) => void
   onEditStep: (step: ProcessStep) => void
   onDeleteStep: (stepUuid: string) => void
+  onAdjustPricing: (step: ProcessStep) => void
 }
 
 export default function OrderDetailView({
@@ -28,17 +30,16 @@ export default function OrderDetailView({
   onConfigureRoute,
   onEditStep,
   onDeleteStep,
+  onAdjustPricing,
 }: Props) {
-  const exportMutation = useExportProcessOrder()
+  const exportMutation = useCreateProcessOrderExportTask()
   const orderRemark = useOrderRemarkEditor(detail)
   const rollRemark = useRollRemarkEditor(detail)
 
   const handleExport = async () => {
     if (!detail?.order.uuid) return
-    await exportMutation.mutateAsync({
-      documentNo: detail.order.orderNo,
-      uuid: detail.order.uuid,
-    })
+    await exportMutation.mutateAsync({ uuid: detail.order.uuid })
+    message.success('已加入导出任务，可在右上角下载任务中心查看')
   }
 
   return (
@@ -51,6 +52,7 @@ export default function OrderDetailView({
           onEditOrderRemark: orderRemark.show,
           onEditRollRemark: rollRemark.show,
           onEditStep, onExport: handleExport,
+          onAdjustPricing,
         }}
       />
       <OrderDetailRemarkModals detail={detail} orderEditor={orderRemark} rollEditor={rollRemark} />

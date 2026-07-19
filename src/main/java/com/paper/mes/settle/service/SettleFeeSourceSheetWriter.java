@@ -14,7 +14,7 @@ import java.util.List;
 
 final class SettleFeeSourceSheetWriter {
 
-    private static final int COLUMN_COUNT = 14;
+    private static final int COLUMN_COUNT = 17;
 
     private SettleFeeSourceSheetWriter() {
     }
@@ -30,7 +30,8 @@ final class SettleFeeSourceSheetWriter {
         Row row = sheet.createRow(0);
         String[] labels = {
                 "序号", "加工单", "原纸", "费用类型", "阶段", "来源", "产出", "计费数量",
-                "单位", "单价", "不含税金额", "税点", "税额", "含税/应收金额", "计算说明"
+                "单位", "单价", "标准金额", "计价调整", "不含税金额", "税点", "税额", "含税/应收金额",
+                "调整原因", "计算说明"
         };
         for (int i = 0; i < labels.length; i++) {
             row.createCell(i).setCellValue(labels[i]);
@@ -65,11 +66,14 @@ final class SettleFeeSourceSheetWriter {
         row.createCell(7).setCellValue(text(feeLine.getQuantity()));
         row.createCell(8).setCellValue(text(feeLine.getQuantityUnit()));
         row.createCell(9).setCellValue(text(feeLine.getUnitPrice()));
-        row.createCell(10).setCellValue(text(feeLine.getAmountNoTax()));
-        row.createCell(11).setCellValue(text(feeLine.getTaxRate()));
-        row.createCell(12).setCellValue(text(feeLine.getTaxAmount()));
-        row.createCell(13).setCellValue(text(feeLine.getAmountTax()));
-        row.createCell(14).setCellValue(text(feeLine.getFormulaText()));
+        row.createCell(10).setCellValue(text(feeLine.getStandardAmount()));
+        row.createCell(11).setCellValue(text(feeLine.getPricingAdjustmentAmount()));
+        row.createCell(12).setCellValue(text(feeLine.getAmountNoTax()));
+        row.createCell(13).setCellValue(text(feeLine.getTaxRate()));
+        row.createCell(14).setCellValue(text(feeLine.getTaxAmount()));
+        row.createCell(15).setCellValue(text(feeLine.getAmountTax()));
+        row.createCell(16).setCellValue(text(feeLine.getPricingAdjustmentReason()));
+        row.createCell(17).setCellValue(text(feeLine.getFormulaText()));
     }
 
     private static CellStyle headerStyle(Workbook workbook) {

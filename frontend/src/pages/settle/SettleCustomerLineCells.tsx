@@ -44,6 +44,9 @@ export function SettleFeeBasisCell({ line }: Props) {
         <div className="settle-fee-line" key={feeKey(fee, index)}>
           <b>{fee.feeName}</b>
           <span>{feeFormula(fee)}</span>
+          {fee.pricingAdjustmentAmount != null && fee.pricingAdjustmentAmount !== 0 && (
+            <span>标准 {formatMoney(fee.standardAmount)} / 调整 {formatMoney(fee.pricingAdjustmentAmount)}</span>
+          )}
           <strong>{formatMoney(fee.amountNoTax)}</strong>
         </div>
       ))}

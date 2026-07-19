@@ -8,7 +8,7 @@ import com.paper.mes.report.dto.ReportDimensionVO;
 import com.paper.mes.report.dto.ReportOverviewVO;
 import com.paper.mes.report.dto.ReportQuery;
 import com.paper.mes.report.service.ReportService;
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,22 +25,18 @@ public class ReportController {
     private final ReportService reportService;
 
     @GetMapping("/overview")
-    public R<ReportOverviewVO> overview(ReportQuery query) {
+    public R<ReportOverviewVO> overview(@Valid ReportQuery query) {
         return R.success(reportService.overview(query));
     }
 
     @GetMapping("/dimensions")
-    public R<List<ReportDimensionVO>> dimensions(ReportQuery query) {
+    public R<List<ReportDimensionVO>> dimensions(@Valid ReportQuery query) {
         return R.success(reportService.dimensionSummary(query));
     }
 
     @GetMapping("/details")
-    public R<ReportDetailsVO> details(ReportQuery query) {
+    public R<ReportDetailsVO> details(@Valid ReportQuery query) {
         return R.success(reportService.detailRows(query));
     }
 
-    @GetMapping("/export")
-    public void export(ReportQuery query, HttpServletResponse response) {
-        reportService.exportWorkbook(query, response);
-    }
 }

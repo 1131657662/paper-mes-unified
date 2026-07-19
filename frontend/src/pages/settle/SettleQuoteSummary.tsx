@@ -20,6 +20,9 @@ export default function SettleQuoteSummary({ emptyText, error, loading, onRetry,
     </Space>
   )
   if (!quote) return <span>{emptyText}</span>
+  const pricingAdjustment = quote.lines.reduce(
+    (total, line) => total + (line.pricingAdjustmentAmount ?? 0), 0,
+  )
   return (
     <div className="settle-quote-summary">
       <Tag color={quote.isInvoice === 1 ? 'blue' : 'default'}>
@@ -27,6 +30,9 @@ export default function SettleQuoteSummary({ emptyText, error, loading, onRetry,
       </Tag>
       <span>未税 {formatMoney(quote.amountNoTax)}</span>
       <span>税费 {formatMoney(quote.taxAmount)}</span>
+      {pricingAdjustment !== 0 && <Tag color={pricingAdjustment < 0 ? 'gold' : 'blue'}>
+        计价调整 {formatMoney(pricingAdjustment)}
+      </Tag>}
       <strong>应收 {formatMoney(quote.totalAmount)}</strong>
       {quote.pendingPriceCount > 0 && <Tag color="warning">{quote.pendingPriceCount} 单待核价</Tag>}
     </div>

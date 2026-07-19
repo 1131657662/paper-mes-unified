@@ -37,11 +37,14 @@ public class SettlementQuoteFactory {
     private SettleQuoteLineVO quoteLine(ProcessOrder order, SettleDetail detail) {
         BigDecimal saw = money(detail.getSawAmount());
         BigDecimal rewind = money(detail.getRewindAmount());
+        BigDecimal standardProcess = money(detail.getStandardProcessAmount());
+        BigDecimal pricingAdjustment = money(detail.getPricingAdjustmentAmount());
         BigDecimal extra = money(detail.getExtraAmount());
         BigDecimal noTax = order.getTotalAmountNoTax() == null
                 ? saw.add(rewind).add(extra) : money(order.getTotalAmountNoTax());
         BigDecimal total = money(detail.getOrderAmount());
-        return new SettleQuoteLineVO(order.getUuid(), saw, rewind, extra, noTax,
+        return new SettleQuoteLineVO(order.getUuid(), saw, rewind, standardProcess, pricingAdjustment,
+                extra, noTax,
                 total.subtract(noTax).setScale(2, RoundingMode.HALF_UP), total);
     }
 
@@ -60,6 +63,8 @@ public class SettlementQuoteFactory {
                 .append(':').append(order.getOrderStatus())
                 .append(':').append(money(line.getSawAmount()))
                 .append(':').append(money(line.getRewindAmount()))
+                .append(':').append(money(line.getStandardProcessAmount()))
+                .append(':').append(money(line.getPricingAdjustmentAmount()))
                 .append(':').append(money(line.getExtraAmount()))
                 .append(':').append(money(line.getAmountNoTax()))
                 .append(':').append(money(line.getTaxAmount()))

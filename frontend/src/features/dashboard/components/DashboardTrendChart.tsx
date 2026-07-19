@@ -1,14 +1,10 @@
 import { useRef } from 'react'
-import { LineChart } from 'echarts/charts'
-import { AriaComponent, GridComponent, TooltipComponent } from 'echarts/components'
-import * as echarts from 'echarts/core'
-import { SVGRenderer } from 'echarts/renderers'
+import type { EChartsType } from 'echarts/core'
 import ReactEChartsCore from 'echarts-for-react/esm/core'
+import lineChartRuntime from '../../../components/charts/lineChartRuntime'
 import { buildTrendChartOption } from './dashboardTrendChartOption'
 import type { DashboardTrendModel } from './dashboardTrendModel'
 import { axisDataIndex } from './dashboardTrendPointer'
-
-echarts.use([LineChart, GridComponent, TooltipComponent, AriaComponent, SVGRenderer])
 
 export default function DashboardTrendChart({ model }: { model: DashboardTrendModel }) {
   const chartRef = useRef<ReactEChartsCore>(null)
@@ -40,7 +36,7 @@ export default function DashboardTrendChart({ model }: { model: DashboardTrendMo
         ref={chartRef}
         aria-label="近12个月加工应收趋势"
         className="dashboard-trend__chart"
-        echarts={echarts}
+        echarts={lineChartRuntime}
         lazyUpdate
         notMerge
         onEvents={{ updateAxisPointer: movePointer }}
@@ -52,7 +48,7 @@ export default function DashboardTrendChart({ model }: { model: DashboardTrendMo
   )
 }
 
-function axisPixel(chart: echarts.EChartsType, index: number): number {
+function axisPixel(chart: EChartsType, index: number): number {
   const pixel = chart.convertToPixel({ xAxisIndex: 0 }, index)
   if (typeof pixel === 'number') return pixel
   return Array.isArray(pixel) ? Number(pixel[0]) : Number.NaN

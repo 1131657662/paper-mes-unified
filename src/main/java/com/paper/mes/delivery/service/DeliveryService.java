@@ -12,7 +12,6 @@ import com.paper.mes.delivery.dto.DeliveryDetailVO;
 import com.paper.mes.delivery.dto.DeliveryQuery;
 import com.paper.mes.delivery.dto.DeliveryRollbackDTO;
 import com.paper.mes.delivery.entity.DeliveryOrder;
-import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
 
@@ -22,6 +21,7 @@ public interface DeliveryService extends IService<DeliveryOrder> {
 
     /** 列出某客户全部已入库(2)、可勾选出库的成品（含 source_type=2 直发）。 */
     List<AvailableFinishVO> listAvailable(String customerUuid);
+    List<AvailableFinishVO> listAvailable(String customerUuid, String warehouseUuid);
 
     /**
      * 创建出库单（待出库）：校验成品归属与状态、现结拦截、登记明细。不在此扣库存。
@@ -32,11 +32,7 @@ public interface DeliveryService extends IService<DeliveryOrder> {
     DeliveryDetailVO getDetail(String uuid);
 
     /** 导出出库单详情 Excel。 */
-    void exportDetail(String uuid, HttpServletResponse response);
-
     /** 按当前筛选条件导出全部出库单。 */
-    void exportList(DeliveryQuery query, HttpServletResponse response);
-
     /**
      * 出库确认：成品 已入库(2)→已出库(3)，出库单 待出库(1)→已出库签收(2)，写操作日志。
      */

@@ -12,8 +12,11 @@ public final class Permissions {
     public static final String ORDER_BACK_RECORD = "order:back-record";
     public static final String ORDER_CREATE = "order:create";
     public static final String ORDER_MANAGE = "order:manage";
+    public static final String ORDER_PRICING = "order:pricing";
+    public static final String ORDER_PRICING_APPROVE = "order:pricing-approve";
     public static final String ORDER_VIEW = "order:view";
     public static final String REPORT_VIEW = "report:view";
+    public static final String EXPORT_TASK_VIEW = "export-task:view";
     public static final String SETTLE_MANAGE = "settle:manage";
     public static final String SETTLE_DISCOUNT = "settle:discount";
     public static final String SETTLE_DISCOUNT_APPROVE = "settle:discount-approve";
@@ -33,23 +36,25 @@ public final class Permissions {
             return List.of(ALL);
         }
         if (RoleCodes.ORDER_CLERK.equals(roleCode)) {
-            return List.of(BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_MANAGE, REPORT_VIEW);
+            return List.of(BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_MANAGE, ORDER_PRICING, REPORT_VIEW,
+                    EXPORT_TASK_VIEW);
         }
         if (RoleCodes.RECORDER.equals(roleCode)) {
-            return List.of(BASE_VIEW, ORDER_VIEW, ORDER_BACK_RECORD, REPORT_VIEW);
+            return List.of(BASE_VIEW, ORDER_VIEW, ORDER_BACK_RECORD, REPORT_VIEW, EXPORT_TASK_VIEW);
         }
         if (RoleCodes.OPERATOR.equals(roleCode)) {
-            return List.of(BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_BACK_RECORD, REPORT_VIEW);
+            return List.of(BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_BACK_RECORD, REPORT_VIEW, EXPORT_TASK_VIEW);
         }
         if (RoleCodes.FINANCE.equals(roleCode)) {
             return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, SETTLE_VIEW, SETTLE_MANAGE,
-                    SETTLE_RECEIVE, SETTLE_DISCOUNT, REPORT_VIEW);
+                    SETTLE_RECEIVE, SETTLE_DISCOUNT, ORDER_PRICING, ORDER_PRICING_APPROVE, REPORT_VIEW,
+                    EXPORT_TASK_VIEW);
         }
         if (RoleCodes.WAREHOUSE.equals(roleCode)) {
-            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, DELIVERY_MANAGE, REPORT_VIEW);
+            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, DELIVERY_MANAGE, REPORT_VIEW, EXPORT_TASK_VIEW);
         }
         if (RoleCodes.VIEWER.equals(roleCode)) {
-            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, SETTLE_VIEW, REPORT_VIEW);
+            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, SETTLE_VIEW, REPORT_VIEW, EXPORT_TASK_VIEW);
         }
         return List.of();
     }

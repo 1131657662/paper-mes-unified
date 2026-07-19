@@ -1,62 +1,79 @@
 import { useState } from 'react'
-import { Button, Form, message } from 'antd'
-import { WalletOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { Form, message } from 'antd'
+import { useLocation, useNavigate } from 'react-router-dom'
 import DocumentListShell from '../../components/biz/DocumentListShell'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
-import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { useDocumentRowSelection } from '../../components/biz/useDocumentRowSelection'
 import { PERMISSIONS } from '../../constants/permissions'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import SettleOrderTable from '../../features/settle/components/SettleOrderTable'
 import { useSettleOrders } from '../../features/settle/hooks/useSettleOrders'
 import { useSettleListSummary } from '../../features/settle/hooks/useSettleListSummary'
-import { useConfiguredPageSize } from '../../features/systemConfig/hooks/useConfiguredPageSize'
+import { useSettleCollectionSummary } from '../../features/settle/hooks/useSettleCollectionSummary'
+import SettleCollectionQueueBar from '../../features/settle/components/SettleCollectionQueueBar'
 import { useHasPermission } from '../../stores/authStore'
-import type { SettleOrder, SettleQuery } from '../../types/settle'
+import type { SettleCollectionQueue, SettleOrder } from '../../types/settle'
 import ReceiveModal from './ReceiveModal'
+import CollectionReminderModal from './CollectionReminderModal'
 import SettleSearchBar, { type SettleSearchFormValues } from './SettleSearchBar'
 import SettleListSummary from './SettleListSummary'
+import SettleSelectionBar from './SettleSelectionBar'
+import SettleListErrors from './SettleListErrors'
+import SettleListModeActions from './SettleListModeActions'
+import { collectionQueueOptions, documentQueueOptions } from './settleQueueOptions'
+import { settleListLocation } from './settleListNavigation'
+import { type QueueFilter } from './settleListUrlState'
+import { useSettleListPageState } from './useSettleListPageState'
 import './SettleOrderList.css'
-
-type QueueFilter = 'all' | 'pending' | 'partial' | 'paid' | 'void'
 
 export default function SettleOrderList() {
   const [form] = Form.useForm<SettleSearchFormValues>()
+  const location = useLocation()
   const navigate = useNavigate()
   const customersQuery = useCustomers()
-  const [queueFilter, setQueueFilter] = useState<QueueFilter>('all')
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useConfiguredPageSize(20)
-  const [filters, setFilters] = useState<SettleQuery>({})
+  const pageState = useSettleListPageState()
+  const { collectionQueue, filters, page, pageSize, queueFilter, viewMode } = pageState
   const [receiveRecord, setReceiveRecord] = useState<SettleOrder | null>(null)
+  const [reminderRecord, setReminderRecord] = useState<SettleOrder | null>(null)
   const canManageSettle = useHasPermission(PERMISSIONS.settleManage)
   const canReceiveSettle = useHasPermission(PERMISSIONS.settleReceive)
   const rowSelection = useDocumentRowSelection<SettleOrder>()
-  const query = { ...filters, current: page, settleStatus: settleStatus(queueFilter), size: pageSize }
+  const query = {
+    ...filters,
+    current: page,
+    size: pageSize,
+    ...(viewMode === 'collection'
+      ? { collectionQueue }
+      : { settleStatus: settleStatus(queueFilter) }),
+  }
   const ordersQuery = useSettleOrders(query)
-  const summaryQuery = useSettleListSummary(filters)
+  const summaryQuery = useSettleListSummary(filters, viewMode === 'documents')
+  const collectionSummaryQuery = useSettleCollectionSummary(filters, viewMode === 'collection')
   const summary = summaryQuery.data
   const orders = ordersQuery.data?.records ?? []
+  const activeDocumentCount = summary
+    ? summary.pendingDocumentCount + summary.partialDocumentCount + summary.paidDocumentCount
+    : '-'
   const tableDensity = tableDensityMode(orders.length, pageSize, ordersQuery.isLoading)
   const selectedReceivable = rowSelection.selectedRows.filter((record) => [1, 2].includes(record.settleStatus))
 
   const handleSearch = (values: SettleSearchFormValues) => {
-    setFilters({
+    pageState.setFilters({
       customerUuid: values.customerUuid,
       dateFrom: values.dateRange?.[0]?.format('YYYY-MM-DD'),
       dateTo: values.dateRange?.[1]?.format('YYYY-MM-DD'),
       keyword: values.keyword?.trim() || undefined,
       settleType: values.settleType,
     })
-    setPage(1)
     rowSelection.clear()
   }
 
   const handleReset = () => {
-    form.resetFields()
-    setFilters({})
-    setPage(1)
+    form.setFieldValue('customerUuid', undefined)
+    form.setFieldValue('dateRange', null)
+    form.setFieldValue('keyword', undefined)
+    form.setFieldValue('settleType', undefined)
+    pageState.setFilters({})
     rowSelection.clear()
   }
 
@@ -75,70 +92,66 @@ export default function SettleOrderList() {
       title="结算管理"
       createText="新建结算单"
       canCreate={canManageSettle}
-      queue={queueFilter}
-      queueOptions={[
-        { label: `全部 ${summary?.totalDocumentCount ?? '-'}`, value: 'all' },
-        { label: `待收款 ${summary?.pendingDocumentCount ?? '-'}`, value: 'pending' },
-        { label: `部分收款 ${summary?.partialDocumentCount ?? '-'}`, value: 'partial' },
-        { label: `已结清 ${summary?.paidDocumentCount ?? '-'}`, value: 'paid' },
-        { label: `已作废 ${summary?.voidDocumentCount ?? '-'}`, value: 'void' },
-      ]}
+      queue={viewMode === 'collection' ? collectionQueue : queueFilter}
+      queueOptions={viewMode === 'collection'
+        ? collectionQueueOptions(collectionSummaryQuery.data)
+        : documentQueueOptions(summary, activeDocumentCount)}
       search={(
         <SettleSearchBar
           form={form}
           customers={customersQuery.data?.records ?? []}
+          initialValues={pageState.formInitialValues}
           loadingCustomers={customersQuery.isLoading}
           onReset={handleReset}
           onSearch={handleSearch}
         />
       )}
-      leftActions={canReceiveSettle && (
-        <Button icon={<WalletOutlined />} disabled={selectedReceivable.length !== 1} onClick={handleReceiveSelected}>
-          登记收款
-        </Button>
-      )}
+      leftActions={<SettleListModeActions canReceive={canReceiveSettle}
+        receiveDisabled={selectedReceivable.length !== 1} value={viewMode} onReceive={handleReceiveSelected}
+        onChange={(value) => {
+          pageState.setViewMode(value)
+          rowSelection.clear()
+        }} />}
       loading={ordersQuery.isLoading}
-      onCreate={() => navigate('/settle-orders/create')}
+      onCreate={() => navigate('/settle-orders/create', {
+        state: { from: settleListLocation(location.pathname, location.search) },
+      })}
       onQueueChange={(value) => {
-        setQueueFilter(value)
-        setPage(1)
+        if (viewMode === 'collection') pageState.setCollectionQueue(value as SettleCollectionQueue)
+        else pageState.setQueueFilter(value as QueueFilter)
         rowSelection.clear()
       }}
     >
-      {ordersQuery.isError && (
-        <QueryLoadErrorAlert
-          description="结算单未成功加载，当前空表不代表没有待收款或已结算记录。"
-          message="结算单加载失败"
-          onRetry={() => void ordersQuery.refetch()}
-        />
-      )}
-      {customersQuery.isError && (
-        <QueryLoadErrorAlert
-          description="客户筛选项未成功加载，当前客户选项可能不完整。"
-          message="客户资料加载失败"
-          onRetry={() => void customersQuery.refetch()}
-        />
-      )}
-      {summaryQuery.isError && (
-        <QueryLoadErrorAlert
-          description="结算汇总未成功加载，表格数据仍可继续查看。"
-          message="结算汇总加载失败"
-          onRetry={() => void summaryQuery.refetch()}
-        />
-      )}
-      <SettleListSummary summary={summary} />
+      <SettleListErrors ordersError={ordersQuery.isError} customersError={customersQuery.isError}
+        summaryError={viewMode === 'collection' ? collectionSummaryQuery.isError : summaryQuery.isError}
+        onRetryOrders={() => void ordersQuery.refetch()} onRetryCustomers={() => void customersQuery.refetch()}
+        onRetrySummary={() => void (viewMode === 'collection' ? collectionSummaryQuery.refetch() : summaryQuery.refetch())} />
+      {viewMode === 'collection' ? (
+        <SettleCollectionQueueBar active={collectionQueue} summary={collectionSummaryQuery.data}
+          onChange={(value) => {
+            pageState.setCollectionQueue(value)
+            rowSelection.clear()
+          }} />
+      ) : <SettleListSummary summary={summary} />}
       <div className="document-page-table" data-table-density={tableDensity}>
         <SettleOrderTable
           canReceiveSettle={canReceiveSettle}
+          collectionMode={viewMode === 'collection'}
           data={orders}
           loading={ordersQuery.isLoading || ordersQuery.isFetching}
           onReload={() => ordersQuery.refetch()}
           rowClassName={rowSelection.rowClassName}
-          rowSelection={rowSelection.rowSelection}
-          onDetail={(record) => navigate(`/settle-orders/${record.uuid}`)}
+          rowSelection={{
+            ...rowSelection.rowSelection,
+            getCheckboxProps: (record) => ({ disabled: ![1, 2].includes(record.settleStatus) }),
+          }}
+          onDetail={(record) => navigate(`/settle-orders/${record.uuid}`, {
+            state: { from: settleListLocation(location.pathname, location.search) },
+          })}
           fixedHeader={tableDensity === 'fill'}
-          onRow={rowSelection.onRow}
+          onRow={(record) => [1, 2].includes(record.settleStatus) ? rowSelection.onRow(record) : {}}
           onReceive={(record) => setReceiveRecord(record)}
+          onRemind={canReceiveSettle ? (record) => setReminderRecord(record) : undefined}
         />
       </div>
       <DocumentPaginationBar
@@ -146,10 +159,16 @@ export default function SettleOrderList() {
         pageSize={pageSize}
         total={ordersQuery.data?.total ?? 0}
         onChange={(nextPage, nextPageSize) => {
-          setPage(nextPage)
-          setPageSize(nextPageSize)
+          if (nextPageSize !== pageSize) pageState.setPageSize(nextPageSize)
+          else pageState.setPage(nextPage)
           rowSelection.clear()
         }}
+      />
+      <SettleSelectionBar
+        selectedRows={rowSelection.selectedRows}
+        selectedReceivable={selectedReceivable}
+        onClear={rowSelection.clear}
+        onReceive={handleReceiveSelected}
       />
       <ReceiveModal
         settleUuid={receiveRecord?.uuid ?? null}
@@ -162,6 +181,7 @@ export default function SettleOrderList() {
           ordersQuery.refetch()
         }}
       />
+      <CollectionReminderModal record={reminderRecord} onClose={() => setReminderRecord(null)} />
     </DocumentListShell>
   )
 }

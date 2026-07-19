@@ -12,9 +12,15 @@ const ERROR_CODE_TEXT: Record<string, string> = {
   E005: '重量偏差超差，需授权放行',
   E006: '数据已被他人修改，请刷新后重试',
   E007: '重量偏差较大，需填写原因',
+  E009: '当前计价优惠超过免审额度，请由财务或管理员账号处理',
 }
 
 const ERROR_NOTIFIED_KEY = '__paperMesErrorNotified'
+
+export interface MesRequestConfig extends AxiosRequestConfig {
+  silentBusinessErrorCodes?: readonly string[]
+  silentError?: boolean
+}
 
 /** 业务错误：携带后端 code / errorCode，便于调用方按需分支处理（如 E005 弹放行框）。 */
 export class BizError extends Error {
@@ -53,25 +59,30 @@ instance.interceptors.response.use(
     if (body && body.code === 200) {
       return body.data as unknown as AxiosResponse
     }
-    return rejectBusinessError(body, resp.config.url)
+    return rejectBusinessError(body, resp.config)
   },
   (error) => {
     const bizError = businessErrorFromResponse(error?.response?.data)
     if (bizError) {
-      notifyAndHandleUnauthorized(bizError, error?.config?.url)
+      notifyAndHandleUnauthorized(
+        bizError,
+        error?.config?.url,
+        shouldNotifyBusinessError(bizError, error?.config),
+      )
       return Promise.reject(bizError)
     }
     // HTTP 层异常（网络断、超时、非 200 的传输错误）。
     const text = error?.message?.includes('timeout')
       ? '请求超时，请重试'
       : '网络异常，请检查连接'
-    notifyErrorOnce(error, text)
+    if (error?.config?.silentError) markErrorNotified(error)
+    else notifyErrorOnce(error, text)
     return Promise.reject(error)
   },
 )
 
 /** 发起请求，返回解包后的业务数据 T。 */
-export function request<T = unknown>(config: AxiosRequestConfig): Promise<T> {
+export function request<T = unknown>(config: MesRequestConfig): Promise<T> {
   return instance.request<unknown, T>(config)
 }
 
@@ -85,19 +96,34 @@ export function businessErrorFromResponse(value: unknown): BizError | null {
   return new BizError(text, value.code, value.errorCode)
 }
 
-function rejectBusinessError(body: unknown, url?: string) {
+function rejectBusinessError(body: unknown, config?: MesRequestConfig) {
   const bizError = businessErrorFromResponse(body) ?? new BizError('请求失败', -1)
-  notifyAndHandleUnauthorized(bizError, url)
+  notifyAndHandleUnauthorized(bizError, config?.url, shouldNotifyBusinessError(bizError, config))
   return Promise.reject(bizError)
 }
 
-function notifyAndHandleUnauthorized(error: BizError, url?: string) {
-  notifyErrorOnce(error, error.message)
+function notifyAndHandleUnauthorized(error: BizError, url?: string, shouldNotify = true) {
+  if (shouldNotify) notifyErrorOnce(error, contextualErrorText(error, url))
+  else markErrorNotified(error)
   if (error.code !== 401) return
   getAuthSnapshot().actions.signOut()
   if (window.location.pathname !== '/login' && !configUrlEndsWith(url, '/api/auth/me')) {
     window.location.href = `/login?from=${encodeURIComponent(window.location.pathname + window.location.search)}`
   }
+}
+
+export function shouldNotifyBusinessError(error: BizError, config?: MesRequestConfig): boolean {
+  if (config?.silentError) return false
+  if (!error.errorCode) return true
+  const silentCodes = config?.silentBusinessErrorCodes
+  return !silentCodes?.includes(error.errorCode)
+}
+
+function contextualErrorText(error: BizError, url?: string) {
+  if (error.code === 403 && url?.includes('/process-orders/steps/') && url.endsWith('/pricing')) {
+    return '当前计价优惠超过免审额度，请由财务或管理员账号处理'
+  }
+  return error.message
 }
 
 function isBusinessErrorBody(value: unknown): value is Pick<R<unknown>, 'code' | 'message' | 'errorCode'> {

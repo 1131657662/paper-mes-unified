@@ -1,0 +1,36 @@
+.settle-reminder-history {
+  margin: 4px 0 0;
+}
+
+.settle-reminder-history__loading {
+  min-height: 96px;
+  padding: 28px 8px;
+  color: var(--mes-color-text-secondary);
+  text-align: center;
+}
+
+.settle-reminder-history__item {
+  min-width: 0;
+  padding-bottom: 4px;
+}
+
+.settle-reminder-history__head,
+.settle-reminder-history__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.settle-reminder-history__meta {
+  margin-top: 6px;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+.settle-reminder-history__remark {
+  max-width: 720px;
+  margin: 8px 0 0 !important;
+  color: var(--mes-color-text);
+  white-space: pre-wrap;
+}

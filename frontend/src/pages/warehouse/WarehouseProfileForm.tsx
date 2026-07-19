@@ -1,4 +1,4 @@
-import { Form, Input, Select } from 'antd'
+import { Form, Input, Select, Switch } from 'antd'
 import type { FormInstance } from 'antd'
 import AutoCodeInput from '../../components/biz/AutoCodeInput'
 import type { WarehouseSaveDTO } from '../../types/warehouse'
@@ -12,6 +12,7 @@ interface Props {
 
 const warehouseFormDefaults: Partial<WarehouseSaveDTO> = {
   status: 1,
+  isDefault: 0,
 }
 
 export default function WarehouseProfileForm({ editing, form, onFinish, onValuesChange }: Props) {
@@ -42,6 +43,14 @@ export default function WarehouseProfileForm({ editing, form, onFinish, onValues
           </Form.Item>
           <Form.Item name="status" label="状态">
             <Select options={statusOptions} />
+          </Form.Item>
+          <Form.Item
+            name="isDefault"
+            label="默认仓库"
+            getValueProps={(value) => ({ checked: value === 1 })}
+            getValueFromEvent={(checked: boolean) => checked ? 1 : 0}
+          >
+            <Switch checkedChildren="默认" unCheckedChildren="否" />
           </Form.Item>
         </div>
       </section>

@@ -5,6 +5,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.lang.reflect.Method;
 
@@ -39,5 +40,20 @@ class GlobalExceptionHandlerTest {
         assertThat(status.value()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getCode()).isEqualTo(ResultCode.NOT_FOUND);
         assertThat(response.getMessage()).isEqualTo("资源不存在");
+    }
+
+    @Test
+    void missingHandlerReturnsHttp404WithUnifiedBusinessBody() throws Exception {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        NoHandlerFoundException exception = new NoHandlerFoundException(
+                "GET", "/api/removed-export", null);
+
+        R<Void> response = handler.handleNoHandler(exception);
+        Method method = GlobalExceptionHandler.class.getMethod("handleNoHandler", NoHandlerFoundException.class);
+        ResponseStatus status = method.getAnnotation(ResponseStatus.class);
+
+        assertThat(status).isNotNull();
+        assertThat(status.value()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getCode()).isEqualTo(ResultCode.NOT_FOUND);
     }
 }

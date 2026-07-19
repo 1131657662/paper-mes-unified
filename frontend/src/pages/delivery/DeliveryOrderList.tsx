@@ -30,6 +30,7 @@ export default function DeliveryOrderList() {
   const ordersQuery = useDeliveryOrders({ ...filters, current: page, deliveryStatus: deliveryStatus(queue), size: pageSize })
   const summaryQuery = useDeliveryListSummary(filters)
   const orders = ordersQuery.data?.records ?? []
+  const tableDensity = tableDensityMode(orders.length, pageSize, ordersQuery.isLoading)
   const actions = useDeliveryListActions({ clearSelection: selection.clear, filters, queue,
     refetch: () => void ordersQuery.refetch(), selectedRows: selection.selectedRows })
 
@@ -64,15 +65,15 @@ export default function DeliveryOrderList() {
       search={<DeliverySearchBar form={form} customers={customersQuery.data?.records ?? []}
         loadingCustomers={customersQuery.isLoading} onReset={handleReset} onSearch={handleSearch} />}
       leftActions={<DeliveryListToolbar actions={actions} />} loading={ordersQuery.isLoading}
+      summary={<DeliveryListSummary summary={summaryQuery.data} />}
       onCreate={() => navigate('/delivery-orders/create')} onQueueChange={handleQueueChange}>
       <ListErrors ordersQuery={ordersQuery} customersQuery={customersQuery} summaryQuery={summaryQuery} />
-      <DeliveryListSummary summary={summaryQuery.data} />
-      <div className="document-page-table" data-table-density={tableDensityMode(orders.length, pageSize, ordersQuery.isLoading)}>
+      <div className="document-page-table" data-table-density={tableDensity}>
         <DeliveryOrderTable canManageDelivery={actions.canManage} data={orders}
           loading={ordersQuery.isLoading || ordersQuery.isFetching} onReload={() => ordersQuery.refetch()}
           rowClassName={selection.rowClassName} rowSelection={selection.rowSelection} onConfirm={actions.confirm}
           onDetail={(record) => navigate(`/delivery-orders/${record.uuid}`)}
-          fixedHeader={tableDensityMode(orders.length, pageSize, ordersQuery.isLoading) === 'fill'} onRow={selection.onRow} />
+          fixedHeader={tableDensity !== 'empty'} onRow={selection.onRow} />
       </div>
       <DocumentPaginationBar current={page} pageSize={pageSize} total={ordersQuery.data?.total ?? 0} onChange={handlePageChange} />
     </DocumentListShell>

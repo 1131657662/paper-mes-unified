@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.paper.mes.delivery.mapper.AvailableFinishMapper">
+
+    <sql id="AvailableWhere">
+        o.customer_uuid = #{q.customerUuid}
+        AND o.is_deleted = 0
+        AND o.order_status IN (4, 5)
+        AND f.is_deleted = 0
+        AND f.finish_status = 2
+        AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+        AND f.warehouse_uuid = #{q.warehouseUuid}
+        <if test="q.finishUuids != null and !q.finishUuids.isEmpty()">
+            AND f.uuid IN
+            <foreach collection="q.finishUuids" item="finishUuid" open="(" separator="," close=")">
+                #{finishUuid}
+            </foreach>
+        </if>
+        AND NOT EXISTS (
+            SELECT 1 FROM biz_delivery_detail dd
+            WHERE dd.finish_uuid = f.uuid
+              AND dd.stock_lock_status = 1
+              AND dd.is_deleted = 0
+        )
+        <if test="q.scope == 'remain'">AND f.is_remain = 1</if>
+        <if test="q.scope == 'product'">AND COALESCE(f.is_remain, 0) != 1</if>
+        <if test="q.keyword != null and q.keyword.trim() != ''">
+            AND (f.finish_roll_no LIKE CONCAT('%', #{q.keyword}, '%')
+              OR o.order_no LIKE CONCAT('%', #{q.keyword}, '%')
+              OR f.paper_name LIKE CONCAT('%', #{q.keyword}, '%')
+              OR CAST(f.gram_weight AS CHAR) LIKE CONCAT('%', #{q.keyword}, '%')
+              OR CAST(f.finish_width AS CHAR) LIKE CONCAT('%', #{q.keyword}, '%')
+              OR f.original_roll_nos LIKE CONCAT('%', #{q.keyword}, '%')
+              OR EXISTS (
+                  SELECT 1
+                  FROM biz_finish_original_rel fr
+                  INNER JOIN biz_original_roll r ON r.uuid = fr.original_uuid AND r.is_deleted = 0
+                  WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0
+                    AND (r.roll_no LIKE CONCAT('%', #{q.keyword}, '%')
+                      OR r.extra_no LIKE CONCAT('%', #{q.keyword}, '%'))
+              ))
+        </if>
+        <if test="q.sourceIssue == 'missingSource'">
+            AND COALESCE(f.source_type, 1) != 2
+            AND NOT EXISTS (
+                SELECT 1 FROM biz_finish_original_rel fr
+                WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0
+            )
+        </if>
+        <if test="q.sourceIssue == 'missingIdentity'">
+            AND EXISTS (
+                SELECT 1
+                FROM biz_finish_original_rel fr
+                INNER JOIN biz_original_roll r ON r.uuid = fr.original_uuid AND r.is_deleted = 0
+                WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0
+                  AND COALESCE(r.roll_no, '') = '' AND COALESCE(r.extra_no, '') = ''
+            )
+        </if>
+    </sql>
+
+    <sql id="SearchAndSourceWhere">
+        <if test="q.keyword != null and q.keyword.trim() != ''">
+            AND (f.finish_roll_no LIKE CONCAT('%', #{q.keyword}, '%')
+              OR o.order_no LIKE CONCAT('%', #{q.keyword}, '%')
+              OR f.paper_name LIKE CONCAT('%', #{q.keyword}, '%')
+              OR CAST(f.gram_weight AS CHAR) LIKE CONCAT('%', #{q.keyword}, '%')
+              OR CAST(f.finish_width AS CHAR) LIKE CONCAT('%', #{q.keyword}, '%')
+              OR f.original_roll_nos LIKE CONCAT('%', #{q.keyword}, '%')
+              OR EXISTS (
+                  SELECT 1
+                  FROM biz_finish_original_rel fr
+                  INNER JOIN biz_original_roll r ON r.uuid = fr.original_uuid AND r.is_deleted = 0
+                  WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0
+                    AND (r.roll_no LIKE CONCAT('%', #{q.keyword}, '%')
+                      OR r.extra_no LIKE CONCAT('%', #{q.keyword}, '%'))
+              ))
+        </if>
+        <if test="q.sourceIssue == 'missingSource'">
+            AND COALESCE(f.source_type, 1) != 2
+            AND NOT EXISTS (
+                SELECT 1 FROM biz_finish_original_rel fr
+                WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0
+            )
+        </if>
+        <if test="q.sourceIssue == 'missingIdentity'">
+            AND EXISTS (
+                SELECT 1
+                FROM biz_finish_original_rel fr
+                INNER JOIN biz_original_roll r ON r.uuid = fr.original_uuid AND r.is_deleted = 0
+                WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0
+                  AND COALESCE(r.roll_no, '') = '' AND COALESCE(r.extra_no, '') = ''
+            )
+        </if>
+    </sql>
+
+    <sql id="RequestedScopeCondition">
+        <if test="q.scope == 'remain'">AND f.is_remain = 1</if>
+        <if test="q.scope == 'product'">AND COALESCE(f.is_remain, 0) != 1</if>
+    </sql>
+
+    <select id="stats" resultType="com.paper.mes.delivery.dto.AvailableFinishStatsVO">
+        SELECT COALESCE(SUM(CASE WHEN f.finish_status = 2
+                    AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+                    AND f.warehouse_uuid = #{q.warehouseUuid}
+                    AND COALESCE(f.is_remain, 0) != 1
+                    AND NOT EXISTS (SELECT 1 FROM biz_delivery_detail dd
+                        WHERE dd.finish_uuid = f.uuid AND dd.stock_lock_status = 1 AND dd.is_deleted = 0)
+                THEN 1 ELSE 0 END), 0) AS productCount,
+               COALESCE(SUM(CASE WHEN f.finish_status = 2
+                    AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+                    AND f.warehouse_uuid = #{q.warehouseUuid}
+                    AND f.is_remain = 1
+                    AND NOT EXISTS (SELECT 1 FROM biz_delivery_detail dd
+                        WHERE dd.finish_uuid = f.uuid AND dd.stock_lock_status = 1 AND dd.is_deleted = 0)
+                THEN 1 ELSE 0 END), 0) AS remainCount,
+               COALESCE(SUM(CASE WHEN f.finish_status = 2
+                    AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+                    AND f.warehouse_uuid IS NULL
+                    AND NOT EXISTS (SELECT 1 FROM biz_delivery_detail dd
+                        WHERE dd.finish_uuid = f.uuid AND dd.stock_lock_status = 1 AND dd.is_deleted = 0)
+                    <include refid="RequestedScopeCondition"/>
+                THEN 1 ELSE 0 END), 0) AS unassignedWarehouseCount,
+               COALESCE(SUM(CASE WHEN f.finish_status = 2
+                    AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+                    AND f.warehouse_uuid IS NOT NULL AND f.warehouse_uuid != #{q.warehouseUuid}
+                    AND NOT EXISTS (SELECT 1 FROM biz_delivery_detail dd
+                        WHERE dd.finish_uuid = f.uuid AND dd.stock_lock_status = 1 AND dd.is_deleted = 0)
+                    <include refid="RequestedScopeCondition"/>
+                THEN 1 ELSE 0 END), 0) AS otherWarehouseCount,
+               COALESCE(SUM(CASE WHEN f.finish_status = 2
+                    AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+                    AND f.warehouse_uuid = #{q.warehouseUuid}
+                    AND EXISTS (SELECT 1 FROM biz_delivery_detail dd
+                        WHERE dd.finish_uuid = f.uuid AND dd.stock_lock_status = 1 AND dd.is_deleted = 0)
+                    <include refid="RequestedScopeCondition"/>
+                THEN 1 ELSE 0 END), 0) AS lockedCount,
+               COALESCE(SUM(CASE WHEN f.finish_status = 2
+                    AND COALESCE(f.remaining_weight, f.actual_weight, 0) &lt;= 0
+                    AND f.warehouse_uuid = #{q.warehouseUuid}
+                    <include refid="RequestedScopeCondition"/>
+                THEN 1 ELSE 0 END), 0) AS invalidWeightCount
+        FROM biz_finish_roll f
+        INNER JOIN biz_process_order o ON o.uuid = f.order_uuid
+        WHERE o.customer_uuid = #{q.customerUuid}
+          AND o.is_deleted = 0
+          AND o.order_status IN (4, 5)
+          AND f.is_deleted = 0
+          <include refid="SearchAndSourceWhere"/>
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM biz_finish_roll f
+        INNER JOIN biz_process_order o ON o.uuid = f.order_uuid
+        WHERE <include refid="AvailableWhere"/>
+    </select>
+
+    <select id="rows" resultType="com.paper.mes.delivery.dto.AvailableFinishVO">
+        SELECT f.uuid AS finishUuid,
+               f.finish_roll_no AS finishRollNo,
+               o.uuid AS orderUuid,
+               o.order_no AS orderNo,
+               o.order_date AS orderDate,
+               f.warehouse_uuid AS warehouseUuid,
+               w.warehouse_name AS warehouseName,
+               w.location AS warehouseLocation,
+               f.stock_in_time AS stockInTime,
+               f.paper_name AS paperName,
+               f.gram_weight AS gramWeight,
+               f.finish_width AS finishWidth,
+               f.finish_diameter AS finishDiameter,
+               f.finish_core_diameter AS finishCoreDiameter,
+               f.actual_weight AS actualWeight,
+               COALESCE(f.remaining_weight, f.actual_weight, 0) AS remainingWeight,
+               f.is_remain AS isRemain,
+               f.source_type AS sourceType,
+               f.finish_status AS finishStatus,
+               f.original_roll_nos AS originalRollNos,
+               o.settle_type AS settleType,
+               o.settle_day AS settleDay,
+               o.is_invoice AS isInvoice
+        FROM biz_finish_roll f
+        INNER JOIN biz_process_order o ON o.uuid = f.order_uuid
+        LEFT JOIN sys_warehouse w ON w.uuid = f.warehouse_uuid AND w.is_deleted = 0
+        WHERE <include refid="AvailableWhere"/>
+        ORDER BY o.order_date ASC, o.order_no ASC, f.row_sort ASC
+        LIMIT #{offset}, #{limit}
+    </select>
+</mapper>

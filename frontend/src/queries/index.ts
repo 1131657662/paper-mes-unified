@@ -5,6 +5,7 @@ import { dataBackupKeys } from '../features/dataBackup/queries/dataBackupKeys'
 import { dataHealthKeys } from '../features/dataHealth/queries/dataHealthKeys'
 import { dashboardKeys } from '../features/dashboard/queries/dashboardKeys'
 import { notificationKeys } from '../features/notification/queries/notificationKeys'
+import { exportTaskKeys } from '../features/exportTask/queries/exportTaskKeys'
 import { createOrderKeys } from '../features/processOrderCreate/queries/createOrderKeys'
 import { processOrderDetailKeys } from '../features/processOrderDetail/queries/processOrderDetailKeys'
 import { reportKeys } from '../features/report/queries/reportKeys'
@@ -18,6 +19,7 @@ export const queries = mergeQueryKeys(
   dataBackupKeys,
   dataHealthKeys,
   notificationKeys,
+  exportTaskKeys,
   createOrderKeys,
   processOrderDetailKeys,
   deliveryKeys,

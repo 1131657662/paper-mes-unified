@@ -25,6 +25,9 @@ import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.dto.ProcessStepDTO;
+import com.paper.mes.processorder.dto.ProcessStepPricingAdjustmentDTO;
+import com.paper.mes.processorder.dto.ProcessStepPricingBatchDTO;
+import com.paper.mes.processorder.dto.ProcessStepPricingBatchPreviewVO;
 import com.paper.mes.processorder.dto.RewindPlanPreviewDTO;
 import com.paper.mes.processorder.dto.SnapshotDiffVO;
 import com.paper.mes.processorder.dto.StatusChangeDTO;
@@ -32,7 +35,7 @@ import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.ProcessRouteAppendService;
 import com.paper.mes.processorder.service.ProcessRouteSaveService;
-import jakarta.servlet.http.HttpServletResponse;
+import com.paper.mes.processorder.service.ProcessStepPricingBatchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -56,6 +59,7 @@ public class ProcessOrderController {
     private final ProcessOrderService processOrderService;
     private final ProcessRouteSaveService processRouteSaveService;
     private final ProcessRouteAppendService processRouteAppendService;
+    private final ProcessStepPricingBatchService processStepPricingBatchService;
 
     @GetMapping
     @RequirePermission(Permissions.ORDER_VIEW)
@@ -75,12 +79,6 @@ public class ProcessOrderController {
             @PathVariable String uuid,
             @RequestParam(defaultValue = "ISSUED") PrintViewVersion version) {
         return R.success(processOrderService.getPrintView(uuid, version));
-    }
-
-    @GetMapping("/{uuid}/export")
-    @RequirePermission(Permissions.ORDER_VIEW)
-    public void export(@PathVariable String uuid, HttpServletResponse response) {
-        processOrderService.exportDetail(uuid, response);
     }
 
     @PostMapping
@@ -193,6 +191,30 @@ public class ProcessOrderController {
     @RequirePermission(Permissions.ORDER_MANAGE)
     public R<FeeResultVO> calcFee(@PathVariable String uuid) {
         return R.success(processOrderService.calcFee(uuid));
+    }
+
+    @PutMapping("/steps/{stepUuid}/pricing")
+    @RequirePermission(Permissions.ORDER_PRICING)
+    public R<FeeResultVO> adjustProcessStepPricing(
+            @PathVariable String stepUuid,
+            @Valid @RequestBody ProcessStepPricingAdjustmentDTO dto) {
+        return R.success(processOrderService.adjustProcessStepPricing(stepUuid, dto));
+    }
+
+    @PostMapping("/{orderUuid}/pricing-adjustments/preview")
+    @RequirePermission(Permissions.ORDER_PRICING)
+    public R<ProcessStepPricingBatchPreviewVO> previewPricingAdjustments(
+            @PathVariable String orderUuid,
+            @Valid @RequestBody ProcessStepPricingBatchDTO dto) {
+        return R.success(processStepPricingBatchService.preview(orderUuid, dto));
+    }
+
+    @PutMapping("/{orderUuid}/pricing-adjustments")
+    @RequirePermission(Permissions.ORDER_PRICING)
+    public R<ProcessStepPricingBatchPreviewVO> applyPricingAdjustments(
+            @PathVariable String orderUuid,
+            @Valid @RequestBody ProcessStepPricingBatchDTO dto) {
+        return R.success(processStepPricingBatchService.apply(orderUuid, dto));
     }
 
     /** 双版本快照对比差异（P2-6）：下发标称值 vs 完成实际值。 */

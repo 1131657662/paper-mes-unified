@@ -9,6 +9,7 @@ import { buildBackRecordSourceOptions } from './backRecordRollOptions'
 describe('现场定尺回录数据', () => {
   it('超差放行提交管理员凭据且不再信任授权布尔值', () => {
     const dto = buildBackRecordDTO(onSiteDetail(), {
+      warehouseUuid: 'warehouse-1',
       rolls: { 'roll-1': { actualWeight: 100 } },
     }, {
       releaseAdminUsername: 'admin',
@@ -17,6 +18,7 @@ describe('现场定尺回录数据', () => {
     })
 
     expect(dto).toMatchObject({
+      warehouseUuid: 'warehouse-1',
       releaseAdminUsername: 'admin',
       releaseAdminPassword: 'secret',
       releaseReason: '复核后确认放行',

@@ -1,0 +1,88 @@
+.settle-detail-kpi {
+  position: sticky;
+  z-index: 8;
+  top: 0;
+  padding-bottom: 10px;
+  background: var(--mes-color-bg);
+}
+
+.settle-detail-layout {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 196px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.settle-detail-tabs {
+  position: sticky;
+  top: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius);
+  background: var(--mes-color-panel);
+}
+
+.settle-detail-tabs button {
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--mes-color-text-secondary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--mes-radius-sm);
+}
+
+.settle-detail-tabs button:hover,
+.settle-detail-tabs button.is-active {
+  color: var(--mes-color-primary);
+  font-weight: 650;
+  background: var(--mes-color-surface-selected);
+}
+
+.settle-detail-content {
+  min-width: 0;
+}
+
+.settle-detail-content .document-print-area--settle,
+.settle-detail-content .document-print-sheet--settle {
+  width: 100%;
+  min-width: 0;
+}
+
+.settle-detail-content .document-print-sheet__header > * {
+  min-width: 0;
+}
+
+.settle-detail-content .document-print-sheet__header > :first-child,
+.settle-detail-content .document-print-sheet__summary {
+  flex: 1 1 0;
+}
+
+.settle-detail-content > .document-module-card:first-child {
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .settle-detail-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settle-detail-tabs {
+    position: sticky;
+    z-index: 7;
+    top: 0;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .settle-detail-tabs button {
+    flex: 0 0 auto;
+    text-align: center;
+  }
+}

@@ -17,6 +17,7 @@ export interface OrderDetailContentActions {
   onEditOrderRemark: () => void
   onEditRollRemark: (roll: RollProductionVO) => void
   onEditStep: (step: ProcessStep) => void
+  onAdjustPricing: (step: ProcessStep) => void
   onExport: () => void
 }
 
@@ -28,6 +29,7 @@ interface Props {
 
 export default function OrderDetailContent({ actions, detail, mode }: Props) {
   const canManageOrder = useHasPermission(PERMISSIONS.orderManage)
+  const canAdjustPricing = useHasPermission(PERMISSIONS.orderPricing)
   const canEditRemark = canManageOrder
     && (detail?.order.orderStatus == null || ![4, 5, 6].includes(detail.order.orderStatus))
 
@@ -46,11 +48,13 @@ export default function OrderDetailContent({ actions, detail, mode }: Props) {
       />
       <StepTableSection
         canManageOrder={canManageOrder}
+        canAdjustPricing={canAdjustPricing}
         detail={detail}
         onAdd={actions.onAddStep}
         onConfigureRoute={actions.onConfigureRoute}
         onEdit={actions.onEditStep}
         onDelete={actions.onDeleteStep}
+        onAdjustPricing={actions.onAdjustPricing}
       />
     </div>
   )

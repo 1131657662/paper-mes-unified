@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.paper.mes.delivery.mapper.DeliveryInventoryWarehouseRepairMapper">
+
+    <sql id="UnassignedAggregate">
+        INNER JOIN (
+            SELECT f.order_uuid,
+                   COUNT(*) AS unassigned_roll_count,
+                   COALESCE(SUM(COALESCE(f.remaining_weight, f.actual_weight, 0)), 0) AS unassigned_weight
+            FROM biz_finish_roll f
+            WHERE f.is_deleted = 0
+              AND f.finish_status IN (2, 3)
+              AND f.warehouse_uuid IS NULL
+            GROUP BY f.order_uuid
+        ) u ON u.order_uuid = o.uuid
+    </sql>
+
+    <sql id="UnassignedOrderWhere">
+        o.is_deleted = 0
+        AND o.order_status IN (4, 5)
+        <if test="q.keyword != null and q.keyword.trim() != ''">
+            AND (o.order_no LIKE CONCAT('%', #{q.keyword}, '%')
+              OR o.customer_name LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+    </sql>
+
+    <select id="countUnassignedOrders" resultType="long">
+        SELECT COUNT(*)
+        FROM biz_process_order o
+        <include refid="UnassignedAggregate"/>
+        WHERE <include refid="UnassignedOrderWhere"/>
+    </select>
+
+    <select id="selectUnassignedOrders"
+            resultType="com.paper.mes.delivery.dto.DeliveryInventoryUnassignedOrderVO">
+        SELECT o.uuid AS orderUuid,
+               o.order_no AS orderNo,
+               o.order_date AS orderDate,
+               o.order_status AS orderStatus,
+               o.customer_uuid AS customerUuid,
+               o.customer_name AS customerName,
+               u.unassigned_roll_count AS unassignedRollCount,
+               u.unassigned_weight AS unassignedWeight,
+               CASE WHEN COALESCE(k.finish_warehouse_count, 0) &gt; 1
+                          OR (o.warehouse_uuid IS NOT NULL
+                              AND k.finish_warehouse_uuid IS NOT NULL
+                              AND o.warehouse_uuid != k.finish_warehouse_uuid)
+                    THEN NULL
+                    ELSE COALESCE(o.warehouse_uuid, k.finish_warehouse_uuid)
+               END AS knownWarehouseUuid,
+               w.warehouse_name AS knownWarehouseName,
+               CASE WHEN COALESCE(k.finish_warehouse_count, 0) &gt; 1
+                          OR (o.warehouse_uuid IS NOT NULL
+                              AND k.finish_warehouse_uuid IS NOT NULL
+                              AND o.warehouse_uuid != k.finish_warehouse_uuid)
+                    THEN 1 ELSE 0 END AS warehouseConflict,
+               COALESCE(l.active_lock_count, 0) AS activeLockCount
+        FROM biz_process_order o
+        <include refid="UnassignedAggregate"/>
+        LEFT JOIN (
+            SELECT f.order_uuid,
+                   COUNT(DISTINCT f.warehouse_uuid) AS finish_warehouse_count,
+                   MIN(f.warehouse_uuid) AS finish_warehouse_uuid
+            FROM biz_finish_roll f
+            WHERE f.is_deleted = 0
+              AND f.finish_status IN (2, 3)
+              AND f.warehouse_uuid IS NOT NULL
+            GROUP BY f.order_uuid
+        ) k ON k.order_uuid = o.uuid
+        LEFT JOIN sys_warehouse w
+          ON w.uuid = COALESCE(o.warehouse_uuid, k.finish_warehouse_uuid)
+         AND w.is_deleted = 0
+        LEFT JOIN (
+            SELECT f.order_uuid, COUNT(DISTINCT dd.uuid) AS active_lock_count
+            FROM biz_finish_roll f
+            INNER JOIN biz_delivery_detail dd
+              ON dd.finish_uuid = f.uuid
+             AND dd.stock_lock_status = 1
+             AND dd.is_deleted = 0
+            WHERE f.is_deleted = 0
+              AND f.finish_status IN (2, 3)
+              AND f.warehouse_uuid IS NULL
+            GROUP BY f.order_uuid
+        ) l ON l.order_uuid = o.uuid
+        WHERE <include refid="UnassignedOrderWhere"/>
+        ORDER BY o.order_date DESC, o.order_no DESC, o.uuid ASC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectOrdersForRepair" resultType="com.paper.mes.processorder.entity.ProcessOrder">
+        SELECT o.*
+        FROM biz_process_order o
+        WHERE o.is_deleted = 0
+          AND o.uuid IN
+          <foreach collection="orderUuids" item="uuid" open="(" separator="," close=")">
+              #{uuid}
+          </foreach>
+        ORDER BY o.uuid ASC
+    </select>
+
+    <select id="selectFinishesForRepair" resultType="com.paper.mes.processorder.entity.FinishRoll">
+        SELECT f.*
+        FROM biz_finish_roll f
+        WHERE f.is_deleted = 0
+          AND f.order_uuid IN
+          <foreach collection="orderUuids" item="uuid" open="(" separator="," close=")">
+              #{uuid}
+          </foreach>
+        ORDER BY f.uuid ASC
+    </select>
+
+    <select id="countActiveLocks" resultType="long">
+        SELECT COUNT(DISTINCT dd.uuid)
+        FROM biz_delivery_detail dd
+        WHERE dd.is_deleted = 0
+          AND dd.stock_lock_status = 1
+          AND dd.finish_uuid IN
+          <foreach collection="finishUuids" item="uuid" open="(" separator="," close=")">
+              #{uuid}
+          </foreach>
+    </select>
+
+    <update id="assignFinishWarehouse">
+        UPDATE biz_finish_roll
+        SET warehouse_uuid = #{warehouseUuid},
+            update_by = #{operator},
+            update_time = NOW(),
+            version = version + 1
+        WHERE is_deleted = 0
+          AND warehouse_uuid IS NULL
+          AND finish_status IN (2, 3)
+          AND uuid IN
+          <foreach collection="finishUuids" item="uuid" open="(" separator="," close=")">
+              #{uuid}
+          </foreach>
+    </update>
+
+    <update id="assignOrderWarehouse">
+        UPDATE biz_process_order
+        SET warehouse_uuid = #{warehouseUuid},
+            snap_finish = #{snapFinish},
+            update_by = #{operator},
+            update_time = NOW(),
+            version = version + 1
+        WHERE uuid = #{orderUuid}
+          AND is_deleted = 0
+          AND order_status IN (4, 5)
+          AND (warehouse_uuid IS NULL OR warehouse_uuid = #{warehouseUuid})
+    </update>
+</mapper>

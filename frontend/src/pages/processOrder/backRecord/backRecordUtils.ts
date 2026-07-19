@@ -45,6 +45,7 @@ export interface TrimRecordValues {
 }
 
 export interface BackRecordFormValues {
+  warehouseUuid?: string
   rolls?: Record<string, RollRecordValues>
   finishes?: Record<string, FinishRecordValues>
   trims?: Record<string, TrimRecordValues[]>
@@ -89,6 +90,7 @@ export function buildBackRecordDTO(
   finishes.push(...onSite.finishes)
   const trims = [...toLegacyTrimDTOs(values.trims), ...onSite.trims]
   return {
+    warehouseUuid: values.warehouseUuid ?? '',
     releaseAdminUsername: authorization?.releaseAdminUsername,
     releaseAdminPassword: authorization?.releaseAdminPassword,
     releaseReason: authorization?.releaseReason,

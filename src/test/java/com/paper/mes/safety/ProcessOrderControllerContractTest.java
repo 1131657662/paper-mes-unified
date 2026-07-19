@@ -12,9 +12,14 @@ import com.paper.mes.processorder.dto.BackRecordResultVO;
 import com.paper.mes.processorder.dto.PrintDTO;
 import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
+import com.paper.mes.processorder.dto.ProcessStepPricingAdjustmentDTO;
+import com.paper.mes.processorder.dto.ProcessStepPricingBatchDTO;
+import com.paper.mes.processorder.dto.ProcessStepPricingBatchPreviewVO;
+import com.paper.mes.processorder.dto.FeeResultVO;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.ProcessRouteAppendService;
 import com.paper.mes.processorder.service.ProcessRouteSaveService;
+import com.paper.mes.processorder.service.ProcessStepPricingBatchService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +49,7 @@ class ProcessOrderControllerContractTest {
 
     private AuthService authService;
     private ProcessOrderService processOrderService;
+    private ProcessStepPricingBatchService pricingBatchService;
     private MockMvc mvc;
 
     @BeforeEach
@@ -52,8 +58,9 @@ class ProcessOrderControllerContractTest {
         processOrderService = mock(ProcessOrderService.class);
         ProcessRouteSaveService routeSaveService = mock(ProcessRouteSaveService.class);
         ProcessRouteAppendService routeAppendService = mock(ProcessRouteAppendService.class);
+        pricingBatchService = mock(ProcessStepPricingBatchService.class);
         mvc = MockMvcBuilders.standaloneSetup(
-                        new ProcessOrderController(processOrderService, routeSaveService, routeAppendService))
+                        new ProcessOrderController(processOrderService, routeSaveService, routeAppendService, pricingBatchService))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -179,7 +186,80 @@ class ProcessOrderControllerContractTest {
 
         ArgumentCaptor<BackRecordDTO> captor = ArgumentCaptor.forClass(BackRecordDTO.class);
         verify(processOrderService).backRecord(eq("order-uuid"), captor.capture());
+        assertEquals("warehouse-1", captor.getValue().getWarehouseUuid());
         assertEquals(new BigDecimal("1198.00"), captor.getValue().getRolls().getFirst().getActualWeight());
+    }
+
+    @Test
+    void pricingAdjustment_withOrderClerkRole_bindsPayloadAndReturnsFee() throws Exception {
+        authorizeAs("order_clerk");
+        FeeResultVO result = new FeeResultVO();
+        result.setOrderUuid("order-uuid");
+        when(processOrderService.adjustProcessStepPricing(eq("step-uuid"), any()))
+                .thenReturn(result);
+
+        mvc.perform(put("/api/process-orders/steps/step-uuid/pricing")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"billingMode\":2,\"billingQuantity\":1,\"reason\":\"客户仅加工20米\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderUuid").value("order-uuid"));
+
+        ArgumentCaptor<ProcessStepPricingAdjustmentDTO> captor =
+                ArgumentCaptor.forClass(ProcessStepPricingAdjustmentDTO.class);
+        verify(processOrderService).adjustProcessStepPricing(eq("step-uuid"), captor.capture());
+        assertEquals(2, captor.getValue().getBillingMode());
+        assertEquals(new BigDecimal("1"), captor.getValue().getBillingQuantity());
+    }
+
+    @Test
+    void pricingAdjustment_withViewerRole_returnsForbidden() throws Exception {
+        authorizeAs("viewer");
+
+        mvc.perform(put("/api/process-orders/steps/step-uuid/pricing")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"billingMode\":2,\"billingQuantity\":1,\"reason\":\"customer adjustment\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+
+        verify(processOrderService, never()).adjustProcessStepPricing(any(), any());
+    }
+
+    @Test
+    void pricingBatchPreview_withOrderClerkRole_bindsPayload() throws Exception {
+        authorizeAs("order_clerk");
+        ProcessStepPricingBatchPreviewVO result = new ProcessStepPricingBatchPreviewVO();
+        result.setOrderUuid("order-uuid");
+        when(pricingBatchService.preview(eq("order-uuid"), any())).thenReturn(result);
+
+        mvc.perform(post("/api/process-orders/order-uuid/pricing-adjustments/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pricingBatchPayload())
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderUuid").value("order-uuid"));
+
+        ArgumentCaptor<ProcessStepPricingBatchDTO> captor =
+                ArgumentCaptor.forClass(ProcessStepPricingBatchDTO.class);
+        verify(pricingBatchService).preview(eq("order-uuid"), captor.capture());
+        assertEquals(6, captor.getValue().getExpectedOrderVersion());
+        assertEquals(1, captor.getValue().getGroups().getFirst().getStepType());
+        assertEquals(new BigDecimal("100"), captor.getValue().getGroups().getFirst().getBillingUnitPrice());
+    }
+
+    @Test
+    void pricingBatchApply_withViewerRole_returnsForbidden() throws Exception {
+        authorizeAs("viewer");
+
+        mvc.perform(put("/api/process-orders/order-uuid/pricing-adjustments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pricingBatchPayload())
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+
+        verify(pricingBatchService, never()).apply(any(), any());
     }
 
     private void authorizeAs(String roleCode) {
@@ -200,7 +280,13 @@ class ProcessOrderControllerContractTest {
 
     private String backRecordPayload() {
         return """
-                {"operator":"车间A","rolls":[{"uuid":"roll-1","actualWeight":1198.00}]}
+                {"warehouseUuid":"warehouse-1","rolls":[{"uuid":"roll-1","actualWeight":1198.00}]}
+                """;
+    }
+
+    private String pricingBatchPayload() {
+        return """
+                {"expectedOrderVersion":6,"reason":"customer agreement price","groups":[{"stepType":1,"stepUuids":["step-1"],"restoreStandard":false,"billingUnitPrice":100}]}
                 """;
     }
 }

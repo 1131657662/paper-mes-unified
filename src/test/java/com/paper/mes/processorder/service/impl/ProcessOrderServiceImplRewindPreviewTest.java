@@ -21,7 +21,7 @@ import com.paper.mes.processorder.mapper.ProcessStageInputRelMapper;
 import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.processorder.service.FileStorageService;
-import com.paper.mes.processorder.service.ProcessOrderExportService;
+import com.paper.mes.processorder.service.BackRecordWarehousePolicy;
 import com.paper.mes.processorder.service.RollNoSequenceService;
 import com.paper.mes.processorder.service.SawPlanPreviewer;
 import com.paper.mes.processorder.service.WeightCheckThresholdService;
@@ -177,11 +177,13 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 mock(RollNoSequenceService.class),
                 new SawPlanPreviewer(),
                 mock(DocumentNoService.class),
-                mock(ProcessOrderExportService.class),
                 mock(BusinessLockService.class),
                 mock(MachineMapper.class),
                 mock(WeightCheckThresholdService.class),
                 null,
+                null,
+                null,
+                mock(BackRecordWarehousePolicy.class),
                 null,
                 null,
                 null,

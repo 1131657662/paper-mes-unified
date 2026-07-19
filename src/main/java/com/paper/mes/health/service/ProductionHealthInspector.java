@@ -10,11 +10,12 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class ProductionHealthInspector {
+public class ProductionHealthInspector implements DataHealthInspector {
 
     private final JdbcTemplate jdbcTemplate;
     private final ProductionCompletionHealthInspector completionInspector;
 
+    @Override
     public List<DataHealthIssueVO> inspect() {
         List<DataHealthIssueVO> issues = new ArrayList<>();
         issues.addAll(completionInspector.inspect());

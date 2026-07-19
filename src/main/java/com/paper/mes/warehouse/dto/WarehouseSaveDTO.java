@@ -20,5 +20,6 @@ public class WarehouseSaveDTO {
     private String location;
     /** 1启用 2停用，不传默认启用 */
     private Integer status;
+    private Integer isDefault;
     private String remark;
 }

@@ -1,4 +1,4 @@
-import type { PageQuery } from './common'
+import type { PageQuery, PageResult } from './common'
 import type { OperationLog } from './operationLog'
 
 export interface DeliveryOrder {
@@ -6,6 +6,8 @@ export interface DeliveryOrder {
   deliveryNo: string
   customerUuid: string
   customerName: string
+  warehouseUuid?: string
+  warehouseName?: string
   deliveryDate: string
   totalCount: number
   totalWeight: number
@@ -95,6 +97,10 @@ export interface AvailableFinishVO {
   orderUuid: string
   orderNo: string
   orderDate?: string
+  warehouseUuid?: string
+  warehouseName?: string
+  warehouseLocation?: string
+  stockInTime?: string
   paperName: string
   gramWeight?: number
   finishWidth?: number
@@ -111,6 +117,32 @@ export interface AvailableFinishVO {
   settleDay?: number
   isInvoice?: number
   settlementRisk?: boolean
+}
+
+export type AvailableFinishScope = 'all' | 'product' | 'remain'
+export type AvailableFinishSourceIssue = 'all' | 'missingSource' | 'missingIdentity'
+
+export interface AvailableFinishQuery extends PageQuery {
+  customerUuid: string
+  warehouseUuid?: string
+  keyword?: string
+  scope?: AvailableFinishScope
+  sourceIssue?: AvailableFinishSourceIssue
+  finishUuids?: string[]
+}
+
+export interface AvailableFinishPageVO extends PageResult<AvailableFinishVO> {
+  scopeCounts: {
+    product: number
+    remain: number
+  }
+  excluded: {
+    unassignedWarehouseCount: number
+    otherWarehouseCount: number
+    lockedCount: number
+    invalidWeightCount: number
+  }
+  asOf: string
 }
 
 export interface AvailableFinishSourceMotherRoll {
@@ -146,6 +178,7 @@ export interface DeliveryRollbackSnapshotVO {
 
 export interface DeliveryCreateDTO {
   customerUuid: string
+  warehouseUuid: string
   deliveryDate: string
   pickerName?: string
   carNo?: string

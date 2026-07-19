@@ -44,6 +44,27 @@ class SettlementAmountCalculatorTest {
         assertThat(result.pendingPriceCount()).isEqualTo(1);
     }
 
+    @Test
+    void calculate_whenRewindIsDiscounted_usesFinalAmountAndKeepsAdjustmentAudit() {
+        ProcessStepMapper mapper = mock(ProcessStepMapper.class);
+        ProcessStep step = step("order-1", 2, "100");
+        step.setStandardQuantity(new BigDecimal("3.700"));
+        step.setBillingQuantity(new BigDecimal("1.000"));
+        step.setStandardStepAmount(new BigDecimal("370"));
+        step.setPricingAdjustmentAmount(new BigDecimal("-270"));
+        step.setPricingAdjustmentReason("客户仅加工20米");
+        when(mapper.selectList(any())).thenReturn(List.of(step));
+
+        SettlementAmountCalculator.Calculation result = new SettlementAmountCalculator(mapper)
+                .calculate(List.of(order("order-1", null)), 2, customer());
+
+        assertThat(result.rewind()).isEqualByComparingTo("100.00");
+        assertThat(result.noTax()).isEqualByComparingTo("100.00");
+        assertThat(result.details().getFirst().getStandardProcessAmount()).isEqualByComparingTo("370.00");
+        assertThat(result.details().getFirst().getPricingAdjustmentAmount()).isEqualByComparingTo("-270.00");
+        assertThat(result.details().getFirst().getPricingAdjustmentReason()).isEqualTo("客户仅加工20米");
+    }
+
     private ProcessOrder order(String uuid, String noTaxAmount) {
         ProcessOrder order = new ProcessOrder();
         order.setUuid(uuid);

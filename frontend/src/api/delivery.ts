@@ -1,4 +1,4 @@
-import request, { rawRequest } from './request'
+import request from './request'
 import type { PageResult } from '../types/common'
 import type {
   DeliveryOrder,
@@ -6,6 +6,8 @@ import type {
   DeliveryCancelDTO,
   DeliveryQuery,
   AvailableFinishVO,
+  AvailableFinishPageVO,
+  AvailableFinishQuery,
   DeliveryCreateDTO,
   DeliveryDetailVO,
   DeliveryConfirmDTO,
@@ -13,12 +15,6 @@ import type {
   DeliveryListSummary,
   DeliveryRollbackDTO,
 } from '../types/delivery'
-import { downloadFileFromResponse } from '../utils/downloadFile'
-import {
-  normalizeDocumentExportInput,
-  readableExportFilename,
-  type DocumentExportInput,
-} from '../utils/documentExport'
 
 export function getDeliveryOrderList(query: DeliveryQuery) {
   return request<PageResult<DeliveryOrder>>({
@@ -36,11 +32,20 @@ export function getDeliveryOrderSummary(query: DeliveryQuery) {
   })
 }
 
-export function getAvailableFinishes(customerUuid: string) {
+export function getAvailableFinishes(customerUuid: string, warehouseUuid?: string) {
   return request<AvailableFinishVO[]>({
     url: '/api/delivery-orders/available',
     method: 'get',
-    params: { customerUuid },
+    params: { customerUuid, warehouseUuid },
+  })
+}
+
+export function getAvailableFinishPage(query: AvailableFinishQuery) {
+  return request<AvailableFinishPageVO>({
+    url: '/api/delivery-orders/inventory/available-finishes',
+    method: 'get',
+    params: query,
+    paramsSerializer: { indexes: null },
   })
 }
 
@@ -104,24 +109,4 @@ export function removeDeliveryDetail(uuid: string, detailUuid: string) {
     url: `/api/delivery-orders/${uuid}/details/${detailUuid}`,
     method: 'delete',
   })
-}
-
-export async function exportDeliveryOrder(input: DocumentExportInput) {
-  const { documentNo, uuid } = normalizeDocumentExportInput(input)
-  const response = await rawRequest.request<Blob, { data: Blob; headers: Record<string, string> }>({
-    url: `/api/delivery-orders/${uuid}/export`,
-    method: 'get',
-    responseType: 'blob',
-  })
-  await downloadFileFromResponse(response, readableExportFilename('出库单', documentNo))
-}
-
-export async function exportDeliveryOrderList(query: DeliveryQuery) {
-  const response = await rawRequest.request<Blob, { data: Blob; headers: Record<string, string> }>({
-    url: '/api/delivery-orders/export',
-    method: 'get',
-    params: query,
-    responseType: 'blob',
-  })
-  await downloadFileFromResponse(response, readableExportFilename('出库对账'))
 }

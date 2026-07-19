@@ -6,17 +6,16 @@ import com.paper.mes.delivery.dto.DeliveryQuery;
 import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import com.paper.mes.delivery.service.impl.DeliveryOrderQueryBuilder;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,19 +31,22 @@ public class DeliveryListExportService {
 
     private final DeliveryOrderMapper deliveryOrderMapper;
 
-    public void export(DeliveryQuery query, HttpServletResponse response) {
-        configureResponse(response);
+    public void exportToPath(DeliveryQuery query, Path target) {
         SXSSFWorkbook workbook = new SXSSFWorkbook(BATCH_SIZE);
-        try (workbook) {
-            Sheet sheet = workbook.createSheet("出库对账");
-            writeHeader(sheet);
-            writeRows(sheet, query);
-            workbook.write(response.getOutputStream());
+        try (workbook; OutputStream output = Files.newOutputStream(target)) {
+            writeWorkbook(workbook, query);
+            workbook.write(output);
         } catch (IOException exception) {
             throw new BusinessException("导出出库对账失败");
         } finally {
             workbook.dispose();
         }
+    }
+
+    private void writeWorkbook(SXSSFWorkbook workbook, DeliveryQuery query) {
+        Sheet sheet = workbook.createSheet("出库对账");
+        writeHeader(sheet);
+        writeRows(sheet, query);
     }
 
     private void writeRows(Sheet sheet, DeliveryQuery query) {
@@ -78,13 +80,6 @@ public class DeliveryListExportService {
         for (int index = 0; index < values.size(); index++) {
             row.createCell(index).setCellValue(values.get(index));
         }
-    }
-
-    private void configureResponse(HttpServletResponse response) {
-        String filename = "出库对账_" + LocalDate.now() + ".xlsx";
-        String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encoded);
     }
 
     private String statusText(Integer status) {

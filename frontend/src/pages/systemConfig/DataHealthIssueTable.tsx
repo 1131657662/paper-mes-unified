@@ -25,7 +25,9 @@ export default function DataHealthIssueTable({ issues, loading, onRepair }: Prop
     {
       title: '操作', key: 'action', fixed: 'right', width: 100,
       render: (_, issue) => issue.repairAction ? (
-        <Button danger type="link" icon={<ToolOutlined />} onClick={() => onRepair(issue)}>修复</Button>
+        <Button danger type="link" icon={<ToolOutlined />} onClick={() => onRepair(issue)}>
+          {issue.repairAction === 'OPEN_INVENTORY_WAREHOUSE_REPAIR' ? '去库存治理' : '修复'}
+        </Button>
       ) : <Typography.Text type="secondary">人工核对</Typography.Text>,
     },
   ]

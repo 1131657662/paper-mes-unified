@@ -15,8 +15,11 @@ import com.paper.mes.settle.dto.SettleQuoteVO;
 import com.paper.mes.settle.dto.SettleQuoteByOrderDTO;
 import com.paper.mes.settle.dto.SettleQuoteByOrdersDTO;
 import com.paper.mes.settle.dto.SettleQuoteByMonthDTO;
+import com.paper.mes.settle.dto.SettlePrintLineVO;
 import com.paper.mes.settle.entity.SettleOrder;
-import jakarta.servlet.http.HttpServletResponse;
+import com.paper.mes.settle.entity.SettleDetail;
+import com.paper.mes.settle.entity.ReceiveRecord;
+import com.paper.mes.oplog.entity.OperationLog;
 
 import java.util.List;
 
@@ -50,9 +53,17 @@ public interface SettleService extends IService<SettleOrder> {
 
     SettleDetailVO getDetail(String uuid);
 
-    /** 导出客户结算单 Excel。 */
-    void exportDetail(String uuid, HttpServletResponse response);
+    SettleOrder getDetailOrder(String uuid);
 
+    List<SettleDetail> getDetails(String uuid);
+
+    List<ReceiveRecord> getReceives(String uuid);
+
+    List<SettlePrintLineVO> getPrintLines(String uuid);
+
+    List<OperationLog> getOperationLogs(String uuid);
+
+    /** 导出客户结算单 Excel。 */
     /**
      * 登记一笔收款：校验未结清、不超收，更新已收/未收/结算状态，写收款流水与操作日志。
      */

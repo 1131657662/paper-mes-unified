@@ -56,6 +56,24 @@
   gap: 12px;
 }
 
+.back-record-warehouse-field {
+  min-width: 280px;
+}
+
+.back-record-warehouse-field .ant-form-item {
+  margin-bottom: 0;
+}
+
+.back-record-warehouse-field > .ant-typography {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.back-record-submit-confirmation .ant-typography {
+  margin-bottom: 8px;
+}
+
 .back-record-auth-alert {
   margin-bottom: 16px;
 }

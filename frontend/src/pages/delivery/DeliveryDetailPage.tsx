@@ -6,10 +6,11 @@ import { PERMISSIONS } from '../../constants/permissions'
 import DocumentAuditTimeline from '../../components/biz/DocumentAuditTimeline'
 import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { useDeliveryDetail } from '../../features/delivery/hooks/useDeliveryDetail'
 import { useConfirmDelivery } from '../../features/delivery/hooks/useConfirmDelivery'
 import { useCancelPendingDelivery } from '../../features/delivery/hooks/useCancelPendingDelivery'
-import { useExportDelivery } from '../../features/delivery/hooks/useExportDelivery'
+import { useCreateDeliveryOrderExportTask } from '../../features/exportTask/hooks/useCreateDeliveryOrderExportTask'
 import { useRemoveDeliveryDetail } from '../../features/delivery/hooks/useRemoveDeliveryDetail'
 import { useRollbackDelivery } from '../../features/delivery/hooks/useRollbackDelivery'
 import type { DeliveryDetail } from '../../types/delivery'
@@ -38,7 +39,7 @@ export default function DeliveryDetailPage() {
   const detailQuery = useDeliveryDetail(uuid)
   const confirmMutation = useConfirmDelivery()
   const cancelMutation = useCancelPendingDelivery()
-  const exportMutation = useExportDelivery()
+  const exportMutation = useCreateDeliveryOrderExportTask()
   const rollbackMutation = useRollbackDelivery()
   const removeDetailMutation = useRemoveDeliveryDetail()
   const detail = detailQuery.data
@@ -53,11 +54,10 @@ export default function DeliveryDetailPage() {
   }, [detail, shouldAutoPrint])
 
   const handleExport = async () => {
+    if (exportMutation.isPending) return
     if (uuid) {
-      await exportMutation.mutateAsync({
-        documentNo: order?.deliveryNo,
-        uuid,
-      })
+      await exportMutation.mutateAsync({ uuid })
+      message.success('已加入导出任务，可在右上角下载任务中心查看')
     }
   }
 
@@ -67,7 +67,7 @@ export default function DeliveryDetailPage() {
   }
 
   const handleConfirm = async () => {
-    if (!canManageDelivery || !uuid || !order) return
+    if (confirmMutation.isPending || !canManageDelivery || !uuid || !order) return
     const signUser = await askDeliverySignUser(order.deliveryNo)
     if (signUser === null) return
     await confirmMutation.mutateAsync({ uuid, data: signUser ? { signUser } : undefined })
@@ -76,7 +76,7 @@ export default function DeliveryDetailPage() {
   }
 
   const handleRollback = async () => {
-    if (!canManageDelivery) return
+    if (rollbackMutation.isPending || !canManageDelivery) return
     if (!uuid || !order) return
     const reason = await askDeliveryRollbackReason(order.deliveryNo).catch(() => null)
     if (!reason) return
@@ -86,7 +86,7 @@ export default function DeliveryDetailPage() {
   }
 
   const handleCancel = async () => {
-    if (!canManageDelivery || !uuid || !order) return
+    if (cancelMutation.isPending || !canManageDelivery || !uuid || !order) return
     const reason = await askDeliveryCancelReason(order.deliveryNo)
     if (!reason) return
     await cancelMutation.mutateAsync({ uuid, data: { reason } })
@@ -95,7 +95,7 @@ export default function DeliveryDetailPage() {
   }
 
   const handleRemove = async (record: DeliveryDetail) => {
-    if (!canManageDelivery) return
+    if (removeDetailMutation.isPending || !canManageDelivery) return
     if (!uuid) return
     const confirmed = await confirmRemoveDeliveryDetail(record.finishRollNo)
     if (!confirmed) return
@@ -125,7 +125,7 @@ export default function DeliveryDetailPage() {
             )}
             <Button icon={<PrinterOutlined />} onClick={handlePrint}>打印预览</Button>
             <Button icon={<DownloadOutlined />} loading={exportMutation.isPending} onClick={handleExport}>
-              导出 Excel
+              后台导出
             </Button>
             {canManageDelivery && order.deliveryStatus === 1 && (
               <Button danger icon={<StopOutlined />} loading={cancelMutation.isPending} onClick={handleCancel}>
@@ -140,6 +140,14 @@ export default function DeliveryDetailPage() {
           </Space>
         )}
       />
+
+      {detailQuery.isError && (
+        <QueryLoadErrorAlert
+          message="出库单详情加载失败"
+          description="当前空白不代表单据不存在，请重新加载后再执行出库操作。"
+          onRetry={() => void detailQuery.refetch()}
+        />
+      )}
 
       <Spin className="mes-spin-fill" spinning={detailQuery.isLoading || detailQuery.isFetching}>
         {detail && (
@@ -181,6 +189,7 @@ export default function DeliveryDetailPage() {
             <DeliveryAppendItemsModal
               customerName={detail.order.customerName}
               customerUuid={detail.order.customerUuid}
+              warehouseUuid={detail.order.warehouseUuid}
               deliveryUuid={detail.order.uuid}
               open={appendOpen}
               onClose={() => setAppendOpen(false)}

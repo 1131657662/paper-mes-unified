@@ -15,6 +15,13 @@ export function buildSettleDetailColumns(extraFeeByOrder: Record<string, string>
     { title: '锯纸费', dataIndex: 'sawAmount', align: 'right', width: 110, render: formatMoney },
     { title: '复卷费', dataIndex: 'rewindAmount', align: 'right', width: 110, render: formatMoney },
     {
+      title: '计价调整',
+      dataIndex: 'pricingAdjustmentAmount',
+      align: 'right',
+      width: 180,
+      render: (value, record) => value ? amountWithHint({ amount: value, hint: record.pricingAdjustmentReason }) : '-',
+    },
+    {
       title: '额外费用',
       dataIndex: 'extraAmount',
       align: 'right',

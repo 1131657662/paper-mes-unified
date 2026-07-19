@@ -31,6 +31,15 @@
   border-bottom: 1px solid var(--mes-color-border-light);
 }
 
+.document-list-shell__summary {
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+}
+
+.document-list-shell__summary .document-list-summary {
+  margin-bottom: 0;
+}
+
 .document-list-shell__toolbar {
   display: grid;
   min-width: 0;
@@ -198,7 +207,7 @@
   min-height: 0;
   flex: 1 1 0;
   overflow: auto !important;
-  scrollbar-gutter: auto;
+  scrollbar-gutter: stable;
 }
 
 .document-page-table[data-table-density='empty'] {

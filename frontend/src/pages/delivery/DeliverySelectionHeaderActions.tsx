@@ -9,6 +9,8 @@ interface Props {
   finishes: AvailableFinishVO[]
   scope: DeliveryFinishScope
   selectedRowKeys: React.Key[]
+  totalCount: number
+  scopeTotals?: { product: number; remain: number }
   onScopeChange: (value: DeliveryFinishScope) => void
   onToggleExpanded: () => void
 }
@@ -20,6 +22,8 @@ export default function DeliverySelectionHeaderActions(props: Props) {
       <DeliveryFinishScopeControl
         finishes={props.finishes}
         selectedRowKeys={props.selectedRowKeys}
+        totalCount={props.totalCount}
+        scopeTotals={props.scopeTotals}
         value={props.scope}
         onChange={props.onScopeChange}
       />

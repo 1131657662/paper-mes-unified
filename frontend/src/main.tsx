@@ -2,7 +2,6 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ConfigProvider, Empty, type ThemeConfig } from 'antd'
 import zhCN from 'antd/es/locale/zh_CN'
-import { ProConfigProvider, zhCNIntl } from '@ant-design/pro-components'
 import { RouterProvider } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import 'antd/dist/reset.css'
@@ -82,9 +81,7 @@ createRoot(document.getElementById('root')!).render(
           renderEmpty={renderEmpty}
           theme={appTheme}
         >
-          <ProConfigProvider intl={zhCNIntl}>
-            <RouterProvider router={router} />
-          </ProConfigProvider>
+          <RouterProvider router={router} />
         </ConfigProvider>
       </QueryClientProvider>
     </ErrorBoundary>

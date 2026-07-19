@@ -3,10 +3,12 @@ import type { ReactNode } from 'react'
 import { Spin } from 'antd'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import AuthGuard from './AuthGuard'
-import BasicLayout from '../layout/BasicLayout'
 import PermissionGuard from '../components/PermissionGuard'
+import RouteErrorBoundary from './RouteErrorBoundary'
 import { PERMISSIONS } from '../constants/permissions'
+
 import {
+  AuthenticatedLayout,
   BackRecordPage,
   ConfigFinishPage,
   CreateOrderPage,
@@ -16,7 +18,9 @@ import {
   DashboardPage,
   DeliveryCreatePage,
   DeliveryDetailPage,
-  DeliveryOrderList,
+  DeliveryInventoryCustomerPage,
+  DeliveryInventoryPage,
+  DeliveryOrderEntryPage,
   LoginPage,
   MachineDetailPage,
   MachineFormPage,
@@ -50,7 +54,7 @@ function guarded(element: ReactNode, permissions: string[]) {
 function lazyPage(element: ReactNode) {
   return (
     <Suspense fallback={routeLoading()}>
-      {element}
+      <RouteErrorBoundary>{element}</RouteErrorBoundary>
     </Suspense>
   )
 }
@@ -75,7 +79,7 @@ export const router = createBrowserRouter([
     element: <AuthGuard />,
     children: [
       {
-        element: <BasicLayout />,
+        element: lazyPage(<AuthenticatedLayout />),
         children: [
           { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: 'dashboard', element: guardedPage(<DashboardPage />, [PERMISSIONS.reportView]) },
@@ -101,7 +105,10 @@ export const router = createBrowserRouter([
           { path: 'process-orders/:uuid', element: guardedPage(<OrderDetailPage />, [PERMISSIONS.orderView]) },
           { path: 'process-orders/:uuid/back-record', element: guardedPage(<BackRecordPage />, [PERMISSIONS.orderBackRecord]) },
           { path: 'process-orders/:uuid/config-finish', element: guardedPage(<ConfigFinishPage />, [PERMISSIONS.orderManage]) },
-          { path: 'delivery-orders', element: guardedPage(<DeliveryOrderList />, [PERMISSIONS.deliveryView]) },
+          { path: 'delivery-orders', element: guardedPage(<DeliveryOrderEntryPage />, [PERMISSIONS.deliveryView]) },
+          { path: 'delivery-orders/inventory', element: guardedPage(<DeliveryInventoryPage />, [PERMISSIONS.deliveryView]) },
+          { path: 'delivery-orders/inventory/finishes', element: guardedPage(<DeliveryInventoryPage />, [PERMISSIONS.deliveryView]) },
+          { path: 'delivery-orders/inventory/customers/:customerUuid', element: guardedPage(<DeliveryInventoryCustomerPage />, [PERMISSIONS.deliveryView]) },
           { path: 'delivery-orders/create', element: guardedPage(<DeliveryCreatePage />, [PERMISSIONS.deliveryManage]) },
           { path: 'delivery-orders/:uuid', element: guardedPage(<DeliveryDetailPage />, [PERMISSIONS.deliveryView]) },
           { path: 'settle-orders', element: guardedPage(<SettleOrderList />, [PERMISSIONS.settleView]) },

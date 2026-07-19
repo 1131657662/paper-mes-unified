@@ -7,6 +7,7 @@ export interface DeliveryCreateFormValues {
   carNo?: string
   containerNo?: string
   customerUuid: string
+  warehouseUuid: string
   deliveryDate: Dayjs
   pickerName?: string
   remark?: string
@@ -27,6 +28,7 @@ export function buildDeliveryCreateDTO(
     carNo: values.carNo,
     containerNo: values.containerNo,
     customerUuid: values.customerUuid,
+    warehouseUuid: values.warehouseUuid,
     deliveryDate: values.deliveryDate.format('YYYY-MM-DD'),
     forceRelease,
     items: selectedFinishes.map((item) => ({

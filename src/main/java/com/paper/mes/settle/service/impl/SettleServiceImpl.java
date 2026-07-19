@@ -57,30 +57,26 @@ import com.paper.mes.settle.mapper.SettleOrderMapper;
 import com.paper.mes.settle.service.SettleCandidateStatsLoader;
 import com.paper.mes.settle.service.SettleCandidateAmountLoader;
 import com.paper.mes.settle.service.SettleAccountingPeriodPolicy;
-import com.paper.mes.settle.service.SettleExportService;
+import com.paper.mes.settle.service.SettleCollectionQueryPolicy;
+import com.paper.mes.settle.service.SettleReceiveRequestFingerprint;
 import com.paper.mes.settle.service.SettleReceiveStatusResolver;
 import com.paper.mes.settle.service.SettleService;
 import com.paper.mes.settle.service.SettlementAmountCalculator;
+import com.paper.mes.settle.service.SettlementDueDatePolicy;
 import com.paper.mes.settle.service.SettlementDiscountPolicy;
 import com.paper.mes.settle.service.SettlementQuoteFactory;
 import com.paper.mes.settle.service.SettlementQuoteGuard;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -135,7 +131,6 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private final SettlementQuoteGuard settlementQuoteGuard;
     private final SettlementDiscountPolicy settlementDiscountPolicy;
     private final SettlePageDataLoader pageDataLoader;
-    private final SettleExportService settleExportService;
     private final DocumentNoService documentNoService;
     private final BusinessLockService businessLockService;
     private final ObjectMapper objectMapper;
@@ -151,8 +146,13 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (StringUtils.hasText(query.getCustomerUuid())) {
             wrapper.eq(SettleOrder::getCustomerUuid, query.getCustomerUuid());
         }
-        if (query.getSettleStatus() != null) {
+        if (StringUtils.hasText(query.getCollectionQueue())) {
+            SettleCollectionQueryPolicy.apply(wrapper, query.getCollectionQueue(), LocalDate.now());
+        } else if (query.getSettleStatus() != null) {
             wrapper.eq(SettleOrder::getSettleStatus, query.getSettleStatus());
+        } else {
+            // 日常结算工作台默认只看有效单据；已作废记录通过显式“已作废”队列追溯。
+            wrapper.ne(SettleOrder::getSettleStatus, 4);
         }
         if (query.getSettleType() != null) {
             wrapper.eq(SettleOrder::getSettleType, query.getSettleType());
@@ -163,7 +163,14 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (query.getDateTo() != null) {
             wrapper.le(SettleOrder::getSettleDate, query.getDateTo());
         }
-        wrapper.orderByDesc(SettleOrder::getCreateTime);
+        if (StringUtils.hasText(query.getCollectionQueue())) {
+            wrapper.orderByAsc(SettleOrder::getDueDate)
+                    .orderByDesc(SettleOrder::getUnreceivedAmount)
+                    .orderByDesc(SettleOrder::getUuid);
+        } else {
+            wrapper.orderByDesc(SettleOrder::getCreateTime)
+                    .orderByDesc(SettleOrder::getUuid);
+        }
         Page<SettleOrder> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
         normalizePageAmountView(page.getRecords());
         return PageResult.of(page);
@@ -210,6 +217,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             vo.setFinishRollWeight(stats == null ? BigDecimal.ZERO : stats.finishRollWeight());
             vo.setSawAmount(amount == null ? BigDecimal.ZERO : amount.saw());
             vo.setRewindAmount(amount == null ? BigDecimal.ZERO : amount.rewind());
+            vo.setStandardProcessAmount(amount == null ? BigDecimal.ZERO : amount.standardProcess());
+            vo.setPricingAdjustmentAmount(amount == null ? BigDecimal.ZERO : amount.pricingAdjustment());
             vo.setExtraAmount(amount == null ? BigDecimal.ZERO : amount.extra());
             vo.setTotalAmount(amount == null ? BigDecimal.ZERO : amount.effectiveTotal());
             result.add(vo);
@@ -307,14 +316,12 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (customer == null) {
             throw new BusinessException(ErrorCode.E002, "客户不存在");
         }
-        List<ProcessOrder> orders = findMonthlyOrders(
+        List<String> orderUuids = businessLockService.lockMonthlyFinishedProcessOrders(
                 dto.getCustomerUuid(), dto.getPeriodStart(), dto.getPeriodEnd());
-        if (orders.isEmpty()) {
+        if (orderUuids.isEmpty()) {
             throw new BusinessException("该期间无可结算加工单");
         }
-        List<String> orderUuids = orders.stream().map(ProcessOrder::getUuid).toList();
-        businessLockService.lockProcessOrders(orderUuids);
-        orders = loadOrdersByUuid(orderUuids);
+        List<ProcessOrder> orders = loadOrdersByUuid(orderUuids);
         replay = findCreateReplay(dto.getRequestId(), dto.getQuoteVersion(), dto.getQuoteHash());
         if (replay != null) return replay.getUuid();
         settlementQuoteGuard.verify(dto.getQuoteVersion(), dto.getQuoteHash(), quote(orders, dto.getIsInvoice()));
@@ -367,16 +374,43 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     @Override
-    public void exportDetail(String uuid, HttpServletResponse response) {
-        SettleDetailVO detail = getDetail(uuid);
-        String filename = "结算单_" + detail.getOrder().getSettleNo() + ".xlsx";
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(filename));
-        try (Workbook workbook = settleExportService.buildWorkbook(detail)) {
-            workbook.write(response.getOutputStream());
-        } catch (IOException e) {
-            throw new BusinessException("导出结算单失败");
-        }
+    public SettleOrder getDetailOrder(String uuid) {
+        return snapshotSettleOrder(requireSettle(uuid));
+    }
+
+    @Override
+    public List<SettleDetail> getDetails(String uuid) {
+        SettleOrder order = snapshotSettleOrder(requireSettle(uuid));
+        List<SettleDetail> details = settleDetails(uuid);
+        List<SettleDetail> snapshot = readSnapshotDetails(order.getSnapBill());
+        details = snapshot == null ? normalizeDetailsForInvoiceView(order, details) : snapshot;
+        applySettlementAmountView(order, details);
+        return details;
+    }
+
+    @Override
+    public List<ReceiveRecord> getReceives(String uuid) {
+        requireSettle(uuid);
+        return receiveRecordMapper.selectList(new LambdaQueryWrapper<ReceiveRecord>()
+                .eq(ReceiveRecord::getIsDeleted, 0)
+                .eq(ReceiveRecord::getSettleUuid, uuid)
+                .orderByAsc(ReceiveRecord::getReceiveDate));
+    }
+
+    @Override
+    public List<SettlePrintLineVO> getPrintLines(String uuid) {
+        SettleOrder order = getDetailOrder(uuid);
+        List<SettleDetail> details = getDetails(uuid);
+        List<SettlePrintLineVO> snapshot = readSnapshotPrintLines(order.getSnapBill());
+        List<SettlePrintLineVO> lines = snapshot == null ? buildPrintLines(order, details) : snapshot;
+        SettleFeeLineBuilder.ensureFeeLines(lines);
+        return lines;
+    }
+
+    @Override
+    public List<OperationLog> getOperationLogs(String uuid) {
+        requireSettle(uuid);
+        return loadOperationLogs(uuid);
     }
 
     @Override
@@ -392,7 +426,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             throw new BusinessException(ErrorCode.E002, "结算单不存在");
         }
         ensureActiveSettle(settle);
-        if (receiveRequestExists(uuid, requestId)) {
+        String requestHash = SettleReceiveRequestFingerprint.of(dto);
+        ReceiveRecord replay = findReceiveReplay(uuid, requestId);
+        if (replay != null) {
+            verifyReceiveReplay(replay, dto, requestHash);
             return;
         }
         applySettlementAmountView(settle, normalizeDetailsForInvoiceView(settle, settleDetails(uuid)));
@@ -408,6 +445,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         ReceiveRecord record = new ReceiveRecord();
         record.setSettleUuid(uuid);
         record.setRequestId(requestId);
+        record.setRequestHash(requestHash);
         record.setReceiveDate(dto.getReceiveDate() != null ? dto.getReceiveDate() : LocalDateTime.now());
         record.setReceiveAmount(amount.receiveAmount());
         record.setCashAmount(amount.cashAmount());
@@ -517,6 +555,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         detail.setOrderNo(source.getOrderNo());
         detail.setSawAmount(source.getSawAmount());
         detail.setRewindAmount(source.getRewindAmount());
+        detail.setStandardProcessAmount(source.getStandardProcessAmount());
+        detail.setPricingAdjustmentAmount(source.getPricingAdjustmentAmount());
+        detail.setPricingAdjustmentReason(source.getPricingAdjustmentReason());
         detail.setExtraAmount(source.getExtraAmount());
         BigDecimal fallbackAmount = invoiceTotal(detailBaseAmount(detail), isInvoice, taxRateOf(order, customer));
         detail.setOrderAmount(settleOrderAmount(order, fallbackAmount));
@@ -589,12 +630,14 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private void applyReceiveState(SettleOrder settle, BigDecimal totalAmount, SettleReceiveTotals totals) {
         SettleReceiveStatusResolver.State state =
                 SettleReceiveStatusResolver.resolve(totalAmount, totals.receiveAmount());
+        boolean isVoided = settle.getSettleStatus() != null
+                && settle.getSettleStatus() == SETTLE_STATUS_VOID;
         settle.setReceivedAmount(state.receivedAmount());
         settle.setCashReceivedAmount(totals.cashAmount());
         settle.setScrapOffsetAmount(totals.scrapOffsetAmount());
         settle.setDiscountAmount(totals.discountAmount());
         settle.setUnreceivedAmount(state.unreceivedAmount());
-        settle.setSettleStatus(state.status());
+        settle.setSettleStatus(isVoided ? SETTLE_STATUS_VOID : state.status());
     }
 
     private void updateReceiveRecordForCancel(ReceiveRecord record) {
@@ -871,6 +914,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setRewindInvoiceUnitPrice(invoiceUnitPrice(amounts.rewindUnitPrice(), settle.getIsInvoice(), taxRate));
         line.setSawAmount(amounts.sawAmount());
         line.setRewindAmount(amounts.rewindAmount());
+        line.setStandardProcessAmount(amounts.standardProcessAmount());
+        line.setPricingAdjustmentAmount(amounts.pricingAdjustmentAmount());
         line.setProcessAmount(amounts.processAmount());
         line.setExtraAmount(BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
         line.setTaxAmount(BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
@@ -988,20 +1033,35 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         BigDecimal rewindWeight = BigDecimal.ZERO;
         BigDecimal sawAmount = BigDecimal.ZERO;
         BigDecimal rewindAmount = BigDecimal.ZERO;
+        BigDecimal standardProcessAmount = BigDecimal.ZERO;
+        BigDecimal pricingAdjustmentAmount = BigDecimal.ZERO;
         BigDecimal sawUnitPrice = null;
         BigDecimal rewindUnitPrice = null;
         for (ProcessStep step : steps) {
             if (step.getStepType() != null && step.getStepType() == STEP_TYPE_SAW) {
                 sawWeight = sawWeight.add(nz(step.getProcessWeight()));
                 sawAmount = sawAmount.add(nz(step.getStepAmount()));
-                sawUnitPrice = firstNonNull(sawUnitPrice, step.getUnitPrice());
+                standardProcessAmount = standardProcessAmount.add(standardStepAmount(step));
+                pricingAdjustmentAmount = pricingAdjustmentAmount.add(nz(step.getPricingAdjustmentAmount()));
+                sawUnitPrice = firstNonNull(sawUnitPrice, effectiveUnitPrice(step));
             } else if (step.getStepType() != null && step.getStepType() == STEP_TYPE_REWIND) {
                 rewindWeight = rewindWeight.add(nz(step.getProcessWeight()));
                 rewindAmount = rewindAmount.add(nz(step.getStepAmount()));
-                rewindUnitPrice = firstNonNull(rewindUnitPrice, step.getUnitPrice());
+                standardProcessAmount = standardProcessAmount.add(standardStepAmount(step));
+                pricingAdjustmentAmount = pricingAdjustmentAmount.add(nz(step.getPricingAdjustmentAmount()));
+                rewindUnitPrice = firstNonNull(rewindUnitPrice, effectiveUnitPrice(step));
             }
         }
-        return new LineAmounts(sawWeight, rewindWeight, sawUnitPrice, rewindUnitPrice, sawAmount, rewindAmount);
+        return new LineAmounts(sawWeight, rewindWeight, sawUnitPrice, rewindUnitPrice,
+                sawAmount, rewindAmount, standardProcessAmount, pricingAdjustmentAmount);
+    }
+
+    private BigDecimal standardStepAmount(ProcessStep step) {
+        return step.getStandardStepAmount() == null ? nz(step.getStepAmount()) : step.getStandardStepAmount();
+    }
+
+    private BigDecimal effectiveUnitPrice(ProcessStep step) {
+        return step.getBillingUnitPrice() == null ? step.getUnitPrice() : step.getBillingUnitPrice();
     }
 
     private String processStepSummary(List<ProcessStep> steps) {
@@ -1024,15 +1084,16 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (step.getProcessWeight() != null) {
             parts.add(processWeightText(step));
         }
-        if (step.getUnitPrice() != null) {
-            parts.add("单价 " + moneyText(step.getUnitPrice()));
+        if (effectiveUnitPrice(step) != null) {
+            parts.add("单价 " + moneyText(effectiveUnitPrice(step)));
         }
         return parts.isEmpty() ? name : name + "（" + String.join(" / ", parts) + "）";
     }
 
     private String processWeightText(ProcessStep step) {
         if (step.getStepType() != null && step.getStepType() == STEP_TYPE_REWIND) {
-            BigDecimal quantity = SettleFeeLineSupport.billingQuantity(step.getStepAmount(), step.getUnitPrice(), step.getProcessWeight());
+            BigDecimal quantity = SettleFeeLineSupport.billingQuantity(
+                    step.getStepAmount(), effectiveUnitPrice(step), step.getProcessWeight());
             return quantity.stripTrailingZeros().toPlainString() + "t";
         }
         return nz(step.getProcessWeight()).stripTrailingZeros().toPlainString() + "kg";
@@ -1186,11 +1247,6 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         return nz(finish.getActualWeight() != null ? finish.getActualWeight() : finish.getEstimateWeight());
     }
 
-    private String contentDisposition(String filename) {
-        String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
-        return "attachment; filename*=UTF-8''" + encoded;
-    }
-
     private String createFromOrders(SettlementBuildContext context) {
         if (context.orders().isEmpty()) {
             throw new BusinessException("加工单不能为空");
@@ -1205,6 +1261,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         settle.setQuoteHash(context.quoteHash().toLowerCase());
         settle.setSettleType(context.settleType());
         settle.setSettleDate(context.settleDate());
+        settle.setDueDate(SettlementDueDatePolicy.resolve(customer, context.settleDate(), context.periodEnd()));
         settle.setPeriodStart(context.periodStart());
         settle.setPeriodEnd(context.periodEnd());
         settle.setIsInvoice(resolveInvoice(context, customer));
@@ -1257,17 +1314,44 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         }
     }
 
-    private boolean receiveRequestExists(String settleUuid, String requestId) {
-        return receiveRecordMapper.selectCount(new LambdaQueryWrapper<ReceiveRecord>()
+    private ReceiveRecord findReceiveReplay(String settleUuid, String requestId) {
+        return receiveRecordMapper.selectOne(new LambdaQueryWrapper<ReceiveRecord>()
                 .eq(ReceiveRecord::getSettleUuid, settleUuid)
-                .eq(ReceiveRecord::getRequestId, requestId)) > 0;
+                .eq(ReceiveRecord::getRequestId, requestId));
+    }
+
+    private void verifyReceiveReplay(ReceiveRecord record, ReceiveDTO dto, String requestHash) {
+        String storedHash = record.getRequestHash();
+        if (storedHash == null) {
+            storedHash = SettleReceiveRequestFingerprint.of(record);
+            if (requestHash.equals(storedHash)
+                    || SettleReceiveRequestFingerprint.matchesLegacy(dto, record)) {
+                backfillReceiveRequestHash(record, requestHash);
+                return;
+            }
+        }
+        if (!requestHash.equals(storedHash)) {
+            throw new BusinessException(ErrorCode.E003, "收款请求号已用于其他收款内容");
+        }
+    }
+
+    private void backfillReceiveRequestHash(ReceiveRecord record, String requestHash) {
+        int updated = receiveRecordMapper.update(null, new LambdaUpdateWrapper<ReceiveRecord>()
+                .eq(ReceiveRecord::getUuid, record.getUuid())
+                .isNull(ReceiveRecord::getRequestHash)
+                .set(ReceiveRecord::getRequestHash, requestHash)
+                .set(ReceiveRecord::getUpdateTime, LocalDateTime.now())
+                .set(ReceiveRecord::getUpdateBy, currentOperator()));
+        if (updated > 0) {
+            record.setRequestHash(requestHash);
+        }
     }
 
     private void insertReceiveRecord(ReceiveRecord record) {
         try {
             ConcurrencyGuard.requireRowUpdated(receiveRecordMapper.insert(record));
         } catch (DuplicateKeyException e) {
-            if (!receiveRequestExists(record.getSettleUuid(), record.getRequestId())) {
+            if (findReceiveReplay(record.getSettleUuid(), record.getRequestId()) == null) {
                 throw e;
             }
         }
@@ -1323,7 +1407,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private String buildSettleSnapshot(SettleOrder settle, List<SettleDetail> details, List<ProcessOrder> orders) {
         List<SettlePrintLineVO> printLines = buildPrintLines(settle, details);
         Map<String, Object> snap = new LinkedHashMap<>();
-        snap.put("schema_version", "1.4");
+        snap.put("schema_version", "1.5");
         snap.put("snapshot_type", "settle_bill");
         snap.put("settle_uuid", settle.getUuid());
         snap.put("settle_no", settle.getSettleNo());
@@ -1331,6 +1415,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         snap.put("customer_name", settle.getCustomerName());
         snap.put("settle_type", settle.getSettleType());
         snap.put("settle_date", settle.getSettleDate());
+        snap.put("due_date", settle.getDueDate());
         snap.put("period_start", settle.getPeriodStart());
         snap.put("period_end", settle.getPeriodEnd());
         snap.put("is_invoice", settle.getIsInvoice());
@@ -1393,6 +1478,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             row.put("order_no", detail.getOrderNo());
             row.put("saw_amount", detail.getSawAmount());
             row.put("rewind_amount", detail.getRewindAmount());
+            row.put("standard_process_amount", detail.getStandardProcessAmount());
+            row.put("pricing_adjustment_amount", detail.getPricingAdjustmentAmount());
+            row.put("pricing_adjustment_reason", detail.getPricingAdjustmentReason());
             row.put("extra_amount", detail.getExtraAmount());
             row.put("order_amount", detail.getOrderAmount());
             row.put("remark", detail.getRemark());
@@ -1420,6 +1508,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         view.setCustomerName(textValue(root, "customer_name", "customerName", order.getCustomerName()));
         view.setSettleType(intValue(root, "settle_type", "settleType", order.getSettleType()));
         view.setSettleDate(dateValue(root, "settle_date", "settleDate", order.getSettleDate()));
+        view.setDueDate(dateValue(root, "due_date", "dueDate", order.getDueDate()));
         view.setPeriodStart(dateValue(root, "period_start", "periodStart", order.getPeriodStart()));
         view.setPeriodEnd(dateValue(root, "period_end", "periodEnd", order.getPeriodEnd()));
         view.setIsInvoice(intValue(root, "is_invoice", "isInvoice", order.getIsInvoice()));
@@ -1571,6 +1660,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private SettleQuoteVO quote(List<ProcessOrder> orders, Integer requestedInvoice) {
+        orders.forEach(SettleServiceImpl::validateFinishedOrder);
         Customer customer = resolveSingleCustomer(orders);
         Integer isInvoice = resolveInvoice(orders, requestedInvoice, customer);
         SettlementAmountCalculator.Calculation amount =
@@ -1643,12 +1733,18 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         return customer == null ? BigDecimal.ZERO : nz(customer.getTaxRate());
     }
 
-    private void validateFinishedOrder(ProcessOrder order) {
+    static void validateFinishedOrder(ProcessOrder order) {
         if (order == null) {
             throw new BusinessException(ErrorCode.E002, "加工单不存在");
         }
+        if (order.getOrderStatus() != null && order.getOrderStatus() == ORDER_STATUS_SETTLED) {
+            throw new BusinessException(ErrorCode.E004, "加工单已结算，不可重复结算：" + order.getOrderNo());
+        }
+        if (order.getOrderStatus() != null && order.getOrderStatus() == 6) {
+            throw new BusinessException(ErrorCode.E004, "加工单已作废，不可结算：" + order.getOrderNo());
+        }
         if (order.getOrderStatus() == null || order.getOrderStatus() != ORDER_STATUS_FINISHED) {
-            throw new BusinessException("加工单非已完成状态，不可结算：" + order.getOrderNo());
+            throw new BusinessException(ErrorCode.E001, "加工单尚未完成，不可结算：" + order.getOrderNo());
         }
     }
 
@@ -1702,7 +1798,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             BigDecimal sawUnitPrice,
             BigDecimal rewindUnitPrice,
             BigDecimal sawAmount,
-            BigDecimal rewindAmount) {
+            BigDecimal rewindAmount,
+            BigDecimal standardProcessAmount,
+            BigDecimal pricingAdjustmentAmount) {
 
         BigDecimal processAmount() {
             return sawAmount.add(rewindAmount);

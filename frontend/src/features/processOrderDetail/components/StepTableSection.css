@@ -1,0 +1,16 @@
+.step-pricing-actions {
+  padding-right: 8px;
+  border-right: 1px solid var(--mes-color-border);
+}
+
+.order-detail-step-table .ant-table-row-selected > .ant-table-cell,
+.order-detail-step-table .ant-table-row-selected > .ant-table-cell-fix-left,
+.order-detail-step-table .ant-table-row-selected > .ant-table-cell-fix-right {
+  background: var(--mes-color-surface-selected);
+}
+
+.order-detail-step-table .ant-table-row-selected:hover > .ant-table-cell,
+.order-detail-step-table .ant-table-row-selected:hover > .ant-table-cell-fix-left,
+.order-detail-step-table .ant-table-row-selected:hover > .ant-table-cell-fix-right {
+  background: var(--mes-color-surface-selected-hover, var(--mes-color-surface-selected));
+}

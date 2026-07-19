@@ -27,6 +27,7 @@ public class SystemRuntimeConfigController {
             "print.processOrderTitle",
             "process.spareRollNoCount",
             "process.weightTolerancePercent",
+            "process.pricingAutoApproveLimit",
             "settle.discountAutoApproveLimit",
             "settle.discountMaxAmount",
             "settle.discountMaxPercent"

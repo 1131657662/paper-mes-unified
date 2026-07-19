@@ -39,9 +39,16 @@ public class FeeResultVO {
         private String originalUuid;
         /** 1锯纸 2复卷 */
         private Integer stepType;
+        /** 标准单价快照。 */
         private BigDecimal unitPrice;
+        private BigDecimal billingUnitPrice;
+        private BigDecimal effectiveUnitPrice;
         /** 计费数量：锯纸=刀数，复卷=吨位 */
         private BigDecimal quantity;
+        private BigDecimal standardQuantity;
+        private BigDecimal standardStepAmount;
+        private Integer billingMode;
+        private BigDecimal pricingAdjustmentAmount;
         private BigDecimal stepAmount;
     }
 }

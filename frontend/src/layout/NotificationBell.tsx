@@ -10,6 +10,7 @@ import { useSystemNotifications } from '../features/notification/hooks/useSystem
 import { useAuthUser } from '../stores/authStore'
 import type { SystemNotification } from '../types/notification'
 import NotificationList from './NotificationList'
+import { OPEN_DOWNLOAD_TASK_CENTER_EVENT } from './downloadTaskCenterEvents'
 import './NotificationCenter.css'
 
 export default function NotificationBell() {
@@ -23,6 +24,11 @@ export default function NotificationBell() {
 
   function openNotification(item: SystemNotification) {
     if (!item.read) markRead(item.uuid)
+    if (item.sourceType === 'EXPORT_STORAGE') {
+      window.dispatchEvent(new Event(OPEN_DOWNLOAD_TASK_CENTER_EVENT))
+      setOpen(false)
+      return
+    }
     const path = notificationPath(item)
     if (!path) return
     setOpen(false)

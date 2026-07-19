@@ -1,9 +1,12 @@
 import React, { Component } from 'react'
 import type { ReactNode } from 'react'
 import { Result, Button } from 'antd'
+import { HomeOutlined, ReloadOutlined } from '@ant-design/icons'
+import './ErrorBoundary.css'
 
 interface Props {
   children: ReactNode
+  mode?: 'app' | 'page'
 }
 
 interface State {
@@ -35,38 +38,42 @@ export class ErrorBoundary extends Component<Props, State> {
     window.location.reload()
   }
 
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null })
+  }
+
   handleGoHome = () => {
     window.location.href = '/'
   }
 
   render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{
-          height: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Result
-            status="error"
-            title="页面加载失败"
-            subTitle={
-              this.state.error?.message || '抱歉，页面遇到了一些问题，请尝试刷新页面。'
-            }
-            extra={[
-              <Button type="primary" key="reload" onClick={this.handleReload}>
-                刷新页面
-              </Button>,
-              <Button key="home" onClick={this.handleGoHome}>
-                返回首页
-              </Button>,
-            ]}
-          />
-        </div>
-      )
-    }
+    if (this.state.hasError) return this.renderFallback()
 
     return this.props.children
+  }
+
+  private renderFallback() {
+    const pageMode = this.props.mode === 'page'
+    return (
+      <div className={pageMode ? 'mes-error-boundary mes-error-boundary--page' : 'mes-error-boundary'}>
+        <Result
+          status="error"
+          title={pageMode ? '当前页面暂时无法显示' : '页面加载失败'}
+          subTitle="页面内容发生异常，其他业务数据不受影响。"
+          extra={pageMode ? this.pageActions() : this.appActions()}
+        />
+      </div>
+    )
+  }
+
+  private pageActions() {
+    return <Button type="primary" icon={<ReloadOutlined />} onClick={this.handleRetry}>重试当前页面</Button>
+  }
+
+  private appActions() {
+    return [
+      <Button type="primary" icon={<ReloadOutlined />} key="reload" onClick={this.handleReload}>刷新页面</Button>,
+      <Button icon={<HomeOutlined />} key="home" onClick={this.handleGoHome}>返回首页</Button>,
+    ]
   }
 }

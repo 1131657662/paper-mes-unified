@@ -1,6 +1,8 @@
 package com.paper.mes.settle.service.impl;
 
 import com.paper.mes.processorder.entity.ProcessStageOutput;
+import com.paper.mes.processorder.entity.ProcessStep;
+import com.paper.mes.processorder.service.ProcessStepPricingPolicy;
 import com.paper.mes.settle.dto.SettleFeeLineVO;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
 import org.springframework.util.StringUtils;
@@ -94,6 +96,22 @@ final class SettleFeeLineSupport {
 
     static String moneyText(BigDecimal value) {
         return money(value).stripTrailingZeros().toPlainString();
+    }
+
+    static String pricingFormula(ProcessStep step, String base, String quantityUnit) {
+        BigDecimal adjustment = step.getPricingAdjustmentAmount();
+        if (adjustment == null || adjustment.signum() == 0) {
+            return base;
+        }
+        int mode = step.getBillingMode() == null ? ProcessStepPricingPolicy.STANDARD : step.getBillingMode();
+        String standard = step.getStandardQuantity() == null ? "标准" :
+                step.getStandardQuantity().stripTrailingZeros().toPlainString() + quantityUnit;
+        String suffix = mode == ProcessStepPricingPolicy.FIXED_AMOUNT
+                ? "固定金额 " + moneyText(step.getStepAmount())
+                : mode == ProcessStepPricingPolicy.FREE ? "免收" : base;
+        String reason = StringUtils.hasText(step.getPricingAdjustmentReason())
+                ? "，原因：" + step.getPricingAdjustmentReason() : "";
+        return suffix + "（标准 " + standard + "，调整 " + moneyText(adjustment) + "）" + reason;
     }
 
     static String percentText(BigDecimal value) {

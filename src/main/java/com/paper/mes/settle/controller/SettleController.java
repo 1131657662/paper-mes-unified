@@ -21,10 +21,13 @@ import com.paper.mes.settle.dto.SettleDiscountApprovalRequestDTO;
 import com.paper.mes.settle.dto.SettleDiscountApprovalVO;
 import com.paper.mes.settle.dto.SettleListSummaryVO;
 import com.paper.mes.settle.entity.SettleOrder;
+import com.paper.mes.settle.entity.SettleDetail;
+import com.paper.mes.settle.entity.ReceiveRecord;
+import com.paper.mes.oplog.entity.OperationLog;
+import com.paper.mes.settle.dto.SettlePrintLineVO;
 import com.paper.mes.settle.service.SettleListSummaryService;
 import com.paper.mes.settle.service.SettleDiscountApprovalService;
 import com.paper.mes.settle.service.SettleService;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,19 +50,19 @@ public class SettleController {
 
     @GetMapping
     @RequirePermission(Permissions.SETTLE_VIEW)
-    public R<PageResult<SettleOrder>> page(SettleQuery query) {
+    public R<PageResult<SettleOrder>> page(@Valid SettleQuery query) {
         return R.success(settleService.page(query));
     }
 
     @GetMapping("/summary")
     @RequirePermission(Permissions.SETTLE_VIEW)
-    public R<SettleListSummaryVO> summary(SettleQuery query) {
+    public R<SettleListSummaryVO> summary(@Valid SettleQuery query) {
         return R.success(settleListSummaryService.summarize(query));
     }
 
     @GetMapping("/candidates")
     @RequirePermission(Permissions.SETTLE_MANAGE)
-    public R<PageResult<SettleCandidateVO>> candidates(SettleCandidateQuery query) {
+    public R<PageResult<SettleCandidateVO>> candidates(@Valid SettleCandidateQuery query) {
         return R.success(settleService.listCandidates(query));
     }
 
@@ -105,10 +108,34 @@ public class SettleController {
         return R.success(settleService.getDetail(uuid));
     }
 
-    @GetMapping("/{uuid}/export")
+    @GetMapping("/{uuid}/header")
     @RequirePermission(Permissions.SETTLE_VIEW)
-    public void export(@PathVariable String uuid, HttpServletResponse response) {
-        settleService.exportDetail(uuid, response);
+    public R<SettleOrder> detailHeader(@PathVariable String uuid) {
+        return R.success(settleService.getDetailOrder(uuid));
+    }
+
+    @GetMapping("/{uuid}/details")
+    @RequirePermission(Permissions.SETTLE_VIEW)
+    public R<List<SettleDetail>> details(@PathVariable String uuid) {
+        return R.success(settleService.getDetails(uuid));
+    }
+
+    @GetMapping("/{uuid}/receives")
+    @RequirePermission(Permissions.SETTLE_VIEW)
+    public R<List<ReceiveRecord>> receives(@PathVariable String uuid) {
+        return R.success(settleService.getReceives(uuid));
+    }
+
+    @GetMapping("/{uuid}/print-lines")
+    @RequirePermission(Permissions.SETTLE_VIEW)
+    public R<List<SettlePrintLineVO>> printLines(@PathVariable String uuid) {
+        return R.success(settleService.getPrintLines(uuid));
+    }
+
+    @GetMapping("/{uuid}/operation-logs")
+    @RequirePermission(Permissions.SETTLE_VIEW)
+    public R<List<OperationLog>> operationLogs(@PathVariable String uuid) {
+        return R.success(settleService.getOperationLogs(uuid));
     }
 
     @PostMapping("/{uuid}/receive")

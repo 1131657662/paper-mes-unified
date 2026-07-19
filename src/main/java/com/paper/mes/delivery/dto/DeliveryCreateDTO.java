@@ -21,6 +21,9 @@ public class DeliveryCreateDTO {
     @NotBlank(message = "客户不能为空")
     private String customerUuid;
 
+    @NotBlank(message = "出库仓库不能为空")
+    private String warehouseUuid;
+
     @NotNull(message = "出库日期不能为空")
     private LocalDate deliveryDate;
 

@@ -1,5 +1,8 @@
 export type DataHealthSeverity = 'CRITICAL' | 'WARNING'
-export type DataHealthRepairAction = 'RECONCILE_SETTLEMENT' | 'RESTORE_COMPLETED_ORDER'
+export type DataHealthRepairAction =
+  | 'RECONCILE_SETTLEMENT'
+  | 'RESTORE_COMPLETED_ORDER'
+  | 'OPEN_INVENTORY_WAREHOUSE_REPAIR'
 
 export interface DataHealthIssue {
   issueType: string

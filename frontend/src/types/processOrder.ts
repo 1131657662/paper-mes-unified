@@ -3,6 +3,7 @@ import type { PageQuery } from './common'
 /** 加工单主表，与后端 ProcessOrder 对应（含 BaseEntity 通用字段，按需取用）。 */
 export interface ProcessOrder {
   uuid: string
+  version?: number
   orderNo?: string
   customerUuid?: string
   customerName?: string
@@ -138,8 +139,22 @@ export interface ProcessStep {
   isMain?: number
   knifeCount?: number
   processWeight?: number
+  /** 标准单价快照。 */
   unitPrice?: number
+  /** 人工核定单价，为空时沿用标准单价。 */
+  billingUnitPrice?: number
   stepAmount?: number
+  /** 1标准计价 2指定数量 3固定金额 4免收 */
+  billingMode?: number
+  standardQuantity?: number
+  billingQuantity?: number
+  billingAmount?: number
+  standardStepAmount?: number
+  pricingAdjustmentAmount?: number
+  pricingAdjustmentReason?: string
+  pricingAdjustedBy?: string
+  pricingAdjustedAt?: string
+  pricingAdjustmentBatchId?: string
   lossWeight?: number
   operator?: string
   remark?: string
@@ -697,6 +712,10 @@ export interface StepFee {
   unitPrice?: number
   /** 锯纸=刀数，复卷=吨位 */
   quantity?: number
+  standardQuantity?: number
+  standardStepAmount?: number
+  billingMode?: number
+  pricingAdjustmentAmount?: number
   stepAmount?: number
 }
 
@@ -800,6 +819,7 @@ export interface BackRecordStepDTO {
 
 /** 整单回录入参。 */
 export interface BackRecordDTO {
+  warehouseUuid: string
   releaseAdminUsername?: string
   releaseAdminPassword?: string
   releaseReason?: string

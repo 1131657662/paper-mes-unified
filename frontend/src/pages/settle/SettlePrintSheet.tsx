@@ -116,6 +116,8 @@ function GroupTotals({ group }: { group: SettleBillGroup }) {
   return (
     <div className="document-print-group__totals">
       <span>加工费：{formatMoney(group.processAmount)}</span>
+      <span>标准加工费：{formatMoney(group.standardProcessAmount)}</span>
+      {group.pricingAdjustmentAmount !== 0 && <span>计价调整：{formatMoney(group.pricingAdjustmentAmount)}</span>}
       <span>额外费：{formatMoney(group.extraAmount)}{group.extraFeeSummary ? `（${group.extraFeeSummary}）` : ''}</span>
       <span>税费：{formatMoney(group.taxAmount)}</span>
       <strong>本单应收：{formatMoney(group.lineAmount)}</strong>

@@ -6,5 +6,8 @@ export function useSettleQuoteByMonth(data: SettleQuoteByMonthDTO, enabled: bool
   return useQuery({
     ...queries.settle.quoteByMonth(data),
     enabled,
+    refetchOnWindowFocus: 'always',
+    retry: false,
+    staleTime: 0,
   })
 }

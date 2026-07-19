@@ -1,0 +1,20 @@
+.mes-error-boundary {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: var(--mes-color-bg, #f5f7fa);
+}
+
+.mes-error-boundary--page {
+  min-height: min(520px, calc(100vh - 160px));
+  background: transparent;
+}
+
+.mes-error-boundary--page .ant-result {
+  padding-block: 48px;
+}
+
+.mes-error-boundary--page .ant-result-title {
+  color: var(--mes-color-text, #172033);
+  font-size: 20px;
+}

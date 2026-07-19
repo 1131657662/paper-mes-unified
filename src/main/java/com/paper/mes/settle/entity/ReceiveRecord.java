@@ -23,6 +23,7 @@ public class ReceiveRecord extends BaseEntity {
 
     private String settleUuid;
     private String requestId;
+    private String requestHash;
     private LocalDateTime receiveDate;
     private BigDecimal receiveAmount;
     private BigDecimal cashAmount;

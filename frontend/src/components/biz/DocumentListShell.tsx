@@ -19,6 +19,7 @@ interface Props<T extends string> {
   children: React.ReactNode
   extra?: React.ReactNode
   leftActions?: React.ReactNode
+  summary?: React.ReactNode
   loading?: boolean
   search?: React.ReactNode
   onCreate: () => void
@@ -31,6 +32,7 @@ export default function DocumentListShell<T extends string>({
   createText,
   extra,
   leftActions,
+  summary,
   loading = false,
   onCreate,
   onQueueChange,
@@ -44,6 +46,7 @@ export default function DocumentListShell<T extends string>({
   return (
     <Card title={title} className="document-list-shell">
       {search && <div className="document-list-shell__search">{search}</div>}
+      {summary && <div className="document-list-shell__summary">{summary}</div>}
       <div className="document-list-shell__toolbar">
         <div className="document-list-shell__actions">
           {canCreate && <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>{createText}</Button>}

@@ -13,6 +13,7 @@ class ProductionDeploymentSecurityContractTest {
 
     private static final List<String> DDL_BOOTSTRAPS = List.of(
             "src/main/java/com/paper/mes/backup/config/BackupIntegrityBootstrap.java",
+            "src/main/java/com/paper/mes/exporttask/config/ExportTaskSchemaBootstrap.java",
             "src/main/java/com/paper/mes/notification/config/NotificationIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/ArchiveCodeIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/DeliveryIntegrityBootstrap.java",
@@ -72,6 +73,7 @@ class ProductionDeploymentSecurityContractTest {
         String archive = source("sql/V2.9__add_active_archive_code_constraints.sql");
         String settlementDiscount = source("sql/V3.1__add_settlement_discount_amount.sql");
         String documentTrust = source("sql/V3.2__add_document_void_and_receive_idempotency.sql");
+        String operationalAlerts = source("sql/V3.15__add_operational_alert_state.sql");
 
         assertContainsAll(runtime,
                 "CREATE TABLE IF NOT EXISTS `sys_backup_task`",
@@ -90,6 +92,9 @@ class ProductionDeploymentSecurityContractTest {
                 "biz_delivery_order", "biz_settle_order", "biz_receive_record",
                 "void_reason", "void_by", "void_time", "request_id",
                 "uk_receive_settle_request", "innodb_lock_wait_timeout");
+        assertContainsAll(operationalAlerts,
+                "CREATE TABLE IF NOT EXISTS `sys_operational_alert_state`",
+                "PRIMARY KEY (`alert_key`)", "transition_no");
     }
 
     @Test
@@ -102,7 +107,8 @@ class ProductionDeploymentSecurityContractTest {
                 "CREATE TABLE `sys_dict_item`",
                 "CREATE TABLE `sys_config_item`",
                 "CREATE TABLE `sys_backup_task`",
-                "CREATE TABLE `sys_notification`");
+                "CREATE TABLE `sys_notification`",
+                "CREATE TABLE `sys_operational_alert_state`");
         assertContainsAll(baseline,
                 "customer_code_active", "paper_code_active",
                 "machine_code_active", "warehouse_code_active");

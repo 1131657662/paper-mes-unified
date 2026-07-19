@@ -32,10 +32,9 @@ import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import com.paper.mes.delivery.service.DeliveryCashSettlementGuard;
-import com.paper.mes.delivery.service.DeliveryExportService;
-import com.paper.mes.delivery.service.DeliveryListExportService;
 import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
 import com.paper.mes.delivery.service.DeliveryService;
+import com.paper.mes.delivery.service.DeliveryWarehousePolicy;
 import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
 import com.paper.mes.machine.entity.Machine;
 import com.paper.mes.machine.mapper.MachineMapper;
@@ -56,20 +55,14 @@ import com.paper.mes.settle.entity.SettleDetail;
 import com.paper.mes.settle.mapper.SettleDetailMapper;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -78,6 +71,7 @@ import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -112,8 +106,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private final CustomerService customerService;
     private final DeliveryCashSettlementGuard cashSettlementGuard;
     private final DeliverySettlementBlockPolicy settlementBlockPolicy;
-    private final DeliveryExportService deliveryExportService;
-    private final DeliveryListExportService deliveryListExportService;
+    private final DeliveryWarehousePolicy warehousePolicy;
     private final OperationLogMapper operationLogMapper;
     private final OperationLogService operationLogService;
     private final DocumentNoService documentNoService;
@@ -129,6 +122,11 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
     @Override
     public List<AvailableFinishVO> listAvailable(String customerUuid) {
+        return listAvailable(customerUuid, null);
+    }
+
+    @Override
+    public List<AvailableFinishVO> listAvailable(String customerUuid, String warehouseUuid) {
         if (!StringUtils.hasText(customerUuid)) {
             throw new BusinessException("客户不能为空");
         }
@@ -154,6 +152,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 .eq(FinishRoll::getFinishStatus, FINISH_STATUS_IN_STOCK)
                 .orderByAsc(FinishRoll::getOrderUuid)
                 .orderByAsc(FinishRoll::getRowSort);
+        if (StringUtils.hasText(warehouseUuid)) {
+            finishWrapper.eq(FinishRoll::getWarehouseUuid, warehouseUuid.trim());
+        }
         if (!lockedFinishUuids.isEmpty()) {
             finishWrapper.notIn(FinishRoll::getUuid, lockedFinishUuids);
         }
@@ -235,6 +236,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             }
             picked.add(f);
         }
+        DeliveryWarehousePolicy.WarehouseSnapshot warehouse =
+                warehousePolicy.requireForCreate(dto.getWarehouseUuid(), picked);
 
         // 现结拦截：以加工单结算快照为准，避免客户档案后续调整影响历史单据。
         int blockAction = settlementBlockPolicy.resolveAction(
@@ -245,6 +248,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         deliveryOrder.setDeliveryNo(nextDeliveryNo(date));
         deliveryOrder.setCustomerUuid(dto.getCustomerUuid());
         deliveryOrder.setCustomerName(customer.getCustomerName());
+        deliveryOrder.setWarehouseUuid(warehouse.uuid());
+        deliveryOrder.setWarehouseName(warehouse.name());
         deliveryOrder.setDeliveryDate(date);
         deliveryOrder.setPickerName(dto.getPickerName());
         deliveryOrder.setCarNo(dto.getCarNo());
@@ -304,24 +309,6 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         vo.setRollbackSnapshot(readRollbackSnapshot(order.getSnapDelivery()));
         vo.setOperationLogs(loadOperationLogs(order));
         return vo;
-    }
-
-    @Override
-    public void exportDetail(String uuid, HttpServletResponse response) {
-        DeliveryDetailVO detail = getDetail(uuid);
-        String filename = "出库单_" + detail.getOrder().getDeliveryNo() + ".xlsx";
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(filename));
-        try (Workbook workbook = deliveryExportService.buildWorkbook(detail)) {
-            workbook.write(response.getOutputStream());
-        } catch (IOException e) {
-            throw new BusinessException("导出出库单失败");
-        }
-    }
-
-    @Override
-    public void exportList(DeliveryQuery query, HttpServletResponse response) {
-        deliveryListExportService.export(query, response);
     }
 
     @Override
@@ -463,6 +450,11 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             }
             appendDetails.add(buildDeliveryDetail(finish, item));
         }
+        List<FinishRoll> existingFinishes = StringUtils.hasText(order.getWarehouseUuid())
+                ? List.of() : loadFinishRollsByUuid(new ArrayList<>(existingFinishUuids)).values().stream().toList();
+        DeliveryWarehousePolicy.WarehouseSnapshot warehouse =
+                warehousePolicy.requireForAppend(order, existingFinishes, finishByUuid.values().stream().toList());
+        persistWarehouseSnapshot(order, warehouse);
 
         int blockAction = settlementBlockPolicy.resolveAction(
                 cashSettlementGuard.hasUnsettledCashOrders(cashOrderUuids), dto.isForceRelease(), "追加出库");
@@ -549,6 +541,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         snap.put("delivery_no", order.getDeliveryNo());
         snap.put("customer_uuid", order.getCustomerUuid());
         snap.put("customer_name", order.getCustomerName());
+        snap.put("warehouse_uuid", order.getWarehouseUuid());
+        snap.put("warehouse_name", order.getWarehouseName());
         snap.put("delivery_date", order.getDeliveryDate());
         snap.put("delivery_status", order.getDeliveryStatus());
         snap.put("picker_name", order.getPickerName());
@@ -573,6 +567,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         snap.put("delivery_no", order.getDeliveryNo());
         snap.put("customer_uuid", order.getCustomerUuid());
         snap.put("customer_name", order.getCustomerName());
+        snap.put("warehouse_uuid", order.getWarehouseUuid());
+        snap.put("warehouse_name", order.getWarehouseName());
         snap.put("delivery_status_before", order.getDeliveryStatus());
         snap.put("delivery_status_after", DELIVERY_STATUS_PENDING);
         snap.put("rollback_reason", reason);
@@ -645,6 +641,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         view.setDeliveryNo(textValue(root, "delivery_no", "deliveryNo", order.getDeliveryNo()));
         view.setCustomerUuid(textValue(root, "customer_uuid", "customerUuid", order.getCustomerUuid()));
         view.setCustomerName(textValue(root, "customer_name", "customerName", order.getCustomerName()));
+        view.setWarehouseUuid(textValue(root, "warehouse_uuid", "warehouseUuid", order.getWarehouseUuid()));
+        view.setWarehouseName(textValue(root, "warehouse_name", "warehouseName", order.getWarehouseName()));
         view.setDeliveryDate(dateValue(root, "delivery_date", "deliveryDate", order.getDeliveryDate()));
         view.setDeliveryStatus(intValue(root, "delivery_status", "deliveryStatus", order.getDeliveryStatus()));
         view.setPickerName(textValue(root, "picker_name", "pickerName", order.getPickerName()));
@@ -665,6 +663,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         view.setDeliveryNo(order.getDeliveryNo());
         view.setCustomerUuid(order.getCustomerUuid());
         view.setCustomerName(order.getCustomerName());
+        view.setWarehouseUuid(order.getWarehouseUuid());
+        view.setWarehouseName(order.getWarehouseName());
         view.setDeliveryDate(order.getDeliveryDate());
         view.setTotalCount(order.getTotalCount());
         view.setTotalWeight(order.getTotalWeight());
@@ -1347,6 +1347,17 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                         .setSql("version = version + 1")));
     }
 
+    private void persistWarehouseSnapshot(DeliveryOrder order,
+                                          DeliveryWarehousePolicy.WarehouseSnapshot warehouse) {
+        if (warehouse.uuid().equals(order.getWarehouseUuid())
+                && Objects.equals(warehouse.name(), order.getWarehouseName())) {
+            return;
+        }
+        order.setWarehouseUuid(warehouse.uuid());
+        order.setWarehouseName(warehouse.name());
+        ConcurrencyGuard.requireUpdated(updateById(order));
+    }
+
     private void updateFinishStatus(String finishUuid, int fromStatus, int toStatus) {
         ConcurrencyGuard.requireRowUpdated(finishRollMapper.update(null,
                 new LambdaUpdateWrapper<FinishRoll>()
@@ -1460,11 +1471,6 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
     private String currentOperator() {
         return AuthContextHolder.currentDisplayName();
-    }
-
-    private String contentDisposition(String filename) {
-        String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
-        return "attachment; filename*=UTF-8''" + encoded;
     }
 
     private String appendRemark(String current, String extra) {

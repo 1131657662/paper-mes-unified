@@ -3,6 +3,7 @@ package com.paper.mes.settle.service.impl;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessStageOutput;
 import com.paper.mes.processorder.entity.ProcessStep;
+import com.paper.mes.processorder.service.ProcessStepPricingPolicy;
 import com.paper.mes.settle.dto.SettleFeeLineVO;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
 import org.springframework.util.StringUtils;
@@ -84,14 +85,15 @@ final class SettleFeeLineBuilder {
                                            Map<String, ProcessStageOutput> outputByUuid,
                                            List<ProcessStageOutput> outputs) {
         SettleFeeLineVO feeLine = stepLine("saw", "锯纸费", line, roll, step, outputByUuid, outputs);
-        BigDecimal quantity = step.getKnifeCount() == null ? BigDecimal.ZERO : BigDecimal.valueOf(step.getKnifeCount());
+        BigDecimal quantity = step.getBillingQuantity() != null
+                ? step.getBillingQuantity()
+                : step.getKnifeCount() == null ? BigDecimal.ZERO : BigDecimal.valueOf(step.getKnifeCount());
         feeLine.setQuantity(quantity);
         feeLine.setQuantityUnit("刀");
-        feeLine.setUnitPrice(step.getUnitPrice());
+        feeLine.setUnitPrice(effectiveUnitPrice(step));
         feeLine.setAmountNoTax(SettleFeeLineSupport.money(step.getStepAmount()));
         feeLine.setAmountTax(SettleFeeLineSupport.money(step.getStepAmount()));
-        feeLine.setFormulaText(quantity.stripTrailingZeros().toPlainString() + "刀 × "
-                + SettleFeeLineSupport.moneyText(step.getUnitPrice()) + "元/刀");
+        applyPricing(feeLine, step, quantity, "刀", "元/刀");
         return feeLine;
     }
 
@@ -99,15 +101,35 @@ final class SettleFeeLineBuilder {
                                               Map<String, ProcessStageOutput> outputByUuid,
                                               List<ProcessStageOutput> outputs) {
         SettleFeeLineVO feeLine = stepLine("rewind", "复卷费", line, roll, step, outputByUuid, outputs);
-        BigDecimal quantity = SettleFeeLineSupport.billingQuantity(step.getStepAmount(), step.getUnitPrice(), step.getProcessWeight());
+        BigDecimal quantity = step.getBillingQuantity() != null
+                ? step.getBillingQuantity()
+                : SettleFeeLineSupport.billingQuantity(
+                        step.getStepAmount(), effectiveUnitPrice(step), step.getProcessWeight());
         feeLine.setQuantity(quantity);
         feeLine.setQuantityUnit("t");
-        feeLine.setUnitPrice(step.getUnitPrice());
+        feeLine.setUnitPrice(effectiveUnitPrice(step));
         feeLine.setAmountNoTax(SettleFeeLineSupport.money(step.getStepAmount()));
         feeLine.setAmountTax(SettleFeeLineSupport.money(step.getStepAmount()));
-        feeLine.setFormulaText(quantity.stripTrailingZeros().toPlainString() + "t × "
-                + SettleFeeLineSupport.moneyText(step.getUnitPrice()) + "元/t");
+        applyPricing(feeLine, step, quantity, "t", "元/t");
         return feeLine;
+    }
+
+    private static void applyPricing(SettleFeeLineVO feeLine, ProcessStep step,
+                                     BigDecimal fallbackQuantity, String quantityUnit, String priceUnit) {
+        BigDecimal standardQuantity = step.getStandardQuantity() == null
+                ? fallbackQuantity : step.getStandardQuantity();
+        feeLine.setStandardQuantity(standardQuantity);
+        feeLine.setStandardAmount(SettleFeeLineSupport.money(step.getStandardStepAmount()));
+        feeLine.setBillingMode(step.getBillingMode() == null ? ProcessStepPricingPolicy.STANDARD : step.getBillingMode());
+        feeLine.setPricingAdjustmentAmount(SettleFeeLineSupport.money(step.getPricingAdjustmentAmount()));
+        feeLine.setPricingAdjustmentReason(step.getPricingAdjustmentReason());
+        String base = fallbackQuantity.stripTrailingZeros().toPlainString() + quantityUnit + " × "
+                + SettleFeeLineSupport.moneyText(effectiveUnitPrice(step)) + priceUnit;
+        feeLine.setFormulaText(SettleFeeLineSupport.pricingFormula(step, base, quantityUnit));
+    }
+
+    private static BigDecimal effectiveUnitPrice(ProcessStep step) {
+        return step.getBillingUnitPrice() == null ? step.getUnitPrice() : step.getBillingUnitPrice();
     }
 
     private static SettleFeeLineVO stepLine(String type, String name, SettlePrintLineVO line, OriginalRoll roll,

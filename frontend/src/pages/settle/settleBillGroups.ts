@@ -11,6 +11,8 @@ export interface SettleBillGroup {
   orderNo: string
   originalWeight: number
   processAmount: number
+  standardProcessAmount: number
+  pricingAdjustmentAmount: number
   taxAmount: number
   trimWeight: number
   lines: SettlePrintLine[]
@@ -27,6 +29,8 @@ export function buildSettleBillGroups(lines: SettlePrintLine[]): SettleBillGroup
     group.finishWeight += line.finishWeight ?? 0
     group.trimWeight += line.trimWeight ?? 0
     group.processAmount += line.processAmount ?? 0
+    group.standardProcessAmount += line.standardProcessAmount ?? line.processAmount ?? 0
+    group.pricingAdjustmentAmount += line.pricingAdjustmentAmount ?? 0
     group.taxAmount += lineTaxAmount(line)
     group.extraAmount += line.extraAmount ?? 0
     group.extraFeeSummary ||= line.extraFeeSummary
@@ -57,6 +61,8 @@ function emptyGroup(key: string, line: SettlePrintLine): SettleBillGroup {
     orderNo: line.orderNo || key,
     originalWeight: 0,
     processAmount: 0,
+    standardProcessAmount: 0,
+    pricingAdjustmentAmount: 0,
     taxAmount: 0,
     trimWeight: 0,
     lines: [],

@@ -94,6 +94,23 @@ class SettleExportServiceTest {
         }
     }
 
+    @Test
+    void buildWorkbook_whenExportingPricingAudit_includesStandardAndAdjustmentColumns() throws IOException {
+        SettleDetailVO detail = detail();
+        detail.getPrintLines().getFirst().getFeeLines().getFirst().setStandardAmount(new BigDecimal("800"));
+        detail.getPrintLines().getFirst().getFeeLines().getFirst().setPricingAdjustmentAmount(new BigDecimal("-149"));
+        detail.getPrintLines().getFirst().getFeeLines().getFirst().setPricingAdjustmentReason("客户短单优惠");
+
+        try (Workbook workbook = new SettleExportService().buildWorkbook(detail)) {
+            var sheet = workbook.getSheet("费用来源");
+            assertEquals("标准金额", text(sheet.getRow(0).getCell(10)));
+            assertEquals("计价调整", text(sheet.getRow(0).getCell(11)));
+            assertEquals("800", text(sheet.getRow(1).getCell(10)));
+            assertEquals("-149", text(sheet.getRow(1).getCell(11)));
+            assertEquals("客户短单优惠", text(sheet.getRow(1).getCell(16)));
+        }
+    }
+
     private SettleDetailVO detail() {
         SettleDetailVO vo = new SettleDetailVO();
         SettleOrder order = new SettleOrder();

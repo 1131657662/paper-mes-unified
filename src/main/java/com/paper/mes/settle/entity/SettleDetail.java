@@ -25,6 +25,11 @@ public class SettleDetail extends BaseEntity {
     private String orderNo;
     private BigDecimal sawAmount;
     private BigDecimal rewindAmount;
+    /** 优惠前标准加工费。 */
+    private BigDecimal standardProcessAmount;
+    /** 最终加工费减标准加工费。 */
+    private BigDecimal pricingAdjustmentAmount;
+    private String pricingAdjustmentReason;
     private BigDecimal extraAmount;
     /** 本单计入金额 = 该加工单 total_amount */
     private BigDecimal orderAmount;

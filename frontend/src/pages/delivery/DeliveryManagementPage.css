@@ -1,0 +1,49 @@
+.delivery-management-page {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.delivery-management-page__tabs {
+  flex: 0 0 auto;
+  margin: 0 0 10px;
+}
+
+.delivery-management-page__tabs > .ant-tabs-nav {
+  margin: 0;
+}
+
+.delivery-management-page__tabs > .ant-tabs-nav::before {
+  border-bottom-color: var(--mes-color-border-light);
+}
+
+.delivery-management-page__tabs .ant-tabs-tab {
+  padding: 8px 14px;
+  color: var(--mes-color-text-secondary);
+  font-weight: 550;
+}
+
+.delivery-management-page__tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--mes-color-primary);
+  font-weight: 650;
+}
+
+.delivery-management-page__tabs .ant-tabs-ink-bar {
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+
+.delivery-management-page__content {
+  min-height: 0;
+  flex: 1;
+}
+
+.delivery-management-page__content > * {
+  height: 100%;
+}
+
+.delivery-management-page .ant-btn-loading,
+.delivery-management-page .ant-btn:disabled {
+  cursor: default;
+}

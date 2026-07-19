@@ -1,12 +1,15 @@
 import { StatisticCard } from '@ant-design/pro-components'
 import { formatMoney } from '../../features/settle/utils/settleFormatters'
-import type { SettleOrder } from '../../types/settle'
+import type { SettleDetail, SettleOrder } from '../../types/settle'
 
 interface Props {
+  details?: SettleDetail[]
   order: SettleOrder
 }
 
-export default function SettleAmountOverview({ order }: Props) {
+export default function SettleAmountOverview({ details = [], order }: Props) {
+  const standardProcessAmount = details.reduce((total, detail) => total + (detail.standardProcessAmount ?? 0), 0)
+  const pricingAdjustmentAmount = details.reduce((total, detail) => total + (detail.pricingAdjustmentAmount ?? 0), 0)
   const items: SettleOverviewItem[] = [
     { label: '应收总额', tone: 'primary', value: formatMoney(order.totalAmount) },
     {
@@ -17,7 +20,7 @@ export default function SettleAmountOverview({ order }: Props) {
     },
     { label: '未收金额', tone: 'warning', value: formatMoney(order.unreceivedAmount) },
     {
-      hint: `锯纸 ${formatMoney(order.sawAmount)} / 复卷 ${formatMoney(order.rewindAmount)} / 额外 ${formatMoney(order.extraAmount)}`,
+      hint: `标准加工费 ${formatMoney(standardProcessAmount)} / 调整 ${formatMoney(pricingAdjustmentAmount)} / 额外 ${formatMoney(order.extraAmount)}`,
       label: '费用构成',
       value: formatMoney(Number(order.sawAmount ?? 0) + Number(order.rewindAmount ?? 0) + Number(order.extraAmount ?? 0)),
     },

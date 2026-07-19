@@ -60,6 +60,11 @@
   flex: 1 1 0;
 }
 
+.delivery-create-page__selection > .ant-card-body > .document-pagination {
+  flex: 0 0 auto;
+  margin-top: 8px;
+}
+
 .delivery-finish-scope .ant-segmented-item-label {
   min-width: 108px;
   padding-inline: 12px;

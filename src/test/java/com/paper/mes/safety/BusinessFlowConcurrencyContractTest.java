@@ -265,6 +265,28 @@ class BusinessFlowConcurrencyContractTest {
                 "ADD UNIQUE KEY `uk_biz_delivery_detail_active_finish` (`finish_uuid_active`)");
     }
 
+    @Test
+    void monthlySettlement_whenCreatingLocksTheIndexedRangeBeforeLoadingOrders() throws IOException {
+        String lockSource = source("src/main/java/com/paper/mes/common/db/BusinessLockService.java");
+        String settleSource = source(SETTLE_SERVICE);
+
+        assertContainsAll(lockSource,
+                "lockMonthlyFinishedProcessOrders",
+                "FORCE INDEX (idx_order_customer_status_accounting)",
+                "order_status = 4",
+                "is_deleted = 0",
+                "accounting_date BETWEEN ? AND ?",
+                "ORDER BY accounting_date ASC, order_no ASC, uuid ASC",
+                "FOR UPDATE");
+        String createByMonth = slice(settleSource, "public String createByMonth", "public SettleDetailVO getDetail");
+        assertContainsAll(createByMonth,
+                "businessLockService.lockMonthlyFinishedProcessOrders(",
+                "List<ProcessOrder> orders = loadOrdersByUuid(orderUuids)");
+        assertBefore(createByMonth,
+                "businessLockService.lockMonthlyFinishedProcessOrders(",
+                "List<ProcessOrder> orders = loadOrdersByUuid(orderUuids)");
+    }
+
     private String source(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }

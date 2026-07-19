@@ -38,7 +38,7 @@ public class SettleCandidateAmountLoader {
     private Map<String, CandidateAmount> initialize(List<ProcessOrder> orders) {
         Map<String, CandidateAmount> amounts = new LinkedHashMap<>();
         for (ProcessOrder order : orders) {
-            amounts.put(order.getUuid(), new CandidateAmount(BigDecimal.ZERO, BigDecimal.ZERO,
+            amounts.put(order.getUuid(), new CandidateAmount(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                     money(order.getTotalExtraAmount()), money(order.getTotalAmount())));
         }
         return amounts;
@@ -48,14 +48,20 @@ public class SettleCandidateAmountLoader {
         return (value == null ? BigDecimal.ZERO : value).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
-    public record CandidateAmount(BigDecimal saw, BigDecimal rewind, BigDecimal extra, BigDecimal total) {
+    public record CandidateAmount(BigDecimal saw, BigDecimal rewind, BigDecimal standardProcess,
+                                  BigDecimal pricingAdjustment, BigDecimal extra, BigDecimal total) {
         CandidateAmount add(ProcessStep step) {
             BigDecimal amount = money(step.getStepAmount());
+            BigDecimal standard = money(step.getStandardStepAmount() == null
+                    ? step.getStepAmount() : step.getStandardStepAmount());
+            BigDecimal adjustment = money(step.getPricingAdjustmentAmount());
             if (step.getStepType() != null && step.getStepType() == STEP_TYPE_SAW) {
-                return new CandidateAmount(saw.add(amount), rewind, extra, total);
+                return new CandidateAmount(saw.add(amount), rewind, standardProcess.add(standard),
+                        pricingAdjustment.add(adjustment), extra, total);
             }
             if (step.getStepType() != null && step.getStepType() == STEP_TYPE_REWIND) {
-                return new CandidateAmount(saw, rewind.add(amount), extra, total);
+                return new CandidateAmount(saw, rewind.add(amount), standardProcess.add(standard),
+                        pricingAdjustment.add(adjustment), extra, total);
             }
             return this;
         }

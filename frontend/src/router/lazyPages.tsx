@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 
 export const BackRecordPage = lazy(() => import('../pages/processOrder/BackRecordPage'))
+export const AuthenticatedLayout = lazy(() => import('../layout/AuthenticatedLayout'))
 export const ConfigFinishPage = lazy(() => import('../pages/processOrder/ConfigFinishPage'))
 export const CreateOrderPage = lazy(() => import('../pages/processOrder/CreateOrderPage'))
 export const CustomerDetailPage = lazy(() => import('../pages/customer/CustomerDetailPage'))
@@ -10,6 +11,9 @@ export const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage
 export const DeliveryCreatePage = lazy(() => import('../pages/delivery/DeliveryCreatePage'))
 export const DeliveryDetailPage = lazy(() => import('../pages/delivery/DeliveryDetailPage'))
 export const DeliveryOrderList = lazy(() => import('../pages/delivery/DeliveryOrderList'))
+export const DeliveryInventoryPage = lazy(() => import('../pages/delivery/DeliveryInventoryPage'))
+export const DeliveryInventoryCustomerPage = lazy(() => import('../pages/delivery/DeliveryInventoryCustomerPage'))
+export const DeliveryOrderEntryPage = lazy(() => import('../pages/delivery/DeliveryOrderEntryPage'))
 export const LoginPage = lazy(() => import('../pages/login/LoginPage'))
 export const MachineDetailPage = lazy(() => import('../pages/machine/MachineDetailPage'))
 export const MachineFormPage = lazy(() => import('../pages/machine/MachineFormPage'))

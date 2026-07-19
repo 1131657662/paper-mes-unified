@@ -8,13 +8,16 @@ import { filterFinishesByScope, type DeliveryFinishScope } from './deliveryFinis
 interface Props {
   finishes: { finishUuid: string; isRemain?: number }[]
   selectedRowKeys: React.Key[]
+  totalCount?: number
+  scopeTotals?: { product: number; remain: number }
   value: DeliveryFinishScope
   onChange: (value: DeliveryFinishScope) => void
 }
 
-export function DeliveryFinishScopeControl({ finishes, onChange, selectedRowKeys, value }: Props): ReactElement {
-  const productCount = filterFinishesByScope(finishes, 'product').length
-  const remainCount = filterFinishesByScope(finishes, 'remain').length
+export function DeliveryFinishScopeControl({ finishes, onChange, selectedRowKeys, scopeTotals, totalCount, value }: Props): ReactElement {
+  const visibleTotal = totalCount ?? filterFinishesByScope(finishes, value).length
+  const productTotal = scopeTotals?.product ?? (value === 'product' ? visibleTotal : filterFinishesByScope(finishes, 'product').length)
+  const remainTotal = scopeTotals?.remain ?? (value === 'remain' ? visibleTotal : filterFinishesByScope(finishes, 'remain').length)
   const selectedKeys = new Set(selectedRowKeys.map(String))
   const selectedProducts = filterFinishesByScope(finishes, 'product')
     .filter((item) => selectedKeys.has(item.finishUuid)).length
@@ -27,8 +30,8 @@ export function DeliveryFinishScopeControl({ finishes, onChange, selectedRowKeys
         aria-label="出库库存类型"
         value={value}
         options={[
-          { label: scopeLabel('成品', productCount, selectedProducts), value: 'product' },
-          { label: scopeLabel('余料', remainCount, selectedRemains), value: 'remain' },
+          { label: scopeLabel('成品', productTotal, selectedProducts), value: 'product' },
+          { label: scopeLabel('余料', remainTotal, selectedRemains), value: 'remain' },
         ]}
         onChange={(nextValue) => onChange(nextValue as DeliveryFinishScope)}
       />
@@ -43,6 +46,7 @@ export function DeliveryFinishScopeControl({ finishes, onChange, selectedRowKeys
   )
 }
 
-function scopeLabel(name: string, total: number, selected: number) {
-  return selected > 0 ? `${name} ${total} · 已选 ${selected}` : `${name} ${total}`
+function scopeLabel(name: string, total: number | undefined, selected: number) {
+  const count = total == null ? '' : ` ${total}`
+  return selected > 0 ? `${name}${count} · 已选 ${selected}` : `${name}${count}`
 }

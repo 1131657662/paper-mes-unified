@@ -204,6 +204,14 @@
   background: var(--mes-color-soft);
 }
 
+.delivery-workbench .ant-btn-dangerous:not(:disabled):hover {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mes-color-danger) 12%, transparent);
+}
+
+.delivery-workbench .ant-table-tbody > tr:focus-within > td {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mes-color-primary) 32%, transparent);
+}
+
 .delivery-panel .ant-pagination {
   margin-bottom: 0;
 }

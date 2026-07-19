@@ -1,4 +1,5 @@
 import type { SettleListSummary as Summary } from '../../types/settle'
+import dayjs from 'dayjs'
 import { formatMoney } from '../../features/settle/utils/settleFormatters'
 import '../DocumentListSummary.css'
 
@@ -9,6 +10,9 @@ export default function SettleListSummary({ summary }: { summary?: Summary }) {
       <Metric label="累计已收" value={formatMoney(summary?.activeReceivedAmount)} />
       <Metric label="当前未收" value={formatMoney(summary?.activeUnreceivedAmount)} danger />
       <Metric label="优惠结清" value={formatMoney(summary?.activeDiscountAmount)} />
+      <small className="document-list-summary__as-of">
+        {summary?.asOf ? `数据截止 ${dayjs(summary.asOf).format('MM-DD HH:mm:ss')}` : '数据加载中'}
+      </small>
     </div>
   )
 }

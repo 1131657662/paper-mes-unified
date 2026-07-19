@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import type { DashboardTrend as DashboardTrendItem } from '../../../types/dashboard'
+import { useNearViewport } from '../../../hooks/useNearViewport'
 import { formatMoney, formatNumber } from '../../report/utils/reportFormatters'
 import DashboardPanelHead from './DashboardPanelHead'
 import { buildTrendModel, type DashboardTrendModel } from './dashboardTrendModel'
@@ -12,14 +13,17 @@ interface Props {
 
 export default function DashboardTrend({ monthly }: Props) {
   const model = buildTrendModel(monthly)
+  const { isNearViewport, targetRef } = useNearViewport<HTMLDivElement>()
   return (
     <section className="dashboard-panel dashboard-trend">
       <DashboardPanelHead title="分析概览" subtitle="近12个月加工应收变化，本月数据截至今日。" />
       <TrendSummary model={model} />
-      <div className="dashboard-trend__line-chart">
-        <Suspense fallback={<TrendChartLoading />}>
-          <DashboardTrendChart model={model} />
-        </Suspense>
+      <div ref={targetRef} className="dashboard-trend__line-chart">
+        {isNearViewport ? (
+          <Suspense fallback={<TrendChartLoading />}>
+            <DashboardTrendChart model={model} />
+          </Suspense>
+        ) : <TrendChartLoading />}
         {!model.hasReceivable && <TrendEmptyState />}
       </div>
     </section>

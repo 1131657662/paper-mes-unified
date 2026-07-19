@@ -19,15 +19,16 @@ export function useDeliveryLifecycleActions(options: Options) {
   return {
     cancelLoading: cancelMutation.isPending,
     rollingBack,
-    cancel: () => cancelSelected(options, cancelMutation.mutateAsync),
+    cancel: () => cancelSelected(options, cancelMutation.isPending, cancelMutation.mutateAsync),
     rollback: () => rollbackSelected(options, setRollingBack),
   }
 }
 
 async function cancelSelected(options: Options,
+  pending: boolean,
   mutate: ReturnType<typeof useCancelPendingDelivery>['mutateAsync']) {
   const selected = options.selected
-  if (!options.canManage || !selected || selected.deliveryStatus !== 1) return
+  if (pending || !options.canManage || !selected || selected.deliveryStatus !== 1) return
   const reason = await askDeliveryCancelReason(selected.deliveryNo)
   if (!reason) return
   await mutate({ uuid: selected.uuid, data: { reason } })

@@ -1,6 +1,7 @@
 package com.paper.mes.settle.service.impl;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.db.BusinessLockService;
@@ -17,6 +18,7 @@ import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.settle.dto.SettleActionReasonDTO;
+import com.paper.mes.settle.dto.SettleQuery;
 import com.paper.mes.settle.entity.ReceiveRecord;
 import com.paper.mes.settle.entity.SettleDetail;
 import com.paper.mes.settle.entity.SettleOrder;
@@ -26,7 +28,6 @@ import com.paper.mes.settle.mapper.SettleOrderMapper;
 import com.paper.mes.settle.service.SettleCandidateStatsLoader;
 import com.paper.mes.settle.service.SettleCandidateAmountLoader;
 import com.paper.mes.settle.service.SettlementAmountCalculator;
-import com.paper.mes.settle.service.SettleExportService;
 import com.paper.mes.system.config.service.DocumentNoService;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
@@ -37,9 +38,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
@@ -70,7 +73,6 @@ class SettleServiceImplVoidSettleBatchLoadTest {
     @Mock private com.paper.mes.settle.service.SettlementQuoteGuard settlementQuoteGuard;
     @Mock private com.paper.mes.settle.service.SettlementDiscountPolicy settlementDiscountPolicy;
     @Mock private SettlePageDataLoader pageDataLoader;
-    @Mock private SettleExportService settleExportService;
     @Mock private DocumentNoService documentNoService;
     @Mock private BusinessLockService businessLockService;
 
@@ -92,7 +94,7 @@ class SettleServiceImplVoidSettleBatchLoadTest {
                 processOrderService, customerService, machineMapper, operationLogMapper, operationLogService,
                 statsLoader, candidateAmountLoader, settlementAmountCalculator, settlementQuoteFactory,
                 settlementQuoteGuard, settlementDiscountPolicy, pageDataLoader,
-                settleExportService, documentNoService, businessLockService,
+                documentNoService, businessLockService,
                 new ObjectMapper());
         ReflectionTestUtils.setField(service, "baseMapper", settleOrderMapper);
     }
@@ -116,6 +118,28 @@ class SettleServiceImplVoidSettleBatchLoadTest {
 
         verify(processOrderService).listByIds(argThat(ids -> containsAll(ids, "order-1", "order-2")));
         verify(processOrderService, never()).getById(any());
+    }
+
+    @Test
+    void page_withoutStatusFilter_excludesVoidedSettlementsByDefault() {
+        when(settleOrderMapper.selectPage(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.page(new SettleQuery());
+
+        verify(settleOrderMapper).selectPage(any(Page.class), argThat(wrapper ->
+                wrapper.getSqlSegment().contains("settle_status")
+                        && wrapper.getSqlSegment().contains("<>")));
+    }
+
+    @Test
+    void receiveState_withVoidedSettlement_preservesVoidedStatusAfterAmountNormalization() {
+        SettleOrder voided = settle();
+        voided.setSettleStatus(4);
+
+        ReflectionTestUtils.invokeMethod(service, "applyReceiveState", voided,
+                new BigDecimal("1320.00"), SettleReceiveTotals.zero());
+
+        assertEquals(4, voided.getSettleStatus());
     }
 
     private SettleOrder settle() {

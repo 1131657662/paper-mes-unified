@@ -8,7 +8,7 @@ import java.time.LocalDate;
 /** Defines the business date used to assign completed orders to settlement periods. */
 public final class SettleAccountingPeriodPolicy {
 
-    private static final String ACCOUNTING_DATE_SQL = "DATE(COALESCE(back_record_time, order_date))";
+    private static final String ACCOUNTING_DATE_SQL = "accounting_date";
 
     private SettleAccountingPeriodPolicy() {
     }
@@ -20,7 +20,7 @@ public final class SettleAccountingPeriodPolicy {
     }
 
     public static void orderByAccountingDate(LambdaQueryWrapper<ProcessOrder> wrapper) {
-        wrapper.last("ORDER BY COALESCE(back_record_time, order_date) ASC, order_no ASC");
+        wrapper.last("ORDER BY accounting_date ASC, order_no ASC, uuid ASC");
     }
 
     public static LocalDate accountingDate(ProcessOrder order) {

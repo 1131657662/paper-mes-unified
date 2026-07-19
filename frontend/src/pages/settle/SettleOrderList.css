@@ -81,6 +81,49 @@
   gap: 10px;
 }
 
+.settle-collection-queue {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius);
+  background: var(--mes-color-border);
+}
+
+.settle-collection-queue__item {
+  min-width: 0;
+  padding: 10px 14px;
+  border: 0;
+  background: var(--mes-color-panel);
+  color: var(--mes-color-text);
+  text-align: left;
+}
+
+.settle-collection-queue__item:hover {
+  background: var(--mes-color-soft);
+}
+
+.settle-collection-queue__item.is-active {
+  box-shadow: inset 0 3px 0 var(--mes-color-primary);
+  background: var(--mes-color-surface-selected);
+}
+
+.settle-collection-queue__item span,
+.settle-collection-queue__item em {
+  display: block;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.settle-collection-queue__item strong {
+  display: block;
+  margin-block: 2px;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+
 .settle-metric {
   min-width: 0;
 }
@@ -223,5 +266,9 @@
 
   .settle-header__actions {
     justify-content: flex-start;
+  }
+
+  .settle-collection-queue {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

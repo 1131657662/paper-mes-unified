@@ -24,5 +24,6 @@ public class Warehouse extends BaseEntity {
     private String location;
     /** 1启用 2停用 */
     private Integer status;
+    private Integer isDefault;
     private String remark;
 }

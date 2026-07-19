@@ -35,7 +35,7 @@ public class SystemNotificationService {
     private static final String SOURCE_BACKUP_TASK = "BACKUP_TASK";
     private static final String SOURCE_DATA_HEALTH = "DATA_HEALTH";
     private static final Set<String> NOTIFIABLE_WARNINGS = Set.of(
-            "OVERDUE_BACK_RECORD", "OVERDUE_RECEIVABLE");
+            "OVERDUE_BACK_RECORD", "OVERDUE_RECEIVABLE", "UNASSIGNED_FINISH_WAREHOUSE");
     private static final Pattern UUID_PATTERN = Pattern.compile("[0-9A-Za-z-]{1,36}");
     private final SystemNotificationMapper notificationMapper;
     private final SysUserMapper userMapper;

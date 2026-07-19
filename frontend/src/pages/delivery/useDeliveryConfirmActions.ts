@@ -26,6 +26,7 @@ export function useDeliveryConfirmActions(options: Options) {
 
 async function confirmOne(record: DeliveryOrder, options: Options, mutate: ReturnType<typeof useConfirmDelivery>['mutateAsync']) {
   if (!options.canManage) return
+  if (record.deliveryStatus !== 1) return
   const signUser = await askSignUser(record)
   if (signUser === null) return
   await mutate({ uuid: record.uuid, data: signUser ? { signUser } : undefined })

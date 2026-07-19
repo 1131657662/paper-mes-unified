@@ -13,9 +13,8 @@ import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import com.paper.mes.delivery.service.DeliveryCashSettlementGuard;
-import com.paper.mes.delivery.service.DeliveryExportService;
 import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
-import com.paper.mes.delivery.service.DeliveryListExportService;
+import com.paper.mes.delivery.service.DeliveryWarehousePolicy;
 import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
 import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.mapper.OperationLogMapper;
@@ -68,8 +67,7 @@ class DeliveryServiceImplBatchLoadTest {
     @Mock private CustomerService customerService;
     @Mock private DeliveryCashSettlementGuard cashSettlementGuard;
     @Mock private DeliverySettlementBlockPolicy settlementBlockPolicy;
-    @Mock private DeliveryExportService deliveryExportService;
-    @Mock private DeliveryListExportService deliveryListExportService;
+    @Mock private DeliveryWarehousePolicy warehousePolicy;
     @Mock private OperationLogMapper operationLogMapper;
     @Mock private OperationLogService operationLogService;
     @Mock private DocumentNoService documentNoService;
@@ -82,7 +80,7 @@ class DeliveryServiceImplBatchLoadTest {
         service = new DeliveryServiceImpl(deliveryDetailMapper, finishRollMapper, availableFinishSourceLoader,
                 finishOriginalRelMapper, originalRollMapper, processOrderMapper, processStepMapper,
                 settleDetailMapper, machineMapper, customerService, cashSettlementGuard,
-                settlementBlockPolicy, deliveryExportService, deliveryListExportService,
+                settlementBlockPolicy, warehousePolicy,
                 operationLogMapper, operationLogService,
                 documentNoService, businessLockService, new ObjectMapper());
         ReflectionTestUtils.setField(service, "baseMapper", deliveryOrderMapper);
@@ -101,6 +99,9 @@ class DeliveryServiceImplBatchLoadTest {
         when(cashSettlementGuard.hasUnsettledCashOrders(any())).thenReturn(false);
         when(settlementBlockPolicy.resolveAction(anyBoolean(), anyBoolean(), eq("出库")))
                 .thenReturn(DeliverySettlementBlockPolicy.ACTION_NONE);
+        when(warehousePolicy.requireForCreate(eq("warehouse-1"), any()))
+                .thenReturn(new DeliveryWarehousePolicy.WarehouseSnapshot(
+                        "warehouse-1", "成品一仓", "一号库区"));
         when(documentNoService.next(eq(NoRuleBizType.DELIVERY_ORDER), any(LocalDate.class)))
                 .thenReturn("CK202607070001");
         when(deliveryOrderMapper.insert(any(DeliveryOrder.class))).thenAnswer(invocation -> {
@@ -163,6 +164,7 @@ class DeliveryServiceImplBatchLoadTest {
     private DeliveryCreateDTO createDto() {
         DeliveryCreateDTO dto = new DeliveryCreateDTO();
         dto.setCustomerUuid("customer-1");
+        dto.setWarehouseUuid("warehouse-1");
         dto.setDeliveryDate(LocalDate.of(2026, 7, 7));
         dto.setItems(List.of(item("finish-1", "10.00"), item("finish-2", "12.50")));
         return dto;
@@ -197,6 +199,7 @@ class DeliveryServiceImplBatchLoadTest {
         finish.setOrderUuid(orderUuid);
         finish.setFinishRollNo(rollNo);
         finish.setFinishStatus(2);
+        finish.setWarehouseUuid("warehouse-1");
         finish.setActualWeight(new BigDecimal("50.00"));
         finish.setRemainingWeight(new BigDecimal("50.00"));
         return finish;

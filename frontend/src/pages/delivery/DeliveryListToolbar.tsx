@@ -20,7 +20,8 @@ export default function DeliveryListToolbar({ actions }: { actions: DeliveryList
       <Button icon={<PrinterOutlined />} disabled={!selected} onClick={actions.print}>打印出库单</Button>
     </ActionTip>
     <ActionTip title={!selected ? '请选择一张出库单后导出' : undefined}>
-      <Button icon={<DownloadOutlined />} disabled={!selected} onClick={actions.exportSelected}>导出 Excel</Button>
+      <Button icon={<DownloadOutlined />} disabled={!selected} loading={actions.exportingSelected}
+        onClick={actions.exportSelected}>后台导出</Button>
     </ActionTip>
     <Button icon={<DownloadOutlined />} loading={actions.exportingList} onClick={actions.exportList}>导出对账</Button>
     {actions.canManage && <LifecycleButtons actions={actions} />}

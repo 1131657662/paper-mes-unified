@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Alert, Button, Statistic } from 'antd'
 import { CheckCircleOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons'
 import { useDataHealthSummary } from '../../features/dataHealth/hooks/useDataHealthSummary'
@@ -8,9 +9,17 @@ import DataHealthRepairModal from './DataHealthRepairModal'
 import './DataHealthPanel.css'
 
 export default function DataHealthPanel() {
+  const navigate = useNavigate()
   const { data: summary, isLoading, isFetching, refetch } = useDataHealthSummary()
   const [repairIssue, setRepairIssue] = useState<DataHealthIssue>()
   const total = (summary?.criticalCount ?? 0) + (summary?.warningCount ?? 0)
+  const handleIssueAction = (issue: DataHealthIssue) => {
+    if (issue.repairAction === 'OPEN_INVENTORY_WAREHOUSE_REPAIR') {
+      navigate('/delivery-orders/inventory?open=unassigned')
+      return
+    }
+    setRepairIssue(issue)
+  }
 
   return (
     <div className="data-health-panel">
@@ -28,7 +37,7 @@ export default function DataHealthPanel() {
         message={summary?.criticalCount ? '存在会影响结算或库存的数据异常' : total ? '存在需要补录或核对的数据' : '核心业务数据一致性正常'}
         description="修复操作必须填写原因并输入业务单号确认；无法自动修复的记录应由业务人员核对来源数据。"
       />
-      <DataHealthIssueTable issues={summary?.issues ?? []} loading={isLoading} onRepair={setRepairIssue} />
+      <DataHealthIssueTable issues={summary?.issues ?? []} loading={isLoading} onRepair={handleIssueAction} />
       <DataHealthRepairModal issue={repairIssue} onClose={() => setRepairIssue(undefined)} />
     </div>
   )

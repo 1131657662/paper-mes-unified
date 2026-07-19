@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Modal, Space, message } from 'antd'
 import { useAppendDeliveryDetails } from '../../features/delivery/hooks/useAppendDeliveryDetails'
 import { useAvailableFinishes } from '../../features/delivery/hooks/useAvailableFinishes'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { AvailableFinishVO } from '../../types/delivery'
 import DeliveryCreateTable from './DeliveryCreateTable'
@@ -25,6 +26,7 @@ import {
 interface Props {
   customerName?: string
   customerUuid?: string
+  warehouseUuid?: string
   deliveryUuid?: string
   open: boolean
   onClose: () => void
@@ -34,13 +36,14 @@ interface Props {
 export default function DeliveryAppendItemsModal({
   customerName,
   customerUuid,
+  warehouseUuid,
   deliveryUuid,
   onClose,
   onSuccess,
   open,
 }: Props) {
   const appendMutation = useAppendDeliveryDetails()
-  const finishesQuery = useAvailableFinishes(open ? customerUuid : undefined)
+  const finishesQuery = useAvailableFinishes(open ? customerUuid : undefined, open ? warehouseUuid : undefined)
   const [finishScope, setFinishScope] = useState<DeliveryFinishScope>('product')
   const [finishFilters, setFinishFilters] = useState<DeliveryFinishFilters>({ ...defaultDeliveryFinishFilters })
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
@@ -72,6 +75,7 @@ export default function DeliveryAppendItemsModal({
   }
 
   const handleSubmit = async () => {
+    if (appendMutation.isPending) return
     if (!deliveryUuid) return
     if (selectedFinishes.length === 0) {
       message.warning('请先勾选要追加的成品或余料')
@@ -110,6 +114,13 @@ export default function DeliveryAppendItemsModal({
       onOk={handleSubmit}
     >
       <div className="delivery-append-modal">
+        {finishesQuery.isError && (
+          <QueryLoadErrorAlert
+            message="可追加库存加载失败"
+            description="当前空表不代表没有可追加库存，请重新加载后再选择。"
+            onRetry={() => void finishesQuery.refetch()}
+          />
+        )}
         <Space className="document-module-summary" size={12} wrap>
           <span>客户 <strong>{customerName || '-'}</strong></span>
           <DeliveryFinishScopeControl

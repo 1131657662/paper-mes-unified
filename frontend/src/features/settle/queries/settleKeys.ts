@@ -11,6 +11,26 @@ export const settleKeys = createQueryKeys('settle', {
     queryKey: [uuid],
     queryFn: () => settleService.detail(uuid),
   }),
+  detailHeader: (uuid: string) => ({
+    queryKey: [uuid, 'header'],
+    queryFn: () => settleService.detailHeader(uuid),
+  }),
+  details: (uuid: string) => ({
+    queryKey: [uuid, 'details'],
+    queryFn: () => settleService.details(uuid),
+  }),
+  receives: (uuid: string) => ({
+    queryKey: [uuid, 'receives'],
+    queryFn: () => settleService.receives(uuid),
+  }),
+  printLines: (uuid: string) => ({
+    queryKey: [uuid, 'print-lines'],
+    queryFn: () => settleService.printLines(uuid),
+  }),
+  operationLogs: (uuid: string) => ({
+    queryKey: [uuid, 'operation-logs'],
+    queryFn: () => settleService.operationLogs(uuid),
+  }),
   discountApprovals: (uuid: string) => ({
     queryKey: [uuid],
     queryFn: () => settleService.discountApprovals(uuid),
@@ -22,6 +42,14 @@ export const settleKeys = createQueryKeys('settle', {
   summary: (query: SettleQuery) => ({
     queryKey: [query],
     queryFn: () => settleService.summary(query),
+  }),
+  collectionSummary: (query: SettleQuery) => ({
+    queryKey: [query],
+    queryFn: () => settleService.collectionSummary(query),
+  }),
+  collectionReminders: (uuid: string) => ({
+    queryKey: [uuid],
+    queryFn: () => settleService.collectionReminders(uuid),
   }),
   quoteByMonth: (data: SettleQuoteByMonthDTO) => ({
     queryKey: [data],

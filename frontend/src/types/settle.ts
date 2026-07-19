@@ -11,6 +11,7 @@ export interface SettleOrder {
   quoteHash?: string
   settleType: number
   settleDate: string
+  dueDate?: string
   periodStart?: string
   periodEnd?: string
   sawAmount: number
@@ -27,6 +28,11 @@ export interface SettleOrder {
   discountApprovalUuid?: string
   discountApprovedBy?: string
   unreceivedAmount: number
+  reminderCount?: number
+  lastReminderTime?: string
+  lastReminderBy?: string
+  lastReminderResult?: number
+  nextFollowUpDate?: string
   isInvoice: number
   settleStatus: number
   voidReason?: string
@@ -44,6 +50,9 @@ export interface SettleDetail {
   orderNo: string
   sawAmount: number
   rewindAmount: number
+  standardProcessAmount?: number
+  pricingAdjustmentAmount?: number
+  pricingAdjustmentReason?: string
   extraAmount: number
   orderAmount: number
   remark?: string
@@ -87,6 +96,9 @@ export interface SettlePrintLine {
   rewindInvoiceUnitPrice?: number
   sawAmount?: number
   rewindAmount?: number
+  standardProcessAmount?: number
+  pricingAdjustmentAmount?: number
+  pricingAdjustmentReason?: string
   processAmount?: number
   extraAmount?: number
   extraFeeSummary?: string
@@ -107,6 +119,11 @@ export interface SettleFeeLine {
   quantity?: number
   quantityUnit?: string
   unitPrice?: number
+  standardQuantity?: number
+  standardAmount?: number
+  billingMode?: number
+  pricingAdjustmentAmount?: number
+  pricingAdjustmentReason?: string
   amountNoTax?: number
   taxRate?: number
   taxAmount?: number
@@ -170,6 +187,8 @@ export interface SettleCandidateVO {
   finishRollWeight?: number
   sawAmount?: number
   rewindAmount?: number
+  standardProcessAmount?: number
+  pricingAdjustmentAmount?: number
   extraAmount?: number
   totalAmount?: number
 }
@@ -224,6 +243,9 @@ export interface SettleQuoteLine {
   orderUuid: string
   sawAmount: number
   rewindAmount: number
+  /** Optional for quotes generated before pricing-audit fields were introduced. */
+  standardProcessAmount?: number
+  pricingAdjustmentAmount?: number
   extraAmount: number
   amountNoTax: number
   taxAmount: number
@@ -275,6 +297,41 @@ export interface SettleDiscountApproval {
   usedReceiveUuid?: string
 }
 
+export type SettleCollectionQueue = 'today' | 'overdue' | 'upcoming' | 'reminded'
+
+export interface SettleCollectionReminderRequestDTO {
+  requestId: string
+  reminderChannel: number
+  reminderResult: number
+  contactName?: string
+  reminderTime?: string
+  nextFollowUpDate?: string
+  remark: string
+}
+
+export interface SettleCollectionReminder {
+  uuid: string
+  reminderChannel: number
+  reminderResult: number
+  contactName?: string
+  reminderTime: string
+  nextFollowUpDate?: string
+  operatorName: string
+  remark: string
+}
+
+export interface SettleCollectionSummary {
+  dueTodayCount: number
+  dueTodayAmount: number
+  overdueCount: number
+  overdueAmount: number
+  upcomingCount: number
+  upcomingAmount: number
+  remindedTodayCount: number
+  remindedTodayAmount: number
+  asOf?: string
+}
+
 export interface SettleActionReasonDTO {
   reason: string
 }
@@ -286,6 +343,7 @@ export interface SettleQuery extends PageQuery {
   settleType?: number
   dateFrom?: string
   dateTo?: string
+  collectionQueue?: SettleCollectionQueue
 }
 
 export interface SettleListSummary {
@@ -298,4 +356,5 @@ export interface SettleListSummary {
   activeReceivedAmount: number
   activeUnreceivedAmount: number
   activeDiscountAmount: number
+  asOf?: string
 }

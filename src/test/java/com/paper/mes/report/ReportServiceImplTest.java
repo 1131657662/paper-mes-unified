@@ -9,8 +9,9 @@ import com.paper.mes.report.service.ReportExportService;
 import com.paper.mes.report.service.impl.ReportServiceImpl;
 import org.apache.ibatis.cursor.Cursor;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,13 +40,18 @@ class ReportServiceImplTest {
     }
 
     @Test
-    void exportWorkbook_whenResultExceedsCapacity_rejectsBeforeOpeningCursor() {
+    void exportWorkbook_whenResultExceedsCapacity_rejectsBeforeOpeningCursor() throws Exception {
         ReportMapper mapper = mock(ReportMapper.class);
         when(mapper.detailCount(org.mockito.ArgumentMatchers.any())).thenReturn(100_001L);
         ReportServiceImpl service = new ReportServiceImpl(mapper, new ReportExportService());
+        Path target = Files.createTempFile("report-capacity", ".xlsx");
 
-        assertThrows(BusinessException.class,
-                () -> service.exportWorkbook(new ReportQuery(), new MockHttpServletResponse()));
+        try {
+            assertThrows(BusinessException.class,
+                    () -> service.exportWorkbook(new ReportQuery(), target));
+        } finally {
+            Files.deleteIfExists(target);
+        }
     }
 
     @Test
@@ -59,11 +65,15 @@ class ReportServiceImplTest {
         when(mapper.detailCursor(org.mockito.ArgumentMatchers.any())).thenReturn(cursor);
         when(cursor.iterator()).thenReturn(List.of(new ReportDetailVO()).iterator());
         ReportServiceImpl service = new ReportServiceImpl(mapper, new ReportExportService());
-        MockHttpServletResponse response = new MockHttpServletResponse();
+        Path target = Files.createTempFile("report-export", ".xlsx");
 
-        service.exportWorkbook(new ReportQuery(), response);
+        try {
+            service.exportWorkbook(new ReportQuery(), target);
 
-        assertTrue(response.getContentAsByteArray().length > 0);
-        verify(cursor).close();
+            assertTrue(Files.size(target) > 0);
+            verify(cursor).close();
+        } finally {
+            Files.deleteIfExists(target);
+        }
     }
 }

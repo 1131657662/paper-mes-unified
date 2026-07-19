@@ -7,8 +7,12 @@ export function useReceiveSettle() {
 
   return useMutation({
     mutationFn: settleService.receive,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queries.settle._def })
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queries.settle.detail(variables.uuid).queryKey })
+      queryClient.invalidateQueries({ queryKey: queries.settle.detailHeader(variables.uuid).queryKey })
+      queryClient.invalidateQueries({ queryKey: queries.settle.receives(variables.uuid).queryKey })
+      queryClient.invalidateQueries({ queryKey: queries.settle.list._def })
+      queryClient.invalidateQueries({ queryKey: queries.settle.summary._def })
     },
   })
 }

@@ -31,6 +31,23 @@ app:
     receivable-overdue-days: ${PAPER_MES_RECEIVABLE_OVERDUE_DAYS:30}
     initial-delay-ms: ${PAPER_MES_DATA_HEALTH_INITIAL_DELAY_MS:60000}
     scan-delay-ms: ${PAPER_MES_DATA_HEALTH_SCAN_DELAY_MS:900000}
+  export-task:
+    storage-dir: ${PAPER_MES_EXPORT_STORAGE_DIR:./data/exports}
+    storage-min-free-bytes: ${PAPER_MES_EXPORT_MIN_FREE_BYTES:0}
+    storage-min-free-percent: ${PAPER_MES_EXPORT_MIN_FREE_PERCENT:5}
+    storage-alert-initial-delay-ms: ${PAPER_MES_EXPORT_ALERT_INITIAL_DELAY_MS:30000}
+    storage-alert-check-delay-ms: ${PAPER_MES_EXPORT_ALERT_CHECK_DELAY_MS:60000}
+    stale-minutes: ${PAPER_MES_EXPORT_STALE_MINUTES:10}
+    heartbeat-interval-seconds: ${PAPER_MES_EXPORT_HEARTBEAT_INTERVAL_SECONDS:30}
+    orphan-retention-minutes: ${PAPER_MES_EXPORT_ORPHAN_RETENTION_MINUTES:60}
+    orphan-scan-limit: ${PAPER_MES_EXPORT_ORPHAN_SCAN_LIMIT:100}
+    orphan-cleanup-initial-delay-ms: ${PAPER_MES_EXPORT_ORPHAN_CLEANUP_INITIAL_DELAY_MS:60000}
+    orphan-cleanup-delay-ms: ${PAPER_MES_EXPORT_ORPHAN_CLEANUP_DELAY_MS:900000}
+    sse-sync-delay-ms: ${PAPER_MES_EXPORT_SSE_SYNC_DELAY_MS:2000}
+    executor:
+      worker-count: ${PAPER_MES_EXPORT_WORKER_COUNT:2}
+      queue-capacity: ${PAPER_MES_EXPORT_QUEUE_CAPACITY:50}
+      shutdown-wait-seconds: ${PAPER_MES_EXPORT_SHUTDOWN_WAIT_SECONDS:5}
   upload:
     dir: ./upload
     url-prefix: /api/files

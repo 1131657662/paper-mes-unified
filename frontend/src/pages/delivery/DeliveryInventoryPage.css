@@ -1,0 +1,192 @@
+.app-shell__content--edge-scroll > .delivery-inventory-page {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.delivery-inventory-page {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  background: var(--mes-color-bg);
+}
+
+.delivery-inventory-header {
+  display: flex;
+  min-height: 56px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--mes-color-panel);
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius);
+}
+
+.delivery-inventory-header__title-group {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.delivery-inventory-header__icon {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--mes-color-primary) 9%, var(--mes-color-panel));
+  border: 1px solid color-mix(in srgb, var(--mes-color-primary) 20%, var(--mes-color-border));
+  border-radius: var(--mes-radius-sm);
+  color: var(--mes-color-primary);
+  font-size: 16px;
+}
+
+.delivery-inventory-header h4 {
+  margin: 0 6px 0 0;
+  color: var(--mes-color-text);
+  font-size: 18px;
+  line-height: 32px;
+}
+
+.delivery-inventory-header__actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.delivery-inventory-header__actions .ant-typography {
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.delivery-inventory-filter-panel {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  background: var(--mes-color-panel);
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius);
+}
+
+.delivery-inventory-filters {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(200px, 1fr) 128px 178px 128px 128px;
+  align-items: center;
+  gap: 8px;
+}
+
+.delivery-inventory-filters > .ant-input-search,
+.delivery-inventory-filters > .ant-select,
+.delivery-inventory-filters > .ant-input-number,
+.delivery-inventory-filters > .ant-segmented {
+  width: 100%;
+  min-width: 0;
+}
+
+.delivery-inventory-summary {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  background: var(--mes-color-panel);
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius);
+}
+
+.delivery-inventory-summary__metric {
+  min-width: 0;
+  padding: 12px 16px;
+  border-right: 1px solid var(--mes-color-border-light);
+}
+
+.delivery-inventory-summary__metric:last-child {
+  border-right: 0;
+}
+
+.delivery-inventory-summary__metric span,
+.delivery-inventory-summary__metric em {
+  display: block;
+  overflow: hidden;
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delivery-inventory-summary__metric strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--mes-color-text);
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.delivery-inventory-summary__label {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.delivery-inventory-summary__metric[data-tone='success'] strong,
+.delivery-inventory-summary__metric[data-tone='success'] .delivery-inventory-summary__label {
+  color: var(--mes-color-success);
+}
+
+.delivery-inventory-summary__metric[data-tone='warning'] strong,
+.delivery-inventory-summary__metric[data-tone='warning'] .delivery-inventory-summary__label {
+  color: var(--mes-color-warning);
+}
+
+.delivery-inventory-summary__metric[data-tone='primary'] strong,
+.delivery-inventory-summary__metric[data-tone='primary'] .delivery-inventory-summary__label {
+  color: var(--mes-color-primary);
+}
+
+@media (max-width: 900px) {
+  .delivery-inventory-filters {
+    grid-template-columns: minmax(200px, 1fr) 128px 178px;
+  }
+
+  .delivery-inventory-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .delivery-inventory-header__actions {
+    margin-left: 42px;
+  }
+}
+
+@media (max-width: 640px) {
+  .delivery-inventory-page {
+    height: auto;
+    min-height: 100%;
+    overflow: auto;
+  }
+
+  .delivery-inventory-header__title-group {
+    flex-wrap: wrap;
+  }
+
+  .delivery-inventory-header__actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
+  .delivery-inventory-filters,
+  .delivery-inventory-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .delivery-inventory-filters > .ant-input-search {
+    grid-column: 1 / -1;
+  }
+}

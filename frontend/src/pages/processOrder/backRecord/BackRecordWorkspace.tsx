@@ -3,6 +3,7 @@ import { SaveOutlined } from '@ant-design/icons'
 import BackRecordQuickActions from './BackRecordQuickActions'
 import BackRecordSummaryPanel from './BackRecordSummaryPanel'
 import BackRecordWorkbench from './BackRecordWorkbench'
+import BackRecordWarehouseField from './BackRecordWarehouseField'
 import { useBackRecordWorkspace } from './useBackRecordWorkspace'
 import type { BackRecordFormValues } from './backRecordUtils'
 import './BackRecordWorkspace.css'
@@ -86,6 +87,7 @@ function WorkspaceTopbar({
           <Typography.Text strong>录入操作</Typography.Text>
           <Typography.Text type="secondary">批量填入、现场变更和整单提交集中处理</Typography.Text>
         </div>
+        <BackRecordWarehouseField {...workspace.warehouse} />
         <div className="back-record-commandbar__actions">
           <BackRecordQuickActions
             detail={workspace.detail ?? null}

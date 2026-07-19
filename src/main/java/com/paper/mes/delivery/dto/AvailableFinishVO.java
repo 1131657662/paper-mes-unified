@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -17,6 +18,10 @@ public class AvailableFinishVO {
     private String orderUuid;
     private String orderNo;
     private LocalDate orderDate;
+    private String warehouseUuid;
+    private String warehouseName;
+    private String warehouseLocation;
+    private LocalDateTime stockInTime;
     private String paperName;
     private Integer gramWeight;
     private Integer finishWidth;

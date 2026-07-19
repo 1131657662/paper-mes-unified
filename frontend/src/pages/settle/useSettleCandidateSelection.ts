@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useSettleCandidates } from '../../features/settle/hooks/useSettleCandidates'
 import type { SettleCandidateQuery, SettleCandidateVO } from '../../types/settle'
 import { mergeCandidateSelection } from './settleCandidateSelectionModel'
@@ -9,6 +9,7 @@ export function useSettleCandidateSelection(enabled: boolean) {
   const [query, setQuery] = useState<SettleCandidateQuery>({ current: 1, size: DEFAULT_PAGE_SIZE })
   const [selectedByUuid, setSelectedByUuid] = useState<Record<string, SettleCandidateVO>>({})
   const candidatesQuery = useSettleCandidates(query, enabled)
+  const { refetch } = candidatesQuery
   const candidates = enabled ? candidatesQuery.data?.records ?? [] : []
   const selectedCandidates = Object.values(selectedByUuid)
   const lockedCustomerUuid = selectedCandidates[0]?.customerUuid
@@ -31,10 +32,16 @@ export function useSettleCandidateSelection(enabled: boolean) {
     setSelectedByUuid((current) => mergeCandidateSelection(current, candidates, selectedKeys))
   }
 
+  const clearSelection = useCallback(() => setSelectedByUuid({}), [])
+  const refreshCandidates = useCallback(
+    () => refetch(),
+    [refetch],
+  )
+
   return {
     candidates,
     candidatesQuery,
-    clearSelection: () => setSelectedByUuid({}),
+    clearSelection,
     lockedCustomerUuid,
     query,
     selectedCandidates,
@@ -42,6 +49,7 @@ export function useSettleCandidateSelection(enabled: boolean) {
     setKeyword,
     setPage,
     setScope,
+    refreshCandidates,
     updateSelection,
   }
 }

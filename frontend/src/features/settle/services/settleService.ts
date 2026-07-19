@@ -2,9 +2,13 @@ import {
   cancelReceivePayment,
   createSettleByMonth,
   createSettleByOrders,
-  exportSettleOrder,
   getSettleCandidates,
   getSettleOrderDetail,
+  getSettleOrderHeader,
+  getSettleDetails,
+  getSettleReceives,
+  getSettlePrintLines,
+  getSettleOperationLogs,
   getSettleOrderList,
   getSettleOrderSummary,
   receivePayment,
@@ -14,6 +18,9 @@ import {
   getSettleDiscountApprovals,
   requestSettleDiscountApproval,
   approveSettleDiscount,
+  getSettleCollectionReminders,
+  getSettleCollectionSummary,
+  recordSettleCollectionReminder,
 } from '../../../api/settle'
 import type {
   ReceiveDTO,
@@ -25,8 +32,8 @@ import type {
   SettleQuoteByOrdersDTO,
   SettleQuoteByMonthDTO,
   SettleDiscountApprovalRequestDTO,
+  SettleCollectionReminderRequestDTO,
 } from '../../../types/settle'
-import type { DocumentExportInput } from '../../../utils/documentExport'
 
 export const settleService = {
   candidates: (query: SettleCandidateQuery) => getSettleCandidates(query),
@@ -35,9 +42,17 @@ export const settleService = {
   createByMonth: (data: SettleByMonthDTO) => createSettleByMonth(data),
   createByOrders: (data: SettleByOrdersDTO) => createSettleByOrders(data),
   detail: (uuid: string) => getSettleOrderDetail(uuid),
-  export: (params: DocumentExportInput) => exportSettleOrder(params),
+  detailHeader: (uuid: string) => getSettleOrderHeader(uuid),
+  details: (uuid: string) => getSettleDetails(uuid),
+  receives: (uuid: string) => getSettleReceives(uuid),
+  printLines: (uuid: string) => getSettlePrintLines(uuid),
+  operationLogs: (uuid: string) => getSettleOperationLogs(uuid),
   list: (query: SettleQuery) => getSettleOrderList(query),
   summary: (query: SettleQuery) => getSettleOrderSummary(query),
+  collectionSummary: (query: SettleQuery) => getSettleCollectionSummary(query),
+  collectionReminders: (uuid: string) => getSettleCollectionReminders(uuid),
+  recordCollectionReminder: (params: { uuid: string; data: SettleCollectionReminderRequestDTO }) =>
+    recordSettleCollectionReminder(params.uuid, params.data),
   receive: (params: { uuid: string; data: ReceiveDTO }) => receivePayment(params.uuid, params.data),
   discountApprovals: (uuid: string) => getSettleDiscountApprovals(uuid),
   requestDiscountApproval: (params: { uuid: string; data: SettleDiscountApprovalRequestDTO }) =>

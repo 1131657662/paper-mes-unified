@@ -12,11 +12,12 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class DeliveryHealthInspector {
+public class DeliveryHealthInspector implements DataHealthInspector {
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
+    @Override
     public List<DataHealthIssueVO> inspect() {
         List<DataHealthIssueVO> issues = new ArrayList<>();
         issues.addAll(deliveryTotalMismatches());

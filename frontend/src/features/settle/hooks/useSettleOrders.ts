@@ -3,5 +3,10 @@ import { queries } from '../../../queries'
 import type { SettleQuery } from '../../../types/settle'
 
 export function useSettleOrders(query: SettleQuery) {
-  return useQuery(queries.settle.list(query))
+  return useQuery({
+    ...queries.settle.list(query),
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
+    staleTime: 0,
+  })
 }

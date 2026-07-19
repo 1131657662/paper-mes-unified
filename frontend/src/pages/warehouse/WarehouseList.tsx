@@ -71,6 +71,13 @@ export default function WarehouseList() {
         </Tag>
       ),
     },
+    {
+      title: '默认仓库',
+      dataIndex: 'isDefault',
+      width: 118,
+      search: false,
+      render: (_, r) => r.isDefault === 1 ? <Tag color="blue">默认仓库</Tag> : <span>-</span>,
+    },
     { title: '创建时间', dataIndex: 'createTime', width: 180, search: false, valueType: 'dateTime' },
     {
       title: '操作',
@@ -153,6 +160,7 @@ function warehouseExportColumns() {
     { header: '仓库名称', value: (row: Warehouse) => row.warehouseName },
     { header: '库位', value: (row: Warehouse) => row.location },
     { header: '状态', value: (row: Warehouse) => row.status ? STATUS[row.status] ?? '-' : '-' },
+    { header: '默认仓库', value: (row: Warehouse) => row.isDefault === 1 ? '默认仓库' : '否' },
     { header: '备注', value: (row: Warehouse) => row.remark },
     { header: '创建时间', value: (row: Warehouse) => row.createTime },
   ]

@@ -6,5 +6,8 @@ export function useSettleCandidates(query: SettleCandidateQuery, enabled = true)
   return useQuery({
     ...queries.settle.candidates(query),
     enabled,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
+    staleTime: 0,
   })
 }

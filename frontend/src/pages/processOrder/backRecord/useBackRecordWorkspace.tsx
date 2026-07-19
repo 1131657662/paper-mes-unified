@@ -18,10 +18,12 @@ import {
   type BackRecordVarianceConfirmation,
 } from './backRecordUtils'
 import { showBackRecordResult } from './backRecordResultModal'
+import { confirmBackRecordSubmission } from './confirmBackRecordSubmission'
 import { buildInitialOnSiteOutputGroups } from './backRecordOnSiteOutputModel'
 import { buildBackRecordWorkbench } from './backRecordWorkbenchUtils'
 import { useBackRecordDisplayValues } from './useBackRecordDisplayValues'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
+import { useBackRecordWarehouseSelection } from './useBackRecordWarehouseSelection'
 
 interface Params {
   uuid?: string | null
@@ -48,6 +50,7 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
   const [filledValues, setFilledValues] = useState<BackRecordFormValues>({})
   const initializedOrderRef = useRef<string | null>(null)
   const displayValues = useBackRecordDisplayValues(form, filledValues)
+  const warehouse = useBackRecordWarehouseSelection({ detail: detailQuery.data, enabled, form })
 
   useEffect(() => {
     const detailUuid = detailQuery.data?.order.uuid
@@ -78,6 +81,13 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
     await form.validateFields()
     const formValues = form.getFieldsValue(true) as BackRecordFormValues
     const payload = buildBackRecordDTO(detailQuery.data, formValues, authorization, variance)
+    if (!authorization && !variance) {
+      const confirmed = await confirmBackRecordSubmission({
+        orderNo: detailQuery.data.order.orderNo,
+        warehouseName: warehouse.selectedName ?? payload.warehouseUuid,
+      })
+      if (!confirmed) return
+    }
     await submitPayload(payload)
   }
 
@@ -197,6 +207,7 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onSucces
         stepFormOpen={stepFormOpen}
       />,
     values: displayValues,
+    warehouse,
     syncFilledValues: setFilledValues,
     openChangeGuide,
     submit,

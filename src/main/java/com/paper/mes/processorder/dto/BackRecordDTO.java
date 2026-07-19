@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -17,6 +18,10 @@ import java.util.List;
  */
 @Data
 public class BackRecordDTO {
+
+    @NotBlank(message = "入库仓库不能为空")
+    @Size(max = 64, message = "入库仓库标识不能超过64个字符")
+    private String warehouseUuid;
 
     @Size(max = 50, message = "管理员账号长度不能超过50")
     private String releaseAdminUsername;

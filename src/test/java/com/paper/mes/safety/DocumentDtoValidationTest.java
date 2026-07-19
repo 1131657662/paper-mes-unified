@@ -74,6 +74,16 @@ class DocumentDtoValidationTest {
     }
 
     @Test
+    void backRecord_whenWarehouseBlank_reportsValidationError() {
+        BackRecordDTO dto = new BackRecordDTO();
+        BackRecordRollDTO roll = new BackRecordRollDTO();
+        roll.setUuid("roll-1");
+        dto.setRolls(List.of(roll));
+
+        assertTrue(validateMessages(dto).contains("入库仓库不能为空"));
+    }
+
+    @Test
     void processOrderVoid_whenReasonBlank_reportsValidationError() {
         ProcessOrderVoidDTO dto = new ProcessOrderVoidDTO();
         dto.setReason(" ");

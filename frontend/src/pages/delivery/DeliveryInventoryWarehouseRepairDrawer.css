@@ -1,0 +1,37 @@
+.inventory-warehouse-repair .ant-drawer-body {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inventory-warehouse-repair__search {
+  width: min(360px, 100%);
+}
+
+.inventory-warehouse-repair .ant-table-wrapper {
+  min-height: 240px;
+}
+
+.inventory-warehouse-repair__form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(320px, 1.6fr);
+  align-items: start;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--mes-color-border-light);
+}
+
+.inventory-warehouse-repair__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .inventory-warehouse-repair__form {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

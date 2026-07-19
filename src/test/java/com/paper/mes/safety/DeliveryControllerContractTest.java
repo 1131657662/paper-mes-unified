@@ -7,6 +7,7 @@ import com.paper.mes.auth.permission.PermissionInterceptor;
 import com.paper.mes.auth.service.AuthService;
 import com.paper.mes.common.GlobalExceptionHandler;
 import com.paper.mes.delivery.controller.DeliveryController;
+import com.paper.mes.delivery.dto.AvailableFinishVO;
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
 import com.paper.mes.delivery.dto.DeliveryCancelDTO;
 import com.paper.mes.delivery.dto.DeliveryConfirmDTO;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -34,6 +36,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -66,6 +69,21 @@ class DeliveryControllerContractTest {
                 .andExpect(jsonPath("$.code").value(401));
 
         verify(deliveryService, never()).create(any());
+    }
+
+    @Test
+    void availableFinishes_withWarehouseRole_bindsWarehouseFilter() throws Exception {
+        authorizeAs("warehouse");
+        when(deliveryService.listAvailable(any(), any())).thenReturn(List.of(new AvailableFinishVO()));
+
+        mvc.perform(get("/api/delivery-orders/available")
+                        .param("customerUuid", "customer-1")
+                        .param("warehouseUuid", "warehouse-1")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(deliveryService).listAvailable("customer-1", "warehouse-1");
     }
 
     @Test
@@ -114,6 +132,7 @@ class DeliveryControllerContractTest {
         ArgumentCaptor<DeliveryCreateDTO> captor = ArgumentCaptor.forClass(DeliveryCreateDTO.class);
         verify(deliveryService).create(captor.capture());
         assertEquals("customer-1", captor.getValue().getCustomerUuid());
+        assertEquals("warehouse-1", captor.getValue().getWarehouseUuid());
         assertEquals(LocalDate.of(2026, 7, 7), captor.getValue().getDeliveryDate());
         assertEquals("finish-1", captor.getValue().getItems().getFirst().getFinishUuid());
         assertEquals(new BigDecimal("12.50"), captor.getValue().getItems().getFirst().getOutWeight());
@@ -221,7 +240,7 @@ class DeliveryControllerContractTest {
 
     private String deliveryPayload() {
         return """
-                {"customerUuid":"customer-1","deliveryDate":"2026-07-07","pickerName":"picker","items":[{"finishUuid":"finish-1","outWeight":12.50}]}
+                {"customerUuid":"customer-1","warehouseUuid":"warehouse-1","deliveryDate":"2026-07-07","pickerName":"picker","items":[{"finishUuid":"finish-1","outWeight":12.50}]}
                 """;
     }
 

@@ -27,8 +27,10 @@ public class OperationLogService {
     public static final String ACTION_SETTLE_VOID = "作废结算";
     public static final String ACTION_RECEIVE = "收款";
     public static final String ACTION_RECEIVE_CANCEL = "取消收款";
+    public static final String ACTION_COLLECTION_REMINDER = "催收提醒";
     public static final String ACTION_ROLLBACK = "回退";
     public static final String ACTION_FIELD_MODIFY = "字段修改";
+    public static final String ACTION_PRICING_ADJUST = "计价调整";
     public static final String ACTION_USER_CREATE = "新增用户";
     public static final String ACTION_USER_UPDATE = "编辑用户";
     public static final String ACTION_USER_STATUS = "账号启停";

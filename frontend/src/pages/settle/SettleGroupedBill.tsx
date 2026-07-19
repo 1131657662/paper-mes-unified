@@ -47,7 +47,11 @@ function GroupHeader({ group }: { group: SettleBillGroup }) {
       <Metric label="原纸" value={`${group.lines.length} 卷 / ${formatTon(group.originalWeight)}`} />
       <Metric label="成品" value={`${group.finishCount} 卷 / ${formatTon(group.finishWeight)}`} />
       <Metric label="切边" value={formatTon(group.trimWeight)} />
+      <Metric label="标准加工费" value={formatMoney(group.standardProcessAmount)} />
       <Metric label="加工费" value={formatMoney(group.processAmount)} />
+      {group.pricingAdjustmentAmount !== 0 && (
+        <Metric label="计价调整" value={formatMoney(group.pricingAdjustmentAmount)} />
+      )}
       <Metric label="额外费" value={formatMoney(group.extraAmount)} hint={group.extraFeeSummary} />
       <Metric label="税费" value={formatMoney(group.taxAmount)} />
       <strong>应收 {formatMoney(group.lineAmount)}</strong>

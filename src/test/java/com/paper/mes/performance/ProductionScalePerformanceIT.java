@@ -10,9 +10,10 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -24,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "app.data-health.initial-delay-ms=86400000",
         "app.backup.enabled=false"
 })
-@EnabledIfSystemProperty(named = "paper.mes.performance.enabled", matches = "true")
+@EnabledIfSystemProperty(named = "paper-mes.performance.enabled", matches = "true")
 class ProductionScalePerformanceIT {
 
     private static final String PERF_CUSTOMER_UUID = "b68d1e20b8893a5045297d6146eba796";
@@ -46,59 +47,43 @@ class ProductionScalePerformanceIT {
 
     @Test
     void processOrderFirstPage_meetsInteractiveLatencyBaseline() {
-        ProcessOrderQuery query = pageQuery(1);
         long started = System.nanoTime();
-
-        var result = processOrderService.pageOrders(query);
-        long elapsedMs = elapsedMs(started);
-
+        var result = processOrderService.pageOrders(pageQuery(1));
         assertThat(result.getRecords()).hasSize(20);
-        assertThat(elapsedMs).isLessThan(1_000L);
-        print("加工单首屏", elapsedMs, result.getTotal());
+        assertThat(elapsedMs(started)).isLessThan(1_000L);
     }
 
     @Test
     void processOrderDeepPage_staysWithinAdministrativeLatencyBaseline() {
-        ProcessOrderQuery query = pageQuery(5_000);
         long started = System.nanoTime();
-
-        var result = processOrderService.pageOrders(query);
-        long elapsedMs = elapsedMs(started);
-
+        var result = processOrderService.pageOrders(pageQuery(5_000));
         assertThat(result.getRecords()).hasSize(20);
-        assertThat(elapsedMs).isLessThan(2_000L);
-        print("加工单第5000页", elapsedMs, result.getTotal());
+        assertThat(elapsedMs(started)).isLessThan(2_000L);
     }
 
     @Test
     void reportDetails_withOneHundredThousandRows_meetsDisplayBaseline() {
         long started = System.nanoTime();
-
         var result = reportService.detailRows(reportQuery());
-        long elapsedMs = elapsedMs(started);
-
         assertThat(result.getTotal()).isEqualTo(100_000L);
         assertThat(result.getRows()).hasSize(1_000);
         assertThat(result.isTruncated()).isTrue();
-        assertThat(elapsedMs).isLessThan(10_000L);
-        print("十万级报表明细", elapsedMs, result.getTotal());
+        assertThat(elapsedMs(started)).isLessThan(10_000L);
     }
 
     @Test
-    void reportExport_withOneHundredThousandRows_staysWithinTimeAndHeapBaseline() {
-        MockHttpServletResponse response = new MockHttpServletResponse();
+    void reportExport_withOneHundredThousandRows_staysWithinTimeAndHeapBaseline() throws Exception {
+        Path target = Files.createTempFile("report-perf", ".xlsx");
         resetHeapPeaks();
         long started = System.nanoTime();
-
-        reportService.exportWorkbook(reportQuery(), response);
-        long elapsedMs = elapsedMs(started);
-        long peakHeapMb = peakHeapBytes() / MEBIBYTE;
-
-        assertThat(response.getContentAsByteArray()).isNotEmpty();
-        assertThat(elapsedMs).isLessThan(90_000L);
-        assertThat(peakHeapMb).isLessThan(768L);
-        System.out.printf("PERF 十万行报表导出 elapsedMs=%d peakHeapMb=%d bytes=%d%n",
-                elapsedMs, peakHeapMb, response.getContentAsByteArray().length);
+        try {
+            reportService.exportWorkbook(reportQuery(), target);
+            assertThat(Files.size(target)).isPositive();
+            assertThat(elapsedMs(started)).isLessThan(90_000L);
+            assertThat(peakHeapBytes() / MEBIBYTE).isLessThan(768L);
+        } finally {
+            Files.deleteIfExists(target);
+        }
     }
 
     @Test
@@ -113,15 +98,10 @@ class ProductionScalePerformanceIT {
             assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
             long started = System.nanoTime();
             start.countDown();
-
             assertThat(first.get(120, TimeUnit.SECONDS)).isPositive();
             assertThat(second.get(120, TimeUnit.SECONDS)).isPositive();
-            long elapsedMs = elapsedMs(started);
-            long peakHeapMb = peakHeapBytes() / MEBIBYTE;
-
-            assertThat(elapsedMs).isLessThan(120_000L);
-            assertThat(peakHeapMb).isLessThan(1_024L);
-            System.out.printf("PERF 双并发十万行导出 elapsedMs=%d peakHeapMb=%d%n", elapsedMs, peakHeapMb);
+            assertThat(elapsedMs(started)).isLessThan(120_000L);
+            assertThat(peakHeapBytes() / MEBIBYTE).isLessThan(1_024L);
         } finally {
             executor.shutdownNow();
         }
@@ -160,12 +140,12 @@ class ProductionScalePerformanceIT {
     private int exportBytes(CountDownLatch ready, CountDownLatch start) throws Exception {
         ready.countDown();
         assertThat(start.await(10, TimeUnit.SECONDS)).isTrue();
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        reportService.exportWorkbook(reportQuery(), response);
-        return response.getContentAsByteArray().length;
-    }
-
-    private void print(String name, long elapsedMs, long rows) {
-        System.out.printf("PERF %s elapsedMs=%d rows=%d%n", name, elapsedMs, rows);
+        Path target = Files.createTempFile("report-concurrent", ".xlsx");
+        try {
+            reportService.exportWorkbook(reportQuery(), target);
+            return Math.toIntExact(Files.size(target));
+        } finally {
+            Files.deleteIfExists(target);
+        }
     }
 }

@@ -19,6 +19,11 @@ public class SettleFeeLineVO {
     private BigDecimal quantity;
     private String quantityUnit;
     private BigDecimal unitPrice;
+    private BigDecimal standardQuantity;
+    private BigDecimal standardAmount;
+    private Integer billingMode;
+    private BigDecimal pricingAdjustmentAmount;
+    private String pricingAdjustmentReason;
     private BigDecimal amountNoTax;
     private BigDecimal taxRate;
     private BigDecimal taxAmount;

@@ -9,6 +9,7 @@ export interface Warehouse {
   location?: string
   /** 1启用 2停用 */
   status?: number
+  isDefault?: number
   remark?: string
   createTime?: string
   updateTime?: string
@@ -20,6 +21,7 @@ export interface WarehouseSaveDTO {
   warehouseName: string
   location?: string
   status?: number
+  isDefault?: number
   remark?: string
 }
 

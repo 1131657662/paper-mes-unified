@@ -10,7 +10,10 @@ export interface AppRouteMeta {
 export const routeMeta: AppRouteMeta[] = [
   { path: '/dashboard', label: '仪表盘', closable: false },
   { path: '/process-orders', label: '加工单' },
-  { path: '/delivery-orders', label: '出库管理' },
+  { path: '/delivery-orders', label: '出库单', parentLabel: '出库管理' },
+  { path: '/delivery-orders/inventory', label: '成品库存', parentLabel: '出库管理' },
+  { path: '/delivery-orders/inventory/finishes', label: '成品库存', parentLabel: '出库管理', menuKey: '/delivery-orders/inventory' },
+  { path: '/delivery-orders/inventory/customers/:customerUuid', label: '客户库存明细', parentLabel: '成品库存', menuKey: '/delivery-orders/inventory' },
   { path: '/settle-orders', label: '结算管理' },
   { path: '/reports', label: '统计报表' },
   { path: '/profile', label: '个人中心' },

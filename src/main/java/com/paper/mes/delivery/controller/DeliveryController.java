@@ -17,7 +17,6 @@ import com.paper.mes.delivery.dto.DeliveryListSummaryVO;
 import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.service.DeliveryListSummaryService;
 import com.paper.mes.delivery.service.DeliveryService;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,20 +40,21 @@ public class DeliveryController {
 
     @GetMapping
     @RequirePermission(Permissions.DELIVERY_VIEW)
-    public R<PageResult<DeliveryOrder>> page(DeliveryQuery query) {
+    public R<PageResult<DeliveryOrder>> page(@Valid DeliveryQuery query) {
         return R.success(deliveryService.page(query));
     }
 
     @GetMapping("/summary")
     @RequirePermission(Permissions.DELIVERY_VIEW)
-    public R<DeliveryListSummaryVO> summary(DeliveryQuery query) {
+    public R<DeliveryListSummaryVO> summary(@Valid DeliveryQuery query) {
         return R.success(deliveryListSummaryService.summarize(query));
     }
 
     @GetMapping("/available")
     @RequirePermission(Permissions.DELIVERY_MANAGE)
-    public R<List<AvailableFinishVO>> available(@RequestParam String customerUuid) {
-        return R.success(deliveryService.listAvailable(customerUuid));
+    public R<List<AvailableFinishVO>> available(@RequestParam String customerUuid,
+                                                @RequestParam(required = false) String warehouseUuid) {
+        return R.success(deliveryService.listAvailable(customerUuid, warehouseUuid));
     }
 
     @PostMapping
@@ -67,18 +67,6 @@ public class DeliveryController {
     @RequirePermission(Permissions.DELIVERY_VIEW)
     public R<DeliveryDetailVO> detail(@PathVariable String uuid) {
         return R.success(deliveryService.getDetail(uuid));
-    }
-
-    @GetMapping("/{uuid}/export")
-    @RequirePermission(Permissions.DELIVERY_VIEW)
-    public void export(@PathVariable String uuid, HttpServletResponse response) {
-        deliveryService.exportDetail(uuid, response);
-    }
-
-    @GetMapping("/export")
-    @RequirePermission(Permissions.DELIVERY_VIEW)
-    public void exportList(DeliveryQuery query, HttpServletResponse response) {
-        deliveryService.exportList(query, response);
     }
 
     @PostMapping("/{uuid}/confirm")

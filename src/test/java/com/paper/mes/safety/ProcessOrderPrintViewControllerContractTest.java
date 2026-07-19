@@ -12,6 +12,7 @@ import com.paper.mes.processorder.dto.ProcessOrderPrintViewVO;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.ProcessRouteAppendService;
 import com.paper.mes.processorder.service.ProcessRouteSaveService;
+import com.paper.mes.processorder.service.ProcessStepPricingBatchService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,7 +43,8 @@ class ProcessOrderPrintViewControllerContractTest {
         mvc = MockMvcBuilders.standaloneSetup(new ProcessOrderController(
                         processOrderService,
                         mock(ProcessRouteSaveService.class),
-                        mock(ProcessRouteAppendService.class)))
+                        mock(ProcessRouteAppendService.class),
+                        mock(ProcessStepPricingBatchService.class)))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())

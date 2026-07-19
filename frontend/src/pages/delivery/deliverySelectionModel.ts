@@ -31,6 +31,17 @@ export function selectedDeliveryFinishes(
   return finishes.filter((item) => selectedKeys.has(item.finishUuid))
 }
 
+export function mergeAvailableFinishRows(
+  current: Record<string, AvailableFinishVO>,
+  keys: React.Key[],
+  rows: AvailableFinishVO[],
+): Record<string, AvailableFinishVO> {
+  const selected = new Set(keys.map(String))
+  const next = Object.fromEntries(Object.entries(current).filter(([uuid]) => selected.has(uuid)))
+  for (const row of rows) if (selected.has(row.finishUuid)) next[row.finishUuid] = row
+  return next
+}
+
 export function summarizeDeliverySelection(
   items: AvailableFinishVO[],
   edits: Record<string, DeliveryLineEdit>,

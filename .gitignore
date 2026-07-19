@@ -39,9 +39,12 @@ src/main/resources/application-prod.yml
 # 上传文件本地存储产物
 /upload/
 /backup/
+/data/
 
 # 前端构建产物与依赖
 frontend/node_modules/
 frontend/dist/
 frontend/*.local
 frontend/.vite/
+frontend/playwright-report/
+frontend/test-results/

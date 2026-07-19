@@ -20,10 +20,10 @@ import com.paper.mes.processorder.dto.ProcessOrderQuery;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
 import com.paper.mes.processorder.dto.ProcessStepDTO;
+import com.paper.mes.processorder.dto.ProcessStepPricingAdjustmentDTO;
 import com.paper.mes.processorder.dto.RewindPlanPreviewDTO;
 import com.paper.mes.processorder.dto.SnapshotDiffVO;
 import com.paper.mes.processorder.entity.ProcessOrder;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -38,8 +38,6 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
     ProcessOrderPrintViewVO getPrintView(String uuid, PrintViewVersion version);
 
     /** 导出加工单详情资料 Excel。 */
-    void exportDetail(String uuid, HttpServletResponse response);
-
     String create(ProcessOrderCreateDTO dto);
 
     /** 向已有加工单追加一条原纸明细，返回新明细 uuid。 */
@@ -95,6 +93,9 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
      * 复卷吨位取 step.process_weight，缺省取原纸 actual_weight/1000。幂等可重算。
      */
     FeeResultVO calcFee(String uuid);
+
+    /** 核定已回录/已完成工序的特殊计价，供月结前确认最终应收。 */
+    FeeResultVO adjustProcessStepPricing(String stepUuid, ProcessStepPricingAdjustmentDTO dto);
 
     /**
      * 双版本快照对比（P2-6）：snap_print 标称值 vs snap_finish 实际值，按 uuid 配对输出

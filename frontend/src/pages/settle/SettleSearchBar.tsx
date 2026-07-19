@@ -14,14 +14,15 @@ export interface SettleSearchFormValues {
 interface Props {
   customers: { customerName: string; uuid: string }[]
   form: FormInstance<SettleSearchFormValues>
+  initialValues?: Partial<SettleSearchFormValues>
   loadingCustomers: boolean
   onReset: () => void
   onSearch: (values: SettleSearchFormValues) => void
 }
 
-export default function SettleSearchBar({ customers, form, loadingCustomers, onReset, onSearch }: Props) {
+export default function SettleSearchBar({ customers, form, initialValues, loadingCustomers, onReset, onSearch }: Props) {
   return (
-    <Form form={form} layout="vertical" className="document-searchbar" onFinish={onSearch}>
+    <Form form={form} initialValues={initialValues} layout="vertical" className="document-searchbar" onFinish={onSearch}>
       <div className="document-searchbar__grid">
         <Form.Item name="keyword" label="结算单号/客户">
           <Input allowClear placeholder="输入单号、客户或备注" />

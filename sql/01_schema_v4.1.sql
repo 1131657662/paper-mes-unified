@@ -130,11 +130,15 @@ CREATE TABLE `sys_warehouse` (
   `warehouse_name`  VARCHAR(100) NOT NULL                COMMENT '仓库名称',
   `location`        VARCHAR(255) DEFAULT NULL            COMMENT '库位/地址',
   `status`          TINYINT      NOT NULL DEFAULT 1      COMMENT '1启用 2停用',
+  `is_default`      TINYINT      NOT NULL DEFAULT 0      COMMENT '默认仓库',
   `remark`          VARCHAR(255) DEFAULT NULL            COMMENT '备注',
   `is_deleted`      TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
   `warehouse_code_active` VARCHAR(50)
     GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN NULLIF(TRIM(`warehouse_code`), '') ELSE NULL END)
     STORED COMMENT '启用仓库唯一编码',
+  `active_default_key` TINYINT
+    GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 AND `status` = 1 AND `is_default` = 1 THEN 1 ELSE NULL END)
+    STORED COMMENT '唯一启用默认仓库约束键',
   `create_by`       VARCHAR(50)  DEFAULT NULL            COMMENT '创建人',
   `update_by`       VARCHAR(50)  DEFAULT NULL            COMMENT '更新人',
   `create_time`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -146,8 +150,10 @@ CREATE TABLE `sys_warehouse` (
   `ext_num2`        DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `uk_sys_warehouse_active_code` (`warehouse_code_active`),
+  UNIQUE KEY `uk_warehouse_active_default` (`active_default_key`),
   KEY `idx_warehouse_name` (`warehouse_name`),
   KEY `idx_status` (`status`),
+  KEY `idx_warehouse_default_status` (`is_default`, `status`, `is_deleted`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='仓库档案表';
 
@@ -201,6 +207,7 @@ CREATE TABLE `biz_process_order` (
   `last_print_user`       VARCHAR(50)   DEFAULT NULL            COMMENT '打印人',
   `back_record_time`      DATETIME      DEFAULT NULL            COMMENT '回录完成时间',
   `back_record_user`      VARCHAR(50)   DEFAULT NULL            COMMENT '回录操作员',
+  `accounting_date`       DATE GENERATED ALWAYS AS (COALESCE(DATE(`back_record_time`), `order_date`)) STORED COMMENT '结算归属日期',
   `void_time`             DATETIME      DEFAULT NULL            COMMENT '作废时间',
   `void_user`             VARCHAR(50)   DEFAULT NULL            COMMENT '作废人',
   `void_reason`           VARCHAR(255)  DEFAULT NULL            COMMENT '作废原因',
@@ -224,6 +231,7 @@ CREATE TABLE `biz_process_order` (
   KEY `idx_customer_uuid` (`customer_uuid`),
   KEY `idx_customer_deleted_ctime` (`customer_uuid`, `is_deleted`, `create_time`),
   KEY `idx_order_status` (`order_status`),
+  KEY `idx_order_customer_status_accounting` (`customer_uuid`, `order_status`, `accounting_date`, `uuid`),
   KEY `idx_order_date` (`order_date`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单主表';
@@ -307,9 +315,20 @@ CREATE TABLE `biz_process_step` (
   `machine_name_snap` VARCHAR(100) DEFAULT NULL           COMMENT '工序机台名称快照',
   `is_main`        TINYINT       NOT NULL DEFAULT 1      COMMENT '1本卷主工艺 0车间追加工序',
   `knife_count`    INT           DEFAULT 0               COMMENT '锯纸专用：实际加工刀数',
-  `process_weight` DECIMAL(10,3) DEFAULT NULL            COMMENT '复卷专用：加工吨位',
-  `unit_price`     DECIMAL(10,2) DEFAULT NULL            COMMENT '本工序单价（元/刀 / 元/吨）',
+    `process_weight` DECIMAL(10,3) DEFAULT NULL            COMMENT '复卷专用：加工吨位',
+    `unit_price`     DECIMAL(10,2) DEFAULT NULL            COMMENT '本工序单价（元/刀 / 元/吨）',
+    `billing_unit_price` DECIMAL(12,4) DEFAULT NULL        COMMENT '人工核定单价，为空时沿用标准单价',
   `step_amount`    DECIMAL(10,2) DEFAULT 0.00            COMMENT '本工序加工费（取整）',
+  `billing_mode`   TINYINT       NOT NULL DEFAULT 1      COMMENT '1标准计价 2指定数量 3固定金额 4免收',
+  `standard_quantity` DECIMAL(12,3) DEFAULT NULL         COMMENT '优惠前标准计费数量',
+  `billing_quantity` DECIMAL(12,3) DEFAULT NULL          COMMENT '最终计费数量',
+  `billing_amount` DECIMAL(12,2) DEFAULT NULL            COMMENT '固定金额模式最终金额',
+  `standard_step_amount` DECIMAL(12,2) DEFAULT NULL      COMMENT '优惠前标准工序金额',
+  `pricing_adjustment_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '最终金额减标准金额',
+  `pricing_adjustment_reason` VARCHAR(255) DEFAULT NULL  COMMENT '计价调整原因',
+  `pricing_adjusted_by` VARCHAR(50) DEFAULT NULL         COMMENT '计价调整操作人',
+    `pricing_adjusted_at` DATETIME DEFAULT NULL            COMMENT '计价调整时间',
+    `pricing_adjustment_batch_id` VARCHAR(64) DEFAULT NULL COMMENT '批量计价操作标识',
   `loss_weight`    DECIMAL(10,3) DEFAULT 0.000           COMMENT '本工序产生损耗重量 kg',
   `operator`       VARCHAR(50)   DEFAULT NULL            COMMENT '本工序操作工',
   `remark`         VARCHAR(255)  DEFAULT NULL            COMMENT '工序备注、异常说明',
@@ -330,7 +349,15 @@ CREATE TABLE `biz_process_step` (
   KEY `idx_parent_step_uuid` (`parent_step_uuid`),
   KEY `idx_process_step_machine_uuid` (`machine_uuid`),
   KEY `idx_step_type` (`step_type`),
-  KEY `idx_is_deleted` (`is_deleted`)
+  KEY `idx_is_deleted` (`is_deleted`),
+    CONSTRAINT `chk_process_step_billing_mode` CHECK (`billing_mode` IN (1,2,3,4)),
+    CONSTRAINT `chk_process_step_billing_unit_price` CHECK (`billing_unit_price` IS NULL OR `billing_unit_price` > 0),
+  CONSTRAINT `chk_process_step_pricing_nonnegative` CHECK (
+    (`standard_quantity` IS NULL OR `standard_quantity` >= 0)
+    AND (`billing_quantity` IS NULL OR `billing_quantity` > 0)
+      AND (`billing_amount` IS NULL OR `billing_amount` >= 0)
+      AND (`billing_unit_price` IS NULL OR `billing_unit_price` > 0)
+    )
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工序明细表（工艺唯一来源）';
 
 -- -----------------------------------------------------------------------------
@@ -449,6 +476,7 @@ CREATE TABLE `biz_finish_roll` (
   `scrap_weight`         DECIMAL(10,3) DEFAULT 0.000           COMMENT '报废重量 kg',
   `quality_status`       TINYINT       DEFAULT 1               COMMENT '1待检 2合格 3不合格 4让步接收',
   `finish_status`        TINYINT       NOT NULL DEFAULT 1      COMMENT '1待入库 2已入库 3已出库 4报废',
+  `stock_in_time`        DATETIME      DEFAULT NULL            COMMENT '首次正式入库时间',
   `warehouse_uuid`       VARCHAR(36)   DEFAULT NULL            COMMENT '存放仓库',
   `original_roll_nos`    TEXT          DEFAULT NULL            COMMENT '来源母卷号拼接，用于溯源',
   `actual_remark`        VARCHAR(255)  DEFAULT NULL            COMMENT '车间手写备注',
@@ -467,6 +495,7 @@ CREATE TABLE `biz_finish_roll` (
   UNIQUE KEY `uk_finish_roll_no` (`finish_roll_no`),
   KEY `idx_order_uuid` (`order_uuid`),
   KEY `idx_finish_status` (`finish_status`),
+  KEY `idx_finish_inventory_filter` (`finish_status`, `is_deleted`, `warehouse_uuid`, `stock_in_time`),
   KEY `idx_roll_no_status` (`roll_no_status`),
   KEY `idx_source_type` (`source_type`),
   KEY `idx_is_deleted` (`is_deleted`)
@@ -553,6 +582,8 @@ CREATE TABLE `biz_delivery_order` (
   `delivery_no`         VARCHAR(50)   NOT NULL                COMMENT '出库单号',
   `customer_uuid`       VARCHAR(36)   NOT NULL                COMMENT '关联客户',
   `customer_name`       VARCHAR(100)  NOT NULL                COMMENT '快照冗余客户名',
+  `warehouse_uuid`      VARCHAR(36)   DEFAULT NULL            COMMENT '出库仓库',
+  `warehouse_name`      VARCHAR(100)  DEFAULT NULL            COMMENT '出库仓库名称快照',
   `delivery_date`       DATE          NOT NULL                COMMENT '出库日期',
   `total_count`         INT           NOT NULL DEFAULT 0      COMMENT '出库成品件数',
   `total_weight`        DECIMAL(12,3) DEFAULT 0.000           COMMENT '出库总重量 kg',
@@ -631,6 +662,7 @@ CREATE TABLE `biz_delivery_detail` (
 -- -----------------------------------------------------------------------------
 -- 3.3.10 biz_settle_order 结算单主表
 -- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `biz_settle_collection_reminder`;
 DROP TABLE IF EXISTS `biz_settle_order`;
 CREATE TABLE `biz_settle_order` (
   `uuid`              VARCHAR(36)   NOT NULL                COMMENT '结算单主键',
@@ -642,6 +674,7 @@ CREATE TABLE `biz_settle_order` (
   `quote_hash`        CHAR(64)      DEFAULT NULL            COMMENT '创建时报价SHA-256',
   `settle_type`       TINYINT       NOT NULL DEFAULT 1      COMMENT '1按单 2按月批量 3勾选合并',
   `settle_date`       DATE          NOT NULL                COMMENT '结算日期',
+  `due_date`          DATE          DEFAULT NULL            COMMENT '付款到期日',
   `period_start`      DATE          DEFAULT NULL            COMMENT '月结账期起',
   `period_end`        DATE          DEFAULT NULL            COMMENT '月结账期止',
   `saw_amount`        DECIMAL(12,2) DEFAULT 0.00            COMMENT '锯纸加工费合计',
@@ -655,6 +688,11 @@ CREATE TABLE `biz_settle_order` (
   `scrap_offset_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '废纸抵扣金额',
   `discount_amount`   DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '优惠及尾差核销金额',
   `unreceived_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '待收金额',
+  `reminder_count`    INT           NOT NULL DEFAULT 0     COMMENT '催收提醒次数',
+  `last_reminder_time` DATETIME     DEFAULT NULL           COMMENT '最近催收时间',
+  `last_reminder_by`  VARCHAR(50)   DEFAULT NULL           COMMENT '最近催收人',
+  `last_reminder_result` TINYINT    DEFAULT NULL           COMMENT '最近催收结果',
+  `next_follow_up_date` DATE        DEFAULT NULL           COMMENT '下次跟进日期',
   `is_invoice`        TINYINT       NOT NULL DEFAULT 2      COMMENT '1开票 2不开票',
   `settle_status`     TINYINT       NOT NULL DEFAULT 1      COMMENT '1待收款 2部分收款 3全部结清 4已作废',
   `void_reason`       VARCHAR(255)  DEFAULT NULL            COMMENT '作废原因',
@@ -679,9 +717,46 @@ CREATE TABLE `biz_settle_order` (
   KEY `idx_customer_uuid` (`customer_uuid`),
   KEY `idx_settle_status` (`settle_status`),
   KEY `idx_settle_date` (`settle_date`),
+  KEY `idx_settle_due_status` (`is_deleted`, `settle_status`, `due_date`, `uuid`),
+  KEY `idx_settle_collection_queue` (`is_deleted`, `settle_status`, `last_reminder_time`, `due_date`, `uuid`),
   KEY `idx_is_deleted` (`is_deleted`),
   CONSTRAINT `chk_settle_discount_nonnegative` CHECK (`discount_amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='结算单主表';
+
+-- -----------------------------------------------------------------------------
+-- 3.3.10.1 biz_settle_collection_reminder 结算催收提醒流水
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `biz_settle_collection_reminder`;
+CREATE TABLE `biz_settle_collection_reminder` (
+  `uuid` VARCHAR(36) NOT NULL COMMENT '催收记录主键',
+  `settle_uuid` VARCHAR(36) NOT NULL COMMENT '关联结算单',
+  `request_id` VARCHAR(64) NOT NULL COMMENT '客户端幂等请求号',
+  `reminder_channel` TINYINT NOT NULL COMMENT '1电话 2微信 3短信 4上门 5其他',
+  `reminder_result` TINYINT NOT NULL COMMENT '1已联系 2未接通 3承诺付款 4有异议 5其他',
+  `contact_name` VARCHAR(100) DEFAULT NULL COMMENT '联系人',
+  `reminder_time` DATETIME NOT NULL COMMENT '提醒时间',
+  `next_follow_up_date` DATE DEFAULT NULL COMMENT '下次跟进日期',
+  `operator_uuid` VARCHAR(36) NOT NULL COMMENT '操作人账号主键',
+  `operator_name` VARCHAR(50) NOT NULL COMMENT '操作人姓名快照',
+  `remark` VARCHAR(500) NOT NULL COMMENT '提醒结果说明',
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_settle_collection_request` (`settle_uuid`, `request_id`),
+  KEY `idx_settle_collection_time` (`settle_uuid`, `reminder_time`, `uuid`),
+  KEY `idx_settle_collection_follow_up` (`next_follow_up_date`, `settle_uuid`),
+  CONSTRAINT `fk_settle_collection_order` FOREIGN KEY (`settle_uuid`) REFERENCES `biz_settle_order` (`uuid`) ON DELETE RESTRICT,
+  CONSTRAINT `chk_settle_collection_channel` CHECK (`reminder_channel` BETWEEN 1 AND 5),
+  CONSTRAINT `chk_settle_collection_result` CHECK (`reminder_result` BETWEEN 1 AND 5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='结算催收提醒流水';
 
 -- -----------------------------------------------------------------------------
 -- 3.3.11 biz_settle_detail 结算关联加工单明细表
@@ -694,6 +769,9 @@ CREATE TABLE `biz_settle_detail` (
   `order_no`      VARCHAR(50)   DEFAULT NULL            COMMENT '冗余加工单号',
   `saw_amount`    DECIMAL(12,2) DEFAULT 0.00            COMMENT '本单锯纸费',
   `rewind_amount` DECIMAL(12,2) DEFAULT 0.00            COMMENT '本单复卷费',
+  `standard_process_amount` DECIMAL(12,2) DEFAULT 0.00 COMMENT '优惠前标准加工费',
+  `pricing_adjustment_amount` DECIMAL(12,2) DEFAULT 0.00 COMMENT '最终加工费减标准加工费',
+  `pricing_adjustment_reason` VARCHAR(255) DEFAULT NULL COMMENT '计价调整原因',
   `extra_amount`  DECIMAL(12,2) DEFAULT 0.00            COMMENT '本单附加费',
   `order_amount`  DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '本单计入结算金额',
   `remark`        VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
@@ -721,6 +799,7 @@ CREATE TABLE `biz_receive_record` (
   `uuid`           VARCHAR(36)   NOT NULL                COMMENT '收款流水主键',
   `settle_uuid`    VARCHAR(36)   NOT NULL                COMMENT '关联结算单',
   `request_id`     VARCHAR(64)   DEFAULT NULL            COMMENT '客户端幂等请求号',
+  `request_hash`   CHAR(64)      DEFAULT NULL            COMMENT '收款请求载荷SHA-256',
   `receive_date`   DATETIME      NOT NULL                COMMENT '收款时间',
   `receive_amount` DECIMAL(12,2) NOT NULL                COMMENT '本次结清金额',
   `cash_amount`    DECIMAL(12,2) NOT NULL DEFAULT 0.00   COMMENT '实际到账金额',
@@ -1084,18 +1163,66 @@ CREATE TABLE `sys_notification` (
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统站内通知';
 
+DROP TABLE IF EXISTS `sys_operational_alert_state`;
+CREATE TABLE `sys_operational_alert_state` (
+  `alert_key` VARCHAR(64) NOT NULL,
+  `state_code` VARCHAR(30) NOT NULL,
+  `transition_no` BIGINT NOT NULL DEFAULT 0,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`alert_key`),
+  CONSTRAINT `chk_operational_alert_transition_no` CHECK (`transition_no` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='跨实例运行态告警状态';
+
+DROP TABLE IF EXISTS `sys_export_task`;
+CREATE TABLE `sys_export_task` (
+  `uuid` VARCHAR(36) NOT NULL, `request_id` VARCHAR(64) NOT NULL,
+  `task_type` VARCHAR(30) NOT NULL, `module_code` VARCHAR(30) NOT NULL,
+  `operation_code` VARCHAR(50) NOT NULL, `task_name` VARCHAR(120) NOT NULL,
+  `source_uuid` VARCHAR(36) NOT NULL, `request_payload` TEXT DEFAULT NULL,
+  `requester_uuid` VARCHAR(36) NOT NULL,
+  `requester_name` VARCHAR(50) NOT NULL, `task_status` TINYINT NOT NULL DEFAULT 1,
+  `progress` TINYINT NOT NULL DEFAULT 0, `file_name` VARCHAR(255) DEFAULT NULL,
+  `file_path` VARCHAR(500) DEFAULT NULL, `content_type` VARCHAR(120) DEFAULT NULL,
+  `file_size` BIGINT DEFAULT NULL,
+  `error_message` VARCHAR(500) DEFAULT NULL, `started_at` DATETIME DEFAULT NULL,
+  `completed_at` DATETIME DEFAULT NULL, `acknowledged_at` DATETIME DEFAULT NULL,
+  `expires_at` DATETIME NOT NULL, `attempt_count` INT NOT NULL DEFAULT 0,
+  `max_attempts` INT NOT NULL DEFAULT 3, `heartbeat_at` DATETIME DEFAULT NULL,
+  `worker_id` VARCHAR(100) DEFAULT NULL, `downloaded_at` DATETIME DEFAULT NULL,
+  `download_count` INT NOT NULL DEFAULT 0, `cancelled_at` DATETIME DEFAULT NULL,
+  `cancelled_by` VARCHAR(36) DEFAULT NULL, `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL, `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1, `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL, `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_export_task_request` (`requester_uuid`, `request_id`),
+  KEY `idx_export_task_owner_time` (`requester_uuid`, `create_time`, `uuid`),
+  KEY `idx_export_task_owner_status` (`requester_uuid`, `task_status`, `acknowledged_at`),
+  KEY `idx_export_task_expiry` (`expires_at`, `task_status`),
+  KEY `idx_export_task_dispatch` (`task_status`, `heartbeat_at`, `create_time`),
+  KEY `idx_export_task_status_completed` (`task_status`, `completed_at`),
+  CONSTRAINT `chk_export_task_status` CHECK (`task_status` BETWEEN 1 AND 6),
+  CONSTRAINT `chk_export_task_progress` CHECK (`progress` BETWEEN 0 AND 100),
+  CONSTRAINT `chk_export_task_attempts` CHECK (`attempt_count` >= 0 AND `max_attempts` BETWEEN 1 AND 10),
+  CONSTRAINT `chk_export_task_download_count` CHECK (`download_count` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异步导出任务中心';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================
--- 建表脚本结束  共 27 张表
+-- 建表脚本结束  共 29 张表
 --   基础档案 4: sys_customer / sys_paper / sys_machine / sys_warehouse
 --   加工核心 8: biz_process_order / biz_original_roll / biz_process_step /
 --               biz_process_stage_output / biz_process_stage_input_rel /
 --               biz_finish_roll / biz_process_param /
 --               biz_finish_original_rel
 --   出库     2: biz_delivery_order / biz_delivery_detail
---   结算收款 3: biz_settle_order / biz_settle_detail / biz_receive_record
+--   结算收款 4: biz_settle_order / biz_settle_detail / biz_receive_record / biz_settle_collection_reminder
 --   工艺草稿 2: biz_process_config_draft / sys_roll_no_sequence
---   系统辅助 8: sys_operation_log / sys_user / sys_user_session / sys_no_rule /
---               sys_dict_item / sys_config_item / sys_backup_task / sys_notification
+--   系统辅助 9: sys_operation_log / sys_user / sys_user_session / sys_no_rule /
+--               sys_dict_item / sys_config_item / sys_backup_task / sys_notification / sys_export_task
 -- =============================================================================

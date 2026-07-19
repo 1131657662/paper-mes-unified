@@ -11,6 +11,8 @@ describe('岗位权限矩阵', () => {
     expect(roleHasPermission('order_clerk', PERMISSIONS.orderCreate)).toBe(true)
     expect(roleHasPermission('order_clerk', PERMISSIONS.orderManage)).toBe(true)
     expect(roleHasPermission('order_clerk', PERMISSIONS.orderBackRecord)).toBe(false)
+    expect(roleHasPermission('order_clerk', PERMISSIONS.orderPricing)).toBe(true)
+    expect(roleHasPermission('order_clerk', PERMISSIONS.orderPricingApprove)).toBe(false)
   })
 
   it('回录员只能执行生产回录相关操作', () => {
@@ -32,6 +34,8 @@ describe('岗位权限矩阵', () => {
     expect(roleHasPermission('finance', PERMISSIONS.settleReceive)).toBe(true)
     expect(roleHasPermission('finance', PERMISSIONS.deliveryManage)).toBe(false)
     expect(roleHasPermission('finance', PERMISSIONS.orderBackRecord)).toBe(false)
+    expect(roleHasPermission('finance', PERMISSIONS.orderPricingApprove)).toBe(true)
+    expect(roleHasPermission('finance', PERMISSIONS.settleDiscountApprove)).toBe(true)
   })
 
   it('出库员可以办理出库但不能结算收款', () => {
@@ -39,5 +43,6 @@ describe('岗位权限矩阵', () => {
     expect(roleHasPermission('warehouse', PERMISSIONS.deliveryManage)).toBe(true)
     expect(roleHasPermission('warehouse', PERMISSIONS.settleManage)).toBe(false)
     expect(roleHasPermission('warehouse', PERMISSIONS.settleReceive)).toBe(false)
+    expect(roleHasPermission('warehouse', PERMISSIONS.exportTaskView)).toBe(true)
   })
 })

@@ -150,7 +150,10 @@ class BusinessFlowSafetyContractTest {
                 "businessLockService.lockProcessOrders(dto.getOrderUuids())",
                 "loadOrdersByUuid(dto.getOrderUuids())");
         assertContainsAll(slice(source, "public String createByMonth", "public SettleDetailVO getDetail"),
-                "businessLockService.lockProcessOrders(orderUuids)",
+                "businessLockService.lockMonthlyFinishedProcessOrders(",
+                "orders = loadOrdersByUuid(orderUuids)");
+        assertBefore(slice(source, "public String createByMonth", "public SettleDetailVO getDetail"),
+                "businessLockService.lockMonthlyFinishedProcessOrders(",
                 "orders = loadOrdersByUuid(orderUuids)");
         assertContainsAll(slice(source, "private List<ProcessOrder> loadOrdersByUuid", "private Customer resolveSingleCustomer"),
                 "validateFinishedOrder(order)",
@@ -303,5 +306,13 @@ class BusinessFlowSafetyContractTest {
         for (String snippet : snippets) {
             assertTrue(text.contains(snippet), "Missing snippet: " + snippet);
         }
+    }
+
+    private void assertBefore(String text, String first, String second) {
+        int firstIndex = text.indexOf(first);
+        int secondIndex = text.indexOf(second);
+        assertTrue(firstIndex >= 0, "Missing first snippet: " + first);
+        assertTrue(secondIndex >= 0, "Missing second snippet: " + second);
+        assertTrue(firstIndex < secondIndex, "Expected snippet order: " + first + " before " + second);
     }
 }

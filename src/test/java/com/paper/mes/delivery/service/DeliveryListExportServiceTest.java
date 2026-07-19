@@ -6,9 +6,9 @@ import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpServletResponse;
 
-import java.io.ByteArrayInputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -20,18 +20,23 @@ import static org.mockito.Mockito.when;
 class DeliveryListExportServiceTest {
 
     @Test
-    void export_whenResultExceedsPageLimit_writesEveryMatchingOrder() throws Exception {
+    void exportToPath_whenResultExceedsPageLimit_writesEveryMatchingOrder() throws Exception {
         DeliveryOrderMapper mapper = mock(DeliveryOrderMapper.class);
         List<DeliveryOrder> orders = IntStream.rangeClosed(1, 151).mapToObj(this::order).toList();
         when(mapper.selectPage(any(Page.class), any())).thenAnswer(invocation -> page(
                 invocation.<Page<DeliveryOrder>>getArgument(0), orders));
-        MockHttpServletResponse response = new MockHttpServletResponse();
+        Path target = Files.createTempFile("delivery-list-export", ".xlsx");
 
-        new DeliveryListExportService(mapper).export(new DeliveryQuery(), response);
+        try {
+            new DeliveryListExportService(mapper).exportToPath(new DeliveryQuery(), target);
 
-        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(response.getContentAsByteArray()))) {
-            assertThat(workbook.getSheetAt(0).getLastRowNum()).isEqualTo(151);
-            assertThat(workbook.getSheetAt(0).getRow(151).getCell(0).getStringCellValue()).isEqualTo("CK000151");
+            try (XSSFWorkbook workbook = new XSSFWorkbook(Files.newInputStream(target))) {
+                assertThat(workbook.getSheetAt(0).getLastRowNum()).isEqualTo(151);
+                assertThat(workbook.getSheetAt(0).getRow(151).getCell(0).getStringCellValue())
+                        .isEqualTo("CK000151");
+            }
+        } finally {
+            Files.deleteIfExists(target);
         }
     }
 

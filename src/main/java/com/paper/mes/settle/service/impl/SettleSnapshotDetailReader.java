@@ -77,6 +77,9 @@ final class SettleSnapshotDetailReader {
             item.setOrderNo(text(itemNode, "order_no"));
             item.setSawAmount(decimal(itemNode, "saw_amount"));
             item.setRewindAmount(decimal(itemNode, "rewind_amount"));
+            item.setStandardProcessAmount(decimal(itemNode, "standard_process_amount"));
+            item.setPricingAdjustmentAmount(decimal(itemNode, "pricing_adjustment_amount"));
+            item.setPricingAdjustmentReason(text(itemNode, "pricing_adjustment_reason"));
             item.setExtraAmount(decimal(itemNode, "extra_amount"));
             item.setOrderAmount(decimal(itemNode, "order_amount"));
             item.setRemark(text(itemNode, "remark"));

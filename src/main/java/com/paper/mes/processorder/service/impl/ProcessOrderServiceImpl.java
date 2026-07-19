@@ -8,10 +8,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.auth.context.AuthContextHolder;
+import com.paper.mes.auth.permission.PermissionChecker;
+import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.service.AdminCredentialVerifier;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
+import com.paper.mes.common.ResultCode;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.common.audit.FieldAudit;
@@ -48,6 +51,7 @@ import com.paper.mes.processorder.dto.ProcessOrderQuery;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
 import com.paper.mes.processorder.dto.ProcessStepDTO;
+import com.paper.mes.processorder.dto.ProcessStepPricingAdjustmentDTO;
 import com.paper.mes.processorder.dto.RewindPlanPreviewDTO;
 import com.paper.mes.processorder.dto.SnapshotDiffVO;
 import com.paper.mes.processorder.entity.FinishOriginalRel;
@@ -71,11 +75,14 @@ import com.paper.mes.processorder.service.BackRecordFinishRecorder;
 import com.paper.mes.processorder.service.BackRecordOnSiteFinishRecorder;
 import com.paper.mes.processorder.service.BackRecordOnSiteTrimRecorder;
 import com.paper.mes.processorder.service.BackRecordRollSubmissionValidator;
+import com.paper.mes.processorder.service.BackRecordWarehousePolicy;
 import com.paper.mes.processorder.service.FinishRollSourceBinder;
 import com.paper.mes.processorder.service.MultiSourceConsumptionNormalizer;
 import com.paper.mes.processorder.service.ProcessMixProcessResolver;
-import com.paper.mes.processorder.service.ProcessOrderExportService;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.ProcessStepPricingSettings;
+import com.paper.mes.processorder.service.ProcessStepPricingPolicy;
+import com.paper.mes.processorder.service.ProcessStepPricingBatchCalculator;
 import com.paper.mes.processorder.service.RollLossSummaryCalculator;
 import com.paper.mes.processorder.service.RollNoSequenceService;
 import com.paper.mes.processorder.service.SawPlanPreviewer;
@@ -86,25 +93,20 @@ import com.paper.mes.processorder.statemachine.StateMachine;
 import com.paper.mes.settle.mapper.SettleDetailMapper;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -170,15 +172,17 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private final RollNoSequenceService rollNoSequenceService;
     private final SawPlanPreviewer sawPlanPreviewer;
     private final DocumentNoService documentNoService;
-    private final ProcessOrderExportService processOrderExportService;
     private final BusinessLockService businessLockService;
     private final MachineMapper machineMapper;
     private final WeightCheckThresholdService weightCheckThresholdService;
     private final BackRecordFinishRecorder backRecordFinishRecorder;
     private final BackRecordOnSiteFinishRecorder backRecordOnSiteFinishRecorder;
     private final BackRecordOnSiteTrimRecorder backRecordOnSiteTrimRecorder;
+    private final BackRecordWarehousePolicy backRecordWarehousePolicy;
     private final FinishRollSourceBinder finishRollSourceBinder;
     private final AdminCredentialVerifier adminCredentialVerifier;
+    private final PermissionChecker permissionChecker;
+    private final ProcessStepPricingSettings processStepPricingSettings;
 
     @Override
     public PageResult<ProcessOrder> pageOrders(ProcessOrderQuery query) {
@@ -335,6 +339,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 new LambdaQueryWrapper<ProcessStep>()
                         .eq(ProcessStep::getOrderUuid, uuid)
                         .orderByAsc(ProcessStep::getStepSort));
+        sortStepsForDetail(steps, rolls);
         List<ProcessParam> processParams = processParamMapper.selectList(
                 new LambdaQueryWrapper<ProcessParam>()
                         .eq(ProcessParam::getOrderUuid, uuid)
@@ -358,25 +363,25 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         return vo;
     }
 
+    static void sortStepsForDetail(List<ProcessStep> steps, List<OriginalRoll> rolls) {
+        Map<String, Integer> rollSortByUuid = new LinkedHashMap<>();
+        for (OriginalRoll roll : rolls) {
+            rollSortByUuid.put(roll.getUuid(), roll.getRowSort() == null ? Integer.MAX_VALUE : roll.getRowSort());
+        }
+        Comparator<Integer> nullableInteger = Comparator.nullsLast(Integer::compareTo);
+        steps.sort(Comparator
+                .comparingInt((ProcessStep step) -> rollSortByUuid.getOrDefault(step.getOriginalUuid(), Integer.MAX_VALUE))
+                .thenComparing(ProcessStep::getStageLevel, nullableInteger)
+                .thenComparing(ProcessStep::getStepSort, nullableInteger)
+                .thenComparing(ProcessStep::getUuid, Comparator.nullsLast(String::compareTo)));
+    }
+
     @Override
     public ProcessOrderPrintViewVO getPrintView(String uuid, PrintViewVersion version) {
         if (version == null) {
             throw new BusinessException("打印版本不能为空");
         }
         return ProcessOrderPrintViewReader.read(getDetail(uuid), version, objectMapper);
-    }
-
-    @Override
-    public void exportDetail(String uuid, HttpServletResponse response) {
-        ProcessOrderDetailVO detail = getDetail(uuid);
-        String filename = "加工单资料_" + detail.getOrder().getOrderNo() + ".xlsx";
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(filename));
-        try (Workbook workbook = processOrderExportService.buildWorkbook(detail)) {
-            workbook.write(response.getOutputStream());
-        } catch (IOException e) {
-            throw new BusinessException("导出加工单资料失败");
-        }
     }
 
     private List<ProcessOrderDetailVO.RollProductionVO> buildRollProductions(List<OriginalRoll> rolls,
@@ -1414,7 +1419,17 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             snap.put("knife_count", step.getKnifeCount());
             snap.put("process_weight", step.getProcessWeight());
             snap.put("unit_price", step.getUnitPrice());
+            snap.put("billing_unit_price", step.getBillingUnitPrice());
             snap.put("step_amount", step.getStepAmount());
+            snap.put("billing_mode", step.getBillingMode());
+            snap.put("standard_quantity", step.getStandardQuantity());
+            snap.put("billing_quantity", step.getBillingQuantity());
+            snap.put("billing_amount", step.getBillingAmount());
+            snap.put("standard_step_amount", step.getStandardStepAmount());
+            snap.put("pricing_adjustment_amount", step.getPricingAdjustmentAmount());
+            snap.put("pricing_adjustment_reason", step.getPricingAdjustmentReason());
+            snap.put("pricing_adjusted_by", step.getPricingAdjustedBy());
+            snap.put("pricing_adjusted_at", step.getPricingAdjustedAt());
             snap.put("remark", step.getRemark());
             snaps.add(snap);
         }
@@ -1504,12 +1519,20 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             throw new BusinessException("仅待回录状态可回录提交");
         }
         StateMachine.assertTransition(OrderStatus.of(order.getOrderStatus()), OrderStatus.FINISHED);
+        BackRecordWarehousePolicy.WarehouseSnapshot warehouse =
+                backRecordWarehousePolicy.requireEnabled(dto.getWarehouseUuid());
+        order.setWarehouseUuid(warehouse.uuid());
 
         List<OriginalRoll> rolls = originalRollMapper.selectList(
                 new LambdaQueryWrapper<OriginalRoll>()
                         .eq(OriginalRoll::getOrderUuid, uuid)
                         .orderByAsc(OriginalRoll::getRowSort));
         List<FinishRoll> finishRolls = finishRollMapper.selectList(
+                new LambdaQueryWrapper<FinishRoll>()
+                        .eq(FinishRoll::getOrderUuid, uuid)
+                        .orderByAsc(FinishRoll::getRowSort));
+        businessLockService.lockFinishRolls(finishRolls.stream().map(FinishRoll::getUuid).toList());
+        finishRolls = finishRollMapper.selectList(
                 new LambdaQueryWrapper<FinishRoll>()
                         .eq(FinishRoll::getOrderUuid, uuid)
                         .orderByAsc(FinishRoll::getRowSort));
@@ -1562,14 +1585,16 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
         // 6) 加工产出成品入库；作废未使用备用号。
         int voided = finishProcessRollsAndVoidSpare(finishRolls);
+        assignBackRecordWarehouse(order.getUuid(), finishRolls, warehouse.uuid());
 
         // 7) 先锁定回录人和完成时间，再生成完成快照。
         LocalDateTime now = LocalDateTime.now();
         String backRecordUser = currentOperator();
+        markFirstStockInTime(order.getUuid(), finishRolls, now);
         order.setOrderStatus(STATUS_FINISHED);
         order.setBackRecordTime(now);
         order.setBackRecordUser(backRecordUser);
-        order.setSnapFinish(buildSnapFinish(order, rolls, finishRolls, now, rollChecks));
+        order.setSnapFinish(buildSnapFinish(order, rolls, finishRolls, now, rollChecks, warehouse));
 
         // 8) 状态流转 待回录(3) → 已完成(4)。
         ConcurrencyGuard.requireUpdated(updateById(order));
@@ -1579,6 +1604,27 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 OperationLogService.ACTION_BACK_RECORD, backRecordUser, null);
 
         return buildBackRecordResult(order, now, rollChecks, directShipGenerated, voided);
+    }
+
+    private void assignBackRecordWarehouse(String orderUuid, List<FinishRoll> finishes,
+                                           String warehouseUuid) {
+        finishes.forEach(finish -> finish.setWarehouseUuid(warehouseUuid));
+        finishRollMapper.update(null, new LambdaUpdateWrapper<FinishRoll>()
+                .eq(FinishRoll::getOrderUuid, orderUuid)
+                .set(FinishRoll::getWarehouseUuid, warehouseUuid));
+    }
+
+    private void markFirstStockInTime(String orderUuid, List<FinishRoll> finishRolls, LocalDateTime stockInTime) {
+        finishRolls.stream()
+                .filter(finish -> FINISH_STATUS_IN_STOCK == (finish.getFinishStatus() == null
+                        ? 0 : finish.getFinishStatus()))
+                .filter(finish -> finish.getStockInTime() == null)
+                .forEach(finish -> finish.setStockInTime(stockInTime));
+        finishRollMapper.update(null, new LambdaUpdateWrapper<FinishRoll>()
+                .eq(FinishRoll::getOrderUuid, orderUuid)
+                .eq(FinishRoll::getFinishStatus, FINISH_STATUS_IN_STOCK)
+                .isNull(FinishRoll::getStockInTime)
+                .set(FinishRoll::getStockInTime, stockInTime));
     }
 
     private void authorizeBlockRelease(BackRecordDTO dto, ProcessOrder order,
@@ -1987,13 +2033,19 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     /** 完成快照 snap_finish：锁定回录后的原纸实际参数与成品实际重量、闭合结论。 */
     private String buildSnapFinish(ProcessOrder order, List<OriginalRoll> rolls,
                                    List<FinishRoll> finishRolls, LocalDateTime recordTime,
-                                   List<BackRecordResultVO.RollCheck> rollChecks) {
+                                   List<BackRecordResultVO.RollCheck> rollChecks,
+                                   BackRecordWarehousePolicy.WarehouseSnapshot warehouse) {
         Map<String, Object> snap = new LinkedHashMap<>();
         snap.put("schema_version", SNAP_SCHEMA_VERSION);
         snap.put("order_no", order.getOrderNo());
         snap.put("customer_name", order.getCustomerName());
         snap.put("back_record_time", recordTime.toString());
         snap.put("back_record_user", order.getBackRecordUser());
+        Map<String, Object> warehouseSnap = new LinkedHashMap<>();
+        warehouseSnap.put("uuid", warehouse.uuid());
+        warehouseSnap.put("name", warehouse.name());
+        warehouseSnap.put("location", warehouse.location());
+        snap.put("warehouse", warehouseSnap);
 
         BackRecordResultVO.RollCheck summaryCheck = summaryClosure(rollChecks);
         Map<String, Object> closure = new LinkedHashMap<>();
@@ -2039,6 +2091,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             m.put("source_type", f.getSourceType());
             m.put("roll_no_status", f.getRollNoStatus());
             m.put("finish_status", f.getFinishStatus());
+            m.put("warehouse_uuid", f.getWarehouseUuid());
             m.put("is_remain", f.getIsRemain());
             m.put("paper_name", f.getPaperName());
             m.put("gram_weight", f.getGramWeight());
@@ -2267,6 +2320,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     @Override
     @Transactional(rollbackFor = Exception.class)
     public FeeResultVO calcFee(String uuid) {
+        businessLockService.lockProcessOrders(List.of(uuid));
         ProcessOrder order = getById(uuid);
         if (order == null) {
             throw new BusinessException(ErrorCode.E002, "加工单不存在");
@@ -2302,14 +2356,25 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         for (ProcessStep step : steps) {
             OriginalRoll roll = rollByUuid.get(step.getOriginalUuid());
             BigDecimal unitPrice = resolveUnitPrice(order, step, sawPrice, rewindPrice);
+            BigDecimal effectiveUnitPrice = ProcessStepPricingBatchCalculator.effectivePrice(
+                    unitPrice, step.getBillingUnitPrice());
             BigDecimal tonnage = resolveTonnage(step, roll);
-            BigDecimal amount = FeeCalculator.stepAmount(
+            BigDecimal standardQuantity = standardQuantity(step, tonnage);
+            BigDecimal standardAmount = FeeCalculator.stepAmount(
                     step.getStepType(), step.getKnifeCount(), tonnage, unitPrice);
+            ProcessStepPricingPolicy.Result pricing = ProcessStepPricingPolicy.calculate(
+                    step, standardQuantity, standardAmount, effectiveUnitPrice);
+            BigDecimal amount = pricing.finalAmount();
 
             step.setUnitPrice(unitPrice);
             if (step.getStepType() != null && step.getStepType() == FeeCalculator.STEP_TYPE_REWIND) {
                 step.setProcessWeight(tonnage);
             }
+            step.setBillingMode(pricing.mode());
+            step.setStandardQuantity(pricing.standardQuantity());
+            step.setBillingQuantity(pricing.billingQuantity());
+            step.setStandardStepAmount(pricing.standardAmount());
+            step.setPricingAdjustmentAmount(pricing.adjustmentAmount());
             step.setStepAmount(amount);
             processStepMapper.updateById(step);
 
@@ -2327,9 +2392,13 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             sf.setOriginalUuid(step.getOriginalUuid());
             sf.setStepType(step.getStepType());
             sf.setUnitPrice(unitPrice);
-            sf.setQuantity(step.getStepType() != null && step.getStepType() == FeeCalculator.STEP_TYPE_SAW
-                    ? (step.getKnifeCount() == null ? null : new BigDecimal(step.getKnifeCount()))
-                    : tonnage);
+            sf.setBillingUnitPrice(step.getBillingUnitPrice());
+            sf.setEffectiveUnitPrice(effectiveUnitPrice);
+            sf.setQuantity(pricing.billingQuantity());
+            sf.setStandardQuantity(pricing.standardQuantity());
+            sf.setStandardStepAmount(pricing.standardAmount());
+            sf.setBillingMode(pricing.mode());
+            sf.setPricingAdjustmentAmount(pricing.adjustmentAmount());
             sf.setStepAmount(amount);
             stepFees.add(sf);
         }
@@ -2449,6 +2518,13 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             return roll.getActualWeight().divide(FeeCalculator.TON_DIVISOR, 3, RoundingMode.HALF_UP);
         }
         return null;
+    }
+
+    private BigDecimal standardQuantity(ProcessStep step, BigDecimal tonnage) {
+        if (step.getStepType() != null && step.getStepType() == FeeCalculator.STEP_TYPE_SAW) {
+            return step.getKnifeCount() == null ? null : BigDecimal.valueOf(step.getKnifeCount());
+        }
+        return tonnage;
     }
 
     /** 附加费合计 = 加急+托盘+装卸+运费+其他杂费。 */
@@ -3186,6 +3262,90 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         return List.of();
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public FeeResultVO adjustProcessStepPricing(String stepUuid, ProcessStepPricingAdjustmentDTO dto) {
+        ProcessStep existing = processStepMapper.selectById(stepUuid);
+        if (existing == null) {
+            throw new BusinessException(ErrorCode.E002, "工序不存在");
+        }
+        businessLockService.lockProcessOrders(List.of(existing.getOrderUuid()));
+        ProcessStep step = processStepMapper.selectById(stepUuid);
+        if (step == null) {
+            throw new BusinessException(ErrorCode.E006, "工序已被其他操作删除，请刷新后重试");
+        }
+        ProcessOrder order = requireOrder(step.getOrderUuid());
+        validatePricingAdjustmentStatus(order);
+        applyPricingAdjustment(step, dto);
+        ConcurrencyGuard.requireRowUpdated(processStepMapper.updateById(step));
+        FeeResultVO result = calcFee(order.getUuid());
+        requirePricingApprovalIfNeeded(result);
+        operationLogService.record(OperationLogService.BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
+                OperationLogService.ACTION_PRICING_ADJUST, currentOperator(),
+                "工序 " + stepUuid + " 计价模式调整为 " + dto.getBillingMode() + "：" + dto.getReason().trim());
+        return result;
+    }
+
+    private void requirePricingApprovalIfNeeded(FeeResultVO result) {
+        if (result.getStepFees() == null) return;
+        BigDecimal discount = result.getStepFees().stream()
+                .map(FeeResultVO.StepFee::getPricingAdjustmentAmount)
+                .filter(amount -> amount != null && amount.signum() < 0)
+                .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+        if (discount.compareTo(processStepPricingSettings.autoApproveLimit()) <= 0) return;
+        try {
+            permissionChecker.require(Permissions.ORDER_PRICING_APPROVE);
+        } catch (BusinessException ex) {
+            if (ex.getCode() != ResultCode.FORBIDDEN) throw ex;
+            throw new BusinessException(ResultCode.FORBIDDEN, ErrorCode.E009.getCode(),
+                    ErrorCode.E009.getDefaultMessage());
+        }
+    }
+
+    private void validatePricingAdjustmentStatus(ProcessOrder order) {
+        Integer status = order.getOrderStatus();
+        if (status == null || (status != STATUS_TO_RECORD && status != STATUS_FINISHED)) {
+            throw new BusinessException(ErrorCode.E001, "仅待回录或已完成加工单可调整计价");
+        }
+    }
+
+    private void applyPricingAdjustment(ProcessStep step, ProcessStepPricingAdjustmentDTO dto) {
+        if (step == null) {
+            throw new BusinessException(ErrorCode.E006, "工序已被其他操作删除，请刷新后重试");
+        }
+        int mode = dto.getBillingMode();
+        if (mode == ProcessStepPricingPolicy.QUANTITY_OVERRIDE) {
+            requireBillingQuantity(step, dto.getBillingQuantity());
+        }
+        if (mode == ProcessStepPricingPolicy.FIXED_AMOUNT && dto.getBillingAmount() == null) {
+            throw new BusinessException("固定金额模式必须填写最终金额");
+        }
+        step.setBillingMode(mode);
+        step.setBillingQuantity(mode == ProcessStepPricingPolicy.QUANTITY_OVERRIDE
+                ? dto.getBillingQuantity().setScale(3, RoundingMode.HALF_UP) : null);
+        step.setBillingAmount(mode == ProcessStepPricingPolicy.FIXED_AMOUNT
+                ? dto.getBillingAmount().setScale(2, RoundingMode.HALF_UP)
+                : mode == ProcessStepPricingPolicy.FREE ? BigDecimal.ZERO : null);
+        step.setPricingAdjustmentReason(dto.getReason().trim());
+        step.setPricingAdjustedBy(currentOperator());
+        step.setPricingAdjustedAt(LocalDateTime.now());
+    }
+
+    private void requireBillingQuantity(ProcessStep step, BigDecimal quantity) {
+        if (quantity == null || quantity.signum() <= 0) {
+            throw new BusinessException("最终计费数量必须大于0");
+        }
+        if (step.getStepType() != null && step.getStepType() == FeeCalculator.STEP_TYPE_SAW) {
+            try {
+                quantity.toBigIntegerExact();
+            } catch (ArithmeticException ex) {
+                throw new BusinessException("锯纸最终计费数量必须为整数刀数");
+            }
+        }
+    }
+
     private boolean isTrimSpec(FinishConfigSpecDTO spec) {
         return LAYOUT_ITEM_TRIM.equals(resolveSpecItemType(spec));
     }
@@ -3882,11 +4042,6 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
     private String currentOperator() {
         return AuthContextHolder.currentDisplayName();
-    }
-
-    private String contentDisposition(String filename) {
-        String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
-        return "attachment; filename*=UTF-8''" + encoded;
     }
 
     /**

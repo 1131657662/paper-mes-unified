@@ -1,6 +1,7 @@
 package com.paper.mes.warehouse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
@@ -64,6 +65,8 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
         if (warehouse.getStatus() == null) {
             warehouse.setStatus(STATUS_ENABLED);
         }
+        warehouse.setIsDefault(isDefaultFor(warehouse.getStatus(), warehouse.getIsDefault()));
+        clearOtherDefault(null, warehouse.getIsDefault());
         save(warehouse);
         return warehouse.getUuid();
     }
@@ -74,6 +77,7 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
         Warehouse existing = getByUuid(uuid);
         Integer savedVersion = existing.getVersion();
         Integer keepStatus = existing.getStatus();
+        Integer keepDefault = existing.getIsDefault();
         String savedCode = existing.getWarehouseCode();
         BeanUtils.copyProperties(dto, existing);
         existing.setUuid(uuid);
@@ -82,6 +86,11 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
         if (existing.getStatus() == null) {
             existing.setStatus(keepStatus);
         }
+        if (existing.getIsDefault() == null) {
+            existing.setIsDefault(keepDefault);
+        }
+        existing.setIsDefault(isDefaultFor(existing.getStatus(), existing.getIsDefault()));
+        clearOtherDefault(uuid, existing.getIsDefault());
         ConcurrencyGuard.requireUpdated(updateById(existing));
     }
 
@@ -93,5 +102,18 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
 
     private String keepCodeOrGenerate(String code) {
         return StringUtils.hasText(code) ? code : documentNoService.next(NoRuleBizType.WAREHOUSE, LocalDate.now());
+    }
+
+    private int isDefaultFor(Integer status, Integer isDefault) {
+        return status != null && status == STATUS_ENABLED && Integer.valueOf(1).equals(isDefault) ? 1 : 0;
+    }
+
+    private void clearOtherDefault(String excludedUuid, Integer isDefault) {
+        if (!Integer.valueOf(1).equals(isDefault)) return;
+        LambdaUpdateWrapper<Warehouse> wrapper = new LambdaUpdateWrapper<Warehouse>()
+                .eq(Warehouse::getIsDefault, 1)
+                .set(Warehouse::getIsDefault, 0);
+        wrapper.ne(StringUtils.hasText(excludedUuid), Warehouse::getUuid, excludedUuid);
+        update(wrapper);
     }
 }

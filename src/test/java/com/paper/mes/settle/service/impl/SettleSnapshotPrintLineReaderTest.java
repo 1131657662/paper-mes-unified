@@ -57,6 +57,8 @@ class SettleSnapshotPrintLineReaderTest {
                       "rewindInvoiceUnitPrice": 159.00,
                       "sawAmount": 651.00,
                       "rewindAmount": 359.00,
+                      "standardProcessAmount": 1200.00,
+                      "pricingAdjustmentAmount": -190.00,
                       "processAmount": 1010.00,
                       "extraAmount": 100.00,
                       "extraFeeSummary": "装卸费 80.00；运费 20.00",
@@ -95,6 +97,8 @@ class SettleSnapshotPrintLineReaderTest {
         assertEquals("装卸费 80.00；运费 20.00", line.getExtraFeeSummary());
         assertDecimal("212.00", line.getSawInvoiceUnitPrice());
         assertDecimal("159.00", line.getRewindInvoiceUnitPrice());
+        assertDecimal("1200.00", line.getStandardProcessAmount());
+        assertDecimal("-190.00", line.getPricingAdjustmentAmount());
         assertDecimal("6.00", line.getTaxRate());
         assertDecimal("66.00", line.getTaxAmount());
         assertDecimal("1176.00", line.getLineAmount());
@@ -144,6 +148,8 @@ class SettleSnapshotPrintLineReaderTest {
                       "rewind_invoice_unit_price": 190.80,
                       "saw_amount": 0.00,
                       "rewind_amount": 517.32,
+                      "standard_process_amount": 600.00,
+                      "pricing_adjustment_amount": -82.68,
                       "process_amount": 517.32,
                       "extra_amount": 30.00,
                       "extra_fee_summary": "其他费 30.00",
@@ -184,6 +190,8 @@ class SettleSnapshotPrintLineReaderTest {
         assertEquals("其他费 30.00", line.getExtraFeeSummary());
         assertDecimal("190.80", line.getRewindInvoiceUnitPrice());
         assertDecimal("517.32", line.getRewindAmount());
+        assertDecimal("600.00", line.getStandardProcessAmount());
+        assertDecimal("-82.68", line.getPricingAdjustmentAmount());
         assertDecimal("6.00", line.getTaxRate());
         assertDecimal("32.84", line.getTaxAmount());
         assertDecimal("580.16", line.getLineAmount());

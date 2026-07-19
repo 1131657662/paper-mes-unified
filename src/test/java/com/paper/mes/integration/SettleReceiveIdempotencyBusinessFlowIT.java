@@ -1,6 +1,7 @@
 package com.paper.mes.integration;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.settle.dto.ReceiveDTO;
 import com.paper.mes.settle.dto.SettleByOrderDTO;
 import com.paper.mes.settle.entity.ReceiveRecord;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
@@ -39,6 +41,22 @@ class SettleReceiveIdempotencyBusinessFlowIT {
                 .eq(ReceiveRecord::getSettleUuid, settleUuid));
         assertThat(count).isEqualTo(1);
         assertThat(settleService.getById(settleUuid).getReceivedAmount()).isEqualByComparingTo(total);
+    }
+
+    @Test
+    void receive_whenRequestIdReusesDifferentPayload_rejectsReplay() {
+        var scenario = fixture.createStandardSaw();
+        fixture.issueAndComplete(scenario);
+        String settleUuid = settleService.createByOrder(settleRequest(scenario.orderUuid()));
+        BigDecimal total = settleService.getById(settleUuid).getTotalAmount();
+        ReceiveDTO first = receiveRequest(total);
+        ReceiveDTO changed = receiveRequest(total.subtract(new BigDecimal("1.00")));
+
+        settleService.receive(settleUuid, first);
+
+        assertThatThrownBy(() -> settleService.receive(settleUuid, changed))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("请求号已用于其他收款内容");
     }
 
     private SettleByOrderDTO settleRequest(String orderUuid) {

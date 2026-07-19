@@ -17,13 +17,25 @@ public class PermissionChecker {
         if (user == null) {
             throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
         }
-        List<String> owned = Permissions.resolve(user.getRoleCode());
-        if (owned.contains(Permissions.ALL)) {
-            return;
-        }
-        boolean allowed = Arrays.stream(requiredPermissions).anyMatch(owned::contains);
-        if (!allowed) {
+        if (!isAllowed(user, requiredPermissions)) {
             throw new BusinessException(ResultCode.FORBIDDEN, "当前账号没有权限执行该操作");
         }
+    }
+
+    public boolean has(String... requiredPermissions) {
+        CurrentUser user = AuthContextHolder.getCurrentUser();
+        return user != null && isAllowed(user, requiredPermissions);
+    }
+
+    public boolean hasRolePermission(String roleCode, String... requiredPermissions) {
+        List<String> owned = Permissions.resolve(roleCode);
+        if (owned.contains(Permissions.ALL)) {
+            return true;
+        }
+        return Arrays.stream(requiredPermissions).anyMatch(owned::contains);
+    }
+
+    private boolean isAllowed(CurrentUser user, String... requiredPermissions) {
+        return hasRolePermission(user.getRoleCode(), requiredPermissions);
     }
 }
