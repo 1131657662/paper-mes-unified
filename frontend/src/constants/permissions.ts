@@ -3,6 +3,7 @@ export const PERMISSIONS = {
   baseManage: 'base:manage',
   baseView: 'base:view',
   deliveryManage: 'delivery:manage',
+  deliveryRelease: 'delivery:release',
   deliveryView: 'delivery:view',
   orderBackRecord: 'order:back-record',
   orderCreate: 'order:create',

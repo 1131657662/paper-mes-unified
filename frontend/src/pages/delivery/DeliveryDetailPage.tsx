@@ -21,6 +21,7 @@ import DeliveryRollbackSnapshotCard from './DeliveryRollbackSnapshotCard'
 import DeliveryCustomerDocumentSection from './DeliveryCustomerDocumentSection'
 import { DeliveryOverview, DeliveryPickupInfo, DeliveryStatusTag } from './DeliveryDetailSummary'
 import { useDeliveryPrintActions } from './useDeliveryPrintActions'
+import { authorizeDeliveryConfirmation } from './deliveryConfirmAuthorization'
 import {
   askDeliveryCancelReason,
   askDeliveryRollbackReason,
@@ -37,6 +38,8 @@ export default function DeliveryDetailPage() {
   const [appendOpen, setAppendOpen] = useState(false)
   const [documentView, setDocumentView] = useState<DeliveryDocumentView>('customer')
   const canManageDelivery = useHasPermission(PERMISSIONS.deliveryManage)
+  const canReleaseDelivery = useHasPermission(PERMISSIONS.deliveryRelease)
+  const canConfirmDelivery = canManageDelivery || canReleaseDelivery
   const detailQuery = useDeliveryDetail(uuid)
   const confirmMutation = useConfirmDelivery()
   const cancelMutation = useCancelPendingDelivery()
@@ -61,10 +64,16 @@ export default function DeliveryDetailPage() {
   }
 
   const handleConfirm = async () => {
-    if (confirmMutation.isPending || !canManageDelivery || !uuid || !order) return
+    if (confirmMutation.isPending || !canConfirmDelivery || !uuid || !order) return
     const signUser = await askDeliverySignUser(order.deliveryNo)
     if (signUser === null) return
-    await confirmMutation.mutateAsync({ uuid, data: signUser ? { signUser } : undefined })
+    const completed = await authorizeDeliveryConfirmation((forceRelease) => (
+      confirmMutation.mutateAsync({
+        uuid,
+        data: { ...(signUser ? { signUser } : {}), forceRelease },
+      })
+    ), 1, canReleaseDelivery)
+    if (!completed) return
     message.success('出库签收完成')
     detailQuery.refetch()
   }
@@ -107,7 +116,7 @@ export default function DeliveryDetailPage() {
         tags={order && <DeliveryStatusTag status={order.deliveryStatus} />}
         actions={order && (
           <Space wrap>
-            {canManageDelivery && order.deliveryStatus === 1 && (
+            {canConfirmDelivery && order.deliveryStatus === 1 && (
               <Button type="primary" icon={<CheckOutlined />} loading={confirmMutation.isPending} onClick={handleConfirm}>
                 确认签收
               </Button>

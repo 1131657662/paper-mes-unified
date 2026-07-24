@@ -36,11 +36,13 @@ describe('岗位权限矩阵', () => {
     expect(roleHasPermission('finance', PERMISSIONS.orderBackRecord)).toBe(false)
     expect(roleHasPermission('finance', PERMISSIONS.orderPricingApprove)).toBe(true)
     expect(roleHasPermission('finance', PERMISSIONS.settleDiscountApprove)).toBe(true)
+    expect(roleHasPermission('finance', PERMISSIONS.deliveryRelease)).toBe(true)
   })
 
   it('出库员可以办理出库但不能结算收款', () => {
     expect(getRoleProfile('warehouse')?.label).toBe('出库员')
     expect(roleHasPermission('warehouse', PERMISSIONS.deliveryManage)).toBe(true)
+    expect(roleHasPermission('warehouse', PERMISSIONS.deliveryRelease)).toBe(false)
     expect(roleHasPermission('warehouse', PERMISSIONS.settleManage)).toBe(false)
     expect(roleHasPermission('warehouse', PERMISSIONS.settleReceive)).toBe(false)
     expect(roleHasPermission('warehouse', PERMISSIONS.exportTaskView)).toBe(true)

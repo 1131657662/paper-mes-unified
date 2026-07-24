@@ -44,8 +44,8 @@ export function buildDeliveryCreateDTO(
 export function confirmDeliveryCashRelease(): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     Modal.confirm({
-      title: '次结出库确认',
-      content: '本次选择包含次结且有待收款风险的加工单。确认后将按“警告放行”生成出库单。',
+      title: '现结出库确认',
+      content: '本次选择包含现结且有待收款风险的加工单。确认后将按“警告放行”生成出库单。',
       okText: '警告放行',
       cancelText: '取消',
       onOk: () => resolve(true),

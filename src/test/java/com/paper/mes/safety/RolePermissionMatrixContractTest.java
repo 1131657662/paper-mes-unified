@@ -78,11 +78,11 @@ class RolePermissionMatrixContractTest {
     }
 
     @Test
-    void finance_canManageSettlementButCannotManageDelivery() {
+    void finance_canManageSettlementAndReleaseDeliveryButCannotCreateDelivery() {
         assertThat(canAccess(RoleCodes.FINANCE, method(SettleController.class, "createByOrders"))).isTrue();
         assertThat(canAccess(RoleCodes.FINANCE, method(SettleController.class, "receive"))).isTrue();
         assertThat(canAccess(RoleCodes.FINANCE, method(DeliveryController.class, "create"))).isFalse();
-        assertThat(canAccess(RoleCodes.FINANCE, method(DeliveryController.class, "confirm"))).isFalse();
+        assertThat(canAccess(RoleCodes.FINANCE, method(DeliveryController.class, "confirm"))).isTrue();
     }
 
     private List<Method> writeMethods(List<Class<?>> controllers) {

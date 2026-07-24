@@ -19,4 +19,6 @@ public class DeliveryConfirmDTO {
     private LocalDateTime signTime;
     @Size(max = 255, message = "备注不能超过255个字符")
     private String remark;
+    /** 最终签收时存在现结风险，由当前操作人明确确认后传 true。 */
+    private boolean forceRelease;
 }

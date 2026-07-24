@@ -15,6 +15,7 @@ import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import com.paper.mes.delivery.service.DeliveryCashSettlementGuard;
 import com.paper.mes.delivery.service.DeliveryCustomerRevisionSnapshotWriter;
 import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
+import com.paper.mes.delivery.service.DeliverySourceLockService;
 import com.paper.mes.delivery.service.DeliveryWarehousePolicy;
 import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
 import com.paper.mes.machine.mapper.MachineMapper;
@@ -41,6 +42,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -74,6 +76,7 @@ class DeliveryServiceImplBatchLoadTest {
     @Mock private DocumentNoService documentNoService;
     @Mock private BusinessLockService businessLockService;
     @Mock private DeliveryCustomerRevisionSnapshotWriter customerRevisionSnapshotWriter;
+    @Mock private DeliverySourceLockService deliverySourceLockService;
 
     private DeliveryServiceImpl service;
 
@@ -84,7 +87,8 @@ class DeliveryServiceImplBatchLoadTest {
                 settleDetailMapper, machineMapper, customerService, cashSettlementGuard,
                 settlementBlockPolicy, warehousePolicy,
                 operationLogMapper, operationLogService,
-                documentNoService, businessLockService, new ObjectMapper(), customerRevisionSnapshotWriter);
+                documentNoService, businessLockService, deliverySourceLockService,
+                new ObjectMapper(), customerRevisionSnapshotWriter);
         ReflectionTestUtils.setField(service, "baseMapper", deliveryOrderMapper);
     }
 
@@ -92,15 +96,20 @@ class DeliveryServiceImplBatchLoadTest {
     void create_withMultipleItems_batchLoadsFinishesAndOrders() {
         when(customerService.getById("customer-1")).thenReturn(customer());
         when(deliveryDetailMapper.selectList(any())).thenReturn(List.of());
-        when(finishRollMapper.selectBatchIds(any())).thenReturn(List.of(
-                finish("finish-1", "order-1", "P000001"),
-                finish("finish-2", "order-2", "P000002")));
-        when(processOrderMapper.selectBatchIds(any())).thenReturn(List.of(
-                order("order-1", "customer-1"),
-                order("order-2", "customer-1")));
-        when(cashSettlementGuard.hasUnsettledCashOrders(any())).thenReturn(false);
+        Map<String, FinishRoll> finishes = Map.of(
+                "finish-1", finish("finish-1", "order-1", "P000001"),
+                "finish-2", finish("finish-2", "order-2", "P000002"));
+        ProcessOrder firstOrder = order("order-1", "customer-1");
+        ProcessOrder secondOrder = order("order-2", "customer-1");
+        firstOrder.setSettleType(1);
+        secondOrder.setSettleType(1);
+        Map<String, ProcessOrder> orders = Map.of(
+                "order-1", firstOrder, "order-2", secondOrder);
+        when(deliverySourceLockService.lockAndReload(any()))
+                .thenReturn(new DeliverySourceLockService.LockedSources(finishes, orders));
+        when(cashSettlementGuard.hasUnsettledCashOrders(any())).thenReturn(true);
         when(settlementBlockPolicy.resolveAction(anyBoolean(), anyBoolean(), eq("出库")))
-                .thenReturn(DeliverySettlementBlockPolicy.ACTION_NONE);
+                .thenReturn(DeliverySettlementBlockPolicy.ACTION_RELEASE);
         when(warehousePolicy.requireForCreate(eq("warehouse-1"), any()))
                 .thenReturn(new DeliveryWarehousePolicy.WarehouseSnapshot(
                         "warehouse-1", "成品一仓", "一号库区"));
@@ -113,13 +122,23 @@ class DeliveryServiceImplBatchLoadTest {
         });
         when(deliveryDetailMapper.insert(any(DeliveryDetail.class))).thenReturn(1);
 
-        String uuid = service.create(createDto());
+        DeliveryCreateDTO dto = createDto();
+        dto.setForceRelease(true);
+        String uuid = service.create(dto);
 
         assertEquals("delivery-1", uuid);
-        verify(finishRollMapper).selectBatchIds(argThat(ids -> containsAll(ids, "finish-1", "finish-2")));
-        verify(processOrderMapper).selectBatchIds(argThat(ids -> containsAll(ids, "order-1", "order-2")));
+        verify(deliverySourceLockService).lockAndReload(
+                argThat(ids -> containsAll(ids, "finish-1", "finish-2")));
         verify(finishRollMapper, never()).selectById(any());
         verify(processOrderMapper, never()).selectById(any());
+        verify(operationLogService).record(eq(OperationLogService.BIZ_TYPE_DELIVERY),
+                eq("delivery-1"), eq("CK202607070001"),
+                eq(OperationLogService.ACTION_DELIVERY_CREATE), eq(null), any());
+        verify(operationLogService).record(eq(OperationLogService.BIZ_TYPE_DELIVERY),
+                eq("delivery-1"), eq("CK202607070001"),
+                eq(OperationLogService.ACTION_DELIVERY_RISK_CONFIRM), eq(null), any());
+        verify(operationLogService, never()).record(any(), any(), any(),
+                eq(OperationLogService.ACTION_DELIVERY_RELEASE), any(), any());
     }
 
     @Test
@@ -153,9 +172,10 @@ class DeliveryServiceImplBatchLoadTest {
         processing.setOrderStatus(3);
         when(deliveryOrderMapper.selectById("delivery-1")).thenReturn(delivery);
         when(deliveryDetailMapper.selectList(any())).thenReturn(List.of());
-        when(finishRollMapper.selectBatchIds(any())).thenReturn(List.of(
-                finish("finish-2", "order-2", "P000002")));
-        when(processOrderMapper.selectBatchIds(any())).thenReturn(List.of(processing));
+        FinishRoll finish = finish("finish-2", "order-2", "P000002");
+        when(deliverySourceLockService.lockAndReload(any())).thenReturn(
+                new DeliverySourceLockService.LockedSources(
+                        Map.of(finish.getUuid(), finish), Map.of(processing.getUuid(), processing)));
 
         assertThrows(BusinessException.class,
                 () -> service.appendDetails("delivery-1", appendDto()));

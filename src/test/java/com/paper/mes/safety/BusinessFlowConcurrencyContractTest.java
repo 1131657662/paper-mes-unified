@@ -53,7 +53,7 @@ class BusinessFlowConcurrencyContractTest {
 
         assertContainsAll(append,
                 "businessLockService.lockDeliveryOrder(uuid);",
-                "businessLockService.lockFinishRolls",
+                "deliverySourceLockService.lockAndReload",
                 "order.getDeliveryStatus() == null || order.getDeliveryStatus() != DELIVERY_STATUS_PENDING",
                 "validateAppendFinishUuids(dto.getItems(), existingFinishUuids, lockedFinishUuids)",
                 "refreshTotals(order)");

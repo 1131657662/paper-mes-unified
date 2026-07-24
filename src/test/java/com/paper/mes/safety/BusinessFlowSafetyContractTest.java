@@ -27,7 +27,7 @@ class BusinessFlowSafetyContractTest {
 
         assertContainsAll(slice(source, "public void confirm", "public void rollback"),
                 "businessLockService.lockDeliveryOrder(uuid);",
-                "businessLockService.lockFinishRolls",
+                "deliverySourceLockService.lockAndReload",
                 "confirmFinishStock",
                 "updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED)",
                 "buildDeliverySnapshot",
@@ -57,7 +57,7 @@ class BusinessFlowSafetyContractTest {
                 "updateDeliveryForRollback(order)");
         assertContainsAll(slice(source, "public void appendDetails", "public void removeDetail"),
                 "businessLockService.lockDeliveryOrder(uuid);",
-                "businessLockService.lockFinishRolls",
+                "deliverySourceLockService.lockAndReload",
                 "order.getDeliveryStatus() != DELIVERY_STATUS_PENDING");
         assertContainsAll(slice(source, "public void removeDetail", "private String nextDeliveryNo"),
                 "businessLockService.lockDeliveryOrder(uuid);",

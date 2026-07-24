@@ -69,7 +69,7 @@ export default function DeliveryOrderList() {
       onCreate={() => navigate('/delivery-orders/create')} onQueueChange={handleQueueChange}>
       <ListErrors ordersQuery={ordersQuery} customersQuery={customersQuery} summaryQuery={summaryQuery} />
       <div className="document-page-table" data-table-density={tableDensity}>
-        <DeliveryOrderTable canManageDelivery={actions.canManage} data={orders}
+        <DeliveryOrderTable canConfirmDelivery={actions.canConfirm} data={orders}
           loading={ordersQuery.isLoading || ordersQuery.isFetching} onReload={() => ordersQuery.refetch()}
           rowClassName={selection.rowClassName} rowSelection={selection.rowSelection} onConfirm={actions.confirm}
           onDetail={(record) => navigate(`/delivery-orders/${record.uuid}`)}

@@ -203,6 +203,7 @@ export interface DeliveryConfirmDTO {
   signUser?: string
   signTime?: string
   remark?: string
+  forceRelease?: boolean
 }
 
 export interface DeliveryBatchConfirmDTO extends DeliveryConfirmDTO {

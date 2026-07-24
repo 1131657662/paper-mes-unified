@@ -69,6 +69,7 @@ export function confirmDeliveryOrder(uuid: string, data?: DeliveryConfirmDTO) {
     url: `/api/delivery-orders/${uuid}/confirm`,
     method: 'post',
     data: data || {},
+    silentBusinessErrorCodes: ['E010'],
   })
 }
 
@@ -77,6 +78,7 @@ export function confirmDeliveryOrders(data: DeliveryBatchConfirmDTO) {
     url: '/api/delivery-orders/batch-confirm',
     method: 'post',
     data,
+    silentBusinessErrorCodes: ['E010'],
   })
 }
 

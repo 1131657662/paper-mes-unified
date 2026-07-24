@@ -34,6 +34,7 @@ import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import com.paper.mes.delivery.service.DeliveryCashSettlementGuard;
 import com.paper.mes.delivery.service.DeliveryCustomerRevisionSnapshotWriter;
 import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
+import com.paper.mes.delivery.service.DeliverySourceLockService;
 import com.paper.mes.delivery.service.DeliveryService;
 import com.paper.mes.delivery.service.DeliveryWarehousePolicy;
 import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
@@ -60,6 +61,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -112,6 +114,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private final OperationLogService operationLogService;
     private final DocumentNoService documentNoService;
     private final BusinessLockService businessLockService;
+    private final DeliverySourceLockService deliverySourceLockService;
     private final ObjectMapper objectMapper;
     private final DeliveryCustomerRevisionSnapshotWriter customerRevisionSnapshotWriter;
 
@@ -201,21 +204,22 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public String create(DeliveryCreateDTO dto) {
-        businessLockService.lockFinishRolls(dto.getItems().stream()
-                .map(DeliveryCreateDTO.Item::getFinishUuid)
-                .toList());
         Customer customer = customerService.getById(dto.getCustomerUuid());
         if (customer == null) {
             throw new BusinessException(ErrorCode.E002, "客户不存在");
         }
 
         // 逐件校验成品：存在、已入库(2)、归属当前客户。
+        List<String> requestFinishUuids = dto.getItems().stream()
+                .map(DeliveryCreateDTO.Item::getFinishUuid).toList();
+        DeliverySourceLockService.LockedSources lockedSources =
+                deliverySourceLockService.lockAndReload(requestFinishUuids);
         Set<String> lockedFinishUuids = new HashSet<>(pendingDeliveryFinishUuids());
-        List<String> requestFinishUuids = validateCreateFinishUuids(dto.getItems(), lockedFinishUuids);
-        Map<String, FinishRoll> finishByUuid = loadFinishRollsByUuid(requestFinishUuids);
-        Map<String, ProcessOrder> orderByUuid = loadOrdersByFinish(finishByUuid.values().stream().toList());
+        requestFinishUuids = validateCreateFinishUuids(dto.getItems(), lockedFinishUuids);
+        Map<String, FinishRoll> finishByUuid = lockedSources.finishes();
+        Map<String, ProcessOrder> orderByUuid = lockedSources.processOrders();
         List<FinishRoll> picked = new ArrayList<>(dto.getItems().size());
         Set<String> cashOrderUuids = new LinkedHashSet<>();
         for (DeliveryCreateDTO.Item item : dto.getItems()) {
@@ -287,12 +291,16 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             d.setDeliveryUuid(deliveryOrder.getUuid());
             insertDeliveryDetail(d);
         }
+        operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
+                deliveryOrder.getUuid(), deliveryOrder.getDeliveryNo(),
+                OperationLogService.ACTION_DELIVERY_CREATE, null,
+                "创建待出库单，共 " + details.size() + " 卷");
 
         if (blockAction == DeliverySettlementBlockPolicy.ACTION_RELEASE) {
             operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                     deliveryOrder.getUuid(), deliveryOrder.getDeliveryNo(),
-                    OperationLogService.ACTION_DELIVERY_RELEASE, null,
-                    "次结客户未结清，授权放行出库");
+                    OperationLogService.ACTION_DELIVERY_RISK_CONFIRM, null,
+                    "创建待出库单时确认现结未结清风险");
         }
         return deliveryOrder.getUuid();
     }
@@ -314,7 +322,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public void confirm(String uuid, DeliveryConfirmDTO dto) {
         businessLockService.lockDeliveryOrder(uuid);
         DeliveryOrder order = getById(uuid);
@@ -330,11 +338,18 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         if (details.isEmpty()) {
             throw new BusinessException("出库单没有明细，不可确认");
         }
-        businessLockService.lockFinishRolls(details.stream().map(DeliveryDetail::getFinishUuid).toList());
+        DeliverySourceLockService.LockedSources lockedSources = deliverySourceLockService.lockAndReload(
+                details.stream().map(DeliveryDetail::getFinishUuid).toList());
+        Map<String, ProcessOrder> processOrders = lockedSources.processOrders();
+        requireMatchingSources(details, lockedSources.finishes());
+        requireConfirmableOrders(details, processOrders);
+        int blockAction = settlementBlockPolicy.resolveReleaseAction(
+                cashSettlementGuard.hasUnsettledCashOrders(cashOrderUuids(processOrders.values())),
+                dto != null && dto.isForceRelease(), "确认出库");
         Map<String, FinishRoll> finishes = new LinkedHashMap<>();
         // 逐件扣库存：扣完才置为已出库，未扣完继续保留可出库余额。
         for (DeliveryDetail d : details) {
-            FinishRoll f = finishRollMapper.selectById(d.getFinishUuid());
+            FinishRoll f = lockedSources.finishes().get(d.getFinishUuid());
             finishes.put(d.getFinishUuid(), f);
             if (f == null || f.getFinishStatus() == null
                     || f.getFinishStatus() != FINISH_STATUS_IN_STOCK) {
@@ -345,6 +360,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED);
 
         order.setDeliveryStatus(DELIVERY_STATUS_OUT);
+        order.setSettleBlockAction(blockAction);
         order.setSignUser(dto == null ? null : dto.getSignUser());
         order.setSignTime(dto != null && dto.getSignTime() != null ? dto.getSignTime() : LocalDateTime.now());
         if (dto != null && StringUtils.hasText(dto.getRemark())) {
@@ -354,6 +370,12 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         order.setSnapDeliveryTime(LocalDateTime.now());
         updateDeliveryForConfirm(order);
         customerRevisionSnapshotWriter.freezeOnConfirm(order, details, finishes);
+        if (blockAction == DeliverySettlementBlockPolicy.ACTION_RELEASE) {
+            operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
+                    order.getUuid(), order.getDeliveryNo(),
+                    OperationLogService.ACTION_DELIVERY_RELEASE, null,
+                    "最终签收时复核存在现结未结清款项，已授权实际出库");
+        }
 
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                 order.getUuid(), order.getDeliveryNo(),
@@ -362,7 +384,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public void confirmBatch(DeliveryBatchConfirmDTO dto) {
         List<String> orderedUuids = dto.getDeliveryUuids().stream().distinct().sorted().toList();
         if (orderedUuids.size() != dto.getDeliveryUuids().size()) {
@@ -412,17 +434,18 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public void appendDetails(String uuid, DeliveryAppendItemsDTO dto) {
         businessLockService.lockDeliveryOrder(uuid);
-        businessLockService.lockFinishRolls(dto.getItems().stream()
-                .map(DeliveryAppendItemsDTO.Item::getFinishUuid)
-                .toList());
         DeliveryOrder order = requireOrder(uuid);
         if (order.getDeliveryStatus() == null || order.getDeliveryStatus() != DELIVERY_STATUS_PENDING) {
             throw new BusinessException("仅待出库单允许追加明细");
         }
 
+        List<String> requestedFinishUuids = dto.getItems().stream()
+                .map(DeliveryAppendItemsDTO.Item::getFinishUuid).toList();
+        DeliverySourceLockService.LockedSources lockedSources =
+                deliverySourceLockService.lockAndReload(requestedFinishUuids);
         List<DeliveryDetail> existingDetails = deliveryDetails(uuid);
         Set<String> existingFinishUuids = existingDetails.stream()
                 .map(DeliveryDetail::getFinishUuid)
@@ -430,8 +453,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 .collect(Collectors.toSet());
         Set<String> lockedFinishUuids = new HashSet<>(pendingDeliveryFinishUuids());
         List<String> requestFinishUuids = validateAppendFinishUuids(dto.getItems(), existingFinishUuids, lockedFinishUuids);
-        Map<String, FinishRoll> finishByUuid = loadFinishRollsByUuid(requestFinishUuids);
-        Map<String, ProcessOrder> orderByUuid = loadOrdersByFinish(finishByUuid.values().stream().toList());
+        Map<String, FinishRoll> finishByUuid = lockedSources.finishes();
+        Map<String, ProcessOrder> orderByUuid = lockedSources.processOrders();
         Set<String> cashOrderUuids = new LinkedHashSet<>();
         List<DeliveryDetail> appendDetails = new ArrayList<>(dto.getItems().size());
 
@@ -467,8 +490,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             order.setSettleBlockAction(DeliverySettlementBlockPolicy.ACTION_RELEASE);
             operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                     order.getUuid(), order.getDeliveryNo(),
-                    OperationLogService.ACTION_DELIVERY_RELEASE, null,
-                    "待出库改单追加成品时警告放行");
+                    OperationLogService.ACTION_DELIVERY_RISK_CONFIRM, null,
+                    "待出库改单追加成品时确认现结未结清风险");
         }
 
         for (DeliveryDetail detail : appendDetails) {
@@ -1168,6 +1191,27 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         return status != null && (status == ORDER_STATUS_FINISHED || status == ORDER_STATUS_SETTLED);
     }
 
+    private void requireConfirmableOrders(List<DeliveryDetail> details,
+                                          Map<String, ProcessOrder> processOrders) {
+        for (DeliveryDetail detail : details) {
+            ProcessOrder processOrder = processOrders.get(detail.getOrderUuid());
+            if (processOrder == null || !canDeliveryProcessOrder(processOrder)) {
+                throw new BusinessException("来源加工单状态已变化，不可确认出库：" + detail.getFinishRollNo());
+            }
+        }
+    }
+
+    private void requireMatchingSources(List<DeliveryDetail> details,
+                                        Map<String, FinishRoll> finishes) {
+        for (DeliveryDetail detail : details) {
+            FinishRoll finish = finishes.get(detail.getFinishUuid());
+            if (finish == null || !Objects.equals(detail.getOrderUuid(), finish.getOrderUuid())) {
+                throw new BusinessException(ErrorCode.E006,
+                        "出库明细来源已变化，请刷新后重试：" + detail.getFinishRollNo());
+            }
+        }
+    }
+
     private void ensureOrdersNotSettled(List<DeliveryDetail> details) {
         List<String> orderUuids = details.stream()
                 .map(DeliveryDetail::getOrderUuid)
@@ -1442,6 +1486,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                         .set(DeliveryOrder::getRemark, order.getRemark())
                         .set(DeliveryOrder::getSnapDelivery, order.getSnapDelivery())
                         .set(DeliveryOrder::getSnapDeliveryTime, order.getSnapDeliveryTime())
+                        .set(DeliveryOrder::getSettleBlockAction, order.getSettleBlockAction())
                         .set(DeliveryOrder::getUpdateTime, LocalDateTime.now())
                         .set(DeliveryOrder::getUpdateBy, currentOperator())
                         .setSql("version = version + 1")));

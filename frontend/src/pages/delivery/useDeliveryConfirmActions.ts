@@ -2,10 +2,12 @@ import { message } from 'antd'
 import { useBatchConfirmDelivery } from '../../features/delivery/hooks/useBatchConfirmDelivery'
 import { useConfirmDelivery } from '../../features/delivery/hooks/useConfirmDelivery'
 import type { DeliveryOrder } from '../../types/delivery'
+import { authorizeDeliveryConfirmation } from './deliveryConfirmAuthorization'
 import { askSignUser, confirmBatchSign } from './deliveryListDialogs'
 
 interface Options {
-  canManage: boolean
+  canConfirm: boolean
+  canRelease: boolean
   clearSelection: () => void
   selectedRows: DeliveryOrder[]
 }
@@ -25,22 +27,30 @@ export function useDeliveryConfirmActions(options: Options) {
 }
 
 async function confirmOne(record: DeliveryOrder, options: Options, mutate: ReturnType<typeof useConfirmDelivery>['mutateAsync']) {
-  if (!options.canManage) return
+  if (!options.canConfirm) return
   if (record.deliveryStatus !== 1) return
   const signUser = await askSignUser(record)
   if (signUser === null) return
-  await mutate({ uuid: record.uuid, data: signUser ? { signUser } : undefined })
+  const completed = await authorizeDeliveryConfirmation((forceRelease) => mutate({
+    uuid: record.uuid,
+    data: { ...(signUser ? { signUser } : {}), forceRelease },
+  }), 1, options.canRelease)
+  if (!completed) return
   message.success('出库签收完成')
   options.clearSelection()
 }
 
 async function confirmBatch(records: DeliveryOrder[], options: Options,
   mutate: ReturnType<typeof useBatchConfirmDelivery>['mutateAsync']) {
-  if (!options.canManage) return
+  if (!options.canConfirm) return
   if (records.length === 0) return void message.warning('请先选择待出库单据')
   const ignoredCount = options.selectedRows.length - records.length
   if (!await confirmBatchSign(records.length, ignoredCount)) return
-  await mutate({ deliveryUuids: records.map((record) => record.uuid) })
+  const completed = await authorizeDeliveryConfirmation((forceRelease) => mutate({
+    deliveryUuids: records.map((record) => record.uuid),
+    forceRelease,
+  }), records.length, options.canRelease)
+  if (!completed) return
   message.success(`已签收 ${records.length} 张出库单`)
   options.clearSelection()
 }

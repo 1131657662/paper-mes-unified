@@ -25,11 +25,15 @@ public class DeliveryBatchConfirmDTO {
     @Size(max = 255, message = "备注不能超过255个字符")
     private String remark;
 
+    /** 批量签收中任一出库单存在现结风险时，由当前操作人明确确认后传 true。 */
+    private boolean forceRelease;
+
     public DeliveryConfirmDTO confirmData() {
         DeliveryConfirmDTO data = new DeliveryConfirmDTO();
         data.setSignUser(signUser);
         data.setSignTime(signTime);
         data.setRemark(remark);
+        data.setForceRelease(forceRelease);
         return data;
     }
 }

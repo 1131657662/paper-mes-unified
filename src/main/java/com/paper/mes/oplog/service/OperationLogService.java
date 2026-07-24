@@ -21,6 +21,8 @@ public class OperationLogService {
     public static final String ACTION_OVER_TOLERANCE_RELEASE = "超差放行";
     public static final String ACTION_WEIGHT_VARIANCE_CONFIRM = "重量偏差确认";
     public static final String ACTION_DELIVERY_CONFIRM = "出库确认";
+    public static final String ACTION_DELIVERY_CREATE = "创建出库单";
+    public static final String ACTION_DELIVERY_RISK_CONFIRM = "出库风险确认";
     public static final String ACTION_DELIVERY_RELEASE = "出库放行";
     public static final String ACTION_DELIVERY_CANCEL = "取消出库";
     public static final String ACTION_SETTLE = "结算";

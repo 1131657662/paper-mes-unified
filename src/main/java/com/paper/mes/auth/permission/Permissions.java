@@ -8,6 +8,7 @@ public final class Permissions {
     public static final String BASE_MANAGE = "base:manage";
     public static final String BASE_VIEW = "base:view";
     public static final String DELIVERY_MANAGE = "delivery:manage";
+    public static final String DELIVERY_RELEASE = "delivery:release";
     public static final String DELIVERY_VIEW = "delivery:view";
     public static final String ORDER_BACK_RECORD = "order:back-record";
     public static final String ORDER_CREATE = "order:create";
@@ -46,7 +47,7 @@ public final class Permissions {
             return List.of(BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_BACK_RECORD, REPORT_VIEW, EXPORT_TASK_VIEW);
         }
         if (RoleCodes.FINANCE.equals(roleCode)) {
-            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, SETTLE_VIEW, SETTLE_MANAGE,
+            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, DELIVERY_RELEASE, SETTLE_VIEW, SETTLE_MANAGE,
                     SETTLE_RECEIVE, SETTLE_DISCOUNT, ORDER_PRICING, ORDER_PRICING_APPROVE, REPORT_VIEW,
                     EXPORT_TASK_VIEW);
         }

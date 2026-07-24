@@ -436,7 +436,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             verifyReceiveReplay(replay, dto, requestHash);
             return;
         }
-        applySettlementAmountView(settle, normalizeDetailsForInvoiceView(settle, settleDetails(uuid)));
+        List<SettleDetail> details = settleDetails(uuid);
+        businessLockService.lockProcessOrders(details.stream()
+                .map(SettleDetail::getOrderUuid).distinct().toList());
+        applySettlementAmountView(settle, normalizeDetailsForInvoiceView(settle, details));
         if (settle.getUnreceivedAmount() != null && settle.getUnreceivedAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("结算单已结清，不可再收款");
         }
@@ -481,6 +484,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     @Transactional(rollbackFor = Exception.class)
     public void cancelReceive(String uuid, String receiveUuid, SettleActionReasonDTO dto) {
         businessLockService.lockSettleOrder(uuid);
+        List<SettleDetail> details = settleDetails(uuid);
+        businessLockService.lockProcessOrders(details.stream()
+                .map(SettleDetail::getOrderUuid).distinct().toList());
         businessLockService.lockReceiveRecord(receiveUuid);
         SettleOrder settle = requireSettle(uuid);
         ensureActiveSettle(settle);

@@ -19,6 +19,14 @@ class PermissionsTest {
     void finance_canApproveLargePricingAdjustments() {
         assertThat(Permissions.resolve(RoleCodes.FINANCE))
                 .contains(Permissions.ORDER_PRICING, Permissions.ORDER_PRICING_APPROVE);
+        assertThat(Permissions.resolve(RoleCodes.FINANCE)).contains(Permissions.DELIVERY_RELEASE);
+    }
+
+    @Test
+    void warehouse_canManageDeliveryButCannotReleaseCashSettlementRisk() {
+        assertThat(Permissions.resolve(RoleCodes.WAREHOUSE))
+                .contains(Permissions.DELIVERY_MANAGE)
+                .doesNotContain(Permissions.DELIVERY_RELEASE);
     }
 
     @Test

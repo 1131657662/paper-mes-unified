@@ -26,4 +26,5 @@ describe('HTTP 认证错误解包', () => {
 
     expect(shouldNotifyBusinessError(error, { silentError: true })).toBe(false)
   })
+
 })

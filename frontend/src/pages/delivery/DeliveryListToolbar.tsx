@@ -12,7 +12,7 @@ export default function DeliveryListToolbar({ actions }: { actions: DeliveryList
       </Tag>
       <Button icon={<DeleteOutlined />} onClick={actions.clearSelection}>清空选择</Button>
     </>}
-    {actions.canManage && <ActionTip title={actions.selectedPendingCount === 0 ? '请至少选择一张待出库单' : undefined}>
+    {actions.canConfirm && <ActionTip title={actions.selectedPendingCount === 0 ? '请至少选择一张待出库单' : undefined}>
       <Button icon={<CheckOutlined />} disabled={actions.selectedPendingCount === 0}
         loading={actions.batchConfirmLoading} onClick={actions.confirmBatch}>批量签收</Button>
     </ActionTip>}

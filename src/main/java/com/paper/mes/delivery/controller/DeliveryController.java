@@ -70,7 +70,7 @@ public class DeliveryController {
     }
 
     @PostMapping("/{uuid}/confirm")
-    @RequirePermission(Permissions.DELIVERY_MANAGE)
+    @RequirePermission({Permissions.DELIVERY_MANAGE, Permissions.DELIVERY_RELEASE})
     public R<Void> confirm(@PathVariable String uuid,
                            @Valid @RequestBody(required = false) DeliveryConfirmDTO dto) {
         deliveryService.confirm(uuid, dto == null ? new DeliveryConfirmDTO() : dto);
@@ -78,7 +78,7 @@ public class DeliveryController {
     }
 
     @PostMapping("/batch-confirm")
-    @RequirePermission(Permissions.DELIVERY_MANAGE)
+    @RequirePermission({Permissions.DELIVERY_MANAGE, Permissions.DELIVERY_RELEASE})
     public R<Void> confirmBatch(@Valid @RequestBody DeliveryBatchConfirmDTO dto) {
         deliveryService.confirmBatch(dto);
         return R.success();

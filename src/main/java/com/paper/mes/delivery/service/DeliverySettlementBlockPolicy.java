@@ -1,5 +1,7 @@
 package com.paper.mes.delivery.service;
 
+import com.paper.mes.auth.permission.PermissionChecker;
+import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.system.config.entity.SysConfigItem;
 import com.paper.mes.system.config.service.SystemConfigService;
@@ -20,6 +22,7 @@ public class DeliverySettlementBlockPolicy {
     public static final int MODE_REJECT = 2;
 
     private final SystemConfigService systemConfigService;
+    private final PermissionChecker permissionChecker;
 
     public int resolveAction(boolean hasUnsettledCashOrders, boolean forceRelease, String operationName) {
         if (!hasUnsettledCashOrders) {
@@ -30,9 +33,24 @@ public class DeliverySettlementBlockPolicy {
             return ACTION_NONE;
         }
         if (mode == MODE_REJECT) {
-            throw new BusinessException("次结加工单存在未结清款项，系统已启用强制拦截，禁止" + operationName);
+            throw new BusinessException("现结加工单存在未结清款项，系统已启用强制拦截，禁止" + operationName);
+        }
+        if (!forceRelease) {
+            throw new BusinessException(com.paper.mes.common.ErrorCode.E010,
+                    "现结加工单存在未结清款项，请确认授权后再" + operationName);
         }
         return ACTION_RELEASE;
+    }
+
+    public int resolveReleaseAction(boolean hasUnsettledCashOrders, boolean forceRelease,
+                                    String operationName) {
+        int action = resolveAction(hasUnsettledCashOrders, forceRelease, operationName);
+        if (action == ACTION_RELEASE) {
+            permissionChecker.require(Permissions.DELIVERY_RELEASE);
+        } else {
+            permissionChecker.require(Permissions.DELIVERY_MANAGE);
+        }
+        return action;
     }
 
     private int currentMode() {

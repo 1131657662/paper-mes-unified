@@ -13,6 +13,7 @@ const ERROR_CODE_TEXT: Record<string, string> = {
   E006: '数据已被他人修改，请刷新后重试',
   E007: '重量偏差较大，需填写原因',
   E009: '当前计价优惠超过免审额度，请由财务或管理员账号处理',
+  E010: '现结加工单存在未结清款项，需要授权放行',
 }
 
 const ERROR_NOTIFIED_KEY = '__paperMesErrorNotified'

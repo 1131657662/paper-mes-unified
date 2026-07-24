@@ -23,6 +23,7 @@ public class SystemConfigBootstrap implements ApplicationRunner {
         }
         seedDictItems();
         seedConfigItems();
+        migrateDeliveryCashConfigLabel();
     }
 
     private void createTablesIfMissing() {
@@ -109,7 +110,7 @@ public class SystemConfigBootstrap implements ApplicationRunner {
         seedConfig("cfg-print-title", "print", "print.processOrderTitle", "加工单打印标题", "车间加工单", "string", null, 10, "打印模板页眉标题");
         seedConfig("cfg-page-size", "ui", "ui.defaultPageSize", "默认每页条数", "20", "number", "条", 10, "列表默认分页条数");
         seedConfig("cfg-company-name", "print", "print.companyName", "公司名称", "纸品加工 MES", "string", null, 20, "出库单、结算单和打印页展示");
-        seedConfig("cfg-delivery-cash-block-mode", "delivery", "delivery.cashSettleBlockMode", "次结出库拦截模式", "1", "number", null, 10, "0关闭拦截，1警告放行，2强制拦截");
+        seedConfig("cfg-delivery-cash-block-mode", "delivery", "delivery.cashSettleBlockMode", "现结出库拦截模式", "1", "number", null, 10, "0关闭拦截，1警告放行，2强制拦截");
         seedConfig("cfg-settle-discount-auto-limit", "settle", "settle.discountAutoApproveLimit", "优惠免审上限", "1.00", "number", "元", 10, "不超过该金额的尾差可由有权限财务直接核销");
         seedConfig("cfg-settle-discount-max-amount", "settle", "settle.discountMaxAmount", "单次优惠金额上限", "500.00", "number", "元", 20, "超过该金额禁止通过收款核销");
         seedConfig("cfg-settle-discount-max-percent", "settle", "settle.discountMaxPercent", "单次优惠比例上限", "10.00", "number", "%", 30, "优惠金额占当前未收金额的最大比例");
@@ -152,5 +153,18 @@ public class SystemConfigBootstrap implements ApplicationRunner {
                 (uuid, config_group, config_key, config_name, config_value, value_type, unit, sort_no, status, built_in, remark, create_by, update_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, 'system', 'system')
                 """, uuid, group, key, name, value, valueType, unit, sortNo, remark);
+    }
+
+    /**
+     * Keep the persisted built-in label aligned with the current cash-settlement
+     * risk semantics without changing the configured blocking mode.
+     */
+    void migrateDeliveryCashConfigLabel() {
+        jdbcTemplate.update("UPDATE sys_config_item SET config_name=?, remark=?, update_by=?"
+                        + " WHERE config_key=? AND built_in=1 AND is_deleted=0",
+                "现结出库拦截模式",
+                "0关闭拦截，1警告放行，2强制拦截",
+                "system",
+                "delivery.cashSettleBlockMode");
     }
 }
