@@ -54,7 +54,7 @@ public class DataHealthRepairService {
     private SettlementRow settlement(String uuid) {
         return jdbcTemplate.query(SETTLEMENT_SQL, rs -> {
             if (!rs.next()) throw new BusinessException("结算单不存在");
-            return new SettlementRow(rs.getString("settle_no"), rs.getInt("version"));
+            return new SettlementRow(uuid, rs.getString("settle_no"), rs.getInt("version"));
         }, uuid);
     }
 
@@ -64,8 +64,9 @@ public class DataHealthRepairService {
                 throw new BusinessException("结算单没有有效明细，不能自动重算");
             }
             return new SettlementAmounts(rs.getBigDecimal("saw_amount"), rs.getBigDecimal("rewind_amount"),
-                    rs.getBigDecimal("extra_amount"), rs.getBigDecimal("no_tax_amount"),
-                    rs.getBigDecimal("tax_amount"), rs.getBigDecimal("total_amount"));
+                    rs.getBigDecimal("service_amount"), rs.getBigDecimal("extra_amount"),
+                    rs.getBigDecimal("no_tax_amount"), rs.getBigDecimal("tax_amount"),
+                    rs.getBigDecimal("total_amount"));
         }, uuid);
     }
 
@@ -88,10 +89,11 @@ public class DataHealthRepairService {
     private void updateSettlement(SettlementRow row, SettlementAmounts amounts,
                                   ReceiveAmounts received, SettleReceiveStatusResolver.State state) {
         int updated = jdbcTemplate.update(UPDATE_SETTLEMENT_SQL,
-                amounts.saw(), amounts.rewind(), amounts.extra(), amounts.noTax(), amounts.tax(), amounts.total(),
+                amounts.saw(), amounts.rewind(), amounts.service(), amounts.extra(), amounts.noTax(),
+                amounts.tax(), amounts.total(),
                 state.receivedAmount(), received.cash(), received.scrap(), received.discount(),
                 state.unreceivedAmount(), state.status(), AuthContextHolder.currentDisplayName(),
-                row.number(), row.version());
+                row.uuid(), row.version());
         requireUpdated(updated);
     }
 
@@ -121,15 +123,16 @@ public class DataHealthRepairService {
                 null, "数据健康巡检修复：" + reason.trim());
     }
 
-    private record SettlementRow(String number, int version) { }
+    private record SettlementRow(String uuid, String number, int version) { }
     private record ProcessOrderRow(String number, int status, int version) { }
-    private record SettlementAmounts(BigDecimal saw, BigDecimal rewind, BigDecimal extra,
+    private record SettlementAmounts(BigDecimal saw, BigDecimal rewind, BigDecimal service, BigDecimal extra,
                                      BigDecimal noTax, BigDecimal tax, BigDecimal total) { }
     private record ReceiveAmounts(BigDecimal received, BigDecimal cash, BigDecimal scrap,
                                   BigDecimal discount) { }
 
     private static final String SETTLEMENT_SQL = """
-            SELECT settle_no, version FROM biz_settle_order WHERE uuid = ? AND is_deleted = 0 FOR UPDATE
+            SELECT settle_no, version FROM biz_settle_order
+            WHERE uuid = ? AND is_deleted = 0 AND settle_status IN (1, 2, 3) FOR UPDATE
             """;
     private static final String PROCESS_ORDER_SQL = """
             SELECT order_no, order_status, version FROM biz_process_order WHERE uuid = ? AND is_deleted = 0 FOR UPDATE
@@ -146,12 +149,15 @@ public class DataHealthRepairService {
     private static final String SETTLEMENT_AMOUNTS_SQL = """
             SELECT COUNT(*) detail_count, COALESCE(SUM(d.saw_amount), 0) saw_amount,
                    COALESCE(SUM(d.rewind_amount), 0) rewind_amount,
+                   COALESCE(SUM(d.service_amount), 0) service_amount,
                    COALESCE(SUM(d.extra_amount), 0) extra_amount,
-                   COALESCE(SUM(p.total_amount_no_tax), 0) no_tax_amount,
-                   COALESCE(SUM(p.total_amount_tax), 0) tax_amount,
+                   COALESCE(SUM(COALESCE(d.saw_amount, 0) + COALESCE(d.rewind_amount, 0)
+                       + COALESCE(d.service_amount, 0) + COALESCE(d.extra_amount, 0)), 0) no_tax_amount,
+                   COALESCE(SUM(d.order_amount), 0)
+                       - COALESCE(SUM(COALESCE(d.saw_amount, 0) + COALESCE(d.rewind_amount, 0)
+                           + COALESCE(d.service_amount, 0) + COALESCE(d.extra_amount, 0)), 0) tax_amount,
                    COALESCE(SUM(d.order_amount), 0) total_amount
             FROM biz_settle_detail d
-            INNER JOIN biz_process_order p ON p.uuid = d.order_uuid AND p.is_deleted = 0
             WHERE d.settle_uuid = ? AND d.is_deleted = 0
             """;
     private static final String RECEIVE_AMOUNTS_SQL = """
@@ -162,11 +168,11 @@ public class DataHealthRepairService {
             FROM biz_receive_record WHERE settle_uuid = ? AND is_deleted = 0 AND record_status = 1
             """;
     private static final String UPDATE_SETTLEMENT_SQL = """
-            UPDATE biz_settle_order SET saw_amount = ?, rewind_amount = ?, extra_amount = ?,
-                   amount_no_tax = ?, tax_amount = ?, total_amount = ?, received_amount = ?,
+            UPDATE biz_settle_order SET saw_amount = ?, rewind_amount = ?, service_amount = ?,
+                   extra_amount = ?, amount_no_tax = ?, tax_amount = ?, total_amount = ?, received_amount = ?,
                    cash_received_amount = ?, scrap_offset_amount = ?, discount_amount = ?,
-                   unreceived_amount = ?, settle_status = ?, snap_bill = NULL, snap_bill_time = NULL,
+                   unreceived_amount = ?, settle_status = ?,
                    update_by = ?, update_time = NOW(), version = version + 1
-            WHERE settle_no = ? AND version = ? AND is_deleted = 0
+            WHERE uuid = ? AND version = ? AND is_deleted = 0
             """;
 }

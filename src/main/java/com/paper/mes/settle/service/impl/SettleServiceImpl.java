@@ -58,6 +58,7 @@ import com.paper.mes.settle.mapper.SettleOrderMapper;
 import com.paper.mes.settle.service.SettleCandidateStatsLoader;
 import com.paper.mes.settle.service.SettleCandidateAmountLoader;
 import com.paper.mes.settle.service.SettleAccountingPeriodPolicy;
+import com.paper.mes.settle.service.SettleCandidateQueryPolicy;
 import com.paper.mes.settle.service.SettleCollectionQueryPolicy;
 import com.paper.mes.settle.service.SettleReceiveRequestFingerprint;
 import com.paper.mes.settle.service.SettleReceiveStatusResolver;
@@ -181,18 +182,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     @Override
     public PageResult<SettleCandidateVO> listCandidates(SettleCandidateQuery query) {
-        LambdaQueryWrapper<ProcessOrder> wrapper = new LambdaQueryWrapper<ProcessOrder>()
-                .eq(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED);
-        if (StringUtils.hasText(query.getKeyword())) {
-            String keyword = query.getKeyword().trim();
-            wrapper.and(item -> item.like(ProcessOrder::getOrderNo, keyword)
-                    .or().like(ProcessOrder::getCustomerName, keyword));
-        }
-        if (StringUtils.hasText(query.getCustomerUuid())) {
-            wrapper.eq(ProcessOrder::getCustomerUuid, query.getCustomerUuid());
-        }
-        SettleAccountingPeriodPolicy.applyPeriod(wrapper, query.getPeriodStart(), query.getPeriodEnd());
-        SettleAccountingPeriodPolicy.orderByAccountingDate(wrapper);
+        LambdaQueryWrapper<ProcessOrder> wrapper = SettleCandidateQueryPolicy.create(query);
         Page<ProcessOrder> page = processOrderService.page(
                 PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
         List<ProcessOrder> orders = page.getRecords();

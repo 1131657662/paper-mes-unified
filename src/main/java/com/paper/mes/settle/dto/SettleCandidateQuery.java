@@ -4,6 +4,7 @@ import lombok.Data;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -18,7 +19,8 @@ public class SettleCandidateQuery {
     @Size(max = 100, message = "关键字不能超过100个字符")
     private String keyword;
     @Size(max = 100, message = "单次最多指定100张加工单")
-    private List<@Size(max = 64, message = "加工单标识不能超过64个字符") String> orderUuids;
+    private List<@NotBlank(message = "加工单标识不能为空")
+            @Size(max = 64, message = "加工单标识不能超过64个字符") String> orderUuids;
     private String customerUuid;
     private LocalDate periodStart;
     private LocalDate periodEnd;

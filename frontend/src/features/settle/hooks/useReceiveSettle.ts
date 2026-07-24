@@ -13,6 +13,7 @@ export function useReceiveSettle() {
       queryClient.invalidateQueries({ queryKey: queries.settle.receives(variables.uuid).queryKey })
       queryClient.invalidateQueries({ queryKey: queries.settle.list._def })
       queryClient.invalidateQueries({ queryKey: queries.settle.summary._def })
+      queryClient.invalidateQueries({ queryKey: queries.settle.collectionSummary._def })
     },
   })
 }

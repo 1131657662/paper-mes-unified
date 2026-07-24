@@ -111,6 +111,7 @@ public class SettlementHealthInspector implements DataHealthInspector {
                 FROM biz_settle_detail WHERE is_deleted = 0 GROUP BY settle_uuid
             ) d ON d.settle_uuid = s.uuid
             WHERE s.is_deleted = 0
+              AND s.settle_status IN (1, 2, 3)
               AND ABS(s.total_amount - COALESCE(d.detail_amount, 0)) > 0.01
             ORDER BY s.create_time DESC
             """;

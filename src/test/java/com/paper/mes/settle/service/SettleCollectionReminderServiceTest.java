@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -98,6 +99,29 @@ class SettleCollectionReminderServiceTest {
                 .hasMessageContaining("无需催收");
 
         verify(reminderMapper, never()).insert(any(SettleCollectionReminder.class));
+    }
+
+    @Test
+    void record_forOlderReminder_keepsLatestSnapshotButIncrementsCount() {
+        SettleOrder settle = receivable();
+        settle.setLastReminderTime(LocalDateTime.of(2026, 7, 20, 10, 0));
+        when(orderMapper.selectById("settle-1")).thenReturn(settle);
+        when(reminderMapper.insert(any(SettleCollectionReminder.class))).thenAnswer(invocation -> {
+            invocation.<SettleCollectionReminder>getArgument(0).setUuid("reminder-2");
+            return 1;
+        });
+        when(orderMapper.update(isNull(), any(Wrapper.class))).thenReturn(1);
+        SettleCollectionReminderRequestDTO request = request();
+        request.setReminderTime(LocalDateTime.of(2026, 7, 10, 10, 0));
+
+        service.record("settle-1", request);
+
+        ArgumentCaptor<Wrapper<SettleOrder>> updateCaptor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(orderMapper).update(isNull(), updateCaptor.capture());
+        assertThat(((LambdaUpdateWrapper<SettleOrder>) updateCaptor.getValue()).getSqlSet())
+                .contains("reminder_count = reminder_count + 1")
+                .doesNotContain("last_reminder_time", "last_reminder_by",
+                        "last_reminder_result", "next_follow_up_date");
     }
 
     private SettleOrder receivable() {

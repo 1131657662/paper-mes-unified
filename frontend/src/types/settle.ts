@@ -199,6 +199,9 @@ export interface SettleCandidateVO {
 }
 
 export interface SettleByOrderDTO {
+  requestId: string
+  quoteVersion: string
+  quoteHash: string
   orderUuid: string
   settleDate?: string
   isInvoice?: number

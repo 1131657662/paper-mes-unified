@@ -56,7 +56,7 @@ public class SettleCollectionReminderService {
         } catch (DuplicateKeyException exception) {
             return requireSameRequest(findByRequestId(settleUuid, dto.getRequestId()), dto);
         }
-        updateSettleSnapshot(settleUuid, reminder);
+        updateSettleSnapshot(settle, reminder);
         operationLogService.record(OperationLogService.BIZ_TYPE_SETTLE, settleUuid, settle.getSettleNo(),
                 OperationLogService.ACTION_COLLECTION_REMINDER, reminder.getOperatorName(), reminder.getRemark());
         return reminder.getUuid();
@@ -78,15 +78,18 @@ public class SettleCollectionReminderService {
         return item;
     }
 
-    private void updateSettleSnapshot(String settleUuid, SettleCollectionReminder reminder) {
+    private void updateSettleSnapshot(SettleOrder settle, SettleCollectionReminder reminder) {
         LambdaUpdateWrapper<SettleOrder> update = new LambdaUpdateWrapper<SettleOrder>()
-                .eq(SettleOrder::getUuid, settleUuid)
+                .eq(SettleOrder::getUuid, settle.getUuid())
                 .in(SettleOrder::getSettleStatus, 1, 2)
-                .set(SettleOrder::getLastReminderTime, reminder.getReminderTime())
-                .set(SettleOrder::getLastReminderBy, reminder.getOperatorName())
-                .set(SettleOrder::getLastReminderResult, reminder.getReminderResult())
-                .set(SettleOrder::getNextFollowUpDate, reminder.getNextFollowUpDate())
                 .setSql("reminder_count = reminder_count + 1, version = version + 1");
+        if (settle.getLastReminderTime() == null
+                || !reminder.getReminderTime().isBefore(settle.getLastReminderTime())) {
+            update.set(SettleOrder::getLastReminderTime, reminder.getReminderTime())
+                    .set(SettleOrder::getLastReminderBy, reminder.getOperatorName())
+                    .set(SettleOrder::getLastReminderResult, reminder.getReminderResult())
+                    .set(SettleOrder::getNextFollowUpDate, reminder.getNextFollowUpDate());
+        }
         ConcurrencyGuard.requireRowUpdated(settleOrderMapper.update(null, update));
     }
 

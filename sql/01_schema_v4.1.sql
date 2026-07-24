@@ -909,6 +909,7 @@ CREATE TABLE `biz_settle_order` (
   KEY `idx_settle_date` (`settle_date`),
   KEY `idx_settle_due_status` (`is_deleted`, `settle_status`, `due_date`, `uuid`),
   KEY `idx_settle_collection_queue` (`is_deleted`, `settle_status`, `last_reminder_time`, `due_date`, `uuid`),
+  KEY `idx_settle_list_page` (`is_deleted`, `create_time`, `uuid`),
   KEY `idx_report_settle_scope` (`is_deleted`, `settle_status`, `settle_date`, `customer_uuid`),
   KEY `idx_is_deleted` (`is_deleted`),
   CONSTRAINT `chk_settle_discount_nonnegative` CHECK (`discount_amount` >= 0)
