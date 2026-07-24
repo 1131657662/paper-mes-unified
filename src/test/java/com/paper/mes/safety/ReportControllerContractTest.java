@@ -103,7 +103,7 @@ class ReportControllerContractTest {
         authorizeViewer();
         when(reportService.productionAnalysis(any())).thenReturn(
                 new ReportProductionAnalysisVO("production", null, List.of(), List.of(), List.of(),
-                        LocalDateTime.of(2026, 7, 21, 11, 0)));
+                        LocalDateTime.of(2026, 7, 21, 11, 0), null));
 
         mvc.perform(post("/api/reports/topics/production/query")
                         .header("Authorization", "Bearer " + TOKEN)

@@ -26,7 +26,7 @@ public class ReportSubscriptionRunCommandService {
         var run = dispatchService.dispatchNow(subscription,
                 LocalDateTime.now(ReportSubscriptionSchedulePolicy.STORAGE_ZONE));
         operationLogService.record(OperationLogService.BIZ_TYPE_REPORT, subscriptionUuid,
-                subscription.getSubscriptionName(), OperationLogService.ACTION_REPORT_SUBSCRIPTION_RETRY,
+                subscription.getSubscriptionName(), OperationLogService.ACTION_REPORT_SUBSCRIPTION_RUN_NOW,
                 null, "手动试跑");
         return run.getUuid();
     }
@@ -36,7 +36,7 @@ public class ReportSubscriptionRunCommandService {
         ReportSubscriptionRun run = requireRetryableRun(subscriptionUuid, runUuid);
         var retried = dispatchService.retry(subscription, run.getScheduledFor());
         operationLogService.record(OperationLogService.BIZ_TYPE_REPORT, subscriptionUuid,
-                subscription.getSubscriptionName(), OperationLogService.ACTION_REPORT_SUBSCRIPTION_RUN_NOW,
+                subscription.getSubscriptionName(), OperationLogService.ACTION_REPORT_SUBSCRIPTION_RETRY,
                 null, "重试订阅运行 " + runUuid);
         return retried.getUuid();
     }

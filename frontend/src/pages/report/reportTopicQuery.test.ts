@@ -10,7 +10,7 @@ describe('reportTopicQuery', () => {
     expect(query).toEqual({
       customerUuid: undefined, dateFrom: '2026-01-01', dateTo: undefined,
       machineUuid: undefined, mainStepType: undefined, metricReleaseUuid: undefined,
-      orderStatus: undefined, paperName: '白卡', processMode: undefined,
+      orderStatus: undefined, paperName: '白卡', processMode: undefined, processStepType: undefined,
     })
   })
 })

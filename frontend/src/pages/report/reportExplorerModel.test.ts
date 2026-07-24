@@ -18,4 +18,18 @@ describe('report explorer model', () => {
     expect(drillQuery('customer', 'customer-1', query)).toEqual({ ...query, customerUuid: 'customer-1' })
     expect(drillQuery('month', '2026-01', query)).toBeUndefined()
   })
+
+  it.each([
+    ['saw', 1], ['rewind', 2], ['step-3', 3], ['step-4', 4],
+  ])('maps process dimension key %s to its process step type', (key, expected) => {
+    expect(drillQuery('process', key as string, {})).toEqual({ processStepType: expected })
+  })
+
+  it('preserves zero when drilling into the draft status', () => {
+    expect(drillQuery('status', '0', {})).toEqual({ orderStatus: 0 })
+  })
+
+  it('does not create a process filter for an unknown process key', () => {
+    expect(drillQuery('process', 'step-x', {})).toEqual({ processStepType: undefined })
+  })
 })

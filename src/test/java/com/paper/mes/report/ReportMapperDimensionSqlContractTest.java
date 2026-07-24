@@ -38,8 +38,33 @@ class ReportMapperDimensionSqlContractTest {
         assertTrue(branch.contains("COALESCE(ps.machine_name_snap, stepMachine.machine_name, rollMachine.machine_name, '未分配机台') AS dimensionName"));
         assertTrue(branch.contains("LEFT JOIN sys_machine stepMachine ON stepMachine.uuid = ps.machine_uuid"));
         assertTrue(branch.contains("LEFT JOIN sys_machine rollMachine ON rollMachine.uuid = r.machine_uuid"));
-        assertTrue(branch.contains("AND COALESCE(ps.machine_uuid, r.machine_uuid) = #{q.machineUuid}"));
+        assertTrue(branch.contains("<include refid=\"StepFilters\"/>"));
         assertTrue(branch.contains("<include refid=\"RollSpecFilters\"/>"));
+    }
+
+    @Test
+    void reportSql_whenFilteringMachine_usesStepMachineAndLegacyRollFallback() throws IOException {
+        String sql = resourceText("mapper/report/ReportMapper.xml");
+        String orderFilters = slice(sql, "<sql id=\"OrderFilters\">", "<sql id=\"RollSpecFilters\">");
+        String rollFilters = slice(sql, "<sql id=\"RollFilters\">", "<sql id=\"StepFilters\">");
+
+        assertTrue(orderFilters.contains("COALESCE(qps.machine_uuid, rf.machine_uuid) = #{q.machineUuid}"));
+        assertTrue(orderFilters.contains("NOT EXISTS"));
+        assertTrue(rollFilters.contains("COALESCE(r.process_mode, 0) != 3"));
+        assertTrue(rollFilters.contains("COALESCE(qps.machine_uuid, r.machine_uuid) = #{q.machineUuid}"));
+        assertTrue(rollFilters.contains("qps.step_type = #{q.processStepType}"));
+        assertFalse(rollFilters.contains("AND r.machine_uuid = #{q.machineUuid}</if>"));
+    }
+
+    @Test
+    void reportSql_whenFilteringProcessDimension_appliesExactStepFilter() throws IOException {
+        String sql = resourceText("mapper/report/ReportMapper.xml");
+        String processBranch = slice(sql, "<when test=\"dimension == 'process'\">",
+                "<when test=\"dimension == 'machine'\">");
+
+        assertTrue(sql.contains("<sql id=\"StepFilters\">"));
+        assertTrue(sql.contains("AND ps.step_type = #{q.processStepType}"));
+        assertTrue(processBranch.contains("<include refid=\"StepFilters\"/>"));
     }
 
     @Test

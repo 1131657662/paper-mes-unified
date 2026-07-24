@@ -28,6 +28,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 
 class ReportQuerySnapshotServiceTest {
     private static final Clock CLOCK = Clock.fixed(
@@ -48,6 +49,20 @@ class ReportQuerySnapshotServiceTest {
         assertEquals("query-1", result.querySnapshotUuid());
         assertEquals(LocalDateTime.of(2026, 7, 21, 2, 30), result.expiresAt());
         verify(fixture.store()).insert(any(ReportQuerySnapshotRecord.class), eq("viewer"), anyLong());
+    }
+
+    @Test
+    void create_withProcessDrillFilter_locksFilterIntoSnapshot() {
+        Fixture fixture = fixture();
+        AuthContextHolder.setCurrentUser(user("viewer-1", "viewer"));
+        ReportQuery query = new ReportQuery();
+        query.setProcessStepType(3);
+
+        fixture.service().create(query);
+
+        ArgumentCaptor<ReportQuerySnapshotRecord> record = ArgumentCaptor.forClass(ReportQuerySnapshotRecord.class);
+        verify(fixture.store()).insert(record.capture(), eq("viewer"), anyLong());
+        assertEquals(3, record.getValue().query().getProcessStepType());
     }
 
     @Test

@@ -1,6 +1,8 @@
 import {
   getReportDetails,
-  createReportQuerySnapshot,
+  getReportQueryMetadata,
+  getReportPageAnalysis,
+  getReportDimensionAnalysis,
   getReportDimensions,
   getReportMetricContext,
   getReportMetricRelease,
@@ -34,6 +36,7 @@ export const reportService = {
   customerCandidates: (keyword: string) => pageCustomers({ current: 1, size: 50, keyword }),
   details: (query: ReportDetailQuery) => getReportDetails(query),
   dimensions: (query: ReportQuery) => getReportDimensions(query),
+  dimensionAnalysis: (query: ReportQuery) => getReportDimensionAnalysis(query),
   export: (input: ReportExportRequest) => createReportExportTask(input),
   machines: () => pageMachines({ current: 1, size: 500 }),
   machineCandidates: (keyword: string) => pageMachines({ current: 1, size: 50, keyword }),
@@ -41,9 +44,10 @@ export const reportService = {
   metricRelease: (releaseUuid: string) => getReportMetricRelease(releaseUuid),
   metricReleases: () => getReportMetricReleases(),
   overview: (query: ReportQuery) => getReportOverview(query),
+  pageAnalysis: (query: ReportDetailQuery) => getReportPageAnalysis(query),
   papers: () => pagePapers({ current: 1, size: 500 }),
   paperCandidates: (keyword: string) => getReportPaperCandidates(keyword),
-  queryMetadata: (query: ReportQuery) => createReportQuerySnapshot(query),
+  queryMetadata: (query: ReportQuery) => getReportQueryMetadata(query),
   topicAnalysis: (topic: ReportTopicCode, query: ReportQuery) => topic === 'production'
     ? getReportProductionAnalysis(query)
     : getReportQualityLossAnalysis(query),

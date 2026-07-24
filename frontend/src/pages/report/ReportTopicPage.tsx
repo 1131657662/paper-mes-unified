@@ -10,7 +10,6 @@ import ReportTopicTrend from '../../features/report/components/ReportTopicTrend'
 import { useExportReport } from '../../features/report/hooks/useExportReport'
 import { useReportMachines, useReportPapers } from '../../features/report/hooks/useReportReferenceData'
 import { useReportMetricContext } from '../../features/report/hooks/useReportMetricContext'
-import { useReportQueryMetadata } from '../../features/report/hooks/useReportQueryMetadata'
 import { useReportTopicAnalysis } from '../../features/report/hooks/useReportTopicAnalysis'
 import type { ReportTopicCode } from '../../features/report/services/reportService'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
@@ -32,11 +31,10 @@ export default function ReportTopicPage({ topic }: { topic: ReportTopicCode }) {
   const urlQuery = parseReportUrlState(searchParams).query
   const initialFilters = reportFiltersFromQuery(urlQuery)
   const query: ReportQuery = reportTopicQuery({ ...reportQueryFromFilters(initialFilters),
-    metricReleaseUuid: urlQuery.metricReleaseUuid })
+    processStepType: urlQuery.processStepType, metricReleaseUuid: urlQuery.metricReleaseUuid })
   const contextQuery = useReportMetricContext()
   const executable = { ...query, metricReleaseUuid: contextQuery.data?.releaseUuid }
   const ready = Boolean(executable.metricReleaseUuid)
-  const metadataQuery = useReportQueryMetadata(executable, ready)
   const analysisQuery = useReportTopicAnalysis(topic, executable, ready)
   const customersQuery = useCustomers()
   const machinesQuery = useReportMachines()
@@ -48,7 +46,6 @@ export default function ReportTopicPage({ topic }: { topic: ReportTopicCode }) {
 
   const refresh = () => {
     void contextQuery.refetch()
-    void metadataQuery.refetch()
     void analysisQuery.refetch()
   }
   const submit = (values: ReportFilterValues) => {
@@ -75,14 +72,14 @@ export default function ReportTopicPage({ topic }: { topic: ReportTopicCode }) {
       <section className="report-topic-result" aria-label="分析结果">
         {analysisQuery.isError && <QueryLoadErrorAlert message="主题报表加载失败"
           description="当前空图表不代表没有业务数据，请重试查询。" onRetry={refresh} />}
-        <Spin spinning={analysisQuery.isFetching || metadataQuery.isFetching}>
+        <Spin spinning={analysisQuery.isFetching}>
           <div className="report-workbench__content">
             <div className="report-query-status">
               <ReportFilterSummary customers={customersQuery.data?.records ?? []}
                 machines={machinesQuery.data?.records ?? []} mode={topic}
                 papers={papersQuery.data?.records ?? []} query={query} />
-              <ReportMetricContextBar compact context={contextQuery.data} execution={metadataQuery.data}
-                loading={contextQuery.isLoading || metadataQuery.isLoading} />
+              <ReportMetricContextBar compact context={contextQuery.data} execution={analysisQuery.data?.execution}
+                loading={contextQuery.isLoading || analysisQuery.isLoading} />
             </div>
             {analysisQuery.data && <TopicContent analysis={analysisQuery.data} />}
           </div>

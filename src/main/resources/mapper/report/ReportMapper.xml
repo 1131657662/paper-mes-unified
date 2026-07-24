@@ -64,13 +64,32 @@
                   AND rf.process_mode = #{q.processMode}
             )
         </if>
-        <if test="q.machineUuid != null and q.machineUuid != ''">
+        <if test="q.processStepType != null or q.machineUuid != null and q.machineUuid != ''">
             AND EXISTS (
                 SELECT 1
                 FROM biz_original_roll rf
                 WHERE rf.order_uuid = o.uuid
                   AND rf.is_deleted = 0
-                  AND rf.machine_uuid = #{q.machineUuid}
+                  AND COALESCE(rf.process_mode, 0) != 3
+                  AND (
+                      EXISTS (
+                          SELECT 1
+                          FROM biz_process_step qps
+                          WHERE qps.original_uuid = rf.uuid
+                            AND qps.is_deleted = 0
+                          <if test="q.processStepType != null">AND qps.step_type = #{q.processStepType}</if>
+                          <if test="q.machineUuid != null and q.machineUuid != ''">
+                              AND COALESCE(qps.machine_uuid, rf.machine_uuid) = #{q.machineUuid}
+                          </if>
+                      )
+                      <if test="q.processStepType == null and q.machineUuid != null and q.machineUuid != ''">
+                          OR (rf.machine_uuid = #{q.machineUuid}
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM biz_process_step legacyPs
+                                  WHERE legacyPs.original_uuid = rf.uuid AND legacyPs.is_deleted = 0
+                              ))
+                      </if>
+                  )
             )
         </if>
     </sql>
@@ -85,7 +104,35 @@
 
     <sql id="RollFilters">
         <include refid="RollSpecFilters"/>
-        <if test="q.machineUuid != null and q.machineUuid != ''">AND r.machine_uuid = #{q.machineUuid}</if>
+        <if test="q.processStepType != null or q.machineUuid != null and q.machineUuid != ''">
+            AND COALESCE(r.process_mode, 0) != 3
+            AND (
+                EXISTS (
+                    SELECT 1
+                    FROM biz_process_step qps
+                    WHERE qps.original_uuid = r.uuid
+                      AND qps.is_deleted = 0
+                    <if test="q.processStepType != null">AND qps.step_type = #{q.processStepType}</if>
+                    <if test="q.machineUuid != null and q.machineUuid != ''">
+                        AND COALESCE(qps.machine_uuid, r.machine_uuid) = #{q.machineUuid}
+                    </if>
+                )
+                <if test="q.processStepType == null and q.machineUuid != null and q.machineUuid != ''">
+                    OR (r.machine_uuid = #{q.machineUuid}
+                        AND NOT EXISTS (
+                            SELECT 1 FROM biz_process_step legacyPs
+                            WHERE legacyPs.original_uuid = r.uuid AND legacyPs.is_deleted = 0
+                        ))
+                </if>
+            )
+        </if>
+    </sql>
+
+    <sql id="StepFilters">
+        <if test="q.processStepType != null">AND ps.step_type = #{q.processStepType}</if>
+        <if test="q.machineUuid != null and q.machineUuid != ''">
+            AND COALESCE(ps.machine_uuid, r.machine_uuid) = #{q.machineUuid}
+        </if>
     </sql>
 
     <sql id="SettleAllocationByOrder">
@@ -216,6 +263,7 @@
                <choose>
                    <when test="q.paperName != null and q.paperName != ''
                        or q.mainStepType != null
+                       or q.processStepType != null
                        or q.processMode != null
                        or q.machineUuid != null and q.machineUuid != ''">
                        COALESCE(SUM(amountScope.scopedProcessAmount), 0) AS processAmount,
@@ -295,6 +343,7 @@
             JOIN biz_original_roll r ON r.uuid = ps.original_uuid AND r.is_deleted = 0
             WHERE ps.is_deleted = 0
             <include refid="RollFilters"/>
+            <include refid="StepFilters"/>
             GROUP BY ps.order_uuid
         ) step ON step.order_uuid = o.uuid
         LEFT JOIN (
@@ -457,6 +506,7 @@
                         ps.is_deleted = 0
                         AND <include refid="OrderFilters"/>
                         <include refid="RollFilters"/>
+                        <include refid="StepFilters"/>
                     </where>
                 ) d
                 GROUP BY d.dimensionKey, d.dimensionName
@@ -614,9 +664,7 @@
                         <if test="q.settleType != null">AND o.settle_type = #{q.settleType}</if>
                         <if test="q.isInvoice != null">AND o.is_invoice = #{q.isInvoice}</if>
                         <include refid="RollSpecFilters"/>
-                        <if test="q.machineUuid != null and q.machineUuid != ''">
-                            AND COALESCE(ps.machine_uuid, r.machine_uuid) = #{q.machineUuid}
-                        </if>
+                        <include refid="StepFilters"/>
                     </where>
                 ) d
                 GROUP BY d.dimensionKey, d.dimensionName
@@ -802,6 +850,7 @@
                        <choose>
                            <when test="q.paperName != null and q.paperName != ''
                                or q.mainStepType != null
+                               or q.processStepType != null
                                or q.processMode != null
                                or q.machineUuid != null and q.machineUuid != ''">
                                COALESCE(SUM(amountScope.scopedProcessAmount), 0) AS processAmount,
@@ -914,6 +963,7 @@
                     JOIN biz_original_roll r ON r.uuid = ps.original_uuid AND r.is_deleted = 0
                     WHERE ps.is_deleted = 0
                     <include refid="RollFilters"/>
+                    <include refid="StepFilters"/>
                     GROUP BY ps.order_uuid
                 ) step ON step.order_uuid = o.uuid
                 LEFT JOIN (
@@ -966,6 +1016,7 @@
                <choose>
                    <when test="q.paperName != null and q.paperName != ''
                        or q.mainStepType != null
+                       or q.processStepType != null
                        or q.processMode != null
                        or q.machineUuid != null and q.machineUuid != ''">
                        COALESCE(amountScope.scopedProcessAmount, 0) AS processAmount,
@@ -1054,6 +1105,7 @@
             JOIN biz_original_roll r ON r.uuid = ps.original_uuid AND r.is_deleted = 0
             WHERE ps.is_deleted = 0
             <include refid="RollFilters"/>
+            <include refid="StepFilters"/>
             GROUP BY ps.order_uuid
         ) step ON step.order_uuid = o.uuid
         LEFT JOIN (

@@ -122,6 +122,7 @@ public class ReportQuerySnapshotService {
         target.setCustomerUuid(source.getCustomerUuid());
         target.setPaperName(source.getPaperName());
         target.setMainStepType(source.getMainStepType());
+        target.setProcessStepType(source.getProcessStepType());
         target.setProcessMode(source.getProcessMode());
         target.setMachineUuid(source.getMachineUuid());
         target.setSettleType(source.getSettleType());

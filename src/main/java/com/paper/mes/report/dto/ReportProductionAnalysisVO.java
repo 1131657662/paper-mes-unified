@@ -9,6 +9,7 @@ public record ReportProductionAnalysisVO(
         List<ReportDimensionVO> monthlyTrend,
         List<ReportDimensionVO> processBreakdown,
         List<ReportDimensionVO> machineBreakdown,
-        LocalDateTime asOf
+        LocalDateTime asOf,
+        ReportQueryExecutionMetaVO execution
 ) {
 }

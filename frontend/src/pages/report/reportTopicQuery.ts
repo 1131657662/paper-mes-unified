@@ -7,6 +7,7 @@ export function reportTopicQuery(query: ReportQuery): ReportQuery {
     dateTo: query.dateTo,
     machineUuid: query.machineUuid,
     mainStepType: query.mainStepType,
+    processStepType: query.processStepType,
     metricReleaseUuid: query.metricReleaseUuid,
     orderStatus: query.orderStatus,
     paperName: query.paperName,

@@ -1,5 +1,10 @@
 import type { PageQuery } from './common'
 
+export type {
+  ReportDimensionAnalysisVO, ReportPageAnalysisVO, ReportProductionAnalysisVO,
+  ReportQualityLossAnalysisVO, ReportTopicAnalysisVO,
+} from './reportAnalysis'
+
 export interface ReportQuery {
   metricReleaseUuid?: string
   dateFrom?: string
@@ -7,6 +12,7 @@ export interface ReportQuery {
   customerUuid?: string
   paperName?: string
   mainStepType?: number
+  processStepType?: number
   processMode?: number
   machineUuid?: string
   settleType?: number
@@ -201,25 +207,3 @@ export interface ReportDetailVO {
   scrapOffsetAmount: number
   unreceivedAmount: number
 }
-
-export interface ReportProductionAnalysisVO {
-  topicCode: 'production'
-  overview: ReportOverviewVO
-  monthlyTrend: ReportDimensionVO[]
-  processBreakdown: ReportDimensionVO[]
-  machineBreakdown: ReportDimensionVO[]
-  asOf: string
-}
-
-export interface ReportQualityLossAnalysisVO {
-  topicCode: 'quality-loss'
-  overview: ReportOverviewVO
-  monthlyTrend: ReportDimensionVO[]
-  paperBreakdown: ReportDimensionVO[]
-  lossLeaders: ReportDetailVO[]
-  asOf: string
-}
-
-export type ReportTopicAnalysisVO =
-  | ReportProductionAnalysisVO
-  | ReportQualityLossAnalysisVO

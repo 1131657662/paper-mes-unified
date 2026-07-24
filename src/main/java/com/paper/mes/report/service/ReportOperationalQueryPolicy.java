@@ -31,7 +31,7 @@ public class ReportOperationalQueryPolicy {
     }
 
     private void requireNoProcessFilters(ReportQuery query) {
-        if (query.getMainStepType() != null || query.getProcessMode() != null
+        if (query.getMainStepType() != null || query.getProcessStepType() != null || query.getProcessMode() != null
                 || hasText(query.getMachineUuid()) || query.getOrderStatus() != null
                 || hasText(query.getDimension())) reject();
     }

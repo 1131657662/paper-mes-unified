@@ -1,3 +1,5 @@
+import type { ReportQueryExecutionMetaVO } from './report'
+
 export interface ReportSettlementOverviewVO {
   totalDocuments: number
   pendingDocuments: number
@@ -24,6 +26,7 @@ export interface ReportSettlementAnalysisVO {
   monthlyTrend: ReportSettlementDimensionVO[]
   customerBreakdown: ReportSettlementDimensionVO[]
   asOf: string
+  execution: ReportQueryExecutionMetaVO
 }
 
 export interface ReportCollectionDimensionVO {
@@ -52,6 +55,7 @@ export interface ReportCollectionAnalysisVO {
   monthlyTrend: ReportCollectionDimensionVO[]
   customerBreakdown: ReportCollectionDimensionVO[]
   asOf: string
+  execution: ReportQueryExecutionMetaVO
 }
 
 export interface ReportInventoryDimensionVO {
@@ -76,6 +80,7 @@ export interface ReportInventoryAnalysisVO {
   stockInCohorts: ReportInventoryDimensionVO[]
   warehouseBreakdown: ReportInventoryDimensionVO[]
   asOf: string
+  execution: ReportQueryExecutionMetaVO
 }
 
 export interface ReportDeliveryDimensionVO {
@@ -101,6 +106,7 @@ export interface ReportDeliveryAnalysisVO {
   monthlyTrend: ReportDeliveryDimensionVO[]
   warehouseBreakdown: ReportDeliveryDimensionVO[]
   asOf: string
+  execution: ReportQueryExecutionMetaVO
 }
 
 export type ReportOperationalTopicCode = 'settlement' | 'collection' | 'inventory' | 'delivery'

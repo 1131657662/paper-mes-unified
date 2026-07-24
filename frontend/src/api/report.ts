@@ -13,6 +13,8 @@ import type {
   ReportQuerySnapshotVO,
   ReportProductionAnalysisVO,
   ReportQualityLossAnalysisVO,
+  ReportPageAnalysisVO,
+  ReportDimensionAnalysisVO,
 } from '../types/report'
 import type {
   ReportCollectionAnalysisVO,
@@ -27,6 +29,14 @@ export function getReportOverview(query: ReportQuery) {
     method: 'get',
     params: query,
   })
+}
+
+export function getReportPageAnalysis(query: ReportDetailQuery): Promise<ReportPageAnalysisVO> {
+  return request({ url: '/api/reports/query', method: 'post', data: query })
+}
+
+export function getReportDimensionAnalysis(query: ReportQuery): Promise<ReportDimensionAnalysisVO> {
+  return request({ url: '/api/reports/dimension-query', method: 'post', data: query })
 }
 
 export function getReportMetricContext() {

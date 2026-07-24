@@ -8,8 +8,7 @@ import ReportFilterSummary from '../../features/report/components/ReportFilterSu
 import ReportMetricContextBar from '../../features/report/components/ReportMetricContextBar'
 import { useReportMachines, useReportPapers } from '../../features/report/hooks/useReportReferenceData'
 import { useReportMetricContext } from '../../features/report/hooks/useReportMetricContext'
-import { useReportQueryMetadata } from '../../features/report/hooks/useReportQueryMetadata'
-import { useReportDimensions } from '../../features/report/hooks/useReportDimensions'
+import { useReportDimensionAnalysis } from '../../features/report/hooks/useReportDimensionAnalysis'
 import { useExportReport } from '../../features/report/hooks/useExportReport'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import ReportSubscriptionButton from '../../features/reportSubscription/components/ReportSubscriptionButton'
@@ -30,17 +29,17 @@ export default function ReportExplorerPage() {
   const [params, setParams] = useSearchParams()
   const baseQuery = parseReportUrlState(params).query
   const context = useReportMetricContext()
-  const query: ReportQuery = { ...reportQueryFromFilters(reportFiltersFromQuery(baseQuery)), metricReleaseUuid: context.data?.releaseUuid }
+  const query: ReportQuery = { ...reportQueryFromFilters(reportFiltersFromQuery(baseQuery)),
+    processStepType: baseQuery.processStepType, metricReleaseUuid: context.data?.releaseUuid }
   const [dimension, setDimension] = useState<ReportDimension>(readDimension(params))
   const [metricCodes, setMetricCodes] = useState<string[]>(readMetricCodes(params))
   const [saveModalOpen, setSaveModalOpen] = useState(false)
-  const metadata = useReportQueryMetadata(query, Boolean(query.metricReleaseUuid))
-  const dimensions = useReportDimensions({ ...query, dimension }, Boolean(query.metricReleaseUuid))
+  const analysis = useReportDimensionAnalysis({ ...query, dimension }, Boolean(query.metricReleaseUuid))
   const customers = useCustomers()
   const machines = useReportMachines()
   const papers = useReportPapers()
   const exportMutation = useExportReport()
-  const refresh = () => { void context.refetch(); void metadata.refetch(); void dimensions.refetch() }
+  const refresh = () => { void context.refetch(); void analysis.refetch() }
   const submit = (values: ReportFilterValues) => setParams(withExplorerState(reportQueryFromFilters(values), dimension, metricCodes))
   const updateExplorer = (nextDimension: ReportDimension, nextMetrics: string[]) => {
     setDimension(nextDimension); setMetricCodes(nextMetrics)
@@ -71,15 +70,15 @@ export default function ReportExplorerPage() {
       <div className="report-query-status">
         <ReportFilterSummary customers={customers.data?.records ?? []} machines={machines.data?.records ?? []}
           mode="explorer" papers={papers.data?.records ?? []} query={query} />
-        <ReportMetricContextBar compact context={context.data} execution={metadata.data}
-          loading={context.isLoading || metadata.isLoading} />
+        <ReportMetricContextBar compact context={context.data} execution={analysis.data?.execution}
+          loading={context.isLoading || analysis.isLoading} />
       </div>
       {!context.isError && context.data && <ReportExplorerControls dimension={dimension}
         metricCodes={effectiveMetricItems.map((item) => item.metricCode)} metrics={context.data.metrics} onChange={updateExplorer} />}
-      {dimensions.isError && <QueryLoadErrorAlert message="多维结果加载失败"
+      {analysis.isError && <QueryLoadErrorAlert message="多维结果加载失败"
         description="请刷新后重试，当前筛选条件不会丢失。" onRetry={refresh} />}
-      {dimensions.isLoading ? <Skeleton active paragraph={{ rows: 8 }} /> : <ReportExplorerTable dimension={dimension}
-        metrics={effectiveMetricItems} rows={dimensions.data ?? []} onDrill={drill} />}
+      {analysis.isLoading ? <Skeleton active paragraph={{ rows: 8 }} /> : <ReportExplorerTable dimension={dimension}
+        metrics={effectiveMetricItems} rows={analysis.data?.rows ?? []} onDrill={drill} />}
     </section>
     <ReportSavedViewModal open={saveModalOpen} baseQuery={query}
       defaults={{ reportPath: '/reports/explorer', dimensionCode: dimension,

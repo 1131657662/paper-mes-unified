@@ -44,9 +44,21 @@ export function drillQuery(dimension: ReportDimension, key: string, query: Repor
   if (dimension === 'customer') next.customerUuid = key
   if (dimension === 'paper') next.paperName = key
   if (dimension === 'machine') next.machineUuid = key
-  if (dimension === 'process') next.mainStepType = Number(key) || undefined
-  if (dimension === 'invoice') next.isInvoice = Number(key) || undefined
-  if (dimension === 'settleType') next.settleType = Number(key) || undefined
-  if (dimension === 'status') next.orderStatus = Number(key) || undefined
+  if (dimension === 'process') next.processStepType = processStepType(key)
+  if (dimension === 'invoice') next.isInvoice = finiteInteger(key)
+  if (dimension === 'settleType') next.settleType = finiteInteger(key)
+  if (dimension === 'status') next.orderStatus = finiteInteger(key)
   return next
+}
+
+function processStepType(key: string): number | undefined {
+  if (key === 'saw') return 1
+  if (key === 'rewind') return 2
+  const match = /^step-([34])$/.exec(key)
+  return match ? Number(match[1]) : undefined
+}
+
+function finiteInteger(key: string): number | undefined {
+  const value = Number(key)
+  return Number.isInteger(value) ? value : undefined
 }

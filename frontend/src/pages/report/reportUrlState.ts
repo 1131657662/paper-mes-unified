@@ -9,7 +9,8 @@ export function serializeReportUrlState(query: ReportQuery) {
   const values: Record<string, string | number | undefined> = {
     metricReleaseUuid: query.metricReleaseUuid, dateFrom: query.dateFrom, dateTo: query.dateTo,
     customerUuid: query.customerUuid, paperName: query.paperName, mainStepType: query.mainStepType,
-    processMode: query.processMode, machineUuid: query.machineUuid, settleType: query.settleType,
+    processStepType: query.processStepType, processMode: query.processMode,
+    machineUuid: query.machineUuid, settleType: query.settleType,
     isInvoice: query.isInvoice, orderStatus: query.orderStatus,
   }
   Object.entries(values).forEach(([key, value]) => {
@@ -26,6 +27,7 @@ function parseQuery(params: URLSearchParams): ReportQuery {
     customerUuid: text(params.get('customerUuid')),
     paperName: text(params.get('paperName')),
     mainStepType: number(params.get('mainStepType')),
+    processStepType: number(params.get('processStepType')),
     processMode: number(params.get('processMode')),
     machineUuid: text(params.get('machineUuid')),
     settleType: number(params.get('settleType')),

@@ -22,7 +22,7 @@ public class ReportOperationalAnalysisService {
         queryPolicy.requireSettlement(query);
         var metadata = queryCoordinator.prepare(query);
         return new ReportSettlementAnalysisVO("settlement", mapper.settlementOverview(query),
-                mapper.settlementMonthly(query), mapper.settlementCustomers(query), metadata.dataAsOf());
+                mapper.settlementMonthly(query), mapper.settlementCustomers(query), metadata.dataAsOf(), metadata);
     }
 
     @Transactional(readOnly = true)
@@ -30,7 +30,7 @@ public class ReportOperationalAnalysisService {
         queryPolicy.requireCollection(query);
         var metadata = queryCoordinator.prepare(query);
         return new ReportCollectionAnalysisVO("collection", mapper.collectionOverview(query),
-                mapper.collectionMonthly(query), mapper.collectionCustomers(query), metadata.dataAsOf());
+                mapper.collectionMonthly(query), mapper.collectionCustomers(query), metadata.dataAsOf(), metadata);
     }
 
     @Transactional(readOnly = true)
@@ -39,7 +39,7 @@ public class ReportOperationalAnalysisService {
         var metadata = queryCoordinator.prepare(query);
         return new ReportInventoryAnalysisVO("inventory", "CURRENT_STOCK_BY_STOCK_IN_MONTH",
                 mapper.inventoryOverview(query), mapper.inventoryMonthly(query),
-                mapper.inventoryWarehouses(query), metadata.dataAsOf());
+                mapper.inventoryWarehouses(query), metadata.dataAsOf(), metadata);
     }
 
     @Transactional(readOnly = true)
@@ -47,6 +47,6 @@ public class ReportOperationalAnalysisService {
         queryPolicy.requireDelivery(query);
         var metadata = queryCoordinator.prepare(query);
         return new ReportDeliveryAnalysisVO("delivery", mapper.deliveryOverview(query),
-                mapper.deliveryMonthly(query), mapper.deliveryWarehouses(query), metadata.dataAsOf());
+                mapper.deliveryMonthly(query), mapper.deliveryWarehouses(query), metadata.dataAsOf(), metadata);
     }
 }

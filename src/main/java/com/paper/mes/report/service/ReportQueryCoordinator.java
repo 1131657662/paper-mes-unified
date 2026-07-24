@@ -101,7 +101,8 @@ public class ReportQueryCoordinator {
         String value = String.join("|", release.release().releaseUuid(),
                 value(query == null ? null : query.getDateFrom()), value(query == null ? null : query.getDateTo()),
                 value(query == null ? null : query.getCustomerUuid()), value(query == null ? null : query.getPaperName()),
-                value(query == null ? null : query.getMainStepType()), value(query == null ? null : query.getProcessMode()),
+                value(query == null ? null : query.getMainStepType()), value(query == null ? null : query.getProcessStepType()),
+                value(query == null ? null : query.getProcessMode()),
                 value(query == null ? null : query.getMachineUuid()), value(query == null ? null : query.getSettleType()),
                 value(query == null ? null : query.getIsInvoice()), value(query == null ? null : query.getOrderStatus()),
                 value(query == null ? null : query.getDimension()));

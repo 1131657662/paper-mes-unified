@@ -14,10 +14,7 @@ import ReportTables from '../../features/report/components/ReportTables'
 import ReportTrendPanel from '../../features/report/components/ReportTrendPanel'
 import { useExportReport } from '../../features/report/hooks/useExportReport'
 import { useReportDetailPagination } from '../../features/report/hooks/useReportDetailPagination'
-import { useReportDetails } from '../../features/report/hooks/useReportDetails'
-import { useReportDimensions } from '../../features/report/hooks/useReportDimensions'
-import { useReportOverview } from '../../features/report/hooks/useReportOverview'
-import { useReportQueryMetadata } from '../../features/report/hooks/useReportQueryMetadata'
+import { useReportPageAnalysis } from '../../features/report/hooks/useReportPageAnalysis'
 import { useReportMachines, useReportPapers } from '../../features/report/hooks/useReportReferenceData'
 import { useReportMetricContext } from '../../features/report/hooks/useReportMetricContext'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
@@ -43,7 +40,8 @@ export default function ReportPage() {
   const urlState = parseReportUrlState(searchParams)
   const initialFilters = reportFiltersFromQuery(urlState.query)
   const query: ReportQuery = {
-    ...reportQueryFromFilters(initialFilters), metricReleaseUuid: urlState.query.metricReleaseUuid,
+    ...reportQueryFromFilters(initialFilters), processStepType: urlState.query.processStepType,
+    metricReleaseUuid: urlState.query.metricReleaseUuid,
   }
   const reportPage = findReportNavigation(location.pathname)
   const reportPath = resolveReportSourcePath(reportPage?.path)
@@ -53,34 +51,22 @@ export default function ReportPage() {
   const metricContextQuery = useReportMetricContext()
   const metricReady = Boolean(metricContextQuery.data?.releaseUuid)
   const executableQuery = { ...query, metricReleaseUuid: metricContextQuery.data?.releaseUuid }
-  const queryMetadataQuery = useReportQueryMetadata(executableQuery, metricReady)
-  const overviewQuery = useReportOverview(executableQuery, metricReady)
+  const analysisQuery = useReportPageAnalysis({ ...executableQuery, dimension,
+    ...detailPagination.pagination }, metricReady)
   const thresholdContextQuery = useReportThresholdContext(executableQuery, metricReady)
-  const dimensionQuery = useReportDimensions({ ...executableQuery, dimension }, metricReady)
-  const detailsQuery = useReportDetails({ ...executableQuery, ...detailPagination.pagination }, metricReady)
-  const monthlyQuery = useReportDimensions({ ...executableQuery, dimension: 'month' }, metricReady)
-  const customerRankQuery = useReportDimensions({ ...executableQuery, dimension: 'customer' }, metricReady)
-  const productRankQuery = useReportDimensions({ ...executableQuery, dimension: 'paper' }, metricReady)
   const customersQuery = useCustomers()
   const machinesQuery = useReportMachines()
   const papersQuery = useReportPapers()
   const exportMutation = useExportReport()
-  const resultQueries = [queryMetadataQuery, overviewQuery, dimensionQuery, detailsQuery, monthlyQuery,
-    customerRankQuery, productRankQuery, thresholdContextQuery]
+  const resultQueries = [analysisQuery, thresholdContextQuery]
   const loading = resultQueries.some((item) => item.isFetching)
   const resultError = [...resultQueries, metricContextQuery]
     .some((item) => item.isError)
   const referenceError = customersQuery.isError || machinesQuery.isError || papersQuery.isError
 
   const refresh = () => {
-    overviewQuery.refetch()
-    dimensionQuery.refetch()
-    detailsQuery.refetch()
-    monthlyQuery.refetch()
-    customerRankQuery.refetch()
-    productRankQuery.refetch()
+    analysisQuery.refetch()
     metricContextQuery.refetch()
-    queryMetadataQuery.refetch()
     thresholdContextQuery.refetch()
   }
 
@@ -152,24 +138,24 @@ export default function ReportPage() {
               <ReportMetricContextBar
                 compact
                 context={metricContextQuery.data}
-                execution={queryMetadataQuery.data}
-                loading={metricContextQuery.isLoading || queryMetadataQuery.isLoading}
+                execution={analysisQuery.data?.execution}
+                loading={metricContextQuery.isLoading || analysisQuery.isLoading}
               />
             </div>
-            <ReportMetricStrip overview={overviewQuery.data} />
-            <ReportInsightStrip overview={overviewQuery.data} thresholds={thresholdContextQuery.data} />
+            <ReportMetricStrip overview={analysisQuery.data?.overview} />
+            <ReportInsightStrip overview={analysisQuery.data?.overview} thresholds={thresholdContextQuery.data} />
             <div className="report-workbench__grid">
               <ReportTrendPanel dateFrom={query.dateFrom} dateTo={query.dateTo}
-                monthly={monthlyQuery.data ?? []} />
+                monthly={analysisQuery.data?.monthlyTrend ?? []} />
               <ReportRankingPanel
-                customers={customerRankQuery.data ?? []}
-                products={productRankQuery.data ?? []}
+                customers={analysisQuery.data?.customerRanking ?? []}
+                products={analysisQuery.data?.paperRanking ?? []}
               />
             </div>
             <ReportTables
-              details={detailsQuery.data}
+              details={analysisQuery.data?.details}
               dimension={dimension}
-              dimensions={dimensionQuery.data ?? []}
+              dimensions={analysisQuery.data?.currentBreakdown ?? []}
               loading={loading}
               onDetailPageChange={detailPagination.changePage}
               onDimensionChange={setDimension}

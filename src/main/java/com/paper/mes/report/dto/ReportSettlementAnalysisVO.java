@@ -7,7 +7,7 @@ import java.util.List;
 
 public record ReportSettlementAnalysisVO(
         String topicCode, Overview overview, List<Dimension> monthlyTrend,
-        List<Dimension> customerBreakdown, LocalDateTime asOf) {
+        List<Dimension> customerBreakdown, LocalDateTime asOf, ReportQueryExecutionMetaVO execution) {
     @Data
     public static class Overview {
         private Long totalDocuments;

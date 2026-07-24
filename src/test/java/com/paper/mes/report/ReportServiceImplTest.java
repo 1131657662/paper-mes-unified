@@ -10,7 +10,10 @@ import com.paper.mes.report.dto.ReportQueryExecutionMetaVO;
 import com.paper.mes.report.mapper.ReportMapper;
 import com.paper.mes.report.service.ReportExportService;
 import com.paper.mes.report.service.ReportExportConsistencyGuard;
+import com.paper.mes.report.service.ReportOperationalWorkbookExporter;
 import com.paper.mes.report.service.ReportQueryCoordinator;
+import com.paper.mes.report.service.ReportTopicWorkbookExporter;
+import com.paper.mes.report.service.ReportWorkbookExportCoordinator;
 import com.paper.mes.report.service.impl.ReportServiceImpl;
 import org.apache.ibatis.cursor.Cursor;
 import org.junit.jupiter.api.Test;
@@ -42,8 +45,31 @@ class ReportServiceImplTest {
         var result = service(mapper, coordinator).productionAnalysis(new ReportQuery());
 
         assertEquals(1, result.monthlyTrend().size());
+        assertEquals("query", result.execution().queryId());
         verify(mapper).dimensionSummary(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("process"));
         verify(mapper).dimensionSummary(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("machine"));
+    }
+
+    @Test
+    void pageAnalysis_returnsAllSectionsWithOneExecutionContext() {
+        ReportMapper mapper = mock(ReportMapper.class);
+        when(mapper.overview(org.mockito.ArgumentMatchers.any())).thenReturn(new ReportOverviewVO());
+        when(mapper.dimensionSummary(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(List.of(new ReportDimensionVO()));
+        when(mapper.detailRows(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyLong())).thenReturn(List.of(new ReportDetailVO()));
+        ReportDetailQuery query = new ReportDetailQuery();
+        query.setDimension("machine");
+
+        var result = service(mapper, coordinator()).pageAnalysis(query);
+
+        assertEquals("query", result.execution().queryId());
+        assertEquals(1, result.currentBreakdown().size());
+        assertEquals(1, result.details().getRecords().size());
+        verify(mapper).dimensionSummary(query, "machine");
+        verify(mapper).dimensionSummary(query, "month");
+        verify(mapper).dimensionSummary(query, "customer");
+        verify(mapper).dimensionSummary(query, "paper");
     }
 
     @Test
@@ -122,13 +148,14 @@ class ReportServiceImplTest {
     }
 
     private ReportServiceImpl service(ReportMapper mapper) {
-        return new ReportServiceImpl(mapper, new ReportExportService(), mock(ReportQueryCoordinator.class),
-                mock(ReportExportConsistencyGuard.class));
+        return service(mapper, mock(ReportQueryCoordinator.class));
     }
 
     private ReportServiceImpl service(ReportMapper mapper, ReportQueryCoordinator coordinator) {
-        return new ReportServiceImpl(mapper, new ReportExportService(), coordinator,
-                mock(ReportExportConsistencyGuard.class));
+        var workbookCoordinator = new ReportWorkbookExportCoordinator(mapper, new ReportExportService(),
+                mock(ReportTopicWorkbookExporter.class), mock(ReportOperationalWorkbookExporter.class));
+        return new ReportServiceImpl(mapper, coordinator, mock(ReportExportConsistencyGuard.class),
+                workbookCoordinator);
     }
 
     private ReportQueryCoordinator coordinator() {

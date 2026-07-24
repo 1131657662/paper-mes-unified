@@ -9,6 +9,7 @@ public record ReportQualityLossAnalysisVO(
         List<ReportDimensionVO> monthlyTrend,
         List<ReportDimensionVO> paperBreakdown,
         List<ReportDetailVO> lossLeaders,
-        LocalDateTime asOf
+        LocalDateTime asOf,
+        ReportQueryExecutionMetaVO execution
 ) {
 }

@@ -10,7 +10,6 @@ import ReportOperationalTrend from '../../features/report/components/ReportOpera
 import { useReportMetricContext } from '../../features/report/hooks/useReportMetricContext'
 import { useReportOperationalAnalysis } from '../../features/report/hooks/useReportOperationalAnalysis'
 import { useReportPapers } from '../../features/report/hooks/useReportReferenceData'
-import { useReportQueryMetadata } from '../../features/report/hooks/useReportQueryMetadata'
 import { useExportReport } from '../../features/report/hooks/useExportReport'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import ReportSubscriptionButton from '../../features/reportSubscription/components/ReportSubscriptionButton'
@@ -36,7 +35,6 @@ export default function ReportOperationalPage({ topic }: { topic: ReportOperatio
   const context = useReportMetricContext()
   const executable = { ...query, metricReleaseUuid: context.data?.releaseUuid }
   const ready = Boolean(executable.metricReleaseUuid)
-  const metadata = useReportQueryMetadata(executable, ready)
   const analysis = useReportOperationalAnalysis(topic, executable, ready)
   const customers = useCustomers()
   const needsPapers = needsOperationalPaperCandidates(topic)
@@ -45,7 +43,7 @@ export default function ReportOperationalPage({ topic }: { topic: ReportOperatio
   const reportPath = resolveReportSourcePath(navigation?.path)
   const exportMutation = useExportReport()
   const refresh = () => {
-    void context.refetch(); void metadata.refetch(); void analysis.refetch(); void customers.refetch()
+    void context.refetch(); void analysis.refetch(); void customers.refetch()
     if (needsPapers) void papers.refetch()
   }
   const submit = (values: Parameters<typeof reportQueryFromFilters>[0]) => {
@@ -66,13 +64,13 @@ export default function ReportOperationalPage({ topic }: { topic: ReportOperatio
         description="客户或纸张候选项不完整，请重试后再查询。" onRetry={refresh} />}
       {analysis.isError && <QueryLoadErrorAlert message="专题报表加载失败"
         description="当前空白不代表没有业务数据，请重试查询。" onRetry={refresh} />}
-      <Spin spinning={analysis.isFetching || metadata.isFetching}>
+      <Spin spinning={analysis.isFetching}>
         <div className="report-workbench__content">
           <div className="report-query-status">
             <ReportFilterSummary customers={customers.data?.records ?? []} machines={[]}
               mode={topic} papers={papers.data?.records ?? []} query={query} />
-            <ReportMetricContextBar compact context={context.data} execution={metadata.data}
-              loading={context.isLoading || metadata.isLoading} />
+            <ReportMetricContextBar compact context={context.data} execution={analysis.data?.execution}
+              loading={context.isLoading || analysis.isLoading} />
           </div>
           {analysis.data && <OperationalContent analysis={analysis.data} />}
         </div>

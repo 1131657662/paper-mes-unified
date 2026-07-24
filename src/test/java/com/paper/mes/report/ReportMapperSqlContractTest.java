@@ -115,7 +115,7 @@ class ReportMapperSqlContractTest {
     void reportSql_whenCountingProcessingWeights_excludesDirectShipAcrossAllViews() throws IOException {
         String sql = resourceText("mapper/report/ReportMapper.xml");
 
-        assertEquals(11, count(sql, "COALESCE(r.process_mode, 0) != 3"));
+        assertEquals(12, count(sql, "COALESCE(r.process_mode, 0) != 3"));
         assertEquals(2, count(sql, "COALESCE(process_mode, 0) != 3"));
         assertTrue(sql.contains("COUNT(CASE WHEN COALESCE(r.process_mode, 0) != 3 THEN 1 END) AS originalRollCount"));
     }

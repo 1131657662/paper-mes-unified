@@ -7,7 +7,7 @@ import java.util.List;
 
 public record ReportInventoryAnalysisVO(
         String topicCode, String timelineMode, Overview overview, List<Dimension> stockInCohorts,
-        List<Dimension> warehouseBreakdown, LocalDateTime asOf) {
+        List<Dimension> warehouseBreakdown, LocalDateTime asOf, ReportQueryExecutionMetaVO execution) {
     @Data
     public static class Overview {
         private Long rollCount;

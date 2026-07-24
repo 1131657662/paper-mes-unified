@@ -8,6 +8,8 @@ import com.paper.mes.report.dto.ReportDetailQuery;
 import com.paper.mes.report.dto.ReportDetailVO;
 import com.paper.mes.report.dto.ReportDimensionVO;
 import com.paper.mes.report.dto.ReportOverviewVO;
+import com.paper.mes.report.dto.ReportPageAnalysisVO;
+import com.paper.mes.report.dto.ReportDimensionAnalysisVO;
 import com.paper.mes.report.dto.ReportQuery;
 import com.paper.mes.report.dto.ReportProductionAnalysisVO;
 import com.paper.mes.report.dto.ReportQualityLossAnalysisVO;
@@ -70,6 +72,16 @@ public class ReportController {
     @GetMapping("/overview")
     public R<ReportOverviewVO> overview(@Valid ReportQuery query) {
         return R.success(reportService.overview(query));
+    }
+
+    @PostMapping("/query")
+    public R<ReportPageAnalysisVO> pageAnalysis(@Valid @RequestBody ReportDetailQuery query) {
+        return R.success(reportService.pageAnalysis(query));
+    }
+
+    @PostMapping("/dimension-query")
+    public R<ReportDimensionAnalysisVO> dimensionAnalysis(@Valid @RequestBody ReportQuery query) {
+        return R.success(reportService.dimensionAnalysis(query));
     }
 
     @PostMapping("/topics/production/query")

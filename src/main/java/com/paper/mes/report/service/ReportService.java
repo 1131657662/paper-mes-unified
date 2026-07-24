@@ -9,6 +9,8 @@ import com.paper.mes.report.dto.ReportProductionAnalysisVO;
 import com.paper.mes.report.dto.ReportQualityLossAnalysisVO;
 import com.paper.mes.report.dto.ReportQuery;
 import com.paper.mes.report.dto.ReportExportExecutionRequest;
+import com.paper.mes.report.dto.ReportDimensionAnalysisVO;
+import com.paper.mes.report.dto.ReportPageAnalysisVO;
 
 import java.util.List;
 import java.nio.file.Path;
@@ -19,6 +21,10 @@ import java.nio.file.Path;
 public interface ReportService {
 
     ReportOverviewVO overview(ReportQuery query);
+
+    ReportPageAnalysisVO pageAnalysis(ReportDetailQuery query);
+
+    ReportDimensionAnalysisVO dimensionAnalysis(ReportQuery query);
 
     ReportProductionAnalysisVO productionAnalysis(ReportQuery query);
 

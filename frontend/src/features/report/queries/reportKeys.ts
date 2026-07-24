@@ -16,6 +16,10 @@ export const reportKeys = createQueryKeys('report', {
     queryKey: [query],
     queryFn: () => reportService.dimensions(query),
   }),
+  dimensionAnalysis: (query: ReportQuery) => ({
+    queryKey: [query],
+    queryFn: () => reportService.dimensionAnalysis(query),
+  }),
   machines: {
     queryKey: null,
     queryFn: () => reportService.machines(),
@@ -39,6 +43,10 @@ export const reportKeys = createQueryKeys('report', {
   overview: (query: ReportQuery) => ({
     queryKey: [query],
     queryFn: () => reportService.overview(query),
+  }),
+  pageAnalysis: (query: ReportDetailQuery) => ({
+    queryKey: [query],
+    queryFn: () => reportService.pageAnalysis(query),
   }),
   operationalAnalysis: (topic: ReportOperationalTopicCode, query: ReportQuery) => ({
     queryKey: [topic, query],

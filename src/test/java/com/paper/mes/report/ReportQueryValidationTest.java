@@ -55,4 +55,13 @@ class ReportQueryValidationTest {
         assertThat(validator.validate(query)).extracting("message")
                 .contains("开票状态无效");
     }
+
+    @Test
+    void validate_whenProcessStepTypeIsOutsideCatalog_rejectsValue() {
+        ReportQuery query = new ReportQuery();
+        query.setProcessStepType(5);
+
+        assertThat(validator.validate(query)).extracting("message")
+                .contains("工序类型无效");
+    }
 }

@@ -27,6 +27,9 @@ public class ReportQuery {
     @Min(value = 1, message = "主工艺类型无效")
     @Max(value = 2, message = "主工艺类型无效")
     private Integer mainStepType;
+    @Min(value = 1, message = "工序类型无效")
+    @Max(value = 4, message = "工序类型无效")
+    private Integer processStepType;
     @Min(value = 1, message = "加工方式无效")
     @Max(value = 3, message = "加工方式无效")
     private Integer processMode;
