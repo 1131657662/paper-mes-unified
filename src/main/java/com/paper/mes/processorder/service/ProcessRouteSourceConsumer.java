@@ -2,6 +2,7 @@ package com.paper.mes.processorder.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.ProcessStageOutput;
@@ -37,7 +38,7 @@ public class ProcessRouteSourceConsumer {
             voidLinkedFinish(output);
             output.setOutputType(OUTPUT_INTERMEDIATE);
             output.setOutputStatus(OUTPUT_CONSUMED);
-            stageOutputMapper.updateById(output);
+            ConcurrencyGuard.requireRowUpdated(stageOutputMapper.updateById(output));
         }
     }
 
@@ -55,6 +56,6 @@ public class ProcessRouteSourceConsumer {
         finishOriginalRelMapper.delete(new LambdaQueryWrapper<FinishOriginalRel>()
                 .eq(FinishOriginalRel::getFinishUuid, finish.getUuid()));
         finish.setRollNoStatus(ROLL_NO_VOID);
-        finishRollMapper.updateById(finish);
+        ConcurrencyGuard.requireRowUpdated(finishRollMapper.updateById(finish));
     }
 }

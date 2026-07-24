@@ -29,6 +29,7 @@ public final class DeliveryOrderQueryBuilder {
         if (query.getDateTo() != null) {
             wrapper.le(DeliveryOrder::getDeliveryDate, query.getDateTo());
         }
-        return wrapper.orderByDesc(DeliveryOrder::getCreateTime);
+        return wrapper.orderByDesc(DeliveryOrder::getCreateTime)
+                .orderByDesc(DeliveryOrder::getUuid);
     }
 }

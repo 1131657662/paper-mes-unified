@@ -7,7 +7,6 @@ import com.paper.mes.auth.permission.PermissionInterceptor;
 import com.paper.mes.auth.service.AuthService;
 import com.paper.mes.common.GlobalExceptionHandler;
 import com.paper.mes.delivery.controller.DeliveryController;
-import com.paper.mes.delivery.dto.AvailableFinishVO;
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
 import com.paper.mes.delivery.dto.DeliveryCancelDTO;
 import com.paper.mes.delivery.dto.DeliveryConfirmDTO;
@@ -25,7 +24,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -69,21 +67,6 @@ class DeliveryControllerContractTest {
                 .andExpect(jsonPath("$.code").value(401));
 
         verify(deliveryService, never()).create(any());
-    }
-
-    @Test
-    void availableFinishes_withWarehouseRole_bindsWarehouseFilter() throws Exception {
-        authorizeAs("warehouse");
-        when(deliveryService.listAvailable(any(), any())).thenReturn(List.of(new AvailableFinishVO()));
-
-        mvc.perform(get("/api/delivery-orders/available")
-                        .param("customerUuid", "customer-1")
-                        .param("warehouseUuid", "warehouse-1")
-                        .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
-
-        verify(deliveryService).listAvailable("customer-1", "warehouse-1");
     }
 
     @Test

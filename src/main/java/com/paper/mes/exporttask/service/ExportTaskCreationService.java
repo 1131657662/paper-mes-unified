@@ -38,6 +38,7 @@ public class ExportTaskCreationService {
     private final ReportQuerySnapshotService reportQuerySnapshotService;
     private final DeliveryOrderExportRevisionSnapshot deliveryOrderRevisionSnapshot;
     private final ProcessOrderExportRevisionSnapshot processOrderRevisionSnapshot;
+    private final DeliveryExportSnapshotTaskCreator deliveryExportSnapshotTaskCreator;
 
     public String createSettleTask(String settleUuid, ExportTaskCreateDTO dto) {
         permissionChecker.require(Permissions.SETTLE_VIEW);
@@ -91,9 +92,7 @@ public class ExportTaskCreationService {
         CurrentUser user = currentUser();
         String requestId = dto.getRequestId().trim();
         String payload = payloadWriter.write(dto.getQuery());
-        return createSnapshotTask(requestId, payload, user,
-                ExportTaskFactory.deliveryInventory(requestId, payload, user),
-                DeliveryInventoryExportTaskHandler.TASK_TYPE);
+        return deliveryExportSnapshotTaskCreator.createInventory(requestId, payload, user, dto.getQuery());
     }
 
     public String createDeliveryListTask(DeliveryListExportTaskCreateDTO dto) {
@@ -101,9 +100,7 @@ public class ExportTaskCreationService {
         CurrentUser user = currentUser();
         String requestId = dto.getRequestId().trim();
         String payload = payloadWriter.write(dto.getQuery());
-        return createSnapshotTask(requestId, payload, user,
-                ExportTaskFactory.deliveryList(requestId, payload, user),
-                DeliveryListExportTaskHandler.TASK_TYPE);
+        return deliveryExportSnapshotTaskCreator.createReconciliation(requestId, payload, user, dto.getQuery());
     }
 
     public String createReportTask(ReportExportTaskCreateDTO dto) {
@@ -155,6 +152,7 @@ public class ExportTaskCreationService {
         taskExecutor.submit(task.getUuid());
         return task.getUuid();
     }
+
     private ExportTask findByRequest(String userUuid, String requestId) {
         return taskMapper.selectOne(new LambdaQueryWrapper<ExportTask>()
                 .eq(ExportTask::getRequesterUuid, userUuid)

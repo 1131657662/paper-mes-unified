@@ -10,10 +10,6 @@ import { deliveryInventoryService } from '../services/deliveryInventoryService'
 import { deliveryService } from '../services/deliveryService'
 
 export const deliveryKeys = createQueryKeys('delivery', {
-  availableFinishes: (params: { customerUuid: string; warehouseUuid?: string }) => ({
-    queryKey: [params],
-    queryFn: () => deliveryService.availableFinishes(params),
-  }),
   availableFinishPage: (query: AvailableFinishQuery) => ({
     queryKey: [query],
     queryFn: () => deliveryService.availableFinishPage(query),

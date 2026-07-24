@@ -22,11 +22,11 @@ public class ExportTaskMaintenanceService {
     private static final int STATUS_RUNNING = 2;
     private static final int STATUS_SUCCESS = 3;
     private static final int STATUS_FAILED = 4;
-    private static final int STATUS_EXPIRED = 6;
 
     private final ExportTaskMapper taskMapper;
     private final ExportTaskStorage storage;
     private final ExportTaskExecutor executor;
+    private final ExportTaskExpirationService expirationService;
 
     public int recoverStaleRunning(LocalDateTime cutoff) {
         return taskMapper.update(null, new LambdaUpdateWrapper<ExportTask>()
@@ -55,7 +55,7 @@ public class ExportTaskMaintenanceService {
         int updated = 0;
         for (ExportTask task : expired) {
             storage.delete(task);
-            updated += markExpired(task.getUuid());
+            updated += expirationService.expire(task.getUuid());
         }
         return updated;
     }
@@ -110,10 +110,4 @@ public class ExportTaskMaintenanceService {
         return activePrefixes.stream().anyMatch(fileName::startsWith);
     }
 
-    private int markExpired(String uuid) {
-        return taskMapper.update(null, new LambdaUpdateWrapper<ExportTask>()
-                .eq(ExportTask::getUuid, uuid).eq(ExportTask::getTaskStatus, STATUS_SUCCESS)
-                .set(ExportTask::getTaskStatus, STATUS_EXPIRED).set(ExportTask::getFilePath, null)
-                .setSql("version = version + 1"));
-    }
 }

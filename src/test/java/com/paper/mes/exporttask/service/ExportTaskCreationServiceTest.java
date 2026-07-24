@@ -25,6 +25,8 @@ import org.mockito.ArgumentCaptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -38,6 +40,7 @@ class ExportTaskCreationServiceTest {
     private ExportTaskStorage storage;
     private DeliveryOrderExportRevisionSnapshot deliveryOrderRevisionSnapshot;
     private ProcessOrderExportRevisionSnapshot processOrderRevisionSnapshot;
+    private DeliveryExportSnapshotTaskCreator deliveryExportSnapshotTaskCreator;
     private ExportTaskCreationService service;
 
     @BeforeAll
@@ -54,10 +57,11 @@ class ExportTaskCreationServiceTest {
         storage = mock(ExportTaskStorage.class);
         deliveryOrderRevisionSnapshot = mock(DeliveryOrderExportRevisionSnapshot.class);
         processOrderRevisionSnapshot = mock(ProcessOrderExportRevisionSnapshot.class);
+        deliveryExportSnapshotTaskCreator = mock(DeliveryExportSnapshotTaskCreator.class);
         service = new ExportTaskCreationService(taskMapper, taskExecutor, mock(ExportTaskLifecycleService.class),
                 documentResolver, permissionChecker, new ExportTaskPayloadWriter(new com.fasterxml.jackson.databind.ObjectMapper()), storage,
                 mock(com.paper.mes.report.service.ReportQuerySnapshotService.class),
-                deliveryOrderRevisionSnapshot, processOrderRevisionSnapshot);
+                deliveryOrderRevisionSnapshot, processOrderRevisionSnapshot, deliveryExportSnapshotTaskCreator);
         org.mockito.Mockito.doNothing().when(storage).assertReadyForWrite();
         AuthContextHolder.setCurrentUser(CurrentUser.builder().uuid("user-1")
                 .username("operator").realName("Operator").build());
@@ -117,7 +121,8 @@ class ExportTaskCreationServiceTest {
 
     @Test
     void createDeliveryInventoryTask_persistsFilterSnapshotAndQueuesTask() {
-        arrangeInsertedUuid("task-inventory-1");
+        when(deliveryExportSnapshotTaskCreator.createInventory(any(), any(), any(), any()))
+                .thenReturn("task-inventory-1");
         DeliveryInventoryFinishQuery query = new DeliveryInventoryFinishQuery();
         query.setCustomerUuid("customer-1");
         query.setKeyword("娴嬭瘯");
@@ -127,16 +132,16 @@ class ExportTaskCreationServiceTest {
 
         String taskUuid = service.createDeliveryInventoryTask(dto);
 
-        assertTaskSnapshot(taskUuid, "task-inventory-1", Permissions.DELIVERY_VIEW,
-                "customerUuid", "keyword");
-        ArgumentCaptor<ExportTask> taskCaptor = ArgumentCaptor.forClass(ExportTask.class);
-        verify(taskMapper, times(1)).insert(taskCaptor.capture());
-        assertThat(taskCaptor.getValue().getModuleCode()).isEqualTo("inventory");
+        assertThat(taskUuid).isEqualTo("task-inventory-1");
+        verify(permissionChecker).require(Permissions.DELIVERY_VIEW);
+        verify(deliveryExportSnapshotTaskCreator).createInventory(
+                eq("inventory-request-1"), contains("customerUuid"), any(), eq(query));
     }
 
     @Test
     void createDeliveryListTask_persistsQueueFilterAndQueuesTask() {
-        arrangeInsertedUuid("task-delivery-list-1");
+        when(deliveryExportSnapshotTaskCreator.createReconciliation(any(), any(), any(), any()))
+                .thenReturn("task-delivery-list-1");
         DeliveryQuery query = new DeliveryQuery();
         query.setDeliveryStatus(2);
         query.setCustomerUuid("customer-1");
@@ -146,8 +151,10 @@ class ExportTaskCreationServiceTest {
 
         String taskUuid = service.createDeliveryListTask(dto);
 
-        assertTaskSnapshot(taskUuid, "task-delivery-list-1", Permissions.DELIVERY_VIEW,
-                "deliveryStatus", "customerUuid");
+        assertThat(taskUuid).isEqualTo("task-delivery-list-1");
+        verify(permissionChecker).require(Permissions.DELIVERY_VIEW);
+        verify(deliveryExportSnapshotTaskCreator).createReconciliation(
+                eq("delivery-list-request-1"), contains("deliveryStatus"), any(), eq(query));
     }
 
     private void arrangeInsertedUuid(String taskUuid) {

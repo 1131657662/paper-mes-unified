@@ -2,6 +2,8 @@ package com.paper.mes.processorder.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.db.BusinessLockService;
+import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ErrorCode;
 import com.paper.mes.customer.service.CustomerService;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.machine.mapper.MachineMapper;
@@ -32,6 +34,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -49,6 +53,7 @@ class ProcessOrderServiceImplRollDerivedDataTest {
     void setUp() {
         when(rollMapper.selectById("roll-1")).thenReturn(roll);
         when(rollMapper.updateById(any(OriginalRoll.class))).thenReturn(1);
+        when(rollMapper.deleteById("roll-1")).thenReturn(1);
         service = service();
     }
 
@@ -68,6 +73,23 @@ class ProcessOrderServiceImplRollDerivedDataTest {
 
         assertEquals("order-1", service.recalculatedOrderUuid);
         verify(rollMapper).deleteById("roll-1");
+    }
+
+    @Test
+    void deleteRoll_whenDeleteConflicts_throwsAndSkipsRecalculation() {
+        when(rollMapper.deleteById("roll-1")).thenReturn(0);
+
+        BusinessException error = assertThrows(BusinessException.class, () -> service.deleteRoll("roll-1"));
+
+        assertEquals(ErrorCode.E006.getCode(), error.getErrorCode());
+        assertNull(service.recalculatedOrderUuid);
+    }
+
+    @Test
+    void addRoll_afterInsert_recalculatesDerivedData() {
+        service.addRoll("order-1", rollDto(new BigDecimal("800.000")));
+
+        assertEquals("order-1", service.recalculatedOrderUuid);
     }
 
     private TrackingService service() {
@@ -137,6 +159,11 @@ class ProcessOrderServiceImplRollDerivedDataTest {
         public FeeResultVO calcFee(String uuid) {
             recalculatedOrderUuid = uuid;
             return new FeeResultVO();
+        }
+
+        @Override
+        public boolean updateById(ProcessOrder entity) {
+            return true;
         }
     }
 }

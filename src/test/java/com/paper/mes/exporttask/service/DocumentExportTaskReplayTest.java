@@ -53,7 +53,8 @@ class DocumentExportTaskReplayTest {
                 mock(ExportTaskLifecycleService.class), resolver, mock(PermissionChecker.class),
                 new ExportTaskPayloadWriter(new com.fasterxml.jackson.databind.ObjectMapper()),
                 mock(ExportTaskStorage.class), mock(com.paper.mes.report.service.ReportQuerySnapshotService.class),
-                mock(DeliveryOrderExportRevisionSnapshot.class), revisionSnapshot);
+                mock(DeliveryOrderExportRevisionSnapshot.class), revisionSnapshot,
+                mock(DeliveryExportSnapshotTaskCreator.class));
     }
 
     private ExportTask existingTask() {

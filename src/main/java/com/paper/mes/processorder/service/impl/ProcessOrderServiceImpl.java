@@ -656,6 +656,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         originalRollMapper.insert(roll);
         createMainStepIfNeeded(order, roll);
         updateMixProcessFlag(orderUuid);
+        calcFee(orderUuid);
         return roll.getUuid();
     }
 
@@ -745,7 +746,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         validateRollStructureEditable(locked.order());
         processRouteCleanupService.clearExistingRoute(
                 new ProcessRouteContext(locked.order(), locked.roll()));
-        originalRollMapper.deleteById(rollUuid);
+        ConcurrencyGuard.requireRowUpdated(originalRollMapper.deleteById(rollUuid));
         calcFee(locked.order().getUuid());
     }
 
@@ -2562,7 +2563,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             step.setStandardStepAmount(pricing.standardAmount());
             step.setPricingAdjustmentAmount(pricing.adjustmentAmount());
             step.setStepAmount(amount);
-            processStepMapper.updateById(step);
+            ConcurrencyGuard.requireRowUpdated(processStepMapper.updateById(step));
 
             if (step.getStepType() != null && step.getStepType() == FeeCalculator.STEP_TYPE_SAW
                     && step.getKnifeCount() != null) {
@@ -2596,7 +2597,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         for (OriginalRoll roll : rolls) {
             BigDecimal rollAmount = processAmountByRoll.getOrDefault(roll.getUuid(), BigDecimal.ZERO);
             roll.setProcessAmount(rollAmount);
-            originalRollMapper.updateById(roll);
+            ConcurrencyGuard.requireRowUpdated(originalRollMapper.updateById(roll));
             totalProcessAmount = totalProcessAmount.add(rollAmount);
             if (roll.getActualWeight() != null) {
                 totalOriginalWeight = totalOriginalWeight.add(roll.getActualWeight());
@@ -2632,7 +2633,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         order.setTotalOriginalWeight(totalOriginalWeight);
         order.setTotalOriginalTon(totalOriginalWeight.divide(FeeCalculator.TON_DIVISOR, 3, RoundingMode.HALF_UP));
         order.setTotalFinishWeight(totalFinishWeight);
-        updateById(order);
+        ConcurrencyGuard.requireUpdated(updateById(order));
 
         FeeResultVO vo = new FeeResultVO();
         vo.setOrderUuid(order.getUuid());

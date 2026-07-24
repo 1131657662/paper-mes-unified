@@ -58,7 +58,8 @@ class ReportExportTaskCreationServiceTest {
                 new ExportTaskPayloadWriter(new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules()), storage,
                 snapshotService,
                 mock(DeliveryOrderExportRevisionSnapshot.class),
-                mock(ProcessOrderExportRevisionSnapshot.class));
+                mock(ProcessOrderExportRevisionSnapshot.class),
+                mock(DeliveryExportSnapshotTaskCreator.class));
         org.mockito.Mockito.doNothing().when(storage).assertReadyForWrite();
         AuthContextHolder.setCurrentUser(CurrentUser.builder().uuid("user-1")
                 .username("operator").realName("Operator").build());

@@ -4,6 +4,8 @@ import com.paper.mes.common.BusinessException;
 import com.paper.mes.delivery.dto.DeliveryInventoryFinishQuery;
 import com.paper.mes.delivery.dto.DeliveryInventoryFinishVO;
 import com.paper.mes.delivery.mapper.DeliveryInventoryMapper;
+import com.paper.mes.exporttask.service.DeliveryExportSnapshotMetadata;
+import com.paper.mes.exporttask.service.DeliveryExportSnapshotReader;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -26,6 +28,7 @@ public class DeliveryInventoryExportService {
             "首次入库时间", "库龄(天)", "实际重量kg", "剩余重量kg", "计划出库重量kg", "类型", "状态", "待出库单");
 
     private final DeliveryInventoryMapper inventoryMapper;
+    private final DeliveryExportSnapshotReader snapshotReader;
 
     public void exportToPath(DeliveryInventoryFinishQuery query, Path target) {
         SXSSFWorkbook workbook = new SXSSFWorkbook(100);
@@ -39,10 +42,46 @@ public class DeliveryInventoryExportService {
         }
     }
 
+    public void exportSnapshotToPath(String snapshotUuid, Path target) {
+        DeliveryExportSnapshotMetadata metadata = snapshotReader.metadata(snapshotUuid);
+        requireSnapshotType(metadata, DeliveryExportSnapshotMetadata.INVENTORY_TYPE);
+        SXSSFWorkbook workbook = new SXSSFWorkbook(100);
+        try (workbook; OutputStream output = Files.newOutputStream(target)) {
+            writeSnapshotWorkbook(workbook, metadata);
+            workbook.write(output);
+        } catch (IOException exception) {
+            throw new BusinessException("导出成品库存快照失败");
+        } finally {
+            workbook.dispose();
+        }
+    }
+
     private void writeWorkbook(SXSSFWorkbook workbook, DeliveryInventoryFinishQuery query) {
         Sheet sheet = workbook.createSheet("成品库存");
         writeHeader(sheet);
         writeRows(sheet, query);
+    }
+
+    private void writeSnapshotWorkbook(SXSSFWorkbook workbook, DeliveryExportSnapshotMetadata metadata) {
+        Sheet sheet = workbook.createSheet("成品库存");
+        writeHeader(sheet);
+        long rowNo = 0;
+        while (true) {
+            List<DeliveryInventoryFinishVO> rows = snapshotReader.rows(
+                    metadata.snapshotUuid(), rowNo, BATCH_SIZE, DeliveryInventoryFinishVO.class);
+            for (DeliveryInventoryFinishVO item : rows) writeRow(sheet.createRow((int) ++rowNo), item);
+            if (rows.size() < BATCH_SIZE) break;
+        }
+        writeSnapshotInfo(workbook.createSheet("导出说明"), metadata);
+    }
+
+    private void writeSnapshotInfo(Sheet sheet, DeliveryExportSnapshotMetadata metadata) {
+        sheet.createRow(0).createCell(0).setCellValue("快照编号");
+        sheet.getRow(0).createCell(1).setCellValue(metadata.snapshotUuid());
+        sheet.createRow(1).createCell(0).setCellValue("数据截止时间");
+        sheet.getRow(1).createCell(1).setCellValue(metadata.capturedAt().toString().replace('T', ' '));
+        sheet.createRow(2).createCell(0).setCellValue("导出行数");
+        sheet.getRow(2).createCell(1).setCellValue(metadata.rowCount());
     }
 
     private void writeRows(Sheet sheet, DeliveryInventoryFinishQuery query) {
@@ -92,5 +131,11 @@ public class DeliveryInventoryExportService {
 
     private String text(Object value) {
         return value == null ? "-" : String.valueOf(value);
+    }
+
+    private void requireSnapshotType(DeliveryExportSnapshotMetadata metadata, String expectedType) {
+        if (!expectedType.equals(metadata.snapshotType())) {
+            throw new BusinessException("导出数据快照类型不匹配");
+        }
     }
 }

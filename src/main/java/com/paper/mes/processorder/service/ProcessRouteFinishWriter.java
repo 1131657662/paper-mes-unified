@@ -2,6 +2,7 @@ package com.paper.mes.processorder.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.entity.FinishRoll;
@@ -91,7 +92,7 @@ public class ProcessRouteFinishWriter {
     private void markOutputFinishCreated(ProcessStageOutput output, FinishRoll finish) {
         output.setFinishRollUuid(finish.getUuid());
         output.setOutputStatus(OUTPUT_FINISH_CREATED);
-        stageOutputMapper.updateById(output);
+        ConcurrencyGuard.requireRowUpdated(stageOutputMapper.updateById(output));
     }
 
     private void allocAndInsertFinish(FinishRoll finish) {

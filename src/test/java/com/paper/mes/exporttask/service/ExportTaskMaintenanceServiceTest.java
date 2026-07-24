@@ -37,7 +37,7 @@ class ExportTaskMaintenanceServiceTest {
         when(executor.submit("task-1")).thenReturn(true);
         when(executor.submit("task-2")).thenReturn(false);
         ExportTaskMaintenanceService service = new ExportTaskMaintenanceService(
-                taskMapper, mock(ExportTaskStorage.class), executor);
+                taskMapper, mock(ExportTaskStorage.class), executor, mock(ExportTaskExpirationService.class));
 
         int dispatched = service.dispatchPending();
 
@@ -54,7 +54,8 @@ class ExportTaskMaintenanceServiceTest {
             return 1;
         });
         ExportTaskMaintenanceService service = new ExportTaskMaintenanceService(
-                taskMapper, mock(ExportTaskStorage.class), mock(ExportTaskExecutor.class));
+                taskMapper, mock(ExportTaskStorage.class), mock(ExportTaskExecutor.class),
+                mock(ExportTaskExpirationService.class));
 
         int recovered = service.recoverStaleRunning(LocalDateTime.now().minusMinutes(10));
 
@@ -72,7 +73,7 @@ class ExportTaskMaintenanceServiceTest {
                 .atZone(ZoneId.systemDefault()).toInstant()));
         when(taskMapper.selectList(any())).thenReturn(List.of(), List.of());
         ExportTaskMaintenanceService service = new ExportTaskMaintenanceService(
-                taskMapper, storage, mock(ExportTaskExecutor.class));
+                taskMapper, storage, mock(ExportTaskExecutor.class), mock(ExportTaskExpirationService.class));
 
         int deleted = service.cleanupOrphanArtifacts(cutoff, 10);
 
@@ -100,7 +101,7 @@ class ExportTaskMaintenanceServiceTest {
         running.setWorkerId("lease-2");
         when(taskMapper.selectList(any())).thenReturn(List.of(referenced), List.of(running));
         ExportTaskMaintenanceService service = new ExportTaskMaintenanceService(
-                taskMapper, storage, mock(ExportTaskExecutor.class));
+                taskMapper, storage, mock(ExportTaskExecutor.class), mock(ExportTaskExpirationService.class));
 
         int deleted = service.cleanupOrphanArtifacts(cutoff, 10);
 

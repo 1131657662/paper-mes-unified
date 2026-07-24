@@ -1368,6 +1368,8 @@ CREATE TABLE `sys_operational_alert_state` (
   CONSTRAINT `chk_operational_alert_transition_no` CHECK (`transition_no` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='跨实例运行态告警状态';
 
+DROP TABLE IF EXISTS `sys_export_snapshot_row`;
+DROP TABLE IF EXISTS `sys_export_snapshot`;
 DROP TABLE IF EXISTS `sys_export_task`;
 CREATE TABLE `sys_export_task` (
   `uuid` VARCHAR(36) NOT NULL, `request_id` VARCHAR(64) NOT NULL,
@@ -1409,6 +1411,26 @@ CREATE TABLE `sys_export_task` (
   CONSTRAINT `chk_export_task_attempts` CHECK (`attempt_count` >= 0 AND `max_attempts` BETWEEN 1 AND 10),
   CONSTRAINT `chk_export_task_download_count` CHECK (`download_count` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异步导出任务中心';
+
+CREATE TABLE `sys_export_snapshot` (
+  `uuid` VARCHAR(36) NOT NULL, `task_uuid` VARCHAR(36) NOT NULL,
+  `snapshot_type` VARCHAR(30) NOT NULL, `captured_at` DATETIME NOT NULL,
+  `row_count` BIGINT NOT NULL DEFAULT 0,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`), UNIQUE KEY `uk_export_snapshot_task` (`task_uuid`),
+  KEY `idx_export_snapshot_type_time` (`snapshot_type`, `captured_at`, `uuid`),
+  CONSTRAINT `fk_export_snapshot_task` FOREIGN KEY (`task_uuid`)
+    REFERENCES `sys_export_task` (`uuid`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_export_snapshot_row_count` CHECK (`row_count` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异步导出数据快照';
+
+CREATE TABLE `sys_export_snapshot_row` (
+  `snapshot_uuid` VARCHAR(36) NOT NULL, `row_no` BIGINT NOT NULL,
+  `row_payload` JSON NOT NULL, PRIMARY KEY (`snapshot_uuid`, `row_no`),
+  CONSTRAINT `fk_export_snapshot_row_snapshot` FOREIGN KEY (`snapshot_uuid`)
+    REFERENCES `sys_export_snapshot` (`uuid`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_export_snapshot_row_no` CHECK (`row_no` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异步导出快照明细';
 
 DROP TABLE IF EXISTS `rpt_report_saved_view`;
 DROP TABLE IF EXISTS `rpt_report_snapshot_reference`;

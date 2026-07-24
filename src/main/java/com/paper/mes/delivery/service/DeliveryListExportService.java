@@ -3,9 +3,12 @@ package com.paper.mes.delivery.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.delivery.dto.DeliveryQuery;
+import com.paper.mes.delivery.dto.DeliveryListExportRow;
 import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import com.paper.mes.delivery.service.impl.DeliveryOrderQueryBuilder;
+import com.paper.mes.exporttask.service.DeliveryExportSnapshotMetadata;
+import com.paper.mes.exporttask.service.DeliveryExportSnapshotReader;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -30,6 +33,7 @@ public class DeliveryListExportService {
             "柜号", "状态", "结算拦截", "签收人", "签收时间", "备注", "创建时间");
 
     private final DeliveryOrderMapper deliveryOrderMapper;
+    private final DeliveryExportSnapshotReader snapshotReader;
 
     public void exportToPath(DeliveryQuery query, Path target) {
         SXSSFWorkbook workbook = new SXSSFWorkbook(BATCH_SIZE);
@@ -43,10 +47,46 @@ public class DeliveryListExportService {
         }
     }
 
+    public void exportSnapshotToPath(String snapshotUuid, Path target) {
+        DeliveryExportSnapshotMetadata metadata = snapshotReader.metadata(snapshotUuid);
+        requireSnapshotType(metadata, DeliveryExportSnapshotMetadata.RECONCILIATION_TYPE);
+        SXSSFWorkbook workbook = new SXSSFWorkbook(BATCH_SIZE);
+        try (workbook; OutputStream output = Files.newOutputStream(target)) {
+            writeSnapshotWorkbook(workbook, metadata);
+            workbook.write(output);
+        } catch (IOException exception) {
+            throw new BusinessException("导出出库对账快照失败");
+        } finally {
+            workbook.dispose();
+        }
+    }
+
     private void writeWorkbook(SXSSFWorkbook workbook, DeliveryQuery query) {
         Sheet sheet = workbook.createSheet("出库对账");
         writeHeader(sheet);
         writeRows(sheet, query);
+    }
+
+    private void writeSnapshotWorkbook(SXSSFWorkbook workbook, DeliveryExportSnapshotMetadata metadata) {
+        Sheet sheet = workbook.createSheet("出库对账");
+        writeHeader(sheet);
+        long rowNo = 0;
+        while (true) {
+            List<DeliveryListExportRow> rows = snapshotReader.rows(
+                    metadata.snapshotUuid(), rowNo, BATCH_SIZE, DeliveryListExportRow.class);
+            for (DeliveryListExportRow order : rows) writeRow(sheet.createRow((int) ++rowNo), order);
+            if (rows.size() < BATCH_SIZE) break;
+        }
+        writeSnapshotInfo(workbook.createSheet("导出说明"), metadata);
+    }
+
+    private void writeSnapshotInfo(Sheet sheet, DeliveryExportSnapshotMetadata metadata) {
+        sheet.createRow(0).createCell(0).setCellValue("快照编号");
+        sheet.getRow(0).createCell(1).setCellValue(metadata.snapshotUuid());
+        sheet.createRow(1).createCell(0).setCellValue("数据截止时间");
+        sheet.getRow(1).createCell(1).setCellValue(metadata.capturedAt().toString().replace('T', ' '));
+        sheet.createRow(2).createCell(0).setCellValue("导出行数");
+        sheet.getRow(2).createCell(1).setCellValue(metadata.rowCount());
     }
 
     private void writeRows(Sheet sheet, DeliveryQuery query) {
@@ -56,7 +96,7 @@ public class DeliveryListExportService {
             Page<DeliveryOrder> page = deliveryOrderMapper.selectPage(
                     Page.of(current, BATCH_SIZE, false), DeliveryOrderQueryBuilder.build(query));
             for (DeliveryOrder order : page.getRecords()) {
-                writeRow(sheet.createRow(rowIndex++), order);
+                writeRow(sheet.createRow(rowIndex++), DeliveryListExportRow.from(order));
             }
             if (page.getRecords().size() < BATCH_SIZE) return;
             current++;
@@ -70,15 +110,21 @@ public class DeliveryListExportService {
         }
     }
 
-    private void writeRow(Row row, DeliveryOrder order) {
+    private void writeRow(Row row, DeliveryListExportRow order) {
         List<String> values = List.of(
-                text(order.getDeliveryNo()), text(order.getCustomerName()), date(order.getDeliveryDate()),
-                text(order.getTotalCount()), text(order.getTotalWeight()), text(order.getPickerName()),
-                text(order.getCarNo()), text(order.getContainerNo()), statusText(order.getDeliveryStatus()),
-                blockText(order.getSettleBlockAction()), text(order.getSignUser()), dateTime(order.getSignTime()),
-                text(order.getRemark()), dateTime(order.getCreateTime()));
+                text(order.deliveryNo()), text(order.customerName()), date(order.deliveryDate()),
+                text(order.totalCount()), text(order.totalWeight()), text(order.pickerName()),
+                text(order.carNo()), text(order.containerNo()), statusText(order.deliveryStatus()),
+                blockText(order.settleBlockAction()), text(order.signUser()), dateTime(order.signTime()),
+                text(order.remark()), dateTime(order.createTime()));
         for (int index = 0; index < values.size(); index++) {
             row.createCell(index).setCellValue(values.get(index));
+        }
+    }
+
+    private void requireSnapshotType(DeliveryExportSnapshotMetadata metadata, String expectedType) {
+        if (!expectedType.equals(metadata.snapshotType())) {
+            throw new BusinessException("导出数据快照类型不匹配");
         }
     }
 

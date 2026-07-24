@@ -183,7 +183,7 @@
         INNER JOIN biz_process_order o ON o.uuid = f.order_uuid
         LEFT JOIN sys_warehouse w ON w.uuid = f.warehouse_uuid AND w.is_deleted = 0
         WHERE <include refid="AvailableWhere"/>
-        ORDER BY o.order_date ASC, o.order_no ASC, f.row_sort ASC
+        ORDER BY o.order_date ASC, o.order_no ASC, f.row_sort ASC, f.uuid ASC
         LIMIT #{offset}, #{limit}
     </select>
 </mapper>

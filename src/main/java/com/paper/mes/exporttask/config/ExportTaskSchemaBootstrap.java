@@ -16,6 +16,7 @@ import java.util.List;
 @ConditionalOnProperty(prefix = "app.schema-bootstrap", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class ExportTaskSchemaBootstrap implements ApplicationRunner {
     private final JdbcTemplate jdbcTemplate;
+    private final ExportSnapshotSchemaInitializer snapshotSchemaInitializer;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -70,6 +71,7 @@ public class ExportTaskSchemaBootstrap implements ApplicationRunner {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异步导出任务中心'
                 """);
         ensureColumns();
+        snapshotSchemaInitializer.ensureTables();
         ensureStatusConstraint();
         ensureIntegrityObjects();
     }

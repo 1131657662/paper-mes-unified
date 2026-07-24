@@ -13,7 +13,6 @@ const businessDependentKeys = () => [
   queries.settle.candidates._def,
   queries.settle.quoteByOrders._def,
   queries.settle.quoteByMonth._def,
-  queries.delivery.availableFinishes._def,
   queries.delivery.availableFinishPage._def,
   queries.delivery.inventoryCustomers._def,
   queries.delivery.inventoryFinishes._def,

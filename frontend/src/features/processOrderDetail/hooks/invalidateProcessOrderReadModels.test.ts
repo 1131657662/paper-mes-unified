@@ -78,7 +78,6 @@ function dependentKeys() {
     queries.settle.quoteByMonth({
       customerUuid: 'customer-1', periodStart: '2026-07-01', periodEnd: '2026-07-31',
     }).queryKey,
-    queries.delivery.availableFinishes({ customerUuid: 'customer-1' }).queryKey,
     queries.delivery.availableFinishPage({ current: 1, size: 20, customerUuid: 'customer-1' }).queryKey,
     queries.delivery.inventoryCustomers({ current: 1, size: 20 }).queryKey,
     queries.delivery.inventoryFinishes({ current: 1, size: 20 }).queryKey,

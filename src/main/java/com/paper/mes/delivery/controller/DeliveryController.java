@@ -4,7 +4,6 @@ import com.paper.mes.common.PageResult;
 import com.paper.mes.common.R;
 import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
-import com.paper.mes.delivery.dto.AvailableFinishVO;
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
 import com.paper.mes.delivery.dto.DeliveryBatchConfirmDTO;
 import com.paper.mes.delivery.dto.DeliveryCancelDTO;
@@ -25,10 +24,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/delivery-orders")
@@ -48,13 +45,6 @@ public class DeliveryController {
     @RequirePermission(Permissions.DELIVERY_VIEW)
     public R<DeliveryListSummaryVO> summary(@Valid DeliveryQuery query) {
         return R.success(deliveryListSummaryService.summarize(query));
-    }
-
-    @GetMapping("/available")
-    @RequirePermission(Permissions.DELIVERY_MANAGE)
-    public R<List<AvailableFinishVO>> available(@RequestParam String customerUuid,
-                                                @RequestParam(required = false) String warehouseUuid) {
-        return R.success(deliveryService.listAvailable(customerUuid, warehouseUuid));
     }
 
     @PostMapping

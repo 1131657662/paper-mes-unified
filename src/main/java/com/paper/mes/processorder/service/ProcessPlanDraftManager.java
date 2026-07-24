@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.processorder.calc.FeeCalculator;
@@ -227,7 +228,7 @@ public class ProcessPlanDraftManager {
         roll.setProcessMode(plan.getProcessMode());
         roll.setMainStepType(plan.getMainStepType());
         roll.setMachineUuid(plan.getMachineUuid());
-        rollMapper.updateById(roll);
+        ConcurrencyGuard.requireRowUpdated(rollMapper.updateById(roll));
     }
 
     private ProcessOrder requireDraft(String orderUuid) {

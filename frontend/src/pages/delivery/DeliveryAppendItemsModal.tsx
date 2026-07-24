@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Modal, Space, message } from 'antd'
 import { useAppendDeliveryDetails } from '../../features/delivery/hooks/useAppendDeliveryDetails'
-import { useAvailableFinishes } from '../../features/delivery/hooks/useAvailableFinishes'
+import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { AvailableFinishVO } from '../../types/delivery'
@@ -10,18 +10,13 @@ import DeliveryFinishTableToolbar from './DeliveryFinishTableToolbar'
 import {
   DeliveryFinishScopeControl,
 } from './DeliveryFinishScopeControl'
-import { filterFinishesByScope, finishScopeName, type DeliveryFinishScope } from './deliveryFinishScope'
-import {
-  defaultDeliveryFinishFilters,
-  filterDeliveryFinishes,
-  type DeliveryFinishFilters,
-} from './deliveryFinishFilter'
+import { finishScopeName, type DeliveryFinishScope } from './deliveryFinishScope'
 import {
   deliverySelectionError,
-  selectedDeliveryFinishes,
   summarizeDeliverySelection,
   type DeliveryLineEdit,
 } from './deliverySelectionModel'
+import { useDeliveryAppendInventory } from './useDeliveryAppendInventory'
 
 interface Props {
   customerName?: string
@@ -43,30 +38,22 @@ export default function DeliveryAppendItemsModal({
   open,
 }: Props) {
   const appendMutation = useAppendDeliveryDetails()
-  const finishesQuery = useAvailableFinishes(open ? customerUuid : undefined, open ? warehouseUuid : undefined)
-  const [finishScope, setFinishScope] = useState<DeliveryFinishScope>('product')
-  const [finishFilters, setFinishFilters] = useState<DeliveryFinishFilters>({ ...defaultDeliveryFinishFilters })
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const inventory = useDeliveryAppendInventory({ customerUuid, warehouseUuid, enabled: open })
   const [lineEdits, setLineEdits] = useState<Record<string, DeliveryLineEdit>>({})
-  const finishes = finishesQuery.data ?? []
-  const scopedFinishes = filterFinishesByScope(finishes, finishScope)
-  const visibleFinishes = filterDeliveryFinishes(scopedFinishes, finishFilters, selectedRowKeys)
-  const selectedFinishes = selectedDeliveryFinishes(finishes, selectedRowKeys)
+  const selectedFinishes = inventory.selectedRows
   const selectionSummary = summarizeDeliverySelection(selectedFinishes, lineEdits)
   const selectionError = deliverySelectionError(selectedFinishes, lineEdits)
-  const scopeName = finishScopeName(finishScope)
-  const emptyText = scopedFinishes.length === 0
+  const scopeName = finishScopeName(inventory.scope)
+  const emptyText = (inventory.query.data?.total ?? 0) === 0
     ? `该客户暂无可出库${scopeName}`
     : `没有符合筛选条件的${scopeName}`
 
   const handleScopeChange = (value: DeliveryFinishScope) => {
-    setFinishScope(value)
+    inventory.changeScope(value)
   }
 
   const resetSelection = () => {
-    setFinishScope('product')
-    setFinishFilters({ ...defaultDeliveryFinishFilters })
-    setSelectedRowKeys([])
+    inventory.reset()
     setLineEdits({})
   }
 
@@ -114,46 +101,56 @@ export default function DeliveryAppendItemsModal({
       onOk={handleSubmit}
     >
       <div className="delivery-append-modal">
-        {finishesQuery.isError && (
+        {inventory.query.isError && (
           <QueryLoadErrorAlert
             message="可追加库存加载失败"
             description="当前空表不代表没有可追加库存，请重新加载后再选择。"
-            onRetry={() => void finishesQuery.refetch()}
+            onRetry={() => void inventory.query.refetch()}
           />
         )}
         <Space className="document-module-summary" size={12} wrap>
           <span>客户 <strong>{customerName || '-'}</strong></span>
           <DeliveryFinishScopeControl
-            finishes={finishes}
-            selectedRowKeys={selectedRowKeys}
-            value={finishScope}
+            finishes={inventory.selectionPool}
+            selectedRowKeys={inventory.selectedKeys}
+            scopeTotals={inventory.query.data?.scopeCounts}
+            totalCount={inventory.query.data?.total}
+            value={inventory.scope}
             onChange={handleScopeChange}
           />
-          <span>可选 <strong>{visibleFinishes.length}</strong> 卷</span>
+          <span>可选 <strong>{inventory.query.data?.total ?? 0}</strong> 卷</span>
           <span>已选 <strong>{selectionSummary.totalCount}</strong> 卷</span>
           <span>成品 <strong>{selectionSummary.productCount}</strong> 卷</span>
           <span>余料 <strong>{selectionSummary.remainCount}</strong> 卷</span>
           <span>合计 <strong>{formatTon(selectionSummary.totalWeight)}</strong></span>
         </Space>
         <DeliveryFinishTableToolbar
-          filters={finishFilters}
-          resultCount={visibleFinishes.length}
-          scope={finishScope}
-          totalCount={scopedFinishes.length}
-          onChange={setFinishFilters}
+          filters={inventory.filters}
+          resultCount={inventory.visibleRows.length}
+          scope={inventory.scope}
+          totalCount={inventory.query.data?.total ?? 0}
+          onChange={inventory.changeFilters}
         />
         <div className="document-module-table">
           <DeliveryCreateTable
-            data={visibleFinishes}
+            data={inventory.visibleRows}
             edits={lineEdits}
             emptyText={emptyText}
-            loading={finishesQuery.isLoading || finishesQuery.isFetching}
-            scope={finishScope}
-            selectedRowKeys={selectedRowKeys}
+            loading={inventory.query.isLoading || inventory.query.isFetching}
+            scope={inventory.scope}
+            selectedRowKeys={inventory.selectedKeys}
             onEditChange={handleEditChange}
-            onSelectionChange={setSelectedRowKeys}
+            onSelectionChange={inventory.changeSelection}
           />
         </div>
+        {!inventory.filters.selectedOnly && (
+          <DocumentPaginationBar
+            current={inventory.page}
+            pageSize={inventory.pageSize}
+            total={inventory.query.data?.total ?? 0}
+            onChange={inventory.changePage}
+          />
+        )}
       </div>
     </Modal>
   )

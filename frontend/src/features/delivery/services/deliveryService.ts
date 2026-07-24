@@ -4,7 +4,6 @@ import {
   confirmDeliveryOrder,
   confirmDeliveryOrders,
   createDeliveryOrder,
-  getAvailableFinishes,
   getAvailableFinishPage,
   getDeliveryOrderDetail,
   getDeliveryOrderList,
@@ -26,8 +25,6 @@ import type {
 export const deliveryService = {
   appendDetails: (params: { uuid: string; data: DeliveryAppendItemsDTO }) =>
     appendDeliveryDetails(params.uuid, params.data),
-  availableFinishes: (params: { customerUuid: string; warehouseUuid?: string }) =>
-    getAvailableFinishes(params.customerUuid, params.warehouseUuid),
   availableFinishPage: (query: AvailableFinishQuery) => getAvailableFinishPage(query),
   cancelPending: (params: { uuid: string; data: DeliveryCancelDTO }) =>
     cancelPendingDeliveryOrder(params.uuid, params.data),

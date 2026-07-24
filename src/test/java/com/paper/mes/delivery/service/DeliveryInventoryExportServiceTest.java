@@ -3,18 +3,22 @@ package com.paper.mes.delivery.service;
 import com.paper.mes.delivery.dto.DeliveryInventoryFinishQuery;
 import com.paper.mes.delivery.dto.DeliveryInventoryFinishVO;
 import com.paper.mes.delivery.mapper.DeliveryInventoryMapper;
+import com.paper.mes.exporttask.service.DeliveryExportSnapshotReader;
+import com.paper.mes.exporttask.service.DeliveryExportSnapshotMetadata;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class DeliveryInventoryExportServiceTest {
@@ -27,7 +31,7 @@ class DeliveryInventoryExportServiceTest {
         Path target = Files.createTempFile("delivery-inventory-export", ".xlsx");
 
         try {
-            new DeliveryInventoryExportService(mapper)
+            new DeliveryInventoryExportService(mapper, mock(DeliveryExportSnapshotReader.class))
                     .exportToPath(new DeliveryInventoryFinishQuery(), target);
 
             try (XSSFWorkbook workbook = new XSSFWorkbook(Files.newInputStream(target))) {
@@ -35,6 +39,34 @@ class DeliveryInventoryExportServiceTest {
                         .isNotBlank();
                 assertThat(workbook.getSheetAt(0).getRow(1).getCell(14).getStringCellValue())
                         .isNotBlank();
+            }
+        } finally {
+            Files.deleteIfExists(target);
+        }
+    }
+
+    @Test
+    void exportSnapshotToPath_readsFrozenRowsAndWritesSnapshotMetadata() throws Exception {
+        DeliveryInventoryMapper mapper = mock(DeliveryInventoryMapper.class);
+        DeliveryExportSnapshotReader reader = mock(DeliveryExportSnapshotReader.class);
+        LocalDateTime capturedAt = LocalDateTime.of(2026, 7, 24, 10, 30);
+        when(reader.metadata("snapshot-1")).thenReturn(new DeliveryExportSnapshotMetadata(
+                "snapshot-1", DeliveryExportSnapshotMetadata.INVENTORY_TYPE, capturedAt, 1));
+        when(reader.rows("snapshot-1", 0, 500, DeliveryInventoryFinishVO.class))
+                .thenReturn(List.of(finish()));
+        Path target = Files.createTempFile("delivery-inventory-snapshot", ".xlsx");
+
+        try {
+            new DeliveryInventoryExportService(mapper, reader).exportSnapshotToPath("snapshot-1", target);
+
+            verifyNoInteractions(mapper);
+            try (XSSFWorkbook workbook = new XSSFWorkbook(Files.newInputStream(target))) {
+                assertThat(workbook.getSheet("成品库存").getRow(1).getCell(3).getStringCellValue())
+                        .isEqualTo("A000001");
+                assertThat(workbook.getSheet("导出说明").getRow(0).getCell(1).getStringCellValue())
+                        .isEqualTo("snapshot-1");
+                assertThat(workbook.getSheet("导出说明").getRow(2).getCell(1).getNumericCellValue())
+                        .isEqualTo(1);
             }
         } finally {
             Files.deleteIfExists(target);

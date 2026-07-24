@@ -5,7 +5,6 @@ import type {
   DeliveryAppendItemsDTO,
   DeliveryCancelDTO,
   DeliveryQuery,
-  AvailableFinishVO,
   AvailableFinishPageVO,
   AvailableFinishQuery,
   DeliveryCreateDTO,
@@ -29,14 +28,6 @@ export function getDeliveryOrderSummary(query: DeliveryQuery) {
     url: '/api/delivery-orders/summary',
     method: 'get',
     params: query,
-  })
-}
-
-export function getAvailableFinishes(customerUuid: string, warehouseUuid?: string) {
-  return request<AvailableFinishVO[]>({
-    url: '/api/delivery-orders/available',
-    method: 'get',
-    params: { customerUuid, warehouseUuid },
   })
 }
 

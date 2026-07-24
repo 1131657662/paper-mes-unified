@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.service;
 
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
@@ -40,7 +41,7 @@ public class ProcessRoutePersistenceService {
         roll.setProcessMode(1);
         roll.setMainStepType(firstStage.getStepType());
         roll.setMachineUuid(resolveStageMachine(firstStage));
-        originalRollMapper.updateById(roll);
+        ConcurrencyGuard.requireRowUpdated(originalRollMapper.updateById(roll));
     }
 
     private String resolveStageMachine(ProcessRoutePreviewDTO.RouteStageDTO stage) {

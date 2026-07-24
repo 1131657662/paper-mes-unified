@@ -1,8 +1,6 @@
 package com.paper.mes.exporttask.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.auth.permission.Permissions;
-import com.paper.mes.delivery.dto.DeliveryQuery;
 import com.paper.mes.delivery.service.DeliveryListExportService;
 import com.paper.mes.exporttask.entity.ExportTask;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +16,6 @@ public class DeliveryListExportTaskHandler implements ExportTaskHandler {
     private static final String CONTENT_TYPE =
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-    private final ObjectMapper objectMapper;
     private final DeliveryListExportService exportService;
 
     @Override
@@ -38,8 +35,7 @@ public class DeliveryListExportTaskHandler implements ExportTaskHandler {
 
     @Override
     public ExportTaskArtifact generate(ExportTask task, Path target) throws Exception {
-        DeliveryQuery query = objectMapper.readValue(task.getRequestPayload(), DeliveryQuery.class);
-        exportService.exportToPath(query, target);
+        exportService.exportSnapshotToPath(task.getQuerySnapshotUuid(), target);
         return new ExportTaskArtifact("出库对账_" + LocalDate.now() + ".xlsx", CONTENT_TYPE);
     }
 }
