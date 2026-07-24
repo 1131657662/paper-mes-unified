@@ -91,5 +91,11 @@ function toFormValues(customer: Customer): CustomerSaveDTO {
     settleType: customer.settleType,
     taxNo: customer.taxNo,
     taxRate: customer.taxRate,
+    processPrices: customer.processPrices?.map((price) => ({
+      catalogUuid: price.catalogUuid,
+      billingBasis: price.billingBasis,
+      price: price.price,
+      isDefault: price.defaultOption ? 1 : 0,
+    })),
   }
 }

@@ -110,6 +110,7 @@ final class SettleSnapshotPrintLineReader {
             line.setRewindInvoiceUnitPrice(decimal(itemNode, "rewind_invoice_unit_price"));
             line.setSawAmount(decimal(itemNode, "saw_amount"));
             line.setRewindAmount(decimal(itemNode, "rewind_amount"));
+            line.setServiceAmount(decimal(itemNode, "service_amount"));
             line.setStandardProcessAmount(decimal(itemNode, "standard_process_amount"));
             line.setPricingAdjustmentAmount(decimal(itemNode, "pricing_adjustment_amount"));
             line.setProcessAmount(decimal(itemNode, "process_amount"));

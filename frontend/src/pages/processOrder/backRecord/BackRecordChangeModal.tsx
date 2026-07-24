@@ -1,5 +1,7 @@
 import { Alert, Button, Modal, Space, Typography } from 'antd'
 import { PlusOutlined, RollbackOutlined } from '@ant-design/icons'
+import { PERMISSIONS } from '../../../constants/permissions'
+import { useHasPermission } from '../../../stores/authStore'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 
@@ -25,6 +27,7 @@ export default function BackRecordChangeModal({
   onRollbackToConfig,
 }: Props) {
   const canRollback = detail?.order.orderStatus === 3
+  const canManageOrder = useHasPermission(PERMISSIONS.orderManage)
 
   return (
     <Modal
@@ -57,16 +60,16 @@ export default function BackRecordChangeModal({
           <ChangeCard
             title="现场追加工序"
             description="例如主工艺复卷后，车间又锯掉水湿边；这类不重生成品号的追加工序可在回录时补记并参与计费。"
-            action={
+            action={canManageOrder ? (
               <Button type="primary" icon={<PlusOutlined />} onClick={onAddExtraStep}>
                 记录追加工序
               </Button>
-            }
+            ) : undefined}
           />
           <ChangeCard
             title="主方案改动"
             description="例如复卷改锯纸、成品规格/数量变化、改门幅+改直径变成只改门幅；这些会影响卷号、来源、快照和计费。"
-            action={
+            action={canManageOrder ? (
               <Button
                 danger
                 icon={<RollbackOutlined />}
@@ -76,12 +79,12 @@ export default function BackRecordChangeModal({
               >
                 回退待下发重配
               </Button>
-            }
+            ) : undefined}
           />
           <ChangeCard
             title="母卷更换"
             description="例如已录入实重后发现来料母卷需要换掉；会回到草稿并清理下发、回录、成品号和工序产物数据。"
-            action={
+            action={canManageOrder ? (
               <Button
                 danger
                 icon={<RollbackOutlined />}
@@ -91,7 +94,7 @@ export default function BackRecordChangeModal({
               >
                 回退草稿编辑
               </Button>
-            }
+            ) : undefined}
           />
         </div>
       </div>

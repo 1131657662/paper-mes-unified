@@ -32,6 +32,7 @@ import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.delivery.mapper.DeliveryOrderMapper;
 import com.paper.mes.delivery.service.DeliveryCashSettlementGuard;
+import com.paper.mes.delivery.service.DeliveryCustomerRevisionSnapshotWriter;
 import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
 import com.paper.mes.delivery.service.DeliveryService;
 import com.paper.mes.delivery.service.DeliveryWarehousePolicy;
@@ -112,6 +113,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private final DocumentNoService documentNoService;
     private final BusinessLockService businessLockService;
     private final ObjectMapper objectMapper;
+    private final DeliveryCustomerRevisionSnapshotWriter customerRevisionSnapshotWriter;
 
     @Override
     public PageResult<DeliveryOrder> page(DeliveryQuery query) {
@@ -329,9 +331,11 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             throw new BusinessException("出库单没有明细，不可确认");
         }
         businessLockService.lockFinishRolls(details.stream().map(DeliveryDetail::getFinishUuid).toList());
+        Map<String, FinishRoll> finishes = new LinkedHashMap<>();
         // 逐件扣库存：扣完才置为已出库，未扣完继续保留可出库余额。
         for (DeliveryDetail d : details) {
             FinishRoll f = finishRollMapper.selectById(d.getFinishUuid());
+            finishes.put(d.getFinishUuid(), f);
             if (f == null || f.getFinishStatus() == null
                     || f.getFinishStatus() != FINISH_STATUS_IN_STOCK) {
                 throw new BusinessException("成品状态已变更，不可出库：" + d.getFinishRollNo());
@@ -349,6 +353,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         order.setSnapDelivery(buildDeliverySnapshot(order, details));
         order.setSnapDeliveryTime(LocalDateTime.now());
         updateDeliveryForConfirm(order);
+        customerRevisionSnapshotWriter.freezeOnConfirm(order, details, finishes);
 
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                 order.getUuid(), order.getDeliveryNo(),
@@ -1302,6 +1307,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private String processModeText(Integer mode) {
         if (mode != null && mode == 2) return "现场定尺";
         if (mode != null && mode == 3) return "直发";
+        if (mode != null && mode == 4) return "仅附加工艺";
         return "标准加工";
     }
 
@@ -1315,7 +1321,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         if (finish == null) {
             return "-";
         }
-        return finish.getSourceType() != null && finish.getSourceType() == 2 ? "直发原纸" : "加工产出";
+        if (finish.getSourceType() != null && finish.getSourceType() == 2) return "直发原纸";
+        if (finish.getSourceType() != null && finish.getSourceType() == 3) return "整理成品";
+        return "加工产出";
     }
 
     private String unlinkedSourceText(DeliveryDetail detail, FinishRoll finish) {

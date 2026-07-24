@@ -48,7 +48,7 @@ public class OriginalRollDTO {
     private String batchNo;
     private String damageDesc;
 
-    /** 1标准加工 2现场定尺 3不加工直发 */
+    /** 1标准加工 2现场定尺 3不加工直发 4仅附加工艺 */
     private Integer processMode;
     /** 主工艺类型：1锯纸 2复卷 */
     private Integer mainStepType;

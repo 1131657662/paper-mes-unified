@@ -110,11 +110,13 @@ const columns: ColumnsType<DeliveryInventoryFinish> = [
 function typeText(row: DeliveryInventoryFinish) {
   if (row.isRemain === 1) return '余料'
   if (row.sourceType === 2) return '原纸直发'
+  if (row.sourceType === 3) return '整理成品'
   return '成品'
 }
 
 function typeTone(row: DeliveryInventoryFinish) {
   if (row.isRemain === 1) return 'warning'
   if (row.sourceType === 2) return 'success'
+  if (row.sourceType === 3) return 'primary'
   return 'primary'
 }

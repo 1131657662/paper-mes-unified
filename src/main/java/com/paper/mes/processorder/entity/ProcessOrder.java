@@ -11,6 +11,7 @@ import lombok.EqualsAndHashCode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 加工单主表 biz_process_order。
@@ -107,4 +108,6 @@ public class ProcessOrder extends BaseEntity {
     private BigDecimal actualFinishWeight;
     @TableField(exist = false)
     private Integer spareRollCount;
+    @TableField(exist = false)
+    private List<String> processNames;
 }

@@ -16,6 +16,7 @@ public class SettleQuoteVO {
     private Integer isInvoice;
     private BigDecimal sawAmount;
     private BigDecimal rewindAmount;
+    private BigDecimal serviceAmount;
     private BigDecimal extraAmount;
     private BigDecimal amountNoTax;
     private BigDecimal taxAmount;

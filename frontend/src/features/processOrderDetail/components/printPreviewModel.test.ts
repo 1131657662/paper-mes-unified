@@ -32,6 +32,23 @@ describe('完工打印模型', () => {
     expect(summary).toContainEqual({ label: '订单标记', value: '加急' })
     expect(summary.some((item) => item.label === '开票/结算')).toBe(false)
   })
+
+  it('仅附加工艺按服务步骤打印且不显示锯纸或复卷', () => {
+    const serviceOnly = production()
+    serviceOnly.processMode = 4
+    serviceOnly.mainStepType = undefined
+    serviceOnly.steps = [
+      { uuid: 'strip', stepSort: 1, stepType: 3, stepName: '剥损整理', isMain: 0 },
+      { uuid: 'pack', stepSort: 2, stepType: 4, stepName: '重新包装', isMain: 0 },
+    ]
+
+    const blocks = buildPrintRollBlocks({ ...detail(), steps: serviceOnly.steps, rollProductions: [serviceOnly] })
+
+    expect(blocks[0]?.sourceItems).toContainEqual({ label: '方式', value: '仅附加工艺' })
+    expect(blocks[0]?.routeStages.map((stage) => stage.title)).toEqual(['第1道 剥损整理', '第2道 重新包装'])
+    expect(blocks[0]?.routeStages[0]?.outputs).toEqual([])
+    expect(blocks[0]?.routeStages[1]?.outputs).toHaveLength(1)
+  })
 })
 
 function detail(): ProcessOrderDetailVO {

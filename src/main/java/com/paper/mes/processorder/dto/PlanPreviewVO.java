@@ -18,6 +18,11 @@ public class PlanPreviewVO {
     private Integer spareCount;
     private BigDecimal totalEstimateWeight;
     private BigDecimal totalTrimWeight;
+    private String widthDifferencePolicy;
+    private Integer widthDifference;
+    /** 理论门幅差额对应的重量，不代表一定会从成品重量中扣除。 */
+    private BigDecimal widthDifferenceWeight;
+    private BigDecimal calculatedLossWeight;
     private String summary;
     private boolean ready;
     private List<String> errors = new ArrayList<>();

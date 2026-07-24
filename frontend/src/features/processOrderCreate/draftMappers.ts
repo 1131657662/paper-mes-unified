@@ -5,6 +5,7 @@ import type {
   OriginalRollDTO,
   ProcessPlanDTO,
 } from '../../types/processOrder'
+import { DEFAULT_WIDTH_DIFFERENCE_POLICY, processModeRequiresMain } from '../../constants/processOrder'
 import type { RollDraft } from './types'
 
 export function newRollDraft(defaults: Partial<RollDraft> = {}): RollDraft {
@@ -37,8 +38,8 @@ export function toRollDto(roll: RollDraft): OriginalRollDTO {
     batchNo: roll.batchNo,
     damageDesc: roll.damageDesc,
     processMode: roll.processMode,
-    mainStepType: roll.processMode === 3 ? undefined : roll.mainStepType,
-    machineUuid: roll.processMode === 3 ? undefined : roll.machineUuid,
+    mainStepType: processModeRequiresMain(roll.processMode) ? roll.mainStepType : undefined,
+    machineUuid: processModeRequiresMain(roll.processMode) ? roll.machineUuid : undefined,
     remark: roll.remark,
   }
 }
@@ -72,7 +73,7 @@ export function rollDraftFromDto(dto: OriginalRollDTO): RollDraft {
   return newRollDraft({
     ...dto,
     processMode: dto.processMode ?? 1,
-    mainStepType: dto.processMode === 3 ? undefined : dto.mainStepType ?? 2,
+    mainStepType: processModeRequiresMain(dto.processMode) ? dto.mainStepType ?? 2 : undefined,
   })
 }
 
@@ -91,7 +92,7 @@ export function rollDraftFromOriginal(roll: OriginalRoll): RollDraft {
     batchNo: roll.batchNo,
     damageDesc: roll.damageDesc,
     processMode: roll.processMode ?? 1,
-    mainStepType: roll.processMode === 3 ? undefined : roll.mainStepType ?? 2,
+    mainStepType: processModeRequiresMain(roll.processMode) ? roll.mainStepType ?? 2 : undefined,
     machineUuid: roll.machineUuid,
     remark: roll.remark,
     uuid: roll.uuid,
@@ -140,6 +141,9 @@ export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions 
   if (roll.processMode === 3) {
     return { processMode: 3, spareCount: 0, finishSpecs: [] }
   }
+  if (roll.processMode === 4) {
+    return { processMode: 4, spareCount: 0, finishSpecs: [] }
+  }
   if (roll.processMode === 2) {
     const mainStepType = roll.mainStepType ?? 2
     return {
@@ -160,6 +164,7 @@ export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions 
       mainStepType: 1,
       machineUuid: roll.machineUuid,
       knifeCount: 0,
+      widthDifferencePolicy: DEFAULT_WIDTH_DIFFERENCE_POLICY,
       unitPrice: defaultUnitPrice(1, options),
       spareCount,
       finishSpecs: [{ itemType: 'FINISH', count: 1, finishWidth: Math.max(1, roll.originalWidth - 100), estimateWeight: 0 }],
@@ -191,6 +196,9 @@ export function defaultConfigForRoll(roll: RollDraft, options: DefaultPlanOption
   const plan = defaultPlanForRoll(roll, options)
   if (roll.processMode === 3) {
     return { processMode: 3, spareCount: 0, finishSpecs: [] }
+  }
+  if (roll.processMode === 4) {
+    return { processMode: 4, spareCount: 0, finishSpecs: [] }
   }
   if (roll.mainStepType === 1) {
     return {

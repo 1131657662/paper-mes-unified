@@ -19,6 +19,14 @@ import java.util.List;
 @Data
 public class BackRecordDTO {
 
+    @jakarta.validation.constraints.NotNull(message = "单据版本不能为空")
+    @jakarta.validation.constraints.Min(value = 0, message = "单据版本不能小于0")
+    private Integer expectedVersion;
+
+    /** true=本批完成后关闭整单；false=仅保存本批并保持待回录。 */
+    @jakarta.validation.constraints.NotNull(message = "请选择本次操作是部分回录还是完成整单")
+    private Boolean completeOrder = Boolean.TRUE;
+
     @NotBlank(message = "入库仓库不能为空")
     @Size(max = 64, message = "入库仓库标识不能超过64个字符")
     private String warehouseUuid;
@@ -51,6 +59,6 @@ public class BackRecordDTO {
     private List<BackRecordTrimDTO> trims;
 
     @Valid
-    @Size(max = 100, message = "单次工序回录不能超过100条")
+    @Size(max = 500, message = "单次工序回录不能超过500条")
     private List<BackRecordStepDTO> steps;
 }

@@ -1,15 +1,10 @@
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
 import { Button, DatePicker, Form, Input, Select } from 'antd'
+import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
+import type { ProcessOrderSearchFilters } from './processOrderListUrlState'
 
 const { RangePicker } = DatePicker
-
-export interface ProcessOrderSearchFilters {
-  keyword?: string
-  customerUuid?: string
-  dateFrom?: string
-  dateTo?: string
-}
 
 interface SearchFormValues {
   keyword?: string
@@ -19,10 +14,11 @@ interface SearchFormValues {
 
 interface Props {
   customerEnum: Record<string, { text: string }>
+  filters: ProcessOrderSearchFilters
   onSearch: (filters: ProcessOrderSearchFilters) => void
 }
 
-export default function ProcessOrderSearchBar({ customerEnum, onSearch }: Props) {
+export default function ProcessOrderSearchBar({ customerEnum, filters, onSearch }: Props) {
   const [form] = Form.useForm<SearchFormValues>()
 
   const handleFinish = (values: SearchFormValues) => {
@@ -40,16 +36,22 @@ export default function ProcessOrderSearchBar({ customerEnum, onSearch }: Props)
   }
 
   return (
-    <Form form={form} layout="vertical" className="process-order-searchbar" onFinish={handleFinish}>
+    <Form
+      form={form}
+      layout="vertical"
+      className="process-order-searchbar"
+      initialValues={initialValues(filters)}
+      onFinish={handleFinish}
+    >
       <div className="process-order-searchbar__grid">
-        <Form.Item name="keyword" label="加工单号/客户">
+        <Form.Item name="keyword" label="关键字">
           <Input allowClear placeholder="输入单号、客户或备注" />
         </Form.Item>
         <Form.Item name="customerUuid" label="客户">
           <Select allowClear showSearch placeholder="全部客户" options={customerOptions(customerEnum)} optionFilterProp="label" />
         </Form.Item>
         <Form.Item name="dateRange" label="制单日期">
-          <RangePicker placeholder={['开始日期', '结束日期']} style={{ width: '100%' }} />
+          <RangePicker placeholder={['开始日期', '结束日期']} />
         </Form.Item>
         <div className="process-order-searchbar__actions">
           <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>查询</Button>
@@ -67,4 +69,14 @@ function normalizeText(value?: string) {
 
 function customerOptions(customerEnum: Record<string, { text: string }>) {
   return Object.entries(customerEnum).map(([value, item]) => ({ value, label: item.text }))
+}
+
+function initialValues(filters: ProcessOrderSearchFilters): SearchFormValues {
+  const dateFrom = filters.dateFrom ? dayjs(filters.dateFrom) : undefined
+  const dateTo = filters.dateTo ? dayjs(filters.dateTo) : undefined
+  return {
+    keyword: filters.keyword,
+    customerUuid: filters.customerUuid,
+    dateRange: dateFrom?.isValid() && dateTo?.isValid() ? [dateFrom, dateTo] : null,
+  }
 }

@@ -1,0 +1,36 @@
+.process-config-workbench.ant-card {
+  display: flex;
+  height: clamp(420px, calc(100vh - 300px), 760px);
+  flex-direction: column;
+}
+
+.process-config-workbench > .ant-card-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.process-config-workbench__workspace {
+  min-height: 0;
+  flex: 1;
+}
+
+.config-step-footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.config-step-footer__actions {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.config-light-step__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}

@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +17,7 @@ public class RewindPlanPreviewDTO {
     private Integer rewindMode;
 
     @Min(value = 0, message = "备用号数量不能小于0")
+    @Max(value = 500, message = "备用号数量不能超过500")
     private Integer spareCount;
 
     @Valid
@@ -28,6 +30,8 @@ public class RewindPlanPreviewDTO {
         private BigDecimal segmentRatio;
         private Integer targetDiameter;
         private Integer finishCoreDiameter;
+        @Min(value = 1, message = "分段重复次数至少为1")
+        @Max(value = 500, message = "分段重复次数不能超过500")
         private Integer repeatCount;
 
         @Valid
@@ -46,9 +50,17 @@ public class RewindPlanPreviewDTO {
         private Integer width;
 
         @Min(value = 1, message = "数量至少为1")
+        @Max(value = 500, message = "单个排版数量不能超过500")
         private Integer quantity;
 
         private String itemType;
+
+        @Size(max = 100, message = "客户品名不能超过100个字符")
+        private String customerPaperName;
+        private Integer customerGramWeight;
+        private Integer customerFinishWidth;
+        @Size(max = 255, message = "客户规格改写原因不能超过255个字符")
+        private String customerSpecOverrideReason;
 
         @Valid
         @Size(max = 100, message = "复卷层不能超过100层")

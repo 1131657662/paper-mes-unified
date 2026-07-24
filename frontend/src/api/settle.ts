@@ -181,7 +181,7 @@ export function cancelReceivePayment(uuid: string, receiveUuid: string, data: Se
 }
 
 export function voidSettleOrder(uuid: string, data: SettleActionReasonDTO) {
-  return request<void>({
+  return request<string[]>({
     url: `/api/settle-orders/${uuid}/void`,
     method: 'post',
     data,

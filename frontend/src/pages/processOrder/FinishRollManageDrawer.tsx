@@ -1,4 +1,7 @@
 import { Drawer, Spin } from 'antd'
+import { useQueryClient } from '@tanstack/react-query'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
+import { invalidateProcessOrderReadModels } from '../../features/processOrderDetail/hooks/invalidateProcessOrderReadModels'
 import { useProcessOrderDetail } from '../../features/processOrderDetail/hooks/useProcessOrderDetail'
 import FinishRollGenerateModal from './FinishRollGenerateModal'
 import FinishRollManagerView from './FinishRollManagerView'
@@ -14,13 +17,32 @@ interface Props {
 }
 
 export default function FinishRollManageDrawer({ onClose, onSuccess, open, orderUuid }: Props) {
-  const { data: detail, isLoading: isLoadingDetail, refetch } = useProcessOrderDetail(orderUuid ?? undefined, { enabled: open })
+  const queryClient = useQueryClient()
+  const {
+    data: detail,
+    isError: isDetailError,
+    isLoading: isLoadingDetail,
+    refetch,
+  } = useProcessOrderDetail(orderUuid ?? undefined, { enabled: open })
+  const refreshOrderViews = () => orderUuid
+    ? invalidateProcessOrderReadModels(queryClient, orderUuid)
+    : Promise.resolve()
   const title = `成品卷号管理${detail?.order.orderNo ? `（${detail.order.orderNo}）` : ''}`
   return (
-    <Drawer className="mes-detail-drawer finish-roll-drawer" destroyOnHidden open={open} title={title} width={1120} onClose={onClose}>
+    <Drawer className="mes-detail-drawer finish-roll-drawer" destroyOnHidden open={open} title={title}
+      width="min(1120px, 96vw)" onClose={onClose}>
       {open && orderUuid && (
         <Spin spinning={isLoadingDetail}>
-          <FinishRollManagerSession key={orderUuid} detail={detail} orderUuid={orderUuid} refetch={refetch} onSuccess={onSuccess} />
+          {isDetailError ? (
+            <QueryLoadErrorAlert
+              message="成品卷号信息加载失败"
+              description="当前空白不代表没有成品卷号，请重新加载后再操作。"
+              onRetry={() => void refetch()}
+            />
+          ) : (
+            <FinishRollManagerSession key={orderUuid} detail={detail} orderUuid={orderUuid}
+              refetch={refreshOrderViews} onSuccess={onSuccess} />
+          )}
         </Spin>
       )}
     </Drawer>
@@ -31,7 +53,7 @@ interface SessionProps {
   detail: ReturnType<typeof useProcessOrderDetail>['data']
   onSuccess: () => void
   orderUuid: string
-  refetch: ReturnType<typeof useProcessOrderDetail>['refetch']
+  refetch: () => Promise<unknown>
 }
 
 function FinishRollManagerSession({ detail, onSuccess, orderUuid, refetch }: SessionProps) {

@@ -19,12 +19,12 @@ interface RouteDraftHistoryApi {
   undo: () => void
 }
 
-export function useRouteDraftHistory(): RouteDraftHistoryApi {
-  const [history, setHistory] = useState<RouteDraftHistory>({
+export function useRouteDraftHistory(initialStages: RouteDraftStage[] = []): RouteDraftHistoryApi {
+  const [history, setHistory] = useState<RouteDraftHistory>(() => ({
     future: [],
     past: [],
-    present: [],
-  })
+    present: cloneStages(initialStages),
+  }))
 
   const reset = useCallback((nextStages: RouteDraftStage[]) => {
     setHistory({ future: [], past: [], present: cloneStages(nextStages) })

@@ -1,7 +1,6 @@
 package com.paper.mes.processorder.service;
 
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
-import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.entity.ProcessStep;
@@ -13,9 +12,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 import static com.paper.mes.processorder.service.ProcessOrderExportText.*;
 
@@ -33,7 +30,8 @@ public class ProcessOrderExportService {
         writeSteps(workbook.createSheet("工序费用"), detail.getSteps(), detail.getOriginalRolls(), styles);
         ProcessOrderStageOutputExportWriter.write(workbook.createSheet("阶段产物"), detail.getRollProductions());
         writeRewindParams(workbook.createSheet("复卷参数"), detail.getRollProductions(), styles);
-        writeFinishes(workbook.createSheet("成品明细"), detail.getFinishRolls(), detail.getRollProductions(), styles);
+        ProcessOrderFinishExportWriter.write(workbook.createSheet("成品明细"), detail, styles.header);
+        ProcessOrderCustomerExportWriter.write(workbook.createSheet("客户口径"), detail, styles.header);
         writeSources(workbook.createSheet("成品来源"), detail.getRollProductions(), styles);
         return workbook;
     }
@@ -97,27 +95,6 @@ public class ProcessOrderExportService {
             }
         }
         autosize(sheet, 10);
-    }
-
-    private void writeFinishes(Sheet sheet, List<FinishRoll> finishes,
-                               List<ProcessOrderDetailVO.RollProductionVO> productions,
-                               Styles styles) {
-        header(sheet, styles, "序号", "成品卷号", "内部号", "品名", "克重", "门幅", "外径",
-                "纸芯", "来源", "预估重量kg", "实际重量kg", "切边kg", "状态", "备用号",
-                "来源原卷", "回录备注", "备注");
-        Map<String, BigDecimal> fallbackWeights = ProcessOrderExportWeightResolver.fallbackEstimateWeights(productions);
-        int rowIndex = 1;
-        for (FinishRoll finish : finishes) {
-            Row row = sheet.createRow(rowIndex++);
-            cells(row, rowIndex - 1, finish.getFinishRollNo(), finish.getFinishInnerNo(), finish.getPaperName(),
-                    finish.getGramWeight(), finish.getFinishWidth(), finish.getFinishDiameter(),
-                    finish.getFinishCoreDiameter(), sourceText(finish.getSourceType()),
-                    ProcessOrderExportWeightResolver.estimateWeight(finish, fallbackWeights),
-                    finish.getActualWeight(), finish.getTrimWeightShare(), finishStatusText(finish.getFinishStatus()),
-                    yesNoText(finish.getIsSpare()), finish.getOriginalRollNos(), finish.getActualRemark(),
-                    finish.getRemark());
-        }
-        autosize(sheet, 17);
     }
 
     private void writeSources(Sheet sheet, List<ProcessOrderDetailVO.RollProductionVO> rows, Styles styles) {

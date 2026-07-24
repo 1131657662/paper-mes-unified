@@ -31,6 +31,7 @@ public class OperationLogService {
     public static final String ACTION_ROLLBACK = "回退";
     public static final String ACTION_FIELD_MODIFY = "字段修改";
     public static final String ACTION_PRICING_ADJUST = "计价调整";
+    public static final String ACTION_CUSTOMER_SPEC_REVISION = "客户口径修订";
     public static final String ACTION_USER_CREATE = "新增用户";
     public static final String ACTION_USER_UPDATE = "编辑用户";
     public static final String ACTION_USER_STATUS = "账号启停";
@@ -41,6 +42,10 @@ public class OperationLogService {
     public static final String ACTION_BACKUP_DELETE = "删除备份";
     public static final String ACTION_BACKUP_CLEANUP = "清理备份";
     public static final String ACTION_DATA_REPAIR = "数据修复";
+    public static final String ACTION_REPORT_ALERT_ACKNOWLEDGE = "确认报表预警";
+    public static final String ACTION_REPORT_ALERT_IGNORE = "忽略报表预警";
+    public static final String ACTION_REPORT_SUBSCRIPTION_RUN_NOW = "立即试跑报表订阅";
+    public static final String ACTION_REPORT_SUBSCRIPTION_RETRY = "重试报表订阅";
 
     /** 业务类型常量。 */
     public static final String BIZ_TYPE_ORDER = "加工单";
@@ -49,6 +54,7 @@ public class OperationLogService {
     public static final String BIZ_TYPE_USER = "系统用户";
     public static final String BIZ_TYPE_SYSTEM_CONFIG = "系统配置";
     public static final String BIZ_TYPE_BACKUP = "数据安全";
+    public static final String BIZ_TYPE_REPORT = "统计报表";
 
     private final OperationLogMapper operationLogMapper;
 

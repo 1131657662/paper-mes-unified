@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { calcProcessOrderFee } from '../../../api/processOrder'
-import { queries } from '../../../queries'
+import { invalidateProcessOrderReadModels } from './invalidateProcessOrderReadModels'
 
 export function useCalcProcessOrderFee(orderUuid?: string) {
   const queryClient = useQueryClient()
@@ -9,9 +9,7 @@ export function useCalcProcessOrderFee(orderUuid?: string) {
     mutationFn: () => calcProcessOrderFee(orderUuid!),
     onSuccess: async () => {
       if (!orderUuid) return
-      await queryClient.invalidateQueries({
-        queryKey: queries.processOrderDetail.detail(orderUuid).queryKey,
-      })
+      await invalidateProcessOrderReadModels(queryClient, orderUuid)
     },
   })
 }

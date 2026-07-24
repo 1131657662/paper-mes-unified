@@ -23,6 +23,9 @@ public class ExportTaskAcknowledgeDTO {
     @Size(max = 32, message = "业务模块标识不能超过32个字符")
     @Pattern(regexp = "^[a-z][a-z0-9-]*$", message = "业务模块标识格式无效")
     private String moduleCode;
+    @Size(max = 50, message = "操作标识不能超过50个字符")
+    @Pattern(regexp = "^[a-z][a-z0-9-]*$", message = "操作标识格式无效")
+    private String operationCode;
 
     @Size(max = 80, message = "搜索关键词不能超过80个字符")
     private String keyword;

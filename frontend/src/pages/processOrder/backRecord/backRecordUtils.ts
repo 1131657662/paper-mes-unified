@@ -63,8 +63,19 @@ export interface BackRecordVarianceConfirmation {
   varianceReason: string
 }
 
+export interface BackRecordBuildOptions {
+  completeOrder?: boolean
+  selectedFinishUuids?: Set<string>
+  selectedItemKeys?: Set<string>
+  selectedRollUuids?: Set<string>
+}
+
+export function isActiveBackRecordFinish(finish: FinishRoll): boolean {
+  return finish.rollNoStatus !== 3 && finish.sourceType !== 2 && finish.finishStatus !== 4
+}
+
 export function activeFinishRolls(detail?: ProcessOrderDetailVO | null): FinishRoll[] {
-  return (detail?.finishRolls ?? []).filter((finish) => finish.rollNoStatus !== 3 && finish.sourceType !== 2)
+  return (detail?.finishRolls ?? []).filter(isActiveBackRecordFinish)
 }
 
 export function initialBackRecordValues(detail: ProcessOrderDetailVO): BackRecordFormValues {
@@ -82,24 +93,99 @@ export function buildBackRecordDTO(
   values: BackRecordFormValues,
   authorization?: BackRecordAuthorization,
   variance?: BackRecordVarianceConfirmation,
+  options?: BackRecordBuildOptions,
 ): BackRecordDTO {
-  const onSite = buildOnSiteOutputSubmission(detail, values.onSiteOutputs)
+  const selectedRolls = options?.selectedRollUuids
+    ?? new Set(detail.originalRolls.filter((roll) => roll.isChecked !== 1).map((roll) => roll.uuid))
+  const selectedOutputs = filterOnSiteOutputs(values.onSiteOutputs, options?.selectedItemKeys)
+  const onSite = buildOnSiteOutputSubmission(detail, selectedOutputs)
+  const finishSources = finishSourceMap(detail)
   const finishes = activeFinishRolls(detail)
+    .filter((finish) => finishInSelection(
+      finish,
+      values,
+      selectedRolls,
+      finishSources,
+      options?.selectedFinishUuids,
+    ))
     .filter((finish) => !onSite.configuredUuids.has(finish.uuid) && !onSite.managedUuids.has(finish.uuid))
     .map((finish) => toFinishDTO(finish, values.finishes?.[finish.uuid]))
   finishes.push(...onSite.finishes)
   const trims = [...toLegacyTrimDTOs(values.trims), ...onSite.trims]
+    .filter((trim) => selectedRolls.has(trim.originalUuid))
   return {
+    expectedVersion: detail.order.version ?? 0,
+    completeOrder: options?.completeOrder ?? true,
     warehouseUuid: values.warehouseUuid ?? '',
     releaseAdminUsername: authorization?.releaseAdminUsername,
     releaseAdminPassword: authorization?.releaseAdminPassword,
     releaseReason: authorization?.releaseReason,
     varianceReason: variance?.varianceReason,
-    rolls: detail.originalRolls.map((roll) => toRollDTO(roll, values.rolls?.[roll.uuid])),
+    rolls: detail.originalRolls
+      .filter((roll) => selectedRolls.has(roll.uuid))
+      .map((roll) => toRollDTO(roll, values.rolls?.[roll.uuid])),
     finishes: finishes.length > 0 ? finishes : undefined,
     trims: trims.length > 0 ? trims : undefined,
-    steps: detail.steps.map((step) => toStepDTO(step, values.steps?.[step.uuid])),
+    steps: stepsInBackRecordSelection(detail, selectedRolls)
+      .map((step) => toStepDTO(step, values.steps?.[step.uuid])),
   }
+}
+
+export function stepsInBackRecordSelection(
+  detail: ProcessOrderDetailVO,
+  selectedRolls: Set<string>,
+): ProcessStep[] {
+  if (selectedRolls.size === 0) return detail.steps
+  const productionStepUuids = new Set(
+    (detail.rollProductions ?? [])
+      .filter((production) => production.originalUuid && selectedRolls.has(production.originalUuid))
+      .flatMap((production) => production.steps ?? [])
+      .map((step) => step.uuid),
+  )
+  return detail.steps.filter((step) => (
+    Boolean(step.originalUuid && selectedRolls.has(step.originalUuid))
+    || productionStepUuids.has(step.uuid)
+  ))
+}
+
+function filterOnSiteOutputs(
+  outputs: BackRecordFormValues['onSiteOutputs'],
+  selectedItemKeys?: Set<string>,
+) {
+  if (!outputs || !selectedItemKeys) return outputs
+  return Object.fromEntries(
+    Object.entries(outputs).filter(([key]) => selectedItemKeys.has(key)),
+  )
+}
+
+function finishSourceMap(detail: ProcessOrderDetailVO) {
+  const result = new Map<string, Set<string>>()
+  for (const production of detail.rollProductions ?? []) {
+    for (const finish of production.finishes ?? []) {
+      const sources = result.get(finish.uuid) ?? new Set<string>()
+      for (const source of finish.sources ?? []) {
+        if (source.originalUuid) sources.add(source.originalUuid)
+      }
+      if (production.originalUuid) sources.add(production.originalUuid)
+      result.set(finish.uuid, sources)
+    }
+  }
+  return result
+}
+
+function finishInSelection(
+  finish: FinishRoll,
+  values: BackRecordFormValues,
+  selectedRolls: Set<string>,
+  sourceMap: Map<string, Set<string>>,
+  selectedFinishUuids?: Set<string>,
+) {
+  const sources = sourceMap.get(finish.uuid)
+  if (sources?.size) return Array.from(sources).every((uuid) => selectedRolls.has(uuid))
+  const selectedSource = values.finishes?.[finish.uuid]?.originalUuid
+  if (selectedSource) return selectedRolls.has(selectedSource)
+  if (selectedFinishUuids) return selectedFinishUuids.has(finish.uuid)
+  return selectedRolls.size > 0
 }
 
 export function fillRollActuals(detail: ProcessOrderDetailVO): BackRecordFormValues['rolls'] {
@@ -154,7 +240,7 @@ function finishValues(finish: FinishRoll): FinishRecordValues {
 
 function stepValues(step: ProcessStep): StepRecordValues {
   return {
-    lossWeight: step.lossWeight,
+    lossWeight: step.lossWeight ?? step.plannedLossWeight,
     knifeCount: step.knifeCount,
   }
 }

@@ -3,6 +3,10 @@ import { CompressOutlined, ExpandAltOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 import { buildDisplayRows } from '../../../components/processOrder/shared/displayRowBuilder'
 import type { RollProductionVO } from '../../../types/processOrder'
+import CustomerRequirementState from '../../processOrderCustomerSpec/CustomerRequirementState'
+import CustomerSpecEditorDrawer from '../../processOrderCustomerSpec/CustomerSpecEditorDrawer'
+import CustomerSpecRevisionHistoryDrawer from '../../processOrderCustomerSpec/CustomerSpecRevisionHistoryDrawer'
+import { useFinishCustomerSpecs } from '../../processOrderCustomerSpec/useFinishCustomerSpecs'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import FinishedProductsTable from './FinishedProductsTable'
 import { buildFinishedProductRows } from './finishedProductRows'
@@ -17,6 +21,7 @@ interface Props {
   canEditRemark?: boolean
   canManageOrder?: boolean
   orderStatus?: number
+  orderUuid?: string
   onConfigureRoute?: (target: ProcessRouteConfigTarget) => void
   onEditRollRemark?: (roll: RollProductionVO) => void
   productions?: RollProductionVO[]
@@ -26,6 +31,7 @@ export default function ProductionTree({
   canEditRemark,
   canManageOrder = false,
   orderStatus,
+  orderUuid,
   onConfigureRoute,
   onEditRollRemark,
   productions = [],
@@ -34,6 +40,9 @@ export default function ProductionTree({
   const productRows = buildFinishedProductRows(productions)
   const [selectedView, setSelectedView] = useState<OutputView>()
   const [expandedKeys, setExpandedKeys] = useState<Set<string> | null>(null)
+  const [customerEditorOpen, setCustomerEditorOpen] = useState(false)
+  const [customerHistoryOpen, setCustomerHistoryOpen] = useState(false)
+  const customerSpecs = useFinishCustomerSpecs(orderUuid)
   const defaultView = orderStatus === 4 || orderStatus === 5 ? 'products' : 'route'
   const activeView = selectedView ?? defaultView
   const expanded = expandedKeys ?? new Set(rows.slice(0, 1).map((row) => row.key))
@@ -84,8 +93,18 @@ export default function ProductionTree({
         </div>
       </div>
       <div className="order-detail-section__body">
+        <CustomerRequirementState
+          canEdit={canManageOrder}
+          data={customerSpecs.data}
+          isError={customerSpecs.isError}
+          loading={customerSpecs.isLoading}
+          onEdit={() => setCustomerEditorOpen(true)}
+          onHistory={() => setCustomerHistoryOpen(true)}
+          onRetry={() => void customerSpecs.refetch()}
+        />
         {activeView === 'products' ? (
-          <FinishedProductsTable rows={productRows} />
+          <FinishedProductsTable customerSpecsError={customerSpecs.isError}
+            rows={productRows} specs={customerSpecs.data?.items} />
         ) : rows.length === 0 ? (
           <Empty description="暂无母卷加工数据" />
         ) : (
@@ -105,6 +124,10 @@ export default function ProductionTree({
           </div>
         )}
       </div>
+      {customerEditorOpen && orderUuid && customerSpecs.data && (
+        <CustomerSpecEditorDrawer data={customerSpecs.data} open orderUuid={orderUuid} onClose={() => setCustomerEditorOpen(false)} />
+      )}
+      <CustomerSpecRevisionHistoryDrawer open={customerHistoryOpen} orderUuid={orderUuid} onClose={() => setCustomerHistoryOpen(false)} />
     </section>
   )
 }

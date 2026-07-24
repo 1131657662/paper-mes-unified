@@ -26,6 +26,30 @@
   margin-bottom: 8px;
 }
 
+.roll-width-input.ant-input-number {
+  width: 132px;
+}
+
+.process-spec-number-input.ant-input-number,
+.process-spec-number-input.ant-input-number-affix-wrapper {
+  width: 132px;
+}
+
+.process-spec-number-input--count.ant-input-number {
+  width: 88px;
+}
+
+@media (max-width: 760px) {
+  .roll-width-input.ant-input-number {
+    width: 124px;
+  }
+
+  .process-spec-number-input.ant-input-number,
+  .process-spec-number-input.ant-input-number-affix-wrapper {
+    width: 124px;
+  }
+}
+
 @media (max-width: 760px) {
   .create-editor-footer {
     align-items: flex-start;

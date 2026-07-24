@@ -3,6 +3,7 @@ import type {
   OriginalRoll,
   RollProductionVO,
 } from '../../types/processOrder'
+import { DEFAULT_WIDTH_DIFFERENCE_POLICY } from '../../constants/processOrder'
 
 export interface ConfigFinishSavePlan {
   skippedConfigured: string[]
@@ -65,6 +66,7 @@ function defaultSawConfig(processMode: number): FinishConfigSaveDTO {
     processMode,
     mainStepType: 1,
     knifeCount: 0,
+    widthDifferencePolicy: DEFAULT_WIDTH_DIFFERENCE_POLICY,
     spareCount: 0,
     finishSpecs: [{ count: 1, finishWidth: processMode === 2 ? 0 : 400, estimateWeight: 0 }],
   }

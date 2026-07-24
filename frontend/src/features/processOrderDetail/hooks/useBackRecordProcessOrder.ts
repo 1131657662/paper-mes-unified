@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { backRecordProcessOrder } from '../../../api/processOrder'
-import { queries } from '../../../queries'
 import type { BackRecordDTO } from '../../../types/processOrder'
+import { invalidateProcessOrderReadModels } from './invalidateProcessOrderReadModels'
 
 export function useBackRecordProcessOrder(orderUuid?: string) {
   const queryClient = useQueryClient()
@@ -11,11 +11,9 @@ export function useBackRecordProcessOrder(orderUuid?: string) {
       if (!orderUuid) throw new Error('缺少加工单ID')
       return backRecordProcessOrder(orderUuid, dto)
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       if (!orderUuid) return
-      queryClient.invalidateQueries({
-        queryKey: queries.processOrderDetail.detail(orderUuid).queryKey,
-      })
+      await invalidateProcessOrderReadModels(queryClient, orderUuid)
     },
   })
 }

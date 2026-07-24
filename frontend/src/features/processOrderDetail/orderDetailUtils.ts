@@ -150,5 +150,6 @@ function processLabel(order?: ProcessOrder, productions: RollProductionVO[] = []
   if (order?.isMixProcess === 1) return '混合工艺'
   const first = productions.find((p) => p.processMode !== 3)
   if (!first) return productions.length > 0 ? '直发' : '-'
+  if (first.processMode === 4) return '附加工艺'
   return first.mainStepType === 2 ? '复卷' : '锯纸'
 }

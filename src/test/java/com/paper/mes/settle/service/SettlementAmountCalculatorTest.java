@@ -45,6 +45,20 @@ class SettlementAmountCalculatorTest {
     }
 
     @Test
+    void calculate_withServiceSteps_keepsThemInAnExplicitServiceBucket() {
+        ProcessStepMapper mapper = mock(ProcessStepMapper.class);
+        when(mapper.selectList(any())).thenReturn(List.of(
+                step("order-1", 3, "120"), step("order-1", 4, "80")));
+
+        SettlementAmountCalculator.Calculation result = new SettlementAmountCalculator(mapper)
+                .calculate(List.of(order("order-1", null)), 2, customer());
+
+        assertThat(result.service()).isEqualByComparingTo("200.00");
+        assertThat(result.noTax()).isEqualByComparingTo("200.00");
+        assertThat(result.details().getFirst().getServiceAmount()).isEqualByComparingTo("200.00");
+    }
+
+    @Test
     void calculate_whenRewindIsDiscounted_usesFinalAmountAndKeepsAdjustmentAudit() {
         ProcessStepMapper mapper = mock(ProcessStepMapper.class);
         ProcessStep step = step("order-1", 2, "100");

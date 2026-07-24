@@ -10,6 +10,7 @@ export const DICT_TYPES = {
 } as const
 
 export const CONFIG_KEYS = {
+  autoFinishConfig: 'process.autoFinishConfig',
   defaultPageSize: 'ui.defaultPageSize',
   processOrderTitle: 'print.processOrderTitle',
   spareRollNoCount: 'process.spareRollNoCount',

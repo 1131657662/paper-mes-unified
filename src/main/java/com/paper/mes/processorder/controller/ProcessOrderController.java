@@ -9,10 +9,13 @@ import com.paper.mes.processorder.dto.BackRecordResultVO;
 import com.paper.mes.processorder.dto.FeeResultVO;
 import com.paper.mes.processorder.dto.FinishConfigSaveDTO;
 import com.paper.mes.processorder.dto.FinishConfigSaveVO;
+import com.paper.mes.processorder.dto.FinishConfigBatchSaveDTO;
+import com.paper.mes.processorder.dto.FinishConfigBatchSaveVO;
 import com.paper.mes.processorder.dto.FinishPreviewVO;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
 import com.paper.mes.processorder.dto.OriginalRollRemarkDTO;
 import com.paper.mes.processorder.dto.PrintDTO;
+import com.paper.mes.processorder.dto.PhysicalReprintDTO;
 import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.dto.PrintViewVersion;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
@@ -25,6 +28,8 @@ import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.dto.ProcessStepDTO;
+import com.paper.mes.processorder.dto.ProcessStepBatchDTO;
+import com.paper.mes.processorder.dto.ProcessStepBatchResultVO;
 import com.paper.mes.processorder.dto.ProcessStepPricingAdjustmentDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingBatchDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingBatchPreviewVO;
@@ -133,6 +138,14 @@ public class ProcessOrderController {
         return R.success(processOrderService.saveFinishConfig(orderUuid, rollUuid, dto));
     }
 
+    @PostMapping("/{orderUuid}/finish-config/batch")
+    @RequirePermission(Permissions.ORDER_CREATE)
+    public R<FinishConfigBatchSaveVO> saveFinishConfigBatch(
+            @PathVariable String orderUuid,
+            @Valid @RequestBody FinishConfigBatchSaveDTO dto) {
+        return R.success(processOrderService.saveFinishConfigBatch(orderUuid, dto));
+    }
+
     @PostMapping("/{orderUuid}/rolls/{rollUuid}/rewind-plan/preview")
     @RequirePermission(Permissions.ORDER_CREATE)
     public R<FinishPreviewVO> previewRewindPlan(@PathVariable String orderUuid,
@@ -146,6 +159,14 @@ public class ProcessOrderController {
     public R<Void> changeStatus(@PathVariable String uuid,
                                 @Valid @RequestBody StatusChangeDTO dto) {
         processOrderService.changeStatus(uuid, dto.getTargetStatus(), dto.getReason());
+        return R.success();
+    }
+
+    @PutMapping("/{uuid}/to-record")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<Void> completeProcessing(@PathVariable String uuid,
+                                      @RequestBody(required = false) StatusChangeDTO dto) {
+        processOrderService.completeProcessing(uuid, dto == null ? null : dto.getReason());
         return R.success();
     }
 
@@ -178,6 +199,19 @@ public class ProcessOrderController {
     public R<PrintResultVO> print(@PathVariable String uuid,
                                   @RequestBody(required = false) PrintDTO dto) {
         return R.success(processOrderService.print(uuid, dto == null ? new PrintDTO() : dto));
+    }
+
+    @PostMapping("/{uuid}/physical-reprint")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<PrintResultVO> physicalReprint(@PathVariable String uuid,
+                                            @Valid @RequestBody PhysicalReprintDTO dto) {
+        return R.success(processOrderService.physicalReprint(uuid, dto));
+    }
+
+    @PostMapping("/{uuid}/issue")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<PrintResultVO> issue(@PathVariable String uuid) {
+        return R.success(processOrderService.issue(uuid));
     }
 
     @PostMapping("/{uuid}/back-record")
@@ -273,7 +307,15 @@ public class ProcessOrderController {
         return R.success();
     }
 
-    /** 修改工序（Phase 5.1）：仅待下发状态可操作。 */
+    /** 新建加工单工作台批量新增或覆盖附加工艺，整批成功或整批回滚。 */
+    @PostMapping("/{orderUuid}/steps/batch")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<ProcessStepBatchResultVO> addProcessSteps(@PathVariable String orderUuid,
+                                                       @Valid @RequestBody ProcessStepBatchDTO dto) {
+        return R.success(processOrderService.addProcessSteps(orderUuid, dto));
+    }
+
+    /** 修改工序：草稿或待下发状态可操作。 */
     @PutMapping("/steps/{stepUuid}")
     @RequirePermission(Permissions.ORDER_MANAGE)
     public R<Void> updateProcessStep(@PathVariable String stepUuid,
@@ -282,7 +324,7 @@ public class ProcessOrderController {
         return R.success();
     }
 
-    /** 删除工序（Phase 5.1）：仅待下发状态可操作，主工艺不可删除。 */
+    /** 删除工序：草稿或待下发状态可操作，主工艺不可删除。 */
     @DeleteMapping("/steps/{stepUuid}")
     @RequirePermission(Permissions.ORDER_MANAGE)
     public R<Void> deleteProcessStep(@PathVariable String stepUuid) {

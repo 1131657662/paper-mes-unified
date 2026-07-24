@@ -11,11 +11,13 @@ import lombok.Data;
 import java.time.LocalDate;
 
 /**
- * 统计报表通用查询条件，按加工单制单日期过滤。
+ * 统计报表通用查询条件，按加工单归属日期过滤。
  */
 @Data
 public class ReportQuery {
 
+    @Pattern(regexp = "^[0-9a-fA-F-]{32,36}$", message = "指标发布包标识格式不正确")
+    private String metricReleaseUuid;
     private LocalDate dateFrom;
     private LocalDate dateTo;
     @Size(max = 64, message = "客户标识不能超过64个字符")
@@ -33,8 +35,8 @@ public class ReportQuery {
     @Min(value = 1, message = "结算方式无效")
     @Max(value = 2, message = "结算方式无效")
     private Integer settleType;
-    @Min(value = 0, message = "开票状态无效")
-    @Max(value = 1, message = "开票状态无效")
+    @Min(value = 1, message = "开票状态无效")
+    @Max(value = 2, message = "开票状态无效")
     private Integer isInvoice;
     @Min(value = 0, message = "加工单状态无效")
     @Max(value = 6, message = "加工单状态无效")

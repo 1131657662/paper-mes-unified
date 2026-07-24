@@ -1,0 +1,27 @@
+.report-alert-event-toolbar { display: grid; gap: 12px; margin-bottom: 14px; }
+.report-alert-event-search { width: 100%; }
+.report-alert-event-focus { margin-bottom: 12px; }
+.report-alert-event-list { display: grid; gap: 10px; }
+.report-alert-event { padding: 14px; border: 1px solid var(--mes-color-border-light); border-left: 3px solid var(--mes-color-primary); border-radius: var(--mes-radius); background: var(--mes-color-bg); }
+.report-alert-event--1 { border-left-color: var(--mes-color-danger); }
+.report-alert-event--2 { border-left-color: var(--mes-color-success); }
+.report-alert-event--3 { border-left-color: var(--mes-color-text-muted); }
+.report-alert-event__header, .report-alert-event__title, .report-alert-event__metric { display: flex; align-items: center; }
+.report-alert-event__header { justify-content: space-between; gap: 10px; }
+.report-alert-event__title { min-width: 0; gap: 8px; }
+.report-alert-event__title .ant-typography { min-width: 0; }
+.report-alert-event__title .ant-tag, .report-alert-event__metric .ant-tag { margin: 0; flex-shrink: 0; }
+.report-alert-event__metric { gap: 10px; margin: 12px 0 8px; }
+.report-alert-event__metric strong { color: var(--mes-color-text); font-size: 20px; }
+.report-alert-event__metric span { color: var(--mes-color-text-secondary); font-size: 12px; }
+.report-alert-event__details { margin-top: 2px; }
+.report-alert-event__details .ant-descriptions-item-label { color: var(--mes-color-text-muted); }
+.report-alert-event__details .anticon { margin-inline-end: 4px; }
+.report-alert-event__audit { margin: 8px 0 0; color: var(--mes-color-text-secondary); font-size: 12px; line-height: 1.5; }
+.report-alert-event__audit .anticon { margin-inline-end: 5px; }
+.report-alert-event-pagination { margin-top: 16px; text-align: right; }
+@media (max-width: 560px) {
+  .report-alert-event__header, .report-alert-event__metric { align-items: flex-start; flex-wrap: wrap; }
+  .report-alert-event__details .ant-descriptions-view table { table-layout: fixed; }
+  .report-alert-event__details .ant-descriptions-item { padding-bottom: 5px; }
+}

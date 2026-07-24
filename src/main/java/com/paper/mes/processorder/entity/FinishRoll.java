@@ -35,9 +35,14 @@ public class FinishRoll extends BaseEntity {
     private Integer gramWeight;
     private Integer customerGramWeight;
     private Integer finishWidth;
+    private Integer customerFinishWidth;
+    private BigDecimal customerDisplayWeight;
+    private String customerSpecOverrideReason;
+    private String customerSpecOverrideBy;
+    private LocalDateTime customerSpecOverrideAt;
     private Integer finishDiameter;
     private Integer finishCoreDiameter;
-    /** 1加工产出 2原纸直发 */
+    /** 1加工产出 2原纸直发 3仅附加工艺产出 */
     private Integer sourceType;
     private BigDecimal estimateWeightSnap;
     private BigDecimal estimateWeight;

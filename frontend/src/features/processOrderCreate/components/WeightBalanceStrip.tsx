@@ -33,9 +33,12 @@ export default function WeightBalanceStrip({ balance, compact = false }: Props) 
       <div className="weight-balance-strip__metrics">
         <Metric label="投入" value={balance.inputWeight} />
         <Metric label="成品" value={balance.finishWeight} />
-        <Metric label="切边" value={balance.trimWeight} />
+        <Metric label={balance.outputWeightLabel} value={balance.trimWeight} />
         <Metric label="差值" value={balance.difference} danger={balance.blocking} />
       </div>
+      <Typography.Text className="weight-balance-strip__detail" type={balance.blocking ? 'danger' : 'secondary'}>
+        {balance.detail}
+      </Typography.Text>
     </div>
   )
 }

@@ -19,6 +19,8 @@ final class SettleFeeLineBuilder {
 
     private static final int STEP_TYPE_SAW = 1;
     private static final int STEP_TYPE_REWIND = 2;
+    private static final int STEP_TYPE_STRIP_SORT = 3;
+    private static final int STEP_TYPE_REPACKAGE = 4;
     private static final int INPUT_TYPE_STAGE_OUTPUT = 2;
 
     private SettleFeeLineBuilder() {
@@ -77,6 +79,12 @@ final class SettleFeeLineBuilder {
         }
         if (step.getStepType() == STEP_TYPE_REWIND) {
             return rewindLine(line, roll, step, outputByUuid, outputs);
+        }
+        if (step.getStepType() == STEP_TYPE_STRIP_SORT || step.getStepType() == STEP_TYPE_REPACKAGE) {
+            SettleFeeLineVO feeLine = SettleServiceFeeLineBuilder.build(line, step);
+            feeLine.setSourceText(sourceText(line, roll, step, outputByUuid));
+            feeLine.setOutputText(SettleFeeLineSupport.outputText(outputs, line));
+            return feeLine;
         }
         return null;
     }

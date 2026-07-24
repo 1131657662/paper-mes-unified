@@ -114,8 +114,9 @@ class SettleServiceImplVoidSettleBatchLoadTest {
         when(settleDetailMapper.delete(any())).thenReturn(1);
         when(settleOrderMapper.update(any(), any())).thenReturn(1);
 
-        service.voidSettle("settle-1", reason());
+        List<String> orderUuids = service.voidSettle("settle-1", reason());
 
+        assertEquals(List.of("order-1", "order-2"), orderUuids);
         verify(processOrderService).listByIds(argThat(ids -> containsAll(ids, "order-1", "order-2")));
         verify(processOrderService, never()).getById(any());
     }

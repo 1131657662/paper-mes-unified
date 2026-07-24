@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
@@ -71,7 +70,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
     public String create(ConfigItemSaveDTO dto) {
         ensureStatus(dto.getStatus());
         ensureValueType(dto.getValueType());
-        ensureConfigValue(dto.getConfigValue(), dto.getValueType());
+        SystemConfigValueValidator.validate(dto.getConfigKey(), dto.getConfigValue(), dto.getValueType());
         ensureUnique(dto.getConfigKey(), null);
         SysConfigItem item = new SysConfigItem();
         applyDto(item, dto);
@@ -85,18 +84,33 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
     @Transactional(rollbackFor = Exception.class)
     public void update(String uuid, ConfigItemSaveDTO dto) {
         ensureStatus(dto.getStatus());
-        ensureValueType(dto.getValueType());
-        ensureConfigValue(dto.getConfigValue(), dto.getValueType());
         SysConfigItem item = getByUuid(uuid);
-        ensureUnique(dto.getConfigKey(), uuid);
         Integer version = item.getVersion();
         Integer builtIn = item.getBuiltIn();
-        applyDto(item, dto);
+        if (Integer.valueOf(1).equals(builtIn)) {
+            updateBuiltIn(item, dto);
+        } else {
+            updateCustom(item, dto, uuid);
+        }
         item.setUuid(uuid);
         item.setVersion(version);
         item.setBuiltIn(builtIn);
         ConcurrencyGuard.requireUpdated(updateById(item));
         record(item, "编辑参数", "编辑系统参数：" + item.getConfigName());
+    }
+
+    private void updateBuiltIn(SysConfigItem item, ConfigItemSaveDTO dto) {
+        BuiltInConfigMetadataGuard.ensureUnchanged(item, dto);
+        SystemConfigValueValidator.validate(item.getConfigKey(), dto.getConfigValue(), item.getValueType());
+        item.setConfigValue(dto.getConfigValue().trim());
+        item.setStatus(dto.getStatus());
+    }
+
+    private void updateCustom(SysConfigItem item, ConfigItemSaveDTO dto, String uuid) {
+        ensureValueType(dto.getValueType());
+        SystemConfigValueValidator.validate(dto.getConfigKey(), dto.getConfigValue(), dto.getValueType());
+        ensureUnique(dto.getConfigKey(), uuid);
+        applyDto(item, dto);
     }
 
     @Override
@@ -162,28 +176,6 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
     private void ensureValueType(String valueType) {
         if (!StringUtils.hasText(valueType) || !VALUE_TYPES.contains(valueType.trim())) {
             throw new BusinessException("参数值类型不正确");
-        }
-    }
-
-    private void ensureConfigValue(String configValue, String valueType) {
-        if (!StringUtils.hasText(configValue)) {
-            throw new BusinessException("参数值不能为空");
-        }
-        String value = configValue.trim();
-        String type = valueType.trim();
-        if ("number".equals(type)) {
-            ensureNumberValue(value);
-        }
-        if ("boolean".equals(type) && !"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
-            throw new BusinessException("布尔参数值只能填写 true 或 false");
-        }
-    }
-
-    private void ensureNumberValue(String value) {
-        try {
-            new BigDecimal(value);
-        } catch (NumberFormatException exception) {
-            throw new BusinessException("数字参数值格式不正确");
         }
     }
 

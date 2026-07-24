@@ -2,6 +2,7 @@ package com.paper.mes.integration;
 
 import com.paper.mes.processorder.dto.PrintDTO;
 import com.paper.mes.processorder.dto.PrintViewVersion;
+import com.paper.mes.processorder.dto.PhysicalReprintDTO;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.oplog.service.OperationLogService;
@@ -73,5 +74,27 @@ class ProcessOrderPrintViewBusinessFlowIT {
         assertThat(log.get("action_type")).isEqualTo(OperationLogService.ACTION_REPRINT);
         assertThat(log.get("remark")).isEqualTo("车间纸张污损");
         assertThat(log.get("biz_no")).isEqualTo(scenario.order().getOrderNo());
+    }
+
+    @Test
+    void physicalReprint_forSettledOrder_keepsStatusAndRecordsReason() {
+        scenario.order().setOrderStatus(5);
+        processOrderMapper.updateById(scenario.order());
+        PhysicalReprintDTO dto = new PhysicalReprintDTO();
+        dto.setVersion(PrintViewVersion.ISSUED);
+        dto.setReason("客户要求补留一份");
+
+        var result = processOrderService.physicalReprint(scenario.order().getUuid(), dto);
+        var persisted = processOrderMapper.selectById(scenario.order().getUuid());
+        var log = jdbcTemplate.queryForMap("""
+                SELECT action_type, remark
+                FROM sys_operation_log
+                WHERE biz_uuid = ? AND action_type = ?
+                """, scenario.order().getUuid(), OperationLogService.ACTION_REPRINT);
+
+        assertThat(result.getPrintCount()).isEqualTo(2);
+        assertThat(persisted.getOrderStatus()).isEqualTo(5);
+        assertThat(persisted.getPrintCount()).isEqualTo(2);
+        assertThat(log.get("remark")).isEqualTo("下发版本：客户要求补留一份");
     }
 }

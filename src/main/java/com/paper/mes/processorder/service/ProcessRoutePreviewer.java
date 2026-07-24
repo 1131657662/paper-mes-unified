@@ -6,6 +6,7 @@ import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessStageOutput;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -18,9 +19,12 @@ import java.util.Map;
 import java.util.Set;
 
 @Component
+@RequiredArgsConstructor
 public class ProcessRoutePreviewer {
     private static final int IS_REMAIN_YES = 1;
     private static final int IS_REMAIN_NO = 0;
+
+    private final ProcessRouteCatalogPolicy routeCatalogPolicy;
 
     public ProcessRoutePreviewVO preview(OriginalRoll roll, ProcessRoutePreviewDTO dto) {
         return preview(roll, dto, Map.of());
@@ -36,6 +40,8 @@ public class ProcessRoutePreviewer {
     }
     private ProcessRoutePreviewVO preview(OriginalRoll roll, ProcessRoutePreviewDTO dto,
                                           Map<String, ProcessRoutePreviewVO.RouteOutputVO> initialOutputs) {
+        ProcessRouteQuantityValidator.requireWithinLimit(dto);
+        routeCatalogPolicy.validate(dto.getStages());
         Map<String, ProcessRoutePreviewVO.RouteOutputVO> outputsByKey = new HashMap<>(initialOutputs);
         Set<String> consumedKeys = consumedOutputKeys(dto.getStages());
         Set<String> usedInputKeys = new HashSet<>();

@@ -1,0 +1,9 @@
+.report-explorer-result { display: flex; min-height: calc(100vh - 220px); flex-direction: column; gap: 12px; }
+.report-explorer-controls { display: flex; align-items: end; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--mes-border-color); flex-wrap: wrap; }
+.report-explorer-controls > div { display: flex; align-items: center; gap: 8px; }
+.report-explorer-controls__label { color: var(--mes-text-secondary); white-space: nowrap; }
+.report-explorer-controls .ant-select { min-width: 160px; }
+.report-explorer-controls__metrics .ant-select { min-width: min(520px, 58vw); }
+.report-explorer-drill { padding-inline: 0; height: auto; text-align: left; }
+.report-explorer-table .ant-table-cell { white-space: nowrap; }
+@media (max-width: 760px) { .report-explorer-controls > div { width: 100%; } .report-explorer-controls .ant-select { flex: 1; min-width: 0; } }

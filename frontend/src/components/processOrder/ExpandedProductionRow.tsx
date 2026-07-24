@@ -36,6 +36,7 @@ export default function ExpandedProductionRow({ row }: Props) {
   const params = row.rewindParams
   const mode = params[0]?.paramMode
   const isRewind = p.mainStepType === 2
+  const isServiceOnly = p.processMode === 4
 
   const groups = groupFinishes(row.finishes)
   const finishData: FinishRow[] = groups.map((g) => ({
@@ -81,6 +82,9 @@ export default function ExpandedProductionRow({ row }: Props) {
     <div style={{ padding: '8px 0' }}>
       {/* 工艺参数 */}
       <Descriptions size="small" column={3} colon={false}>
+        {isServiceOnly && (
+          <Descriptions.Item label="加工方式">仅附加工艺 · 保持原规格</Descriptions.Item>
+        )}
         {isRewind && mode != null && (
           <Descriptions.Item label="复卷模式">{REWIND_MODE[mode] ?? `模式${mode}`}</Descriptions.Item>
         )}
@@ -93,7 +97,7 @@ export default function ExpandedProductionRow({ row }: Props) {
         {isRewind && (mode === 1 || mode === 3 || mode === 4) && (
           <Descriptions.Item label="分段条件">{buildConditionText(p)}</Descriptions.Item>
         )}
-        {!isRewind && (
+        {!isRewind && !isServiceOnly && (
           <Descriptions.Item label="工艺">锯纸 · {buildConditionText(p)}</Descriptions.Item>
         )}
         {isRewind && mode === 5 && uniqueSources.length > 0 && (

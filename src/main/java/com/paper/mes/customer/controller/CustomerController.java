@@ -6,7 +6,7 @@ import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.customer.dto.CustomerQuery;
 import com.paper.mes.customer.dto.CustomerSaveDTO;
-import com.paper.mes.customer.entity.Customer;
+import com.paper.mes.customer.dto.CustomerVO;
 import com.paper.mes.customer.service.CustomerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,14 +28,14 @@ public class CustomerController {
 
     @GetMapping
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<PageResult<Customer>> page(CustomerQuery query) {
+    public R<PageResult<CustomerVO>> page(CustomerQuery query) {
         return R.success(customerService.pageCustomers(query));
     }
 
     @GetMapping("/{uuid}")
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<Customer> detail(@PathVariable String uuid) {
-        return R.success(customerService.getByUuid(uuid));
+    public R<CustomerVO> detail(@PathVariable String uuid) {
+        return R.success(customerService.getProfile(uuid));
     }
 
     @PostMapping

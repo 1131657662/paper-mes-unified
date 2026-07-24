@@ -1,6 +1,11 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createOrderService } from '../services/createOrderService'
+import { invalidateCreateOrderDraft } from './invalidateCreateOrderDraft'
 
 export function useSavePlan() {
-  return useMutation({ mutationFn: createOrderService.savePlan })
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createOrderService.savePlan,
+    onSuccess: (_, variables) => invalidateCreateOrderDraft(queryClient, variables.orderUuid),
+  })
 }

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ErrorCode;
+import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
@@ -29,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -83,6 +85,49 @@ class ProcessRouteCleanupServiceTest {
         verify(finishRollMapper, never()).updateById(any(FinishRoll.class));
     }
 
+    @Test
+    void clearExistingRoute_whenRollIsSourceOfActiveSharedFinish_rejectsPartialCleanup() {
+        when(finishOriginalRelMapper.selectList(any())).thenReturn(
+                List.of(relation("finish-shared")),
+                List.of(relation("finish-shared"), relation("finish-shared", "roll-2")));
+        when(finishRollMapper.selectList(any())).thenReturn(List.of(sharedFinish("finish-shared", 1)));
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.clearExistingRoute(context()));
+
+        assertEquals(ErrorCode.E003.getCode(), error.getErrorCode());
+        verify(finishOriginalRelMapper, never()).delete(any());
+        verify(finishRollMapper, never()).update(isNull(), anyWrapper());
+        verify(processStepMapper, never()).delete(any());
+    }
+
+    @Test
+    void clearExistingRoute_whenSharedRelationUsesOwnerKey_stillRejectsPartialCleanup() {
+        when(finishOriginalRelMapper.selectList(any())).thenReturn(
+                List.of(relation("finish-shared")),
+                List.of(relation("finish-shared"), relation("finish-shared", "roll-2")));
+        when(finishRollMapper.selectList(any())).thenReturn(List.of(finish("finish-shared")));
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.clearExistingRoute(context()));
+
+        assertEquals(ErrorCode.E003.getCode(), error.getErrorCode());
+        verify(finishOriginalRelMapper, never()).delete(any());
+        verify(finishRollMapper, never()).update(isNull(), anyWrapper());
+    }
+
+    @Test
+    void clearExistingRoute_whenSharedFinishWasAlreadyVoided_removesSourceRelation() {
+        when(finishOriginalRelMapper.selectList(any())).thenReturn(List.of(relation("finish-shared")));
+        when(finishRollMapper.selectList(any())).thenReturn(List.of(sharedFinish("finish-shared", 3)));
+
+        service.clearExistingRoute(context());
+
+        verify(finishOriginalRelMapper, times(1)).delete(any());
+        verify(finishRollMapper, never()).update(isNull(), anyWrapper());
+        verify(processStepMapper).delete(any());
+    }
+
     private ProcessRouteContext context() {
         ProcessOrder order = new ProcessOrder();
         order.setUuid("order-1");
@@ -96,7 +141,26 @@ class ProcessRouteCleanupServiceTest {
         FinishRoll finish = new FinishRoll();
         finish.setUuid(uuid);
         finish.setRollNoStatus(1);
+        finish.setOriginalRollNos("R001");
         return finish;
+    }
+
+    private FinishRoll sharedFinish(String uuid, int rollNoStatus) {
+        FinishRoll finish = finish(uuid);
+        finish.setOriginalRollNos("OTHER-ROLL");
+        finish.setRollNoStatus(rollNoStatus);
+        return finish;
+    }
+
+    private FinishOriginalRel relation(String finishUuid) {
+        return relation(finishUuid, "roll-1");
+    }
+
+    private FinishOriginalRel relation(String finishUuid, String originalUuid) {
+        FinishOriginalRel relation = new FinishOriginalRel();
+        relation.setFinishUuid(finishUuid);
+        relation.setOriginalUuid(originalUuid);
+        return relation;
     }
 
     private Wrapper<FinishRoll> anyWrapper() {

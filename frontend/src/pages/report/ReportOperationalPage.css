@@ -1,0 +1,32 @@
+.report-operational-page .report-result-card > .ant-card-body { padding: 16px; }
+.report-operational-filter__fields {
+  display: grid;
+  grid-template-columns: minmax(340px, 1.4fr) repeat(4, minmax(150px, 0.7fr)) auto;
+  align-items: end;
+  gap: 12px;
+}
+.report-operational-filter__fields .ant-form-item { min-width: 0; margin-bottom: 0; }
+.report-operational-scope-note { margin-bottom: 14px; }
+.report-operational-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(500px, 1fr);
+  gap: 14px;
+}
+.report-operational-grid > .report-topic-panel { min-width: 0; }
+.report-operational-trend__primary { background: var(--mes-color-primary) !important; }
+.report-operational-trend__secondary { background: var(--mes-color-warning) !important; }
+
+@media (max-width: 1480px) {
+  .report-operational-filter__fields {
+    grid-template-columns: minmax(280px, 1.35fr) repeat(4, minmax(110px, 0.8fr));
+  }
+  .report-operational-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 980px) {
+  .report-operational-filter__fields { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 680px) {
+  .report-operational-filter__fields { grid-template-columns: 1fr; }
+}

@@ -29,6 +29,14 @@ class FeeCalculatorTest {
     }
 
     @Test
+    void service_piece_amount_usesPieceQuantityWithoutTonnageConversion() {
+        BigDecimal amount = FeeCalculator.stepAmount(FeeCalculator.STEP_TYPE_REPACKAGE,
+                null, new BigDecimal("12"), new BigDecimal("8.50"));
+
+        assertEquals(0, amount.compareTo(new BigDecimal("102")), "按件服务费");
+    }
+
+    @Test
     void missing_price_or_qty_is_zero() {
         assertEquals(0, FeeCalculator.stepAmount(FeeCalculator.STEP_TYPE_SAW, 5, null, null)
                 .compareTo(BigDecimal.ZERO), "无单价=0");

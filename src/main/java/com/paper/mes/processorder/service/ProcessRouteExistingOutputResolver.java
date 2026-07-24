@@ -192,5 +192,8 @@ public class ProcessRouteExistingOutputResolver {
         if (finish != null && finish.getRollNoStatus() != null && finish.getRollNoStatus() == ROLL_NO_VOID) {
             throw new BusinessException("已作废的成品号不能作为后续工艺来源：" + key);
         }
+        if (FinishRollStatusPolicy.isScrapped(finish)) {
+            throw new BusinessException("已报废成品不能作为后续工艺来源：" + key);
+        }
     }
 }

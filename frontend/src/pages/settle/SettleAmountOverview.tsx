@@ -22,7 +22,8 @@ export default function SettleAmountOverview({ details = [], order }: Props) {
     {
       hint: `标准加工费 ${formatMoney(standardProcessAmount)} / 调整 ${formatMoney(pricingAdjustmentAmount)} / 额外 ${formatMoney(order.extraAmount)}`,
       label: '费用构成',
-      value: formatMoney(Number(order.sawAmount ?? 0) + Number(order.rewindAmount ?? 0) + Number(order.extraAmount ?? 0)),
+      value: formatMoney(Number(order.sawAmount ?? 0) + Number(order.rewindAmount ?? 0)
+        + Number(order.serviceAmount ?? 0) + Number(order.extraAmount ?? 0)),
     },
   ]
 

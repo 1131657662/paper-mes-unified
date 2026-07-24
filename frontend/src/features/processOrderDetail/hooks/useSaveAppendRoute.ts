@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { saveAppendProcessRoute } from '../../../api/processOrder'
-import { queries } from '../../../queries'
 import type { ProcessRoutePreviewDTO } from '../../../types/processOrder'
+import { invalidateProcessOrderReadModels } from './invalidateProcessOrderReadModels'
 
 interface SaveAppendRouteParams {
   orderUuid: string
@@ -15,9 +15,7 @@ export function useSaveAppendRoute() {
     mutationFn: ({ orderUuid, request }: SaveAppendRouteParams) =>
       saveAppendProcessRoute(orderUuid, request),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: queries.processOrderDetail.detail(variables.orderUuid).queryKey,
-      })
+      await invalidateProcessOrderReadModels(queryClient, variables.orderUuid)
     },
   })
 }

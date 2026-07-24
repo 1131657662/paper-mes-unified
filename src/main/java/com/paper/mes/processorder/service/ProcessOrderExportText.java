@@ -65,12 +65,18 @@ final class ProcessOrderExportText {
 
     static String processModeText(Integer value) {
         if (value == null) return "-";
-        return switch (value) { case 2 -> "现场定尺"; case 3 -> "直发"; default -> "标准加工"; };
+        return switch (value) { case 2 -> "现场定尺"; case 3 -> "直发"; case 4 -> "仅附加工艺"; default -> "标准加工"; };
     }
 
     static String stepTypeText(Integer value) {
         if (value == null) return "-";
-        return switch (value) { case 1 -> "锯纸"; case 2 -> "复卷"; default -> value.toString(); };
+        return switch (value) {
+            case 1 -> "锯纸";
+            case 2 -> "复卷";
+            case 3 -> "剥损整理";
+            case 4 -> "重新包装";
+            default -> value.toString();
+        };
     }
 
     static String rollStatusText(Integer value) {
@@ -85,7 +91,7 @@ final class ProcessOrderExportText {
 
     static String sourceText(Integer value) {
         if (value == null) return "-";
-        return value == 2 ? "原纸直发" : "加工产出";
+        return switch (value) { case 2 -> "原纸直发"; case 3 -> "整理成品"; default -> "加工产出"; };
     }
 
     static String settleText(Integer value) {
@@ -104,7 +110,15 @@ final class ProcessOrderExportText {
 
     static String paramModeText(Integer value) {
         if (value == null) return "-";
-        return value == 2 ? "按比例" : "按门幅";
+        return switch (value) {
+            case 1 -> "改门幅不变直径";
+            case 2 -> "改直径不变门幅";
+            case 3 -> "改门幅并改直径";
+            case 4 -> "内外层分层";
+            case 5 -> "多母卷合并复卷";
+            case 6 -> "同规格复卷";
+            default -> value.toString();
+        };
     }
 
     private static String productionLabel(Integer sort, String rollNo, String extraNo) {

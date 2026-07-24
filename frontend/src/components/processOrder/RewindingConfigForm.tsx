@@ -48,6 +48,7 @@ const REWIND_MODES = {
   3: '改门幅+改直径',
   4: '内外层分层',
   5: '多母卷合并复卷',
+  6: '同规格复卷',
 }
 
 const newKey = () => String(Date.now() + Math.random())
@@ -81,6 +82,14 @@ const buildDefaultSegments = (originalWidth: number, sourceUuid: string, rewindM
   defaultSegment(1, originalWidth, sourceUuid, rewindMode),
 ]
 
+const buildSameSpecSegments = (roll: OriginalRoll): SegmentForm[] => [{
+  ...defaultSegment(1, roll.originalWidth ?? 1000, roll.uuid, 6),
+  targetDiameter: toCm(roll.originalDiameter),
+  finishCoreDiameter: roll.coreDiameter ?? 3,
+  repeatCount: 1,
+  layoutItems: [defaultLayoutItem(roll.originalWidth ?? 1000)],
+}]
+
 const toCm = (inch?: number) => (inch != null ? Math.round(inch * 2.54) : undefined)
 const toInch = (cm?: number) => (cm != null ? Math.round(cm / 2.54) : undefined)
 
@@ -106,6 +115,10 @@ const buildSegmentFromDto = (
       width: item.width,
       quantity: item.quantity ?? 1,
       itemType: item.itemType ?? 'FINISH',
+      customerPaperName: item.customerPaperName,
+      customerGramWeight: item.customerGramWeight,
+      customerFinishWidth: item.customerFinishWidth,
+      customerSpecOverrideReason: item.customerSpecOverrideReason,
       layers: item.layers?.map((layer) => ({ ...layer })),
     }))
     : [defaultLayoutItem(rewindMode === 2 ? originalWidth : Math.floor(originalWidth / 2) || 500)],
@@ -147,6 +160,10 @@ const toFinishSpecs = (preview: FinishPreviewVO | null, segments: SegmentForm[])
       finishWidth: finish.finishWidth,
       finishDiameter: finish.finishDiameter,
       finishCoreDiameter: finish.finishCoreDiameter,
+      customerPaperName: finish.customerPaperName,
+      customerGramWeight: finish.customerGramWeight,
+      customerFinishWidth: finish.customerFinishWidth,
+      customerSpecOverrideReason: finish.customerSpecOverrideReason,
       estimateWeight: finish.estimateWeight,
       layers: finish.layers,
     }))
@@ -162,6 +179,10 @@ const toFinishSpecs = (preview: FinishPreviewVO | null, segments: SegmentForm[])
         finishWidth: item.width,
         finishDiameter: toInch(segment.targetDiameter),
         finishCoreDiameter: segment.finishCoreDiameter,
+        customerPaperName: item.customerPaperName,
+        customerGramWeight: item.customerGramWeight,
+        customerFinishWidth: item.customerFinishWidth,
+        customerSpecOverrideReason: item.customerSpecOverrideReason,
         estimateWeight: 0,
       }))
     })
@@ -179,6 +200,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
 
   const isStandardMode = processMode === 1
   const isOnSiteMode = processMode === 2
+  const isSameSpecMode = rewindMode === 6
   const totalFinishCount = preview?.finishCount ?? toFinishSpecs(null, segments).length
   const tonnage = formatTon(((roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)) / 1000)
   const sourceRollOptions = originalRolls.map((sourceRoll, index) => ({
@@ -355,7 +377,9 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                   aria-label="复卷模式"
                   value={rewindMode}
                   onChange={(value) => {
-                    const nextSegments = value === 2 ? buildDefaultSegments(roll.originalWidth ?? 1000, roll.uuid, value) : segments
+                    const nextSegments = value === 6
+                      ? buildSameSpecSegments(roll)
+                      : value === 2 ? buildDefaultSegments(roll.originalWidth ?? 1000, roll.uuid, value) : segments
                     setRewindMode(value)
                     setSegments(nextSegments)
                     emitConfig({ nextRewindMode: value, nextSegments })
@@ -363,7 +387,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                   style={{ width: 220 }}
                   options={Object.entries(REWIND_MODES).map(([value, label]) => ({ value: Number(value), label }))}
                 />
-                <Button type="dashed" icon={<PlusOutlined />} onClick={addSegment}>
+                <Button type="dashed" icon={<PlusOutlined />} onClick={addSegment} disabled={isSameSpecMode}>
                   添加分段
                 </Button>
                 {previewing && <Tag color="processing">预览计算中…</Tag>}
@@ -400,14 +424,14 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                         addonBefore="成品直径 ≤"
                         suffix="cm"
                         placeholder="不限"
-                        disabled={rewindMode === 1}
+                            disabled={rewindMode === 1 || isSameSpecMode}
                       />
                       <Select
                         aria-label={`分段 ${index + 1} 成品纸芯`}
                         value={segment.finishCoreDiameter ?? 3}
                         onChange={(value) => updateSegment(segment.key, { finishCoreDiameter: value })}
                         style={{ width: 100 }}
-                        disabled={rewindMode === 1}
+                        disabled={rewindMode === 1 || isSameSpecMode}
                         options={CORE_DIAMETER_OPTIONS.map((v) => ({ value: v, label: `纸芯 ${v}"` }))}
                       />
                       <InputNumber
@@ -417,12 +441,14 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                         onChange={(value) => updateSegment(segment.key, { repeatCount: value ?? 1 })}
                         addonBefore="重复"
                         suffix="次"
+                        disabled={isSameSpecMode}
                       />
                       <Button
                         danger
                         aria-label={`删除复卷分段 ${index + 1}`}
                         icon={<DeleteOutlined />}
                         onClick={() => removeSegment(segment.key)}
+                        disabled={isSameSpecMode}
                       />
                     </Space>
 
@@ -498,6 +524,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                               { value: 'FINISH', label: '成品' },
                               { value: 'TRIM', label: '修边' },
                             ]}
+                            disabled={isSameSpecMode}
                           />
                           <InputNumber
                             aria-label={`分段 ${index + 1} 排布门幅`}
@@ -506,6 +533,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                             onChange={(value) => updateLayoutItem(segment.key, item.key, { width: value ?? 1 })}
                             addonBefore="门幅"
                             suffix="mm"
+                            disabled={isSameSpecMode}
                           />
                           <InputNumber
                             aria-label={`分段 ${index + 1} 排布数量`}
@@ -513,6 +541,7 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                             value={item.quantity}
                             onChange={(value) => updateLayoutItem(segment.key, item.key, { quantity: value ?? 1 })}
                             addonBefore="数量"
+                            disabled={isSameSpecMode}
                           />
                           <Button
                             type="text"
@@ -520,14 +549,15 @@ export default function RewindingConfigForm({ orderUuid, roll, originalRolls, pr
                             aria-label={`删除${item.itemType === 'FINISH' ? '成品' : '切边'}排布`}
                             icon={<DeleteOutlined />}
                             onClick={() => removeLayoutItem(segment.key, item.key)}
+                            disabled={isSameSpecMode}
                           />
                         </Space>
                       ))}
                       <Space>
-                        <Button size="small" icon={<PlusOutlined />} onClick={() => addLayoutItem(segment.key, 'FINISH')}>
+                        <Button size="small" icon={<PlusOutlined />} disabled={isSameSpecMode} onClick={() => addLayoutItem(segment.key, 'FINISH')}>
                           加成品门幅
                         </Button>
-                        <Button size="small" onClick={() => addLayoutItem(segment.key, 'TRIM')}>
+                        <Button size="small" disabled={isSameSpecMode} onClick={() => addLayoutItem(segment.key, 'TRIM')}>
                           加修边
                         </Button>
                         <Typography.Text type={widthDanger ? 'danger' : 'secondary'}>

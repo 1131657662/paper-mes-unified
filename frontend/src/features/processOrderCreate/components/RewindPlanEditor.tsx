@@ -12,11 +12,13 @@ import {
   defaultRewindSegment,
   normalizeLayeredRewindPlan,
   normalizeLayeredRewindSegments,
+  sameSpecRewindPlan,
 } from '../rewindLayerPlanUtils'
 import type { RollDraft } from '../types'
 import RewindWidthSummary from './RewindWidthSummary'
 import { RewindSourceEditor, RewindSourceUsageSummary } from './RewindSourceEditor'
 import RewindLayerEditor from './RewindLayerEditor'
+import RewindCustomerSpecificationFields from './RewindCustomerSpecificationFields'
 import './CreateOrderEditors.css'
 
 interface Props {
@@ -32,6 +34,7 @@ const modeOptions = [
   { label: '门幅+直径', value: 3 },
   { label: '内外层分层', value: 4 },
   { label: '多母卷合并', value: 5 },
+  { label: '同规格复卷', value: 6 },
 ]
 
 export default function RewindPlanEditor({ plan, roll, rolls, onChange }: Props) {
@@ -63,12 +66,14 @@ export default function RewindPlanEditor({ plan, roll, rolls, onChange }: Props)
           segment={segment}
           sourceOptions={sourceOptions}
           onChange={(next) => updateSegments(patchSegment(segments, index, next))}
-          onDelete={() => updateSegments(segments.filter((_, itemIndex) => itemIndex !== index))}
+          onDelete={mode === 6 ? undefined : () => updateSegments(segments.filter((_, itemIndex) => itemIndex !== index))}
         />
       ))}
-      <Button icon={<PlusOutlined />} onClick={() => updateSegments([...segments, defaultRewindSegment(roll, segments.length + 1)])}>
-        添加分段
-      </Button>
+      {mode !== 6 && (
+        <Button icon={<PlusOutlined />} onClick={() => updateSegments([...segments, defaultRewindSegment(roll, segments.length + 1)])}>
+          添加分段
+        </Button>
+      )}
     </Space>
   )
 }
@@ -78,17 +83,17 @@ function SegmentCard({ index, mode, roll, rolls, segment, sourceOptions, onChang
     <Card
       size="small"
       title={`分段 ${index + 1}`}
-      extra={(
+      extra={onDelete && (
         <MesTooltip title="删除分段">
           <Button danger aria-label="删除复卷分段" size="small" icon={<DeleteOutlined />} onClick={onDelete} />
         </MesTooltip>
       )}
     >
       <Space wrap className="create-editor-row-gap">
-        <InputNumber aria-label={`分段 ${index + 1} 比例`} addonBefore="比例" min={0.01} value={segment.segmentRatio ?? 1} onChange={(value) => onChange({ ...segment, segmentRatio: value ?? 1 })} />
-        <InputNumber aria-label={`分段 ${index + 1} 直径`} addonBefore="直径" min={0} value={segment.targetDiameter} onChange={(value) => onChange({ ...segment, targetDiameter: value ?? undefined })} />
-        <InputNumber aria-label={`分段 ${index + 1} 纸芯`} addonBefore="纸芯" min={0} value={segment.finishCoreDiameter} onChange={(value) => onChange({ ...segment, finishCoreDiameter: value ?? undefined })} />
-        <InputNumber aria-label={`分段 ${index + 1} 重复次数`} addonBefore="重复" min={1} value={segment.repeatCount ?? 1} onChange={(value) => onChange({ ...segment, repeatCount: value ?? 1 })} />
+        <InputNumber disabled={mode === 6} aria-label={`分段 ${index + 1} 比例`} addonBefore="比例" min={0.01} value={segment.segmentRatio ?? 1} onChange={(value) => onChange({ ...segment, segmentRatio: value ?? 1 })} />
+        <InputNumber disabled={mode === 6} aria-label={`分段 ${index + 1} 直径`} addonBefore="直径" min={0} value={segment.targetDiameter} onChange={(value) => onChange({ ...segment, targetDiameter: value ?? undefined })} />
+        <InputNumber disabled={mode === 6} aria-label={`分段 ${index + 1} 纸芯`} addonBefore="纸芯" min={0} value={segment.finishCoreDiameter} onChange={(value) => onChange({ ...segment, finishCoreDiameter: value ?? undefined })} />
+        <InputNumber disabled={mode === 6} aria-label={`分段 ${index + 1} 重复次数`} addonBefore="重复" min={1} value={segment.repeatCount ?? 1} onChange={(value) => onChange({ ...segment, repeatCount: value ?? 1 })} />
       </Space>
       <RewindWidthSummary
         mode={mode}
@@ -96,7 +101,7 @@ function SegmentCard({ index, mode, roll, rolls, segment, sourceOptions, onChang
         segment={segment}
         onFillTrim={() => onChange(appendRemainingTrim(segment, roll.originalWidth))}
       />
-      {mode !== 2 && <LayoutItemsEditor mode={mode} segment={segment} onChange={onChange} />}
+      {mode !== 2 && mode !== 6 && <LayoutItemsEditor mode={mode} segment={segment} onChange={onChange} />}
       {mode === 5 && <RewindSourceEditor segment={segment} roll={roll} rolls={rolls} sourceOptions={sourceOptions} onChange={onChange} />}
     </Card>
   )
@@ -110,7 +115,7 @@ interface SegmentProps {
   segment: RewindSegmentPlanDTO
   sourceOptions: ReturnType<typeof sourceOptionsFromRolls>
   onChange: (segment: RewindSegmentPlanDTO) => void
-  onDelete: () => void
+  onDelete?: () => void
 }
 
 function LayoutItemsEditor({ mode, segment, onChange }: LayoutItemsEditorProps) {
@@ -134,6 +139,10 @@ function LayoutItemsEditor({ mode, segment, onChange }: LayoutItemsEditorProps) 
               />
             </MesTooltip>
           </Space>
+          {(item.itemType ?? 'FINISH') === 'FINISH' && (
+            <RewindCustomerSpecificationFields index={index} item={item}
+              onChange={(patch) => update(patchItem(items, index, patch))} />
+          )}
           {mode === 4 && (item.itemType ?? 'FINISH') === 'FINISH' && (
             <RewindLayerEditor
               item={item}
@@ -152,6 +161,9 @@ function LayoutItemsEditor({ mode, segment, onChange }: LayoutItemsEditorProps) 
 }
 
 function planWithMode(plan: ProcessPlanDTO, roll: RollDraft, rewindMode: number): ProcessPlanDTO {
+  if (rewindMode === 6) {
+    return sameSpecRewindPlan(plan, roll)
+  }
   if (rewindMode === 4) {
     const segments = plan.segments?.length ? plan.segments : [defaultRewindSegment(roll)]
     return normalizeLayeredRewindPlan({ ...plan, rewindMode, segments }, roll)

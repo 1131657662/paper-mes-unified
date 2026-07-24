@@ -60,6 +60,25 @@ public class FileStorageServiceImpl implements FileStorageService {
         return trimSlash(properties.getUrlPrefix()) + "/" + relativePath;
     }
 
+    @Override
+    public void delete(String fileUrl) {
+        if (!StringUtils.hasText(fileUrl)) return;
+        String prefix = trimSlash(properties.getUrlPrefix()) + "/";
+        if (!fileUrl.startsWith(prefix)) {
+            throw new BusinessException("文件路径不属于当前存储空间");
+        }
+        Path baseDir = Paths.get(properties.getDir()).toAbsolutePath().normalize();
+        Path target = baseDir.resolve(fileUrl.substring(prefix.length())).normalize();
+        if (!target.startsWith(baseDir)) {
+            throw new BusinessException("文件路径越界");
+        }
+        try {
+            Files.deleteIfExists(target);
+        } catch (IOException exception) {
+            throw new BusinessException("文件删除失败");
+        }
+    }
+
     private String extensionOf(String originalName) {
         if (!StringUtils.hasText(originalName)) {
             return "";

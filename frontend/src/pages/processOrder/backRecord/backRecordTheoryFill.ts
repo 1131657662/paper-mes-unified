@@ -2,6 +2,7 @@ import type { FinishRoll, OriginalRoll, ProcessOrderDetailVO } from '../../../ty
 import { decimalPlaces } from '../../../utils/numberFormatters'
 import {
   activeFinishRolls,
+  isActiveBackRecordFinish,
   type BackRecordFormValues,
   type FinishRecordValues,
   type RollRecordValues,
@@ -49,7 +50,7 @@ function assignItemFinishes(
   values: Map<string, FinishRecordValues>,
   rolls: BackRecordFormValues['rolls'],
 ) {
-  const entries = item.finishes.filter(({ finish }) => finish.rollNoStatus !== 3 && finish.sourceType !== 2)
+  const entries = item.finishes.filter(({ finish }) => isActiveBackRecordFinish(finish))
   const official = entries.filter(({ finish }) => finish.isSpare !== 1 && finish.isRemain !== 1)
   const hasTrim = entries.some(({ finish }) => finish.isRemain === 1)
   const distributedWeights = distributeOfficialWeights(official.map(({ finish }) => finish), item.roll, !hasTrim)

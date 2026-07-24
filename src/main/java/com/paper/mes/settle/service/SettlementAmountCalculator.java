@@ -23,6 +23,8 @@ public class SettlementAmountCalculator {
 
     private static final int STEP_TYPE_SAW = 1;
     private static final int STEP_TYPE_REWIND = 2;
+    private static final int STEP_TYPE_STRIP_SORT = 3;
+    private static final int STEP_TYPE_REPACKAGE = 4;
     private static final int MONEY_SCALE = 2;
 
     private final ProcessStepMapper processStepMapper;
@@ -58,6 +60,7 @@ public class SettlementAmountCalculator {
         detail.setOrderNo(order.getOrderNo());
         detail.setSawAmount(steps.saw());
         detail.setRewindAmount(steps.rewind());
+        detail.setServiceAmount(steps.service());
         detail.setStandardProcessAmount(steps.standardProcess());
         detail.setPricingAdjustmentAmount(steps.pricingAdjustment());
         detail.setPricingAdjustmentReason(steps.reason());
@@ -69,7 +72,8 @@ public class SettlementAmountCalculator {
 
     private BigDecimal noTax(ProcessOrder order, SettleDetail detail) {
         if (order.getTotalAmountNoTax() != null) return money(order.getTotalAmountNoTax());
-        return money(detail.getSawAmount()).add(money(detail.getRewindAmount())).add(money(detail.getExtraAmount()));
+        return money(detail.getSawAmount()).add(money(detail.getRewindAmount()))
+                .add(money(detail.getServiceAmount())).add(money(detail.getExtraAmount()));
     }
 
     private BigDecimal tax(ProcessOrder order, SettleDetail detail, Integer isInvoice, Customer customer) {
@@ -86,15 +90,15 @@ public class SettlementAmountCalculator {
         return (value == null ? BigDecimal.ZERO : value).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
-    public record Calculation(BigDecimal saw, BigDecimal rewind, BigDecimal extra, BigDecimal noTax,
+    public record Calculation(BigDecimal saw, BigDecimal rewind, BigDecimal service, BigDecimal extra, BigDecimal noTax,
                               BigDecimal tax, BigDecimal total, int pendingPriceCount,
                               List<SettleDetail> details) {
     }
 
-    private record StepAmounts(BigDecimal saw, BigDecimal rewind, BigDecimal standardProcess,
+    private record StepAmounts(BigDecimal saw, BigDecimal rewind, BigDecimal service, BigDecimal standardProcess,
                                BigDecimal pricingAdjustment, String reason) {
         static StepAmounts zero() {
-            return new StepAmounts(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null);
+            return new StepAmounts(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null);
         }
 
         static StepAmounts of(ProcessStep step) {
@@ -104,16 +108,20 @@ public class SettlementAmountCalculator {
             BigDecimal adjustment = money(step.getPricingAdjustmentAmount());
             String reason = step.getPricingAdjustmentReason();
             if (step.getStepType() != null && step.getStepType() == STEP_TYPE_SAW) {
-                return new StepAmounts(value, BigDecimal.ZERO, standard, adjustment, reason);
+                return new StepAmounts(value, BigDecimal.ZERO, BigDecimal.ZERO, standard, adjustment, reason);
             }
             if (step.getStepType() != null && step.getStepType() == STEP_TYPE_REWIND) {
-                return new StepAmounts(BigDecimal.ZERO, value, standard, adjustment, reason);
+                return new StepAmounts(BigDecimal.ZERO, value, BigDecimal.ZERO, standard, adjustment, reason);
+            }
+            if (step.getStepType() != null && (step.getStepType() == STEP_TYPE_STRIP_SORT
+                    || step.getStepType() == STEP_TYPE_REPACKAGE)) {
+                return new StepAmounts(BigDecimal.ZERO, BigDecimal.ZERO, value, standard, adjustment, reason);
             }
             return zero();
         }
 
         StepAmounts add(StepAmounts other) {
-            return new StepAmounts(saw.add(other.saw), rewind.add(other.rewind),
+            return new StepAmounts(saw.add(other.saw), rewind.add(other.rewind), service.add(other.service),
                     standardProcess.add(other.standardProcess), pricingAdjustment.add(other.pricingAdjustment),
                     joinReason(reason, other.reason));
         }
@@ -125,15 +133,16 @@ public class SettlementAmountCalculator {
         }
     }
 
-    private record Totals(BigDecimal saw, BigDecimal rewind, BigDecimal extra, BigDecimal noTax,
+    private record Totals(BigDecimal saw, BigDecimal rewind, BigDecimal service, BigDecimal extra, BigDecimal noTax,
                           BigDecimal tax, BigDecimal total) {
         static Totals zero() {
-            return new Totals(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+            return new Totals(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                     BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         }
 
         Totals add(SettleDetail detail, BigDecimal lineNoTax, BigDecimal lineTax) {
             return new Totals(saw.add(detail.getSawAmount()), rewind.add(detail.getRewindAmount()),
+                    service.add(detail.getServiceAmount()),
                     extra.add(detail.getExtraAmount()), noTax.add(lineNoTax), tax.add(lineTax),
                     total.add(detail.getOrderAmount()));
         }
@@ -142,7 +151,7 @@ public class SettlementAmountCalculator {
             int pendingPriceCount = (int) details.stream()
                     .filter(detail -> detail.getOrderAmount().signum() <= 0)
                     .count();
-            return new Calculation(saw, rewind, extra, noTax, tax, total, pendingPriceCount, details);
+            return new Calculation(saw, rewind, service, extra, noTax, tax, total, pendingPriceCount, details);
         }
     }
 }

@@ -3,21 +3,23 @@ import type { Customer } from '../../../types/customer'
 import type { Machine } from '../../../types/machine'
 import type { Paper } from '../../../types/paper'
 import type { ReportQuery } from '../../../types/report'
+import type { ReportOperationalTopicCode } from '../../../types/reportOperational'
 
 interface Props {
   customers: Customer[]
   machines: Machine[]
   papers: Paper[]
   query: ReportQuery
+  mode?: 'overview' | 'production' | 'quality-loss' | 'explorer' | ReportOperationalTopicCode
 }
 
-export default function ReportFilterSummary({ customers, machines, papers, query }: Props) {
-  const tags = buildTags({ customers, machines, papers, query })
+export default function ReportFilterSummary(props: Props) {
+  const tags = buildTags(props)
 
   return (
     <div className="report-filter-summary">
       <span>当前口径</span>
-      <div>
+      <div aria-label={tags.join('；')} title={tags.join('；')}>
         {tags.map((tag) => (
           <Tag key={tag}>{tag}</Tag>
         ))}
@@ -26,20 +28,37 @@ export default function ReportFilterSummary({ customers, machines, papers, query
   )
 }
 
-function buildTags({ customers, machines, papers, query }: Props) {
-  return [
+function buildTags({ customers, machines, mode = 'overview', papers, query }: Props) {
+  if (isOperationalMode(mode)) return operationalTags(mode, customers, papers, query)
+  const common = [
     `归属日期：${query.dateFrom ?? '-'} 至 ${query.dateTo ?? '-'}`,
-    '归属规则：优先使用回录完成日期，历史数据缺失时回退制单日期',
-    '金额：应收按加工单归属日期统计，已收仅统计有效收款',
     `状态：${statusText(query.orderStatus)}`,
     labelByUuid('客户', query.customerUuid, customers, 'customerName'),
-    labelByUuid('机台', query.machineUuid, machines, 'machineName'),
     `产品：${paperText(query.paperName, papers)}`,
+    labelByUuid('机台', query.machineUuid, machines, 'machineName'),
     `工艺：${stepText(query.mainStepType)}`,
     `方式：${modeText(query.processMode)}`,
-    `结算：${settleText(query.settleType)}`,
-    `开票：${invoiceText(query.isInvoice)}`,
-  ].filter(Boolean)
+    '归属规则：优先使用回录完成日期，历史数据缺失时回退制单日期',
+  ]
+  if (mode !== 'overview') return common.filter(Boolean)
+  return [...common, '金额：应收按加工单归属日期统计，已收仅统计有效收款',
+    `结算：${settleText(query.settleType)}`, `开票：${invoiceText(query.isInvoice)}`].filter(Boolean)
+}
+
+function operationalTags(mode: ReportOperationalTopicCode, customers: Customer[], papers: Paper[], query: ReportQuery) {
+  const tags = [
+    `${operationalDateLabels[mode]}：${query.dateFrom ?? '-'} 至 ${query.dateTo ?? '-'}`,
+    labelByUuid('客户', query.customerUuid, customers, 'customerName'),
+  ]
+  if (mode === 'inventory') tags.push(`产品：${paperText(query.paperName, papers)}`)
+  if (mode === 'settlement' || mode === 'collection') {
+    tags.push(`结算：${settleText(query.settleType)}`, `开票：${invoiceText(query.isInvoice)}`)
+  }
+  return tags
+}
+
+function isOperationalMode(mode: Props['mode']): mode is ReportOperationalTopicCode {
+  return mode === 'settlement' || mode === 'collection' || mode === 'inventory' || mode === 'delivery'
 }
 
 function labelByUuid<T extends { uuid: string }>(
@@ -91,4 +110,8 @@ const statusMap: Record<number, string> = {
   4: '已完成',
   5: '已结算',
   6: '已作废',
+}
+
+const operationalDateLabels: Record<ReportOperationalTopicCode, string> = {
+  settlement: '结算日期', collection: '到账日期', inventory: '入库日期', delivery: '出库日期',
 }

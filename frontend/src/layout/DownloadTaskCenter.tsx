@@ -18,7 +18,7 @@ export default function DownloadTaskCenter() {
   const tasksEnabled = Boolean(user) && canViewTasks
   const { data: summary, isError: isSummaryError, refetch: refetchTasks } = useExportTasks(tasksEnabled)
   const handlers = useDownloadTaskHandlers(() => setOpen(false))
-  useExportTaskEvents(tasksEnabled && open)
+  useExportTaskEvents(tasksEnabled)
 
   useEffect(() => {
     const openFromNotification = () => {

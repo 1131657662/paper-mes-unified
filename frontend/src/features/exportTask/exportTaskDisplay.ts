@@ -28,6 +28,15 @@ export function exportTaskRetryLimitReached(task: ExportTask): boolean {
   return task.attemptCount >= task.maxAttempts
 }
 
+export function exportTaskOperationLabel(operationCode?: string): string {
+  if (operationCode === 'detail-export') return '详情导出'
+  if (operationCode === 'inventory-export') return '库存导出'
+  if (operationCode === 'reconciliation-export') return '对账导出'
+  if (operationCode === 'full-export') return '报表导出'
+  if (operationCode === 'scheduled-export') return '定时报表'
+  return operationCode || '未知操作'
+}
+
 export function exportTaskModuleLabel(moduleCode?: string): string {
   if (moduleCode === 'settle') return '结算'
   if (moduleCode === 'delivery') return '出库'

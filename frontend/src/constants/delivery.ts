@@ -7,6 +7,7 @@ export const DELIVERY_STATUS: Record<number, { text: string; color: string }> = 
 export const SOURCE_TYPE: Record<number, { text: string; color: string }> = {
   1: { text: '加工产出', color: 'blue' },
   2: { text: '直发原纸', color: 'green' },
+  3: { text: '整理成品', color: 'cyan' },
 }
 
 export const SETTLE_BLOCK_ACTION: Record<number, string> = {

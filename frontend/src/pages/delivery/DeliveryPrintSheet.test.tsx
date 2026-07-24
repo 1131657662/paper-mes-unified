@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import type { DeliveryCustomerRevisionPreview } from '../../features/deliveryCustomerSpec/deliveryCustomerSpecTypes'
 import type { DeliveryDetailVO } from '../../types/delivery'
 import DeliveryPrintSheet from './DeliveryPrintSheet'
 
@@ -15,7 +16,49 @@ describe('司机单据预览', () => {
     expect(markup).not.toContain('工艺摘要')
     expect(markup).not.toContain('出库临时备注')
   })
+
+  it('客户更正版显示版本标题和客户规格', () => {
+    const markup = renderToStaticMarkup(
+      <DeliveryPrintSheet detail={detail()} customerSpecs={customerSpecs()} variant="customer" />,
+    )
+
+    expect(markup).toContain('出库单（客户更正版 V2）')
+    expect(markup).toContain('食品卡')
+    expect(markup).toContain('75 g')
+    expect(markup).toContain('1000 mm')
+    expect(markup).toContain('客户改单')
+    expect(markup).not.toContain('实物：白卡')
+  })
+
+  it('追溯打印同时显示客户值和不可变的实物值', () => {
+    const markup = renderToStaticMarkup(
+      <DeliveryPrintSheet detail={detail()} customerSpecs={customerSpecs()} variant="trace" />,
+    )
+
+    expect(markup).toContain('出库单（追溯对照）')
+    expect(markup).toContain('<strong>食品卡</strong><span>实物：白卡</span>')
+    expect(markup).toContain('<strong>75 g</strong><span>实物：300 g</span>')
+    expect(markup).toContain('<strong>1000 mm</strong><span>实物：900 mm</span>')
+    expect(markup).toContain('<strong>1050 kg</strong><span>实物：950 kg</span>')
+  })
 })
+
+function customerSpecs(): DeliveryCustomerRevisionPreview {
+  return {
+    deliveryUuid: 'delivery-1', deliveryNo: 'CK001', deliveryVersion: 3, deliveryStatus: 2,
+    currentRevisionNo: 2, currentRevisionKind: 'USER_REVISION', nextRevisionNo: 3,
+    itemCount: 1, validItemCount: 1,
+    physicalTotalWeight: 950, customerTotalWeight: 1050, differenceWeight: 100, hasErrors: false,
+    items: [{
+      deliveryDetailUuid: 'detail-1', detailVersion: 1, finishUuid: 'finish-1', finishRollNo: 'A000001',
+      physicalPaperName: '白卡', physicalGramWeight: 300, physicalFinishWidth: 900,
+      physicalDeliveryWeight: 950, customerPaperName: '食品卡', customerGramWeight: 75,
+      customerFinishWidth: 1000, customerDisplayWeight: 1050, customerRemark: '客户改单',
+      calculationMode: 'FORMULA', valueSource: 'DELIVERY_REVISION', specificationChanged: true,
+      weightChanged: true, valid: true,
+    }],
+  }
+}
 
 function detail(): DeliveryDetailVO {
   return {

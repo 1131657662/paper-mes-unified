@@ -51,7 +51,7 @@ class FinishRollServiceImplTest {
     }
 
     private FinishRollServiceImpl serviceReturning(FinishRoll roll) {
-        return new FinishRollServiceImpl(null, null, null) {
+        return new FinishRollServiceImpl(null, null, null, null) {
             @Override
             public FinishRoll getById(Serializable id) {
                 return roll;

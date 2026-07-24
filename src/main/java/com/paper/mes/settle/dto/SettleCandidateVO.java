@@ -28,6 +28,7 @@ public class SettleCandidateVO {
     private BigDecimal finishRollWeight;
     private BigDecimal sawAmount;
     private BigDecimal rewindAmount;
+    private BigDecimal serviceAmount;
     /** 璁㈠崟鏍囧噯鍔犲伐璐癸紝鐢ㄤ簬鍦ㄧ敓鎴愮粨绠楀墠灞曠ず浼樻儬瀹℃牳鍩虹銆? */
     private BigDecimal standardProcessAmount;
     /** 鏈€缁堣浠峰噺鏍囧噯璁′环锛岃礋鏁颁负浼樻儬銆? */

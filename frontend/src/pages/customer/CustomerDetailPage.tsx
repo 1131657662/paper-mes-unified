@@ -9,6 +9,7 @@ import { DICT_TYPES, invoiceFallbackOptions, settleFallbackOptions } from '../..
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
 import { useHasPermission } from '../../stores/authStore'
 import type { Customer } from '../../types/customer'
+import CustomerServicePriceSummary from './CustomerServicePriceSummary'
 import '../documentModule.css'
 import './CustomerProfile.css'
 
@@ -72,6 +73,10 @@ export default function CustomerDetailPage() {
       </section>
 
       <div className="customer-detail-grid">
+        <Card className="document-module-card customer-detail-grid__full" title="附加工艺价格">
+          <CustomerServicePriceSummary prices={customer.processPrices} />
+        </Card>
+
         <Card className="document-module-card" title="基础资料">
           <Descriptions column={2} size="small">
             <Descriptions.Item label="客户编码">{text(customer.customerCode)}</Descriptions.Item>

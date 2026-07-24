@@ -41,6 +41,7 @@ public final class ProcessStepPricingPolicy {
     }
 
     private static BigDecimal quantityAmount(ProcessStep step, BigDecimal quantity, BigDecimal unitPrice) {
+        if (quantity == null) return BigDecimal.ZERO.setScale(0);
         if (step.getStepType() == FeeCalculator.STEP_TYPE_SAW) {
             try {
                 return FeeCalculator.stepAmount(step.getStepType(), quantity.intValueExact(), null, unitPrice);

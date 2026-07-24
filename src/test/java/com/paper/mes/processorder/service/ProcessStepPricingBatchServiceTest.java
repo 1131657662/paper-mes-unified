@@ -12,7 +12,9 @@ import com.paper.mes.processorder.dto.FeeResultVO;
 import com.paper.mes.processorder.dto.ProcessStepPricingBatchDTO;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.entity.ProcessStep;
+import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
+import com.paper.mes.settle.mapper.SettleDetailMapper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,8 @@ class ProcessStepPricingBatchServiceTest {
 
     private BusinessLockService lockService;
     private ProcessStepMapper stepMapper;
+    private OriginalRollMapper originalRollMapper;
+    private SettleDetailMapper settleDetailMapper;
     private ProcessOrderService orderService;
     private ProcessStepPricingApprovalPolicy approvalPolicy;
     private ProcessStepPricingBatchService service;
@@ -49,9 +53,12 @@ class ProcessStepPricingBatchServiceTest {
     void setUp() {
         lockService = mock(BusinessLockService.class);
         stepMapper = mock(ProcessStepMapper.class);
+        originalRollMapper = mock(OriginalRollMapper.class);
+        settleDetailMapper = mock(SettleDetailMapper.class);
         orderService = mock(ProcessOrderService.class);
         approvalPolicy = mock(ProcessStepPricingApprovalPolicy.class);
-        service = new ProcessStepPricingBatchService(lockService, stepMapper, orderService,
+        service = new ProcessStepPricingBatchService(lockService, stepMapper, originalRollMapper,
+                settleDetailMapper, orderService,
                 mock(OperationLogService.class), approvalPolicy);
     }
 
@@ -99,6 +106,18 @@ class ProcessStepPricingBatchServiceTest {
                 .isEqualTo(ErrorCode.E001.getCode());
 
         verify(lockService).lockProcessOrders(List.of("order-1"));
+        verifyNoInteractions(stepMapper);
+    }
+
+    @Test
+    void preview_whenSettlementReferencesOrder_rejectsWithSpecificMessage() {
+        when(orderService.getById("order-1")).thenReturn(order(4, 6));
+        when(settleDetailMapper.selectCount(any())).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.preview("order-1", request(1, false, "100")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("先作废结算单");
+
         verifyNoInteractions(stepMapper);
     }
 

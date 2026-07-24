@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BusinessFlowSafetyContractTest {
@@ -15,6 +16,8 @@ class BusinessFlowSafetyContractTest {
             "src/main/java/com/paper/mes/delivery/service/impl/DeliveryServiceImpl.java";
     private static final String SETTLE_SERVICE =
             "src/main/java/com/paper/mes/settle/service/impl/SettleServiceImpl.java";
+    private static final String PROCESS_ORDER_SERVICE =
+            "src/main/java/com/paper/mes/processorder/service/impl/ProcessOrderServiceImpl.java";
     private static final String LOCK_SERVICE =
             "src/main/java/com/paper/mes/common/db/BusinessLockService.java";
 
@@ -162,7 +165,25 @@ class BusinessFlowSafetyContractTest {
                 "ConcurrencyGuard.requireRowUpdated(settleDetailMapper.insert(detail))",
                 "DuplicateKeyException");
         assertContainsAll(slice(source, "private String createFromOrders", "private void ensureOrderNotSettled"),
-                "applyReceiveState(settle, amounts.total(), BigDecimal.ZERO)");
+                "applyReceiveState(settle, amounts.total(), BigDecimal.ZERO)",
+                "processOrderService.markSettled(detail.getOrderUuid())");
+        assertFalse(slice(source, "private String createFromOrders", "private void ensureOrderNotSettled")
+                .contains("processOrderService.changeStatus"),
+                "结算创建必须使用内部结算命令，不能调用公共状态流转接口");
+    }
+
+    @Test
+    void settleCommand_onlyMovesCompletedPricedOrderToSettled() throws IOException {
+        String command = slice(source(PROCESS_ORDER_SERVICE),
+                "public void markSettled", "public void completeProcessing");
+
+        assertContainsAll(command,
+                "businessLockService.lockProcessOrders(List.of(uuid))",
+                "STATUS_FINISHED",
+                "order.getTotalAmount().signum() <= 0",
+                ".eq(ProcessOrder::getOrderStatus, STATUS_FINISHED)",
+                ".set(ProcessOrder::getOrderStatus, STATUS_SETTLED)",
+                ".setSql(\"version = version + 1\")");
     }
 
     @Test
@@ -191,7 +212,7 @@ class BusinessFlowSafetyContractTest {
                 "record.setScrapOffsetAmount(amount.scrapOffsetAmount())",
                 "record.setDiscountAmount(amount.discountAmount())",
                 "refreshReceiveState(settle)");
-        assertContainsAll(slice(source, "public void cancelReceive", "public void voidSettle"),
+        assertContainsAll(slice(source, "public void cancelReceive", "public List<String> voidSettle"),
                 "businessLockService.lockSettleOrder(uuid);",
                 "businessLockService.lockReceiveRecord(receiveUuid);",
                 "updateReceiveRecordForCancel(record)",
@@ -226,7 +247,7 @@ class BusinessFlowSafetyContractTest {
         String printLineItems = slice(source, "private SettlePrintLineVO buildPrintLine",
                 "private void applyOrderAmountClosure");
 
-        assertContainsAll(slice(source, "public void voidSettle", "private List<SettleDetail> normalizeDetailsForInvoiceView"),
+        assertContainsAll(slice(source, "public List<String> voidSettle", "private List<SettleDetail> normalizeDetailsForInvoiceView"),
                 "businessLockService.lockSettleOrder(uuid);",
                 "activeReceiveAmount(uuid)",
                 "businessLockService.lockProcessOrders",

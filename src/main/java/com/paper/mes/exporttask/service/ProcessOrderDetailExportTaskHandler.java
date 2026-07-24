@@ -22,6 +22,7 @@ public class ProcessOrderDetailExportTaskHandler implements ExportTaskHandler {
 
     private final ProcessOrderService processOrderService;
     private final ProcessOrderExportService exportService;
+    private final ProcessOrderExportRevisionSnapshot revisionSnapshot;
 
     @Override
     public String taskType() {
@@ -40,11 +41,13 @@ public class ProcessOrderDetailExportTaskHandler implements ExportTaskHandler {
 
     @Override
     public ExportTaskArtifact generate(ExportTask task, Path target) throws Exception {
+        revisionSnapshot.verifyCurrent(task.getSourceUuid(), task.getRequestPayload());
         ProcessOrderDetailVO detail = processOrderService.getDetail(task.getSourceUuid());
         try (Workbook workbook = exportService.buildWorkbook(detail);
              OutputStream output = Files.newOutputStream(target)) {
             workbook.write(output);
         }
+        revisionSnapshot.verifyCurrent(task.getSourceUuid(), task.getRequestPayload());
         String filename = "加工单资料_" + detail.getOrder().getOrderNo() + ".xlsx";
         return new ExportTaskArtifact(filename, CONTENT_TYPE);
     }

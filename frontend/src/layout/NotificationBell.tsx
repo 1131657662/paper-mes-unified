@@ -11,6 +11,7 @@ import { useAuthUser } from '../stores/authStore'
 import type { SystemNotification } from '../types/notification'
 import NotificationList from './NotificationList'
 import { OPEN_DOWNLOAD_TASK_CENTER_EVENT } from './downloadTaskCenterEvents'
+import { notificationPath } from './notificationPath'
 import './NotificationCenter.css'
 
 export default function NotificationBell() {
@@ -69,14 +70,4 @@ export default function NotificationBell() {
       </Drawer>
     </>
   )
-}
-
-function notificationPath(item: SystemNotification): string | undefined {
-  if (!item.sourceUuid) return undefined
-  if (item.sourceType === 'DATA_HEALTH') return '/system-config?section=health'
-  if (item.sourceType === 'BACKUP_TASK') {
-    const params = new URLSearchParams({ section: 'backup', view: 'tasks', task: item.sourceUuid })
-    return `/system-config?${params.toString()}`
-  }
-  return undefined
 }

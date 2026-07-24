@@ -47,6 +47,19 @@ class SettleCandidateAmountLoaderTest {
         assertThat(amount.effectiveTotal()).isEqualByComparingTo("100.00");
     }
 
+    @Test
+    void load_withServiceSteps_includesServiceInCandidateTotal() {
+        ProcessStepMapper mapper = mock(ProcessStepMapper.class);
+        when(mapper.selectList(any())).thenReturn(List.of(
+                step("order-1", 3, "60"), step("order-1", 4, "40")));
+
+        var amount = new SettleCandidateAmountLoader(mapper)
+                .load(List.of(order("order-1", "0"))).get("order-1");
+
+        assertThat(amount.service()).isEqualByComparingTo("100.00");
+        assertThat(amount.effectiveTotal()).isEqualByComparingTo("100.00");
+    }
+
     private ProcessOrder order(String uuid, String total) {
         ProcessOrder order = new ProcessOrder();
         order.setUuid(uuid);

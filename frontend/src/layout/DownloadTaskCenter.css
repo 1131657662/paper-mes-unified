@@ -188,6 +188,18 @@
   font-size: inherit;
 }
 
+.download-task-center__audit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.download-task-center__audit > .ant-typography {
+  font-size: inherit;
+}
+
 .download-task-center__lifecycle {
   display: inline-flex;
   flex-wrap: wrap;

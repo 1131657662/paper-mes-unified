@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import {
   exportTaskActions,
   exportTaskModuleLabel,
+  exportTaskOperationLabel,
   exportTaskRetryLimitReached,
   exportTaskStatus,
   type ExportTaskAction,
@@ -43,7 +44,7 @@ function TaskListItem({ task, handlers }: { task: ExportTask; handlers: TaskHand
   const itemActions = actions.length > 0
     ? [<TaskActions key="actions" task={task} actions={actions} handlers={handlers} />]
     : undefined
-  const sourcePath = task.resourceAccessible ? sourceRoutes[task.taskType]?.(task.sourceUuid) : undefined
+  const sourcePath = resolveSourcePath(task)
   return (
     <List.Item actions={itemActions}>
       <div className="download-task-center__item">
@@ -51,11 +52,13 @@ function TaskListItem({ task, handlers }: { task: ExportTask; handlers: TaskHand
           <TaskTitle task={task} sourcePath={sourcePath} onOpenSource={handlers.onOpenSource} />
           <Space size={4} wrap>
             <Tag color="blue">{exportTaskModuleLabel(task.moduleCode)}</Tag>
+            <Tag>{exportTaskOperationLabel(task.operationCode)}</Tag>
             <Tag color={status.color}>{status.text}</Tag>
             {!task.resourceAccessible && <Tag>权限已变更</Tag>}
           </Space>
         </div>
         <TaskFileDetails task={task} />
+        <TaskAuditContext task={task} />
         {[1, 2].includes(task.taskStatus) && <Progress percent={task.progress} size="small" />}
         {task.taskStatus === 4 && <Typography.Text type="danger">{task.errorMessage || '导出失败，请重新发起'}</Typography.Text>}
         <RetryBudgetNotice task={task} />
@@ -63,6 +66,24 @@ function TaskListItem({ task, handlers }: { task: ExportTask; handlers: TaskHand
       </div>
     </List.Item>
   )
+}
+
+function resolveSourcePath(task: ExportTask) {
+  if (!task.resourceAccessible) return undefined
+  if (task.moduleCode === 'report' && task.sourcePath?.startsWith('/reports/')) return task.sourcePath
+  return sourceRoutes[task.taskType]?.(task.sourceUuid)
+}
+
+function TaskAuditContext({ task }: { task: ExportTask }) {
+  if (!task.querySnapshotUuid && !task.metricReleaseUuid) return null
+  return <div className="download-task-center__audit">
+    {task.querySnapshotUuid && <Tooltip title={`查询快照 ${task.querySnapshotUuid}`}>
+      <Typography.Text type="secondary">快照 {shortId(task.querySnapshotUuid)}</Typography.Text>
+    </Tooltip>}
+    {task.metricReleaseUuid && <Tooltip title={`指标发布包 ${task.metricReleaseUuid}`}>
+      <Typography.Text type="secondary">口径 {shortId(task.metricReleaseUuid)}</Typography.Text>
+    </Tooltip>}
+  </div>
 }
 
 function TaskTitle({ task, sourcePath, onOpenSource }: {
@@ -155,3 +176,5 @@ function formatSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
+
+function shortId(value: string) { return value.length <= 8 ? value : value.slice(0, 8) }

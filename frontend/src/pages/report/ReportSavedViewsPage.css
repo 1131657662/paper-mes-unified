@@ -1,0 +1,5 @@
+.report-saved-views { width: min(100%, 2200px); margin: 0 auto; }
+.report-saved-views .ant-card-body { padding: 16px; }
+.report-saved-views__intro { margin: 0 0 16px; color: var(--mes-text-secondary); }
+.report-saved-view-name { display: flex; align-items: center; gap: 8px; }
+.report-saved-view-actions { display: inline-flex; align-items: center; gap: 2px; }

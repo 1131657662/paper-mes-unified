@@ -3,20 +3,25 @@ export const ORDER_STATUS: Record<number, { text: string; color: string }> = {
   0: { text: '草稿', color: 'default' },
   1: { text: '待下发', color: 'orange' },
   2: { text: '加工中', color: 'processing' },
-  3: { text: '待回录', color: 'red' },
+  3: { text: '待回录', color: 'orange' },
   4: { text: '已完成', color: 'success' },
-  5: { text: '已结算', color: 'default' },
-  6: { text: '已作废', color: 'default' },
+  5: { text: '已结算', color: 'blue' },
+  6: { text: '已作废', color: 'error' },
 }
 
 /** 优先级字典：1普通 2加急 3特急。 */
 export const PRIORITY: Record<number, string> = { 1: '普通', 2: '加急', 3: '特急' }
 
-/** 加工方式字典：1标准加工 2现场定尺 3不加工直发。 */
+/** 加工方式字典：1标准加工 2现场定尺 3不加工直发 4仅附加工艺。 */
 export const PROCESS_MODE: Record<number, string> = {
   1: '标准加工',
   2: '现场定尺',
   3: '不加工直发',
+  4: '仅附加工艺',
+}
+
+export function processModeRequiresMain(processMode?: number): boolean {
+  return processMode !== 3 && processMode !== 4
 }
 
 /** 原纸卷状态字典：1待加工 2加工中 3完成 4直发 5报废。 */
@@ -35,15 +40,34 @@ export const IS_INVOICE: Record<number, string> = { 1: '开票', 2: '不开票' 
 export const ORDER_SETTLE_TYPE: Record<number, string> = { 1: '次结', 2: '月结' }
 
 /** 成品卷状态字典：1待入库 2已入库 3已出库 4报废。 */
-export const FINISH_STATUS: Record<number, string> = {
-  1: '待入库',
-  2: '已入库',
-  3: '已出库',
-  4: '报废',
+export const FINISH_STATUS: Record<number, { text: string; color: string }> = {
+  1: { text: '待入库', color: 'orange' },
+  2: { text: '已入库', color: 'blue' },
+  3: { text: '已出库', color: 'success' },
+  4: { text: '报废', color: 'error' },
 }
 
-/** 工序类型字典：1锯纸 2复卷。 */
-export const STEP_TYPE: Record<number, string> = { 1: '锯纸', 2: '复卷' }
+/** 成品来源：服务型加工单独标识，避免与直发或锯纸/复卷产出混淆。 */
+export const FINISH_SOURCE_TYPE: Record<number, { text: string; color: string }> = {
+  1: { text: '加工产出', color: 'blue' },
+  2: { text: '直发原纸', color: 'green' },
+  3: { text: '整理成品', color: 'cyan' },
+}
+
+/** 工序类型字典：生产工艺与可独立计费的服务工序。 */
+export const STEP_TYPE: Record<number, string> = {
+  1: '锯纸',
+  2: '复卷',
+  3: '剥损整理',
+  4: '重新包装',
+}
+
+export const DEFAULT_WIDTH_DIFFERENCE_POLICY: WidthDifferencePolicy = 'ALLOCATE'
+export const WIDTH_DIFFERENCE_POLICY_OPTIONS = [
+  { label: '分摊', value: 'ALLOCATE' },
+  { label: '留余料', value: 'REMAINDER' },
+  { label: '计损耗', value: 'LOSS' },
+] satisfies Array<{ label: string; value: WidthDifferencePolicy }>
 
 /**
  * 加工单状态机合法流转目标（来自后端 OrderStatus）。
@@ -87,3 +111,4 @@ export const ROLL_NO_STATUS: Record<number, { text: string; color: string }> = {
   1: { text: '预生成', color: 'blue' },
   3: { text: '作废', color: 'default' },
 }
+import type { WidthDifferencePolicy } from '../types/processOrder'

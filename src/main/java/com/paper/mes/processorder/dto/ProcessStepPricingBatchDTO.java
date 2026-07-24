@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -28,7 +29,7 @@ public class ProcessStepPricingBatchDTO {
     private String requestId;
 
     @NotEmpty(message = "至少选择一组工序")
-    @Size(max = 2, message = "计价分组不能超过2组")
+    @Size(max = 4, message = "计价分组不能超过4组")
     @Valid
     private List<Group> groups;
 
@@ -36,7 +37,7 @@ public class ProcessStepPricingBatchDTO {
     public static class Group {
         @NotNull(message = "工序类型不能为空")
         @Min(value = 1, message = "工序类型不正确")
-        @Max(value = 2, message = "工序类型不正确")
+        @Max(value = 4, message = "工序类型不正确")
         private Integer stepType;
 
         @NotEmpty(message = "至少选择一道工序")
@@ -48,5 +49,16 @@ public class ProcessStepPricingBatchDTO {
 
         @DecimalMin(value = "0.0001", message = "核定单价必须大于0")
         private BigDecimal billingUnitPrice;
+
+        /** 附加工艺使用：1按单位计费、3所选工序合计固定金额、4免费。 */
+        @Min(value = 1, message = "计价模式不正确")
+        @Max(value = 4, message = "计价模式不正确")
+        private Integer billingMode;
+
+        @Pattern(regexp = "TON|PIECE", message = "附加工艺计费单位仅支持按件或按吨")
+        private String billingBasis;
+
+        @DecimalMin(value = "0", message = "固定总额不能为负数")
+        private BigDecimal billingAmount;
     }
 }

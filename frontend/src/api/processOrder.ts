@@ -6,10 +6,14 @@ import type {
   DraftOrderVO,
   DraftOrderBaseDTO,
   DraftProgressDTO,
+  DraftRollProcessBatchSaveDTO,
+  DraftSubmitDTO,
   DraftSummaryVO,
   FeeResultVO,
   FinishConfigSaveDTO,
   FinishConfigSaveVO,
+  FinishConfigBatchSaveDTO,
+  FinishConfigBatchSaveVO,
   FinishPreviewVO,
   FinishRollBatchDTO,
   OriginalRollImportPreviewVO,
@@ -18,6 +22,7 @@ import type {
   OriginalRollRemarkDTO,
   PlanPreviewVO,
   PrintDTO,
+  PhysicalReprintDTO,
   PrintResultVO,
   ProcessConfigDraftSaveDTO,
   ProcessOrder,
@@ -31,7 +36,9 @@ import type {
   ProcessOrderVoidDTO,
   ProcessOrderSubmitVO,
   ProcessPlanBatchSaveDTO,
+  ProcessPlanItemsBatchSaveDTO,
   ProcessPlanPreviewRequestDTO,
+  ProcessRouteBatchSaveDTO,
   ProcessRoutePreviewDTO,
   ProcessRoutePreviewVO,
   RewindPlanPreviewDTO,
@@ -114,6 +121,14 @@ export function updateOriginalRoll(rollUuid: string, dto: OriginalRollDTO) {
   return request<void>({ url: `/api/process-orders/rolls/${rollUuid}`, method: 'put', data: dto })
 }
 
+export function saveDraftRollProcesses(orderUuid: string, dto: DraftRollProcessBatchSaveDTO) {
+  return request<void>({
+    url: `/api/process-orders/${orderUuid}/original-rolls/process-settings`,
+    method: 'put',
+    data: dto,
+  })
+}
+
 export function updateProcessOrderRemark(uuid: string, dto: ProcessOrderRemarkDTO) {
   return request<void>({ url: `/api/process-orders/${uuid}/remarks`, method: 'put', data: dto })
 }
@@ -156,6 +171,14 @@ export function saveDraftProcessRoute(orderUuid: string, dto: ProcessRoutePrevie
   }
   return request<ProcessRoutePreviewVO>({
     url: `/api/process-orders/${orderUuid}/rolls/${dto.originalUuid}/route-plan`,
+    method: 'put',
+    data: dto,
+  })
+}
+
+export function saveDraftProcessRouteBatch(orderUuid: string, dto: ProcessRouteBatchSaveDTO) {
+  return request<ProcessRoutePreviewVO[]>({
+    url: `/api/process-orders/${orderUuid}/rolls/route-plan/batch`,
     method: 'put',
     data: dto,
   })
@@ -209,10 +232,19 @@ export function saveProcessPlanBatch(orderUuid: string, dto: ProcessPlanBatchSav
   })
 }
 
-export function submitProcessOrderDraft(uuid: string) {
+export function saveProcessPlanItemsBatch(orderUuid: string, dto: ProcessPlanItemsBatchSaveDTO) {
+  return request<PlanPreviewVO[]>({
+    url: `/api/process-orders/${orderUuid}/rolls/process-plan/items-batch`,
+    method: 'put',
+    data: dto,
+  })
+}
+
+export function submitProcessOrderDraft(uuid: string, dto: DraftSubmitDTO) {
   return request<ProcessOrderSubmitVO>({
     url: `/api/process-orders/${uuid}/submit`,
     method: 'post',
+    data: dto,
   })
 }
 
@@ -221,6 +253,14 @@ export function changeOrderStatus(uuid: string, dto: StatusChangeDTO) {
     url: `/api/process-orders/${uuid}/status`,
     method: 'put',
     data: dto,
+  })
+}
+
+export function completeProcessOrder(uuid: string, reason?: string) {
+  return request<void>({
+    url: `/api/process-orders/${uuid}/to-record`,
+    method: 'put',
+    data: reason ? { reason } : undefined,
   })
 }
 
@@ -245,6 +285,21 @@ export function printProcessOrder(uuid: string, dto?: PrintDTO) {
     url: `/api/process-orders/${uuid}/print`,
     method: 'post',
     data: dto,
+  })
+}
+
+export function physicalReprintProcessOrder(uuid: string, dto: PhysicalReprintDTO) {
+  return request<PrintResultVO>({
+    url: `/api/process-orders/${uuid}/physical-reprint`,
+    method: 'post',
+    data: dto,
+  })
+}
+
+export function issueProcessOrder(uuid: string) {
+  return request<PrintResultVO>({
+    url: `/api/process-orders/${uuid}/issue`,
+    method: 'post',
   })
 }
 
@@ -273,6 +328,14 @@ export function backRecordProcessOrder(uuid: string, dto: BackRecordDTO) {
 export function saveFinishConfig(orderUuid: string, rollUuid: string, dto: FinishConfigSaveDTO) {
   return request<FinishConfigSaveVO>({
     url: `/api/process-orders/${orderUuid}/rolls/${rollUuid}/finish-config`,
+    method: 'post',
+    data: dto,
+  })
+}
+
+export function saveFinishConfigBatch(orderUuid: string, dto: FinishConfigBatchSaveDTO) {
+  return request<FinishConfigBatchSaveVO>({
+    url: `/api/process-orders/${orderUuid}/finish-config/batch`,
     method: 'post',
     data: dto,
   })
@@ -331,11 +394,26 @@ export interface ProcessStepDTO {
   originalUuid: string
   stepType: number
   stepName?: string
+  machineUuid?: string
   isMain?: number
   knifeCount?: number
   processWeight?: number
+  billingBasis?: string
+  serviceQuantity?: number
+  billingMode?: 1 | 2 | 3 | 4
+  billingAmount?: number
   unitPrice?: number
   remark?: string
+}
+
+export interface ProcessStepBatchDTO {
+  steps: ProcessStepDTO[]
+}
+
+export interface ProcessStepBatchResult {
+  selectedCount: number
+  createdCount: number
+  updatedCount: number
 }
 
 export interface ProcessStepPricingAdjustmentDTO {
@@ -343,14 +421,19 @@ export interface ProcessStepPricingAdjustmentDTO {
   billingMode: number
   billingQuantity?: number
   billingAmount?: number
+  billingBasis?: 'PIECE' | 'TON'
+  billingUnitPrice?: number
   reason: string
 }
 
 export interface ProcessStepPricingBatchGroupDTO {
-  stepType: 1 | 2
+  stepType: 1 | 2 | 3 | 4
   stepUuids: string[]
   restoreStandard: boolean
   billingUnitPrice?: number
+  billingMode?: 1 | 3 | 4
+  billingBasis?: 'PIECE' | 'TON'
+  billingAmount?: number
 }
 
 export interface ProcessStepPricingBatchDTO {
@@ -363,8 +446,10 @@ export interface ProcessStepPricingBatchDTO {
 export interface ProcessStepPricingBatchPreviewRow {
   stepUuid: string
   originalUuid?: string
-  stepType: 1 | 2
+  stepType: 1 | 2 | 3 | 4
   stepName?: string
+  billingMode: 1 | 2 | 3 | 4
+  billingBasis?: 'PIECE' | 'TON'
   quantity: number
   standardUnitPrice: number
   currentUnitPrice: number
@@ -391,6 +476,14 @@ export interface ProcessStepPricingBatchPreviewVO {
 export function addProcessStep(orderUuid: string, data: ProcessStepDTO) {
   return request<void>({
     url: `/api/process-orders/${orderUuid}/steps`,
+    method: 'post',
+    data,
+  })
+}
+
+export function addProcessStepsBatch(orderUuid: string, data: ProcessStepBatchDTO) {
+  return request<ProcessStepBatchResult>({
+    url: `/api/process-orders/${orderUuid}/steps/batch`,
     method: 'post',
     data,
   })

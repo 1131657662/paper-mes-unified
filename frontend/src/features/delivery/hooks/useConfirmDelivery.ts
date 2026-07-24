@@ -9,6 +9,7 @@ export function useConfirmDelivery() {
     mutationFn: deliveryService.confirm,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queries.delivery._def })
+      queryClient.invalidateQueries({ queryKey: queries.deliveryCustomerSpec._def })
     },
   })
 }

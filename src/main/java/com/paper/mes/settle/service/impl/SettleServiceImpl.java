@@ -34,6 +34,7 @@ import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.ServicePricingFinalizationPolicy;
 import com.paper.mes.settle.dto.ReceiveDTO;
 import com.paper.mes.settle.dto.SettleActionReasonDTO;
 import com.paper.mes.settle.dto.SettleByMonthDTO;
@@ -107,6 +108,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     private static final int STEP_TYPE_SAW = 1;
     private static final int STEP_TYPE_REWIND = 2;
+    private static final int STEP_TYPE_STRIP_SORT = 3;
+    private static final int STEP_TYPE_REPACKAGE = 4;
     private static final int ROLL_NO_VOID = 3;
     private static final int IS_SPARE_YES = 1;
     private static final int IS_REMAIN_YES = 1;
@@ -217,6 +220,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             vo.setFinishRollWeight(stats == null ? BigDecimal.ZERO : stats.finishRollWeight());
             vo.setSawAmount(amount == null ? BigDecimal.ZERO : amount.saw());
             vo.setRewindAmount(amount == null ? BigDecimal.ZERO : amount.rewind());
+            vo.setServiceAmount(amount == null ? BigDecimal.ZERO : amount.service());
             vo.setStandardProcessAmount(amount == null ? BigDecimal.ZERO : amount.standardProcess());
             vo.setPricingAdjustmentAmount(amount == null ? BigDecimal.ZERO : amount.pricingAdjustment());
             vo.setExtraAmount(amount == null ? BigDecimal.ZERO : amount.extra());
@@ -503,7 +507,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void voidSettle(String uuid, SettleActionReasonDTO dto) {
+    public List<String> voidSettle(String uuid, SettleActionReasonDTO dto) {
         businessLockService.lockSettleOrder(uuid);
         SettleOrder settle = requireSettle(uuid);
         ensureActiveSettle(settle);
@@ -511,7 +515,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             throw new BusinessException("已有有效收款，需先撤销收款后再作废结算单");
         }
         List<SettleDetail> details = settleDetails(uuid);
-        businessLockService.lockProcessOrders(details.stream().map(SettleDetail::getOrderUuid).toList());
+        List<String> orderUuids = details.stream().map(SettleDetail::getOrderUuid).distinct().toList();
+        businessLockService.lockProcessOrders(orderUuids);
         Map<String, ProcessOrder> orderByUuid = loadSettleDetailOrders(details);
         for (SettleDetail detail : details) {
             ProcessOrder order = orderByUuid.get(detail.getOrderUuid());
@@ -527,6 +532,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 settle.getUuid(), settle.getSettleNo(),
                 OperationLogService.ACTION_SETTLE_VOID, AuthContextHolder.currentDisplayName(),
                 "作废结算单，原因：" + dto.getReason());
+        return orderUuids;
     }
 
     private List<SettleDetail> normalizeDetailsForInvoiceView(SettleOrder settle, List<SettleDetail> details) {
@@ -555,6 +561,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         detail.setOrderNo(source.getOrderNo());
         detail.setSawAmount(source.getSawAmount());
         detail.setRewindAmount(source.getRewindAmount());
+        detail.setServiceAmount(source.getServiceAmount());
         detail.setStandardProcessAmount(source.getStandardProcessAmount());
         detail.setPricingAdjustmentAmount(source.getPricingAdjustmentAmount());
         detail.setPricingAdjustmentReason(source.getPricingAdjustmentReason());
@@ -659,6 +666,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 .eq(SettleOrder::getUuid, settle.getUuid())
                 .set(SettleOrder::getSawAmount, settle.getSawAmount())
                 .set(SettleOrder::getRewindAmount, settle.getRewindAmount())
+                .set(SettleOrder::getServiceAmount, settle.getServiceAmount())
                 .set(SettleOrder::getExtraAmount, settle.getExtraAmount())
                 .set(SettleOrder::getAmountNoTax, settle.getAmountNoTax())
                 .set(SettleOrder::getTaxAmount, settle.getTaxAmount())
@@ -914,6 +922,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setRewindInvoiceUnitPrice(invoiceUnitPrice(amounts.rewindUnitPrice(), settle.getIsInvoice(), taxRate));
         line.setSawAmount(amounts.sawAmount());
         line.setRewindAmount(amounts.rewindAmount());
+        line.setServiceAmount(amounts.serviceAmount());
         line.setStandardProcessAmount(amounts.standardProcessAmount());
         line.setPricingAdjustmentAmount(amounts.pricingAdjustmentAmount());
         line.setProcessAmount(amounts.processAmount());
@@ -1033,6 +1042,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         BigDecimal rewindWeight = BigDecimal.ZERO;
         BigDecimal sawAmount = BigDecimal.ZERO;
         BigDecimal rewindAmount = BigDecimal.ZERO;
+        BigDecimal serviceAmount = BigDecimal.ZERO;
         BigDecimal standardProcessAmount = BigDecimal.ZERO;
         BigDecimal pricingAdjustmentAmount = BigDecimal.ZERO;
         BigDecimal sawUnitPrice = null;
@@ -1050,10 +1060,14 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 standardProcessAmount = standardProcessAmount.add(standardStepAmount(step));
                 pricingAdjustmentAmount = pricingAdjustmentAmount.add(nz(step.getPricingAdjustmentAmount()));
                 rewindUnitPrice = firstNonNull(rewindUnitPrice, effectiveUnitPrice(step));
+            } else if (isServiceStep(step.getStepType())) {
+                serviceAmount = serviceAmount.add(nz(step.getStepAmount()));
+                standardProcessAmount = standardProcessAmount.add(standardStepAmount(step));
+                pricingAdjustmentAmount = pricingAdjustmentAmount.add(nz(step.getPricingAdjustmentAmount()));
             }
         }
         return new LineAmounts(sawWeight, rewindWeight, sawUnitPrice, rewindUnitPrice,
-                sawAmount, rewindAmount, standardProcessAmount, pricingAdjustmentAmount);
+                sawAmount, rewindAmount, serviceAmount, standardProcessAmount, pricingAdjustmentAmount);
     }
 
     private BigDecimal standardStepAmount(ProcessStep step) {
@@ -1084,6 +1098,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (step.getProcessWeight() != null) {
             parts.add(processWeightText(step));
         }
+        if (isServiceStep(step.getStepType()) && step.getServiceQuantity() != null) {
+            String unit = "PIECE".equals(step.getBillingBasis()) ? "件" : "t";
+            parts.add(step.getServiceQuantity().stripTrailingZeros().toPlainString() + unit);
+        }
         if (effectiveUnitPrice(step) != null) {
             parts.add("单价 " + moneyText(effectiveUnitPrice(step)));
         }
@@ -1106,7 +1124,14 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (stepType != null && stepType == STEP_TYPE_REWIND) {
             return "复卷";
         }
+        if (stepType != null && stepType == STEP_TYPE_STRIP_SORT) return "剥损整理";
+        if (stepType != null && stepType == STEP_TYPE_REPACKAGE) return "重新包装";
         return "工序";
+    }
+
+    private boolean isServiceStep(Integer stepType) {
+        return Integer.valueOf(STEP_TYPE_STRIP_SORT).equals(stepType)
+                || Integer.valueOf(STEP_TYPE_REPACKAGE).equals(stepType);
     }
 
     private BigDecimal firstNonNull(BigDecimal current, BigDecimal next) {
@@ -1140,6 +1165,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private String processText(OriginalRoll roll) {
         if (roll.getProcessMode() != null && roll.getProcessMode() == 3) {
             return "直发";
+        }
+        if (roll.getProcessMode() != null && roll.getProcessMode() == 4) {
+            return "仅附加工艺";
         }
         if (roll.getMainStepType() != null && roll.getMainStepType() == STEP_TYPE_REWIND) {
             return "复卷";
@@ -1252,6 +1280,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             throw new BusinessException("加工单不能为空");
         }
         Customer customer = resolveSingleCustomer(context.orders());
+        requireServicePricingFinalized(context.orders());
         SettleOrder settle = new SettleOrder();
         settle.setSettleNo(nextSettleNo(context.settleDate()));
         settle.setCustomerUuid(customer.getUuid());
@@ -1270,6 +1299,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         SettlementAmounts amounts = sumAmounts(context.orders(), settle.getIsInvoice(), customer);
         settle.setSawAmount(amounts.saw());
         settle.setRewindAmount(amounts.rewind());
+        settle.setServiceAmount(amounts.service());
         settle.setExtraAmount(amounts.extra());
         settle.setAmountNoTax(amounts.noTax());
         settle.setTaxAmount(amounts.tax());
@@ -1281,12 +1311,20 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             detail.setSettleUuid(settle.getUuid());
             ensureOrderNotSettled(detail.getOrderUuid());
             insertSettleDetail(detail);
-            processOrderService.changeStatus(detail.getOrderUuid(), ORDER_STATUS_SETTLED, null);
+            processOrderService.markSettled(detail.getOrderUuid());
         }
         settle.setSnapBill(buildSettleSnapshot(settle, amounts.details(), context.orders()));
         settle.setSnapBillTime(LocalDateTime.now());
         updateSettleSnapshot(settle);
         return settle.getUuid();
+    }
+
+    private void requireServicePricingFinalized(List<ProcessOrder> orders) {
+        List<String> orderUuids = orders.stream().map(ProcessOrder::getUuid).toList();
+        List<ProcessStep> steps = processStepMapper.selectList(new LambdaQueryWrapper<ProcessStep>()
+                .in(ProcessStep::getOrderUuid, orderUuids)
+                .in(ProcessStep::getStepType, List.of(STEP_TYPE_STRIP_SORT, STEP_TYPE_REPACKAGE)));
+        ServicePricingFinalizationPolicy.requireFinalized(steps);
     }
 
     private void ensureOrderNotSettled(String orderUuid) {
@@ -1407,7 +1445,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private String buildSettleSnapshot(SettleOrder settle, List<SettleDetail> details, List<ProcessOrder> orders) {
         List<SettlePrintLineVO> printLines = buildPrintLines(settle, details);
         Map<String, Object> snap = new LinkedHashMap<>();
-        snap.put("schema_version", "1.5");
+        snap.put("schema_version", "1.6");
         snap.put("snapshot_type", "settle_bill");
         snap.put("settle_uuid", settle.getUuid());
         snap.put("settle_no", settle.getSettleNo());
@@ -1424,6 +1462,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         snap.put("tax_amount", settle.getTaxAmount());
         snap.put("saw_amount", settle.getSawAmount());
         snap.put("rewind_amount", settle.getRewindAmount());
+        snap.put("service_amount", settle.getServiceAmount());
         snap.put("extra_amount", settle.getExtraAmount());
         snap.put("total_amount", settle.getTotalAmount());
         snap.put("received_amount", settle.getReceivedAmount());
@@ -1655,7 +1694,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (amount.pendingPriceCount() > 0) {
             throw new BusinessException("存在待核价加工单，请完成核价后再生成结算单");
         }
-        return new SettlementAmounts(amount.saw(), amount.rewind(), amount.extra(), amount.noTax(),
+        return new SettlementAmounts(amount.saw(), amount.rewind(), amount.service(), amount.extra(), amount.noTax(),
                 amount.tax(), amount.total(), amount.details());
     }
 
@@ -1706,7 +1745,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private BigDecimal detailBaseAmount(SettleDetail detail) {
-        return nz(detail.getSawAmount()).add(nz(detail.getRewindAmount())).add(nz(detail.getExtraAmount()))
+        return nz(detail.getSawAmount()).add(nz(detail.getRewindAmount()))
+                .add(nz(detail.getServiceAmount())).add(nz(detail.getExtraAmount()))
                 .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
@@ -1785,6 +1825,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private record SettlementAmounts(
             BigDecimal saw,
             BigDecimal rewind,
+            BigDecimal service,
             BigDecimal extra,
             BigDecimal noTax,
             BigDecimal tax,
@@ -1799,11 +1840,12 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             BigDecimal rewindUnitPrice,
             BigDecimal sawAmount,
             BigDecimal rewindAmount,
+            BigDecimal serviceAmount,
             BigDecimal standardProcessAmount,
             BigDecimal pricingAdjustmentAmount) {
 
         BigDecimal processAmount() {
-            return sawAmount.add(rewindAmount);
+            return sawAmount.add(rewindAmount).add(serviceAmount);
         }
     }
 }

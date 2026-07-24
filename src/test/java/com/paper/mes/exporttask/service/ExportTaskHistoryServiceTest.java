@@ -61,7 +61,8 @@ class ExportTaskHistoryServiceTest {
             LambdaQueryWrapper<ExportTask> wrapper = invocation.getArgument(1);
             assertThat(wrapper.getCustomSqlSegment()).contains(
                     "requester_uuid", "create_time", "task_name", "file_name", "ORDER BY");
-            assertThat(wrapper.getParamNameValuePairs()).containsValues("user-1", 3, "settle", "%JS2026%");
+            assertThat(wrapper.getParamNameValuePairs()).containsValues(
+                    "user-1", 3, "settle", "detail-export", "%JS2026%");
             page.setRecords(List.of(task("task-2"), task("task-1")));
             page.setTotal(42);
             return page;
@@ -71,6 +72,7 @@ class ExportTaskHistoryServiceTest {
         query.setSize(10);
         query.setTaskStatus(3);
         query.setModuleCode("settle");
+        query.setOperationCode("detail-export");
         query.setKeyword("  JS2026  ");
 
         ExportTaskHistoryVO result = service.page(query);

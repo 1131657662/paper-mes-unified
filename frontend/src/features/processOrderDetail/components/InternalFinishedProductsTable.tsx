@@ -1,6 +1,6 @@
 import { Empty, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { FINISH_STATUS, ROLL_NO_STATUS } from '../../../constants/processOrder'
+import { FINISH_SOURCE_TYPE, FINISH_STATUS, ROLL_NO_STATUS } from '../../../constants/processOrder'
 import type { FinishProductionVO, FinishSourceVO } from '../../../types/processOrder'
 import { formatGram, formatKg, formatMm, formatOptionalKg, formatPercent } from '../../../utils/numberFormatters'
 import { calculateFinishedProductTotals, type FinishedProductRow } from './finishedProductRows'
@@ -70,12 +70,15 @@ function sourceShareText(source: FinishSourceVO) {
 
 function renderStatus(finish: FinishProductionVO) {
   const rollStatus = finish.rollNoStatus == null ? undefined : ROLL_NO_STATUS[finish.rollNoStatus]
+  const source = FINISH_SOURCE_TYPE[finish.sourceType ?? 1]
   return (
     <div className="finished-product-tags">
       <Tag color={typeColor(finish)}>{typeText(finish)}</Tag>
-      <Tag color={finish.sourceType === 2 ? 'green' : 'blue'}>{finish.sourceType === 2 ? '直发' : '加工'}</Tag>
+      <Tag color={source?.color}>{source?.text ?? '未知来源'}</Tag>
       {rollStatus && <Tag color={rollStatus.color}>{rollStatus.text}</Tag>}
-      {finish.finishStatus != null && <Tag>{FINISH_STATUS[finish.finishStatus] ?? '未知状态'}</Tag>}
+      {finish.finishStatus != null && <Tag color={FINISH_STATUS[finish.finishStatus]?.color}>
+        {FINISH_STATUS[finish.finishStatus]?.text ?? '未知状态'}
+      </Tag>}
     </div>
   )
 }

@@ -6,7 +6,7 @@ import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.machine.dto.MachineQuery;
 import com.paper.mes.machine.dto.MachineSaveDTO;
-import com.paper.mes.machine.entity.Machine;
+import com.paper.mes.machine.dto.MachineVO;
 import com.paper.mes.machine.service.MachineService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,14 +28,14 @@ public class MachineController {
 
     @GetMapping
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<PageResult<Machine>> page(MachineQuery query) {
+    public R<PageResult<MachineVO>> page(MachineQuery query) {
         return R.success(machineService.pageMachines(query));
     }
 
     @GetMapping("/{uuid}")
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<Machine> detail(@PathVariable String uuid) {
-        return R.success(machineService.getByUuid(uuid));
+    public R<MachineVO> detail(@PathVariable String uuid) {
+        return R.success(machineService.getProfile(uuid));
     }
 
     @PostMapping

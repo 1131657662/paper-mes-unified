@@ -1,0 +1,123 @@
+@media (max-width: 1100px) {
+  .report-insights {
+    grid-template-columns: 1fr;
+  }
+
+  .report-workbench__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1180px) {
+  .report-query-status {
+    grid-template-columns: 1fr;
+  }
+
+  .report-metrics .ant-pro-card-col {
+    width: 33.333333%;
+  }
+
+  .report-filter__core,
+  .report-filter__advanced {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .report-filter__period {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .report-header,
+  .report-filter__core,
+  .report-filter__advanced {
+    grid-template-columns: 1fr;
+  }
+
+  .report-metrics .ant-pro-card-col {
+    width: 100%;
+  }
+
+  .report-header__description {
+    line-height: 1.6;
+  }
+
+  .report-insight__message {
+    grid-template-columns: 1fr;
+  }
+
+  .report-filter-summary {
+    flex-direction: column;
+  }
+
+  .report-query-status .report-filter-summary {
+    flex-direction: row;
+  }
+
+  .report-metric-context {
+    flex-wrap: wrap;
+  }
+
+  .report-metric-context__as-of {
+    width: 100%;
+    margin-inline-start: 0;
+  }
+
+  .report-query-status .report-metric-context--compact {
+    flex-wrap: nowrap;
+  }
+
+  .report-query-status .report-metric-context--compact .report-metric-context__as-of {
+    width: auto;
+    margin-inline-start: auto;
+  }
+
+  .report-insight__message strong,
+  .report-insight__message span {
+    white-space: normal;
+  }
+
+  .report-filter__period {
+    grid-column: auto;
+  }
+
+  .report-trend-head {
+    grid-template-columns: 1fr;
+  }
+
+  .report-trend-summary {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .report-trend-value {
+    padding-inline: 8px;
+  }
+
+  .report-trend-value:first-child {
+    padding-inline-start: 0;
+  }
+
+  .report-trend-value__label,
+  .report-trend-value__main,
+  .report-trend-value__period {
+    text-align: left;
+  }
+
+  .report-header__actions,
+  .report-panel__head--inline,
+  .report-table-block__head {
+    flex-wrap: wrap;
+  }
+
+  .report-bar-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .report-bar-row__track,
+  .report-bar-row b {
+    grid-column: 2;
+    text-align: left;
+  }
+}

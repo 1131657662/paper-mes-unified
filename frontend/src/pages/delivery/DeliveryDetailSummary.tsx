@@ -52,9 +52,9 @@ function overviewItems(order: DeliveryOrder): DeliveryOverviewItem[] {
       value: order.deliveryStatus === 2 ? '已签收' : '待签收',
     },
     {
-      hint: order.settleBlockAction ? SETTLE_BLOCK_ACTION[order.settleBlockAction] : '无结算拦截',
-      label: '改单状态',
-      value: order.deliveryStatus === 1 ? '可调整' : '需先回退',
+      hint: order.deliveryStatus === 2 ? '客户显示可创建更正版，无需回退出库' : (order.settleBlockAction ? SETTLE_BLOCK_ACTION[order.settleBlockAction] : '无结算拦截'),
+      label: '实物单状态',
+      value: order.deliveryStatus === 1 ? '可调整卷与重量' : '实物已锁定',
     },
   ]
 }

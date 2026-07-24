@@ -14,7 +14,9 @@ const MAX_DRAFT_AGE_MS = 7 * 24 * 60 * 60 * 1000
 export interface CreateOrderLocalDraftInput {
   baseInfo?: DraftOrderBaseDTO
   current: number
+  configuredPlanIds: string[]
   orderUuid?: string
+  orderVersion?: number
   plans: Record<string, ProcessPlanDTO>
   previews: Record<string, PlanPreviewVO>
   routePreviews: Record<string, ProcessRoutePreviewVO>
@@ -85,7 +87,9 @@ function parseLocalDraft(value: unknown): CreateOrderLocalDraft | undefined {
   return {
     baseInfo: isBaseInfo(value.baseInfo) ? value.baseInfo : undefined,
     current: typeof value.current === 'number' ? value.current : 0,
+    configuredPlanIds: isStringArray(value.configuredPlanIds) ? value.configuredPlanIds : [],
     orderUuid: optionalString(value.orderUuid),
+    orderVersion: optionalNumber(value.orderVersion),
     plans: isRecord(value.plans) ? (value.plans as Record<string, ProcessPlanDTO>) : {},
     previews: isRecord(value.previews) ? (value.previews as Record<string, PlanPreviewVO>) : {},
     routePreviews: isRecord(value.routePreviews) ? (value.routePreviews as Record<string, ProcessRoutePreviewVO>) : {},
@@ -130,6 +134,10 @@ function isRollDraftArray(value: unknown): value is RollDraft[] {
     && value.every((item) => isRecord(item) && typeof item.localId === 'string')
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
 function isBaseInfo(value: unknown): value is DraftOrderBaseDTO {
   return isRecord(value)
     && typeof value.customerUuid === 'string'
@@ -142,6 +150,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function optionalString(value: unknown) {
   return typeof value === 'string' && value ? value : undefined
+}
+
+function optionalNumber(value: unknown) {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : undefined
 }
 
 function safeStorage() {

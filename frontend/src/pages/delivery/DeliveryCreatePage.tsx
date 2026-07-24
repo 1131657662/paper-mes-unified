@@ -24,7 +24,7 @@ import {
   type DeliveryLineEdit,
 } from './deliverySelectionModel'
 import { useDeliveryCreateInventory } from './useDeliveryCreateInventory'
-import { finishUuidsFromNavigationState } from './deliveryCreateNavigation'
+import { deliveryCreateReturnTarget, finishUuidsFromNavigationState } from './deliveryCreateNavigation'
 import { deliveryAvailableEmptyText } from './deliveryAvailableEmptyText'
 import '../documentModule.css'
 import './DeliveryCreatePage.css'
@@ -37,6 +37,7 @@ export default function DeliveryCreatePage() {
   const initialCustomerUuid = searchParams.get('customerUuid') || undefined
   const initialWarehouseUuid = searchParams.get('warehouseUuid') || undefined
   const initialFinishUuids = finishUuidsFromNavigationState(location.state)
+  const returnTo = deliveryCreateReturnTarget(location.state)
   const customersQuery = useCustomers()
   const warehousesQuery = useWarehouses()
   const createMutation = useCreateDelivery()
@@ -124,7 +125,7 @@ export default function DeliveryCreatePage() {
       <MesPageHeader
         title="新建出库单"
         eyebrow="出库管理"
-        onBack={() => navigate('/delivery-orders')}
+        onBack={() => navigate(returnTo)}
       />
 
       <DeliveryPickupInfoCard
@@ -207,7 +208,7 @@ export default function DeliveryCreatePage() {
         disabled={Boolean(selectionError)}
         loading={createMutation.isPending}
         summary={selectionSummary}
-        onCancel={() => navigate('/delivery-orders')}
+        onCancel={() => navigate(returnTo)}
         onReview={() => setReviewOpen(true)}
         onSubmit={handleSubmit}
       />

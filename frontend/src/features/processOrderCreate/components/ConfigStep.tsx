@@ -1,28 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
-import { Button, Card, Empty, Space, Table, Tag, Typography, message } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { useState } from 'react'
+import { message } from 'antd'
+import type { CustomerProcessPrice } from '../../../types/customer'
 import type { Machine } from '../../../types/machine'
 import type { PlanPreviewVO, ProcessPlanDTO, ProcessRoutePreviewVO } from '../../../types/processOrder'
-import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
+import { useProcessOrderDetail } from '../../processOrderDetail/hooks/useProcessOrderDetail'
 import { defaultPlanForRoll, type DefaultPlanOptions } from '../draftMappers'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
+import { serviceStepsForRoll } from '../serviceStepBatchModel'
+import type { ServiceEditorStatus } from '../serviceStepEditorTypes'
 import type { RollDraft } from '../types'
 import { calculateRollWeightBalance } from '../weightBalanceModel'
-import PlanPreviewPanel from './PlanPreviewPanel'
-import ProcessPlanEditor from './ProcessPlanEditor'
-import ResizableWorkspace from './ResizableWorkspace'
-import WorkbenchRollList from './WorkbenchRollList'
-
-const workbenchCardStyle = {
-  height: 'max(580px, calc(100vh - 310px))',
-  display: 'flex',
-  flexDirection: 'column',
-} as const
+import ConfigStepLight from './ConfigStepLight'
+import ConfigStepWorkspace from './ConfigStepWorkspace'
+import { useAutoPlanPreview } from '../hooks/useAutoPlanPreview'
+import './DraftAdditionalProcesses.css'
+import './ServiceOnlyConfigEditor.css'
+import './ConfigStep.css'
 
 interface Props {
   defaultSpareCount?: number
   defaultPlanOptions?: DefaultPlanOptions
   orderUuid?: string
+  customerPrices?: CustomerProcessPrice[]
   machines: Machine[]
   rolls: RollDraft[]
   selectedId?: string
@@ -44,6 +43,7 @@ export default function ConfigStep({
   defaultSpareCount = 0,
   defaultPlanOptions,
   orderUuid,
+  customerPrices,
   machines,
   rolls,
   selectedId,
@@ -65,8 +65,18 @@ export default function ConfigStep({
   const selected = rolls.find((roll) => roll.localId === selectedId && !lockedRolls[roll.localId])
     ?? rolls.find((roll) => roll.processMode !== 3 && !lockedRolls[roll.localId])
   const [checkedIds, setCheckedIds] = useState<string[]>(selected ? [selected.localId] : [])
+  const [serviceEditorStatus, setServiceEditorStatus] = useState<ServiceEditorStatus>()
   const planDefaults = defaultPlanOptions ?? { spareCount: defaultSpareCount }
   const selectedPlan = selected ? plans[selected.localId] ?? defaultPlanForRoll(selected, planDefaults) : undefined
+  const selectedRolls = rolls.filter((roll) => checkedIds.includes(roll.localId))
+  const selectedServiceRolls = selectedRolls.filter((roll) => roll.processMode !== 3 && !lockedRolls[roll.localId])
+  const serviceOnly = selected?.processMode === 4
+  const detailQuery = useProcessOrderDetail(orderUuid, { enabled: Boolean(orderUuid) })
+  const allSteps = detailQuery.data?.steps ?? []
+  const serviceConfigured = Object.fromEntries(
+    rolls.filter((roll) => roll.uuid).map((roll) => [roll.uuid!, serviceStepsForRoll(allSteps, roll.uuid).length > 0]),
+  )
+  const serviceOnlyRolls = configurableRolls.filter((roll) => roll.processMode === 4)
   const selectedRoutePreview = selected?.uuid ? routePreviews[selected.uuid] : undefined
   const selectedBalance = selected ? calculateRollWeightBalance({
     roll: selected,
@@ -75,7 +85,12 @@ export default function ConfigStep({
     preview: previews[selected.localId],
     routePreview: selectedRoutePreview,
   }) : undefined
-  useAutoPlanPreview({ orderUuid, selected: selectedRoutePreview ? undefined : selected, selectedPlan, onPreviewPlan })
+  useAutoPlanPreview({
+    orderUuid,
+    selected: selectedRoutePreview || serviceOnly ? undefined : selected,
+    selectedPlan,
+    onPreviewPlan,
+  })
 
   const toggle = (localId: string, checked: boolean) => {
     if (lockedRolls[localId]) return
@@ -84,8 +99,18 @@ export default function ConfigStep({
 
   const selectSameSpec = () => {
     if (!selected) return
+    if (selected.processMode === 4) {
+      setCheckedIds(configurableRolls
+        .filter((roll) => roll.processMode === 4 && roll.uuid)
+        .map((roll) => roll.localId))
+      return
+    }
     const ids = rolls
-      .filter((roll) => roll.paperName === selected.paperName && roll.gramWeight === selected.gramWeight && roll.originalWidth === selected.originalWidth)
+      .filter((roll) => roll.processMode === selected.processMode
+        && roll.mainStepType === selected.mainStepType
+        && roll.paperName === selected.paperName
+        && roll.gramWeight === selected.gramWeight
+        && roll.originalWidth === selected.originalWidth)
       .filter((roll) => !lockedRolls[roll.localId])
       .map((roll) => roll.localId)
     setCheckedIds(ids)
@@ -111,7 +136,11 @@ export default function ConfigStep({
 
   const applyToChecked = async () => {
     if (!selectedPlan) return
-    const targets = rolls.filter((roll) => checkedIds.includes(roll.localId) && !lockedRolls[roll.localId] && roll.uuid)
+    const targets = rolls.filter((roll) => checkedIds.includes(roll.localId)
+      && !lockedRolls[roll.localId]
+      && roll.processMode === selected?.processMode
+      && roll.mainStepType === selected?.mainStepType
+      && roll.uuid)
     if (!targets.length) {
       message.warning('请选择已保存的母卷')
       return
@@ -121,7 +150,7 @@ export default function ConfigStep({
 
   if (rolls.length > 0 && configurableRolls.length === 0) {
     return (
-      <LightConfigStep
+      <ConfigStepLight
         lockedRolls={lockedRolls}
         onNext={onNext}
         onPrev={onPrev}
@@ -130,73 +159,48 @@ export default function ConfigStep({
     )
   }
 
-  const rollList = (
-    <WorkbenchRollList
-      data={{ lockedRolls, machines, previews, rolls, routePreviews }}
-      selection={{ checkedIds, selectedId: selected?.localId }}
+  return (
+    <ConfigStepWorkspace
+      data={{
+        allSteps,
+        balance: selectedBalance,
+        checkedIds,
+        customerPrices,
+        defaultSpareCount,
+        detailError: detailQuery.isError,
+        detailLoading: detailQuery.isLoading,
+        lockedRolls,
+        machines,
+        orderUuid,
+        plan: selectedPlan,
+        planDefaults,
+        previews,
+        roll: selected,
+        rolls,
+        routePreview: selectedRoutePreview,
+        routePreviews,
+        saving,
+        selectedServiceRolls,
+        serviceConfigured,
+        serviceEditorStatus,
+        serviceOnly,
+      }}
       actions={{
+        onApplyChecked: applyToChecked,
         onClearSelection: () => setCheckedIds([]),
-        onLockedSelect: (_, lock) => message.info(`该母卷已被 ${lock.ownerLabel} 合并使用，无需单独配置`),
+        onNext: handleNext,
         onOpenRouteDesigner,
+        onPlanChange: (plan) => selected && onPlanChange(selected.localId, plan),
+        onPrev,
+        onPreviewCurrent: previewCurrent,
+        onRetryDetail: () => void detailQuery.refetch(),
+        onSaveCurrent: saveCurrent,
         onSelect: selectRoll,
         onSelectSameSpec: selectSameSpec,
+        onServiceStatusChange: setServiceEditorStatus,
         onToggle: toggle,
       }}
     />
-  )
-
-  const editor = selected && selectedRoutePreview ? (
-    <RouteConfiguredPanel
-      preview={selectedRoutePreview}
-      roll={selected}
-      onOpen={() => onOpenRouteDesigner(selected)}
-    />
-  ) : selected && selectedPlan ? (
-    <ProcessPlanEditor
-      roll={selected}
-      rolls={rolls}
-      machines={machines}
-      plan={selectedPlan}
-      defaultSpareCount={defaultSpareCount}
-      defaultPlanOptions={planDefaults}
-      onChange={(plan) => onPlanChange(selected.localId, plan)}
-    />
-  ) : (
-    <Empty description="请选择母卷" />
-  )
-
-  return (
-    <Card
-      title="母卷加工方案工作台"
-      style={workbenchCardStyle}
-      styles={{ body: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
-    >
-      <div style={{ flex: 1, minHeight: 0 }}>
-        <ResizableWorkspace
-          leftTitle="母卷列表"
-          mainTitle="工艺配置"
-          rightTitle="后端预览"
-          left={rollList}
-          main={editor}
-          right={<PlanPreviewPanel
-            balance={selectedBalance}
-            preview={selected ? previews[selected.localId] : undefined}
-            loading={saving}
-            onPreview={previewCurrent}
-          />}
-          leftInitial={24}
-          rightInitial={30}
-        />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
-        <Space wrap>
-          <Button onClick={onPrev}>上一步</Button>
-          <Button loading={saving} onClick={saveCurrent}>保存当前</Button>
-          <Button loading={saving} onClick={applyToChecked}>应用到选中</Button>
-          <Button type="primary" onClick={onNext}>下一步：预览确认</Button>
-        </Space>
-      </div>
-    </Card>
   )
 
   function selectRoll(localId: string) {
@@ -204,135 +208,30 @@ export default function ConfigStep({
       message.info(`该母卷已被 ${lockedRolls[localId].ownerLabel} 合并使用，无需单独配置`)
       return
     }
+    if (localId !== selected?.localId) setServiceEditorStatus(undefined)
     onSelect(localId)
-    setCheckedIds((prev) => {
-      if (selected?.localId !== localId) return [localId]
-      return prev.includes(localId) ? prev.filter((id) => id !== localId) : [localId]
-    })
   }
-}
 
-function RouteConfiguredPanel({ onOpen, preview, roll }: RouteConfiguredPanelProps) {
-  const finals = preview.outputs?.filter((item) => !item.consumedByNextStage) ?? []
-  const finishWeight = finals.reduce((sum, item) => sum + Number(item.estimateWeight ?? 0), 0)
-  return (
-    <div className="route-configured-panel">
-      <Tag color="blue">链式工艺</Tag>
-      <Typography.Title level={5}>{roll.rollNo || roll.paperName || '母卷'} 已配置多序加工</Typography.Title>
-      <Space wrap>
-        <Tag>工序 {preview.stages?.length ?? 0} 道</Tag>
-        <Tag color="green">最终成品 {finals.length} 件</Tag>
-        <Tag color="cyan">预估 {formatKg(finishWeight)}</Tag>
-      </Space>
-      <Typography.Paragraph type="secondary">
-        该母卷已进入链式路线模式，单道工艺编辑已锁定，避免覆盖多序产物关系。
-      </Typography.Paragraph>
-      <Button type="primary" onClick={onOpen}>进入链式工艺设计</Button>
-    </div>
-  )
-}
-
-interface RouteConfiguredPanelProps {
-  onOpen: () => void
-  preview: ProcessRoutePreviewVO
-  roll: RollDraft
-}
-
-function LightConfigStep({
-  lockedRolls,
-  onNext,
-  onPrev,
-  rolls,
-}: {
-  lockedRolls: ReturnType<typeof mergedSourceLocks>
-  onNext: () => void
-  onPrev: () => void
-  rolls: RollDraft[]
-}) {
-  return (
-    <Card title="无需单独配置的母卷" className="config-light-step">
-      <Table
-        size="small"
-        rowKey="localId"
-        pagination={false}
-        columns={lightColumns(lockedRolls)}
-        dataSource={rolls}
-        scroll={{ x: 760 }}
-      />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
-        <Space wrap>
-          <Button onClick={onPrev}>上一步</Button>
-          <Button type="primary" onClick={onNext}>下一步：预览确认</Button>
-        </Space>
-      </div>
-    </Card>
-  )
-}
-
-function lightColumns(lockedRolls: ReturnType<typeof mergedSourceLocks>): ColumnsType<RollDraft> {
-  return [
-    { title: '母卷', width: 170, render: (_, roll) => rollNoText(roll) },
-    { title: '品名', dataIndex: 'paperName', width: 130 },
-    { title: '规格', width: 150, render: (_, roll) => `${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}` },
-    { title: '重量', width: 120, align: 'right', render: (_, roll) => formatKg(rollTotalWeight(roll)) },
-    { title: '处理方式', width: 140, render: (_, roll) => lightRollStatus(roll, lockedRolls) },
-    { title: '说明', width: 220, render: (_, roll) => lightRollHint(roll, lockedRolls) },
-  ]
-}
-
-function lightRollStatus(roll: RollDraft, lockedRolls: ReturnType<typeof mergedSourceLocks>) {
-  if (lockedRolls[roll.localId]) return <Tag color="blue">合并来源</Tag>
-  if (roll.processMode === 3) return <Tag color="green">直发</Tag>
-  return <Tag>无需配置</Tag>
-}
-
-function lightRollHint(roll: RollDraft, lockedRolls: ReturnType<typeof mergedSourceLocks>) {
-  const lock = lockedRolls[roll.localId]
-  if (lock) return `已由 ${lock.ownerLabel} 合并配置`
-  if (roll.processMode === 3) return '回录阶段沿用母卷信息生成直发成品'
-  return '-'
-}
-
-function rollNoText(roll: RollDraft) {
-  return [roll.rollNo, roll.extraNo].filter(Boolean).join(' / ') || roll.paperName || '未编号母卷'
-}
-
-function rollTotalWeight(roll: RollDraft) {
-  return Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)
-}
-
-function useAutoPlanPreview({ orderUuid, selected, selectedPlan, onPreviewPlan }: AutoPreviewOptions) {
-  const previewRef = useRef(onPreviewPlan)
-  const rollRef = useRef(selected)
-  const planRef = useRef(selectedPlan)
-  const planFingerprint = selectedPlan ? JSON.stringify(selectedPlan) : ''
-  const selectedLocalId = selected?.localId
-  const selectedUuid = selected?.uuid
-
-  useEffect(() => {
-    previewRef.current = onPreviewPlan
-  }, [onPreviewPlan])
-
-  useEffect(() => {
-    rollRef.current = selected
-    planRef.current = selectedPlan
-  }, [selected, selectedPlan])
-
-  useEffect(() => {
-    if (!orderUuid || !selectedUuid || !planFingerprint) return
-    const timer = window.setTimeout(() => {
-      const roll = rollRef.current
-      const plan = planRef.current
-      if (!roll?.uuid || !plan) return
-      previewRef.current(roll, plan).catch(() => undefined)
-    }, 700)
-    return () => window.clearTimeout(timer)
-  }, [orderUuid, selectedLocalId, selectedUuid, planFingerprint])
-}
-
-interface AutoPreviewOptions {
-  orderUuid?: string
-  selected?: RollDraft
-  selectedPlan?: ProcessPlanDTO
-  onPreviewPlan: (roll: RollDraft, plan: ProcessPlanDTO) => Promise<void>
+  function handleNext() {
+    if (detailQuery.isLoading) {
+      message.info('正在读取附加工艺配置，请稍候')
+      return
+    }
+    if (detailQuery.isError) {
+      message.error('附加工艺配置读取失败，请刷新后重试')
+      return
+    }
+    if (serviceEditorStatus?.dirty) {
+      message.warning('当前有尚未应用的附加工艺修改，请先保存当前卷或应用到选中')
+      return
+    }
+    const missing = serviceOnlyRolls.find((roll) => roll.uuid && !serviceConfigured[roll.uuid])
+    if (missing) {
+      onSelect(missing.localId)
+      setCheckedIds((prev) => prev.includes(missing.localId) ? prev : [...prev, missing.localId])
+      message.warning(`母卷 ${rolls.indexOf(missing) + 1} 尚未配置剥损整理或重新包装`)
+      return
+    }
+    onNext()
+  }
 }

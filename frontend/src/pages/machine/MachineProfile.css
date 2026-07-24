@@ -30,6 +30,90 @@
   margin-bottom: 0;
 }
 
+.machine-capability-editor {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius-sm);
+  overflow: hidden;
+}
+
+.machine-capability-row {
+  min-height: 52px;
+  background: var(--mes-color-panel);
+}
+
+.machine-capability-row + .machine-capability-row {
+  border-top: 1px solid var(--mes-color-border-light);
+}
+
+.machine-capability-row.is-selected {
+  background: var(--mes-color-soft);
+}
+
+.machine-capability-identity {
+  display: flex;
+  min-height: 52px;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+}
+
+.machine-capability-identity > div {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.machine-capability-identity .ant-tag,
+.machine-capability-tags .ant-tag {
+  margin-inline-end: 0;
+}
+
+.machine-capability-fields {
+  display: grid;
+  grid-template-columns: 86px 110px repeat(4, minmax(132px, 1fr));
+  gap: 12px;
+  align-items: end;
+  padding: 14px 16px 16px 38px;
+  border-top: 1px solid var(--mes-color-border-light);
+  background: var(--mes-color-panel);
+}
+
+.machine-capability-fields label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.machine-capability-fields label > span {
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.machine-capability-fields .ant-input-number {
+  width: 100%;
+}
+
+.machine-capability-fields .ant-switch {
+  align-self: flex-start;
+  margin-block: 8px;
+}
+
+.machine-capability-fields .machine-capability-remark {
+  grid-column: 1 / -1;
+}
+
+.machine-capability-tags {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .machine-detail-overview {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -88,11 +172,24 @@
   .machine-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .machine-capability-fields {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+
+  .machine-capability-fields .machine-capability-remark {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 720px) {
   .machine-detail-overview,
   .machine-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .machine-capability-fields {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px;
   }
 }

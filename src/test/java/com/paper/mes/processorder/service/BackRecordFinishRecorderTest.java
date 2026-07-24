@@ -113,6 +113,28 @@ class BackRecordFinishRecorderTest {
         assertThat(finish.getFinishWidth()).isEqualTo(800);
     }
 
+    @Test
+    void record_scrappedFinishWithoutDto_skipsBackRecord() {
+        FinishRoll finish = finish(false, 1000);
+        finish.setFinishStatus(4);
+
+        recorder.record(List.of(), context(finish, source(1, 1200), true));
+
+        verify(finishRollMapper, never()).updateById(finish);
+    }
+
+    @Test
+    void record_scrappedFinishWithDto_rejectsInvalidSubmission() {
+        FinishRoll finish = finish(false, 1000);
+        finish.setFinishStatus(4);
+
+        assertThatThrownBy(() -> recorder.record(
+                List.of(dto(1000, "88.500")), context(finish, source(1, 1200), true)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("无效记录");
+        verify(finishRollMapper, never()).updateById(finish);
+    }
+
     private BackRecordFinishRecorder.Context context(FinishRoll finish, OriginalRoll source,
                                                       boolean withRelation) {
         List<FinishOriginalRel> relations = withRelation ? List.of(relation(finish, source)) : List.of();

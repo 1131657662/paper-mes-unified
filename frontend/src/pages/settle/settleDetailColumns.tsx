@@ -14,6 +14,7 @@ export function buildSettleDetailColumns(extraFeeByOrder: Record<string, string>
     { title: '加工单号', dataIndex: 'orderNo', fixed: 'left', width: 150 },
     { title: '锯纸费', dataIndex: 'sawAmount', align: 'right', width: 110, render: formatMoney },
     { title: '复卷费', dataIndex: 'rewindAmount', align: 'right', width: 110, render: formatMoney },
+    { title: '服务工序费', dataIndex: 'serviceAmount', align: 'right', width: 120, render: formatMoney },
     {
       title: '计价调整',
       dataIndex: 'pricingAdjustmentAmount',

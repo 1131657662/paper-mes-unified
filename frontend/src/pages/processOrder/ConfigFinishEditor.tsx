@@ -1,5 +1,6 @@
 import { Button, Empty, Space } from 'antd'
 import { ArrowLeftOutlined, ArrowRightOutlined, CopyOutlined, SaveOutlined } from '@ant-design/icons'
+import MesTooltip from '../../components/biz/MesTooltip'
 import FinishConfigPanel from '../../components/processOrder/FinishConfigPanel'
 import type { FinishConfigSaveDTO, OriginalRoll, ProcessOrderDetailVO } from '../../types/processOrder'
 
@@ -50,8 +51,16 @@ function EditorFooter({ actions, rollCount, state }: { actions: EditorActions; r
   return (
     <div className="config-finish-editor__footer">
       <Space>
-        <Button icon={<SaveOutlined />} loading={state.saving} type="primary" onClick={actions.onSave}>保存当前配置</Button>
-        <Button disabled={state.checkedCount === 0} icon={<CopyOutlined />} onClick={actions.onCopy}>复制到已选母卷 ({state.checkedCount})</Button>
+        <MesTooltip title={!state.currentRoll ? '请先选择要配置的母卷' : undefined}>
+          <span className="config-finish-action-slot">
+            <Button disabled={!state.currentRoll} icon={<SaveOutlined />} loading={state.saving} type="primary" onClick={actions.onSave}>保存当前配置</Button>
+          </span>
+        </MesTooltip>
+        <MesTooltip title={state.checkedCount === 0 ? '请先在左侧勾选目标母卷' : undefined}>
+          <span className="config-finish-action-slot">
+            <Button disabled={state.checkedCount === 0} icon={<CopyOutlined />} onClick={actions.onCopy}>复制到已选母卷 ({state.checkedCount})</Button>
+          </span>
+        </MesTooltip>
       </Space>
       <Space>
         <Button disabled={state.selectedIndex === 0} icon={<ArrowLeftOutlined />} onClick={actions.onPrevious}>上一卷</Button>

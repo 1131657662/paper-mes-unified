@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { voidProcessOrder } from '../../../api/processOrder'
-import { queries } from '../../../queries'
+import { invalidateProcessOrderReadModels } from './invalidateProcessOrderReadModels'
 
 interface VoidOrderParams {
   orderUuid: string
@@ -14,9 +14,7 @@ export function useVoidProcessOrder() {
     mutationFn: ({ orderUuid, reason }: VoidOrderParams) =>
       voidProcessOrder(orderUuid, { reason }),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: queries.processOrderDetail.detail(variables.orderUuid).queryKey,
-      })
+      await invalidateProcessOrderReadModels(queryClient, variables.orderUuid)
     },
   })
 }

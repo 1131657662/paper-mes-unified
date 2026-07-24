@@ -1,0 +1,172 @@
+.report-metric-context__action {
+  flex-shrink: 0;
+  color: var(--mes-color-text-secondary);
+}
+
+.report-metric-catalog-hint,
+.report-metric-catalog-error {
+  margin-bottom: 16px;
+}
+
+.report-metric-catalog-layout {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.report-metric-catalog-history {
+  min-width: 0;
+  padding-inline-end: 16px;
+  border-inline-end: 1px solid var(--mes-color-border-light);
+}
+
+.report-metric-catalog-history__head,
+.report-metric-release-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.report-metric-catalog-history__head span,
+.report-metric-release-panel__head > span {
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.report-metric-release-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-metric-release-item {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 10px 10px 12px;
+  border: 0;
+  border-inline-start: 3px solid transparent;
+  background: transparent;
+  color: var(--mes-color-text);
+  cursor: pointer;
+  font: inherit;
+  text-align: start;
+}
+
+.report-metric-release-item:hover,
+.report-metric-release-item--selected {
+  background: var(--mes-color-soft);
+}
+
+.report-metric-release-item:focus-visible {
+  outline: 2px solid var(--mes-color-primary);
+  outline-offset: -2px;
+}
+
+.report-metric-release-item--selected {
+  border-inline-start-color: var(--mes-color-primary);
+}
+
+.report-metric-release-item__head,
+.report-metric-release-item__meta,
+.report-metric-release-item__foot {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.report-metric-release-item__head {
+  justify-content: space-between;
+}
+
+.report-metric-release-item__head strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-metric-release-item__meta {
+  flex-wrap: wrap;
+}
+
+.report-metric-release-item__meta .ant-tag {
+  margin: 0;
+}
+
+.report-metric-release-item__foot {
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.report-metric-release-panel {
+  min-width: 0;
+}
+
+.report-metric-release-panel__head > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-metric-release-panel__head .ant-tag {
+  margin: 0;
+}
+
+.report-metric-release-metadata {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--mes-color-border-light);
+  background: var(--mes-color-bg);
+}
+
+.report-metric-version-table .ant-table-cell {
+  vertical-align: top;
+}
+
+.report-metric-version-name {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.report-metric-version-name span {
+  overflow: hidden;
+  color: var(--mes-color-text-muted);
+  font-family: monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-metric-version-detail pre {
+  max-height: 160px;
+  margin: 0;
+  overflow: auto;
+  padding: 8px;
+  background: var(--mes-color-soft);
+  color: var(--mes-color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 1143px) {
+  .report-metric-catalog-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .report-metric-catalog-history {
+    max-height: 230px;
+    overflow: auto;
+    padding: 0 0 14px;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--mes-color-border-light);
+  }
+}

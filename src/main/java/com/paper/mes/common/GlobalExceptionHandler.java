@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<R<Void>> handleBusiness(BusinessException ex) {
         R<Void> body = R.fail(ex.getCode(), ex.getErrorCode(), ex.getMessage());
-        return ResponseEntity.status(authStatus(ex.getCode())).body(body);
+        return ResponseEntity.status(httpStatus(ex.getCode())).body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -69,6 +69,7 @@ public class GlobalExceptionHandler {
      * 非法参数（如越界的状态码）属客户端输入错误，返回 400 而非 500。
      */
     @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public R<Void> handleIllegalArgument(IllegalArgumentException ex) {
         return R.fail(ResultCode.BAD_REQUEST, ex.getMessage());
     }
@@ -127,10 +128,8 @@ public class GlobalExceptionHandler {
         return error.getField() + ": " + error.getDefaultMessage();
     }
 
-    private HttpStatus authStatus(int code) {
-        if (code == ResultCode.UNAUTHORIZED) return HttpStatus.UNAUTHORIZED;
-        if (code == ResultCode.FORBIDDEN) return HttpStatus.FORBIDDEN;
-        if (code == ResultCode.TOO_MANY_REQUESTS) return HttpStatus.TOO_MANY_REQUESTS;
-        return HttpStatus.OK;
+    private HttpStatus httpStatus(int code) {
+        HttpStatus status = HttpStatus.resolve(code);
+        return status == null ? HttpStatus.BAD_REQUEST : status;
     }
 }

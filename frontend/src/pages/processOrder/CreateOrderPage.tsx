@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { Card, Spin, Steps } from 'antd'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import BaseInfoStep from '../../features/processOrderCreate/components/BaseInfoStep'
 import ConfigStep from '../../features/processOrderCreate/components/ConfigStep'
 import PreviewStep from '../../features/processOrderCreate/components/PreviewStep'
@@ -24,19 +26,51 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
   const navigate = useNavigate()
   const pageRef = useRef<HTMLDivElement | null>(null)
   const state = useCreateOrderPage(draftUuid, { resetLocalDraft })
+  const discardedSnapshot = useRef<ReturnType<typeof state.captureSnapshot>>()
+  const discardChanges = () => {
+    if (!discardedSnapshot.current) return
+    state.restoreSnapshot(discardedSnapshot.current)
+    discardedSnapshot.current = undefined
+  }
+  const { clearDirty, markDirty, runIfClean } = useUnsavedChangesGuard({ onDiscard: discardChanges })
+  const markEdited = () => {
+    if (!discardedSnapshot.current) discardedSnapshot.current = state.captureSnapshot()
+    markDirty()
+  }
+  const clearDirtyAfterSuccess = () => {
+    discardedSnapshot.current = undefined
+    clearDirty()
+  }
   const createAnother = () => navigate(`/process-orders/create?fresh=${Date.now()}`, { replace: true })
+  const handleSubmit = async () => {
+    if (await state.handleSubmit()) clearDirtyAfterSuccess()
+  }
 
   useEffect(() => {
     scrollCreatePageToTop(pageRef.current)
   }, [state.current, state.submitResult?.orderUuid])
 
+  if (state.loadError) {
+    return (
+      <CreateOrderLoadError
+        kind={state.loadError}
+        onBack={() => navigate('/process-orders')}
+        onRetry={() => void state.retryLoad()}
+      />
+    )
+  }
+
+  if (state.loadingPage) {
+    return <Spin wrapperClassName="mes-spin-fill process-order-create-spin" spinning />
+  }
+
   return (
-    <Spin wrapperClassName="mes-spin-fill process-order-create-spin" spinning={state.loadingDraft}>
+    <Spin wrapperClassName="mes-spin-fill process-order-create-spin" spinning={state.loadingPage}>
       <div ref={pageRef} className="mes-scroll-page mes-form-page">
         <MesPageHeader
           backText="返回列表"
           eyebrow="加工单"
-          onBack={() => navigate('/process-orders')}
+          onBack={() => runIfClean(() => navigate('/process-orders'))}
           title="新建加工单"
         />
         <Card className="mes-form-page__steps">
@@ -48,18 +82,18 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             warehouses={state.warehouseOptions}
             initialValue={state.baseInfo}
             loading={state.creatingDraft || state.savingBase}
-            onChange={state.handleBaseInfoChange}
-            onNext={state.handleBaseNext}
+            onChange={(value) => { markEdited(); state.handleBaseInfoChange(value) }}
+            onNext={async (value) => { if (await state.handleBaseNext(value)) clearDirtyAfterSuccess() }}
           />
         )}
         {state.current === 1 && (
           <RollInputStep
             rolls={state.rolls}
             loading={state.savingRolls}
-            onChange={state.setRolls}
+            onChange={(value) => { markEdited(); state.setRolls(value) }}
             onImportPreview={state.handleImportPreview}
-            onPrev={() => state.setCurrent(0)}
-            onNext={state.handleRollsNext}
+            onPrev={() => runIfClean(() => state.setCurrent(0))}
+            onNext={async () => { if (await state.handleRollsNext()) clearDirtyAfterSuccess() }}
           />
         )}
         {state.current === 2 && (
@@ -68,10 +102,10 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             rolls={state.rolls}
             selectedId={state.selectedId}
             loading={state.updatingRolls}
-            onSelect={state.setSelectedId}
-            onChange={state.setRolls}
-            onPrev={() => state.setCurrent(1)}
-            onNext={state.handleProcessNext}
+            onSelect={(value) => runIfClean(() => state.setSelectedId(value))}
+            onChange={(value) => { markEdited(); state.setRolls(value) }}
+            onPrev={() => runIfClean(() => state.setCurrent(1))}
+            onNext={async () => { if (await state.handleProcessNext()) clearDirtyAfterSuccess() }}
           />
         )}
         {state.current === 3 && (
@@ -79,6 +113,7 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             defaultSpareCount={state.defaultSpareCount}
             defaultPlanOptions={state.defaultPlanOptions}
             orderUuid={state.orderUuid}
+            customerPrices={state.customerProcessPrices}
             machines={state.machines}
             rolls={state.rolls}
             selectedId={state.selectedId}
@@ -87,15 +122,17 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             routePreviews={state.routePreviews}
             saving={state.savingWorkbench}
             onOpenRouteDesigner={(roll) => {
-              if (state.orderUuid && roll.uuid) navigate(`/process-orders/create/${state.orderUuid}/routes/${roll.uuid}`)
+              if (state.orderUuid && roll.uuid) {
+                runIfClean(() => navigate(`/process-orders/create/${state.orderUuid}/routes/${roll.uuid}`))
+              }
             }}
-            onSelect={state.setSelectedId}
-            onPlanChange={state.handlePlanChange}
+            onSelect={(value) => runIfClean(() => state.setSelectedId(value))}
+            onPlanChange={(localId, plan) => { markEdited(); state.handlePlanChange(localId, plan) }}
             onPreviewPlan={state.handlePreviewPlan}
-            onSavePlan={state.handleSavePlan}
-            onSavePlanBatch={state.handleSavePlanBatch}
-            onPrev={() => state.setCurrent(2)}
-            onNext={state.handleConfigNext}
+            onSavePlan={async (roll, plan) => { if (await state.handleSavePlan(roll, plan)) clearDirtyAfterSuccess() }}
+            onSavePlanBatch={async (rolls, plan) => { if (await state.handleSavePlanBatch(rolls, plan)) clearDirtyAfterSuccess() }}
+            onPrev={() => runIfClean(() => state.setCurrent(2))}
+            onNext={async () => { if (await state.handleConfigNext()) clearDirtyAfterSuccess() }}
           />
         )}
         {state.current === 4 && (
@@ -104,21 +141,51 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             plans={state.plans}
             previews={state.previews}
             routePreviews={state.routePreviews}
+            serviceConfigured={state.serviceConfigured}
             submitting={state.submitting}
             submitResult={state.submitResult}
-            onBackToList={() => navigate('/process-orders')}
+            onBackToList={() => runIfClean(() => navigate('/process-orders'))}
             onCreateAnother={createAnother}
-            onPrev={() => state.setCurrent(3)}
+            onPrev={() => runIfClean(() => state.setCurrent(3))}
             onEditRoll={(localId) => {
-              state.setSelectedId(localId)
-              state.setCurrent(3)
+              runIfClean(() => {
+                state.setSelectedId(localId)
+                state.setCurrent(3)
+              })
             }}
-            onSubmit={state.handleSubmit}
+            onSubmit={() => void handleSubmit()}
             onViewDetail={(orderUuid) => navigate(`/process-orders/${orderUuid}`)}
           />
         )}
       </div>
     </Spin>
+  )
+}
+
+export function CreateOrderLoadError({ kind, onBack, onRetry }: {
+  kind: 'draft' | 'reference' | 'settings'
+  onBack: () => void
+  onRetry: () => void
+}) {
+  const isDraft = kind === 'draft'
+  const isSettings = kind === 'settings'
+  return (
+    <div className="mes-scroll-page mes-form-page">
+      <MesPageHeader backText="返回列表" eyebrow="加工单" title="新建加工单" onBack={onBack} />
+      <QueryLoadErrorAlert
+        message={isDraft
+          ? '加工单草稿加载失败'
+          : isSettings
+            ? '加工单运行参数加载失败'
+            : '新建加工单基础资料加载失败'}
+        description={isDraft
+          ? '当前空白不代表草稿不存在，重新加载成功前不会覆盖或保存草稿。'
+          : isSettings
+            ? '自动成品配置和备用卷号参数未完整加载，为避免使用错误默认值，当前暂停录入。'
+            : '客户、仓库或机台资料未完整加载，为避免使用错误默认值，当前暂停录入。'}
+        onRetry={onRetry}
+      />
+    </div>
   )
 }
 

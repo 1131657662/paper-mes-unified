@@ -37,6 +37,19 @@ public class ExportTaskLifecycleService {
         taskExecutor.submit(taskUuid);
     }
 
+    public boolean retryScheduled(ExportTask task, CurrentUser recipient) {
+        if (!recipient.getUuid().equals(task.getRequesterUuid()) || !isRetryable(task)) return false;
+        if (!permissionChecker.hasRolePermission(recipient.getRoleCode(),
+                handlerRegistry.require(task.getTaskType()).requiredPermission())) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "接收人没有报表权限");
+        }
+        if (attemptsExhausted(task)) throw new BusinessException("导出任务已达到最大重试次数");
+        if (resetForRetry(task.getUuid()) == 0) return false;
+        eventPublisher.publish(task.getRequesterUuid(), task.getUuid(), STATUS_QUEUED);
+        taskExecutor.submit(task.getUuid());
+        return true;
+    }
+
     public void cancel(String taskUuid) {
         CurrentUser user = currentUser();
         ExportTask task = requireAccessible(taskUuid, user);

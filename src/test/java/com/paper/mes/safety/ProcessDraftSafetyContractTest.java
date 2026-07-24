@@ -25,7 +25,10 @@ class ProcessDraftSafetyContractTest {
         String routeManager = source(ROUTE_DRAFT_MANAGER);
 
         assertContainsAll(slice(draftService, "public void saveProcessConfig", "public PlanPreviewVO previewProcessPlan"),
-                "saveProcessPlan(orderUuid, rollUuid, processPlanMapper.fromSaveDto(dto));");
+                "saveProcessPlan(orderUuid, rollUuid, processPlanMapper.fromSaveDto(dto), expectedVersion);");
+        assertContainsAll(slice(draftService, "public void saveBaseInfo", "public void saveDraftProgress"),
+                "versionGuard.assertExpected(order, dto.getExpectedVersion());",
+                "ConcurrencyGuard.requireRowUpdated(processOrderMapper.updateById(order));");
         assertContainsAll(slice(planManager, "private PlanPreviewVO previewOnly", "private PlanPreviewVO errorPreview"),
                 "orderService.previewRewindPlan(orderUuid, roll.getUuid(), planMapper.toPreviewDto(plan))");
         assertContainsAll(slice(draftService, "private ProcessOrderSubmitVO generateFinishConfigs",
@@ -37,14 +40,26 @@ class ProcessDraftSafetyContractTest {
                 "routeDraftManager.isRouteDraft(draft)",
                 "businessLockService.lockProcessOrders(List.of(orderUuid));",
                 "ConcurrencyGuard.requireRowUpdated(processOrderMapper.updateById(order));");
+        assertContainsAll(slice(draftService,
+                        "public ProcessOrderSubmitVO submit(String orderUuid, Integer expectedVersion)",
+                        "private void copyBaseFields"),
+                "versionGuard.assertExpected(order, expectedVersion);");
+        assertContainsAll(slice(draftService, "private void validateSubmit", "private ProcessOrderSubmitVO generateFinishConfigs"),
+                "ProcessModePolicy.isServiceOnly(roll.getProcessMode())",
+                "continue;");
+        assertContainsAll(slice(draftService, "private ProcessOrderSubmitVO generateFinishConfigs", "private Set<String> coveredByMultiSourceDrafts"),
+                "serviceOnlyConfig()",
+                "processOrderService.saveFinishConfig(order.getUuid(), roll.getUuid(), serviceOnlyConfig());");
         assertContainsAll(planManager,
                 "businessLockService.lockProcessOrders(List.of(orderUuid));",
-                "upsertDraft(orderUuid, rollUuid, plan, preview)");
+                "versionGuard.assertExpected(order, expectedVersion);",
+                "versionGuard.advance(orderUuid, expectedVersion);",
+                "upsertDraft(orderUuid, roll.getUuid(), plan, preview)");
         assertContainsAll(slice(routeManager,
-                        "public ProcessRoutePreviewVO save(String orderUuid, ProcessRoutePreviewDTO dto)",
+                "public ProcessRoutePreviewVO save(String orderUuid, ProcessRoutePreviewDTO dto)",
                         "public boolean isRouteDraft"),
                 "businessLockService.lockProcessOrders(List.of(orderUuid));",
-                "upsertDraft(orderUuid, roll.getUuid(), dto, preview)");
+                "upsertDraft(order.getUuid(), roll.getUuid(), dto, preview)");
 
         assertTrue(!draftService.contains("private String previewJson("),
                 "draft service must not keep a second preview JSON path");

@@ -1,18 +1,17 @@
 import { Alert, Tag } from 'antd'
-import type { ReportDetailVO, ReportOverviewVO } from '../../../types/report'
+import type { ReportOverviewVO } from '../../../types/report'
+import type { ReportThresholdContext, ReportThresholdItem } from '../../reportAlert/types'
 import { formatMoney, formatPercent } from '../utils/reportFormatters'
 
 interface Props {
-  details?: ReportDetailVO[]
   overview?: ReportOverviewVO
+  thresholds?: ReportThresholdContext
 }
 
-export default function ReportInsightStrip({ details = [], overview }: Props) {
-  const insights = buildInsights(overview, details)
-
+export default function ReportInsightStrip({ overview, thresholds }: Props) {
   return (
     <div className="report-insights">
-      {insights.map((item) => (
+      {buildInsights(overview, thresholds).map((item) => (
         <Alert
           key={item.title}
           className="report-insight"
@@ -37,39 +36,41 @@ function InsightMessage({ item }: { item: Insight }) {
     <div className="report-insight__message">
       <Tag color={tagColor(item.type)}>{item.tag}</Tag>
       <strong>{item.title}</strong>
-      <span>{item.detail}</span>
+      <span title={item.detail}>{item.detail}</span>
     </div>
   )
 }
 
-function buildInsights(overview: ReportOverviewVO | undefined, details: ReportDetailVO[]): Insight[] {
+function buildInsights(overview?: ReportOverviewVO, context?: ReportThresholdContext): Insight[] {
   const settled = Number(overview?.settledAmount ?? 0)
   const unreceived = Number(overview?.unreceivedAmount ?? 0)
-  const pendingSettle = Number(overview?.pendingSettleAmount ?? 0)
-  const lossRatio = Number(overview?.lossRatio ?? 0)
-  const rewind = Number(overview?.rewindAmount ?? 0)
-  const saw = Number(overview?.sawAmount ?? 0)
-  const unreceivedRatio = settled > 0 ? (unreceived / settled) * 100 : 0
-  const base = [cashInsight(unreceived, pendingSettle, unreceivedRatio), lossInsight(lossRatio), processInsight(saw, rewind)]
-  const anomaly = balanceInsight(details)
-  return anomaly ? [anomaly, ...base] : base
+  const ratio = settled > 0 ? (unreceived / settled) * 100 : 0
+  return [
+    cashInsight(unreceived, Number(overview?.pendingSettleAmount ?? 0), ratio,
+      threshold(context, 'UNRECEIVED_RATIO')),
+    lossInsight(Number(overview?.lossRatio ?? 0), threshold(context, 'LOSS_RATIO')),
+    processInsight(Number(overview?.sawAmount ?? 0), Number(overview?.rewindAmount ?? 0)),
+  ]
 }
 
-function cashInsight(unreceived: number, pending: number, ratio: number): Insight {
+function cashInsight(unreceived: number, pending: number, ratio: number,
+                     rule?: ReportThresholdItem): Insight {
+  const alerted = isTriggered(ratio, rule)
   return {
-    detail: `已结算未收 ${formatMoney(unreceived)}，占已结算 ${formatPercent(ratio)}；待结算 ${formatMoney(pending)}`,
-    tag: ratio >= 35 ? '关注' : '回款',
-    title: ratio >= 35 ? '未收占比较高' : '回款压力可控',
-    type: ratio >= 35 ? 'warning' : 'success',
+    detail: `已结算未收 ${formatMoney(unreceived)}，占已结算 ${formatPercent(ratio)}；待结算 ${formatMoney(pending)}${ruleText(rule)}`,
+    tag: alerted ? '关注' : '回款',
+    title: alerted ? '未收占比较高' : rule ? '回款压力可控' : '回款结构',
+    type: alerted ? severityType(rule) : rule ? 'success' : 'info',
   }
 }
 
-function lossInsight(ratio: number): Insight {
+function lossInsight(ratio: number, rule?: ReportThresholdItem): Insight {
+  const alerted = isTriggered(ratio, rule)
   return {
-    detail: `当前损耗率 ${formatPercent(ratio)}，建议结合产品和工艺维度定位高损耗来源`,
-    tag: ratio >= 5 ? '异常' : '损耗',
-    title: ratio >= 5 ? '损耗率偏高' : '损耗处于常规范围',
-    type: ratio >= 5 ? 'error' : 'info',
+    detail: `当前损耗率 ${formatPercent(ratio)}${ruleText(rule)}`,
+    tag: alerted ? '异常' : '损耗',
+    title: alerted ? '损耗率偏高' : rule ? '损耗处于阈值内' : '损耗结构',
+    type: alerted ? severityType(rule) : 'info',
   }
 }
 
@@ -82,18 +83,37 @@ function processInsight(saw: number, rewind: number): Insight {
   }
 }
 
-function balanceInsight(details: ReportDetailVO[]): Insight | undefined {
-  const positiveDifferences = details.filter((item) => Number(item.finishWeight ?? 0) > Number(item.originalWeight ?? 0) + 0.001)
-  if (positiveDifferences.length === 0) return undefined
-  return {
-    detail: `${positiveDifferences.length} 张加工单的成品重量高于原纸重量；业务允许该情况，建议在明细备注中记录原因`,
-    tag: '重量', title: '存在成品重量正差', type: 'info',
-  }
-}
-
 function tagColor(type: Insight['type']) {
   if (type === 'error') return 'error'
   if (type === 'warning') return 'warning'
   if (type === 'success') return 'success'
   return 'blue'
+}
+
+function threshold(context: ReportThresholdContext | undefined, signalCode: string) {
+  return context?.thresholds.find((item) => item.signalCode === signalCode)
+}
+
+function isTriggered(value: number, rule?: ReportThresholdItem) {
+  if (!rule) return false
+  if (rule.comparisonOperator === 'GT') return value > rule.thresholdValue
+  if (rule.comparisonOperator === 'GTE') return value >= rule.thresholdValue
+  if (rule.comparisonOperator === 'LT') return value < rule.thresholdValue
+  return value <= rule.thresholdValue
+}
+
+function ruleText(rule?: ReportThresholdItem) {
+  if (!rule) return '；未配置生效阈值'
+  return `；预警线 ${operatorText(rule.comparisonOperator)} ${formatPercent(rule.thresholdValue)}（${rule.scopeLabel}）`
+}
+
+function operatorText(operator: ReportThresholdItem['comparisonOperator']) {
+  if (operator === 'GT') return '>'
+  if (operator === 'GTE') return '≥'
+  if (operator === 'LT') return '<'
+  return '≤'
+}
+
+function severityType(rule?: ReportThresholdItem): Insight['type'] {
+  return rule?.severity === 2 ? 'error' : 'warning'
 }

@@ -1,0 +1,15 @@
+.service-only-config-editor {
+  display: grid;
+  min-width: 0;
+}
+
+.process-config-editor-stack {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.process-config-editor-stack .service-only-config-editor {
+  border-top: 1px solid var(--mes-color-border-light);
+  padding-top: 20px;
+}

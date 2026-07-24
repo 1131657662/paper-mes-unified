@@ -10,6 +10,10 @@ import lombok.Data;
 @Data
 public class ProcessConfigDraftSaveDTO {
 
+    @jakarta.validation.constraints.NotNull(message = "草稿版本不能为空")
+    @jakarta.validation.constraints.Min(value = 0, message = "草稿版本不能小于0")
+    private Integer expectedVersion;
+
     @NotNull(message = "工艺配置不能为空")
     @Valid
     private FinishConfigSaveDTO config;

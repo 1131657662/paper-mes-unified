@@ -40,6 +40,30 @@ class ProcessOrderPrintableConfigValidatorTest {
                 .hasMessageContaining("R002");
     }
 
+    @Test
+    void serviceOnly_withFormalFinish_allowsPrintWithoutMainStep() {
+        OriginalRoll serviceRoll = roll("roll-1", "R001");
+        serviceRoll.setProcessMode(4);
+
+        assertThatCode(() -> ProcessOrderPrintableConfigValidator.validate(
+                List.of(serviceRoll), List.of(finish("finish-1", "R001")),
+                List.of(), List.of(relation("finish-1", "roll-1"))))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void scrappedFormalFinish_doesNotSatisfyPrintableConfiguration() {
+        OriginalRoll roll = roll("roll-1", "R001");
+        FinishRoll finish = finish("finish-1", "R001");
+        finish.setFinishStatus(4);
+
+        assertThatThrownBy(() -> ProcessOrderPrintableConfigValidator.validate(
+                List.of(roll), List.of(finish), List.of(step("roll-1")),
+                List.of(relation("finish-1", "roll-1"))))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("R001");
+    }
+
     private OriginalRoll roll(String uuid, String rollNo) {
         OriginalRoll roll = new OriginalRoll();
         roll.setUuid(uuid);

@@ -2,8 +2,10 @@ package com.paper.mes.processorder.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -22,11 +24,15 @@ public class FinishConfigSaveDTO {
     private String machineUuid;
 
     @Min(value = 0, message = "备用号数量不能小于 0")
+    @Max(value = 500, message = "备用号数量不能超过500")
     private Integer spareCount;
 
     private Integer rewindMode;
     private Integer knifeCount;
     private BigDecimal unitPrice;
+    @Pattern(regexp = "(?i)LOSS|ALLOCATE|REMAINDER",
+            message = "门幅差额处理只能选择LOSS、ALLOCATE或REMAINDER")
+    private String widthDifferencePolicy;
 
     @Valid
     @Size(max = 500, message = "成品规格不能超过500条")

@@ -199,34 +199,8 @@
   scrollbar-width: none;
 }
 
-.process-order-queue__tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.process-order-queue__tabs button {
-  height: 30px;
-  padding: 0 14px;
-  color: #3f4f61;
-  font-size: 13px;
-  line-height: 28px;
-  white-space: nowrap;
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-}
-
-.process-order-queue__tabs button:hover {
-  color: #0f5fb8;
-  background: #f5f8fb;
-  border-color: #c8d7e6;
-}
-
-.process-order-queue__tabs button.is-active {
-  color: #0f3f78;
-  font-weight: 650;
-  background: #edf5ff;
-  border-color: #8bb5d6;
+.process-order-queue__tabs .ant-segmented {
+  min-width: max-content;
 }
 
 .process-order-batchbar {
@@ -325,6 +299,14 @@
 
 .process-order-searchbar .ant-form-item-label {
   padding-bottom: 4px;
+}
+
+.process-order-searchbar .ant-picker {
+  width: 100%;
+}
+
+.process-order-shell .query-load-error-alert {
+  margin-bottom: 8px;
 }
 
 .process-order-searchbar__grid {

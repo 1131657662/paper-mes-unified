@@ -1,6 +1,7 @@
 import { Form, Input, InputNumber, Modal, Select, type FormInstance } from 'antd'
 import type { ConfigItem, ConfigItemSaveDTO, DictItem, DictItemSaveDTO } from '../../types/systemConfig'
 import { statusOptions, valueTypeOptions } from './systemConfigDisplay'
+import { getConfigValueError } from '../../features/systemConfig/configValueValidation'
 
 interface DictModalProps {
   item?: DictItem
@@ -66,6 +67,7 @@ export function DictItemModal({ item, onCancel, onSubmit, onDirtyChange, open, s
 
 export function ConfigItemModal({ item, onCancel, onSubmit, onDirtyChange, open, submitting }: ConfigModalProps) {
   const [form] = Form.useForm<ConfigItemSaveDTO>()
+  const metadataLocked = item?.builtIn === 1
   return (
     <Modal
       title={item ? '编辑系统参数' : '新增系统参数'}
@@ -79,26 +81,26 @@ export function ConfigItemModal({ item, onCancel, onSubmit, onDirtyChange, open,
       <Form className="mes-modal-form" form={form} initialValues={item ? toConfigValues(item) : configDefaults} layout="vertical" onFieldsChange={() => onDirtyChange?.(form.isFieldsTouched())} onFinish={onSubmit}>
         <div className="mes-form-grid">
           <Form.Item name="configGroup" label="参数分组" rules={[{ required: true, message: '请输入参数分组' }, { max: 50, message: '参数分组不能超过50个字符' }]}>
-            <Input maxLength={50} placeholder="如 process" />
+            <Input disabled={metadataLocked} maxLength={50} placeholder="如 process" />
           </Form.Item>
           <Form.Item name="configKey" label="参数键" rules={[{ required: true, message: '请输入参数键' }, { max: 80, message: '参数键不能超过80个字符' }]}>
-            <Input maxLength={80} placeholder="如 process.weightTolerancePercent" />
+            <Input disabled={metadataLocked} maxLength={80} placeholder="如 process.weightTolerancePercent" />
           </Form.Item>
           <Form.Item name="configName" label="参数名称" rules={[{ required: true, message: '请输入参数名称' }, { max: 80, message: '参数名称不能超过80个字符' }]}>
-            <Input maxLength={80} placeholder="如 回录重量误差阈值" />
+            <Input disabled={metadataLocked} maxLength={80} placeholder="如 回录重量误差阈值" />
           </Form.Item>
-          <ConfigValueFields form={form} />
+          <ConfigValueFields form={form} metadataLocked={metadataLocked} />
           <Form.Item name="unit" label="单位">
-            <Input maxLength={20} placeholder="如 %, 个, 条" />
+            <Input disabled={metadataLocked} maxLength={20} placeholder="如 %, 个, 条" />
           </Form.Item>
           <Form.Item name="sortNo" label="排序">
-            <InputNumber min={0} />
+            <InputNumber disabled={metadataLocked} min={0} />
           </Form.Item>
           <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
             <Select options={statusOptions} />
           </Form.Item>
           <Form.Item className="mes-form-grid__full" name="remark" label="备注" rules={[{ max: 255, message: '备注不能超过255个字符' }]}>
-            <Input.TextArea maxLength={255} rows={3} placeholder="说明参数影响的业务流程" showCount />
+            <Input.TextArea disabled={metadataLocked} maxLength={255} rows={3} placeholder="说明参数影响的业务流程" showCount />
           </Form.Item>
         </div>
       </Form>
@@ -106,8 +108,9 @@ export function ConfigItemModal({ item, onCancel, onSubmit, onDirtyChange, open,
   )
 }
 
-function ConfigValueFields({ form }: { form: FormInstance<ConfigItemSaveDTO> }) {
+function ConfigValueFields({ form, metadataLocked }: { form: FormInstance<ConfigItemSaveDTO>; metadataLocked: boolean }) {
   const valueType = Form.useWatch('valueType', form)
+  const configKey = Form.useWatch('configKey', form)
   return (
     <>
       <Form.Item
@@ -116,28 +119,25 @@ function ConfigValueFields({ form }: { form: FormInstance<ConfigItemSaveDTO> }) 
         rules={[
           { required: true, message: '请输入参数值' },
           { max: 255, message: '参数值不能超过255个字符' },
-          { validator: (_, value) => validateConfigValue(value, valueType) },
+          { validator: (_, value) => validateConfigValue(value, valueType, configKey) },
         ]}
       >
         <Input maxLength={255} placeholder={configValuePlaceholder(valueType)} />
       </Form.Item>
       <Form.Item name="valueType" label="值类型" rules={[{ required: true, message: '请选择值类型' }]}>
-        <Select options={valueTypeOptions} />
+        <Select disabled={metadataLocked} options={valueTypeOptions} />
       </Form.Item>
     </>
   )
 }
 
-function validateConfigValue(value: unknown, valueType?: ConfigItemSaveDTO['valueType']) {
-  const text = typeof value === 'string' ? value.trim() : ''
-  if (!text) return Promise.resolve()
-  if (valueType === 'number' && !NUMBER_PATTERN.test(text)) {
-    return Promise.reject(new Error('请输入有效数字'))
-  }
-  if (valueType === 'boolean' && !BOOLEAN_VALUES.has(text.toLowerCase())) {
-    return Promise.reject(new Error('布尔参数值只能填写 true 或 false'))
-  }
-  return Promise.resolve()
+function validateConfigValue(
+  value: unknown,
+  valueType?: ConfigItemSaveDTO['valueType'],
+  configKey?: string,
+) {
+  const error = getConfigValueError({ configKey, value, valueType })
+  return error ? Promise.reject(new Error(error)) : Promise.resolve()
 }
 
 function configValuePlaceholder(valueType?: ConfigItemSaveDTO['valueType']) {
@@ -145,9 +145,6 @@ function configValuePlaceholder(valueType?: ConfigItemSaveDTO['valueType']) {
   if (valueType === 'boolean') return '请输入 true 或 false'
   return '请输入参数值'
 }
-
-const NUMBER_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/
-const BOOLEAN_VALUES = new Set(['true', 'false'])
 
 const dictDefaults: DictItemSaveDTO = {
   dictName: '',

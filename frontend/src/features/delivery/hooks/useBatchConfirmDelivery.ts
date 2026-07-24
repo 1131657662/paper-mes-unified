@@ -9,6 +9,7 @@ export function useBatchConfirmDelivery() {
     mutationFn: deliveryService.confirmBatch,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queries.delivery._def })
+      queryClient.invalidateQueries({ queryKey: queries.deliveryCustomerSpec._def })
     },
   })
 }

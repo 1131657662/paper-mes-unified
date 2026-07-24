@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.paper.mes.report.mapper.ReportOperationalMapper">
+
+    <sql id="SettlementWhere">
+        s.is_deleted = 0 AND s.settle_status IN (1, 2, 3)
+        <if test="q.dateFrom != null">AND s.settle_date &gt;= #{q.dateFrom}</if>
+        <if test="q.dateTo != null">AND s.settle_date &lt;= #{q.dateTo}</if>
+        <if test="q.customerUuid != null and q.customerUuid != ''">AND s.customer_uuid = #{q.customerUuid}</if>
+        <if test="q.settleType != null">AND s.settle_type = #{q.settleType}</if>
+        <if test="q.isInvoice != null">AND s.is_invoice = #{q.isInvoice}</if>
+    </sql>
+
+    <sql id="CollectionWhere">
+        r.is_deleted = 0 AND r.record_status = 1
+        AND s.is_deleted = 0 AND s.settle_status IN (1, 2, 3)
+        <if test="q.dateFrom != null">AND r.receive_date &gt;= #{q.dateFrom}</if>
+        <if test="q.dateTo != null">AND r.receive_date &lt; DATE_ADD(#{q.dateTo}, INTERVAL 1 DAY)</if>
+        <if test="q.customerUuid != null and q.customerUuid != ''">AND s.customer_uuid = #{q.customerUuid}</if>
+        <if test="q.settleType != null">AND s.settle_type = #{q.settleType}</if>
+        <if test="q.isInvoice != null">AND s.is_invoice = #{q.isInvoice}</if>
+    </sql>
+
+    <sql id="InventoryWhere">
+        f.is_deleted = 0 AND f.finish_status = 2
+        AND COALESCE(f.is_spare, 0) = 0 AND COALESCE(f.roll_no_status, 1) != 3
+        <if test="q.dateFrom != null">AND (f.stock_in_time IS NULL OR f.stock_in_time &gt;= #{q.dateFrom})</if>
+        <if test="q.dateTo != null">AND (f.stock_in_time IS NULL OR f.stock_in_time &lt; DATE_ADD(#{q.dateTo}, INTERVAL 1 DAY))</if>
+        <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
+        <if test="q.paperName != null and q.paperName != ''">AND f.paper_name LIKE CONCAT('%', #{q.paperName}, '%')</if>
+    </sql>
+
+    <sql id="DeliveryWhere">
+        d.is_deleted = 0 AND d.delivery_status IN (1, 2)
+        <if test="q.dateFrom != null">AND d.delivery_date &gt;= #{q.dateFrom}</if>
+        <if test="q.dateTo != null">AND d.delivery_date &lt;= #{q.dateTo}</if>
+        <if test="q.customerUuid != null and q.customerUuid != ''">AND d.customer_uuid = #{q.customerUuid}</if>
+    </sql>
+
+    <select id="settlementOverview" resultType="com.paper.mes.report.dto.ReportSettlementAnalysisVO$Overview">
+        SELECT COUNT(*) totalDocuments,
+               SUM(s.settle_status = 1) pendingDocuments,
+               SUM(s.settle_status = 2) partialDocuments,
+               SUM(s.settle_status IN (1, 2) AND s.unreceived_amount &gt; 0
+                   AND s.due_date &lt; CURRENT_DATE()) overdueDocuments,
+               COALESCE(SUM(s.total_amount), 0) totalAmount,
+               COALESCE(SUM(s.received_amount), 0) receivedAmount,
+               COALESCE(SUM(s.unreceived_amount), 0) unreceivedAmount,
+               COALESCE(SUM(CASE WHEN s.settle_status IN (1, 2) AND s.unreceived_amount &gt; 0
+                                 AND s.due_date &lt; CURRENT_DATE()
+                                 THEN s.unreceived_amount ELSE 0 END), 0) overdueAmount
+        FROM biz_settle_order s
+        WHERE <include refid="SettlementWhere"/>
+    </select>
+
+    <select id="settlementMonthly" resultType="com.paper.mes.report.dto.ReportSettlementAnalysisVO$Dimension">
+        SELECT DATE_FORMAT(s.settle_date, '%Y-%m') dimensionKey,
+               DATE_FORMAT(s.settle_date, '%Y-%m') dimensionName,
+               COUNT(*) documentCount,
+               COALESCE(SUM(s.total_amount), 0) totalAmount,
+               COALESCE(SUM(s.received_amount), 0) receivedAmount,
+               COALESCE(SUM(s.unreceived_amount), 0) unreceivedAmount
+        FROM biz_settle_order s
+        WHERE <include refid="SettlementWhere"/>
+        GROUP BY DATE_FORMAT(s.settle_date, '%Y-%m')
+        ORDER BY dimensionKey
+    </select>
+
+    <select id="settlementCustomers" resultType="com.paper.mes.report.dto.ReportSettlementAnalysisVO$Dimension">
+        SELECT s.customer_uuid dimensionKey, MAX(s.customer_name) dimensionName,
+               COUNT(*) documentCount, COALESCE(SUM(s.total_amount), 0) totalAmount,
+               COALESCE(SUM(s.received_amount), 0) receivedAmount,
+               COALESCE(SUM(s.unreceived_amount), 0) unreceivedAmount
+        FROM biz_settle_order s
+        WHERE <include refid="SettlementWhere"/>
+        GROUP BY s.customer_uuid
+        ORDER BY unreceivedAmount DESC, totalAmount DESC, dimensionName
+        LIMIT 20
+    </select>
+
+    <select id="collectionOverview" resultType="com.paper.mes.report.dto.ReportCollectionAnalysisVO$Overview">
+        SELECT COUNT(*) recordCount,
+               SUM(r.cash_amount &gt; 0) cashRecordCount,
+               SUM(r.scrap_offset_amount &gt; 0) scrapRecordCount,
+               SUM(r.discount_amount &gt; 0) discountRecordCount,
+               COALESCE(SUM(r.receive_amount), 0) settledAmount,
+               COALESCE(SUM(r.cash_amount), 0) cashAmount,
+               COALESCE(SUM(r.scrap_offset_amount), 0) scrapOffsetAmount,
+               COALESCE(SUM(r.discount_amount), 0) discountAmount,
+               COALESCE(SUM(r.scrap_weight), 0) scrapWeight
+        FROM biz_receive_record r
+        JOIN biz_settle_order s ON s.uuid = r.settle_uuid
+        WHERE <include refid="CollectionWhere"/>
+    </select>
+
+    <select id="collectionMonthly" resultType="com.paper.mes.report.dto.ReportCollectionAnalysisVO$Dimension">
+        SELECT DATE_FORMAT(r.receive_date, '%Y-%m') dimensionKey,
+               DATE_FORMAT(r.receive_date, '%Y-%m') dimensionName,
+               COUNT(*) recordCount, COALESCE(SUM(r.receive_amount), 0) settledAmount,
+               COALESCE(SUM(r.cash_amount), 0) cashAmount,
+               COALESCE(SUM(r.scrap_offset_amount + r.discount_amount), 0) nonCashAmount,
+               COALESCE(SUM(r.scrap_weight), 0) scrapWeight
+        FROM biz_receive_record r
+        JOIN biz_settle_order s ON s.uuid = r.settle_uuid
+        WHERE <include refid="CollectionWhere"/>
+        GROUP BY DATE_FORMAT(r.receive_date, '%Y-%m')
+        ORDER BY dimensionKey
+    </select>
+
+    <select id="collectionCustomers" resultType="com.paper.mes.report.dto.ReportCollectionAnalysisVO$Dimension">
+        SELECT s.customer_uuid dimensionKey, MAX(s.customer_name) dimensionName,
+               COUNT(*) recordCount, COALESCE(SUM(r.receive_amount), 0) settledAmount,
+               COALESCE(SUM(r.cash_amount), 0) cashAmount,
+               COALESCE(SUM(r.scrap_offset_amount + r.discount_amount), 0) nonCashAmount,
+               COALESCE(SUM(r.scrap_weight), 0) scrapWeight
+        FROM biz_receive_record r
+        JOIN biz_settle_order s ON s.uuid = r.settle_uuid
+        WHERE <include refid="CollectionWhere"/>
+        GROUP BY s.customer_uuid
+        ORDER BY settledAmount DESC, dimensionName
+        LIMIT 20
+    </select>
+
+    <select id="inventoryOverview" resultType="com.paper.mes.report.dto.ReportInventoryAnalysisVO$Overview">
+        SELECT COUNT(*) rollCount,
+               SUM(lockRow.finish_uuid IS NULL) availableRollCount,
+               SUM(lockRow.finish_uuid IS NOT NULL) lockedRollCount,
+               SUM(f.warehouse_uuid IS NULL OR f.stock_in_time IS NULL OR f.is_abnormal = 1) exceptionRollCount,
+               COALESCE(SUM(COALESCE(f.remaining_weight, f.actual_weight, f.estimate_weight, 0)), 0) totalWeight,
+               COALESCE(SUM(CASE WHEN lockRow.finish_uuid IS NOT NULL
+                                 THEN COALESCE(f.remaining_weight, f.actual_weight, f.estimate_weight, 0) ELSE 0 END), 0)
+                   lockedWeight
+        FROM biz_finish_roll f
+        JOIN biz_process_order o ON o.uuid = f.order_uuid AND o.is_deleted = 0
+        LEFT JOIN biz_delivery_detail lockRow ON lockRow.finish_uuid = f.uuid
+             AND lockRow.is_deleted = 0 AND lockRow.stock_lock_status = 1
+        WHERE <include refid="InventoryWhere"/>
+    </select>
+
+    <select id="inventoryMonthly" resultType="com.paper.mes.report.dto.ReportInventoryAnalysisVO$Dimension">
+        SELECT DATE_FORMAT(f.stock_in_time, '%Y-%m') dimensionKey,
+               DATE_FORMAT(f.stock_in_time, '%Y-%m') dimensionName,
+               COUNT(*) rollCount,
+               COALESCE(SUM(COALESCE(f.remaining_weight, f.actual_weight, f.estimate_weight, 0)), 0) totalWeight,
+               COALESCE(SUM(CASE WHEN lockRow.finish_uuid IS NOT NULL
+                                 THEN COALESCE(f.remaining_weight, f.actual_weight, f.estimate_weight, 0) ELSE 0 END), 0)
+                   lockedWeight
+        FROM biz_finish_roll f
+        JOIN biz_process_order o ON o.uuid = f.order_uuid AND o.is_deleted = 0
+        LEFT JOIN biz_delivery_detail lockRow ON lockRow.finish_uuid = f.uuid
+             AND lockRow.is_deleted = 0 AND lockRow.stock_lock_status = 1
+        WHERE <include refid="InventoryWhere"/> AND f.stock_in_time IS NOT NULL
+        GROUP BY DATE_FORMAT(f.stock_in_time, '%Y-%m')
+        ORDER BY dimensionKey
+    </select>
+
+    <select id="inventoryWarehouses" resultType="com.paper.mes.report.dto.ReportInventoryAnalysisVO$Dimension">
+        SELECT COALESCE(f.warehouse_uuid, 'UNASSIGNED') dimensionKey,
+               COALESCE(MAX(w.warehouse_name), '未分配仓库') dimensionName,
+               COUNT(*) rollCount,
+               COALESCE(SUM(COALESCE(f.remaining_weight, f.actual_weight, f.estimate_weight, 0)), 0) totalWeight,
+               COALESCE(SUM(CASE WHEN lockRow.finish_uuid IS NOT NULL
+                                 THEN COALESCE(f.remaining_weight, f.actual_weight, f.estimate_weight, 0) ELSE 0 END), 0)
+                   lockedWeight
+        FROM biz_finish_roll f
+        JOIN biz_process_order o ON o.uuid = f.order_uuid AND o.is_deleted = 0
+        LEFT JOIN sys_warehouse w ON w.uuid = f.warehouse_uuid AND w.is_deleted = 0
+        LEFT JOIN biz_delivery_detail lockRow ON lockRow.finish_uuid = f.uuid
+             AND lockRow.is_deleted = 0 AND lockRow.stock_lock_status = 1
+        WHERE <include refid="InventoryWhere"/>
+        GROUP BY f.warehouse_uuid
+        ORDER BY totalWeight DESC, dimensionName
+    </select>
+
+    <sql id="DeliveryDetailTotals">
+        SELECT dd.delivery_uuid,
+               COUNT(*) rollCount,
+               SUM(COALESCE(dd.out_weight, 0)) outWeight
+        FROM biz_delivery_detail dd
+        WHERE dd.is_deleted = 0
+        GROUP BY dd.delivery_uuid
+    </sql>
+
+    <select id="deliveryOverview" resultType="com.paper.mes.report.dto.ReportDeliveryAnalysisVO$Overview">
+        SELECT COUNT(*) documentCount, SUM(d.delivery_status = 1) pendingDocuments,
+               SUM(d.delivery_status = 2) completedDocuments,
+               COALESCE(SUM(totals.rollCount), 0) rollCount,
+               COALESCE(SUM(totals.outWeight), 0) totalWeight,
+               COALESCE(SUM(CASE WHEN d.delivery_status = 1 THEN totals.outWeight ELSE 0 END), 0) pendingWeight,
+               COALESCE(SUM(CASE WHEN d.delivery_status = 2 THEN totals.outWeight ELSE 0 END), 0) completedWeight
+        FROM biz_delivery_order d
+        LEFT JOIN (<include refid="DeliveryDetailTotals"/>) totals ON totals.delivery_uuid = d.uuid
+        WHERE <include refid="DeliveryWhere"/>
+    </select>
+
+    <select id="deliveryMonthly" resultType="com.paper.mes.report.dto.ReportDeliveryAnalysisVO$Dimension">
+        SELECT DATE_FORMAT(d.delivery_date, '%Y-%m') dimensionKey,
+               DATE_FORMAT(d.delivery_date, '%Y-%m') dimensionName,
+               COUNT(*) documentCount, COALESCE(SUM(totals.rollCount), 0) rollCount,
+               COALESCE(SUM(totals.outWeight), 0) totalWeight,
+               COALESCE(SUM(CASE WHEN d.delivery_status = 2 THEN totals.outWeight ELSE 0 END), 0) completedWeight
+        FROM biz_delivery_order d
+        LEFT JOIN (<include refid="DeliveryDetailTotals"/>) totals ON totals.delivery_uuid = d.uuid
+        WHERE <include refid="DeliveryWhere"/>
+        GROUP BY DATE_FORMAT(d.delivery_date, '%Y-%m')
+        ORDER BY dimensionKey
+    </select>
+
+    <select id="deliveryWarehouses" resultType="com.paper.mes.report.dto.ReportDeliveryAnalysisVO$Dimension">
+        SELECT COALESCE(d.warehouse_uuid, 'UNASSIGNED') dimensionKey,
+               COALESCE(MAX(d.warehouse_name), '未分配仓库') dimensionName,
+               COUNT(*) documentCount, COALESCE(SUM(totals.rollCount), 0) rollCount,
+               COALESCE(SUM(totals.outWeight), 0) totalWeight,
+               COALESCE(SUM(CASE WHEN d.delivery_status = 2 THEN totals.outWeight ELSE 0 END), 0) completedWeight
+        FROM biz_delivery_order d
+        LEFT JOIN (<include refid="DeliveryDetailTotals"/>) totals ON totals.delivery_uuid = d.uuid
+        WHERE <include refid="DeliveryWhere"/>
+        GROUP BY d.warehouse_uuid
+        ORDER BY totalWeight DESC, dimensionName
+    </select>
+</mapper>

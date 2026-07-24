@@ -19,6 +19,8 @@ public final class FeeCalculator {
 
     public static final int STEP_TYPE_SAW = 1;
     public static final int STEP_TYPE_REWIND = 2;
+    public static final int STEP_TYPE_STRIP_SORT = 3;
+    public static final int STEP_TYPE_REPACKAGE = 4;
     public static final BigDecimal TON_DIVISOR = new BigDecimal("1000");
 
     private static final MathContext MC = new MathContext(20, RoundingMode.HALF_UP);
@@ -51,7 +53,9 @@ public final class FeeCalculator {
                 return BigDecimal.ZERO.setScale(AMOUNT_SCALE);
             }
             raw = unitPrice.multiply(BigDecimal.valueOf(knifeCount), MC);
-        } else if (stepType == STEP_TYPE_REWIND) {
+        } else if (stepType == STEP_TYPE_REWIND
+                || stepType == STEP_TYPE_STRIP_SORT
+                || stepType == STEP_TYPE_REPACKAGE) {
             if (processWeight == null || processWeight.signum() <= 0) {
                 return BigDecimal.ZERO.setScale(AMOUNT_SCALE);
             }

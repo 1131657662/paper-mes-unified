@@ -19,6 +19,8 @@ public class SettleCandidateAmountLoader {
 
     private static final int STEP_TYPE_SAW = 1;
     private static final int STEP_TYPE_REWIND = 2;
+    private static final int STEP_TYPE_STRIP_SORT = 3;
+    private static final int STEP_TYPE_REPACKAGE = 4;
     private static final int MONEY_SCALE = 2;
 
     private final ProcessStepMapper processStepMapper;
@@ -38,7 +40,7 @@ public class SettleCandidateAmountLoader {
     private Map<String, CandidateAmount> initialize(List<ProcessOrder> orders) {
         Map<String, CandidateAmount> amounts = new LinkedHashMap<>();
         for (ProcessOrder order : orders) {
-            amounts.put(order.getUuid(), new CandidateAmount(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+            amounts.put(order.getUuid(), new CandidateAmount(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                     money(order.getTotalExtraAmount()), money(order.getTotalAmount())));
         }
         return amounts;
@@ -48,7 +50,7 @@ public class SettleCandidateAmountLoader {
         return (value == null ? BigDecimal.ZERO : value).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
-    public record CandidateAmount(BigDecimal saw, BigDecimal rewind, BigDecimal standardProcess,
+    public record CandidateAmount(BigDecimal saw, BigDecimal rewind, BigDecimal service, BigDecimal standardProcess,
                                   BigDecimal pricingAdjustment, BigDecimal extra, BigDecimal total) {
         CandidateAmount add(ProcessStep step) {
             BigDecimal amount = money(step.getStepAmount());
@@ -56,11 +58,16 @@ public class SettleCandidateAmountLoader {
                     ? step.getStepAmount() : step.getStandardStepAmount());
             BigDecimal adjustment = money(step.getPricingAdjustmentAmount());
             if (step.getStepType() != null && step.getStepType() == STEP_TYPE_SAW) {
-                return new CandidateAmount(saw.add(amount), rewind, standardProcess.add(standard),
+                return new CandidateAmount(saw.add(amount), rewind, service, standardProcess.add(standard),
                         pricingAdjustment.add(adjustment), extra, total);
             }
             if (step.getStepType() != null && step.getStepType() == STEP_TYPE_REWIND) {
-                return new CandidateAmount(saw, rewind.add(amount), standardProcess.add(standard),
+                return new CandidateAmount(saw, rewind.add(amount), service, standardProcess.add(standard),
+                        pricingAdjustment.add(adjustment), extra, total);
+            }
+            if (step.getStepType() != null && (step.getStepType() == STEP_TYPE_STRIP_SORT
+                    || step.getStepType() == STEP_TYPE_REPACKAGE)) {
+                return new CandidateAmount(saw, rewind, service.add(amount), standardProcess.add(standard),
                         pricingAdjustment.add(adjustment), extra, total);
             }
             return this;
@@ -68,7 +75,7 @@ public class SettleCandidateAmountLoader {
 
         public BigDecimal effectiveTotal() {
             if (total.signum() > 0) return total;
-            return saw.add(rewind).add(extra).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            return saw.add(rewind).add(service).add(extra).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         }
     }
 }

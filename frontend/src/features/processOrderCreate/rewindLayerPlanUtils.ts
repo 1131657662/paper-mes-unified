@@ -18,6 +18,14 @@ export function defaultRewindSegment(roll: RollDraft, sort = 1): RewindSegmentPl
   }
 }
 
+export function sameSpecRewindPlan(plan: ProcessPlanDTO, roll: RollDraft): ProcessPlanDTO {
+  return {
+    ...plan,
+    rewindMode: 6,
+    segments: [defaultRewindSegment(roll)],
+  }
+}
+
 export function normalizeLayeredRewindPlan(plan: ProcessPlanDTO, roll: RollDraft): ProcessPlanDTO {
   if (plan.rewindMode !== 4) return plan
   return { ...plan, segments: normalizeLayeredRewindSegments(plan.segments, roll) }

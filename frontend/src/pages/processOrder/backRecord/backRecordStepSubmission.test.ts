@@ -20,6 +20,18 @@ describe('back-record step submission', () => {
 
     expect(dto.steps?.[0]?.knifeCount).toBe(3)
   })
+
+  it('uses planned non-inventory loss as the initial actual loss', () => {
+    const detail = stepDetail(2)
+    const step = detail.steps[0]
+    expect(step).toBeDefined()
+    if (!step) return
+    step.plannedLossWeight = 1.75
+
+    const dto = buildBackRecordDTO(detail, initialBackRecordValues(detail))
+
+    expect(dto.steps?.[0]?.lossWeight).toBe(1.75)
+  })
 })
 
 function stepDetail(knifeCount: number): ProcessOrderDetailVO {

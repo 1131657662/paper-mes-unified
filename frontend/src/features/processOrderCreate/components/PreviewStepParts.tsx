@@ -49,8 +49,11 @@ export function SinglePlanPreview({ plan, preview, roll }: SinglePlanPreviewProp
   return (
     <Space direction="vertical" style={{ width: '100%' }}>
       <Typography.Text>
-        方案：{plan?.mainStepType === 1 ? '锯纸' : `复卷模式 ${plan?.rewindMode ?? '-'}`} / 备用号 {plan?.spareCount ?? 0}
+        方案：{planLabel(plan)} / 备用号 {plan?.spareCount ?? 0}
       </Typography.Text>
+      {plan?.processMode === 4 && preview?.summary && (
+        <Typography.Text type="secondary">{preview.summary}</Typography.Text>
+      )}
       {preview?.errors?.length ? <Typography.Text type="danger">{preview.errors.join('；')}</Typography.Text> : null}
       <Table
         size="small"
@@ -61,6 +64,12 @@ export function SinglePlanPreview({ plan, preview, roll }: SinglePlanPreviewProp
       />
     </Space>
   )
+}
+
+function planLabel(plan?: ProcessPlanDTO) {
+  if (plan?.processMode === 4) return '仅附加工艺'
+  if (plan?.mainStepType === 1) return '锯纸'
+  return `复卷模式 ${plan?.rewindMode ?? '-'}`
 }
 
 const finishColumns: ColumnsType<NonNullable<PlanPreviewVO['finishes']>[number]> = [

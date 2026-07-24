@@ -32,8 +32,8 @@
             <when test="q.orderStatus != null">AND o.order_status = #{q.orderStatus}</when>
             <otherwise>AND o.order_status IN (4, 5)</otherwise>
         </choose>
-        <if test="q.dateFrom != null">AND DATE(COALESCE(o.back_record_time, o.order_date)) &gt;= #{q.dateFrom}</if>
-        <if test="q.dateTo != null">AND DATE(COALESCE(o.back_record_time, o.order_date)) &lt;= #{q.dateTo}</if>
+        <if test="q.dateFrom != null">AND o.accounting_date &gt;= #{q.dateFrom}</if>
+        <if test="q.dateTo != null">AND o.accounting_date &lt;= #{q.dateTo}</if>
         <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
         <if test="q.settleType != null">AND o.settle_type = #{q.settleType}</if>
         <if test="q.isInvoice != null">AND o.is_invoice = #{q.isInvoice}</if>
@@ -178,6 +178,27 @@
             GROUP BY rb.order_uuid
         ) amountScope ON amountScope.order_uuid = o.uuid
     </sql>
+
+    <select id="paperCandidates" resultType="string">
+        SELECT candidate.paperName
+        FROM (
+            SELECT DISTINCT r.paper_name AS paperName
+            FROM biz_original_roll r
+            WHERE r.is_deleted = 0
+              AND r.paper_name IS NOT NULL
+              AND TRIM(r.paper_name) != ''
+              AND r.paper_name LIKE CONCAT(#{keyword}, '%')
+            UNION
+            SELECT DISTINCT p.paper_name AS paperName
+            FROM sys_paper p
+            WHERE p.is_deleted = 0
+              AND p.paper_name IS NOT NULL
+              AND TRIM(p.paper_name) != ''
+              AND p.paper_name LIKE CONCAT(#{keyword}, '%')
+        ) candidate
+        ORDER BY candidate.paperName
+        LIMIT #{limit}
+    </select>
 
     <select id="overview" resultType="com.paper.mes.report.dto.ReportOverviewVO">
         SELECT COUNT(o.uuid) AS orderCount,
@@ -587,8 +608,8 @@
                             <when test="q.orderStatus != null">AND o.order_status = #{q.orderStatus}</when>
                             <otherwise>AND o.order_status IN (4, 5)</otherwise>
                         </choose>
-                        <if test="q.dateFrom != null">AND DATE(COALESCE(o.back_record_time, o.order_date)) &gt;= #{q.dateFrom}</if>
-                        <if test="q.dateTo != null">AND DATE(COALESCE(o.back_record_time, o.order_date)) &lt;= #{q.dateTo}</if>
+                        <if test="q.dateFrom != null">AND o.accounting_date &gt;= #{q.dateFrom}</if>
+                        <if test="q.dateTo != null">AND o.accounting_date &lt;= #{q.dateTo}</if>
                         <if test="q.customerUuid != null and q.customerUuid != ''">AND o.customer_uuid = #{q.customerUuid}</if>
                         <if test="q.settleType != null">AND o.settle_type = #{q.settleType}</if>
                         <if test="q.isInvoice != null">AND o.is_invoice = #{q.isInvoice}</if>
@@ -833,8 +854,8 @@
                     SELECT oi.uuid AS order_uuid,
                            <choose>
                                <when test="dimension == 'month'">
-                                   DATE_FORMAT(COALESCE(oi.back_record_time, oi.order_date), '%Y-%m') AS dimensionKey,
-                                   DATE_FORMAT(COALESCE(oi.back_record_time, oi.order_date), '%Y-%m') AS dimensionName
+                                   DATE_FORMAT(oi.accounting_date, '%Y-%m') AS dimensionKey,
+                                   DATE_FORMAT(oi.accounting_date, '%Y-%m') AS dimensionName
                                </when>
                                <when test="dimension == 'invoice'">
                                    CAST(oi.is_invoice AS CHAR) AS dimensionKey,
@@ -924,7 +945,7 @@
         SELECT o.uuid AS orderUuid,
                o.order_no AS orderNo,
                o.order_date AS orderDate,
-               DATE(COALESCE(o.back_record_time, o.order_date)) AS accountingDate,
+               o.accounting_date AS accountingDate,
                o.customer_name AS customerName,
                o.settle_type AS settleType,
                o.is_invoice AS isInvoice,
@@ -1042,11 +1063,17 @@
         <where>
             <include refid="OrderFilters"/>
         </where>
-        ORDER BY COALESCE(o.back_record_time, o.order_date) DESC, o.order_no DESC
     </sql>
 
     <select id="detailRows" resultType="com.paper.mes.report.dto.ReportDetailVO">
         <include refid="DetailRowsQuery"/>
+        ORDER BY o.accounting_date DESC, o.order_no DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="lossLeaderRows" resultType="com.paper.mes.report.dto.ReportDetailVO">
+        <include refid="DetailRowsQuery"/>
+        ORDER BY lossRatio DESC, lossWeight DESC, o.accounting_date DESC, o.order_no DESC
         LIMIT #{limit}
     </select>
 
@@ -1055,6 +1082,7 @@
             fetchSize="500"
             resultSetType="FORWARD_ONLY">
         <include refid="DetailRowsQuery"/>
+        ORDER BY o.accounting_date DESC, o.order_no DESC
     </select>
 
 </mapper>

@@ -19,7 +19,7 @@ import com.paper.mes.processorder.mapper.ProcessParamMapper;
 import com.paper.mes.processorder.mapper.ProcessStageInputRelMapper;
 import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
-import com.paper.mes.processorder.service.FileStorageService;
+import com.paper.mes.processorder.service.DamageImageService;
 import com.paper.mes.processorder.service.RollNoSequenceService;
 import com.paper.mes.processorder.service.SawPlanPreviewer;
 import com.paper.mes.processorder.service.WeightCheckThresholdService;
@@ -88,13 +88,19 @@ class ProcessOrderServiceImplPageOrdersTest {
                     mock(CustomerService.class),
                     mock(OperationLogService.class),
                     new ObjectMapper(),
-                    mock(FileStorageService.class),
+                    mock(DamageImageService.class),
                     mock(RollNoSequenceService.class),
                     new SawPlanPreviewer(),
                     mock(DocumentNoService.class),
                     mock(BusinessLockService.class),
                     mock(MachineMapper.class),
                     mock(WeightCheckThresholdService.class),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
                     null,
                     null,
                     null,

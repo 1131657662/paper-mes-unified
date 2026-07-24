@@ -49,6 +49,7 @@ export interface ProcessOrder {
   printCount?: number
   /** 0单一工艺 1混合 */
   isMixProcess?: number
+  processNames?: string[]
   remark?: string
   remarkLong?: string
   voidTime?: string
@@ -80,12 +81,16 @@ export interface OriginalRoll {
   batchNo?: string
   damageDesc?: string
   damageImages?: string | string[]
-  /** 1标准加工 2现场定尺 3不加工直发 */
+  /** 1标准加工 2现场定尺 3不加工直发 4仅附加工艺 */
   processMode?: number
   /** 主工艺类型：1锯纸 2复卷 */
   mainStepType?: number
   /** 1待加工 2加工中 3完成 4直发 5报废 */
   rollStatus?: number
+  /** 0未回录 1已完成回录 */
+  isChecked?: number
+  checkUser?: string
+  checkTime?: string
   machineUuid?: string
   operator?: string
   processAmount?: number
@@ -101,11 +106,17 @@ export interface FinishRoll {
   rollNoStatus?: number
   /** 0正式 1备用 */
   isSpare?: number
-  /** 1加工产出 2原纸直发 */
+  /** 1加工产出 2原纸直发 3仅附加工艺产出 */
   sourceType?: number
   paperName?: string
+  customerPaperName?: string
   gramWeight?: number
+  customerGramWeight?: number
   finishWidth?: number
+  customerFinishWidth?: number
+  customerSpecOverrideReason?: string
+  customerSpecOverrideBy?: string
+  customerSpecOverrideAt?: string
   finishDiameter?: number
   finishCoreDiameter?: number
   trimWidthShare?: number
@@ -132,20 +143,25 @@ export interface ProcessStep {
   stageLevel?: number
   parentStepUuid?: string
   stepSort?: number
-  /** 1锯纸 2复卷 */
+  /** 1锯纸 2复卷 3剥损整理 4重新包装 */
   stepType?: number
   stepName?: string
+  machineUuid?: string
+  machineNameSnap?: string
   /** 1主工艺 0追加工序 */
   isMain?: number
   knifeCount?: number
   processWeight?: number
+  /** 服务工序计费基准。 */
+  billingBasis?: string
+  serviceQuantity?: number
   /** 标准单价快照。 */
   unitPrice?: number
   /** 人工核定单价，为空时沿用标准单价。 */
   billingUnitPrice?: number
   stepAmount?: number
   /** 1标准计价 2指定数量 3固定金额 4免收 */
-  billingMode?: number
+  billingMode?: 1 | 2 | 3 | 4
   standardQuantity?: number
   billingQuantity?: number
   billingAmount?: number
@@ -155,6 +171,9 @@ export interface ProcessStep {
   pricingAdjustedBy?: string
   pricingAdjustedAt?: string
   pricingAdjustmentBatchId?: string
+  widthDifferencePolicy?: WidthDifferencePolicy
+  plannedLossWidth?: number
+  plannedLossWeight?: number
   lossWeight?: number
   operator?: string
   remark?: string
@@ -254,6 +273,9 @@ export interface RollProductionVO {
   processMode?: number
   mainStepType?: number
   rollStatus?: number
+  isChecked?: number
+  checkUser?: string
+  checkTime?: string
   remark?: string
   steps?: ProcessStep[]
   stageOutputs?: StageOutputVO[]
@@ -299,7 +321,7 @@ export interface OriginalRollDTO {
   pieceNum?: number
   batchNo?: string
   damageDesc?: string
-  /** 1标准加工 2现场定尺 3不加工直发 */
+  /** 1标准加工 2现场定尺 3不加工直发 4仅附加工艺 */
   processMode?: number
   /** 主工艺类型：1锯纸 2复卷 */
   mainStepType?: number
@@ -323,6 +345,10 @@ export interface FinishConfigSpecDTO {
   finishWidth?: number
   finishDiameter?: number
   finishCoreDiameter?: number
+  customerPaperName?: string
+  customerGramWeight?: number
+  customerFinishWidth?: number
+  customerSpecOverrideReason?: string
   count: number
   estimateWeight?: number
   splitRatio?: number
@@ -338,6 +364,7 @@ export interface FinishConfigSaveDTO {
   rewindMode?: number
   knifeCount?: number
   unitPrice?: number
+  widthDifferencePolicy?: WidthDifferencePolicy
   finishSpecs?: FinishConfigSpecDTO[]
   rewindSegments?: RewindSegmentDTO[]
 }
@@ -349,10 +376,28 @@ export interface FinishConfigSaveVO {
   spareRollNos?: string[]
 }
 
+export interface FinishConfigBatchSaveItemDTO {
+  rollUuid: string
+  config: FinishConfigSaveDTO
+}
+
+export interface FinishConfigBatchSaveDTO {
+  items: FinishConfigBatchSaveItemDTO[]
+}
+
+export interface FinishConfigBatchSaveVO {
+  orderUuid?: string
+  results?: FinishConfigSaveVO[]
+}
+
 export interface RewindLayoutItemDTO {
   width: number
   quantity?: number
   itemType?: 'FINISH' | 'TRIM'
+  customerPaperName?: string
+  customerGramWeight?: number
+  customerFinishWidth?: number
+  customerSpecOverrideReason?: string
   layers?: FinishLayerDTO[]
 }
 
@@ -388,6 +433,10 @@ export interface RewindFinishItemPreview {
   finishWidth?: number
   finishDiameter?: number
   finishCoreDiameter?: number
+  customerPaperName?: string
+  customerGramWeight?: number
+  customerFinishWidth?: number
+  customerSpecOverrideReason?: string
   segmentRatio?: number
   estimateWeight?: number
   trimWidth?: number
@@ -422,6 +471,10 @@ export interface RewindLayoutItemPlanDTO {
   width: number
   quantity?: number
   itemType?: 'FINISH' | 'TRIM'
+  customerPaperName?: string
+  customerGramWeight?: number
+  customerFinishWidth?: number
+  customerSpecOverrideReason?: string
   layers?: FinishLayerDTO[]
 }
 
@@ -443,19 +496,32 @@ export interface ProcessPlanDTO {
   rewindMode?: number
   knifeCount?: number
   unitPrice?: number
+  widthDifferencePolicy?: WidthDifferencePolicy
   remark?: string
   finishSpecs?: FinishConfigSpecDTO[]
   segments?: RewindSegmentPlanDTO[]
 }
 
 export interface ProcessPlanPreviewRequestDTO {
+  expectedVersion: number
   originalUuid: string
   plan: ProcessPlanDTO
 }
 
 export interface ProcessPlanBatchSaveDTO {
+  expectedVersion: number
   originalUuids: string[]
   plan: ProcessPlanDTO
+}
+
+export interface ProcessPlanBatchItemDTO {
+  originalUuid: string
+  plan: ProcessPlanDTO
+}
+
+export interface ProcessPlanItemsBatchSaveDTO {
+  expectedVersion: number
+  items: ProcessPlanBatchItemDTO[]
 }
 
 export interface PlanPreviewVO {
@@ -468,12 +534,18 @@ export interface PlanPreviewVO {
   spareCount?: number
   totalEstimateWeight?: number
   totalTrimWeight?: number
+  widthDifferencePolicy?: WidthDifferencePolicy
+  widthDifference?: number
+  widthDifferenceWeight?: number
+  calculatedLossWeight?: number
   summary?: string
   ready?: boolean
   errors?: string[]
   segments?: RewindSegmentPreview[]
   finishes?: RewindFinishItemPreview[]
 }
+
+export type WidthDifferencePolicy = 'LOSS' | 'ALLOCATE' | 'REMAINDER'
 
 export interface ProcessRouteOutputDTO {
   outputKey?: string
@@ -504,8 +576,14 @@ export interface ProcessRouteStageDTO {
 }
 
 export interface ProcessRoutePreviewDTO {
+  expectedVersion?: number
   originalUuid: string
   stages: ProcessRouteStageDTO[]
+}
+
+export interface ProcessRouteBatchSaveDTO {
+  expectedVersion: number
+  routes: ProcessRoutePreviewDTO[]
 }
 
 export interface ProcessRouteStageLineVO {
@@ -598,6 +676,7 @@ export interface ProcessOrderCreateDTO {
 }
 
 export interface DraftOrderBaseDTO {
+  expectedVersion?: number
   customerUuid: string
   orderDate: string
   expectFinishDate?: string
@@ -619,15 +698,34 @@ export interface DraftOrderBaseDTO {
 }
 
 export interface OriginalRollBatchSaveDTO {
+  expectedVersion: number
   rolls: OriginalRollDTO[]
 }
 
+export interface DraftRollProcessDTO {
+  originalUuid: string
+  processMode: number
+  mainStepType?: number
+  machineUuid?: string
+}
+
+export interface DraftRollProcessBatchSaveDTO {
+  expectedVersion: number
+  rolls: DraftRollProcessDTO[]
+}
+
 export interface ProcessConfigDraftSaveDTO {
+  expectedVersion: number
   config: FinishConfigSaveDTO
 }
 
 export interface DraftProgressDTO {
+  expectedVersion: number
   currentStep?: number
+}
+
+export interface DraftSubmitDTO {
+  expectedVersion: number
 }
 
 export interface OriginalRollImportError {
@@ -683,11 +781,18 @@ export interface PrintDTO {
   reason?: string
 }
 
+export interface PhysicalReprintDTO {
+  reason: string
+  version: PrintViewVersion
+}
+
 /** 打印结果，与后端 PrintResultVO 对应。 */
 export interface PrintResultVO {
   orderUuid?: string
   orderNo?: string
   printCount?: number
+  /** 0已下发但未确认物理打印，1已确认打印。 */
+  printStatus?: number
   /** 是否补打（printCount>1） */
   reprint?: boolean
   printTime?: string
@@ -819,6 +924,8 @@ export interface BackRecordStepDTO {
 
 /** 整单回录入参。 */
 export interface BackRecordDTO {
+  expectedVersion: number
+  completeOrder: boolean
   warehouseUuid: string
   releaseAdminUsername?: string
   releaseAdminPassword?: string
@@ -847,6 +954,9 @@ export interface BackRecordResultVO {
   orderNo?: string
   orderStatus?: number
   backRecordTime?: string
+  orderCompleted?: boolean
+  recordedRollCount?: number
+  remainingRollCount?: number
   overToleranceReleased?: boolean
   directShipGenerated?: number
   voidedSpareCount?: number

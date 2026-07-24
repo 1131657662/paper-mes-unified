@@ -1,9 +1,12 @@
-import { Form, Input, InputNumber, Select } from 'antd'
+import { Alert, Button, Form, Input, InputNumber, Select, Spin } from 'antd'
 import type { FormInstance } from 'antd'
 import AutoCodeInput from '../../components/biz/AutoCodeInput'
 import { DICT_TYPES, invoiceFallbackOptions, settleFallbackOptions } from '../../features/systemConfig/configFallbacks'
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
-import type { CustomerSaveDTO } from '../../types/customer'
+import { useProcessCatalog } from '../../features/processCatalog/hooks/useProcessCatalog'
+import type { CustomerProcessPriceSaveDTO, CustomerSaveDTO } from '../../types/customer'
+import CustomerServicePriceEditor from './CustomerServicePriceEditor'
+import './CustomerServicePrice.css'
 
 interface Props {
   editing: boolean
@@ -22,6 +25,7 @@ const customerFormDefaults: Partial<CustomerSaveDTO> = {
 export default function CustomerProfileForm({ editing, form, onFinish, onValuesChange }: Props) {
   const { options: settleOptions } = useNumberDictOptions(DICT_TYPES.settleType, settleFallbackOptions)
   const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
+  const catalogQuery = useProcessCatalog()
 
   return (
     <Form
@@ -61,6 +65,33 @@ export default function CustomerProfileForm({ editing, form, onFinish, onValuesC
             <Input placeholder="如 default" />
           </Form.Item>
         </div>
+      </section>
+
+      <section className="customer-profile-form__section customer-service-price-section">
+        <div className="customer-profile-form__section-heading">
+          <div>
+            <h3>附加工艺价格</h3>
+            <p>剥损整理、重新包装可维护多种报价，下单时带出默认项，仍可按单调整。</p>
+          </div>
+        </div>
+        {catalogQuery.isError ? (
+          <Alert
+            type="error"
+            showIcon
+            message="附加工艺目录加载失败"
+            action={<Button size="small" onClick={() => catalogQuery.refetch()}>重试</Button>}
+          />
+        ) : (
+          <Spin spinning={catalogQuery.isLoading}>
+            <Form.Item
+              className="customer-service-price-form-item"
+              name="processPrices"
+              rules={[{ validator: validateProcessPrices }]}
+            >
+              <CustomerServicePriceEditor catalogs={catalogQuery.data ?? []} />
+            </Form.Item>
+          </Spin>
+        )}
       </section>
 
       <section className="customer-profile-form__section">
@@ -124,3 +155,8 @@ const priceTaxOptions = [
   { value: 1, label: '含税价' },
   { value: 2, label: '未税价' },
 ]
+
+function validateProcessPrices(_: unknown, prices?: CustomerProcessPriceSaveDTO[]) {
+  const invalid = prices?.some((price) => !Number.isFinite(price.price) || price.price <= 0)
+  return invalid ? Promise.reject(new Error('请填写已启用方案的价格')) : Promise.resolve()
+}

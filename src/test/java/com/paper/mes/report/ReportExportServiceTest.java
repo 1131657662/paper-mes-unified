@@ -3,6 +3,7 @@ package com.paper.mes.report;
 import com.paper.mes.report.dto.ReportDetailVO;
 import com.paper.mes.report.dto.ReportDimensionVO;
 import com.paper.mes.report.dto.ReportOverviewVO;
+import com.paper.mes.report.dto.ReportQueryExecutionMetaVO;
 import com.paper.mes.report.service.ReportExportService;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -72,6 +74,22 @@ class ReportExportServiceTest {
             assertEquals(3.255, dimensionSheet.getRow(1).getCell(4).getNumericCellValue(), 0.0001);
             assertEquals("原纸吨位", detailSheet.getRow(0).getCell(10).getStringCellValue());
             assertEquals(6.51, detailSheet.getRow(1).getCell(10).getNumericCellValue(), 0.0001);
+            workbook.write(OutputStream.nullOutputStream());
+        }
+    }
+
+    @Test
+    void buildWorkbook_whenMetadataProvided_includesAuditableDataSheet() throws IOException {
+        ReportExportService service = new ReportExportService();
+        var metadata = new ReportQueryExecutionMetaVO("query-1", "hash-1", "release-1",
+                Map.of("totalAmount", "version-1"), java.time.LocalDateTime.of(2026, 7, 21, 10, 0),
+                java.time.LocalDateTime.of(2026, 7, 21, 10, 0), "LIVE_DB_READ", "LIVE_ONLY", List.of(), Map.of());
+
+        try (var workbook = service.buildWorkbook(new ReportOverviewVO(), List.of(), List.of(), "customer", metadata)) {
+            var sheet = workbook.getSheet("数据口径");
+            assertEquals("query-1", sheet.getRow(2).getCell(1).getStringCellValue());
+            assertEquals("release-1", sheet.getRow(4).getCell(1).getStringCellValue());
+            assertEquals("version-1", sheet.getRow(10).getCell(1).getStringCellValue());
             workbook.write(OutputStream.nullOutputStream());
         }
     }

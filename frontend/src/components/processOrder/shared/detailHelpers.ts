@@ -15,6 +15,7 @@ export const REWIND_MODE: Record<number, string> = {
   3: '改门幅 + 改直径',
   4: '内外层分层',
   5: '多母卷合并复卷',
+  6: '同规格复卷',
 }
 
 export const fmt = (v?: number, suffix = '') => (v == null ? '-' : suffix ? `${v} ${suffix}` : `${v}`)
@@ -82,7 +83,7 @@ function canInferTrimFromLayout(record: RollProductionVO) {
   if (record.processMode !== 1) return false
   if (record.mainStepType !== 2) return true
   const mode = record.rewindParams?.find((p) => p.paramMode != null)?.paramMode
-  return mode !== 2
+  return mode !== 2 && mode !== 6
 }
 
 export function trimFinishes(finishes?: FinishProductionVO[]) {
@@ -117,12 +118,31 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
   const isRewind = record.mainStepType === 2
   const trim = calcTrimWidth(record)
   const spareCount = (record.finishes ?? []).filter(isActiveSpareProductionFinish).length
+  const additionalSteps = (record.steps ?? [])
+    .filter((s) => s.isMain !== 1)
+    .sort((a, b) => (a.stepSort ?? 0) - (b.stepSort ?? 0))
 
   // 主工艺
   if (record.processMode === 3) {
     result.push({
       header: '① 直发（不加工）',
       details: ['原纸直接入库，不经过加工环节'],
+    })
+    return result
+  }
+  if (record.processMode === 4) {
+    if (additionalSteps.length === 0) {
+      return [{ header: '仅附加工艺尚未配置', details: [] }]
+    }
+    additionalSteps.forEach((step, index) => {
+      const label = step.stepName
+        || ({ 3: '剥损整理', 4: '重新包装' }[step.stepType ?? 0])
+        || '附加工艺'
+      const details = [
+        '不改变品名、克重和门幅',
+        step.remark,
+      ].filter((value): value is string => Boolean(value))
+      result.push({ header: `${String.fromCodePoint(0x2460 + index)} ${label}`, details })
     })
     return result
   }
@@ -202,12 +222,9 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
   else result.push({ header: mainHeader, details: ['未配置规格'] })
 
   // 追加工序
-  const additionalSteps = (record.steps ?? [])
-    .filter((s) => s.isMain !== 1)
-    .sort((a, b) => (a.stepSort ?? 0) - (b.stepSort ?? 0))
   for (const [i, step] of additionalSteps.entries()) {
     const numChar = String.fromCodePoint(0x2460 + i + 1) // ①=2460
-    const label = step.stepType === 1 ? '追切纸' : step.stepName || '追加'
+    const label = step.stepName || ({ 1: '追切纸', 2: '追加复卷', 3: '剥损整理', 4: '重新包装' }[step.stepType ?? 0]) || '追加'
     const header = `${numChar} ${label}`
     const details: string[] = []
     if (step.stepType === 1 && step.knifeCount != null) {
@@ -216,8 +233,12 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
     if (step.processWeight != null) {
       details.push(`加工吨位 ${formatTon(step.processWeight)}`)
     }
+    if (step.serviceQuantity != null) {
+      details.push(`服务数量 ${step.serviceQuantity} ${step.billingBasis === 'PIECE' ? '件' : '吨'}`)
+    }
     if (step.unitPrice != null) {
-      details.push(`单价 ¥${step.unitPrice}${step.stepType === 1 ? '/刀' : '/吨'}`)
+      const unit = step.stepType === 1 ? '刀' : step.billingBasis === 'PIECE' ? '件' : '吨'
+      details.push(`单价 ¥${step.unitPrice}/${unit}`)
     }
     if (step.remark) details.push(step.remark)
     if (details.length > 0) result.push({ header, details })
@@ -252,6 +273,7 @@ function collectUniqueSources(finishes: FinishProductionVO[]): SourceSummary[] {
 
 export function buildConditionText(record: RollProductionVO): string {
   if (record.processMode === 3) return '直发'
+  if (record.processMode === 4) return '保持原规格，仅处理破损或包装'
 
   const params = record.rewindParams ?? []
   const hasConfig = params.length > 0 || (record.finishes?.length ?? 0) > 0

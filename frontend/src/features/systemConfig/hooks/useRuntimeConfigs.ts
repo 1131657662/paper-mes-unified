@@ -5,6 +5,7 @@ export function useRuntimeConfigs(keys: string[]) {
   return useQuery({
     ...queries.systemConfig.runtimeConfigs(keys),
     enabled: keys.length > 0,
+    retry: false,
     staleTime: 5 * 60 * 1000,
   })
 }

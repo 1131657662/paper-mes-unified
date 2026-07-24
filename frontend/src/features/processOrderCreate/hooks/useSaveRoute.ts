@@ -26,7 +26,10 @@ function updateDraftRoute(
 ): DraftOrderVO | undefined {
   if (!draft || !route.originalUuid) return draft
   const configs = upsertRouteConfig(draft.configs ?? [], route, preview)
-  return { ...draft, configs }
+  const order = draft.order
+    ? { ...draft.order, version: Number(route.expectedVersion ?? draft.order.version ?? 0) + 1 }
+    : draft.order
+  return { ...draft, configs, order }
 }
 
 function upsertRouteConfig(

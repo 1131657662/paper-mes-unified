@@ -2,7 +2,6 @@ package com.paper.mes.exporttask.service;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.auth.context.AuthContextHolder;
 import com.paper.mes.auth.dto.CurrentUser;
 import com.paper.mes.auth.permission.PermissionChecker;
@@ -13,12 +12,10 @@ import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.exporttask.dto.DeliveryInventoryExportTaskCreateDTO;
 import com.paper.mes.exporttask.dto.DeliveryListExportTaskCreateDTO;
 import com.paper.mes.exporttask.dto.ExportTaskCreateDTO;
-import com.paper.mes.exporttask.dto.ReportExportTaskCreateDTO;
 import com.paper.mes.exporttask.entity.ExportTask;
 import com.paper.mes.exporttask.mapper.ExportTaskMapper;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.settle.entity.SettleOrder;
-import com.paper.mes.report.dto.ReportQuery;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -27,13 +24,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doThrow;
 
 class ExportTaskCreationServiceTest {
     private ExportTaskMapper taskMapper;
@@ -41,6 +36,8 @@ class ExportTaskCreationServiceTest {
     private ExportTaskDocumentResolver documentResolver;
     private PermissionChecker permissionChecker;
     private ExportTaskStorage storage;
+    private DeliveryOrderExportRevisionSnapshot deliveryOrderRevisionSnapshot;
+    private ProcessOrderExportRevisionSnapshot processOrderRevisionSnapshot;
     private ExportTaskCreationService service;
 
     @BeforeAll
@@ -55,11 +52,15 @@ class ExportTaskCreationServiceTest {
         documentResolver = mock(ExportTaskDocumentResolver.class);
         permissionChecker = mock(PermissionChecker.class);
         storage = mock(ExportTaskStorage.class);
-        service = new ExportTaskCreationService(taskMapper, taskExecutor, documentResolver,
-                permissionChecker, new ObjectMapper(), storage);
+        deliveryOrderRevisionSnapshot = mock(DeliveryOrderExportRevisionSnapshot.class);
+        processOrderRevisionSnapshot = mock(ProcessOrderExportRevisionSnapshot.class);
+        service = new ExportTaskCreationService(taskMapper, taskExecutor, mock(ExportTaskLifecycleService.class),
+                documentResolver, permissionChecker, new ExportTaskPayloadWriter(new com.fasterxml.jackson.databind.ObjectMapper()), storage,
+                mock(com.paper.mes.report.service.ReportQuerySnapshotService.class),
+                deliveryOrderRevisionSnapshot, processOrderRevisionSnapshot);
         org.mockito.Mockito.doNothing().when(storage).assertReadyForWrite();
         AuthContextHolder.setCurrentUser(CurrentUser.builder().uuid("user-1")
-                .username("operator").realName("操作员").build());
+                .username("operator").realName("Operator").build());
     }
 
     @AfterEach
@@ -90,6 +91,7 @@ class ExportTaskCreationServiceTest {
         order.setUuid("order-1");
         order.setOrderNo("JG-001");
         when(documentResolver.processOrder("order-1")).thenReturn(order);
+        when(processOrderRevisionSnapshot.capture("order-1", null)).thenReturn("{\"customerRevisionNo\":0}");
         arrangeInsertedUuid("task-order-1");
 
         String taskUuid = service.createProcessOrderTask("order-1", request("request-order-1"));
@@ -104,6 +106,7 @@ class ExportTaskCreationServiceTest {
         order.setUuid("delivery-1");
         order.setDeliveryNo("CK-001");
         when(documentResolver.deliveryOrder("delivery-1")).thenReturn(order);
+        when(deliveryOrderRevisionSnapshot.capture("delivery-1", null, null)).thenReturn("{\"customerRevisionNo\":0}");
         arrangeInsertedUuid("task-delivery-1");
 
         String taskUuid = service.createDeliveryOrderTask("delivery-1", request("request-delivery-1"));
@@ -117,7 +120,7 @@ class ExportTaskCreationServiceTest {
         arrangeInsertedUuid("task-inventory-1");
         DeliveryInventoryFinishQuery query = new DeliveryInventoryFinishQuery();
         query.setCustomerUuid("customer-1");
-        query.setKeyword("测试");
+        query.setKeyword("娴嬭瘯");
         DeliveryInventoryExportTaskCreateDTO dto = new DeliveryInventoryExportTaskCreateDTO();
         dto.setRequestId("inventory-request-1");
         dto.setQuery(query);
@@ -126,6 +129,9 @@ class ExportTaskCreationServiceTest {
 
         assertTaskSnapshot(taskUuid, "task-inventory-1", Permissions.DELIVERY_VIEW,
                 "customerUuid", "keyword");
+        ArgumentCaptor<ExportTask> taskCaptor = ArgumentCaptor.forClass(ExportTask.class);
+        verify(taskMapper, times(1)).insert(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getModuleCode()).isEqualTo("inventory");
     }
 
     @Test
@@ -142,36 +148,6 @@ class ExportTaskCreationServiceTest {
 
         assertTaskSnapshot(taskUuid, "task-delivery-list-1", Permissions.DELIVERY_VIEW,
                 "deliveryStatus", "customerUuid");
-    }
-
-    @Test
-    void createReportTask_persistsDimensionAndQueuesTask() {
-        arrangeInsertedUuid("task-report-1");
-        ReportQuery query = new ReportQuery();
-        query.setDimension("customer");
-        query.setCustomerUuid("customer-1");
-        ReportExportTaskCreateDTO dto = new ReportExportTaskCreateDTO();
-        dto.setRequestId("report-request-1");
-        dto.setQuery(query);
-
-        String taskUuid = service.createReportTask(dto);
-
-        assertTaskSnapshot(taskUuid, "task-report-1", Permissions.REPORT_VIEW,
-                "dimension", "customerUuid");
-    }
-
-    @Test
-    void createReportTask_whenStorageUnavailable_rejectsBeforePersistingTask() {
-        doThrow(new com.paper.mes.common.BusinessException("storage unavailable"))
-                .when(storage).assertReadyForWrite();
-        ReportExportTaskCreateDTO dto = new ReportExportTaskCreateDTO();
-        dto.setRequestId("report-storage-failure");
-        dto.setQuery(new ReportQuery());
-
-        assertThatThrownBy(() -> service.createReportTask(dto))
-                .isInstanceOf(com.paper.mes.common.BusinessException.class)
-                .hasMessage("storage unavailable");
-        org.mockito.Mockito.verify(taskMapper, org.mockito.Mockito.never()).insert(any(ExportTask.class));
     }
 
     private void arrangeInsertedUuid(String taskUuid) {

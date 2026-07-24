@@ -24,7 +24,15 @@ public interface ReportMapper {
     long detailCount(@Param("q") ReportQuery q);
 
     List<ReportDetailVO> detailRows(@Param("q") ReportQuery q,
-                                    @Param("limit") int limit);
+                                    @Param("offset") long offset,
+                                    @Param("limit") long limit);
+
+    List<ReportDetailVO> lossLeaderRows(@Param("q") ReportQuery q,
+                                        @Param("limit") int limit);
+
+    List<String> paperCandidates(@Param("keyword") String keyword,
+                                 @Param("limit") int limit);
 
     Cursor<ReportDetailVO> detailCursor(@Param("q") ReportQuery q);
+
 }

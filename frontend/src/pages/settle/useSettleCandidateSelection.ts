@@ -5,18 +5,26 @@ import { mergeCandidateSelection } from './settleCandidateSelectionModel'
 
 const DEFAULT_PAGE_SIZE = 20
 
-export function useSettleCandidateSelection(enabled: boolean) {
-  const [query, setQuery] = useState<SettleCandidateQuery>({ current: 1, size: DEFAULT_PAGE_SIZE })
+export function useSettleCandidateSelection(enabled: boolean, initialOrderUuids: string[] = []) {
+  const [query, setQuery] = useState<SettleCandidateQuery>({
+    current: 1,
+    orderUuids: initialOrderUuids.length ? initialOrderUuids : undefined,
+    size: initialOrderUuids.length ? 100 : DEFAULT_PAGE_SIZE,
+  })
   const [selectedByUuid, setSelectedByUuid] = useState<Record<string, SettleCandidateVO>>({})
+  const [initialSelection, setInitialSelection] = useState(initialOrderUuids)
   const candidatesQuery = useSettleCandidates(query, enabled)
   const { refetch } = candidatesQuery
   const candidates = enabled ? candidatesQuery.data?.records ?? [] : []
-  const selectedCandidates = Object.values(selectedByUuid)
+  const initialKeys = new Set(initialSelection)
+  const selectedCandidateMap = mergeCandidateSelection(selectedByUuid, candidates, initialKeys)
+  const selectedCandidates = Object.values(selectedCandidateMap)
   const lockedCustomerUuid = selectedCandidates[0]?.customerUuid
 
   const setScope = (scope: Pick<SettleCandidateQuery, 'customerUuid' | 'periodStart' | 'periodEnd'>) => {
-    setQuery((current) => ({ ...current, ...scope, current: 1 }))
+    setQuery((current) => ({ ...current, ...scope, current: 1, orderUuids: undefined }))
     setSelectedByUuid({})
+    setInitialSelection([])
   }
 
   const setKeyword = (keyword: string) => {
@@ -28,11 +36,15 @@ export function useSettleCandidateSelection(enabled: boolean) {
   }
 
   const updateSelection = (keys: React.Key[]) => {
+    setInitialSelection([])
     const selectedKeys = new Set(keys.map(String))
     setSelectedByUuid((current) => mergeCandidateSelection(current, candidates, selectedKeys))
   }
 
-  const clearSelection = useCallback(() => setSelectedByUuid({}), [])
+  const clearSelection = useCallback(() => {
+    setSelectedByUuid({})
+    setInitialSelection([])
+  }, [])
   const refreshCandidates = useCallback(
     () => refetch(),
     [refetch],
@@ -45,7 +57,7 @@ export function useSettleCandidateSelection(enabled: boolean) {
     lockedCustomerUuid,
     query,
     selectedCandidates,
-    selectedRowKeys: Object.keys(selectedByUuid),
+    selectedRowKeys: Object.keys(selectedCandidateMap),
     setKeyword,
     setPage,
     setScope,

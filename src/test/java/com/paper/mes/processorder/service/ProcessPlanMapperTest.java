@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProcessPlanMapperTest {
 
@@ -46,6 +48,29 @@ class ProcessPlanMapperTest {
         assertEquals(2, layers.size());
         assertEquals(3, layers.getFirst().getCoreDiameter());
         assertEquals(6, layers.get(1).getCoreDiameter());
+    }
+
+    @Test
+    void serviceOnlyPreview_reportsOneOutputPerSourcePiece() {
+        ProcessPlanDTO plan = new ProcessPlanDTO();
+        plan.setProcessMode(4);
+
+        var preview = mapper.serviceOnlyPreview(plan, "roll-1", 3, true);
+
+        assertTrue(preview.isReady());
+        assertEquals(3, preview.getFinishCount());
+        assertEquals("仅附加工艺已配置，提交后按母卷件数生成整理成品", preview.getSummary());
+    }
+
+    @Test
+    void serviceOnlyPreview_withoutServiceStep_isBlocked() {
+        ProcessPlanDTO plan = new ProcessPlanDTO();
+        plan.setProcessMode(4);
+
+        var preview = mapper.serviceOnlyPreview(plan, "roll-1", 1, false);
+
+        assertFalse(preview.isReady());
+        assertEquals(1, preview.getErrors().size());
     }
 
     private ProcessPlanDTO layeredPlan() {

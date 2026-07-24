@@ -13,9 +13,11 @@ interface Props {
   detail: ProcessOrderDetailVO
   values: BackRecordFormValues
   onProcessChange: (item: BackRecordWorkItem) => void
+  onToggleSelection: (key: string, checked: boolean) => void
+  selectedKeys: Set<string>
 }
 
-export default function BackRecordWorkbench({ detail, values, onProcessChange }: Props) {
+export default function BackRecordWorkbench({ detail, values, onProcessChange, onToggleSelection, selectedKeys }: Props) {
   const workbench = buildBackRecordWorkbench(detail)
   const navigation = useBackRecordWorkbenchNavigation(workbench.items)
   const sourceOptions = buildBackRecordSourceOptions(detail.originalRolls)
@@ -29,6 +31,8 @@ export default function BackRecordWorkbench({ detail, values, onProcessChange }:
         activeKey={navigation.activeItem.key}
         values={values}
         onSelect={navigation.selectKey}
+        onToggle={onToggleSelection}
+        selectedKeys={selectedKeys}
       />
       <BackRecordActivePanel item={navigation.activeItem} sourceOptions={sourceOptions} onNext={navigation.next} onPrevious={navigation.previous} onProcessChange={onProcessChange} />
       <BackRecordClosurePanel item={navigation.activeItem} items={workbench.items} values={values} />

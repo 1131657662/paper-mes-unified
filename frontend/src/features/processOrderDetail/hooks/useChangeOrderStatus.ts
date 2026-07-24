@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { changeOrderStatus } from '../../../api/processOrder'
-import { queries } from '../../../queries'
+import { invalidateProcessOrderReadModels } from './invalidateProcessOrderReadModels'
 
 interface ChangeStatusParams {
   orderUuid: string
@@ -15,9 +15,7 @@ export function useChangeOrderStatus() {
     mutationFn: ({ orderUuid, reason, targetStatus }: ChangeStatusParams) =>
       changeOrderStatus(orderUuid, { reason, targetStatus }),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: queries.processOrderDetail.detail(variables.orderUuid).queryKey,
-      })
+      await invalidateProcessOrderReadModels(queryClient, variables.orderUuid)
     },
   })
 }

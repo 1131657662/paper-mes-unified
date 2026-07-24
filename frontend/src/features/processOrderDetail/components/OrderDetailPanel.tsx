@@ -3,6 +3,7 @@ import { Empty, Spin, message } from 'antd'
 import type { ProcessStepDTO, ProcessStepPricingAdjustmentDTO } from '../../../api/processOrder'
 import type { OriginalRoll, ProcessStep } from '../../../types/processOrder'
 import ProcessStepFormModal from '../../../components/processOrder/ProcessStepFormModal'
+import QueryLoadErrorAlert from '../../../components/feedback/QueryLoadErrorAlert'
 import { useAddProcessStep } from '../hooks/useAddProcessStep'
 import { useDeleteProcessStep } from '../hooks/useDeleteProcessStep'
 import { useProcessOrderDetail } from '../hooks/useProcessOrderDetail'
@@ -31,7 +32,8 @@ export default function OrderDetailPanel({
   const [routeConfigTarget, setRouteConfigTarget] = useState<ProcessRouteConfigTarget>({ mode: 'replace' })
   const [editingStep, setEditingStep] = useState<ProcessStep | null>(null)
   const [pricingStep, setPricingStep] = useState<ProcessStep | null>(null)
-  const { data: detail, isLoading: isLoadingDetail } = useProcessOrderDetail(uuid ?? undefined, { enabled })
+  const detailQuery = useProcessOrderDetail(uuid ?? undefined, { enabled })
+  const { data: detail, isError: isDetailError, isLoading: isLoadingDetail } = detailQuery
   const { mutateAsync: addStep } = useAddProcessStep()
   const { mutateAsync: updateStep } = useUpdateProcessStep()
   const { mutateAsync: deleteStep } = useDeleteProcessStep()
@@ -80,6 +82,12 @@ export default function OrderDetailPanel({
     <Spin spinning={isLoadingDetail} wrapperClassName="mes-spin-fill">
       {!uuid ? (
         <Empty description="未选择加工单" />
+      ) : isDetailError ? (
+        <QueryLoadErrorAlert
+          message="加工单详情加载失败"
+          description="详情未成功加载，当前空白不代表加工单不存在。"
+          onRetry={() => void detailQuery.refetch()}
+        />
       ) : !detail && !isLoadingDetail ? (
         <Empty description="加工单不存在或已删除" />
       ) : (
@@ -119,6 +127,7 @@ export default function OrderDetailPanel({
         key={pricingStep?.uuid ?? 'pricing-modal-closed'}
         open={pricingStep != null}
         step={pricingStep}
+        originalRoll={detail?.originalRolls?.find((roll) => roll.uuid === pricingStep?.originalUuid)}
         loading={isAdjustingPricing}
         onCancel={() => setPricingStep(null)}
         onSubmit={handleAdjustPricing}
@@ -141,9 +150,14 @@ function buildInitialValues(step: ProcessStep | null): (ProcessStepDTO & { uuid?
     originalUuid: step.originalUuid!,
     stepType: step.stepType!,
     stepName: step.stepName,
+    machineUuid: step.machineUuid,
     isMain: step.isMain,
     knifeCount: step.knifeCount,
     processWeight: step.processWeight,
+    billingBasis: step.billingBasis,
+    serviceQuantity: step.serviceQuantity,
+    billingMode: step.billingMode,
+    billingAmount: step.billingAmount,
     unitPrice: step.unitPrice,
     remark: step.remark,
   }

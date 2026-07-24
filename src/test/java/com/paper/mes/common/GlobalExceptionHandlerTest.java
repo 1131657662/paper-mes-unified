@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GlobalExceptionHandlerTest {
 
     @Test
-    void authenticationAndAuthorizationErrorsUseRealHttpStatus() {
+    void businessErrorsUseRealHttpStatus() {
         GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
         assertThat(handler.handleBusiness(new BusinessException(ResultCode.UNAUTHORIZED, "请先登录"))
@@ -24,7 +24,11 @@ class GlobalExceptionHandlerTest {
         assertThat(handler.handleBusiness(new BusinessException(ResultCode.TOO_MANY_REQUESTS, "too many"))
                 .getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(handler.handleBusiness(new BusinessException(ResultCode.BAD_REQUEST, "参数错误"))
-                .getStatusCode()).isEqualTo(HttpStatus.OK);
+                .getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(handler.handleBusiness(new BusinessException(ResultCode.NOT_FOUND, "不存在"))
+                .getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(handler.handleBusiness(new BusinessException(ResultCode.CONFLICT, "状态冲突"))
+                .getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
     @Test

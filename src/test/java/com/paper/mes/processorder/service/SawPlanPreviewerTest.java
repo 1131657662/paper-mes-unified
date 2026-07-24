@@ -73,9 +73,9 @@ class SawPlanPreviewerTest {
 
     @Test
     void preview_withoutTrimRows_usesRemainingWidthAsTrim() {
-        PlanPreviewVO preview = previewer.preview(plan(List.of(
+        PlanPreviewVO preview = previewer.preview(planWithPolicy(List.of(
                 spec("FINISH", 950, 2)
-        )), roll(2000, "1000"));
+        ), "REMAINDER"), roll(2000, "1000"));
 
         assertTrue(preview.isReady());
         assertEquals(2, preview.getFinishCount());
@@ -84,6 +84,42 @@ class SawPlanPreviewerTest {
         assertEquals(new BigDecimal("950.000"), preview.getTotalEstimateWeight());
         assertEquals(new BigDecimal("475.000"), preview.getFinishes().getFirst().getEstimateWeight());
         assertTrue(preview.getSummary().contains("100mm"));
+    }
+
+    @Test
+    void preview_allocate_counts_theoretical_difference_once_in_finish_weight() {
+        PlanPreviewVO preview = previewer.preview(planWithPolicy(List.of(
+                spec("FINISH", 1175, 2)
+        ), "ALLOCATE"), roll(2353, "2285"));
+
+        assertEquals(new BigDecimal("2285.000"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("0.000"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("2.913"), preview.getWidthDifferenceWeight());
+        assertEquals(new BigDecimal("0"), preview.getCalculatedLossWeight());
+        assertTrue(preview.getSummary().contains("分摊入成品"));
+    }
+
+    @Test
+    void preview_loss_keeps_difference_as_planned_loss() {
+        PlanPreviewVO preview = previewer.preview(planWithPolicy(List.of(
+                spec("FINISH", 1175, 2)
+        ), "LOSS"), roll(2353, "2285"));
+
+        assertEquals(new BigDecimal("2282.087"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("2.913"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("2.913"), preview.getCalculatedLossWeight());
+    }
+
+    @Test
+    void preview_remainder_keeps_difference_as_inventory_remainder() {
+        PlanPreviewVO preview = previewer.preview(planWithPolicy(List.of(
+                spec("FINISH", 1175, 2)
+        ), "REMAINDER"), roll(2353, "2285"));
+
+        assertEquals(1, preview.getTrimCount());
+        assertEquals(new BigDecimal("2282.087"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("2.913"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("2.913"), preview.getWidthDifferenceWeight());
     }
 
     @Test
@@ -113,11 +149,16 @@ class SawPlanPreviewerTest {
     }
 
     private ProcessPlanDTO plan(List<FinishConfigSpecDTO> specs) {
+        return planWithPolicy(specs, null);
+    }
+
+    private ProcessPlanDTO planWithPolicy(List<FinishConfigSpecDTO> specs, String policy) {
         ProcessPlanDTO plan = new ProcessPlanDTO();
         plan.setProcessMode(1);
         plan.setMainStepType(1);
         plan.setSpareCount(0);
         plan.setFinishSpecs(specs);
+        plan.setWidthDifferencePolicy(policy);
         return plan;
     }
 

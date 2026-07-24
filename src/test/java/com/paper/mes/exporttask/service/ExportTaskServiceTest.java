@@ -42,15 +42,17 @@ class ExportTaskServiceTest {
         when(mapper.update(isNull(), any(LambdaUpdateWrapper.class))).thenAnswer(invocation -> {
             LambdaUpdateWrapper<ExportTask> wrapper = invocation.getArgument(1);
             assertThat(wrapper.getCustomSqlSegment()).contains(
-                    "requester_uuid", "task_status IN", "module_code", "task_name", "file_name",
+                    "requester_uuid", "task_status IN", "module_code", "operation_code", "task_name", "file_name",
                     "acknowledged_at IS NULL", "completed_at", "create_time");
             assertThat(wrapper.getParamNameValuePairs()).containsValues(
-                    "user-1", 4, "settle", "%JS2026%", LocalDateTime.of(2026, 7, 19, 15, 30));
+                    "user-1", 4, "settle", "detail-export", "%JS2026%",
+                    LocalDateTime.of(2026, 7, 19, 15, 30));
             return 2;
         });
         ExportTaskAcknowledgeDTO filter = new ExportTaskAcknowledgeDTO();
         filter.setTaskStatus(4);
         filter.setModuleCode("settle");
+        filter.setOperationCode("detail-export");
         filter.setKeyword(" JS2026 ");
         filter.setAsOf(LocalDateTime.of(2026, 7, 19, 15, 30));
 

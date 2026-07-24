@@ -56,6 +56,10 @@
   gap: 12px;
 }
 
+.back-record-action-tooltip {
+  display: inline-flex;
+}
+
 .back-record-warehouse-field {
   min-width: 280px;
 }
@@ -162,6 +166,17 @@
   padding: 8px;
 }
 
+.back-record-nav-item-shell {
+  position: relative;
+}
+
+.back-record-nav-item__selector {
+  position: absolute;
+  z-index: 1;
+  top: 14px;
+  left: 12px;
+}
+
 .back-record-nav-item {
   display: flex;
   width: 100%;
@@ -176,6 +191,10 @@
   text-align: left;
   border: 1px solid transparent;
   border-radius: var(--mes-radius);
+}
+
+.back-record-nav-item--selectable {
+  padding-left: 36px;
 }
 
 .back-record-nav-item > span {
@@ -683,13 +702,18 @@
 }
 
 @media (min-width: 761px) {
+  .back-record-workspace .ant-input-number {
+    width: 100%;
+    min-width: 148px;
+  }
+
   .back-record-active > .back-record-panel {
-    min-width: 1360px;
+    min-width: 0;
   }
 
   .back-record-input-grid {
-    min-width: 760px;
-    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .back-record-finish-row {
@@ -701,7 +725,7 @@
   }
 
   .back-record-step-loss-grid {
-    min-width: 760px;
+    min-width: 0;
   }
 
   .back-record-trim-row {
@@ -711,6 +735,35 @@
   .back-record-output-row,
   .back-record-output-row.is-trim {
     min-width: 1320px;
+  }
+}
+
+@media (min-width: 1680px) {
+  .back-record-page .back-record-input-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 761px) {
+  .back-record-page .back-record-active {
+    overflow-x: hidden;
+  }
+
+  .back-record-page .back-record-finish-row,
+  .back-record-page .back-record-trim-row,
+  .back-record-page .back-record-output-row,
+  .back-record-page .back-record-output-row.is-trim {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .back-record-page .back-record-finish-row {
+    grid-template-columns: 1fr;
+  }
+
+  .back-record-page .back-record-finish-row__fields {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

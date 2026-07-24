@@ -22,10 +22,12 @@ export const exportTaskService = {
   acknowledgeOne: acknowledgeExportTask,
   retry: retryExportTask,
   cancel: cancelExportTask,
-  createDeliveryOrder: ({ uuid, requestId }: { uuid: string; requestId?: string }) =>
-    createDeliveryOrderExportTask(uuid, requestId),
-  createProcessOrder: ({ uuid, requestId }: { uuid: string; requestId?: string }) =>
-    createProcessOrderExportTask(uuid, requestId),
+  createDeliveryOrder: ({ uuid, requestId, customerRevisionNo }: {
+    uuid: string; requestId?: string; customerRevisionNo?: number
+  }) => createDeliveryOrderExportTask(uuid, requestId, customerRevisionNo ?? 0),
+  createProcessOrder: ({ uuid, requestId, customerRevisionNo }: {
+    uuid: string; requestId?: string; customerRevisionNo?: number
+  }) => createProcessOrderExportTask(uuid, requestId, customerRevisionNo),
   createSettle: ({ uuid, requestId }: { uuid: string; requestId: string }) => createSettleExportTask(uuid, requestId),
   download: ({ uuid, filename }: { uuid: string; filename?: string }) => downloadExportTask(uuid, filename),
 }

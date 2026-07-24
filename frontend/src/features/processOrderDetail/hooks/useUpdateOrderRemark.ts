@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateProcessOrderRemark } from '../../../api/processOrder'
 import type { ProcessOrderRemarkDTO } from '../../../types/processOrder'
-import { queries } from '../../../queries'
+import { invalidateProcessOrderLocalReadModels } from './invalidateProcessOrderReadModels'
 
 interface UpdateOrderRemarkParams {
   orderUuid: string
@@ -14,9 +14,7 @@ export function useUpdateOrderRemark() {
   return useMutation({
     mutationFn: ({ orderUuid, values }: UpdateOrderRemarkParams) => updateProcessOrderRemark(orderUuid, values),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: queries.processOrderDetail.detail(variables.orderUuid).queryKey,
-      })
+      await invalidateProcessOrderLocalReadModels(queryClient, variables.orderUuid)
     },
   })
 }

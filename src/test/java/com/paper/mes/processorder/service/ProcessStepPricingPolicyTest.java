@@ -36,6 +36,18 @@ class ProcessStepPricingPolicyTest {
     }
 
     @Test
+    void standardMode_whenQuantityIsNotConfigured_returnsZeroAmount() {
+        ProcessStep step = step(2, 1);
+
+        ProcessStepPricingPolicy.Result result = ProcessStepPricingPolicy.calculate(
+                step, null, BigDecimal.ZERO, new BigDecimal("100"));
+
+        assertThat(result.billingQuantity()).isNull();
+        assertThat(result.finalAmount()).isZero();
+        assertThat(result.adjustmentAmount()).isZero();
+    }
+
+    @Test
     void quantityOverride_whenAmountHasFractionalYuan_keepsEngineRoundingToWholeYuan() {
         ProcessStep step = step(2, 2);
         step.setBillingQuantity(new BigDecimal("3.700"));

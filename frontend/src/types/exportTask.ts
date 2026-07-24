@@ -7,6 +7,9 @@ export interface ExportTask {
   operationCode?: string
   taskName: string
   sourceUuid: string
+  sourcePath?: string
+  querySnapshotUuid?: string
+  metricReleaseUuid?: string
   taskStatus: number
   progress: number
   fileName?: string
@@ -33,6 +36,7 @@ export interface ExportTaskHistoryQuery {
   size: number
   taskStatus?: number
   moduleCode?: string
+  operationCode?: string
   keyword?: string
   attentionOnly?: boolean
 }
@@ -43,7 +47,7 @@ export interface ExportTaskHistoryPage extends PageResult<ExportTask> {
 
 export type ExportTaskAcknowledgeFilter = Pick<
   ExportTaskHistoryQuery,
-  'taskStatus' | 'moduleCode' | 'keyword'
+  'taskStatus' | 'moduleCode' | 'operationCode' | 'keyword'
 > & { asOf: string }
 
 export interface ExportTaskOperations {

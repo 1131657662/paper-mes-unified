@@ -1,6 +1,6 @@
 import { Card, Descriptions, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
+import { PROCESS_MODE, STEP_TYPE, processModeRequiresMain } from '../../../constants/processOrder'
 import type {
   PlanPreviewVO,
   ProcessOrderSubmitVO,
@@ -31,6 +31,7 @@ interface Props {
   plans: Record<string, ProcessPlanDTO>
   previews: Record<string, PlanPreviewVO>
   routePreviews: Record<string, ProcessRoutePreviewVO>
+  serviceConfigured: Record<string, boolean>
   submitting: boolean
   submitResult?: ProcessOrderSubmitVO
   onBackToList: () => void
@@ -87,7 +88,12 @@ function RollPreview({ locks, roll, state }: RollPreviewProps) {
   if (routePreview) return <RoutePreviewInline preview={routePreview} />
 
   const preview = state.previews[roll.localId]
-  const status = rollPreviewStatus({ roll, preview, lock: locks[roll.localId] })
+  const status = rollPreviewStatus({
+    roll,
+    preview,
+    lock: locks[roll.localId],
+    serviceConfigured: roll.uuid ? state.serviceConfigured[roll.uuid] : undefined,
+  })
   if (status.kind === 'direct' || status.kind === 'merged' || status.kind === 'pending') {
     return <Typography.Text type={status.blocking ? 'danger' : 'secondary'}>{status.detail}</Typography.Text>
   }
@@ -107,7 +113,8 @@ function previewColumns(
     {
       title: '主工艺',
       width: 100,
-      render: (_, roll) => (roll.processMode === 3 ? '-' : <Tag color="green">{STEP_TYPE[roll.mainStepType ?? 2]}</Tag>),
+      render: (_, roll) => (processModeRequiresMain(roll.processMode)
+        ? <Tag color="green">{STEP_TYPE[roll.mainStepType ?? 2]}</Tag> : '-'),
     },
     {
       title: '后端预览',
@@ -147,7 +154,12 @@ function previewStatusForRoll({ locks, roll, state }: PreviewStatusOptions): Pre
       blocking: false,
     } as const
   }
-  return rollPreviewStatus({ roll, preview: state.previews[roll.localId], lock: locks[roll.localId] })
+  return rollPreviewStatus({
+    roll,
+    preview: state.previews[roll.localId],
+    lock: locks[roll.localId],
+    serviceConfigured: roll.uuid ? state.serviceConfigured[roll.uuid] : undefined,
+  })
 }
 
 function blockingStatuses(state: Props, locks: ReturnType<typeof mergedSourceLocks>) {

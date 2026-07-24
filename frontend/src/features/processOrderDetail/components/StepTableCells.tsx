@@ -41,10 +41,23 @@ export function renderProcessingQuantity(step: ProcessStep): string {
   if (step.stepType === 2) {
     return step.processWeight == null ? '-' : `${formatNumber(step.processWeight, 3)} t`
   }
+  if (step.stepType === 3 || step.stepType === 4) {
+    if (step.serviceQuantity == null) return step.billingMode === 4 ? '免费服务' : '-'
+    const unit = step.billingBasis === 'PIECE' ? '件' : 't'
+    return `${formatNumber(step.serviceQuantity, unit === '件' ? 0 : 3)} ${unit}`
+  }
   return '-'
 }
 
 export function renderPricingBasisCell(step: ProcessStep) {
+  if (isPendingServicePricing(step)) {
+    return (
+      <div className="order-detail-step-pricing-cell">
+        <Tag color="orange">待定价</Tag>
+        <span>{step.billingBasis === 'PIECE' ? '预计按件，数量自动取母卷件数' : '预计按吨，数量自动取母卷实重'}</span>
+      </div>
+    )
+  }
   const mode = step.billingMode ?? 1
   const quantity = step.billingQuantity ?? step.standardQuantity
   return (
@@ -56,6 +69,7 @@ export function renderPricingBasisCell(step: ProcessStep) {
 }
 
 export function renderUnitPriceCell(step: ProcessStep) {
+  if (isPendingServicePricing(step)) return <Tag color="orange">待核定</Tag>
   if (step.billingUnitPrice == null) return formatMoney(step.unitPrice)
   return (
     <div className="order-detail-step-unit-price-cell">
@@ -66,6 +80,7 @@ export function renderUnitPriceCell(step: ProcessStep) {
 }
 
 export function renderAmountCell(step: ProcessStep) {
+  if (isPendingServicePricing(step)) return <Tag color="orange">待定价</Tag>
   if (step.stepAmount == null) return '-'
   const standardAmount = step.standardStepAmount ?? step.stepAmount
   return (
@@ -76,12 +91,19 @@ export function renderAmountCell(step: ProcessStep) {
   )
 }
 
+function isPendingServicePricing(step: ProcessStep): boolean {
+  return (step.stepType === 3 || step.stepType === 4)
+    && (step.billingMode ?? 1) === 1
+    && step.unitPrice == null
+    && step.billingUnitPrice == null
+}
+
 function billingBasisText(step: ProcessStep, mode: number, quantity?: number): string {
   if (mode === 3) return '按核定固定金额'
   if (mode === 4) return '本工序免收'
   if (quantity == null) return '按实际加工量'
-  const unit = step.stepType === 2 ? 't' : '刀'
-  return `计费 ${formatNumber(quantity, step.stepType === 2 ? 3 : 0)} ${unit}`
+  const unit = step.stepType === 2 ? 't' : step.billingBasis === 'PIECE' ? '件' : step.stepType === 1 ? '刀' : 't'
+  return `计费 ${formatNumber(quantity, unit === 't' ? 3 : 0)} ${unit}`
 }
 
 export function renderAdjustmentCell(step: ProcessStep) {

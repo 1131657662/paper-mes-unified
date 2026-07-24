@@ -81,7 +81,9 @@ public class DeliveryInventoryExportService {
 
     private String typeText(DeliveryInventoryFinishVO item) {
         if (Integer.valueOf(1).equals(item.getIsRemain())) return "余料";
-        return Integer.valueOf(2).equals(item.getSourceType()) ? "原纸直发" : "普通成品";
+        if (Integer.valueOf(2).equals(item.getSourceType())) return "原纸直发";
+        if (Integer.valueOf(3).equals(item.getSourceType())) return "整理成品";
+        return "普通成品";
     }
 
     private String stockText(DeliveryInventoryFinishVO item) {

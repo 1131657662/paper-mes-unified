@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
+import com.paper.mes.common.ErrorCode;
+import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.processorder.dto.FinishRollBatchDTO;
 import com.paper.mes.processorder.dto.SpareRollAppendDTO;
 import com.paper.mes.processorder.entity.FinishRoll;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -40,10 +43,14 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
     private static final int PLACEHOLDER_FINISH_WIDTH = 0;
     /** 唯一索引冲突时的重试次数，应对并发同时取到同一最大值。 */
     private static final int ALLOC_RETRY = 5;
+    private static final int STATUS_PENDING = 1;
+    private static final int STATUS_PROCESSING = 2;
+    private static final int STATUS_TO_RECORD = 3;
 
     private final ProcessOrderMapper processOrderMapper;
     private final RollNoSequenceService rollNoSequenceService;
     private final FinishRollSourceBinder sourceBinder;
+    private final BusinessLockService businessLockService;
 
     @Override
     public void changeFinishStatus(String uuid, Integer targetStatus) {
@@ -72,7 +79,9 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<String> batchGenerate(String orderUuid, FinishRollBatchDTO dto) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireOrder(orderUuid);
+        requireRollNumberEditable(order);
         List<String> result = new ArrayList<>(dto.getCount());
         int rowSort = nextRowSort(orderUuid);
         for (int i = 0; i < dto.getCount(); i++) {
@@ -93,7 +102,9 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<String> appendSpare(String orderUuid, SpareRollAppendDTO dto) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireOrder(orderUuid);
+        requireRollNumberEditable(order);
         List<String> result = new ArrayList<>(dto.getCount());
         int rowSort = nextRowSort(orderUuid);
         for (int i = 0; i < dto.getCount(); i++) {
@@ -104,11 +115,18 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void voidRollNo(String finishUuid) {
-        FinishRoll roll = getById(finishUuid);
-        if (roll == null) {
+        FinishRoll initial = getById(finishUuid);
+        if (initial == null) {
             throw new BusinessException("成品卷号不存在");
         }
+        businessLockService.lockProcessOrders(List.of(initial.getOrderUuid()));
+        FinishRoll roll = getById(finishUuid);
+        if (roll == null) {
+            throw new BusinessException(ErrorCode.E006, "成品卷号已被其他操作删除，请刷新后重试");
+        }
+        requireRollNumberEditable(requireOrder(roll.getOrderUuid()));
         if (ROLL_NO_VOID == roll.getRollNoStatus()) {
             throw new BusinessException("该卷号已作废，无需重复操作");
         }
@@ -123,11 +141,19 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int batchVoidRollNo(List<String> finishUuids) {
-        List<FinishRoll> rolls = listByIds(finishUuids);
-        if (rolls.size() != finishUuids.size()) {
+        List<FinishRoll> initial = listByIds(finishUuids);
+        if (initial.size() != finishUuids.size()) {
             // 数量不符说明有 uuid 查不到，整批拒绝（与单个作废一致：不存在即报错）。
             throw new BusinessException("部分卷号不存在，批量作废已取消");
         }
+        businessLockService.lockProcessOrders(initial.stream()
+                .map(FinishRoll::getOrderUuid).filter(Objects::nonNull).toList());
+        List<FinishRoll> rolls = listByIds(finishUuids);
+        if (rolls.size() != finishUuids.size()) {
+            throw new BusinessException(ErrorCode.E006, "部分卷号已被其他操作删除，请刷新后重试");
+        }
+        rolls.stream().map(FinishRoll::getOrderUuid).distinct()
+                .map(this::requireOrder).forEach(this::requireRollNumberEditable);
         for (FinishRoll roll : rolls) {
             // 复用单个 voidRollNo 同款校验：已作废拒绝、非预生成态拒绝；任一非法整批回滚。
             if (ROLL_NO_VOID == roll.getRollNoStatus()) {
@@ -224,5 +250,14 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
             throw new BusinessException("加工单不存在");
         }
         return order;
+    }
+
+    private void requireRollNumberEditable(ProcessOrder order) {
+        Integer status = order.getOrderStatus();
+        if (status == null || (status != STATUS_PENDING
+                && status != STATUS_PROCESSING && status != STATUS_TO_RECORD)) {
+            throw new BusinessException(ErrorCode.E004,
+                    "仅待下发、加工中或待回录加工单可维护成品卷号");
+        }
     }
 }

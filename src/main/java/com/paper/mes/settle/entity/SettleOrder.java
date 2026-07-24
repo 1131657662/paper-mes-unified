@@ -36,6 +36,7 @@ public class SettleOrder extends BaseEntity {
     private LocalDate periodEnd;
     private BigDecimal sawAmount;
     private BigDecimal rewindAmount;
+    private BigDecimal serviceAmount;
     private BigDecimal extraAmount;
     private BigDecimal amountNoTax;
     private BigDecimal taxAmount;

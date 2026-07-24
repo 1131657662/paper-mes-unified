@@ -8,6 +8,7 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -32,6 +33,26 @@ class FileStorageServiceImplTest {
                 "file", "damage.png", "image/png", "not-an-image".getBytes());
 
         assertThrows(BusinessException.class, () -> service().store(file));
+    }
+
+    @Test
+    void delete_withStoredUrl_removesFile() throws Exception {
+        FileStorageServiceImpl service = service();
+        String url = service.store(new MockMultipartFile(
+                "file", "damage.png", "image/png", pngBytes()));
+        Path storedFile;
+        try (var paths = java.nio.file.Files.walk(uploadDir)) {
+            storedFile = paths.filter(java.nio.file.Files::isRegularFile).findFirst().orElseThrow();
+        }
+
+        service.delete(url);
+
+        assertFalse(java.nio.file.Files.exists(storedFile));
+    }
+
+    @Test
+    void delete_withTraversalPath_rejectsRequest() {
+        assertThrows(BusinessException.class, () -> service().delete("/api/files/../outside.png"));
     }
 
     private FileStorageServiceImpl service() {

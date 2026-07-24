@@ -53,7 +53,7 @@ export default function SettleCandidateTable({
           toggleKey(record, activeSelectedKeys, onSelectionChange, lockedCustomerUuid)
         },
       }) : {}}
-      scroll={{ x: 1317, y: scrollY }}
+      scroll={{ x: 1437, y: scrollY }}
     />
   )
 }
@@ -107,6 +107,7 @@ const columns: ColumnsType<SettleCandidateVO> = [
   },
   { title: '锯纸费', dataIndex: 'sawAmount', align: 'right', width: 105, render: (value) => formatMoney(value) },
   { title: '复卷费', dataIndex: 'rewindAmount', align: 'right', width: 105, render: (value) => formatMoney(value) },
+  { title: '服务工序费', dataIndex: 'serviceAmount', align: 'right', width: 120, render: (value) => formatMoney(value) },
   {
     title: '计价调整',
     dataIndex: 'pricingAdjustmentAmount',

@@ -35,7 +35,7 @@ public class ProcessDraftIntegrityBootstrap implements ApplicationRunner {
                   `uuid` VARCHAR(36) NOT NULL COMMENT '主键UUID',
                   `order_uuid` VARCHAR(36) NOT NULL COMMENT '加工单UUID',
                   `original_uuid` VARCHAR(36) NOT NULL COMMENT '原纸UUID',
-                  `process_mode` TINYINT NOT NULL COMMENT '1标准加工 2现场定尺 3不加工直发',
+                  `process_mode` TINYINT NOT NULL COMMENT '1标准加工 2现场定尺 3不加工直发 4仅附加工艺',
                   `main_step_type` TINYINT NULL COMMENT '1锯纸 2复卷',
                   `config_json` JSON NOT NULL COMMENT '前端保存的单卷工艺配置',
                   `preview_json` JSON NULL COMMENT '后端预览结果快照',

@@ -3,6 +3,7 @@ package com.paper.mes.processorder.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ErrorCode;
+import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.OriginalRoll;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -36,6 +38,7 @@ public class ProcessRouteAppendService {
     private final ProcessRouteSourceConsumer sourceConsumer;
     private final ProcessRoutePriceResolver priceResolver;
     private final ProcessOrderService processOrderService;
+    private final BusinessLockService businessLockService;
 
     public ProcessRoutePreviewVO preview(String orderUuid, ProcessRoutePreviewDTO dto) {
         ProcessRouteContext context = loadContext(orderUuid, dto.getOriginalUuid());
@@ -47,6 +50,7 @@ public class ProcessRouteAppendService {
 
     @Transactional(rollbackFor = Exception.class)
     public ProcessRoutePreviewVO save(String orderUuid, ProcessRoutePreviewDTO dto) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessRouteContext context = loadContext(orderUuid, dto.getOriginalUuid());
         requireAppendStages(dto);
         priceResolver.applyDefaultPrices(context.order(), dto);

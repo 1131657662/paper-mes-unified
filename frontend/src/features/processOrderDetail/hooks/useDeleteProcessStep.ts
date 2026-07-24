@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { deleteProcessStep } from '../../../api/processOrder'
-import { queries } from '../../../queries'
+import { invalidateProcessOrderReadModels } from './invalidateProcessOrderReadModels'
 
 interface DeleteStepParams {
   orderUuid: string
@@ -13,9 +13,7 @@ export function useDeleteProcessStep() {
   return useMutation({
     mutationFn: ({ stepUuid }: DeleteStepParams) => deleteProcessStep(stepUuid),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: queries.processOrderDetail.detail(variables.orderUuid).queryKey,
-      })
+      await invalidateProcessOrderReadModels(queryClient, variables.orderUuid)
     },
   })
 }

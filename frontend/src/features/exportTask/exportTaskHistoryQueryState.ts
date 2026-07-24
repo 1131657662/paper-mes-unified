@@ -4,6 +4,7 @@ export type ExportTaskHistoryQueryAction =
   | { type: 'attention'; attentionOnly: boolean }
   | { type: 'keyword'; keyword?: string }
   | { type: 'module'; moduleCode?: string }
+  | { type: 'operation'; operationCode?: string }
   | { type: 'page'; current: number; size: number }
   | { type: 'status'; taskStatus?: number }
 
@@ -24,6 +25,8 @@ export function exportTaskHistoryQueryReducer(
       return { ...query, current: 1, keyword: action.keyword?.trim() || undefined }
     case 'module':
       return { ...query, current: 1, moduleCode: action.moduleCode }
+    case 'operation':
+      return { ...query, current: 1, operationCode: action.operationCode }
     case 'page':
       return { ...query, current: action.size === query.size ? action.current : 1, size: action.size }
     case 'status':

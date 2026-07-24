@@ -8,13 +8,15 @@ import { worstRollCheck } from './backRecordUtils'
 export function showBackRecordResult(result: BackRecordResultVO) {
   const check = worstRollCheck(result)
   Modal.info({
-    title: '回录完成',
+    title: result.orderCompleted ? '整单回录完成' : '本批回录已保存',
     width: 760,
     content: (
       <>
         <Descriptions className="back-record-result-summary" column={2} size="small">
           <Descriptions.Item label="单号">{result.orderNo}</Descriptions.Item>
-          <Descriptions.Item label="状态">已完成</Descriptions.Item>
+          <Descriptions.Item label="状态">{result.orderCompleted ? '已完成' : '待回录（部分完成）'}</Descriptions.Item>
+          <Descriptions.Item label="本批母卷">{result.recordedRollCount ?? 0} 组</Descriptions.Item>
+          <Descriptions.Item label="剩余母卷">{result.remainingRollCount ?? 0} 卷</Descriptions.Item>
           <Descriptions.Item label="闭合结果">
             <Tag color={CLOSE_LEVEL[check?.level ?? 'PASS']?.color}>{CLOSE_LEVEL[check?.level ?? 'PASS']?.text}</Tag>
           </Descriptions.Item>
@@ -47,8 +49,8 @@ const columns: ColumnsType<RollCheck> = [
     width: 100,
     render: (value) => <Tag color={CLOSE_LEVEL[value]?.color}>{CLOSE_LEVEL[value]?.text ?? value}</Tag>,
   },
-  { title: '复称重量', dataIndex: 'actualWeight', width: 110, render: (value) => formatOptionalKg(value) },
-  { title: '理论合计', dataIndex: 'theoreticalWeight', width: 110, render: (value) => formatOptionalKg(value) },
-  { title: '偏差', dataIndex: 'diffWeight', width: 100, render: (value) => formatOptionalKg(value) },
-  { title: '偏差率', dataIndex: 'diffRatioPct', width: 90, render: (value) => value == null ? '-' : formatPercent(value) },
+  { title: '复称重量', dataIndex: 'actualWeight', align: 'right', width: 110, render: (value) => formatOptionalKg(value) },
+  { title: '理论合计', dataIndex: 'theoreticalWeight', align: 'right', width: 110, render: (value) => formatOptionalKg(value) },
+  { title: '偏差', dataIndex: 'diffWeight', align: 'right', width: 100, render: (value) => formatOptionalKg(value) },
+  { title: '偏差率', dataIndex: 'diffRatioPct', align: 'right', width: 90, render: (value) => value == null ? '-' : formatPercent(value) },
 ]

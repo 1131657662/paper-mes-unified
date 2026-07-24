@@ -142,6 +142,21 @@ class ProcessOrderControllerContractTest {
     }
 
     @Test
+    void completeProcessing_withAdminRole_usesDedicatedCommand() throws Exception {
+        authorizeAs("admin");
+
+        mvc.perform(put("/api/process-orders/order-uuid/to-record")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"车间加工完成\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(processOrderService).completeProcessing("order-uuid", "车间加工完成");
+        verify(processOrderService, never()).changeStatus(any(), any(), any());
+    }
+
+    @Test
     void print_withAdminRoleAndEmptyBody_usesDefaultPrintDto() throws Exception {
         authorizeAs("admin");
         PrintResultVO result = new PrintResultVO();
@@ -280,7 +295,7 @@ class ProcessOrderControllerContractTest {
 
     private String backRecordPayload() {
         return """
-                {"warehouseUuid":"warehouse-1","rolls":[{"uuid":"roll-1","actualWeight":1198.00}]}
+                {"expectedVersion":0,"completeOrder":false,"warehouseUuid":"warehouse-1","rolls":[{"uuid":"roll-1","actualWeight":1198.00}]}
                 """;
     }
 

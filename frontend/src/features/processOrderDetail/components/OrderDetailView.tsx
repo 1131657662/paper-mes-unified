@@ -4,6 +4,7 @@ import type {
 } from '../../../types/processOrder'
 import { message } from 'antd'
 import { useCreateProcessOrderExportTask } from '../../exportTask/hooks/useCreateProcessOrderExportTask'
+import { useFinishCustomerSpecs } from '../../processOrderCustomerSpec/useFinishCustomerSpecs'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import OrderDetailContent from './OrderDetailContent'
 import OrderDetailRemarkModals from './OrderDetailRemarkModals'
@@ -33,12 +34,17 @@ export default function OrderDetailView({
   onAdjustPricing,
 }: Props) {
   const exportMutation = useCreateProcessOrderExportTask()
+  const customerSpecs = useFinishCustomerSpecs(detail?.order.uuid)
   const orderRemark = useOrderRemarkEditor(detail)
   const rollRemark = useRollRemarkEditor(detail)
 
   const handleExport = async () => {
     if (!detail?.order.uuid) return
-    await exportMutation.mutateAsync({ uuid: detail.order.uuid })
+    const specs = customerSpecs.data ?? (customerSpecs.isError ? undefined : (await customerSpecs.refetch()).data)
+    await exportMutation.mutateAsync({
+      uuid: detail.order.uuid,
+      customerRevisionNo: specs ? Math.max(0, specs.nextRevisionNo - 1) : undefined,
+    })
     message.success('已加入导出任务，可在右上角下载任务中心查看')
   }
 

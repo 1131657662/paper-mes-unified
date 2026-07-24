@@ -13,6 +13,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import MesTooltip from '../../../components/biz/MesTooltip'
 import type { FinishProductionVO, RollProductionVO, StageOutputVO } from '../../../types/processOrder'
+import { STEP_TYPE } from '../../../constants/processOrder'
 import { buildProductionRouteFlow, type ProductionFlowNode } from '../productionRouteFlow'
 import { buildRouteTree } from '../productionRouteTree'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
@@ -74,6 +75,10 @@ export default function ProductionRouteOutputs({
 
 function fallbackProcessLabel(production: RollProductionVO) {
   if (production.processMode === 3) return '直发'
+  if (production.processMode === 4) {
+    const serviceStep = production.steps?.find((step) => step.stepType === 3 || step.stepType === 4)
+    return serviceStep?.stepName || STEP_TYPE[serviceStep?.stepType ?? 0] || '附加工艺'
+  }
   return production.mainStepType === 2 ? '复卷' : '锯纸'
 }
 

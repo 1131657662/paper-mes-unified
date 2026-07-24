@@ -1,7 +1,7 @@
 import type { TablePaginationConfig } from 'antd/es/table'
 import { formatNumber } from '../../utils/numberFormatters'
 
-export const mesPageSizeOptions = [10, 20, 50, 100, 200, 500, 1000]
+export const mesPageSizeOptions = [10, 20, 50, 100]
 
 export function mesPaginationShowTotal(total: number) {
   return `共 ${formatTotal(total)} 条`

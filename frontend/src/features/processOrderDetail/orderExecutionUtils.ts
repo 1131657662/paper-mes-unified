@@ -1,4 +1,5 @@
 import type { ProcessOrderDetailVO, RollProductionVO } from '../../types/processOrder'
+import { processModeRequiresMain } from '../../constants/processOrder'
 
 export interface ExecutionSummary {
   officialCount: number
@@ -25,7 +26,8 @@ export function buildExecutionSummary(detail?: ProcessOrderDetailVO): ExecutionS
 function buildPrintableWarnings(productions: RollProductionVO[], officialCount: number): string[] {
   const warnings: string[] = []
   const processRolls = productions.filter((roll) => roll.processMode !== 3)
-  const missingStep = processRolls.filter((roll) => !(roll.steps ?? []).some((step) => step.isMain === 1))
+  const mainProcessRolls = productions.filter((roll) => processModeRequiresMain(roll.processMode))
+  const missingStep = mainProcessRolls.filter((roll) => !(roll.steps ?? []).some((step) => step.isMain === 1))
 
   if (missingStep.length > 0) {
     warnings.push(`${missingStep.length} 卷缺少主工序，打印下发会被后端拦截`)

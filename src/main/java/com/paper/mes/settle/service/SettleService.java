@@ -73,5 +73,5 @@ public interface SettleService extends IService<SettleOrder> {
     void cancelReceive(String uuid, String receiveUuid, SettleActionReasonDTO dto);
 
     /** 作废未收款结算单，并将关联加工单退回已完成状态。 */
-    void voidSettle(String uuid, SettleActionReasonDTO dto);
+    List<String> voidSettle(String uuid, SettleActionReasonDTO dto);
 }

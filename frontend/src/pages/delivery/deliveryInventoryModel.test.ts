@@ -22,6 +22,7 @@ describe('deliveryInventoryModel', () => {
     expect(inventoryTypeText(1, 2)).toBe('余料')
     expect(inventoryTypeText(0, 2)).toBe('原纸直发')
     expect(inventoryTypeText(0, 1)).toBe('普通成品')
+    expect(inventoryTypeText(0, 3)).toBe('整理成品')
   })
 
   it('跨页合并已选行并删除取消选择的行', () => {

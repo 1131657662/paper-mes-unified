@@ -7,6 +7,7 @@ import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { Machine, MachineSaveDTO } from '../../types/machine'
 import '../documentModule.css'
 import MachineProfileForm from './MachineProfileForm'
+import { capabilitiesToForm } from './machineCapabilityModel'
 import './MachineProfile.css'
 
 interface Props {
@@ -36,7 +37,7 @@ export default function MachineFormPage({ mode }: Props) {
       const savedUuid = isEdit && uuid ? uuid : await createMachine(values)
       if (isEdit && uuid) await updateMachine(uuid, values)
       clearDirty()
-      message.success(isEdit ? '机台档案已保存' : '机台档案已新增')
+      message.success(isEdit ? '生产资源已保存' : '生产资源已新增')
       navigate(`/machines/${savedUuid}`)
     } finally {
       setSubmitting(false)
@@ -48,19 +49,19 @@ export default function MachineFormPage({ mode }: Props) {
   return (
     <div className="document-module-page machine-profile-page">
       <MesPageHeader
-        title={isEdit ? '编辑机台档案' : '新增机台档案'}
+        title={isEdit ? '编辑机台 / 工位' : '新增机台 / 工位'}
         onBack={() => navigate(backPath)}
         actions={(
           <Space>
             <Button onClick={() => navigate(backPath)}>取消</Button>
             <Button type="primary" loading={submitting} onClick={() => form.submit()}>
-              保存机台
+              保存资源
             </Button>
           </Space>
         )}
       />
 
-      <Card className="document-module-card machine-profile-card" title="机台资料">
+      <Card className="document-module-card machine-profile-card" title="生产资源资料">
         {loading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : (
@@ -75,7 +76,8 @@ function toFormValues(machine: Machine): MachineSaveDTO {
   return {
     machineCode: machine.machineCode,
     machineName: machine.machineName,
-    machineType: machine.machineType,
+    resourceKind: machine.resourceKind ?? 'MACHINE',
+    capabilities: capabilitiesToForm(machine.capabilities),
     remark: machine.remark,
     status: machine.status,
   }

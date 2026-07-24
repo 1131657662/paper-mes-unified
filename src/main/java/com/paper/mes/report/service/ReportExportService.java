@@ -3,6 +3,8 @@ package com.paper.mes.report.service;
 import com.paper.mes.report.dto.ReportDetailVO;
 import com.paper.mes.report.dto.ReportDimensionVO;
 import com.paper.mes.report.dto.ReportOverviewVO;
+import com.paper.mes.report.dto.ReportQueryExecutionMetaVO;
+import com.paper.mes.report.dto.ReportExportAuditMetadata;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
@@ -16,16 +18,20 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
-/**
- * 统计报表 Excel 导出。
- */
 @Service
 public class ReportExportService {
-
     public SXSSFWorkbook buildWorkbook(ReportOverviewVO overview,
                                        List<ReportDimensionVO> dimensions,
                                        Iterable<ReportDetailVO> details,
                                        String dimension) {
+        return buildWorkbook(overview, dimensions, details, dimension, null);
+    }
+
+    public SXSSFWorkbook buildWorkbook(ReportOverviewVO overview,
+                                       List<ReportDimensionVO> dimensions,
+                                       Iterable<ReportDetailVO> details,
+                                       String dimension,
+                                       ReportQueryExecutionMetaVO metadata) {
         SXSSFWorkbook workbook = new SXSSFWorkbook(100);
         workbook.setCompressTempFiles(true);
         CellStyle titleStyle = titleStyle(workbook);
@@ -37,6 +43,17 @@ public class ReportExportService {
         writeOverview(overviewSheet, overview, titleStyle);
         writeDimensions(dimensionSheet, dimensions, dimension, headerStyle);
         writeDetails(workbook.createSheet("加工单明细"), details, headerStyle);
+        ReportExportMetadataWriter.write(workbook, metadata);
+        return workbook;
+    }
+
+    public SXSSFWorkbook buildAuditedWorkbook(ReportOverviewVO overview,
+                                              List<ReportDimensionVO> dimensions,
+                                              Iterable<ReportDetailVO> details,
+                                              String dimension,
+                                              ReportExportAuditMetadata metadata) {
+        SXSSFWorkbook workbook = buildWorkbook(overview, dimensions, details, dimension);
+        ReportExportMetadataWriter.write(workbook, metadata);
         return workbook;
     }
 

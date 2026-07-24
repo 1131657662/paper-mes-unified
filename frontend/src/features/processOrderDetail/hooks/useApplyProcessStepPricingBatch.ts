@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { applyProcessStepPricingBatch, type ProcessStepPricingBatchDTO } from '../../../api/processOrder'
-import { queries } from '../../../queries'
+import { invalidateProcessOrderReadModels } from './invalidateProcessOrderReadModels'
 
 interface ApplyPricingBatchParams {
   orderUuid: string
@@ -12,9 +12,7 @@ export function useApplyProcessStepPricingBatch() {
   return useMutation({
     mutationFn: ({ orderUuid, values }: ApplyPricingBatchParams) => applyProcessStepPricingBatch(orderUuid, values),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: queries.processOrderDetail.detail(variables.orderUuid).queryKey,
-      })
+      await invalidateProcessOrderReadModels(queryClient, variables.orderUuid)
     },
   })
 }

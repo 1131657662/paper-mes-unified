@@ -20,8 +20,9 @@ import com.paper.mes.processorder.mapper.ProcessParamMapper;
 import com.paper.mes.processorder.mapper.ProcessStageInputRelMapper;
 import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
-import com.paper.mes.processorder.service.FileStorageService;
+import com.paper.mes.processorder.service.DamageImageService;
 import com.paper.mes.processorder.service.BackRecordWarehousePolicy;
+import com.paper.mes.processorder.service.BackRecordScopeResolver;
 import com.paper.mes.processorder.service.RollNoSequenceService;
 import com.paper.mes.processorder.service.SawPlanPreviewer;
 import com.paper.mes.processorder.service.WeightCheckThresholdService;
@@ -117,6 +118,31 @@ class ProcessOrderServiceImplRewindPreviewTest {
         assertEquals(List.of(), specs);
     }
 
+    @Test
+    void validateSameSpecRewind_whenSpecificationsMatch_acceptsOneToOnePlan() {
+        RewindPlanPreviewDTO dto = sameSpecPlan(1500, 48, 6);
+
+        ReflectionTestUtils.invokeMethod(service(), "validateSameSpecRewind", dto, roll());
+    }
+
+    @Test
+    void validateSameSpecRewind_whenWidthChanges_rejectsPlan() {
+        RewindPlanPreviewDTO dto = sameSpecPlan(1499, 48, 6);
+
+        assertThrows(BusinessException.class, () -> ReflectionTestUtils.invokeMethod(
+                service(), "validateSameSpecRewind", dto, roll()));
+    }
+
+    private RewindPlanPreviewDTO sameSpecPlan(int width, int diameter, int coreDiameter) {
+        RewindPlanPreviewDTO.RewindSegmentDTO segment = segment(item("FINISH", width, 1));
+        segment.setTargetDiameter(diameter);
+        segment.setFinishCoreDiameter(coreDiameter);
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setRewindMode(6);
+        dto.setSegments(List.of(segment));
+        return dto;
+    }
+
     private FinishPreviewVO preview(int rewindMode, RewindPlanPreviewDTO.RewindSegmentDTO segment) {
         RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
         dto.setRewindMode(rewindMode);
@@ -154,6 +180,8 @@ class ProcessOrderServiceImplRewindPreviewTest {
         roll.setUuid("roll-1");
         roll.setProcessMode(1);
         roll.setOriginalWidth(1500);
+        roll.setOriginalDiameter(48);
+        roll.setCoreDiameter(6);
         roll.setRollWeight(new BigDecimal("800.000"));
         roll.setPieceNum(1);
         return roll;
@@ -173,7 +201,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 mock(CustomerService.class),
                 mock(OperationLogService.class),
                 new ObjectMapper(),
-                mock(FileStorageService.class),
+                mock(DamageImageService.class),
                 mock(RollNoSequenceService.class),
                 new SawPlanPreviewer(),
                 mock(DocumentNoService.class),
@@ -183,7 +211,13 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 null,
                 null,
                 null,
+                new BackRecordScopeResolver(),
+                null,
                 mock(BackRecordWarehousePolicy.class),
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

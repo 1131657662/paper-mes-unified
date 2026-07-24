@@ -15,6 +15,8 @@ public class PrintResultVO {
     private String orderNo;
     /** 本次打印后的累计打印次数。 */
     private Integer printCount;
+    /** 0已下发但未确认物理打印，1已确认打印。 */
+    private Integer printStatus;
     /** 是否补打（print_count>1）。 */
     private Boolean reprint;
     private LocalDateTime printTime;

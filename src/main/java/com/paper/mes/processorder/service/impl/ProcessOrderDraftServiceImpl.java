@@ -12,6 +12,7 @@ import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.service.CustomerService;
 import com.paper.mes.processorder.calc.FeeCalculator;
 import com.paper.mes.processorder.dto.DraftOrderVO;
+import com.paper.mes.processorder.dto.DraftRollProcessBatchSaveDTO;
 import com.paper.mes.processorder.dto.DraftOrderBaseDTO;
 import com.paper.mes.processorder.dto.DraftSummaryVO;
 import com.paper.mes.processorder.dto.FinishConfigSaveDTO;
@@ -20,6 +21,7 @@ import com.paper.mes.processorder.dto.OriginalRollImportPreviewVO;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
 import com.paper.mes.processorder.dto.PlanPreviewVO;
 import com.paper.mes.processorder.dto.ProcessPlanBatchSaveDTO;
+import com.paper.mes.processorder.dto.ProcessPlanItemsBatchSaveDTO;
 import com.paper.mes.processorder.dto.ProcessPlanDTO;
 import com.paper.mes.processorder.dto.ProcessOrderSubmitVO;
 import com.paper.mes.processorder.dto.RewindPlanPreviewDTO;
@@ -37,6 +39,7 @@ import com.paper.mes.processorder.service.ProcessPlanDraftManager;
 import com.paper.mes.processorder.service.ProcessPlanMapper;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.ProcessModePolicy;
 import com.paper.mes.processorder.service.ProcessRouteDraftManager;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
@@ -81,6 +84,8 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     private final ObjectMapper objectMapper;
     private final DocumentNoService documentNoService;
     private final BusinessLockService businessLockService;
+    private final com.paper.mes.processorder.service.DraftOrderVersionGuard versionGuard;
+    private final com.paper.mes.processorder.service.DraftRollProcessManager rollProcessManager;
 
     @Override
     public List<DraftSummaryVO> listDrafts() {
@@ -110,26 +115,42 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     public void saveBaseInfo(String orderUuid, DraftOrderBaseDTO dto) {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
+        versionGuard.assertExpected(order, dto.getExpectedVersion());
         Customer customer = requireCustomer(dto.getCustomerUuid());
         copyBaseFields(dto, order, customer);
         order.setCustomerName(customer.getCustomerName());
-        processOrderMapper.updateById(order);
+        ConcurrencyGuard.requireRowUpdated(processOrderMapper.updateById(order));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveDraftProgress(String orderUuid, Integer currentStep) {
+        saveDraftProgress(orderUuid, currentStep, currentVersion(orderUuid));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveDraftProgress(String orderUuid, Integer currentStep, Integer expectedVersion) {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
+        versionGuard.assertExpected(order, expectedVersion);
         order.setExtNum1(currentStep == null ? BigDecimal.ZERO : BigDecimal.valueOf(currentStep));
-        processOrderMapper.updateById(order);
+        ConcurrencyGuard.requireRowUpdated(processOrderMapper.updateById(order));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<String> replaceOriginalRolls(String orderUuid, List<OriginalRollDTO> rolls) {
+        return replaceOriginalRolls(orderUuid, rolls, currentVersion(orderUuid));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public List<String> replaceOriginalRolls(String orderUuid, List<OriginalRollDTO> rolls,
+                                             Integer expectedVersion) {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
+        versionGuard.assertExpected(order, expectedVersion);
+        versionGuard.advance(orderUuid, expectedVersion);
         deleteDraftRolls(orderUuid);
         List<String> rollUuids = new ArrayList<>(rolls.size());
         for (int i = 0; i < rolls.size(); i++) {
@@ -141,24 +162,46 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void saveProcessConfig(String orderUuid, String rollUuid, FinishConfigSaveDTO dto) {
-        saveProcessPlan(orderUuid, rollUuid, processPlanMapper.fromSaveDto(dto));
+    public void saveRollProcesses(String orderUuid, DraftRollProcessBatchSaveDTO dto) {
+        rollProcessManager.save(orderUuid, dto);
     }
 
     @Override
-    public PlanPreviewVO previewProcessPlan(String orderUuid, String rollUuid, ProcessPlanDTO plan) {
-        return planDraftManager.previewProcessPlan(orderUuid, rollUuid, plan);
+    @Transactional(rollbackFor = Exception.class)
+    public void saveProcessConfig(String orderUuid, String rollUuid, FinishConfigSaveDTO dto) {
+        saveProcessPlan(orderUuid, rollUuid, processPlanMapper.fromSaveDto(dto), currentVersion(orderUuid));
+    }
+
+    @Override
+    public void saveProcessConfig(String orderUuid, String rollUuid, FinishConfigSaveDTO dto,
+                                  Integer expectedVersion) {
+        saveProcessPlan(orderUuid, rollUuid, processPlanMapper.fromSaveDto(dto), expectedVersion);
+    }
+
+    @Override
+    public PlanPreviewVO previewProcessPlan(String orderUuid, String rollUuid, ProcessPlanDTO plan,
+                                            Integer expectedVersion) {
+        return planDraftManager.previewProcessPlan(orderUuid, rollUuid, plan, expectedVersion);
     }
 
     @Override
     public PlanPreviewVO saveProcessPlan(String orderUuid, String rollUuid, ProcessPlanDTO plan) {
-        return planDraftManager.saveProcessPlan(orderUuid, rollUuid, plan);
+        return planDraftManager.saveProcessPlan(orderUuid, rollUuid, plan, currentVersion(orderUuid));
     }
 
     @Override
     public List<PlanPreviewVO> saveProcessPlanBatch(String orderUuid, ProcessPlanBatchSaveDTO dto) {
         return planDraftManager.saveBatch(orderUuid, dto);
+    }
+
+    @Override
+    public List<PlanPreviewVO> saveProcessPlanItemsBatch(String orderUuid, ProcessPlanItemsBatchSaveDTO dto) {
+        return planDraftManager.saveItemsBatch(orderUuid, dto);
+    }
+
+    public PlanPreviewVO saveProcessPlan(String orderUuid, String rollUuid, ProcessPlanDTO plan,
+                                         Integer expectedVersion) {
+        return planDraftManager.saveProcessPlan(orderUuid, rollUuid, plan, expectedVersion);
     }
 
     @Override
@@ -169,6 +212,12 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ProcessOrderSubmitVO submit(String orderUuid) {
+        return submit(orderUuid, currentVersion(orderUuid));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ProcessOrderSubmitVO submit(String orderUuid, Integer expectedVersion) {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireOrder(orderUuid);
         if (STATUS_PENDING == order.getOrderStatus()) {
@@ -177,6 +226,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         if (order.getOrderStatus() == null || order.getOrderStatus() != STATUS_DRAFT) {
             throw new BusinessException(ErrorCode.E001, "只有草稿加工单可提交");
         }
+        versionGuard.assertExpected(order, expectedVersion);
         List<OriginalRoll> rolls = listRolls(orderUuid);
         Map<String, ProcessConfigDraft> drafts = draftMap(orderUuid);
         validateSubmit(rolls, drafts);
@@ -229,6 +279,11 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         return order;
     }
 
+    private Integer currentVersion(String orderUuid) {
+        ProcessOrder order = requireDraft(orderUuid);
+        return order.getVersion();
+    }
+
     private OriginalRoll requireRoll(String orderUuid, String rollUuid) {
         OriginalRoll roll = originalRollMapper.selectById(rollUuid);
         if (roll == null || !orderUuid.equals(roll.getOrderUuid())) {
@@ -238,6 +293,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     }
 
     private OriginalRoll buildDraftRoll(ProcessOrder order, OriginalRollDTO dto, int rowSort) {
+        ProcessModePolicy.requireValid(dto.getProcessMode(), dto.getMainStepType());
         OriginalRoll roll = new OriginalRoll();
         BeanUtils.copyProperties(dto, roll);
         roll.setOrderUuid(order.getUuid());
@@ -291,6 +347,9 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
             if (roll.getProcessMode() != null && roll.getProcessMode() == PROCESS_MODE_DIRECT) {
                 continue;
             }
+            if (ProcessModePolicy.isServiceOnly(roll.getProcessMode())) {
+                continue;
+            }
             if (coveredRolls.contains(roll.getUuid())) {
                 continue;
             }
@@ -308,6 +367,10 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
             if (roll.getProcessMode() != null && roll.getProcessMode() == PROCESS_MODE_DIRECT) {
                 continue;
             }
+            if (ProcessModePolicy.isServiceOnly(roll.getProcessMode())) {
+                processOrderService.saveFinishConfig(order.getUuid(), roll.getUuid(), serviceOnlyConfig());
+                continue;
+            }
             if (coveredRolls.contains(roll.getUuid())) {
                 continue;
             }
@@ -320,6 +383,12 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         }
         processOrderService.calcFee(order.getUuid());
         return submittedResult(order);
+    }
+
+    private FinishConfigSaveDTO serviceOnlyConfig() {
+        FinishConfigSaveDTO dto = new FinishConfigSaveDTO();
+        dto.setProcessMode(ProcessModePolicy.SERVICE_ONLY);
+        return dto;
     }
 
     private Set<String> coveredByMultiSourceDrafts(Map<String, ProcessConfigDraft> drafts) {

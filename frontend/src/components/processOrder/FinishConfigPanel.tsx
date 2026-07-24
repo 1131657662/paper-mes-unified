@@ -1,6 +1,6 @@
-import { Descriptions, Empty } from 'antd'
+import { Alert, Descriptions, Empty } from 'antd'
 import type { FinishConfigSaveDTO, OriginalRoll, ProcessOrder } from '../../types/processOrder'
-import { PROCESS_MODE, STEP_TYPE } from '../../constants/processOrder'
+import { PROCESS_MODE, STEP_TYPE, processModeRequiresMain } from '../../constants/processOrder'
 import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
 import DirectShipInfo from './DirectShipInfo'
 import RewindingConfigForm from './RewindingConfigForm'
@@ -31,7 +31,7 @@ export default function FinishConfigPanel(props: Props) {
 
 function RollDescriptions({ roll }: { roll: OriginalRoll }) {
   const processMode = roll.processMode ?? 1
-  const stepType = roll.mainStepType ?? 1
+  const stepType = roll.mainStepType
   return (
     <Descriptions size="small" column={4}>
       <Descriptions.Item label="品名">{roll.paperName || '-'}</Descriptions.Item>
@@ -39,7 +39,7 @@ function RollDescriptions({ roll }: { roll: OriginalRoll }) {
       <Descriptions.Item label="门幅">{formatMm(roll.originalWidth)}</Descriptions.Item>
       <Descriptions.Item label="单重">{formatKg(roll.rollWeight)} × {roll.pieceNum || 1} 件</Descriptions.Item>
       <Descriptions.Item label="加工模式">{PROCESS_MODE[processMode] ?? '-'}</Descriptions.Item>
-      <Descriptions.Item label="主工艺">{STEP_TYPE[stepType] ?? '-'}</Descriptions.Item>
+      <Descriptions.Item label="主工艺">{processModeRequiresMain(processMode) ? STEP_TYPE[stepType ?? 0] ?? '-' : '-'}</Descriptions.Item>
       <Descriptions.Item label="母卷号">{roll.rollNo || '-'}</Descriptions.Item>
     </Descriptions>
   )
@@ -47,8 +47,18 @@ function RollDescriptions({ roll }: { roll: OriginalRoll }) {
 
 function ConfigEditor({ config, onConfigChange, order, originalRolls, roll }: Props) {
   const processMode = roll.processMode ?? 1
-  const stepType = roll.mainStepType ?? 1
+  const stepType = roll.mainStepType
   if (processMode === 3) return <DirectShipInfo />
+  if (processMode === 4) {
+    return (
+      <Alert
+        showIcon
+        type="info"
+        message="仅附加工艺"
+        description="无需配置锯纸或复卷。系统按母卷件数生成整理成品，品名、克重和门幅保持不变；完工时逐件回录实重，并记录剥损或包装损耗。"
+      />
+    )
+  }
   if (stepType === 1) {
     return <SawingConfigForm roll={roll} processMode={processMode} config={config} onChange={onConfigChange} />
   }

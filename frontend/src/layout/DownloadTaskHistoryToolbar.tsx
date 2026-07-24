@@ -1,7 +1,7 @@
 import { CheckOutlined } from '@ant-design/icons'
 import { Button, Checkbox, Input, Popconfirm, Select, message } from 'antd'
 import { useState } from 'react'
-import { exportTaskModuleOptions, exportTaskStatusOptions } from '../features/exportTask/exportTaskHistoryFilters'
+import { exportTaskModuleOptions, exportTaskOperationOptions, exportTaskStatusOptions } from '../features/exportTask/exportTaskHistoryFilters'
 import { useAcknowledgeExportTasks } from '../features/exportTask/hooks/useExportTaskMutations'
 import type { ExportTaskHistoryQuery } from '../types/exportTask'
 
@@ -9,6 +9,7 @@ interface Props {
   onAttentionChange: (checked: boolean) => void
   onKeywordChange: (value?: string) => void
   onModuleChange: (value?: string) => void
+  onOperationChange: (value?: string) => void
   onStatusChange: (value?: number) => void
   query: ExportTaskHistoryQuery
   snapshot?: AcknowledgeSnapshot
@@ -38,6 +39,8 @@ export default function DownloadTaskHistoryToolbar(props: Props) {
       onChange={props.onStatusChange} />
     <Select allowClear placeholder="全部模块" value={props.query.moduleCode} options={exportTaskModuleOptions}
       onChange={props.onModuleChange} />
+    <Select allowClear placeholder="全部操作" value={props.query.operationCode} options={exportTaskOperationOptions}
+      onChange={props.onOperationChange} />
     <div className="download-task-history__attention">
       <Checkbox checked={props.query.attentionOnly} onChange={(event) => props.onAttentionChange(event.target.checked)}>
         仅看待处理
@@ -54,13 +57,14 @@ function AcknowledgeFilteredTasks({ query, snapshot }: {
   const { mutate: acknowledgeTasks, isPending: isAcknowledging } = useAcknowledgeExportTasks()
   const terminalStatus = query.taskStatus === undefined || [3, 4, 6].includes(query.taskStatus)
   if (!snapshot || snapshot.unacknowledgedCount === 0 || !terminalStatus) return null
-  const filtered = Boolean(query.taskStatus !== undefined || query.moduleCode || query.keyword)
+  const filtered = Boolean(query.taskStatus !== undefined || query.moduleCode || query.operationCode || query.keyword)
   const label = filtered ? '标记筛选结果' : '全部标记已处理'
   const scope = filtered ? '当前筛选范围' : '全部提醒'
   const acknowledge = () => {
     if (!snapshot.current) return
     acknowledgeTasks({
-      asOf: snapshot.asOf, taskStatus: query.taskStatus, moduleCode: query.moduleCode, keyword: query.keyword,
+      asOf: snapshot.asOf, taskStatus: query.taskStatus, moduleCode: query.moduleCode,
+      operationCode: query.operationCode, keyword: query.keyword,
     }, {
       onSuccess: (count) => count > 0
         ? message.success(`已将 ${count} 条提醒标记为已处理`)

@@ -22,7 +22,9 @@ export function inventoryTypeFrom(value?: number): DeliveryInventoryType | undef
 
 export function inventoryTypeText(isRemain?: number, sourceType?: number): string {
   if (isRemain === 1) return '余料'
-  return sourceType === 2 ? '原纸直发' : '普通成品'
+  if (sourceType === 2) return '原纸直发'
+  if (sourceType === 3) return '整理成品'
+  return '普通成品'
 }
 
 export function mergeInventorySelection(

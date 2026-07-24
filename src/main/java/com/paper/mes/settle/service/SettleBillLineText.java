@@ -78,7 +78,8 @@ final class SettleBillLineText {
             return List.of();
         }
         return line.getFeeLines().stream()
-                .filter(fee -> "saw".equals(fee.getFeeType()) || "rewind".equals(fee.getFeeType()))
+                .filter(fee -> "saw".equals(fee.getFeeType()) || "rewind".equals(fee.getFeeType())
+                        || "service".equals(fee.getFeeType()))
                 .toList();
     }
 

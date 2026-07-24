@@ -1,0 +1,122 @@
+.draft-service-processes {
+  display: grid;
+  gap: 10px;
+}
+
+.service-step-loading {
+  min-height: 260px;
+}
+
+.roll-selector-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.roll-selector-panel__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.draft-service-processes__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.draft-service-processes__header > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.draft-service-processes__header .ant-typography-secondary {
+  font-size: 12px;
+}
+
+.draft-service-processes__list {
+  display: grid;
+  gap: 8px;
+}
+
+.draft-service-processes__list-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.draft-service-processes__list-header > span {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: var(--mes-radius-sm);
+  background: var(--mes-color-soft);
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.draft-service-processes__empty {
+  padding: 12px;
+  border: 1px dashed var(--mes-color-border);
+  border-radius: var(--mes-radius-sm);
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.draft-service-process-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, auto);
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 8px 10px 8px 12px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius-sm);
+  background: var(--mes-color-soft);
+}
+
+.draft-service-process-row__main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.draft-service-process-row__main span {
+  overflow: hidden;
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draft-service-process-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+@media (max-width: 640px) {
+  .draft-service-processes__header,
+  .draft-service-processes__header > div {
+    align-items: flex-start;
+  }
+
+  .draft-service-processes__header > div {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .draft-service-process-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .draft-service-process-row__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}

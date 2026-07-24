@@ -1,6 +1,7 @@
 import { useState, type MouseEvent } from 'react'
 import { Button, Empty, Space, Table, Typography } from 'antd'
 import { CalculatorOutlined, PlusOutlined } from '@ant-design/icons'
+import MesTooltip from '../../../components/biz/MesTooltip'
 import type { ProcessOrderDetailVO, ProcessStep } from '../../../types/processOrder'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import { buildStepTableColumns } from './StepTableColumns'
@@ -38,7 +39,7 @@ export default function StepTableSection({ canManageOrder, canAdjustPricing, det
         <h2 className="order-detail-section__title">工序与费用</h2>
         {(canEditPending || canAppendRoute || canPrice) && (
           <Space size={8}>
-            {canPrice && <PricingActions selectedSteps={selectedSteps}
+            {canPrice && <PricingActions availableCount={availableSteps.length} selectedSteps={selectedSteps}
               onOpenAll={() => { setSelectedKeys(availableSteps.map((step) => step.uuid)); setPricingOpen(true) }}
               onOpenSelected={() => setPricingOpen(true)} />}
             {canEditPending && (
@@ -84,17 +85,30 @@ export default function StepTableSection({ canManageOrder, canAdjustPricing, det
   )
 }
 
-function PricingActions({ selectedSteps, onOpenAll, onOpenSelected }: {
+function PricingActions({ availableCount, selectedSteps, onOpenAll, onOpenSelected }: {
+  availableCount: number
   selectedSteps: PricingStep[]
   onOpenAll: () => void
   onOpenSelected: () => void
 }) {
+  const allReason = availableCount ? undefined : '当前状态下暂无可核定工序'
+  const selectedReason = allReason ?? (selectedSteps.length ? undefined : '请先在表格中勾选需要核定的工序')
   return <Space size={8} className="step-pricing-actions">
     {selectedSteps.length > 0 && <Typography.Text type="secondary">已选 {selectedSteps.length} 道</Typography.Text>}
-    <Button size="small" icon={<CalculatorOutlined />} onClick={onOpenAll}>核定全部单价</Button>
-    <Button size="small" type="primary" disabled={!selectedSteps.length} onClick={onOpenSelected}>
-      核定选中{selectedSteps.length ? `（${selectedSteps.length}）` : ''}
-    </Button>
+    <MesTooltip title={allReason}>
+      <span className="step-pricing-action-tooltip" title={allReason}>
+        <Button size="small" icon={<CalculatorOutlined />} disabled={Boolean(allReason)} onClick={onOpenAll}>
+          核定全部费用
+        </Button>
+      </span>
+    </MesTooltip>
+    <MesTooltip title={selectedReason}>
+      <span className="step-pricing-action-tooltip" title={selectedReason}>
+        <Button size="small" type="primary" disabled={Boolean(selectedReason)} onClick={onOpenSelected}>
+          批量核定{selectedSteps.length ? `（${selectedSteps.length}）` : ''}
+        </Button>
+      </span>
+    </MesTooltip>
   </Space>
 }
 

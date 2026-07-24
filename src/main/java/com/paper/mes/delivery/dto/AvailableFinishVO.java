@@ -32,7 +32,7 @@ public class AvailableFinishVO {
     private BigDecimal remainingWeight;
     /** 1 表示切边/余料，其他值表示正常成品。 */
     private Integer isRemain;
-    /** 1加工产出 2原纸直发 */
+    /** 1加工产出 2原纸直发 3仅附加工艺产出 */
     private Integer sourceType;
     /** 1待入库 2已入库 3已出库 4报废 */
     private Integer finishStatus;

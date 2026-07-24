@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import { buildBackRecordMetrics } from './backRecordMetrics'
-import { buildBackRecordDTO, type BackRecordFormValues } from './backRecordUtils'
+import { activeFinishRolls, buildBackRecordDTO, type BackRecordFormValues } from './backRecordUtils'
+import { theoreticalBackRecordValues } from './backRecordTheoryFill'
 import { buildInitialOnSiteOutputGroups, existingFinishSourceUuid } from './backRecordOnSiteOutputModel'
 import { buildBackRecordWorkbench, buildWorkItemMetrics } from './backRecordWorkbenchUtils'
 import { buildBackRecordSourceOptions } from './backRecordRollOptions'
@@ -160,6 +161,17 @@ describe('现场定尺回录数据', () => {
     }]
 
     expect(existingFinishSourceUuid(productions, 'finish-1')).toBeUndefined()
+  })
+
+  it('排除已报废成品的回录和理论回填', () => {
+    const detail = onSiteDetail()
+    const finish = detail.finishRolls[0]
+    expect(finish).toBeDefined()
+    if (!finish) return
+    finish.finishStatus = 4
+
+    expect(activeFinishRolls(detail)).toEqual([])
+    expect(theoreticalBackRecordValues(detail).finishes).toEqual({})
   })
 })
 

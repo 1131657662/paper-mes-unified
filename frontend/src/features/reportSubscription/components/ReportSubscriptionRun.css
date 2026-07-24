@@ -1,0 +1,17 @@
+.report-subscription-run-hint,
+.report-subscription-run-error {
+  margin-bottom: 14px;
+}
+
+.report-subscription-run-drawer .ant-table-cell {
+  vertical-align: middle;
+}
+
+.report-subscription-run-drawer .ant-tag {
+  margin-inline-end: 0;
+}
+
+.report-subscription-run-pagination {
+  margin-top: 16px;
+  text-align: right;
+}

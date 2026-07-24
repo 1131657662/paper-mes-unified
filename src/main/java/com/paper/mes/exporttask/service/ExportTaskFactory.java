@@ -24,30 +24,38 @@ final class ExportTaskFactory {
         return task;
     }
 
-    static ExportTask processOrder(String requestId, CurrentUser user, ProcessOrder order) {
+    static ExportTask processOrder(String requestId, CurrentUser user, ProcessOrder order,
+                                   String payload) {
         ExportTask task = base(requestId, user);
         task.setTaskType(ProcessOrderDetailExportTaskHandler.TASK_TYPE);
         task.setModuleCode("process-order");
         task.setOperationCode("detail-export");
         task.setTaskName("加工单 " + order.getOrderNo());
         task.setSourceUuid(order.getUuid());
+        task.setRequestPayload(payload);
         return task;
     }
 
     static ExportTask deliveryOrder(String requestId, CurrentUser user, DeliveryOrder order) {
+        return deliveryOrder(requestId, user, order, null);
+    }
+
+    static ExportTask deliveryOrder(String requestId, CurrentUser user, DeliveryOrder order,
+                                    String payload) {
         ExportTask task = base(requestId, user);
         task.setTaskType(DeliveryOrderDetailExportTaskHandler.TASK_TYPE);
         task.setModuleCode("delivery");
         task.setOperationCode("detail-export");
         task.setTaskName("出库单 " + order.getDeliveryNo());
         task.setSourceUuid(order.getUuid());
+        task.setRequestPayload(payload);
         return task;
     }
 
     static ExportTask deliveryInventory(String requestId, String payload, CurrentUser user) {
         ExportTask task = base(requestId, user);
         task.setTaskType(DeliveryInventoryExportTaskHandler.TASK_TYPE);
-        task.setModuleCode("delivery");
+        task.setModuleCode("inventory");
         task.setOperationCode("inventory-export");
         task.setTaskName("成品库存导出");
         task.setSourceUuid("delivery-inventory");
@@ -66,15 +74,38 @@ final class ExportTaskFactory {
         return task;
     }
 
-    static ExportTask report(String requestId, String payload, CurrentUser user) {
+    static ExportTask report(String requestId, String payload, CurrentUser user,
+                             String reportPath, String snapshotUuid, String releaseUuid) {
         ExportTask task = base(requestId, user);
         task.setTaskType(ReportExportTaskHandler.TASK_TYPE);
         task.setModuleCode("report");
         task.setOperationCode("full-export");
         task.setTaskName("统计报表导出");
         task.setSourceUuid("report");
+        bindReportContext(task, reportPath, snapshotUuid, releaseUuid);
         task.setRequestPayload(payload);
         return task;
+    }
+
+    static ExportTask scheduledReport(String requestId, String payload, CurrentUser user,
+                                      String subscriptionUuid, String subscriptionName,
+                                      String reportPath, String snapshotUuid, String releaseUuid) {
+        ExportTask task = base(requestId, user);
+        task.setTaskType(ReportExportTaskHandler.TASK_TYPE);
+        task.setModuleCode("report");
+        task.setOperationCode("scheduled-export");
+        task.setTaskName("定时报表：" + subscriptionName);
+        task.setSourceUuid(subscriptionUuid);
+        bindReportContext(task, reportPath, snapshotUuid, releaseUuid);
+        task.setRequestPayload(payload);
+        return task;
+    }
+
+    private static void bindReportContext(ExportTask task, String reportPath,
+                                          String snapshotUuid, String releaseUuid) {
+        task.setSourcePath(reportPath);
+        task.setQuerySnapshotUuid(snapshotUuid);
+        task.setMetricReleaseUuid(releaseUuid);
     }
 
     private static ExportTask base(String requestId, CurrentUser user) {

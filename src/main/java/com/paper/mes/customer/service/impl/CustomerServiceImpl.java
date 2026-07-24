@@ -9,9 +9,12 @@ import com.paper.mes.common.PageResult;
 import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.customer.dto.CustomerQuery;
 import com.paper.mes.customer.dto.CustomerSaveDTO;
+import com.paper.mes.customer.dto.CustomerVO;
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.mapper.CustomerMapper;
 import com.paper.mes.customer.service.CustomerService;
+import com.paper.mes.customer.service.CustomerProcessPriceReader;
+import com.paper.mes.customer.service.CustomerProcessPriceWriter;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +33,11 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
     private static final int DEFAULT_INVOICE = 2;
 
     private final DocumentNoService documentNoService;
+    private final CustomerProcessPriceReader priceReader;
+    private final CustomerProcessPriceWriter priceWriter;
 
     @Override
-    public PageResult<Customer> pageCustomers(CustomerQuery query) {
+    public PageResult<CustomerVO> pageCustomers(CustomerQuery query) {
         LambdaQueryWrapper<Customer> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(query.getKeyword())) {
             String kw = query.getKeyword().trim();
@@ -41,7 +46,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
         }
         wrapper.orderByDesc(Customer::getCreateTime);
         Page<Customer> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
-        return PageResult.of(page);
+        return priceReader.toPage(page);
     }
 
     @Override
@@ -54,13 +59,20 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
     }
 
     @Override
+    public CustomerVO getProfile(String uuid) {
+        return priceReader.toView(getByUuid(uuid));
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public String create(CustomerSaveDTO dto) {
+        var prices = priceWriter.normalize(dto.getProcessPrices());
         Customer customer = new Customer();
         BeanUtils.copyProperties(dto, customer);
         customer.setCustomerCode(documentNoService.next(NoRuleBizType.CUSTOMER, LocalDate.now()));
         applyDefaults(customer);
         save(customer);
+        priceWriter.replace(customer.getUuid(), prices);
         return customer.getUuid();
     }
 
@@ -68,6 +80,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
     @Transactional(rollbackFor = Exception.class)
     public void update(String uuid, CustomerSaveDTO dto) {
         Customer existing = getByUuid(uuid);
+        var prices = priceWriter.normalizeForUpdate(uuid, dto.getProcessPrices());
         Integer savedVersion = existing.getVersion();
         String savedCode = existing.getCustomerCode();
         BeanUtils.copyProperties(dto, existing);
@@ -76,11 +89,14 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
         existing.setCustomerCode(keepCodeOrGenerate(savedCode, NoRuleBizType.CUSTOMER));
         applyDefaults(existing);
         ConcurrencyGuard.requireUpdated(updateById(existing));
+        priceWriter.replace(uuid, prices);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(String uuid) {
         getByUuid(uuid);
+        priceWriter.remove(uuid);
         removeById(uuid);
     }
 

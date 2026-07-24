@@ -1,29 +1,25 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { ReportDetailVO } from '../../../types/report'
 import ReportInsightStrip from './ReportInsightStrip'
 
-describe('报表重量洞察', () => {
-  it('将成品重量正差作为业务提示而不是错误', () => {
-    const markup = renderToStaticMarkup(
-      <ReportInsightStrip details={[detailWithPositiveWeightDifference()]} />,
-    )
+describe('报表洞察', () => {
+  it('按后端生效阈值判断异常', () => {
+    const markup = renderToStaticMarkup(<ReportInsightStrip overview={{
+      settledAmount: 100, unreceivedAmount: 40, pendingSettleAmount: 0, lossRatio: 4,
+      orderCount: 0, originalRollCount: 0, finishRollCount: 0, originalWeight: 0,
+      finishWeight: 0, lossWeight: 0, knifeCount: 0, sawAmount: 0, rewindAmount: 0,
+      processAmount: 0, extraAmount: 0, totalAmount: 0, receivedAmount: 0,
+      cashReceivedAmount: 0, scrapOffsetAmount: 0,
+    }} thresholds={{ asOf: '2026-07-20T12:00:00', thresholds: [
+      { ruleUuid: 'cash', signalCode: 'UNRECEIVED_RATIO', comparisonOperator: 'GTE',
+        thresholdValue: 35, severity: 1, scopeType: 1, scopeLabel: '全局' },
+      { ruleUuid: 'loss', signalCode: 'LOSS_RATIO', comparisonOperator: 'GTE',
+        thresholdValue: 8, severity: 2, scopeType: 2, scopeLabel: '客户专属' },
+    ] }} />)
 
-    expect(markup).toContain('存在成品重量正差')
-    expect(markup).toContain('业务允许该情况')
-    expect(markup).not.toContain('重量守恒异常')
+    expect(markup).toContain('未收占比较高')
+    expect(markup).toContain('损耗处于阈值内')
+    expect(markup).toContain('客户专属')
+    expect(markup).toContain('title="已结算未收')
   })
 })
-
-function detailWithPositiveWeightDifference(): ReportDetailVO {
-  return {
-    accountingDate: '2026-07-02', cashReceivedAmount: 0, customerName: '测试客户',
-    extraAmount: 0, finishRollCount: 1, finishWeight: 1010, isInvoice: 2,
-    knifeCount: 0, lossRatio: 0, lossWeight: 0, orderDate: '2026-06-30',
-    orderNo: 'JG202606300001', orderStatus: 4, orderUuid: 'order-1',
-    originalRollCount: 1, originalWeight: 1000, paperSummary: '测试纸',
-    pendingSettleAmount: 0, processAmount: 0, processSummary: '复卷',
-    receivedAmount: 0, rewindAmount: 0, sawAmount: 0, scrapOffsetAmount: 0,
-    settleType: 2, settledAmount: 0, totalAmount: 0, unreceivedAmount: 0,
-  }
-}

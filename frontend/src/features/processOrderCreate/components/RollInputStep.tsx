@@ -51,9 +51,10 @@ export default function RollInputStep({ rolls, loading, onChange, onImportPrevie
     {
       title: '门幅(mm)',
       dataIndex: 'originalWidth',
-      width: 100,
+      width: 132,
+      minWidth: 132,
       render: (_, roll, index) => (
-        <InputNumber aria-label={`母卷 ${index + 1} 门幅`} min={1} value={roll.originalWidth} onChange={(value) => onChange(updateField(rolls, roll.localId, 'originalWidth', value ?? 1))} />
+        <InputNumber className="roll-width-input" aria-label={`母卷 ${index + 1} 门幅`} min={1} value={roll.originalWidth} onChange={(value) => onChange(updateField(rolls, roll.localId, 'originalWidth', value ?? 1))} />
       ),
     },
     {

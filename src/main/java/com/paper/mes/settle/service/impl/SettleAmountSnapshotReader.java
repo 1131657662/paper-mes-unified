@@ -64,6 +64,7 @@ final class SettleAmountSnapshotReader {
     private static BigDecimal detailBaseAmount(SettleDetail detail) {
         return nz(detail.getSawAmount())
                 .add(nz(detail.getRewindAmount()))
+                .add(nz(detail.getServiceAmount()))
                 .add(nz(detail.getExtraAmount()))
                 .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }

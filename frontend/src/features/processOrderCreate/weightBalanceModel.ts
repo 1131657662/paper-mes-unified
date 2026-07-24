@@ -10,6 +10,7 @@ export interface RollWeightBalance {
   finishWeight: number
   trimWeight: number
   difference: number
+  outputWeightLabel: string
   label: string
   detail: string
   blocking: boolean
@@ -39,6 +40,7 @@ interface RollBalanceOptions {
 export function calculateRollWeightBalance(options: RollBalanceOptions): RollWeightBalance {
   if (options.lock) return excludedBalance(`计入 ${options.lock.ownerLabel} 的合并方案`)
   if (options.roll.processMode === 3) return excludedBalance('直发母卷不生成加工成品')
+  if (options.roll.processMode === 4) return excludedBalance('仅附加工艺，重量在回录时确认')
   if (options.roll.processMode === 2) return excludedBalance('现场定尺，重量在回录时确认')
   if (options.routePreview) return routeBalance(options.roll, options.routePreview)
   if (!options.preview?.ready) return pendingBalance(options.preview ? '当前预览未通过' : '尚未取得后端预览')
@@ -67,10 +69,13 @@ export function summarizeWeightBalances(balances: RollWeightBalance[]): OrderWei
 
 function previewBalance(options: RollBalanceOptions): RollWeightBalance {
   const inputWeight = planInputWeight(options)
+  const preview = options.preview
   return resolvedBalance({
     inputWeight,
-    finishWeight: Number(options.preview?.totalEstimateWeight ?? 0),
-    trimWeight: Number(options.preview?.totalTrimWeight ?? 0),
+    finishWeight: Number(preview?.totalEstimateWeight ?? 0),
+    trimWeight: preview?.widthDifferencePolicy === 'ALLOCATE' ? 0 : Number(preview?.totalTrimWeight ?? 0),
+    outputWeightLabel: policyOutputLabel(preview?.widthDifferencePolicy),
+    balancedDetail: policyBalanceDetail(preview),
   })
 }
 
@@ -80,19 +85,38 @@ function routeBalance(roll: RollDraft, preview: ProcessRoutePreviewVO): RollWeig
     inputWeight: rollTotalWeight(roll),
     finishWeight: sumOutputWeight(outputs.filter((item) => item.isRemain !== 1)),
     trimWeight: sumOutputWeight(outputs.filter((item) => item.isRemain === 1)),
+    outputWeightLabel: '修边/余料',
   })
 }
 
-function resolvedBalance(weights: WeightTotals): RollWeightBalance {
+function resolvedBalance(weights: BalanceInput): RollWeightBalance {
   const totals = roundedTotals(weights)
   const balanced = Math.abs(totals.difference) < 0.001
   return {
     status: balanced ? 'balanced' : 'unbalanced',
     ...totals,
+    outputWeightLabel: weights.outputWeightLabel ?? '修边/余料',
     label: balanced ? '重量已平衡' : '存在未分配差值',
-    detail: balanced ? '投入重量已全部分配' : '请返回工艺配置检查成品、切边或损耗',
+    detail: balanced ? weights.balancedDetail ?? '投入重量已全部分配' : '请返回工艺配置检查成品、余料或损耗',
     blocking: !balanced,
   }
+}
+
+function policyOutputLabel(policy?: PlanPreviewVO['widthDifferencePolicy']): string {
+  if (policy === 'LOSS') return '计划损耗'
+  if (policy === 'ALLOCATE') return '另计重量'
+  if (policy === 'REMAINDER') return '余料'
+  return '修边/余料'
+}
+
+function policyBalanceDetail(preview?: PlanPreviewVO): string | undefined {
+  const width = Number(preview?.widthDifference ?? 0)
+  const fallback = preview?.widthDifferencePolicy === 'LOSS' ? preview.calculatedLossWeight ?? preview.totalTrimWeight : preview?.totalTrimWeight
+  const weight = Number(preview?.widthDifferenceWeight ?? fallback ?? 0)
+  if (preview?.widthDifferencePolicy === 'LOSS') return `${width}mm 差额按计划损耗计入，共 ${roundKg(weight)}kg`
+  if (preview?.widthDifferencePolicy === 'ALLOCATE') return `${width}mm 差额对应 ${roundKg(weight)}kg，已并入成品重量`
+  if (preview?.widthDifferencePolicy === 'REMAINDER') return `${width}mm 差额生成余料，共 ${roundKg(weight)}kg`
+  return undefined
 }
 
 function planInputWeight(options: RollBalanceOptions): number {
@@ -131,7 +155,17 @@ function excludedBalance(detail: string): RollWeightBalance {
 }
 
 function emptyBalance(status: WeightBalanceStatus, label: string, detail: string): RollWeightBalance {
-  return { status, inputWeight: 0, finishWeight: 0, trimWeight: 0, difference: 0, label, detail, blocking: false }
+  return {
+    status,
+    inputWeight: 0,
+    finishWeight: 0,
+    trimWeight: 0,
+    difference: 0,
+    outputWeightLabel: '修边/余料',
+    label,
+    detail,
+    blocking: false,
+  }
 }
 
 function sumOutputWeight(outputs: NonNullable<ProcessRoutePreviewVO['outputs']>): number {
@@ -158,4 +192,9 @@ interface WeightTotals {
   inputWeight: number
   finishWeight: number
   trimWeight: number
+}
+
+interface BalanceInput extends WeightTotals {
+  outputWeightLabel?: string
+  balancedDetail?: string
 }

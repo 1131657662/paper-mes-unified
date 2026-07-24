@@ -8,7 +8,8 @@ import type {
   RewindFinishItemPreview,
   RewindSegmentPreview,
 } from '../../../types/processOrder'
-import { formatKg, formatMm } from '../../../utils/numberFormatters'
+import { formatKgWithMaxDecimals, formatMm } from '../../../utils/numberFormatters'
+import { createStableObjectRowKey } from '../../../utils/createStableObjectRowKey'
 import type { RollWeightBalance } from '../weightBalanceModel'
 import WeightBalanceStrip from './WeightBalanceStrip'
 import './PlanPreviewPanel.css'
@@ -36,10 +37,14 @@ const finishColumns: ColumnsType<RewindFinishItemPreview> = [
   { title: '门幅', dataIndex: 'finishWidth', width: 72, render: (value) => formatMm(value ?? 0) },
   { title: '直径', dataIndex: 'finishDiameter', width: 76, render: (value) => value ? formatMm(value) : '-' },
   { title: '纸芯', dataIndex: 'finishCoreDiameter', width: 72, render: (value) => value ? formatMm(value) : '-' },
-  { title: '预估重', dataIndex: 'estimateWeight', width: 92, render: (value) => formatKg(Number(value ?? 0)) },
-  { title: '修边重', dataIndex: 'trimWeight', width: 92, render: (value) => formatKg(Number(value ?? 0)) },
+  { title: '预估重', dataIndex: 'estimateWeight', width: 92, render: (value) => formatKgWithMaxDecimals(Number(value ?? 0), 2) },
+  { title: '修边重', dataIndex: 'trimWeight', width: 92, render: (value) => formatKgWithMaxDecimals(Number(value ?? 0), 2) },
   { title: '来源', dataIndex: 'sourceSummary', width: 160, render: textCell },
 ]
+
+const sawFinishColumns = finishColumns.filter((column) => !('dataIndex' in column) || column.dataIndex !== 'trimWeight')
+const segmentRowKey = createStableObjectRowKey('preview-segment')
+const finishRowKey = createStableObjectRowKey('preview-finish')
 
 export default function PlanPreviewPanel({ preview, loading, onPreview, balance }: Props) {
   return (
@@ -92,20 +97,39 @@ function PreviewContent({ preview, balance }: { preview: PlanPreviewVO; balance?
       <PreviewTableSection
         title="成品数据"
         count={preview.finishes?.length ?? 0}
-        table={<FinishTable preview={preview} />}
+        table={<FinishTable preview={preview} isRewind={isRewind} />}
       />
     </div>
   )
 }
 
 function PreviewStats({ preview }: { preview: PlanPreviewVO }) {
+  if (preview.widthDifferencePolicy) return <SawPreviewStats preview={preview} />
   return (
     <Descriptions size="small" column={1} bordered className="plan-preview-panel__stats">
       <Descriptions.Item label="成品">{preview.finishCount ?? 0}</Descriptions.Item>
       <Descriptions.Item label="修边">{preview.trimCount ?? 0}</Descriptions.Item>
       <Descriptions.Item label="备用">{preview.spareCount ?? 0}</Descriptions.Item>
-      <Descriptions.Item label="成品重">{formatKg(preview.totalEstimateWeight)}</Descriptions.Item>
-      <Descriptions.Item label="修边重">{formatKg(preview.totalTrimWeight)}</Descriptions.Item>
+      <Descriptions.Item label="成品重">{formatKgWithMaxDecimals(preview.totalEstimateWeight, 2)}</Descriptions.Item>
+      <Descriptions.Item label="修边重">{formatKgWithMaxDecimals(preview.totalTrimWeight, 2)}</Descriptions.Item>
+    </Descriptions>
+  )
+}
+
+function SawPreviewStats({ preview }: { preview: PlanPreviewVO }) {
+  const outcome = sawPolicyOutcome(preview)
+  return (
+    <Descriptions size="small" column={1} bordered className="plan-preview-panel__stats">
+      <Descriptions.Item label="成品">
+        {preview.finishCount ?? 0} 件 / {formatKgWithMaxDecimals(preview.totalEstimateWeight, 2)}
+      </Descriptions.Item>
+      <Descriptions.Item label="门幅差额">
+        {formatMm(preview.widthDifference ?? 0)} / {formatKgWithMaxDecimals(sawDifferenceWeight(preview), 2)}
+      </Descriptions.Item>
+      <Descriptions.Item label="处理结果">
+        <Tag color={outcome.color}>{outcome.label}</Tag>{' '}
+        <Typography.Text type="secondary">{outcome.detail}</Typography.Text>
+      </Descriptions.Item>
     </Descriptions>
   )
 }
@@ -126,7 +150,7 @@ function SegmentTable({ preview, isRewind }: { preview: PlanPreviewVO; isRewind:
   return (
     <Table
       size="small"
-      rowKey={(_, index) => `${preview.originalUuid}-segment-${index}`}
+      rowKey={segmentRowKey}
       pagination={false}
       columns={segmentColumns}
       dataSource={preview.segments ?? []}
@@ -136,18 +160,35 @@ function SegmentTable({ preview, isRewind }: { preview: PlanPreviewVO; isRewind:
   )
 }
 
-function FinishTable({ preview }: { preview: PlanPreviewVO }) {
+function FinishTable({ preview, isRewind }: { preview: PlanPreviewVO; isRewind: boolean }) {
   return (
     <Table
       size="small"
-      rowKey={(_, index) => `${preview.originalUuid}-finish-${index}`}
+      rowKey={finishRowKey}
       pagination={false}
-      columns={finishColumns}
+      columns={isRewind ? finishColumns : sawFinishColumns}
       dataSource={preview.finishes ?? []}
       locale={{ emptyText: preview.finishCount ? '后端返回了统计，但没有返回成品数据，请刷新预览' : '暂无成品数据' }}
       scroll={{ x: 620 }}
     />
   )
+}
+
+function sawPolicyOutcome(preview: PlanPreviewVO) {
+  const weight = formatKgWithMaxDecimals(sawDifferenceWeight(preview), 2)
+  if (preview.widthDifferencePolicy === 'LOSS') {
+    return { color: 'orange', label: '计入损耗', detail: `${weight} 不生成库存` }
+  }
+  if (preview.widthDifferencePolicy === 'ALLOCATE') {
+    return { color: 'blue', label: '分摊入成品', detail: `${weight} 已包含在成品重量内` }
+  }
+  return { color: 'cyan', label: '留作余料', detail: `${weight}，回录为 1 件独立余料` }
+}
+
+function sawDifferenceWeight(preview: PlanPreviewVO) {
+  const fallback = preview.widthDifferencePolicy === 'LOSS'
+    ? preview.calculatedLossWeight ?? preview.totalTrimWeight : preview.totalTrimWeight
+  return preview.widthDifferenceWeight ?? fallback
 }
 
 interface SectionProps {

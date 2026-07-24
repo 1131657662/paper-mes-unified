@@ -39,6 +39,8 @@ public class ExportTaskHistoryService {
                         .eq(query.getTaskStatus() != null, ExportTask::getTaskStatus, query.getTaskStatus())
                         .eq(query.getModuleCode() != null && !query.getModuleCode().isBlank(),
                                 ExportTask::getModuleCode, query.getModuleCode())
+                        .eq(query.getOperationCode() != null && !query.getOperationCode().isBlank(),
+                                ExportTask::getOperationCode, query.getOperationCode())
                         .and(keyword != null, condition -> condition
                                 .like(ExportTask::getTaskName, keyword)
                                 .or().like(ExportTask::getFileName, keyword))

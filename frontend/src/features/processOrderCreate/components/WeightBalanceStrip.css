@@ -52,6 +52,11 @@
   color: var(--mes-color-danger);
 }
 
+.weight-balance-strip__detail {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .weight-balance-strip--compact .weight-balance-strip__metrics {
   grid-template-columns: repeat(2, minmax(90px, 1fr));
 }

@@ -16,10 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 class ProcessRoutePreviewerTest {
 
-    private final ProcessRoutePreviewer previewer = new ProcessRoutePreviewer();
+    private final ProcessRoutePreviewer previewer = new ProcessRoutePreviewer(mock(ProcessRouteCatalogPolicy.class));
 
     @Test
     void preview_whenSawThenRewindSelectedPiece_chargesSelectedPieceWeightOnly() {
@@ -146,6 +147,29 @@ class ProcessRoutePreviewerTest {
         assertEquals(new BigDecimal("144"), preview.getStages().get(0).getStepAmount());
     }
 
+    @Test
+    void preview_whenExpandedOutputCountIs500_accepts() {
+        ProcessRoutePreviewDTO dto = routeWithOutputCounts(250, 250);
+
+        ProcessRoutePreviewVO preview = previewer.preview(roll(), dto);
+
+        assertEquals(500, preview.getOutputs().size());
+    }
+
+    @Test
+    void preview_whenExpandedOutputCountIs501_rejectsBeforeExpansion() {
+        ProcessRoutePreviewDTO dto = routeWithOutputCounts(250, 251);
+
+        assertThrows(BusinessException.class, () -> previewer.preview(roll(), dto));
+    }
+
+    @Test
+    void preview_whenOutputCountIsExtreme_rejectsBeforeExpansion() {
+        ProcessRoutePreviewDTO dto = routeWithOutputCounts(Integer.MAX_VALUE);
+
+        assertThrows(BusinessException.class, () -> previewer.preview(roll(), dto));
+    }
+
     private ProcessRoutePreviewDTO sawThenRewindRoute() {
         ProcessRoutePreviewDTO dto = new ProcessRoutePreviewDTO();
         dto.setOriginalUuid("roll-1");
@@ -153,6 +177,19 @@ class ProcessRoutePreviewerTest {
                 sawStage(),
                 rewindStage("stage-output-a")
         ));
+        return dto;
+    }
+
+    private ProcessRoutePreviewDTO routeWithOutputCounts(int... counts) {
+        ProcessRoutePreviewDTO dto = new ProcessRoutePreviewDTO();
+        dto.setOriginalUuid("roll-1");
+        ProcessRoutePreviewDTO.RouteStageDTO stage = stage(1, FeeCalculator.STEP_TYPE_SAW, "锯纸");
+        stage.setKnifeCount(1);
+        stage.setUnitPrice(BigDecimal.ONE);
+        stage.setOutputs(java.util.stream.IntStream.range(0, counts.length)
+                .mapToObj(index -> outputWithCount("output-" + index, counts[index]))
+                .toList());
+        dto.setStages(List.of(stage));
         return dto;
     }
 
@@ -245,6 +282,12 @@ class ProcessRoutePreviewerTest {
         ProcessRoutePreviewDTO.RouteOutputDTO output = output(key, weight);
         output.setIsRemain(1);
         output.setRemark("修边/余料");
+        return output;
+    }
+
+    private ProcessRoutePreviewDTO.RouteOutputDTO outputWithCount(String key, int count) {
+        ProcessRoutePreviewDTO.RouteOutputDTO output = output(key, BigDecimal.ZERO);
+        output.setCount(count);
         return output;
     }
 

@@ -36,7 +36,9 @@ public class ExportTaskSchemaBootstrap implements ApplicationRunner {
                   `task_type` varchar(30) NOT NULL, `module_code` varchar(30) NOT NULL DEFAULT 'settle',
                   `operation_code` varchar(50) NOT NULL DEFAULT 'detail-export',
                   `task_name` varchar(120) NOT NULL, `source_uuid` varchar(36) NOT NULL,
-                  `request_payload` text DEFAULT NULL, `requester_uuid` varchar(36) NOT NULL,
+                  `source_path` varchar(160) DEFAULT NULL, `request_payload` text DEFAULT NULL,
+                  `query_snapshot_uuid` varchar(36) DEFAULT NULL,
+                  `metric_release_uuid` varchar(36) DEFAULT NULL, `requester_uuid` varchar(36) NOT NULL,
                   `requester_name` varchar(50) NOT NULL, `task_status` tinyint NOT NULL DEFAULT 1,
                   `progress` tinyint NOT NULL DEFAULT 0, `file_name` varchar(255) DEFAULT NULL,
                   `file_path` varchar(500) DEFAULT NULL, `content_type` varchar(120) DEFAULT NULL,
@@ -75,7 +77,10 @@ public class ExportTaskSchemaBootstrap implements ApplicationRunner {
     private void ensureColumns() {
         addColumn("module_code", "varchar(30) DEFAULT 'settle' AFTER `task_type`");
         addColumn("operation_code", "varchar(50) DEFAULT 'detail-export' AFTER `module_code`");
-        addColumn("request_payload", "text DEFAULT NULL AFTER `source_uuid`");
+        addColumn("source_path", "varchar(160) DEFAULT NULL AFTER `source_uuid`");
+        addColumn("request_payload", "text DEFAULT NULL AFTER `source_path`");
+        addColumn("query_snapshot_uuid", "varchar(36) DEFAULT NULL AFTER `request_payload`");
+        addColumn("metric_release_uuid", "varchar(36) DEFAULT NULL AFTER `query_snapshot_uuid`");
         addColumn("content_type", "varchar(120) DEFAULT NULL AFTER `file_path`");
         addColumn("attempt_count", "int NOT NULL DEFAULT 0 AFTER `expires_at`");
         addColumn("max_attempts", "int NOT NULL DEFAULT 3 AFTER `attempt_count`");
@@ -120,6 +125,18 @@ public class ExportTaskSchemaBootstrap implements ApplicationRunner {
         if (!indexExists("idx_export_task_status_completed")) {
             jdbcTemplate.execute("ALTER TABLE `sys_export_task` ADD KEY `idx_export_task_status_completed` "
                     + "(`task_status`, `completed_at`)");
+        }
+        if (!indexExists("idx_export_task_owner_module_operation_time")) {
+            jdbcTemplate.execute("ALTER TABLE `sys_export_task` ADD KEY `idx_export_task_owner_module_operation_time` "
+                    + "(`requester_uuid`, `module_code`, `operation_code`, `create_time`, `uuid`)");
+        }
+        if (!indexExists("idx_export_task_query_snapshot")) {
+            jdbcTemplate.execute("ALTER TABLE `sys_export_task` ADD KEY `idx_export_task_query_snapshot` "
+                    + "(`query_snapshot_uuid`)");
+        }
+        if (!indexExists("idx_export_task_metric_release_time")) {
+            jdbcTemplate.execute("ALTER TABLE `sys_export_task` ADD KEY `idx_export_task_metric_release_time` "
+                    + "(`metric_release_uuid`, `create_time`, `uuid`)");
         }
     }
 

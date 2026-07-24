@@ -5,8 +5,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
 import com.paper.mes.common.db.BusinessLockService;
+import com.paper.mes.processorder.dto.ProcessRouteBatchSaveDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.OriginalRoll;
@@ -19,7 +21,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -40,9 +45,11 @@ public class ProcessRouteDraftManager {
     private final ProcessRoutePersistenceService persistenceService;
     private final ObjectMapper objectMapper;
     private final BusinessLockService businessLockService;
+    private final DraftOrderVersionGuard versionGuard;
 
     public ProcessRoutePreviewVO preview(String orderUuid, ProcessRoutePreviewDTO dto) {
         ProcessOrder order = requireDraft(orderUuid);
+        versionGuard.assertExpected(order, dto.getExpectedVersion());
         OriginalRoll roll = requireRoll(orderUuid, dto.getOriginalUuid());
         return routePreview(order, roll, dto);
     }
@@ -57,11 +64,30 @@ public class ProcessRouteDraftManager {
     public ProcessRoutePreviewVO save(String orderUuid, ProcessRoutePreviewDTO dto) {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
+        versionGuard.assertExpected(order, dto.getExpectedVersion());
+        versionGuard.advance(orderUuid, dto.getExpectedVersion());
         OriginalRoll roll = requireRoll(orderUuid, dto.getOriginalUuid());
+        return saveOne(order, roll, dto);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public List<ProcessRoutePreviewVO> saveBatch(String orderUuid, ProcessRouteBatchSaveDTO dto) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
+        ProcessOrder order = requireDraft(orderUuid);
+        versionGuard.assertExpected(order, dto.getExpectedVersion());
+        Map<String, OriginalRoll> rolls = requireRolls(orderUuid, dto.getRoutes());
+        versionGuard.advance(orderUuid, dto.getExpectedVersion());
+        return dto.getRoutes().stream()
+                .map(route -> saveOne(order, rolls.get(route.getOriginalUuid()), route))
+                .toList();
+    }
+
+    private ProcessRoutePreviewVO saveOne(ProcessOrder order, OriginalRoll roll,
+                                           ProcessRoutePreviewDTO dto) {
         ProcessRoutePreviewVO preview = routePreview(order, roll, dto);
         requireFinalOutputs(preview);
         updateRollRoute(roll, dto);
-        upsertDraft(orderUuid, roll.getUuid(), dto, preview);
+        upsertDraft(order.getUuid(), roll.getUuid(), dto, preview);
         return preview;
     }
 
@@ -116,6 +142,23 @@ public class ProcessRouteDraftManager {
         return roll;
     }
 
+    private Map<String, OriginalRoll> requireRolls(String orderUuid, List<ProcessRoutePreviewDTO> routes) {
+        List<String> ids = routes.stream().map(ProcessRoutePreviewDTO::getOriginalUuid).toList();
+        if (new HashSet<>(ids).size() != ids.size()) {
+            throw new BusinessException(ErrorCode.E003, "链式工艺存在重复母卷");
+        }
+        Map<String, OriginalRoll> result = new HashMap<>();
+        for (OriginalRoll roll : rollMapper.selectBatchIds(ids)) {
+            if (orderUuid.equals(roll.getOrderUuid())) {
+                result.put(roll.getUuid(), roll);
+            }
+        }
+        if (result.size() != ids.size()) {
+            throw new BusinessException(ErrorCode.E002, "部分原纸明细不存在或不属于当前加工单");
+        }
+        return result;
+    }
+
     private void requireSameRoll(String rollUuid, ProcessRoutePreviewDTO dto) {
         if (!rollUuid.equals(dto.getOriginalUuid())) {
             throw new BusinessException(ErrorCode.E003, "链式工艺来源母卷不一致");
@@ -140,7 +183,7 @@ public class ProcessRouteDraftManager {
         roll.setProcessMode(PROCESS_MODE_STANDARD);
         roll.setMainStepType(first.getStepType());
         roll.setMachineUuid(resolveStageMachine(first));
-        rollMapper.updateById(roll);
+        ConcurrencyGuard.requireRowUpdated(rollMapper.updateById(roll));
     }
 
     private String resolveStageMachine(ProcessRoutePreviewDTO.RouteStageDTO stage) {

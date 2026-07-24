@@ -11,6 +11,8 @@ import com.paper.mes.processorder.dto.FinishConfigSpecDTO;
 import com.paper.mes.processorder.dto.FinishPreviewVO;
 import com.paper.mes.processorder.dto.PlanPreviewVO;
 import com.paper.mes.processorder.dto.ProcessPlanBatchSaveDTO;
+import com.paper.mes.processorder.dto.ProcessPlanBatchItemDTO;
+import com.paper.mes.processorder.dto.ProcessPlanItemsBatchSaveDTO;
 import com.paper.mes.processorder.dto.ProcessPlanDTO;
 import com.paper.mes.processorder.dto.RewindSegmentPlanDTO;
 import com.paper.mes.processorder.dto.RewindSourcePlanDTO;
@@ -33,8 +35,6 @@ import java.util.List;
 public class ProcessPlanDraftManager {
 
     private static final int STATUS_DRAFT = 0;
-    private static final int PROCESS_MODE_ON_SITE = 2;
-    private static final int PROCESS_MODE_DIRECT = 3;
     private static final int REWIND_MODE_MULTI_SOURCE = 5;
 
     private final ProcessOrderMapper orderMapper;
@@ -46,32 +46,80 @@ public class ProcessPlanDraftManager {
     private final OnSitePlanPreviewer onSitePlanPreviewer;
     private final ObjectMapper objectMapper;
     private final BusinessLockService businessLockService;
+    private final ServiceOnlyProcessPolicy serviceOnlyProcessPolicy;
+    private final DraftOrderVersionGuard versionGuard;
 
-    public PlanPreviewVO previewProcessPlan(String orderUuid, String rollUuid, ProcessPlanDTO plan) {
-        requireDraft(orderUuid);
+    public PlanPreviewVO previewProcessPlan(String orderUuid, String rollUuid, ProcessPlanDTO plan,
+                                            Integer expectedVersion) {
+        FinishConfigQuantityValidator.requireWithinLimit(plan);
+        ProcessOrder order = requireDraft(orderUuid);
+        versionGuard.assertExpected(order, expectedVersion);
         OriginalRoll roll = requireRoll(orderUuid, rollUuid);
         return previewOnly(orderUuid, roll, plan);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public PlanPreviewVO saveProcessPlan(String orderUuid, String rollUuid, ProcessPlanDTO plan) {
+        return saveProcessPlan(orderUuid, rollUuid, plan, currentVersion(orderUuid));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public PlanPreviewVO saveProcessPlan(String orderUuid, String rollUuid, ProcessPlanDTO plan,
+                                         Integer expectedVersion) {
+        FinishConfigQuantityValidator.requireWithinLimit(plan);
         businessLockService.lockProcessOrders(List.of(orderUuid));
-        requireDraft(orderUuid);
+        ProcessOrder order = requireDraft(orderUuid);
+        versionGuard.assertExpected(order, expectedVersion);
+        versionGuard.advance(orderUuid, expectedVersion);
         OriginalRoll roll = requireRoll(orderUuid, rollUuid);
+        PlanPreviewVO preview = saveOne(orderUuid, roll, plan);
+        return preview;
+    }
+
+    private PlanPreviewVO saveOne(String orderUuid, OriginalRoll roll, ProcessPlanDTO plan) {
         updateRollProcess(roll, plan);
         PlanPreviewVO preview = previewOnly(orderUuid, roll, plan);
-        upsertDraft(orderUuid, rollUuid, plan, preview);
+        upsertDraft(orderUuid, roll.getUuid(), plan, preview);
         return preview;
     }
 
     @Transactional(rollbackFor = Exception.class)
     public List<PlanPreviewVO> saveBatch(String orderUuid, ProcessPlanBatchSaveDTO dto) {
-        requireDraft(orderUuid);
+        businessLockService.lockProcessOrders(List.of(orderUuid));
+        ProcessOrder order = requireDraft(orderUuid);
+        versionGuard.assertExpected(order, dto.getExpectedVersion());
+        versionGuard.advance(orderUuid, dto.getExpectedVersion());
         List<PlanPreviewVO> previews = new ArrayList<>(dto.getOriginalUuids().size());
         for (String rollUuid : dto.getOriginalUuids()) {
-            previews.add(saveProcessPlan(orderUuid, rollUuid, planForTargetRoll(dto.getPlan(), rollUuid)));
+            OriginalRoll roll = requireRoll(orderUuid, rollUuid);
+            ProcessPlanDTO plan = planForTargetRoll(dto.getPlan(), rollUuid);
+            FinishConfigQuantityValidator.requireWithinLimit(plan);
+            previews.add(saveOne(orderUuid, roll, plan));
         }
         return previews;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public List<PlanPreviewVO> saveItemsBatch(String orderUuid, ProcessPlanItemsBatchSaveDTO dto) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
+        ProcessOrder order = requireDraft(orderUuid);
+        versionGuard.assertExpected(order, dto.getExpectedVersion());
+        ensureDistinctItems(dto.getItems());
+        versionGuard.advance(orderUuid, dto.getExpectedVersion());
+        List<PlanPreviewVO> previews = new ArrayList<>(dto.getItems().size());
+        for (ProcessPlanBatchItemDTO item : dto.getItems()) {
+            FinishConfigQuantityValidator.requireWithinLimit(item.getPlan());
+            OriginalRoll roll = requireRoll(orderUuid, item.getOriginalUuid());
+            previews.add(saveOne(orderUuid, roll, item.getPlan()));
+        }
+        return previews;
+    }
+
+    private void ensureDistinctItems(List<ProcessPlanBatchItemDTO> items) {
+        long distinctCount = items.stream().map(ProcessPlanBatchItemDTO::getOriginalUuid).distinct().count();
+        if (distinctCount != items.size()) {
+            throw new BusinessException("批量加工方案存在重复母卷");
+        }
     }
 
     private ProcessPlanDTO planForTargetRoll(ProcessPlanDTO plan, String rollUuid) {
@@ -112,10 +160,16 @@ public class ProcessPlanDraftManager {
     }
 
     private PlanPreviewVO previewOnly(String orderUuid, OriginalRoll roll, ProcessPlanDTO plan) {
-        if (plan.getProcessMode() != null && plan.getProcessMode() == PROCESS_MODE_DIRECT) {
+        ProcessModePolicy.requireValid(plan.getProcessMode(), plan.getMainStepType());
+        if (ProcessModePolicy.isDirectShip(plan.getProcessMode())) {
             return planMapper.directPreview(plan, roll.getUuid());
         }
-        if (plan.getProcessMode() != null && plan.getProcessMode() == PROCESS_MODE_ON_SITE) {
+        if (ProcessModePolicy.isServiceOnly(plan.getProcessMode())) {
+            int finishCount = roll.getPieceNum() == null ? 1 : roll.getPieceNum();
+            return planMapper.serviceOnlyPreview(plan, roll.getUuid(), finishCount,
+                    serviceOnlyProcessPolicy.hasConfiguredStep(roll.getUuid()));
+        }
+        if (plan.getProcessMode() != null && plan.getProcessMode() == ProcessModePolicy.ON_SITE) {
             return onSitePlanPreviewer.preview(plan, roll.getUuid());
         }
         if (plan.getMainStepType() != null && plan.getMainStepType() == FeeCalculator.STEP_TYPE_SAW) {
@@ -176,7 +230,7 @@ public class ProcessPlanDraftManager {
         rollMapper.updateById(roll);
     }
 
-    private void requireDraft(String orderUuid) {
+    private ProcessOrder requireDraft(String orderUuid) {
         ProcessOrder order = orderMapper.selectById(orderUuid);
         if (order == null) {
             throw new BusinessException(ErrorCode.E002, "加工单不存在");
@@ -184,6 +238,11 @@ public class ProcessPlanDraftManager {
         if (order.getOrderStatus() == null || order.getOrderStatus() != STATUS_DRAFT) {
             throw new BusinessException(ErrorCode.E001, "只有草稿加工单可编辑");
         }
+        return order;
+    }
+
+    private Integer currentVersion(String orderUuid) {
+        return requireDraft(orderUuid).getVersion();
     }
 
     private OriginalRoll requireRoll(String orderUuid, String rollUuid) {

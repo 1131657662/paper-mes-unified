@@ -129,6 +129,8 @@ class RepresentativeOrderFixture {
 
     private BackRecordDTO backRecord(ProcessOrderDetailVO detail) {
         BackRecordDTO dto = new BackRecordDTO();
+        dto.setExpectedVersion(detail.getOrder().getVersion());
+        dto.setCompleteOrder(true);
         dto.setRolls(detail.getOriginalRolls().stream().map(this::rollRecord).toList());
         dto.setFinishes(detail.getFinishRolls().stream()
                 .filter(finish -> finish.getRollNoStatus() == null || finish.getRollNoStatus() != 3)

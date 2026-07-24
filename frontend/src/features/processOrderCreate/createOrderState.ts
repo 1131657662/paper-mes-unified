@@ -15,6 +15,7 @@ import {
 } from './draftMappers'
 import { normalizeLayeredRewindPlan } from './rewindLayerPlanUtils'
 import type { RollDraft } from './types'
+import { processModeRequiresMain } from '../../constants/processOrder'
 
 export interface HydratedCreateOrderState {
   orderUuid?: string
@@ -26,6 +27,7 @@ export interface HydratedCreateOrderState {
   routes: Record<string, ProcessRoutePreviewDTO>
   selectedId?: string
   current: number
+  configuredPlanIds: string[]
 }
 
 export function hydrateDraftState(draft: DraftOrderVO): HydratedCreateOrderState {
@@ -35,9 +37,11 @@ export function hydrateDraftState(draft: DraftOrderVO): HydratedCreateOrderState
   const previews: Record<string, PlanPreviewVO> = {}
   const routes: Record<string, ProcessRoutePreviewDTO> = {}
   const routePreviews: Record<string, ProcessRoutePreviewVO> = {}
+  const configuredPlanIds: string[] = []
 
   for (const config of draft.configs ?? []) {
     if (!config.originalUuid) continue
+    if (config.configStatus === 1) configuredPlanIds.push(config.originalUuid)
     if (config.configType === 'routePlan' && config.route) {
       routes[config.originalUuid] = config.route
       if (config.routePreview) routePreviews[config.originalUuid] = config.routePreview
@@ -62,6 +66,7 @@ export function hydrateDraftState(draft: DraftOrderVO): HydratedCreateOrderState
     routes,
     selectedId: safeRolls[0]?.localId,
     current: draft.currentStep ?? 0,
+    configuredPlanIds,
   }
 }
 
@@ -129,7 +134,7 @@ export function previewsFromBatch(rolls: RollDraft[], previews: PlanPreviewVO[])
 function planMatchesRoll(plan: ProcessPlanDTO | undefined, roll: RollDraft) {
   if (!plan) return false
   if (plan.processMode !== roll.processMode) return false
-  if (roll.processMode === 3) return true
+  if (!processModeRequiresMain(roll.processMode)) return true
   return plan.mainStepType === roll.mainStepType
 }
 

@@ -74,6 +74,8 @@ class OnSiteRewindBusinessFlowIT {
     private BackRecordDTO request(com.paper.mes.processorder.dto.ProcessOrderDetailVO detail) {
         var roll = detail.getOriginalRolls().getFirst();
         BackRecordDTO dto = new BackRecordDTO();
+        dto.setExpectedVersion(detail.getOrder().getVersion());
+        dto.setCompleteOrder(true);
         dto.setRolls(List.of(rollRecord(roll.getUuid())));
         dto.setFinishes(List.of(finishRecord(roll.getUuid())));
         BackRecordStepDTO step = new BackRecordStepDTO();

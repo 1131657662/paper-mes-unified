@@ -28,6 +28,7 @@ public class ProcessPlanMapper {
         dto.setRewindMode(plan.getRewindMode());
         dto.setKnifeCount(plan.getKnifeCount());
         dto.setUnitPrice(plan.getUnitPrice());
+        dto.setWidthDifferencePolicy(plan.getWidthDifferencePolicy());
         dto.setFinishSpecs(plan.getFinishSpecs());
         dto.setRewindSegments(toPreviewSegments(plan.getSegments()));
         return dto;
@@ -42,6 +43,7 @@ public class ProcessPlanMapper {
         plan.setRewindMode(dto.getRewindMode());
         plan.setKnifeCount(dto.getKnifeCount());
         plan.setUnitPrice(dto.getUnitPrice());
+        plan.setWidthDifferencePolicy(dto.getWidthDifferencePolicy());
         plan.setFinishSpecs(dto.getFinishSpecs());
         plan.setSegments(fromPreviewSegments(dto.getRewindSegments()));
         return plan;
@@ -74,6 +76,19 @@ public class ProcessPlanMapper {
         vo.setTrimCount(0);
         vo.setReady(true);
         vo.setSummary("直发卷无需工艺配置，提交后回录阶段沿用母卷号");
+        return vo;
+    }
+
+    public PlanPreviewVO serviceOnlyPreview(ProcessPlanDTO plan, String originalUuid,
+                                             int finishCount, boolean configured) {
+        PlanPreviewVO vo = shell(plan, originalUuid);
+        vo.setFinishCount(finishCount);
+        vo.setTrimCount(0);
+        vo.setReady(configured);
+        vo.setSummary(configured
+                ? "仅附加工艺已配置，提交后按母卷件数生成整理成品"
+                : "请先添加剥损整理或重新包装");
+        if (!configured) vo.getErrors().add("至少添加一条附加工艺");
         return vo;
     }
 
@@ -167,6 +182,10 @@ public class ProcessPlanMapper {
             dto.setWidth(item.getWidth());
             dto.setQuantity(item.getQuantity());
             dto.setItemType(item.getItemType());
+            dto.setCustomerPaperName(item.getCustomerPaperName());
+            dto.setCustomerGramWeight(item.getCustomerGramWeight());
+            dto.setCustomerFinishWidth(item.getCustomerFinishWidth());
+            dto.setCustomerSpecOverrideReason(item.getCustomerSpecOverrideReason());
             dto.setLayers(item.getLayers());
             result.add(dto);
         }
@@ -183,6 +202,10 @@ public class ProcessPlanMapper {
             dto.setWidth(item.getWidth());
             dto.setQuantity(item.getQuantity());
             dto.setItemType(item.getItemType());
+            dto.setCustomerPaperName(item.getCustomerPaperName());
+            dto.setCustomerGramWeight(item.getCustomerGramWeight());
+            dto.setCustomerFinishWidth(item.getCustomerFinishWidth());
+            dto.setCustomerSpecOverrideReason(item.getCustomerSpecOverrideReason());
             dto.setLayers(item.getLayers());
             result.add(dto);
         }

@@ -42,6 +42,7 @@ export default function OrderDetailContent({ actions, detail, mode }: Props) {
         canManageOrder={canManageOrder}
         canEditRemark={canEditRemark}
         orderStatus={detail?.order.orderStatus}
+        orderUuid={detail?.order.uuid}
         productions={detail?.rollProductions}
         onConfigureRoute={actions.onConfigureRoute}
         onEditRollRemark={actions.onEditRollRemark}

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,6 +35,61 @@ class ProcessOrderExportServiceTest {
             assertEquals("500", sheet.getRow(1).getCell(9).getStringCellValue());
             assertEquals("400", sheet.getRow(2).getCell(9).getStringCellValue());
             assertEquals("100", sheet.getRow(3).getCell(9).getStringCellValue());
+        }
+    }
+
+    @Test
+    void buildWorkbook_whenCustomerSpecificationChanged_exportsPhysicalAndCustomerValues() throws IOException {
+        ProcessOrderDetailVO detail = detailWithMissingFinishWeight();
+        FinishRoll finish = detail.getFinishRolls().get(0);
+        finish.setActualWeight(new BigDecimal("1176"));
+        finish.setCustomerPaperName("食品卡");
+        finish.setCustomerGramWeight(275);
+        finish.setCustomerFinishWidth(1195);
+        finish.setCustomerDisplayWeight(new BigDecimal("1288"));
+        finish.setCustomerSpecOverrideReason("客户要求改标签");
+        finish.setCustomerSpecOverrideBy("张三");
+        finish.setCustomerSpecOverrideAt(LocalDateTime.of(2026, 7, 22, 10, 30));
+
+        try (Workbook workbook = service.buildWorkbook(detail)) {
+            var sheet = workbook.getSheet("客户口径");
+
+            assertEquals("蒙迪半化学浆", sheet.getRow(1).getCell(2).getStringCellValue());
+            assertEquals("1176", sheet.getRow(1).getCell(5).getStringCellValue());
+            assertEquals("食品卡", sheet.getRow(1).getCell(6).getStringCellValue());
+            assertEquals("275", sheet.getRow(1).getCell(7).getStringCellValue());
+            assertEquals("1195", sheet.getRow(1).getCell(8).getStringCellValue());
+            assertEquals("1288", sheet.getRow(1).getCell(9).getStringCellValue());
+            assertEquals("已调整", sheet.getRow(1).getCell(10).getStringCellValue());
+            assertEquals("客户要求改标签", sheet.getRow(1).getCell(11).getStringCellValue());
+            assertEquals("张三", sheet.getRow(1).getCell(12).getStringCellValue());
+            assertEquals("2026-07-22 10:30", sheet.getRow(1).getCell(13).getStringCellValue());
+        }
+    }
+
+    @Test
+    void buildWorkbook_whenCustomerSpecificationChanged_includesCustomerValuesInFinishSheet() throws IOException {
+        ProcessOrderDetailVO detail = detailWithMissingFinishWeight();
+        FinishRoll finish = detail.getFinishRolls().get(0);
+        finish.setActualWeight(new BigDecimal("1176"));
+        finish.setCustomerPaperName("食品卡");
+        finish.setCustomerGramWeight(275);
+        finish.setCustomerFinishWidth(1195);
+        finish.setCustomerDisplayWeight(new BigDecimal("1288"));
+        finish.setCustomerSpecOverrideReason("客户要求改标签");
+        finish.setCustomerSpecOverrideBy("张三");
+        finish.setCustomerSpecOverrideAt(LocalDateTime.of(2026, 7, 22, 10, 30));
+
+        try (Workbook workbook = service.buildWorkbook(detail)) {
+            var sheet = workbook.getSheet("成品明细");
+
+            assertEquals("客户品名", sheet.getRow(0).getCell(17).getStringCellValue());
+            assertEquals("食品卡", sheet.getRow(1).getCell(17).getStringCellValue());
+            assertEquals("275", sheet.getRow(1).getCell(18).getStringCellValue());
+            assertEquals("1195", sheet.getRow(1).getCell(19).getStringCellValue());
+            assertEquals("1288", sheet.getRow(1).getCell(20).getStringCellValue());
+            assertEquals("已调整", sheet.getRow(1).getCell(21).getStringCellValue());
+            assertEquals("客户要求改标签", sheet.getRow(1).getCell(22).getStringCellValue());
         }
     }
 

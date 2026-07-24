@@ -1,5 +1,6 @@
 package com.paper.mes.delivery.service;
 
+import com.paper.mes.delivery.dto.DeliveryCustomerRevisionPreviewVO;
 import com.paper.mes.delivery.dto.DeliveryDetailItemVO;
 import com.paper.mes.delivery.dto.DeliveryDetailVO;
 import com.paper.mes.delivery.entity.DeliveryOrder;
@@ -11,7 +12,8 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
+
+import static com.paper.mes.delivery.service.DeliveryExportText.*;
 
 /**
  * 出库单 Excel 导出装配。
@@ -20,6 +22,10 @@ import java.math.BigDecimal;
 public class DeliveryExportService {
 
     public Workbook buildWorkbook(DeliveryDetailVO detail) {
+        return buildWorkbook(detail, null);
+    }
+
+    public Workbook buildWorkbook(DeliveryDetailVO detail, DeliveryCustomerRevisionPreviewVO customerSpecs) {
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("出库单");
         CellStyle titleStyle = titleStyle(workbook);
@@ -28,6 +34,9 @@ public class DeliveryExportService {
         writeHeader(sheet, headerStyle);
         writeItems(sheet, detail);
         autosize(sheet, 15);
+        if (customerSpecs != null) {
+            DeliveryCustomerExportWriter.write(workbook.createSheet("客户单据"), detail, customerSpecs);
+        }
         return workbook;
     }
 
@@ -39,15 +48,15 @@ public class DeliveryExportService {
         row(sheet, 2, "出库日期", text(order.getDeliveryDate()), "状态", statusText(order.getDeliveryStatus()));
         row(sheet, 3, "提货人", order.getPickerName(), "车牌/柜号", join(order.getCarNo(), order.getContainerNo()));
         row(sheet, 4, "签收人", order.getSignUser(), "签收时间", text(order.getSignTime()));
-        row(sheet, 5, "总件数", text(order.getTotalCount()), "总重量kg", text(order.getTotalWeight()));
+        row(sheet, 5, "总件数", text(order.getTotalCount()), "实物出库总重量kg", text(order.getTotalWeight()));
         row(sheet, 6, "备注", order.getRemark(), "", "");
     }
 
     private void writeHeader(Sheet sheet, CellStyle style) {
         Row row = sheet.createRow(8);
         String[] labels = {
-                "序号", "加工单号", "卷号", "品名", "克重", "规格",
-                "件重kg", "出库重量kg", "原纸信息", "加工方式", "工艺摘要", "来源", "成品状态", "备注", "回录备注"
+                "序号", "加工单号", "卷号", "实物品名", "实物克重", "实物规格",
+                "实物件重kg", "实物出库重量kg", "原纸信息", "加工方式", "工艺摘要", "来源", "成品状态", "备注", "回录备注"
         };
         for (int i = 0; i < labels.length; i++) {
             row.createCell(i).setCellValue(labels[i]);
@@ -103,58 +112,6 @@ public class DeliveryExportService {
         return style;
     }
 
-    private String specText(DeliveryDetailItemVO item) {
-        StringBuilder sb = new StringBuilder();
-        append(sb, item.getFinishWidth() == null ? null : item.getFinishWidth() + "mm");
-        append(sb, item.getFinishDiameter() == null ? null : "φ" + item.getFinishDiameter());
-        append(sb, item.getFinishCoreDiameter() == null ? null : "芯" + item.getFinishCoreDiameter());
-        return sb.length() == 0 ? "-" : sb.toString();
-    }
-
-    private void append(StringBuilder sb, String value) {
-        if (value == null || value.isBlank()) {
-            return;
-        }
-        if (!sb.isEmpty()) {
-            sb.append(" / ");
-        }
-        sb.append(value);
-    }
-
-    private String join(String left, String right) {
-        if ((left == null || left.isBlank()) && (right == null || right.isBlank())) {
-            return "-";
-        }
-        return text(left) + " / " + text(right);
-    }
-
-    private String sourceText(Integer value) {
-        if (value == null) {
-            return "-";
-        }
-        return value == 2 ? "直发原纸" : "加工产出";
-    }
-
-    private String statusText(Integer value) {
-        if (value == null) {
-            return "-";
-        }
-        return value == 2 ? "已出库签收" : "待出库";
-    }
-
-    private String finishStatusText(Integer value) {
-        if (value == null) {
-            return "-";
-        }
-        return switch (value) {
-            case 1 -> "待入库";
-            case 2 -> "已入库";
-            case 3 -> "已出库";
-            case 4 -> "报废";
-            default -> String.valueOf(value);
-        };
-    }
-
     private void autosize(Sheet sheet, int count) {
         for (int i = 0; i < count; i++) {
             sheet.autoSizeColumn(i);
@@ -162,44 +119,4 @@ public class DeliveryExportService {
         }
     }
 
-    private String text(Object value) {
-        return value == null ? "-" : value.toString();
-    }
-
-    private String finishRollNoText(DeliveryDetailItemVO item) {
-        String rollNo = text(item.getFinishRollNo());
-        return Integer.valueOf(1).equals(item.getIsRemain()) ? rollNo + "（余料）" : rollNo;
-    }
-
-    private String firstText(String first, String second) {
-        return first != null && !first.isBlank() ? first : text(second);
-    }
-
-    private String originalSnapshotText(DeliveryDetailItemVO item) {
-        if (item.getOriginalItems() != null && !item.getOriginalItems().isEmpty()) {
-            return item.getOriginalItems().stream()
-                    .map(this::originalSourceText)
-                    .reduce((left, right) -> left + "；" + right)
-                    .orElse("-");
-        }
-        return firstText(item.getOriginalSummary(), item.getOriginalRollNos());
-    }
-
-    private String originalSourceText(DeliveryDetailItemVO.OriginalSourceItem item) {
-        StringBuilder sb = new StringBuilder();
-        append(sb, item.getRowSort() == null ? "母卷" : "母卷" + item.getRowSort());
-        append(sb, item.getRollNo() == null ? null : "卷号" + item.getRollNo());
-        append(sb, item.getExtraNo() == null ? null : "编号" + item.getExtraNo());
-        append(sb, item.getPaperName());
-        append(sb, item.getGramWeight() == null ? null : item.getGramWeight() + "g");
-        append(sb, item.getOriginalWidth() == null ? null : item.getOriginalWidth() + "mm");
-        BigDecimal weight = item.getActualWeight() == null ? item.getTotalWeight() : item.getActualWeight();
-        append(sb, weight == null ? null : text(weight) + "kg");
-        append(sb, item.getMachineName() == null ? null : "机台" + item.getMachineName());
-        return sb.isEmpty() ? "-" : sb.toString();
-    }
-
-    private String text(BigDecimal value) {
-        return value == null ? "-" : value.stripTrailingZeros().toPlainString();
-    }
 }

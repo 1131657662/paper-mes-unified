@@ -22,7 +22,7 @@ import SettleQuoteSummary from './SettleQuoteSummary'
 import SettleSelectionNotice from './SettleSelectionNotice'
 import { applyQuoteLines } from './settleQuoteModel'
 import { isCandidateEligibilityError } from './settleQuoteErrorModel'
-import { settleListReturnTarget } from './settleListNavigation'
+import { initialOrderUuidsFromNavigationState, settleListReturnTarget } from './settleListNavigation'
 import { useSettleCandidateSelection } from './useSettleCandidateSelection'
 import '../documentModule.css'
 import './SettleCreatePage.css'
@@ -32,6 +32,7 @@ export default function SettleCreatePage() {
   const location = useLocation()
   const navigate = useNavigate()
   const returnTo = settleListReturnTarget(location.state)
+  const initialOrderUuids = initialOrderUuidsFromNavigationState(location.state)
   const requestIdRef = useRef(crypto.randomUUID())
   const customersQuery = useCustomers()
   const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
@@ -43,7 +44,7 @@ export default function SettleCreatePage() {
   const invoiceChoice = Form.useWatch('isInvoice', form) ?? 0
   const isMonthMode = createMode === 'month'
   const canLoadCandidates = !isMonthMode || Boolean(customerUuid && period?.[0] && period?.[1])
-  const selection = useSettleCandidateSelection(canLoadCandidates)
+  const selection = useSettleCandidateSelection(canLoadCandidates, initialOrderUuids)
   const { clearSelection, refreshCandidates } = selection
   const handledQuoteErrorAtRef = useRef(0)
   const selectedOrderUuids = selection.selectedCandidates.map((item) => item.orderUuid)

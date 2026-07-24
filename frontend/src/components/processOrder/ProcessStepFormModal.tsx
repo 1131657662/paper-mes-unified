@@ -1,165 +1,72 @@
-import { Form, Input, InputNumber, Modal, Radio, Select } from 'antd'
-import { useEffect } from 'react'
+import { Alert, Button, Modal } from 'antd'
 import type { ProcessStepDTO } from '../../api/processOrder'
-import { STEP_TYPE } from '../../constants/processOrder'
+import type { CustomerProcessPrice } from '../../types/customer'
+import ProcessStepFormFields from './ProcessStepFormFields'
+import { useProcessStepFormState } from './useProcessStepFormState'
 
-interface ProcessStepFormModalProps {
+interface Props {
   open: boolean
   originalRolls: Array<{ uuid: string; rollName: string }>
   initialValues?: ProcessStepDTO & { uuid?: string }
   defaultOriginalUuid?: string
+  defaultOriginalUuids?: string[]
+  batchMode?: boolean
   extraOnly?: boolean
   confirmLoading?: boolean
+  customerPrices?: CustomerProcessPrice[]
   onCancel: () => void
   onOk: (values: ProcessStepDTO, stepUuid?: string) => Promise<void>
+  onBatchOk?: (values: ProcessStepDTO, originalUuids: string[]) => Promise<void>
 }
 
-export default function ProcessStepFormModal({
-  open,
-  originalRolls,
-  initialValues,
-  defaultOriginalUuid,
-  extraOnly = false,
-  confirmLoading = false,
-  onCancel,
-  onOk,
-}: ProcessStepFormModalProps) {
-  const [form] = Form.useForm<ProcessStepDTO>()
-  const stepType = Form.useWatch('stepType', form)
-  const isEditMode = !!initialValues?.uuid
-
-  useEffect(() => {
-    if (open) {
-      if (initialValues) {
-        // 编辑模式：填充现有数据
-        form.setFieldsValue(initialValues)
-      } else {
-        // 新增模式：重置并设置默认值
-        form.resetFields()
-        form.setFieldsValue({
-          originalUuid: defaultOriginalUuid,
-          isMain: 0, // 默认追加工序
-          stepType: 1, // 默认锯纸
-        })
-      }
-    }
-  }, [open, initialValues, defaultOriginalUuid, form])
-
-  const handleOk = async () => {
-    try {
-      const values = await form.validateFields()
-      await onOk(extraOnly ? { ...values, isMain: 0 } : values, initialValues?.uuid)
-      onCancel()
-    } catch {
-      // 表单验证失败或API错误
-    }
-  }
-
+export default function ProcessStepFormModal(props: Props) {
+  const extraOnly = props.extraOnly ?? false
+  const editMode = !!props.initialValues?.uuid
+  const state = useProcessStepFormState({
+    initialValues: props.initialValues,
+    defaultOriginalUuid: props.defaultOriginalUuid,
+    defaultOriginalUuids: props.defaultOriginalUuids,
+    batchMode: props.batchMode,
+    extraOnly,
+    customerPrices: props.customerPrices,
+    onCancel: props.onCancel,
+    onOk: props.onOk,
+    onBatchOk: props.onBatchOk,
+  })
   return (
     <Modal
-      title={extraOnly ? '记录追加工序' : isEditMode ? '编辑工序' : '新增工序'}
-      open={open}
-      onCancel={onCancel}
-      onOk={handleOk}
-      confirmLoading={confirmLoading}
+      title={modalTitle({ batchMode: props.batchMode, editMode, extraOnly })}
+      open={props.open}
+      onCancel={props.onCancel}
+      onOk={state.submit}
+      afterClose={() => state.form.resetFields()}
+      confirmLoading={props.confirmLoading}
+      okButtonProps={{ disabled: state.isLoading || !state.selectedCatalog }}
+      styles={{ body: { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', paddingRight: 8 } }}
       width={640}
-      destroyOnHidden
+      centered
+      forceRender
     >
-      <Form form={form} layout="vertical" preserve={false}>
-        <Form.Item
-          label="原纸卷"
-          name="originalUuid"
-          rules={[{ required: true, message: '请选择原纸卷' }]}
-        >
-          <Select
-            placeholder="请选择原纸卷"
-            disabled={isEditMode}
-            options={originalRolls.map((r) => ({
-              label: r.rollName,
-              value: r.uuid,
-            }))}
-          />
-        </Form.Item>
-
-        <Form.Item
-          label="工序类型"
-          name="stepType"
-          rules={[{ required: true, message: '请选择工序类型' }]}
-        >
-          <Radio.Group>
-            <Radio value={1}>{STEP_TYPE[1]}</Radio>
-            <Radio value={2}>{STEP_TYPE[2]}</Radio>
-          </Radio.Group>
-        </Form.Item>
-
-        <Form.Item label="工序名称" name="stepName">
-          <Input placeholder="工序自定义名称（可选）" maxLength={50} />
-        </Form.Item>
-
-        {!extraOnly && (
-          <Form.Item
-            label="工序标识"
-            name="isMain"
-            rules={[{ required: true, message: '请选择工序标识' }]}
-          >
-            <Radio.Group>
-              <Radio value={1}>主工艺</Radio>
-              <Radio value={0}>追加工序</Radio>
-            </Radio.Group>
-          </Form.Item>
-        )}
-
-        {stepType === 1 && (
-          <>
-            <Form.Item label="锯纸刀数" name="knifeCount">
-              <InputNumber
-                placeholder="实际加工刀数"
-                min={0}
-                precision={0}
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            <Form.Item label="锯纸单价（元/刀）" name="unitPrice">
-              <InputNumber
-                placeholder="本工序单价"
-                min={0}
-                precision={2}
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-          </>
-        )}
-
-        {stepType === 2 && (
-          <>
-            <Form.Item label="加工吨位（吨）" name="processWeight">
-              <InputNumber
-                placeholder="复卷加工吨位"
-                min={0}
-                precision={3}
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            <Form.Item label="复卷单价（元/吨）" name="unitPrice">
-              <InputNumber
-                placeholder="本工序单价"
-                min={0}
-                precision={2}
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-          </>
-        )}
-
-        <Form.Item label="备注" name="remark">
-          <Input.TextArea
-            placeholder="工序备注、异常说明"
-            maxLength={255}
-            rows={3}
-            showCount
-          />
-        </Form.Item>
-      </Form>
+      {state.isError && (
+        <Alert type="error" showIcon message="工艺目录加载失败"
+          action={<Button size="small" onClick={() => state.refetch()}>重试</Button>} />
+      )}
+      {!state.isLoading && !state.isError && state.catalogs?.length === 0 && (
+        <Alert type="warning" showIcon message="暂无启用的工艺目录" />
+      )}
+      <ProcessStepFormFields
+        state={state}
+        originalRolls={props.originalRolls}
+        editMode={editMode}
+        extraOnly={extraOnly}
+        batchMode={props.batchMode}
+      />
     </Modal>
   )
+}
+
+function modalTitle(options: { batchMode?: boolean; editMode: boolean; extraOnly: boolean }) {
+  if (options.batchMode) return '批量添加附加工艺'
+  if (options.extraOnly) return options.editMode ? '编辑附加工艺' : '新增附加工艺'
+  return options.editMode ? '编辑工序' : '新增费用工序'
 }

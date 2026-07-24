@@ -16,4 +16,11 @@ public class ReportExportTaskCreateDTO {
     @Valid
     @NotNull(message = "报表筛选条件不能为空")
     private ReportQuery query;
+
+    @NotBlank(message = "来源报表页面不能为空")
+    @Size(max = 160, message = "来源报表页面不能超过160个字符")
+    @jakarta.validation.constraints.Pattern(
+            regexp = "^/reports/(overview|production|quality-loss|settlement|collection|inventory|delivery|explorer)$",
+            message = "来源报表页面无效")
+    private String reportPath;
 }

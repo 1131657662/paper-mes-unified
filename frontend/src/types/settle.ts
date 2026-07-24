@@ -16,6 +16,7 @@ export interface SettleOrder {
   periodEnd?: string
   sawAmount: number
   rewindAmount: number
+  serviceAmount?: number
   extraAmount: number
   amountNoTax: number
   taxAmount: number
@@ -50,6 +51,7 @@ export interface SettleDetail {
   orderNo: string
   sawAmount: number
   rewindAmount: number
+  serviceAmount?: number
   standardProcessAmount?: number
   pricingAdjustmentAmount?: number
   pricingAdjustmentReason?: string
@@ -96,6 +98,7 @@ export interface SettlePrintLine {
   rewindInvoiceUnitPrice?: number
   sawAmount?: number
   rewindAmount?: number
+  serviceAmount?: number
   standardProcessAmount?: number
   pricingAdjustmentAmount?: number
   pricingAdjustmentReason?: string
@@ -111,7 +114,7 @@ export interface SettlePrintLine {
 }
 
 export interface SettleFeeLine {
-  feeType: 'saw' | 'rewind' | 'extra' | 'tax' | string
+  feeType: 'saw' | 'rewind' | 'service' | 'extra' | 'tax' | string
   feeName: string
   stageLevel?: number
   sourceText?: string
@@ -164,6 +167,7 @@ export interface SettleDetailVO {
 
 export interface SettleCandidateQuery {
   keyword?: string
+  orderUuids?: string[]
   customerUuid?: string
   periodStart?: string
   periodEnd?: string
@@ -187,6 +191,7 @@ export interface SettleCandidateVO {
   finishRollWeight?: number
   sawAmount?: number
   rewindAmount?: number
+  serviceAmount?: number
   standardProcessAmount?: number
   pricingAdjustmentAmount?: number
   extraAmount?: number
@@ -232,6 +237,7 @@ export interface SettleQuoteVO {
   isInvoice: number
   sawAmount: number
   rewindAmount: number
+  serviceAmount?: number
   extraAmount: number
   amountNoTax: number
   taxAmount: number
@@ -243,6 +249,7 @@ export interface SettleQuoteLine {
   orderUuid: string
   sawAmount: number
   rewindAmount: number
+  serviceAmount?: number
   /** Optional for quotes generated before pricing-audit fields were introduced. */
   standardProcessAmount?: number
   pricingAdjustmentAmount?: number

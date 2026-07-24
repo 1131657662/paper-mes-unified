@@ -133,6 +133,9 @@ class BusinessFlowConcurrencyContractTest {
                 "OperationLogService.ACTION_ROLLBACK");
         assertContainsAll(slice(source, "public void rollbackToDraft", "public void voidOrder"),
                 "updateOrderForDraftRollback(order)");
+        assertContainsAll(slice(source, "private void validateDeepRollbackToDraft", "private void cleanupBackRecordActuals"),
+                "from == OrderStatus.DRAFT",
+                "无需重复回退");
         assertContainsAll(slice(source, "private void validateRollback", "private void cleanupDataOnRollback"),
                 "ensureOrderNotReferencedBySettle",
                 "ensureOrderHasNoDeliveryDetail",
@@ -144,7 +147,10 @@ class BusinessFlowConcurrencyContractTest {
                 "from == OrderStatus.PROCESSING && to == OrderStatus.PENDING",
                 "resetIssueAndBackRecordFields(order)");
         assertContainsAll(slice(source, "private void clearRollActuals", "private void voidDirectShipFinishes"),
-                ".set(OriginalRoll::getTotalLossRatio, ZERO_AMOUNT)");
+                ".set(OriginalRoll::getTotalLossRatio, ZERO_AMOUNT)",
+                ".set(OriginalRoll::getIsChecked, 0)",
+                ".set(OriginalRoll::getCheckUser, null)",
+                ".set(OriginalRoll::getCheckTime, null)");
         assertFalse(slice(source, "private void clearRollActuals", "private void voidDirectShipFinishes")
                         .contains(".set(OriginalRoll::getTotalLossRatio, null)"),
                 "母卷总损耗率列为 NOT NULL，回退编辑应归零而不是写入 NULL");
@@ -198,8 +204,8 @@ class BusinessFlowConcurrencyContractTest {
     void settleReceiveAndVoid_whenMoneyChanges_useActiveLedgerAndLocks() throws IOException {
         String source = source(SETTLE_SERVICE);
         String receive = slice(source, "public void receive", "public void cancelReceive");
-        String cancel = slice(source, "public void cancelReceive", "public void voidSettle");
-        String voidSettle = slice(source, "public void voidSettle", "private List<SettleDetail> normalizeDetailsForInvoiceView");
+        String cancel = slice(source, "public void cancelReceive", "public List<String> voidSettle");
+        String voidSettle = slice(source, "public List<String> voidSettle", "private List<SettleDetail> normalizeDetailsForInvoiceView");
 
         assertContainsAll(receive,
                 "businessLockService.lockSettleOrder(uuid);",
@@ -233,7 +239,7 @@ class BusinessFlowConcurrencyContractTest {
     void settleVoid_whenSubmittedRepeatedly_keepsMasterAndDeletesOnlyOwnActiveDetails() throws IOException {
         String source = source(SETTLE_SERVICE);
 
-        assertContainsAll(slice(source, "public void voidSettle", "private List<SettleDetail> normalizeDetailsForInvoiceView"),
+        assertContainsAll(slice(source, "public List<String> voidSettle", "private List<SettleDetail> normalizeDetailsForInvoiceView"),
                 "settleDetailMapper.delete(new LambdaQueryWrapper<SettleDetail>()",
                 ".eq(SettleDetail::getUuid, detail.getUuid())",
                 ".eq(SettleDetail::getSettleUuid, uuid)",

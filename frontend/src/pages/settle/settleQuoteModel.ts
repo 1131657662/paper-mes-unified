@@ -12,6 +12,7 @@ export function applyQuoteLines(
       ...candidate,
       sawAmount: quote.sawAmount,
       rewindAmount: quote.rewindAmount,
+      serviceAmount: quote.serviceAmount,
       extraAmount: quote.extraAmount,
       totalAmount: quote.totalAmount,
     }

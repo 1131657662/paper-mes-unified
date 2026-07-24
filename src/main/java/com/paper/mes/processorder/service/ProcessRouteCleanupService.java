@@ -24,6 +24,11 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -52,20 +57,65 @@ public class ProcessRouteCleanupService {
     }
 
     private void voidExistingFinishes(ProcessRouteContext context, OriginalRoll roll) {
+        List<FinishOriginalRel> rollRelations = safeRelations(finishOriginalRelMapper.selectList(
+                new LambdaQueryWrapper<FinishOriginalRel>()
+                        .eq(FinishOriginalRel::getOriginalUuid, roll.getUuid())));
+        Set<String> relatedFinishUuids = new LinkedHashSet<>(rollRelations.stream()
+                .map(FinishOriginalRel::getFinishUuid).toList());
         List<FinishRoll> existing = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
                 .eq(FinishRoll::getOrderUuid, context.order().getUuid())
-                .eq(FinishRoll::getOriginalRollNos, finishOriginalKey(roll))
-                .ne(FinishRoll::getRollNoStatus, ROLL_NO_VOID));
-        for (FinishRoll finish : existing) {
+                .and(wrapper -> {
+                    wrapper.eq(FinishRoll::getOriginalRollNos, finishOriginalKey(roll));
+                    if (!relatedFinishUuids.isEmpty()) {
+                        wrapper.or().in(FinishRoll::getUuid, relatedFinishUuids);
+                    }
+                }));
+        List<FinishOriginalRel> allRelatedRelations = relatedFinishUuids.isEmpty()
+                ? List.of()
+                : safeRelations(finishOriginalRelMapper.selectList(new LambdaQueryWrapper<FinishOriginalRel>()
+                .in(FinishOriginalRel::getFinishUuid, relatedFinishUuids)));
+        rejectActiveSharedFinishes(roll, relatedFinishUuids, existing, allRelatedRelations);
+        Set<String> singleSourceFinishUuids = allRelatedRelations.stream()
+                .collect(Collectors.groupingBy(FinishOriginalRel::getFinishUuid, Collectors.mapping(
+                        FinishOriginalRel::getOriginalUuid, Collectors.toSet())))
+                .entrySet().stream()
+                .filter(entry -> entry.getValue().size() == 1 && entry.getValue().contains(roll.getUuid()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        String ownerKey = finishOriginalKey(roll);
+        List<FinishRoll> activeOwned = existing.stream()
+                .filter(finish -> !Integer.valueOf(ROLL_NO_VOID).equals(finish.getRollNoStatus()))
+                .filter(finish -> Objects.equals(ownerKey, finish.getOriginalRollNos())
+                        || singleSourceFinishUuids.contains(finish.getUuid()))
+                .toList();
+        for (FinishRoll finish : activeOwned) {
             if (finish.getActualWeight() != null) {
                 throw new BusinessException(ErrorCode.E003, "已有回录重量的成品不可重新配置后续工艺");
             }
         }
-        if (!existing.isEmpty()) {
-            finishOriginalRelMapper.delete(new LambdaQueryWrapper<FinishOriginalRel>()
-                    .in(FinishOriginalRel::getFinishUuid, existing.stream().map(FinishRoll::getUuid).toList()));
+        LambdaQueryWrapper<FinishOriginalRel> relationDelete = new LambdaQueryWrapper<FinishOriginalRel>()
+                .eq(FinishOriginalRel::getOriginalUuid, roll.getUuid());
+        finishOriginalRelMapper.delete(relationDelete);
+        voidFinishRolls(activeOwned);
+    }
+
+    private void rejectActiveSharedFinishes(OriginalRoll roll, Set<String> relatedFinishUuids,
+                                            List<FinishRoll> finishes, List<FinishOriginalRel> relations) {
+        Map<String, Set<String>> sourceUuidsByFinish = relations.stream()
+                .collect(Collectors.groupingBy(FinishOriginalRel::getFinishUuid, Collectors.mapping(
+                        FinishOriginalRel::getOriginalUuid, Collectors.toSet())));
+        boolean sourceOfActiveSharedFinish = finishes.stream()
+                .anyMatch(finish -> relatedFinishUuids.contains(finish.getUuid())
+                        && sourceUuidsByFinish.getOrDefault(finish.getUuid(), Set.of()).size() > 1
+                        && !Integer.valueOf(ROLL_NO_VOID).equals(finish.getRollNoStatus()));
+        if (sourceOfActiveSharedFinish) {
+            throw new BusinessException(ErrorCode.E003,
+                    "该母卷正被其他母卷的合并复卷配置使用，请先从配置拥有母卷重新配置成品");
         }
-        voidFinishRolls(existing);
+    }
+
+    private List<FinishOriginalRel> safeRelations(List<FinishOriginalRel> relations) {
+        return relations == null ? List.of() : relations;
     }
 
     private void voidFinishRolls(List<FinishRoll> finishes) {

@@ -1,0 +1,130 @@
+.customer-profile-form__section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.customer-profile-form__section-heading h3 {
+  margin-bottom: 4px;
+}
+
+.customer-profile-form__section-heading p {
+  margin: 0;
+  color: var(--mes-color-text-muted);
+  font-size: 13px;
+}
+
+.customer-service-price-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.customer-service-price-form-item {
+  margin-bottom: 0;
+}
+
+.customer-service-price-process {
+  padding: 14px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius);
+  background: var(--mes-color-panel);
+}
+
+.customer-service-price-process__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 12px;
+}
+
+.customer-service-price-process__title .ant-typography:last-child {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.customer-service-price-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.customer-service-price-option {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius-sm);
+  background: var(--mes-color-soft);
+}
+
+.customer-service-price-option.is-enabled {
+  border-color: var(--mes-color-primary);
+}
+
+.customer-service-price-option__body {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.customer-service-price-option__body .ant-input-number {
+  width: 100%;
+}
+
+.customer-service-price-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: 100%;
+}
+
+.customer-service-price-input .ant-input-number {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.customer-service-price-input > span {
+  display: flex;
+  align-items: center;
+  min-width: 58px;
+  padding-inline: 10px;
+  border: 1px solid var(--mes-color-border);
+  border-inline-start: 0;
+  border-start-end-radius: var(--mes-radius-sm);
+  border-end-end-radius: var(--mes-radius-sm);
+  background: var(--mes-color-soft);
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.customer-service-price-option:not(.is-enabled) .customer-service-price-input > span {
+  opacity: 0.55;
+}
+
+.customer-service-price-option > .ant-radio-wrapper {
+  grid-column: 2;
+  margin: 0;
+}
+
+@media (max-width: 1180px) {
+  .customer-service-price-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .customer-service-price-process__title {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .customer-service-price-process__title .ant-typography:last-child {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}

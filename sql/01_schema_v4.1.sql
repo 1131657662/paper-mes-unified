@@ -98,6 +98,7 @@ CREATE TABLE `sys_machine` (
   `machine_code`  VARCHAR(50)  DEFAULT NULL            COMMENT '机台编码',
   `machine_name`  VARCHAR(100) NOT NULL                COMMENT '机台名称',
   `machine_type`  TINYINT      DEFAULT NULL            COMMENT '机台类型 1锯纸 2复卷 3通用',
+  `resource_kind` VARCHAR(20)  NOT NULL DEFAULT 'MACHINE' COMMENT 'MACHINE设备 WORKSTATION工位',
   `status`        TINYINT      NOT NULL DEFAULT 1      COMMENT '1启用 2停用',
   `remark`        VARCHAR(255) DEFAULT NULL            COMMENT '备注',
   `is_deleted`    TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
@@ -117,7 +118,8 @@ CREATE TABLE `sys_machine` (
   UNIQUE KEY `uk_sys_machine_active_code` (`machine_code_active`),
   KEY `idx_machine_name` (`machine_name`),
   KEY `idx_status` (`status`),
-  KEY `idx_is_deleted` (`is_deleted`)
+  KEY `idx_is_deleted` (`is_deleted`),
+  CONSTRAINT `chk_machine_resource_kind` CHECK (`resource_kind` IN ('MACHINE','WORKSTATION'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='机台档案表';
 
 -- -----------------------------------------------------------------------------
@@ -232,6 +234,7 @@ CREATE TABLE `biz_process_order` (
   KEY `idx_customer_deleted_ctime` (`customer_uuid`, `is_deleted`, `create_time`),
   KEY `idx_order_status` (`order_status`),
   KEY `idx_order_customer_status_accounting` (`customer_uuid`, `order_status`, `accounting_date`, `uuid`),
+  KEY `idx_order_report_scope` (`is_deleted`, `order_status`, `accounting_date`, `uuid`),
   KEY `idx_order_date` (`order_date`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单主表';
@@ -261,7 +264,7 @@ CREATE TABLE `biz_original_roll` (
   `batch_no`           VARCHAR(100)  DEFAULT NULL            COMMENT '来料批次号',
   `damage_desc`        VARCHAR(255)  DEFAULT NULL            COMMENT '破损、水湿文字描述',
   `damage_images`      JSON          DEFAULT NULL            COMMENT '多图片路径数组',
-  `process_mode`       TINYINT       NOT NULL DEFAULT 1      COMMENT '1标准加工 2现场定尺 3不加工直发',
+  `process_mode`       TINYINT       NOT NULL DEFAULT 1      COMMENT '1标准加工 2现场定尺 3不加工直发 4仅附加工艺',
   `main_step_type`     TINYINT       DEFAULT NULL            COMMENT '主工艺类型：1锯纸 2复卷（标准加工和现场定尺必填）',
   `roll_status`        TINYINT       NOT NULL DEFAULT 1      COMMENT '1待加工 2加工中 3完成 4直发 5报废',
   `is_checked`         TINYINT       NOT NULL DEFAULT 0      COMMENT '0未复核 1车间线下复核完成',
@@ -293,12 +296,175 @@ CREATE TABLE `biz_original_roll` (
   KEY `idx_main_step_type` (`main_step_type`),
   KEY `idx_row_sort` (`order_uuid`, `row_sort`),
   KEY `idx_original_roll_machine_uuid` (`machine_uuid`),
-  KEY `idx_is_deleted` (`is_deleted`)
+  KEY `idx_is_deleted` (`is_deleted`),
+  KEY `idx_original_roll_paper_candidate` (`is_deleted`, `paper_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='原纸明细表（单卷维度）';
 
 -- -----------------------------------------------------------------------------
 -- 3.3.4 biz_process_step 工序明细表（工艺唯一来源）
 -- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `sys_machine_process_capability`;
+DROP TABLE IF EXISTS `sys_process_catalog_billing_mode`;
+DROP TABLE IF EXISTS `sys_process_catalog_unit`;
+DROP TABLE IF EXISTS `sys_process_catalog`;
+CREATE TABLE `sys_process_catalog` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `step_type` TINYINT NOT NULL COMMENT 'Legacy-compatible process type',
+  `process_code` VARCHAR(50) NOT NULL,
+  `process_name` VARCHAR(80) NOT NULL,
+  `process_category` VARCHAR(20) NOT NULL,
+  `pricing_strategy` VARCHAR(30) NOT NULL,
+  `produces_inventory_output` TINYINT NOT NULL DEFAULT 0,
+  `allows_loss_recording` TINYINT NOT NULL DEFAULT 0,
+  `allows_main_process` TINYINT NOT NULL DEFAULT 0,
+  `status` TINYINT NOT NULL DEFAULT 1,
+  `sort_no` INT NOT NULL DEFAULT 100,
+  `built_in` TINYINT NOT NULL DEFAULT 0,
+  `remark` VARCHAR(255) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_process_catalog_step_type` (`step_type`),
+  UNIQUE KEY `uk_process_catalog_code` (`process_code`),
+  KEY `idx_process_catalog_active` (`status`,`is_deleted`,`sort_no`),
+  CONSTRAINT `chk_process_catalog_category` CHECK (`process_category` IN
+    ('PRODUCTION','SERVICE','QUALITY','PACKAGING','LOGISTICS')),
+  CONSTRAINT `chk_process_catalog_strategy` CHECK (`pricing_strategy` IN
+    ('SAW_KNIFE','REWIND_WEIGHT','SERVICE_QUANTITY')),
+  CONSTRAINT `chk_process_catalog_flags` CHECK (
+    `produces_inventory_output` IN (0,1) AND `allows_loss_recording` IN (0,1)
+    AND `allows_main_process` IN (0,1) AND `status` IN (0,1) AND `built_in` IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Process capability catalog';
+
+CREATE TABLE `sys_process_catalog_unit` (
+  `catalog_uuid` VARCHAR(36) NOT NULL,
+  `unit_code` VARCHAR(16) NOT NULL,
+  `unit_name` VARCHAR(30) NOT NULL,
+  `is_default` TINYINT NOT NULL DEFAULT 0,
+  `default_catalog_uuid` VARCHAR(36) GENERATED ALWAYS AS
+    (CASE WHEN `is_default`=1 THEN `catalog_uuid` ELSE NULL END) STORED,
+  `sort_no` INT NOT NULL DEFAULT 100,
+  PRIMARY KEY (`catalog_uuid`,`unit_code`),
+  UNIQUE KEY `uk_process_catalog_default_unit` (`default_catalog_uuid`),
+  CONSTRAINT `fk_process_catalog_unit_catalog` FOREIGN KEY (`catalog_uuid`)
+    REFERENCES `sys_process_catalog` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_process_catalog_unit_default` CHECK (`is_default` IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Allowed process measurement units';
+
+CREATE TABLE `sys_process_catalog_billing_mode` (
+  `catalog_uuid` VARCHAR(36) NOT NULL,
+  `billing_mode` TINYINT NOT NULL,
+  `sort_no` INT NOT NULL DEFAULT 100,
+  PRIMARY KEY (`catalog_uuid`,`billing_mode`),
+  CONSTRAINT `fk_process_catalog_billing_catalog` FOREIGN KEY (`catalog_uuid`)
+    REFERENCES `sys_process_catalog` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_process_catalog_billing_mode` CHECK (`billing_mode` IN (1,2,3,4))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Allowed process billing modes';
+
+CREATE TABLE `sys_machine_process_capability` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `machine_uuid` VARCHAR(36) NOT NULL,
+  `catalog_uuid` VARCHAR(36) NOT NULL,
+  `is_default` TINYINT NOT NULL DEFAULT 0 COMMENT '当前工艺默认资源',
+  `priority` INT NOT NULL DEFAULT 100 COMMENT '候选排序，越小越优先',
+  `min_width` INT DEFAULT NULL COMMENT '最小适用门幅mm',
+  `max_width` INT DEFAULT NULL COMMENT '最大适用门幅mm',
+  `max_roll_weight` DECIMAL(12,3) DEFAULT NULL COMMENT '最大卷重kg',
+  `max_diameter` INT DEFAULT NULL COMMENT '最大卷径mm',
+  `remark` VARCHAR(255) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  `active_machine_catalog_key` VARCHAR(80) GENERATED ALWAYS AS
+    (CASE WHEN `is_deleted`=0 THEN CONCAT(`machine_uuid`,':',`catalog_uuid`) ELSE NULL END) STORED,
+  `active_default_catalog_key` VARCHAR(36) GENERATED ALWAYS AS
+    (CASE WHEN `is_deleted`=0 AND `is_default`=1 THEN `catalog_uuid` ELSE NULL END) STORED,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_machine_capability_active` (`active_machine_catalog_key`),
+  UNIQUE KEY `uk_machine_capability_default` (`active_default_catalog_key`),
+  KEY `idx_machine_capability_machine` (`machine_uuid`,`is_deleted`),
+  KEY `idx_machine_capability_catalog` (`catalog_uuid`,`is_deleted`,`priority`),
+  CONSTRAINT `fk_machine_capability_machine` FOREIGN KEY (`machine_uuid`) REFERENCES `sys_machine` (`uuid`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_machine_capability_catalog` FOREIGN KEY (`catalog_uuid`) REFERENCES `sys_process_catalog` (`uuid`) ON DELETE RESTRICT,
+  CONSTRAINT `chk_machine_capability_default` CHECK (`is_default` IN (0,1)),
+  CONSTRAINT `chk_machine_capability_priority` CHECK (`priority` BETWEEN 1 AND 9999),
+  CONSTRAINT `chk_machine_capability_width` CHECK ((`min_width` IS NULL OR `min_width`>0) AND (`max_width` IS NULL OR `max_width`>0) AND (`min_width` IS NULL OR `max_width` IS NULL OR `min_width`<=`max_width`)),
+  CONSTRAINT `chk_machine_capability_limits` CHECK ((`max_roll_weight` IS NULL OR `max_roll_weight`>0) AND (`max_diameter` IS NULL OR `max_diameter`>0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='机台/工位支持的工艺能力';
+
+INSERT INTO `sys_process_catalog`
+(`uuid`,`step_type`,`process_code`,`process_name`,`process_category`,`pricing_strategy`,
+ `produces_inventory_output`,`allows_loss_recording`,`allows_main_process`,`status`,`sort_no`,`built_in`) VALUES
+('process-catalog-saw',1,'SAW','锯纸','PRODUCTION','SAW_KNIFE',1,1,1,1,10,1),
+('process-catalog-rewind',2,'REWIND','复卷','PRODUCTION','REWIND_WEIGHT',1,1,1,1,20,1),
+('process-catalog-strip',3,'STRIP_SORT','剥损整理','SERVICE','SERVICE_QUANTITY',0,1,0,1,30,1),
+('process-catalog-repack',4,'REPACK','重新包装','PACKAGING','SERVICE_QUANTITY',0,0,0,1,40,1);
+
+INSERT INTO `sys_process_catalog_unit`
+(`catalog_uuid`,`unit_code`,`unit_name`,`is_default`,`sort_no`) VALUES
+('process-catalog-saw','KNIFE','刀',1,10),
+('process-catalog-rewind','TON','吨',1,10),
+('process-catalog-strip','PIECE','件',1,10),
+('process-catalog-strip','TON','吨',0,20),
+('process-catalog-repack','PIECE','件',1,10),
+('process-catalog-repack','TON','吨',0,20);
+
+INSERT INTO `sys_process_catalog_billing_mode`
+(`catalog_uuid`,`billing_mode`,`sort_no`) VALUES
+('process-catalog-saw',1,10),('process-catalog-saw',2,20),
+('process-catalog-saw',3,30),('process-catalog-saw',4,40),
+('process-catalog-rewind',1,10),('process-catalog-rewind',2,20),
+('process-catalog-rewind',3,30),('process-catalog-rewind',4,40),
+('process-catalog-strip',1,10),('process-catalog-strip',3,30),('process-catalog-strip',4,40),
+('process-catalog-repack',1,10),('process-catalog-repack',3,30),('process-catalog-repack',4,40);
+
+DROP TABLE IF EXISTS `sys_customer_process_price`;
+CREATE TABLE `sys_customer_process_price` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `customer_uuid` VARCHAR(36) NOT NULL,
+  `catalog_uuid` VARCHAR(36) NOT NULL,
+  `billing_basis` VARCHAR(12) NOT NULL COMMENT 'PIECE按件 TON按吨 FIXED固定金额',
+  `price` DECIMAL(12,2) NOT NULL,
+  `is_default` TINYINT NOT NULL DEFAULT 0,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  `active_price_key` VARCHAR(100) GENERATED ALWAYS AS (CASE WHEN `is_deleted`=0 THEN CONCAT(`customer_uuid`,':',`catalog_uuid`,':',`billing_basis`) ELSE NULL END) STORED,
+  `active_default_key` VARCHAR(80) GENERATED ALWAYS AS (CASE WHEN `is_deleted`=0 AND `is_default`=1 THEN CONCAT(`customer_uuid`,':',`catalog_uuid`) ELSE NULL END) STORED,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_customer_process_price_active` (`active_price_key`),
+  UNIQUE KEY `uk_customer_process_price_default` (`active_default_key`),
+  KEY `idx_customer_process_price_customer` (`customer_uuid`,`is_deleted`),
+  KEY `idx_customer_process_price_catalog` (`catalog_uuid`,`is_deleted`),
+  CONSTRAINT `fk_customer_process_price_customer` FOREIGN KEY (`customer_uuid`) REFERENCES `sys_customer` (`uuid`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_customer_process_price_catalog` FOREIGN KEY (`catalog_uuid`) REFERENCES `sys_process_catalog` (`uuid`) ON DELETE RESTRICT,
+  CONSTRAINT `chk_customer_process_price_basis` CHECK (`billing_basis` IN ('PIECE','TON','FIXED')),
+  CONSTRAINT `chk_customer_process_price_value` CHECK (`price` > 0),
+  CONSTRAINT `chk_customer_process_price_default` CHECK (`is_default` IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户服务工艺价格方案';
+
 DROP TABLE IF EXISTS `biz_process_step`;
 CREATE TABLE `biz_process_step` (
   `uuid`           VARCHAR(36)   NOT NULL                COMMENT '工序ID',
@@ -309,13 +475,15 @@ CREATE TABLE `biz_process_step` (
   `stage_level`    INT           NOT NULL DEFAULT 1      COMMENT '工艺阶段层级：1第一道 2第二道',
   `parent_step_uuid` VARCHAR(36) DEFAULT NULL            COMMENT '上一阶段工序UUID',
   `step_sort`      INT           NOT NULL DEFAULT 1      COMMENT '工序排序号',
-  `step_type`      TINYINT       NOT NULL                COMMENT '1锯纸 2复卷（工艺唯一判断字段）',
+  `step_type`      TINYINT       NOT NULL                COMMENT '1锯纸 2复卷 3剥损整理 4重新包装',
   `step_name`      VARCHAR(50)   DEFAULT NULL            COMMENT '工序自定义名称',
   `machine_uuid`   VARCHAR(36)   DEFAULT NULL            COMMENT '工序加工机台',
   `machine_name_snap` VARCHAR(100) DEFAULT NULL           COMMENT '工序机台名称快照',
   `is_main`        TINYINT       NOT NULL DEFAULT 1      COMMENT '1本卷主工艺 0车间追加工序',
   `knife_count`    INT           DEFAULT 0               COMMENT '锯纸专用：实际加工刀数',
     `process_weight` DECIMAL(10,3) DEFAULT NULL            COMMENT '复卷专用：加工吨位',
+    `billing_basis` VARCHAR(16) DEFAULT NULL                COMMENT '服务计费基准 TON按吨 PIECE按件',
+    `service_quantity` DECIMAL(12,3) DEFAULT NULL           COMMENT '整理或包装服务数量',
     `unit_price`     DECIMAL(10,2) DEFAULT NULL            COMMENT '本工序单价（元/刀 / 元/吨）',
     `billing_unit_price` DECIMAL(12,4) DEFAULT NULL        COMMENT '人工核定单价，为空时沿用标准单价',
   `step_amount`    DECIMAL(10,2) DEFAULT 0.00            COMMENT '本工序加工费（取整）',
@@ -329,10 +497,17 @@ CREATE TABLE `biz_process_step` (
   `pricing_adjusted_by` VARCHAR(50) DEFAULT NULL         COMMENT '计价调整操作人',
     `pricing_adjusted_at` DATETIME DEFAULT NULL            COMMENT '计价调整时间',
     `pricing_adjustment_batch_id` VARCHAR(64) DEFAULT NULL COMMENT '批量计价操作标识',
+  `width_difference_policy` VARCHAR(16) DEFAULT NULL       COMMENT 'LOSS计损耗 ALLOCATE分摊 REMAINDER留余料',
+  `planned_loss_width` INT DEFAULT NULL                    COMMENT '计划非库存损耗门幅 mm',
+  `planned_loss_weight` DECIMAL(10,3) DEFAULT NULL         COMMENT '计划非库存损耗重量 kg',
   `loss_weight`    DECIMAL(10,3) DEFAULT 0.000           COMMENT '本工序产生损耗重量 kg',
   `operator`       VARCHAR(50)   DEFAULT NULL            COMMENT '本工序操作工',
   `remark`         VARCHAR(255)  DEFAULT NULL            COMMENT '工序备注、异常说明',
   `is_deleted`     TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `active_main_original_uuid` VARCHAR(36)
+    GENERATED ALWAYS AS (
+      CASE WHEN `is_main` = 1 AND `is_deleted` = 0 THEN `original_uuid` ELSE NULL END
+    ) STORED COMMENT '有效主工艺母卷UUID，用于数据库唯一约束',
   `create_by`      VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
   `update_by`      VARCHAR(50)   DEFAULT NULL            COMMENT '更新人',
   `create_time`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -350,8 +525,14 @@ CREATE TABLE `biz_process_step` (
   KEY `idx_process_step_machine_uuid` (`machine_uuid`),
   KEY `idx_step_type` (`step_type`),
   KEY `idx_is_deleted` (`is_deleted`),
+  UNIQUE KEY `uk_roll_main_step` (`active_main_original_uuid`),
     CONSTRAINT `chk_process_step_billing_mode` CHECK (`billing_mode` IN (1,2,3,4)),
+    CONSTRAINT `fk_process_step_catalog_type` FOREIGN KEY (`step_type`)
+      REFERENCES `sys_process_catalog` (`step_type`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `chk_process_step_service_quantity` CHECK (`service_quantity` IS NULL OR `service_quantity` > 0),
     CONSTRAINT `chk_process_step_billing_unit_price` CHECK (`billing_unit_price` IS NULL OR `billing_unit_price` > 0),
+  CONSTRAINT `chk_process_step_width_policy` CHECK (`width_difference_policy` IS NULL OR `width_difference_policy` IN ('LOSS','ALLOCATE','REMAINDER')),
+  CONSTRAINT `chk_process_step_planned_loss` CHECK ((`planned_loss_width` IS NULL OR `planned_loss_width` >= 0) AND (`planned_loss_weight` IS NULL OR `planned_loss_weight` >= 0)),
   CONSTRAINT `chk_process_step_pricing_nonnegative` CHECK (
     (`standard_quantity` IS NULL OR `standard_quantity` >= 0)
     AND (`billing_quantity` IS NULL OR `billing_quantity` > 0)
@@ -456,9 +637,14 @@ CREATE TABLE `biz_finish_roll` (
   `gram_weight`          INT           NOT NULL                COMMENT '成品克重 g/㎡',
   `customer_gram_weight` INT           DEFAULT NULL            COMMENT '客户要求标注克重 g/㎡',
   `finish_width`         INT           NOT NULL                COMMENT '成品门幅 mm',
+  `customer_finish_width` INT          DEFAULT NULL            COMMENT '客户销售门幅 mm',
+  `customer_display_weight` DECIMAL(12,3) DEFAULT NULL         COMMENT '客户对外显示重量 kg',
+  `customer_spec_override_reason` VARCHAR(255) DEFAULT NULL    COMMENT '客户规格改写原因',
+  `customer_spec_override_by` VARCHAR(50) DEFAULT NULL         COMMENT '客户规格改写人',
+  `customer_spec_override_at` DATETIME DEFAULT NULL            COMMENT '客户规格改写时间',
   `finish_diameter`      INT           DEFAULT NULL            COMMENT '成品直径 英寸',
   `finish_core_diameter` INT           DEFAULT NULL            COMMENT '成品纸芯直径 英寸',
-  `source_type`          TINYINT       NOT NULL DEFAULT 1      COMMENT '1加工产出 2原纸直发(沿用母卷号,三不约束)',
+  `source_type`          TINYINT       NOT NULL DEFAULT 1      COMMENT '1加工产出 2原纸直发(沿用母卷号,三不约束) 3仅附加工艺产出',
   `estimate_weight_snap` DECIMAL(10,3) DEFAULT NULL            COMMENT '打印下发时预估重量快照 kg',
   `estimate_weight`      DECIMAL(10,3) DEFAULT NULL            COMMENT '当前系统理论预估重量 kg',
   `actual_weight`        DECIMAL(10,3) DEFAULT NULL            COMMENT '车间实际成品重量 kg',
@@ -496,6 +682,7 @@ CREATE TABLE `biz_finish_roll` (
   KEY `idx_order_uuid` (`order_uuid`),
   KEY `idx_finish_status` (`finish_status`),
   KEY `idx_finish_inventory_filter` (`finish_status`, `is_deleted`, `warehouse_uuid`, `stock_in_time`),
+  KEY `idx_report_inventory_scope` (`finish_status`, `is_deleted`, `stock_in_time`, `order_uuid`),
   KEY `idx_roll_no_status` (`roll_no_status`),
   KEY `idx_source_type` (`source_type`),
   KEY `idx_is_deleted` (`is_deleted`)
@@ -615,6 +802,7 @@ CREATE TABLE `biz_delivery_order` (
   KEY `idx_customer_uuid` (`customer_uuid`),
   KEY `idx_delivery_status` (`delivery_status`),
   KEY `idx_delivery_date` (`delivery_date`),
+  KEY `idx_report_delivery_scope` (`is_deleted`, `delivery_status`, `delivery_date`, `customer_uuid`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='出库单主表';
 
@@ -652,6 +840,7 @@ CREATE TABLE `biz_delivery_detail` (
   KEY `idx_finish_uuid` (`finish_uuid`),
   KEY `idx_order_uuid` (`order_uuid`),
   KEY `idx_stock_lock_status` (`stock_lock_status`),
+  KEY `idx_report_delivery_detail` (`is_deleted`, `delivery_uuid`, `stock_lock_status`, `finish_uuid`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='出库成品明细表';
 
@@ -679,6 +868,7 @@ CREATE TABLE `biz_settle_order` (
   `period_end`        DATE          DEFAULT NULL            COMMENT '月结账期止',
   `saw_amount`        DECIMAL(12,2) DEFAULT 0.00            COMMENT '锯纸加工费合计',
   `rewind_amount`     DECIMAL(12,2) DEFAULT 0.00            COMMENT '复卷加工费合计',
+  `service_amount`    DECIMAL(12,2) NOT NULL DEFAULT 0.00  COMMENT '整理包装等服务工序费',
   `extra_amount`      DECIMAL(12,2) DEFAULT 0.00            COMMENT '附加费合计',
   `amount_no_tax`     DECIMAL(12,2) DEFAULT 0.00            COMMENT '不含税金额',
   `tax_amount`        DECIMAL(12,2) DEFAULT 0.00            COMMENT '税额',
@@ -719,6 +909,7 @@ CREATE TABLE `biz_settle_order` (
   KEY `idx_settle_date` (`settle_date`),
   KEY `idx_settle_due_status` (`is_deleted`, `settle_status`, `due_date`, `uuid`),
   KEY `idx_settle_collection_queue` (`is_deleted`, `settle_status`, `last_reminder_time`, `due_date`, `uuid`),
+  KEY `idx_report_settle_scope` (`is_deleted`, `settle_status`, `settle_date`, `customer_uuid`),
   KEY `idx_is_deleted` (`is_deleted`),
   CONSTRAINT `chk_settle_discount_nonnegative` CHECK (`discount_amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='结算单主表';
@@ -769,6 +960,7 @@ CREATE TABLE `biz_settle_detail` (
   `order_no`      VARCHAR(50)   DEFAULT NULL            COMMENT '冗余加工单号',
   `saw_amount`    DECIMAL(12,2) DEFAULT 0.00            COMMENT '本单锯纸费',
   `rewind_amount` DECIMAL(12,2) DEFAULT 0.00            COMMENT '本单复卷费',
+  `service_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '本单服务工序费',
   `standard_process_amount` DECIMAL(12,2) DEFAULT 0.00 COMMENT '优惠前标准加工费',
   `pricing_adjustment_amount` DECIMAL(12,2) DEFAULT 0.00 COMMENT '最终加工费减标准加工费',
   `pricing_adjustment_reason` VARCHAR(255) DEFAULT NULL COMMENT '计价调整原因',
@@ -835,6 +1027,7 @@ CREATE TABLE `biz_receive_record` (
   KEY `idx_receive_date` (`receive_date`),
   KEY `idx_receive_record_status` (`record_status`),
   KEY `idx_receive_record_type` (`receive_type`),
+  KEY `idx_report_receive_scope` (`is_deleted`, `record_status`, `receive_date`, `settle_uuid`),
   KEY `idx_is_deleted` (`is_deleted`),
   CONSTRAINT `chk_receive_discount_nonnegative` CHECK (`discount_amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分次收款流水表';
@@ -1179,7 +1372,9 @@ CREATE TABLE `sys_export_task` (
   `uuid` VARCHAR(36) NOT NULL, `request_id` VARCHAR(64) NOT NULL,
   `task_type` VARCHAR(30) NOT NULL, `module_code` VARCHAR(30) NOT NULL,
   `operation_code` VARCHAR(50) NOT NULL, `task_name` VARCHAR(120) NOT NULL,
-  `source_uuid` VARCHAR(36) NOT NULL, `request_payload` TEXT DEFAULT NULL,
+  `source_uuid` VARCHAR(36) NOT NULL, `source_path` VARCHAR(160) DEFAULT NULL,
+  `request_payload` TEXT DEFAULT NULL, `query_snapshot_uuid` VARCHAR(36) DEFAULT NULL,
+  `metric_release_uuid` VARCHAR(36) DEFAULT NULL,
   `requester_uuid` VARCHAR(36) NOT NULL,
   `requester_name` VARCHAR(50) NOT NULL, `task_status` TINYINT NOT NULL DEFAULT 1,
   `progress` TINYINT NOT NULL DEFAULT 0, `file_name` VARCHAR(255) DEFAULT NULL,
@@ -1201,6 +1396,9 @@ CREATE TABLE `sys_export_task` (
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `uk_export_task_request` (`requester_uuid`, `request_id`),
   KEY `idx_export_task_owner_time` (`requester_uuid`, `create_time`, `uuid`),
+  KEY `idx_export_task_owner_module_operation_time` (`requester_uuid`, `module_code`, `operation_code`, `create_time`, `uuid`),
+  KEY `idx_export_task_query_snapshot` (`query_snapshot_uuid`),
+  KEY `idx_export_task_metric_release_time` (`metric_release_uuid`, `create_time`, `uuid`),
   KEY `idx_export_task_owner_status` (`requester_uuid`, `task_status`, `acknowledged_at`),
   KEY `idx_export_task_expiry` (`expires_at`, `task_status`),
   KEY `idx_export_task_dispatch` (`task_status`, `heartbeat_at`, `create_time`),
@@ -1211,10 +1409,763 @@ CREATE TABLE `sys_export_task` (
   CONSTRAINT `chk_export_task_download_count` CHECK (`download_count` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异步导出任务中心';
 
+DROP TABLE IF EXISTS `rpt_report_saved_view`;
+DROP TABLE IF EXISTS `rpt_report_snapshot_reference`;
+DROP TABLE IF EXISTS `rpt_report_snapshot`;
+DROP TABLE IF EXISTS `rpt_metric_value`;
+DROP TABLE IF EXISTS `rpt_metric_value_stage`;
+DROP TABLE IF EXISTS `rpt_metric_materialization_state`;
+DROP TABLE IF EXISTS `rpt_metric_materialization_segment`;
+DROP TABLE IF EXISTS `rpt_metric_materialization_job`;
+DROP TABLE IF EXISTS `rpt_metric_release_item`;
+DROP TABLE IF EXISTS `rpt_metric_release`;
+DROP TABLE IF EXISTS `rpt_metric_version`;
+DROP TABLE IF EXISTS `rpt_metric_definition`;
+
+CREATE TABLE `rpt_metric_definition` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `metric_code` VARCHAR(64) NOT NULL,
+  `metric_name` VARCHAR(100) NOT NULL,
+  `description` VARCHAR(500) NOT NULL DEFAULT '',
+  `value_type` VARCHAR(20) NOT NULL,
+  `unit_code` VARCHAR(20) NOT NULL,
+  `display_scale` TINYINT UNSIGNED NOT NULL DEFAULT 2,
+  `display_order` INT UNSIGNED NOT NULL DEFAULT 0,
+  `is_enabled` TINYINT NOT NULL DEFAULT 1,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_metric_definition_code` (`metric_code`),
+  KEY `idx_metric_definition_enabled_order` (`is_deleted`, `is_enabled`, `display_order`, `metric_code`),
+  CONSTRAINT `chk_metric_definition_value_type` CHECK (`value_type` IN ('INTEGER', 'DECIMAL', 'MONEY', 'PERCENT')),
+  CONSTRAINT `chk_metric_definition_enabled` CHECK (`is_enabled` IN (0, 1)),
+  CONSTRAINT `chk_metric_definition_scale` CHECK (`display_scale` <= 6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表指标稳定标识';
+
+CREATE TABLE `rpt_metric_version` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `metric_uuid` VARCHAR(36) NOT NULL,
+  `version_no` INT UNSIGNED NOT NULL,
+  `implementation_key` VARCHAR(100) NOT NULL,
+  `definition_json` JSON NOT NULL,
+  `definition_checksum` CHAR(64) NOT NULL,
+  `version_status` TINYINT NOT NULL DEFAULT 1,
+  `locked_at` DATETIME DEFAULT NULL,
+  `locked_by` VARCHAR(36) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_metric_version_number` (`metric_uuid`, `version_no`),
+  UNIQUE KEY `uk_metric_version_identity` (`uuid`, `metric_uuid`),
+  KEY `idx_metric_version_status` (`metric_uuid`, `version_status`, `is_deleted`),
+  CONSTRAINT `fk_metric_version_definition` FOREIGN KEY (`metric_uuid`)
+    REFERENCES `rpt_metric_definition` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_metric_version_number` CHECK (`version_no` >= 1),
+  CONSTRAINT `chk_metric_version_status` CHECK (`version_status` IN (1, 2)),
+  CONSTRAINT `chk_metric_version_lock` CHECK (
+    (`version_status` = 1 AND `locked_at` IS NULL) OR
+    (`version_status` = 2 AND `locked_at` IS NOT NULL)
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表指标不可变版本';
+
+CREATE TABLE `rpt_metric_release` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `release_code` VARCHAR(40) NOT NULL,
+  `release_name` VARCHAR(120) NOT NULL,
+  `release_status` TINYINT NOT NULL DEFAULT 1,
+  `release_checksum` CHAR(64) DEFAULT NULL,
+  `published_at` DATETIME DEFAULT NULL,
+  `published_by` VARCHAR(36) DEFAULT NULL,
+  `retired_at` DATETIME DEFAULT NULL,
+  `retired_by` VARCHAR(36) DEFAULT NULL,
+  `active_slot` TINYINT GENERATED ALWAYS AS (
+    CASE WHEN `release_status` = 2 AND `is_deleted` = 0 THEN 1 ELSE NULL END
+  ) STORED,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_metric_release_code` (`release_code`),
+  UNIQUE KEY `uk_metric_release_active` (`active_slot`),
+  KEY `idx_metric_release_status_time` (`is_deleted`, `release_status`, `published_at`),
+  CONSTRAINT `chk_metric_release_status` CHECK (`release_status` IN (1, 2, 3)),
+  CONSTRAINT `chk_metric_release_lifecycle` CHECK (
+    (`release_status` = 1 AND `published_at` IS NULL AND `retired_at` IS NULL) OR
+    (`release_status` = 2 AND `published_at` IS NOT NULL AND `retired_at` IS NULL) OR
+    (`release_status` = 3 AND `published_at` IS NOT NULL AND `retired_at` IS NOT NULL)
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表指标原子发布包';
+
+CREATE TABLE `rpt_metric_release_item` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `release_uuid` VARCHAR(36) NOT NULL,
+  `metric_uuid` VARCHAR(36) NOT NULL,
+  `metric_version_uuid` VARCHAR(36) NOT NULL,
+  `display_order` INT UNSIGNED NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_metric_release_item_metric` (`release_uuid`, `metric_uuid`),
+  KEY `idx_metric_release_item_version` (`metric_version_uuid`, `metric_uuid`),
+  CONSTRAINT `fk_metric_release_item_release` FOREIGN KEY (`release_uuid`)
+    REFERENCES `rpt_metric_release` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_metric_release_item_definition` FOREIGN KEY (`metric_uuid`)
+    REFERENCES `rpt_metric_definition` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_metric_release_item_version` FOREIGN KEY (`metric_version_uuid`, `metric_uuid`)
+    REFERENCES `rpt_metric_version` (`uuid`, `metric_uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布包内逐指标版本绑定';
+
+DROP TABLE IF EXISTS `rpt_report_subscription_run`;
+DROP TABLE IF EXISTS `rpt_report_subscription_recipient`;
+DROP TABLE IF EXISTS `rpt_report_subscription`;
+DROP TABLE IF EXISTS `rpt_alert_event`;
+DROP TABLE IF EXISTS `rpt_alert_rule`;
+DROP TABLE IF EXISTS `rpt_alert_signal_definition`;
+
+CREATE TABLE `rpt_report_subscription` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `owner_uuid` VARCHAR(36) NOT NULL,
+  `subscription_name` VARCHAR(100) NOT NULL,
+  `report_path` VARCHAR(160) NOT NULL DEFAULT '/reports/overview',
+  `schedule_type` TINYINT NOT NULL,
+  `execution_time` TIME NOT NULL,
+  `week_day` TINYINT DEFAULT NULL,
+  `month_day` TINYINT DEFAULT NULL,
+  `timezone` VARCHAR(40) NOT NULL DEFAULT 'Asia/Shanghai',
+  `report_query` JSON NOT NULL,
+  `period_policy` TINYINT NOT NULL DEFAULT 1,
+  `release_policy` TINYINT NOT NULL DEFAULT 1,
+  `pinned_release_uuid` VARCHAR(36) DEFAULT NULL,
+  `delivery_channel` VARCHAR(20) NOT NULL DEFAULT 'DOWNLOAD_CENTER',
+  `is_enabled` TINYINT NOT NULL DEFAULT 1,
+  `next_run_at` DATETIME NOT NULL,
+  `last_scheduled_at` DATETIME DEFAULT NULL,
+  `last_error_message` VARCHAR(500) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `active_name` VARCHAR(100) GENERATED ALWAYS AS (
+    CASE WHEN `is_deleted` = 0 THEN `subscription_name` ELSE NULL END
+  ) STORED,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_report_subscription_owner_active_name` (`owner_uuid`, `active_name`),
+  KEY `idx_report_subscription_due` (`is_deleted`, `is_enabled`, `next_run_at`, `uuid`),
+  KEY `idx_report_subscription_release` (`pinned_release_uuid`),
+  CONSTRAINT `fk_report_subscription_owner` FOREIGN KEY (`owner_uuid`)
+    REFERENCES `sys_user` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_report_subscription_release` FOREIGN KEY (`pinned_release_uuid`)
+    REFERENCES `rpt_metric_release` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_report_subscription_schedule_type` CHECK (`schedule_type` IN (1, 2, 3)),
+  CONSTRAINT `chk_report_subscription_period_policy` CHECK (`period_policy` IN (1, 2, 3, 4)),
+  CONSTRAINT `chk_report_subscription_schedule_fields` CHECK (
+    (`schedule_type` = 1 AND `week_day` IS NULL AND `month_day` IS NULL) OR
+    (`schedule_type` = 2 AND `week_day` BETWEEN 1 AND 7 AND `month_day` IS NULL) OR
+    (`schedule_type` = 3 AND `week_day` IS NULL AND `month_day` BETWEEN 1 AND 28)
+  ),
+  CONSTRAINT `chk_report_subscription_release_policy` CHECK (
+    (`release_policy` = 1 AND `pinned_release_uuid` IS NULL) OR
+    (`release_policy` = 2 AND `pinned_release_uuid` IS NOT NULL)
+  ),
+  CONSTRAINT `chk_report_subscription_channel` CHECK (`delivery_channel` = 'DOWNLOAD_CENTER'),
+  CONSTRAINT `chk_report_subscription_enabled` CHECK (`is_enabled` IN (0, 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表定时订阅';
+
+CREATE TABLE `rpt_report_subscription_recipient` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `subscription_uuid` VARCHAR(36) NOT NULL,
+  `recipient_uuid` VARCHAR(36) NOT NULL,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_report_subscription_recipient` (`subscription_uuid`, `recipient_uuid`),
+  KEY `idx_report_subscription_recipient_user` (`recipient_uuid`, `subscription_uuid`),
+  CONSTRAINT `fk_report_subscription_recipient_subscription` FOREIGN KEY (`subscription_uuid`)
+    REFERENCES `rpt_report_subscription` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_report_subscription_recipient_user` FOREIGN KEY (`recipient_uuid`)
+    REFERENCES `sys_user` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表订阅接收人';
+
+CREATE TABLE `rpt_report_subscription_run` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `subscription_uuid` VARCHAR(36) NOT NULL,
+  `scheduled_for` DATETIME NOT NULL,
+  `metric_release_uuid` VARCHAR(36) DEFAULT NULL,
+  `run_status` TINYINT NOT NULL DEFAULT 1,
+  `planned_count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `dispatched_count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `failed_count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `error_message` VARCHAR(500) DEFAULT NULL,
+  `completed_at` DATETIME DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_report_subscription_run_slot` (`subscription_uuid`, `scheduled_for`),
+  KEY `idx_report_subscription_run_status` (`run_status`, `scheduled_for`, `uuid`),
+  KEY `idx_report_subscription_run_release` (`metric_release_uuid`, `scheduled_for`),
+  CONSTRAINT `fk_report_subscription_run_subscription` FOREIGN KEY (`subscription_uuid`)
+    REFERENCES `rpt_report_subscription` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_report_subscription_run_release` FOREIGN KEY (`metric_release_uuid`)
+    REFERENCES `rpt_metric_release` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_report_subscription_run_status` CHECK (`run_status` IN (1, 2, 3, 4)),
+  CONSTRAINT `chk_report_subscription_run_counts` CHECK (
+    `dispatched_count` + `failed_count` <= `planned_count`
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表订阅调度运行记录';
+
+CREATE TABLE `rpt_alert_signal_definition` (
+  `signal_code` VARCHAR(64) NOT NULL,
+  `signal_name` VARCHAR(100) NOT NULL,
+  `unit_code` VARCHAR(20) NOT NULL,
+  `description` VARCHAR(500) NOT NULL DEFAULT '',
+  `is_enabled` TINYINT NOT NULL DEFAULT 1,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`signal_code`),
+  CONSTRAINT `chk_alert_signal_enabled` CHECK (`is_enabled` IN (0, 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表派生告警信号定义';
+
+CREATE TABLE `rpt_alert_rule` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `signal_code` VARCHAR(64) NOT NULL,
+  `rule_name` VARCHAR(120) NOT NULL,
+  `scope_type` TINYINT NOT NULL,
+  `customer_uuid` VARCHAR(36) DEFAULT NULL,
+  `paper_uuid` VARCHAR(36) DEFAULT NULL,
+  `process_type` TINYINT DEFAULT NULL,
+  `comparison_operator` VARCHAR(10) NOT NULL DEFAULT 'GTE',
+  `threshold_value` DECIMAL(18,6) NOT NULL,
+  `severity` TINYINT NOT NULL DEFAULT 1,
+  `is_enabled` TINYINT NOT NULL DEFAULT 1,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `active_rule_key` VARCHAR(180) GENERATED ALWAYS AS (
+    CASE WHEN `is_deleted` = 0 THEN CONCAT(`signal_code`, ':', `scope_type`, ':',
+      COALESCE(`customer_uuid`, ''), ':', COALESCE(`paper_uuid`, ''), ':', COALESCE(`process_type`, ''))
+    ELSE NULL END
+  ) STORED,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_alert_rule_active_scope` (`active_rule_key`),
+  KEY `idx_alert_rule_resolution` (`signal_code`, `is_deleted`, `is_enabled`, `scope_type`),
+  KEY `idx_alert_rule_customer` (`customer_uuid`, `signal_code`),
+  KEY `idx_alert_rule_paper` (`paper_uuid`, `signal_code`),
+  CONSTRAINT `fk_alert_rule_signal` FOREIGN KEY (`signal_code`)
+    REFERENCES `rpt_alert_signal_definition` (`signal_code`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_alert_rule_customer` FOREIGN KEY (`customer_uuid`)
+    REFERENCES `sys_customer` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_alert_rule_paper` FOREIGN KEY (`paper_uuid`)
+    REFERENCES `sys_paper` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_alert_rule_scope_type` CHECK (`scope_type` IN (1, 2, 3, 4)),
+  CONSTRAINT `chk_alert_rule_scope_fields` CHECK (
+    (`scope_type` = 1 AND `customer_uuid` IS NULL AND `paper_uuid` IS NULL AND `process_type` IS NULL) OR
+    (`scope_type` = 2 AND `customer_uuid` IS NOT NULL AND `paper_uuid` IS NULL AND `process_type` IS NULL) OR
+    (`scope_type` = 3 AND `customer_uuid` IS NULL AND `paper_uuid` IS NOT NULL AND `process_type` IS NULL) OR
+    (`scope_type` = 4 AND `customer_uuid` IS NULL AND `paper_uuid` IS NULL AND `process_type` IN (1, 2))
+  ),
+  CONSTRAINT `chk_alert_rule_operator` CHECK (`comparison_operator` IN ('GT', 'GTE', 'LT', 'LTE')),
+  CONSTRAINT `chk_alert_rule_threshold` CHECK (`threshold_value` >= 0),
+  CONSTRAINT `chk_alert_rule_severity` CHECK (`severity` IN (1, 2)),
+  CONSTRAINT `chk_alert_rule_enabled` CHECK (`is_enabled` IN (0, 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表分层告警阈值规则';
+
+CREATE TABLE `rpt_alert_event` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `rule_uuid` VARCHAR(36) NOT NULL,
+  `metric_release_uuid` VARCHAR(36) NOT NULL,
+  `event_key` CHAR(64) NOT NULL,
+  `period_start` DATE NOT NULL,
+  `period_end` DATE NOT NULL,
+  `dimension_hash` CHAR(64) NOT NULL,
+  `metric_value` DECIMAL(20,6) NOT NULL,
+  `threshold_value` DECIMAL(18,6) NOT NULL,
+  `severity` TINYINT NOT NULL,
+  `event_status` TINYINT NOT NULL DEFAULT 1,
+  `occurrence_count` INT UNSIGNED NOT NULL DEFAULT 1,
+  `first_detected_at` DATETIME NOT NULL,
+  `last_detected_at` DATETIME NOT NULL,
+  `resolved_at` DATETIME DEFAULT NULL,
+  `acknowledged_at` DATETIME DEFAULT NULL,
+  `acknowledged_by` VARCHAR(36) DEFAULT NULL,
+  `ignored_at` DATETIME DEFAULT NULL,
+  `ignored_by` VARCHAR(36) DEFAULT NULL,
+  `ignore_reason` VARCHAR(500) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_alert_event_key` (`event_key`),
+  KEY `idx_alert_event_status_time` (`is_deleted`, `event_status`, `last_detected_at`, `uuid`),
+  KEY `idx_alert_event_rule_period` (`rule_uuid`, `period_start`, `period_end`),
+  KEY `idx_alert_event_release` (`metric_release_uuid`, `period_end`),
+  KEY `idx_alert_event_dimension` (`dimension_hash`, `period_end`),
+  KEY `idx_alert_event_acknowledged` (`event_status`, `acknowledged_at`),
+  KEY `idx_alert_event_ack_by` (`acknowledged_by`),
+  KEY `idx_alert_event_ignore_by` (`ignored_by`),
+  CONSTRAINT `fk_alert_event_rule` FOREIGN KEY (`rule_uuid`)
+    REFERENCES `rpt_alert_rule` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_alert_event_release` FOREIGN KEY (`metric_release_uuid`)
+    REFERENCES `rpt_metric_release` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_alert_event_ack_by` FOREIGN KEY (`acknowledged_by`)
+    REFERENCES `sys_user` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_alert_event_ignore_by` FOREIGN KEY (`ignored_by`)
+    REFERENCES `sys_user` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_alert_event_period` CHECK (`period_end` >= `period_start`),
+  CONSTRAINT `chk_alert_event_severity` CHECK (`severity` IN (1, 2)),
+  CONSTRAINT `chk_alert_event_status` CHECK (`event_status` IN (1, 2, 3)),
+  CONSTRAINT `chk_alert_event_occurrences` CHECK (`occurrence_count` >= 1),
+  CONSTRAINT `chk_alert_event_resolution` CHECK (
+    (`event_status` = 2 AND `resolved_at` IS NOT NULL) OR (`event_status` <> 2 AND `resolved_at` IS NULL)
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表告警事件审计与去重';
+
+INSERT INTO `rpt_alert_signal_definition`
+  (`signal_code`, `signal_name`, `unit_code`, `description`)
+VALUES
+  ('LOSS_RATIO', '损耗率', 'PERCENT', '原纸投入与成品产出的损耗比例'),
+  ('UNRECEIVED_RATIO', '已结算未收占比', 'PERCENT', '已结算未收金额占已结算应收比例');
+
+INSERT INTO `rpt_alert_rule`
+  (`uuid`, `signal_code`, `rule_name`, `scope_type`, `comparison_operator`, `threshold_value`, `severity`)
+VALUES
+  ('rpt-alert-loss-global-v1', 'LOSS_RATIO', '全局损耗率预警', 1, 'GTE', 5.000000, 2),
+  ('rpt-alert-unreceived-global-v1', 'UNRECEIVED_RATIO', '全局未收占比预警', 1, 'GTE', 35.000000, 1);
+
+CREATE TABLE `rpt_metric_materialization_job` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `task_id` VARCHAR(64) NOT NULL,
+  `metric_release_uuid` VARCHAR(36) NOT NULL,
+  `period_start` DATE NOT NULL,
+  `period_end` DATE NOT NULL,
+  `job_status` TINYINT NOT NULL DEFAULT 1,
+  `retry_count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `lease_owner` VARCHAR(100) DEFAULT NULL,
+  `lease_until` DATETIME DEFAULT NULL,
+  `fencing_token` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `requested_by` VARCHAR(36) DEFAULT NULL,
+  `started_at` DATETIME DEFAULT NULL,
+  `completed_at` DATETIME DEFAULT NULL,
+  `error_message` VARCHAR(1000) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_metric_materialization_task` (`task_id`),
+  KEY `idx_metric_materialization_claim` (`job_status`, `lease_until`, `create_time`, `uuid`),
+  KEY `idx_metric_materialization_release_period` (`metric_release_uuid`, `period_start`, `period_end`),
+  CONSTRAINT `fk_metric_materialization_job_release` FOREIGN KEY (`metric_release_uuid`)
+    REFERENCES `rpt_metric_release` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_metric_materialization_job_user` FOREIGN KEY (`requested_by`)
+    REFERENCES `sys_user` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_metric_materialization_job_period` CHECK (`period_end` >= `period_start`),
+  CONSTRAINT `chk_metric_materialization_job_status` CHECK (`job_status` IN (1, 2, 3, 4, 5)),
+  CONSTRAINT `chk_metric_materialization_job_lease` CHECK (
+    (`job_status` = 2 AND `lease_owner` IS NOT NULL AND `lease_until` IS NOT NULL) OR (`job_status` <> 2)
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表指标物化任务';
+
+CREATE TABLE `rpt_metric_materialization_segment` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `job_uuid` VARCHAR(36) NOT NULL,
+  `segment_key` VARCHAR(100) NOT NULL,
+  `period_start` DATE NOT NULL,
+  `period_end` DATE NOT NULL,
+  `segment_status` TINYINT NOT NULL DEFAULT 1,
+  `retry_count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `lease_owner` VARCHAR(100) DEFAULT NULL,
+  `lease_until` DATETIME DEFAULT NULL,
+  `fencing_token` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `row_count` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `result_checksum` CHAR(64) DEFAULT NULL,
+  `started_at` DATETIME DEFAULT NULL,
+  `completed_at` DATETIME DEFAULT NULL,
+  `error_message` VARCHAR(1000) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_metric_materialization_segment` (`job_uuid`, `segment_key`),
+  KEY `idx_metric_materialization_segment_claim` (`segment_status`, `lease_until`, `create_time`, `uuid`),
+  KEY `idx_metric_materialization_segment_period` (`period_start`, `period_end`, `segment_status`),
+  CONSTRAINT `fk_metric_materialization_segment_job` FOREIGN KEY (`job_uuid`)
+    REFERENCES `rpt_metric_materialization_job` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_metric_materialization_segment_period` CHECK (`period_end` >= `period_start`),
+  CONSTRAINT `chk_metric_materialization_segment_status` CHECK (`segment_status` IN (1, 2, 3, 4, 5)),
+  CONSTRAINT `chk_metric_materialization_segment_lease` CHECK (
+    (`segment_status` = 2 AND `lease_owner` IS NOT NULL AND `lease_until` IS NOT NULL) OR (`segment_status` <> 2)
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表指标物化分片';
+
+CREATE TABLE `rpt_metric_materialization_state` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `task_id` VARCHAR(64) NOT NULL,
+  `metric_release_uuid` VARCHAR(36) NOT NULL,
+  `metric_uuid` VARCHAR(36) NOT NULL,
+  `metric_version_uuid` VARCHAR(36) NOT NULL,
+  `period_start` DATE NOT NULL,
+  `period_end` DATE NOT NULL,
+  `dimension_set_code` VARCHAR(64) NOT NULL,
+  `materialization_status` TINYINT NOT NULL DEFAULT 1,
+  `retry_count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `active_generation_uuid` VARCHAR(36) DEFAULT NULL,
+  `source_as_of` DATETIME DEFAULT NULL,
+  `materialized_at` DATETIME DEFAULT NULL,
+  `result_checksum` CHAR(64) DEFAULT NULL,
+  `error_message` VARCHAR(1000) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_metric_materialization_coverage`
+    (`metric_release_uuid`, `metric_version_uuid`, `period_start`, `period_end`, `dimension_set_code`),
+  KEY `idx_metric_materialization_state_task` (`task_id`, `materialization_status`, `uuid`),
+  KEY `idx_metric_materialization_state_period` (`period_start`, `period_end`, `materialization_status`),
+  KEY `idx_metric_materialization_state_generation` (`active_generation_uuid`),
+  CONSTRAINT `fk_metric_materialization_state_release` FOREIGN KEY (`metric_release_uuid`)
+    REFERENCES `rpt_metric_release` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_metric_materialization_state_metric` FOREIGN KEY (`metric_uuid`)
+    REFERENCES `rpt_metric_definition` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_metric_materialization_state_version` FOREIGN KEY (`metric_version_uuid`, `metric_uuid`)
+    REFERENCES `rpt_metric_version` (`uuid`, `metric_uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_metric_materialization_state_period` CHECK (`period_end` >= `period_start`),
+  CONSTRAINT `chk_metric_materialization_state_status` CHECK (`materialization_status` IN (1, 2, 3)),
+  CONSTRAINT `chk_metric_materialization_state_publication` CHECK (
+    (`materialization_status` = 2 AND `active_generation_uuid` IS NOT NULL AND `materialized_at` IS NOT NULL) OR
+    (`materialization_status` <> 2)
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='逐指标版本物化覆盖状态';
+
+CREATE TABLE `rpt_metric_value_stage` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `job_uuid` VARCHAR(36) NOT NULL,
+  `segment_uuid` VARCHAR(36) NOT NULL,
+  `generation_uuid` VARCHAR(36) NOT NULL,
+  `metric_release_uuid` VARCHAR(36) NOT NULL,
+  `metric_uuid` VARCHAR(36) NOT NULL,
+  `metric_version_uuid` VARCHAR(36) NOT NULL,
+  `period_start` DATE NOT NULL,
+  `period_end` DATE NOT NULL,
+  `dimension_set_code` VARCHAR(64) NOT NULL DEFAULT 'BASE',
+  `grain_type` VARCHAR(30) NOT NULL,
+  `entity_uuid` VARCHAR(36) NOT NULL DEFAULT '',
+  `dimension_hash` CHAR(64) NOT NULL,
+  `dimension_json` JSON NOT NULL,
+  `metric_value` DECIMAL(24,6) NOT NULL,
+  `source_as_of` DATETIME NOT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_metric_value_stage_grain`
+    (`job_uuid`, `segment_uuid`, `metric_version_uuid`, `dimension_set_code`, `grain_type`, `dimension_hash`, `entity_uuid`),
+  KEY `idx_metric_value_stage_publish` (`segment_uuid`, `generation_uuid`, `period_start`, `uuid`),
+  CONSTRAINT `fk_metric_value_stage_job` FOREIGN KEY (`job_uuid`)
+    REFERENCES `rpt_metric_materialization_job` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_metric_value_stage_segment` FOREIGN KEY (`segment_uuid`)
+    REFERENCES `rpt_metric_materialization_segment` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_metric_value_stage_release` FOREIGN KEY (`metric_release_uuid`)
+    REFERENCES `rpt_metric_release` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_metric_value_stage_version` FOREIGN KEY (`metric_version_uuid`, `metric_uuid`)
+    REFERENCES `rpt_metric_version` (`uuid`, `metric_uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_metric_value_stage_period` CHECK (`period_end` >= `period_start`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='指标物化暂存值';
+
+CREATE TABLE `rpt_metric_value` (
+  `period_start` DATE NOT NULL,
+  `uuid` VARCHAR(36) NOT NULL,
+  `generation_uuid` VARCHAR(36) NOT NULL,
+  `metric_release_uuid` VARCHAR(36) NOT NULL,
+  `metric_uuid` VARCHAR(36) NOT NULL,
+  `metric_version_uuid` VARCHAR(36) NOT NULL,
+  `period_end` DATE NOT NULL,
+  `dimension_set_code` VARCHAR(64) NOT NULL DEFAULT 'BASE',
+  `grain_type` VARCHAR(30) NOT NULL,
+  `entity_uuid` VARCHAR(36) NOT NULL DEFAULT '',
+  `dimension_hash` CHAR(64) NOT NULL,
+  `dimension_json` JSON NOT NULL,
+  `metric_value` DECIMAL(24,6) NOT NULL,
+  `source_as_of` DATETIME NOT NULL,
+  `published_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`period_start`, `uuid`),
+  UNIQUE KEY `uk_metric_value_generation_grain`
+    (`period_start`, `generation_uuid`, `metric_version_uuid`, `dimension_set_code`, `grain_type`, `dimension_hash`, `entity_uuid`),
+  KEY `idx_metric_value_query` (`period_start`, `metric_version_uuid`, `dimension_hash`, `entity_uuid`),
+  KEY `idx_metric_value_generation` (`period_start`, `generation_uuid`, `uuid`),
+  CONSTRAINT `chk_metric_value_period` CHECK (`period_end` >= `period_start`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='逐指标版本长表值'
+PARTITION BY RANGE COLUMNS (`period_start`) (
+  PARTITION `p_before_2024` VALUES LESS THAN ('2024-01-01'),
+  PARTITION `p2024q1` VALUES LESS THAN ('2024-04-01'),
+  PARTITION `p2024q2` VALUES LESS THAN ('2024-07-01'),
+  PARTITION `p2024q3` VALUES LESS THAN ('2024-10-01'),
+  PARTITION `p2024q4` VALUES LESS THAN ('2025-01-01'),
+  PARTITION `p2025q1` VALUES LESS THAN ('2025-04-01'),
+  PARTITION `p2025q2` VALUES LESS THAN ('2025-07-01'),
+  PARTITION `p2025q3` VALUES LESS THAN ('2025-10-01'),
+  PARTITION `p2025q4` VALUES LESS THAN ('2026-01-01'),
+  PARTITION `p2026q1` VALUES LESS THAN ('2026-04-01'),
+  PARTITION `p2026q2` VALUES LESS THAN ('2026-07-01'),
+  PARTITION `p2026q3` VALUES LESS THAN ('2026-10-01'),
+  PARTITION `p2026q4` VALUES LESS THAN ('2027-01-01'),
+  PARTITION `p2027q1` VALUES LESS THAN ('2027-04-01'),
+  PARTITION `p2027q2` VALUES LESS THAN ('2027-07-01'),
+  PARTITION `p2027q3` VALUES LESS THAN ('2027-10-01'),
+  PARTITION `p2027q4` VALUES LESS THAN ('2028-01-01'),
+  PARTITION `p2028q1` VALUES LESS THAN ('2028-04-01'),
+  PARTITION `p2028q2` VALUES LESS THAN ('2028-07-01'),
+  PARTITION `p2028q3` VALUES LESS THAN ('2028-10-01'),
+  PARTITION `p2028q4` VALUES LESS THAN ('2029-01-01'),
+  PARTITION `p_future` VALUES LESS THAN (MAXVALUE)
+);
+
+CREATE TABLE `rpt_report_snapshot` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `snapshot_key` CHAR(64) NOT NULL,
+  `metric_release_uuid` VARCHAR(36) NOT NULL,
+  `report_code` VARCHAR(64) NOT NULL,
+  `query_hash` CHAR(64) NOT NULL,
+  `query_json` JSON NOT NULL,
+  `payload_json` JSON NOT NULL,
+  `source_as_of` DATETIME NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `snapshot_status` TINYINT NOT NULL DEFAULT 1,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_report_snapshot_key` (`snapshot_key`),
+  KEY `idx_report_snapshot_lookup` (`metric_release_uuid`, `report_code`, `query_hash`, `snapshot_status`),
+  KEY `idx_report_snapshot_cleanup` (`snapshot_status`, `expires_at`, `uuid`),
+  CONSTRAINT `fk_report_snapshot_release` FOREIGN KEY (`metric_release_uuid`)
+    REFERENCES `rpt_metric_release` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_report_snapshot_status` CHECK (`snapshot_status` IN (1, 2))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='可过期报表服务快照';
+
+CREATE TABLE `rpt_report_snapshot_reference` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `snapshot_uuid` VARCHAR(36) NOT NULL,
+  `reference_type` VARCHAR(30) NOT NULL,
+  `reference_uuid` VARCHAR(36) NOT NULL,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_report_snapshot_reference` (`snapshot_uuid`, `reference_type`, `reference_uuid`),
+  KEY `idx_report_snapshot_reference_source` (`reference_type`, `reference_uuid`),
+  CONSTRAINT `fk_report_snapshot_reference_snapshot` FOREIGN KEY (`snapshot_uuid`)
+    REFERENCES `rpt_report_snapshot` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_report_snapshot_reference_type` CHECK (`reference_type` IN ('FIXED_VIEW', 'AUDIT_REPORT'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表快照保留引用';
+
+CREATE TABLE `rpt_report_saved_view` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `owner_uuid` VARCHAR(36) NOT NULL,
+  `view_name` VARCHAR(100) NOT NULL,
+  `report_path` VARCHAR(80) NOT NULL,
+  `query_json` JSON NOT NULL,
+  `dimension_code` VARCHAR(20) NULL,
+  `metric_codes_json` JSON NOT NULL,
+  `is_default` TINYINT NOT NULL DEFAULT 0,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(100) NULL,
+  `update_by` VARCHAR(100) NULL,
+  `create_time` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `update_time` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `version` INT NOT NULL DEFAULT 1,
+  `active_name` VARCHAR(100) GENERATED ALWAYS AS (
+    CASE WHEN `is_deleted` = 0 THEN `view_name` ELSE NULL END
+  ) STORED,
+  `active_default_path` VARCHAR(80) GENERATED ALWAYS AS (
+    CASE WHEN `is_deleted` = 0 AND `is_default` = 1 THEN `report_path` ELSE NULL END
+  ) STORED,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_report_saved_view_owner_name` (`owner_uuid`, `active_name`),
+  UNIQUE KEY `uk_report_saved_view_owner_default` (`owner_uuid`, `active_default_path`),
+  KEY `idx_report_saved_view_owner` (`owner_uuid`, `is_deleted`, `update_time`, `uuid`),
+  CONSTRAINT `fk_report_saved_view_owner` FOREIGN KEY (`owner_uuid`)
+    REFERENCES `sys_user` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_report_saved_view_default` CHECK (`is_default` IN (0, 1)),
+  CONSTRAINT `chk_report_saved_view_deleted` CHECK (`is_deleted` IN (0, 1)),
+  CONSTRAINT `chk_report_saved_view_version` CHECK (`version` >= 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='个人报表保存视图';
+
+-- Customer-facing finish revisions. Physical finish fields remain authoritative.
+DROP TABLE IF EXISTS `biz_delivery_customer_revision_item`;
+DROP TABLE IF EXISTS `biz_delivery_customer_revision`;
+DROP TABLE IF EXISTS `biz_finish_customer_revision_item`;
+DROP TABLE IF EXISTS `biz_finish_customer_revision`;
+
+CREATE TABLE `biz_finish_customer_revision` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `order_uuid` VARCHAR(36) NOT NULL,
+  `revision_no` INT NOT NULL,
+  `request_id` VARCHAR(64) NOT NULL,
+  `request_hash` CHAR(64) NOT NULL,
+  `source_stage` VARCHAR(20) NOT NULL,
+  `reason` VARCHAR(255) NOT NULL,
+  `item_count` INT NOT NULL,
+  `customer_total_weight` DECIMAL(14,3) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_finish_customer_revision_no` (`order_uuid`,`revision_no`),
+  UNIQUE KEY `uk_finish_customer_revision_request` (`order_uuid`,`request_id`),
+  KEY `idx_finish_customer_revision_history` (`order_uuid`,`is_deleted`,`revision_no`),
+  CONSTRAINT `fk_finish_customer_revision_order` FOREIGN KEY (`order_uuid`)
+    REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_finish_customer_revision_no` CHECK (`revision_no` >= 1),
+  CONSTRAINT `chk_finish_customer_revision_count` CHECK (`item_count` >= 1),
+  CONSTRAINT `chk_finish_customer_revision_total` CHECK (`customer_total_weight` IS NULL OR `customer_total_weight` > 0),
+  CONSTRAINT `chk_finish_customer_revision_deleted` CHECK (`is_deleted` IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单客户口径版本';
+
+CREATE TABLE `biz_finish_customer_revision_item` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `revision_uuid` VARCHAR(36) NOT NULL,
+  `finish_uuid` VARCHAR(36) NOT NULL,
+  `physical_paper_name` VARCHAR(100) NOT NULL,
+  `physical_gram_weight` INT NOT NULL,
+  `physical_finish_width` INT NOT NULL,
+  `physical_weight_snapshot` DECIMAL(12,3) DEFAULT NULL,
+  `customer_paper_name` VARCHAR(100) NOT NULL,
+  `customer_gram_weight` INT NOT NULL,
+  `customer_finish_width` INT NOT NULL,
+  `customer_display_weight` DECIMAL(12,3) DEFAULT NULL,
+  `calculation_mode` VARCHAR(16) NOT NULL,
+  `weight_operand` DECIMAL(20,6) DEFAULT NULL,
+  `formula_expression` VARCHAR(500) DEFAULT NULL,
+  `formula_inputs` JSON DEFAULT NULL,
+  `rounding_scale` TINYINT NOT NULL DEFAULT 3,
+  `rounding_mode` VARCHAR(16) NOT NULL DEFAULT 'HALF_UP',
+  `zero_policy` VARCHAR(16) NOT NULL DEFAULT 'SKIP',
+  `remark` VARCHAR(255) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_finish_customer_revision_item` (`revision_uuid`,`finish_uuid`),
+  KEY `idx_finish_customer_revision_item_finish` (`finish_uuid`,`revision_uuid`),
+  CONSTRAINT `fk_finish_customer_revision_item_revision` FOREIGN KEY (`revision_uuid`)
+    REFERENCES `biz_finish_customer_revision` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_finish_customer_revision_item_finish` FOREIGN KEY (`finish_uuid`)
+    REFERENCES `biz_finish_roll` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_finish_customer_item_physical` CHECK (`physical_gram_weight` > 0 AND `physical_finish_width` > 0),
+  CONSTRAINT `chk_finish_customer_item_customer` CHECK (`customer_gram_weight` > 0 AND `customer_finish_width` > 0),
+  CONSTRAINT `chk_finish_customer_item_weight` CHECK (`customer_display_weight` IS NULL OR `customer_display_weight` > 0),
+  CONSTRAINT `chk_finish_customer_item_mode` CHECK (`calculation_mode` IN ('KEEP','FIXED','DELTA','RATIO','FORMULA','MANUAL')),
+  CONSTRAINT `chk_finish_customer_item_rounding` CHECK (`rounding_scale` BETWEEN 0 AND 3 AND `rounding_mode` IN ('HALF_UP','UP','DOWN')),
+  CONSTRAINT `chk_finish_customer_item_zero` CHECK (`zero_policy` IN ('SKIP','ERROR','USE_ZERO')),
+  CONSTRAINT `chk_finish_customer_item_deleted` CHECK (`is_deleted` IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单客户口径逐卷明细';
+
+CREATE TABLE `biz_delivery_customer_revision` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `delivery_uuid` VARCHAR(36) NOT NULL,
+  `revision_no` INT NOT NULL,
+  `request_id` VARCHAR(64) NOT NULL,
+  `request_hash` CHAR(64) NOT NULL,
+  `reason` VARCHAR(255) NOT NULL,
+  `item_count` INT NOT NULL,
+  `customer_total_weight` DECIMAL(14,3) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_delivery_customer_revision_no` (`delivery_uuid`,`revision_no`),
+  UNIQUE KEY `uk_delivery_customer_revision_request` (`delivery_uuid`,`request_id`),
+  KEY `idx_delivery_customer_revision_history` (`delivery_uuid`,`is_deleted`,`revision_no`),
+  CONSTRAINT `fk_delivery_customer_revision_order` FOREIGN KEY (`delivery_uuid`)
+    REFERENCES `biz_delivery_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_delivery_customer_revision_no` CHECK (`revision_no` >= 1),
+  CONSTRAINT `chk_delivery_customer_revision_count` CHECK (`item_count` >= 1),
+  CONSTRAINT `chk_delivery_customer_revision_total` CHECK (`customer_total_weight` IS NULL OR `customer_total_weight` > 0),
+  CONSTRAINT `chk_delivery_customer_revision_deleted` CHECK (`is_deleted` IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='出库单客户更正版';
+
+CREATE TABLE `biz_delivery_customer_revision_item` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `revision_uuid` VARCHAR(36) NOT NULL,
+  `delivery_detail_uuid` VARCHAR(36) NOT NULL,
+  `finish_uuid` VARCHAR(36) NOT NULL,
+  `physical_paper_name` VARCHAR(100) NOT NULL,
+  `physical_gram_weight` INT NOT NULL,
+  `physical_finish_width` INT NOT NULL,
+  `physical_delivery_weight` DECIMAL(12,3) NOT NULL,
+  `customer_paper_name` VARCHAR(100) NOT NULL,
+  `customer_gram_weight` INT NOT NULL,
+  `customer_finish_width` INT NOT NULL,
+  `customer_display_weight` DECIMAL(12,3) NOT NULL,
+  `calculation_mode` VARCHAR(16) NOT NULL,
+  `weight_operand` DECIMAL(20,6) DEFAULT NULL,
+  `formula_expression` VARCHAR(500) DEFAULT NULL,
+  `formula_inputs` JSON DEFAULT NULL,
+  `rounding_scale` TINYINT NOT NULL DEFAULT 3,
+  `rounding_mode` VARCHAR(16) NOT NULL DEFAULT 'HALF_UP',
+  `zero_policy` VARCHAR(16) NOT NULL DEFAULT 'SKIP',
+  `customer_remark` VARCHAR(255) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_delivery_customer_revision_item` (`revision_uuid`,`delivery_detail_uuid`),
+  KEY `idx_delivery_customer_revision_item_detail` (`delivery_detail_uuid`,`revision_uuid`),
+  KEY `idx_delivery_customer_revision_item_finish` (`finish_uuid`,`revision_uuid`),
+  CONSTRAINT `fk_delivery_customer_item_revision` FOREIGN KEY (`revision_uuid`)
+    REFERENCES `biz_delivery_customer_revision` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_delivery_customer_item_detail` FOREIGN KEY (`delivery_detail_uuid`)
+    REFERENCES `biz_delivery_detail` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_delivery_customer_item_finish` FOREIGN KEY (`finish_uuid`)
+    REFERENCES `biz_finish_roll` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_delivery_customer_item_physical` CHECK (`physical_gram_weight` > 0 AND `physical_finish_width` > 0 AND `physical_delivery_weight` > 0),
+  CONSTRAINT `chk_delivery_customer_item_customer` CHECK (`customer_gram_weight` > 0 AND `customer_finish_width` > 0 AND `customer_display_weight` > 0),
+  CONSTRAINT `chk_delivery_customer_item_mode` CHECK (`calculation_mode` IN ('KEEP','FIXED','DELTA','RATIO','FORMULA','MANUAL')),
+  CONSTRAINT `chk_delivery_customer_item_rounding` CHECK (`rounding_scale` BETWEEN 0 AND 3 AND `rounding_mode` IN ('HALF_UP','UP','DOWN')),
+  CONSTRAINT `chk_delivery_customer_item_zero` CHECK (`zero_policy` IN ('SKIP','ERROR','USE_ZERO')),
+  CONSTRAINT `chk_delivery_customer_item_deleted` CHECK (`is_deleted` IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='出库单客户更正版逐卷明细';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================
--- 建表脚本结束  共 29 张表
+-- 建表脚本结束  共 48 张表
 --   基础档案 4: sys_customer / sys_paper / sys_machine / sys_warehouse
 --   加工核心 8: biz_process_order / biz_original_roll / biz_process_step /
 --               biz_process_stage_output / biz_process_stage_input_rel /
@@ -1225,4 +2176,12 @@ SET FOREIGN_KEY_CHECKS = 1;
 --   工艺草稿 2: biz_process_config_draft / sys_roll_no_sequence
 --   系统辅助 9: sys_operation_log / sys_user / sys_user_session / sys_no_rule /
 --               sys_dict_item / sys_config_item / sys_backup_task / sys_notification / sys_export_task
+--   报表语义 4: rpt_metric_definition / rpt_metric_version /
+--               rpt_metric_release / rpt_metric_release_item
+--   报表订阅 3: rpt_report_subscription / rpt_report_subscription_recipient /
+--               rpt_report_subscription_run
+--   报表告警 3: rpt_alert_signal_definition / rpt_alert_rule / rpt_alert_event
+--   报表物化 7: rpt_metric_materialization_job / rpt_metric_materialization_segment /
+--               rpt_metric_materialization_state / rpt_metric_value_stage / rpt_metric_value /
+--               rpt_report_snapshot / rpt_report_snapshot_reference
 -- =============================================================================

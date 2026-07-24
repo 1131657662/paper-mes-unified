@@ -1,5 +1,6 @@
 package com.paper.mes.customer.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Customer create/update payload.
@@ -62,4 +64,8 @@ public class CustomerSaveDTO {
     private String exportTemplate;
     @Size(max = 500, message = "备注长度不能超过500")
     private String remark;
+
+    @Valid
+    @Size(max = 30, message = "客户工艺价格方案不能超过30项")
+    private List<CustomerProcessPriceSaveDTO> processPrices;
 }

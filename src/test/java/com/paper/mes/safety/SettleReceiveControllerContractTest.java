@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -121,13 +122,16 @@ class SettleReceiveControllerContractTest {
     @Test
     void voidSettle_withFinanceRole_bindsReason() throws Exception {
         authorizeAs("finance");
+        when(settleService.voidSettle(eq("settle-uuid"), any())).thenReturn(List.of("order-1", "order-2"));
 
         mvc.perform(post("/api/settle-orders/settle-uuid/void")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"wrong customer\"}")
                         .header("Authorization", "Bearer " + TOKEN))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data[0]").value("order-1"))
+                .andExpect(jsonPath("$.data[1]").value("order-2"));
 
         ArgumentCaptor<SettleActionReasonDTO> captor = ArgumentCaptor.forClass(SettleActionReasonDTO.class);
         verify(settleService).voidSettle(eq("settle-uuid"), captor.capture());

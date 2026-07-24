@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -16,6 +17,9 @@ import java.util.List;
  */
 @Data
 public class ProcessRoutePreviewDTO {
+
+    @jakarta.validation.constraints.Min(value = 0, message = "草稿版本不能小于0")
+    private Integer expectedVersion;
 
     @NotBlank(message = "原纸卷UUID不能为空")
     private String originalUuid;
@@ -53,6 +57,8 @@ public class ProcessRoutePreviewDTO {
     public static class RouteOutputDTO {
         private String outputKey;
         private Integer outputType;
+        @Min(value = 1, message = "阶段产物数量至少为1")
+        @Max(value = 500, message = "单个阶段产物数量不能超过500")
         private Integer count;
         /** 0正品 1边角余料。 */
         private Integer isRemain;

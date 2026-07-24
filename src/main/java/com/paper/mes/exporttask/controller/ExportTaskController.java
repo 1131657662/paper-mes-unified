@@ -17,7 +17,9 @@ import com.paper.mes.exporttask.service.ExportTaskLifecycleService;
 import com.paper.mes.exporttask.service.ExportTaskHistoryService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,9 +29,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Validated
 @RequestMapping("/api/export-tasks")
 @RequiredArgsConstructor
 public class ExportTaskController {
+    private static final String UUID_PATTERN = "^[0-9a-fA-F-]{32,36}$";
     private final ExportTaskService exportTaskService;
     private final ExportTaskCreationService creationService;
     private final ExportTaskLifecycleService lifecycleService;
@@ -49,19 +53,22 @@ public class ExportTaskController {
 
     @PostMapping("/settle-orders/{uuid}")
     @RequirePermission(Permissions.SETTLE_VIEW)
-    public R<String> createSettle(@PathVariable String uuid, @Valid @RequestBody ExportTaskCreateDTO dto) {
+    public R<String> createSettle(@PathVariable @Pattern(regexp = UUID_PATTERN) String uuid,
+                                  @Valid @RequestBody ExportTaskCreateDTO dto) {
         return R.success(creationService.createSettleTask(uuid, dto));
     }
 
     @PostMapping("/process-orders/{uuid}")
     @RequirePermission(Permissions.ORDER_VIEW)
-    public R<String> createProcessOrder(@PathVariable String uuid, @Valid @RequestBody ExportTaskCreateDTO dto) {
+    public R<String> createProcessOrder(@PathVariable @Pattern(regexp = UUID_PATTERN) String uuid,
+                                        @Valid @RequestBody ExportTaskCreateDTO dto) {
         return R.success(creationService.createProcessOrderTask(uuid, dto));
     }
 
     @PostMapping("/delivery-orders/{uuid}")
     @RequirePermission(Permissions.DELIVERY_VIEW)
-    public R<String> createDeliveryOrder(@PathVariable String uuid, @Valid @RequestBody ExportTaskCreateDTO dto) {
+    public R<String> createDeliveryOrder(@PathVariable @Pattern(regexp = UUID_PATTERN) String uuid,
+                                         @Valid @RequestBody ExportTaskCreateDTO dto) {
         return R.success(creationService.createDeliveryOrderTask(uuid, dto));
     }
 
@@ -91,27 +98,27 @@ public class ExportTaskController {
 
     @GetMapping("/{uuid}/download")
     @RequirePermission(Permissions.EXPORT_TASK_VIEW)
-    public void download(@PathVariable String uuid, HttpServletResponse response) {
+    public void download(@PathVariable @Pattern(regexp = UUID_PATTERN) String uuid, HttpServletResponse response) {
         exportTaskService.download(uuid, response);
     }
 
     @PostMapping("/{uuid}/retry")
     @RequirePermission(Permissions.EXPORT_TASK_VIEW)
-    public R<Void> retry(@PathVariable String uuid) {
+    public R<Void> retry(@PathVariable @Pattern(regexp = UUID_PATTERN) String uuid) {
         lifecycleService.retry(uuid);
         return R.success();
     }
 
     @PostMapping("/{uuid}/cancel")
     @RequirePermission(Permissions.EXPORT_TASK_VIEW)
-    public R<Void> cancel(@PathVariable String uuid) {
+    public R<Void> cancel(@PathVariable @Pattern(regexp = UUID_PATTERN) String uuid) {
         lifecycleService.cancel(uuid);
         return R.success();
     }
 
     @PutMapping("/{uuid}/acknowledge")
     @RequirePermission(Permissions.EXPORT_TASK_VIEW)
-    public R<Void> acknowledgeOne(@PathVariable String uuid) {
+    public R<Void> acknowledgeOne(@PathVariable @Pattern(regexp = UUID_PATTERN) String uuid) {
         lifecycleService.acknowledge(uuid);
         return R.success();
     }

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateProcessStep, type ProcessStepDTO } from '../../../api/processOrder'
-import { queries } from '../../../queries'
+import { invalidateProcessOrderReadModels } from './invalidateProcessOrderReadModels'
 
 interface UpdateStepParams {
   orderUuid: string
@@ -14,9 +14,7 @@ export function useUpdateProcessStep() {
   return useMutation({
     mutationFn: ({ stepUuid, values }: UpdateStepParams) => updateProcessStep(stepUuid, values),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: queries.processOrderDetail.detail(variables.orderUuid).queryKey,
-      })
+      await invalidateProcessOrderReadModels(queryClient, variables.orderUuid)
     },
   })
 }

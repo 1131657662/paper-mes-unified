@@ -1,20 +1,22 @@
 import { useState } from 'react'
 import { Input, Modal, message } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { PERMISSIONS } from '../../../constants/permissions'
 import { useHasPermission } from '../../../stores/authStore'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import FinishRollManageDrawer from '../../../pages/processOrder/FinishRollManageDrawer'
 import SnapshotDiffModal from '../../../pages/processOrder/SnapshotDiffModal'
-import { queries } from '../../../queries'
 import { useCalcProcessOrderFee } from '../hooks/useCalcProcessOrderFee'
 import { useChangeOrderStatus } from '../hooks/useChangeOrderStatus'
+import { useCompleteProcessing } from '../hooks/useCompleteProcessing'
 import { useRollbackProcessOrderToDraft } from '../hooks/useRollbackProcessOrderToDraft'
 import { useVoidProcessOrder } from '../hooks/useVoidProcessOrder'
+import { invalidateProcessOrderReadModels } from '../hooks/invalidateProcessOrderReadModels'
 import { confirmOrderStatusChange, isRollbackStatusChange } from '../confirmOrderStatusChange'
 import OrderExecutionPanel from './OrderExecutionPanel'
 import PrintIssueDrawer from './PrintIssueDrawer'
+import { processOrderReturnTarget } from '../../../pages/processOrder/processOrderNavigation'
 
 interface Props {
   detail?: ProcessOrderDetailVO
@@ -22,12 +24,14 @@ interface Props {
 
 export default function OrderExecutionHost({ detail }: Props) {
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const orderUuid = detail?.order.uuid
   const [printOpen, setPrintOpen] = useState(false)
   const [diffOpen, setDiffOpen] = useState(false)
   const [manageRollOpen, setManageRollOpen] = useState(false)
   const { mutateAsync: changeStatus, isPending: isChangingStatus } = useChangeOrderStatus()
+  const { mutateAsync: completeProcessing, isPending: isCompletingProcessing } = useCompleteProcessing()
   const { mutateAsync: rollbackToDraft, isPending: isRollingBackDraft } = useRollbackProcessOrderToDraft()
   const { mutateAsync: calcFee, isPending: isCalculatingFee } = useCalcProcessOrderFee(orderUuid)
   const { mutateAsync: voidOrder, isPending: isVoidingOrder } = useVoidProcessOrder()
@@ -40,16 +44,17 @@ export default function OrderExecutionHost({ detail }: Props) {
   }
 
   if (!detail || !orderUuid) return null
+  const returnTo = processOrderReturnTarget(location.state, `/process-orders/${detail.order.uuid}`)
 
   const refreshDetail = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: queries.processOrderDetail.detail(orderUuid).queryKey,
-    })
+    await invalidateProcessOrderReadModels(queryClient, orderUuid)
   }
 
   const handleChangeStatus = async (targetStatus: number, reason?: string) => {
     if (targetStatus === 0) {
       await rollbackToDraft({ orderUuid, reason: reason ?? '' })
+    } else if (detail.order.orderStatus === 2 && targetStatus === 3) {
+      await completeProcessing({ orderUuid, reason })
     } else {
       await changeStatus({ orderUuid, reason, targetStatus })
     }
@@ -121,12 +126,19 @@ export default function OrderExecutionHost({ detail }: Props) {
           onEditDraft: () => navigate(`/process-orders/create?draft=${orderUuid}`),
           onChangeStatus: handleConfirmStatus,
           onCalcFee: handleCalcFee,
-          onGoDelivery: () => navigate('/delivery-orders'),
-          onGoSettle: () => navigate('/settle-orders'),
+          onGoDelivery: () => {
+            const finishUuids = (detail.finishRolls ?? []).map((finish) => finish.uuid)
+            navigate(`/delivery-orders/create?customerUuid=${encodeURIComponent(detail.order.customerUuid ?? '')}`, {
+              state: { finishUuids, from: returnTo },
+            })
+          },
+          onGoSettle: () => navigate('/settle-orders/create', {
+            state: { initialOrderUuids: [detail.order.uuid], from: returnTo },
+          }),
           onVoidOrder: handleVoidOrder,
         }}
         loading={{
-          changingStatus: isChangingStatus,
+          changingStatus: isChangingStatus || isCompletingProcessing,
           rollingBackDraft: isRollingBackDraft,
           calculatingFee: isCalculatingFee,
           voidingOrder: isVoidingOrder,

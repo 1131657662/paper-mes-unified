@@ -57,6 +57,8 @@ class BackRecordOnSiteFixture {
 
     BackRecordDTO request(Scenario scenario, Integer firstWidth, Integer secondWidth) {
         BackRecordDTO dto = new BackRecordDTO();
+        dto.setExpectedVersion(scenario.order().getVersion());
+        dto.setCompleteOrder(true);
         dto.setRolls(List.of(rollDto(scenario.roll())));
         dto.setFinishes(List.of(finishDto(scenario.first(), firstWidth),
                 finishDto(scenario.second(), secondWidth), finishDto(scenario.spare(), null)));

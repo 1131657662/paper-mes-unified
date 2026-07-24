@@ -5,11 +5,13 @@ import { TableToolbarHostProvider } from '../../components/biz/TableToolbarPorta
 import type { ProcessOrder } from '../../types/processOrder'
 import ProcessOrderBatchToolbar, { type BatchActions } from './ProcessOrderBatchToolbar'
 import ProcessOrderQueueBar, { type QueueStatus } from './ProcessOrderQueueBar'
+import type { ProcessOrderListCapabilities } from './useProcessOrderListCapabilities'
 
 interface Props {
   quickStatus: QueueStatus
   selectedRows: ProcessOrder[]
   actions: BatchActions
+  capabilities: ProcessOrderListCapabilities
   children: React.ReactNode
   search?: React.ReactNode
   onCreate: () => void
@@ -18,6 +20,7 @@ interface Props {
 
 export default function ProcessOrderListHeader({
   actions,
+  capabilities,
   children,
   onCreate,
   onQuickStatusChange,
@@ -35,8 +38,8 @@ export default function ProcessOrderListHeader({
       {search && <div className="process-order-shell__search">{search}</div>}
       <div className={`process-order-shell__toolbar${selectedRows.length > 0 ? ' has-selection' : ''}`}>
         <div className="process-order-shell__actions">
-          <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>新建</Button>
-          <ProcessOrderBatchToolbar selectedRows={selectedRows} actions={actions} />
+          {capabilities.canCreateOrder && <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>新建</Button>}
+          <ProcessOrderBatchToolbar selectedRows={selectedRows} actions={actions} capabilities={capabilities} />
         </div>
         <div className="process-order-shell__queue">
           <ProcessOrderQueueBar value={quickStatus} onChange={onQuickStatusChange} />

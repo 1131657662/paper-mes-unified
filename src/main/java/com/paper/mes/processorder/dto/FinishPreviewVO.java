@@ -37,6 +37,10 @@ public class FinishPreviewVO {
         private Integer finishWidth;
         private Integer finishDiameter;
         private Integer finishCoreDiameter;
+        private String customerPaperName;
+        private Integer customerGramWeight;
+        private Integer customerFinishWidth;
+        private String customerSpecOverrideReason;
         private BigDecimal segmentRatio;
         private BigDecimal estimateWeight;
         private Integer trimWidth;

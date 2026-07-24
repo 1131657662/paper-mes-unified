@@ -6,8 +6,8 @@
 
 .print-issue__reason {
   padding: 12px 14px 0;
-  background: #fff;
-  border: 1px solid #d4dde7;
+  background: var(--mes-color-panel);
+  border: 1px solid var(--mes-color-border);
   border-radius: var(--mes-radius);
 }
 
@@ -16,8 +16,8 @@
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: #fff;
-  border: 1px solid #d4dde7;
+  background: var(--mes-color-panel);
+  border: 1px solid var(--mes-color-border);
   border-radius: var(--mes-radius);
 }
 
@@ -59,4 +59,13 @@
 
 .print-issue-print-root {
   display: none;
+}
+
+.print-issue__loading,
+.print-modal-loading {
+  min-height: 420px;
+}
+
+.print-issue-action-tooltip {
+  display: inline-flex;
 }

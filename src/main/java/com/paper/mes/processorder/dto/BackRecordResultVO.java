@@ -16,6 +16,10 @@ public class BackRecordResultVO {
     private String orderNo;
     private Integer orderStatus;
     private LocalDateTime backRecordTime;
+    /** 本次是否已关闭整单。 */
+    private boolean orderCompleted;
+    private int recordedRollCount;
+    private int remainingRollCount;
     /** 是否存在 >5% 超差并已授权放行 */
     private boolean overToleranceReleased;
     /** 直发卷自动生成的成品记录数 */

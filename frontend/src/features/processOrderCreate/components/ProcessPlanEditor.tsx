@@ -1,7 +1,8 @@
-import { InputNumber, Radio, Select, Space, Typography } from 'antd'
-import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
+import { Input, InputNumber, Radio, Space, Tag, Typography } from 'antd'
+import { PROCESS_MODE, STEP_TYPE, processModeRequiresMain } from '../../../constants/processOrder'
 import type { Machine } from '../../../types/machine'
 import type { ProcessPlanDTO } from '../../../types/processOrder'
+import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
 import { applyDefaultMachineToPlan } from '../machineDefaults'
 import { applyLegacyPlanPriceDefaults, defaultPlanForRoll, type DefaultPlanOptions } from '../draftMappers'
@@ -21,8 +22,9 @@ interface Props {
   onChange: (plan: ProcessPlanDTO) => void
 }
 
-const processOptions = Object.entries(PROCESS_MODE).map(([value, label]) => ({ value: Number(value), label }))
-const stepOptions = Object.entries(STEP_TYPE).map(([value, label]) => ({ value: Number(value), label }))
+const stepOptions = Object.entries(STEP_TYPE)
+  .filter(([value]) => value === '1' || value === '2')
+  .map(([value, label]) => ({ value: Number(value), label }))
 
 export default function ProcessPlanEditor({
   defaultSpareCount = 0,
@@ -34,30 +36,25 @@ export default function ProcessPlanEditor({
   onChange,
 }: Props) {
   const processMode = plan.processMode ?? roll.processMode ?? 1
-  const mainStepType = processMode === 3 ? undefined : plan.mainStepType ?? roll.mainStepType ?? 2
+  const mainStepType = processModeRequiresMain(processMode)
+    ? plan.mainStepType ?? roll.mainStepType ?? 2
+    : undefined
   const planDefaults = defaultPlanOptions ?? { spareCount: defaultSpareCount }
   const patch = (partial: Partial<ProcessPlanDTO>) => onChange({ ...plan, ...partial })
-  const patchMode = (nextMode: number) => {
-    const nextStepType = nextMode === 3 ? undefined : mainStepType ?? 2
-    onChange(planForMode({ defaultPlanOptions: planDefaults, machines, plan, roll, processMode: nextMode, mainStepType: nextStepType }))
-  }
   const patchMainStep = (nextStepType: number) => {
     onChange(planForMode({ defaultPlanOptions: planDefaults, machines, plan, roll, processMode, mainStepType: nextStepType }))
   }
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Typography.Text strong>{roll.rollNo || roll.paperName || '未命名母卷'}</Typography.Text>
-      <Space wrap>
+      <RollContextHeader roll={roll} />
+      <div className="process-plan-mode-context">
         <Typography.Text strong>加工方式</Typography.Text>
-        <Select
-          aria-label="加工方式"
-          value={processMode}
-          options={processOptions}
-          style={{ width: 160 }}
-          onChange={patchMode}
-        />
-        {processMode !== 3 && (
+        <Tag color="blue">{PROCESS_MODE[processMode] ?? '标准加工'}</Tag>
+      </div>
+      {processModeRequiresMain(processMode) && (
+        <Space wrap>
+          <Typography.Text strong>主工艺</Typography.Text>
           <Radio.Group
             aria-label="主工艺"
             value={mainStepType}
@@ -66,24 +63,38 @@ export default function ProcessPlanEditor({
             buttonStyle="solid"
             onChange={(event) => patchMainStep(event.target.value)}
           />
-        )}
-      </Space>
-      {processMode !== 3 && (
+        </Space>
+      )}
+      {processModeRequiresMain(processMode) && (
         <ProcessMachineSelect
           machines={machines}
           mainStepType={mainStepType}
+          diameter={roll.originalDiameter}
+          width={roll.originalWidth}
+          weight={Number(roll.rollWeight ?? 0)}
           value={plan.machineUuid}
           onChange={(machineUuid) => patch({ machineUuid })}
         />
       )}
-      {processMode !== 3 && (
+      {processModeRequiresMain(processMode) && (
         <Space wrap>
-          {processMode === 1 && <InputNumber aria-label="备用卷号数量" addonBefore="备用号" min={0} value={plan.spareCount ?? 0} onChange={(value) => patch({ spareCount: value ?? 0 })} />}
-          <InputNumber aria-label="加工单价" addonBefore="单价" min={0} precision={2} value={plan.unitPrice} onChange={(value) => patch({ unitPrice: value ?? undefined })} />
+          {processMode === 1 && (
+            <Space.Compact>
+              <Input aria-label="备用号字段" readOnly tabIndex={-1} value="备用号" style={{ width: 72 }} />
+              <InputNumber aria-label="备用卷号数量" min={0} value={plan.spareCount ?? 0} style={{ width: 120 }} onChange={(value) => patch({ spareCount: value ?? 0 })} />
+            </Space.Compact>
+          )}
+          <Space.Compact>
+            <Input aria-label="单价字段" readOnly tabIndex={-1} value="单价" style={{ width: 64 }} />
+            <InputNumber aria-label="加工单价" min={0} precision={2} value={plan.unitPrice} style={{ width: 140 }} onChange={(value) => patch({ unitPrice: value ?? undefined })} />
+          </Space.Compact>
         </Space>
       )}
       {processMode === 3 && (
         <Typography.Text type="secondary">直发卷无需配置工艺，最终预览中会保留该母卷。</Typography.Text>
+      )}
+      {processMode === 4 && (
+        <Typography.Text type="secondary">附加工艺已在上一步维护，提交后按母卷件数生成整理成品号。</Typography.Text>
       )}
       {processMode === 2 && mainStepType && <OnSiteCountEditor />}
       {processMode === 1 && mainStepType === 1 && <SawPlanEditor plan={plan} roll={roll} onChange={onChange} />}
@@ -92,8 +103,23 @@ export default function ProcessPlanEditor({
   )
 }
 
+function RollContextHeader({ roll }: { roll: RollDraft }) {
+  const weight = Number(roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)
+  return (
+    <div className="process-plan-context">
+      <Typography.Text strong className="process-plan-context__spec">
+        {roll.paperName || '未命名品名'} / {formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)} / {formatKg(weight)}
+      </Typography.Text>
+      <Typography.Text type="secondary" className="process-plan-context__identity">
+        卷号：{roll.rollNo || '-'} / 编号：{roll.extraNo || '-'}
+      </Typography.Text>
+    </div>
+  )
+}
+
 function planForMode({ defaultPlanOptions = {}, machines, plan, roll, processMode, mainStepType }: PlanModeOptions): ProcessPlanDTO {
   if (processMode === 3) return { processMode: 3, spareCount: 0, finishSpecs: [] }
+  if (processMode === 4) return { processMode: 4, spareCount: 0, finishSpecs: [] }
   const stepChanged = plan.mainStepType !== mainStepType || plan.processMode !== processMode
   if (processMode === 2) {
     const standardRoll = { ...roll, processMode, mainStepType }
@@ -101,12 +127,12 @@ function planForMode({ defaultPlanOptions = {}, machines, plan, roll, processMod
     const nextPlan = stepChanged
       ? fallback
       : applyLegacyPlanPriceDefaults({ ...plan, processMode, mainStepType }, defaultPlanOptions)
-    return applyDefaultMachineToPlan(toOnSitePlan(nextPlan), machines)
+    return applyDefaultMachineToPlan(toOnSitePlan(nextPlan), machines, roll)
   }
   const standardRoll = { ...roll, processMode, mainStepType }
   const fallback = defaultPlanForRoll(standardRoll, { ...defaultPlanOptions, spareCount: plan.spareCount ?? defaultPlanOptions.spareCount })
   const hasOnSiteWidth = plan.finishSpecs?.some((spec) => Number(spec.finishWidth ?? 0) <= 0)
-  return applyDefaultMachineToPlan(hasOnSiteWidth || stepChanged ? fallback : { ...plan, processMode, mainStepType }, machines)
+  return applyDefaultMachineToPlan(hasOnSiteWidth || stepChanged ? fallback : { ...plan, processMode, mainStepType }, machines, roll)
 }
 
 interface PlanModeOptions {

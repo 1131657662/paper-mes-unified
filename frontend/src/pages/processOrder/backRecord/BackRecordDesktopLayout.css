@@ -20,6 +20,7 @@
 
 .back-record-page .back-record-drawer__topbar {
   flex: 0 0 auto;
+  grid-template-columns: 1fr;
 }
 
 .back-record-page .back-record-commandbar {
@@ -87,10 +88,6 @@
 }
 
 @media (min-width: 1181px) and (max-width: 1380px) {
-  .back-record-page .back-record-drawer__topbar {
-    grid-template-columns: 1fr;
-  }
-
   .back-record-page .back-record-workbench {
     grid-template-columns: minmax(208px, 232px) minmax(0, 1fr) minmax(220px, 244px);
   }

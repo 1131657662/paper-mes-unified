@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Alert, Descriptions, Empty, Form, Input, Modal, Space, Tag, message } from 'antd'
-import { printProcessOrder } from '../../api/processOrder'
-import type { PrintResultVO } from '../../types/processOrder'
+import { Drawer, Spin } from 'antd'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
+import { useProcessOrderDetail } from '../../features/processOrderDetail/hooks/useProcessOrderDetail'
+import PrintIssueDrawer from '../../features/processOrderDetail/components/PrintIssueDrawer'
 
 interface Props {
   uuid: string | null
@@ -12,121 +12,33 @@ interface Props {
   onSuccess: () => void
 }
 
-export default function PrintModal({
-  uuid,
-  orderNo,
-  printCount,
-  open,
-  onClose,
-  onSuccess,
-}: Props) {
-  const [form] = Form.useForm()
-  const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<PrintResultVO | null>(null)
+/**
+ * 列表页打印入口的兼容壳。实际预览、首次下发、补打和浏览器打印
+ * 统一由详情页的 PrintIssueDrawer 处理，避免列表入口只改状态不打印。
+ */
+export default function PrintModal({ uuid, orderNo, open, onClose, onSuccess }: Props) {
+  const detailQuery = useProcessOrderDetail(uuid ?? undefined, { enabled: open })
+  const drawerTitle = orderNo ? `加工单打印：${orderNo}` : '加工单打印'
 
-  const isReprint = (printCount ?? 0) >= 1
-
-  useEffect(() => {
-    if (open) {
-      form.resetFields()
-      setResult(null)
-    }
-  }, [open, form])
-
-  const handleSubmit = async () => {
-    if (!uuid) return
-    const values = isReprint ? await form.validateFields() : {}
-    setSubmitting(true)
-    try {
-      const res = await printProcessOrder(uuid, isReprint ? { reason: values.reason } : undefined)
-      setResult(res)
-      message.success(res.reprint ? '补打成功' : '打印成功，已下发')
-      onSuccess()
-    } finally {
-      setSubmitting(false)
-    }
+  if (!open || !uuid) return null
+  if (detailQuery.isLoading) {
+    return (
+      <Drawer title={drawerTitle} open onClose={onClose} width="min(1180px, calc(100vw - 32px))">
+        <Spin spinning><div className="print-modal-loading" aria-label="加工单打印信息加载中" /></Spin>
+      </Drawer>
+    )
+  }
+  if (detailQuery.isError || !detailQuery.data) {
+    return (
+      <Drawer title={drawerTitle} open onClose={onClose} width="min(1180px, calc(100vw - 32px))">
+        <QueryLoadErrorAlert
+          message="加工单详情加载失败"
+          description="当前不会执行打印或下发，请重新加载后继续。"
+          onRetry={() => void detailQuery.refetch()}
+        />
+      </Drawer>
+    )
   }
 
-  return (
-    <Modal
-      title={`打印加工单${orderNo ? `（${orderNo}）` : ''}`}
-      open={open}
-      onCancel={onClose}
-      onOk={result ? onClose : handleSubmit}
-      okText={result ? '关闭' : '确认打印'}
-      cancelButtonProps={{ style: result ? { display: 'none' } : undefined }}
-      confirmLoading={submitting}
-      destroyOnHidden
-    >
-      {result ? (
-        <>
-          <Descriptions column={1} size="small" style={{ marginBottom: 12 }}>
-            <Descriptions.Item label="打印次数">{result.printCount ?? '-'}</Descriptions.Item>
-            <Descriptions.Item label="类型">
-              {result.reprint ? '补打' : '首打（已流转为加工中）'}
-            </Descriptions.Item>
-            <Descriptions.Item label="打印时间">{result.printTime ?? '-'}</Descriptions.Item>
-          </Descriptions>
-          <div style={{ marginBottom: 8 }}>
-            <strong>正式卷号</strong>
-          </div>
-          {result.finishRollNos && result.finishRollNos.length > 0 ? (
-            <Space wrap style={{ marginBottom: 12 }}>
-              {result.finishRollNos.map((n) => (
-                <Tag key={n} color="blue">
-                  {n}
-                </Tag>
-              ))}
-            </Space>
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="本次无预生成正式卷号"
-              style={{ margin: '8px 0' }}
-            />
-          )}
-          <div style={{ marginBottom: 8 }}>
-            <strong>备用卷号</strong>
-          </div>
-          {result.spareRollNos && result.spareRollNos.length > 0 ? (
-            <Space wrap>
-              {result.spareRollNos.map((n) => (
-                <Tag key={n}>{n}</Tag>
-              ))}
-            </Space>
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="无备用卷号"
-              style={{ margin: '8px 0' }}
-            />
-          )}
-        </>
-      ) : (
-        <>
-          <Alert
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-            message={
-              isReprint
-                ? '补打：需填写补打原因，不影响单据状态。'
-                : '首打：将锁定原纸标称参数、生成下发快照与卷号，并将单据流转为「加工中」。'
-            }
-          />
-          {isReprint && (
-            <Form form={form} layout="vertical">
-              <Form.Item
-                name="reason"
-                label="补打原因"
-                rules={[{ required: true, message: '补打需填写原因' }]}
-              >
-                <Input.TextArea rows={3} placeholder="请填写补打原因" />
-              </Form.Item>
-            </Form>
-          )}
-        </>
-      )}
-    </Modal>
-  )
+  return <PrintIssueDrawer detail={detailQuery.data} open onClose={onClose} onPrinted={onSuccess} />
 }

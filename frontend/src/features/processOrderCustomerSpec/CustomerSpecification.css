@@ -1,0 +1,123 @@
+.customer-requirement-strip {
+  display: grid;
+  grid-template-columns: 36px minmax(260px, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: var(--mes-color-soft);
+  border: 1px solid var(--mes-color-border);
+  border-left: 4px solid var(--mes-color-text-muted);
+  border-radius: var(--mes-radius-sm);
+}
+
+.customer-requirement-strip.is-overridden {
+  background: var(--mes-color-soft);
+  border-left-color: var(--mes-color-primary);
+}
+
+.customer-requirement-error {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.customer-requirement-error .query-load-error-alert {
+  flex: 1;
+  margin: 0;
+}
+
+.customer-requirement-strip__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  color: var(--mes-color-primary);
+  font-size: 18px;
+  place-items: center;
+  background: var(--mes-color-panel);
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius-sm);
+}
+
+.customer-requirement-strip__content,
+.customer-requirement-strip__totals,
+.customer-version-description,
+.customer-comparison-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.customer-requirement-strip__title,
+.customer-requirement-strip__specs,
+.customer-requirement-strip__actions,
+.customer-physical-specs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.customer-requirement-strip__title .ant-tag,
+.customer-comparison-cell .ant-tag {
+  margin-inline-end: 0;
+}
+
+.customer-requirement-strip__specs span {
+  color: var(--mes-color-text-secondary);
+  font-size: 13px;
+}
+
+.customer-requirement-strip__specs span + span::before {
+  margin-right: 7px;
+  color: var(--mes-color-border);
+  content: '|';
+}
+
+.customer-requirement-strip__totals {
+  padding-right: 14px;
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  text-align: right;
+  border-right: 1px solid var(--mes-color-border-light);
+}
+
+.customer-physical-specs span,
+.customer-comparison-cell span,
+.customer-version-description span {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+.customer-comparison-cell.is-right { align-items: flex-end; }
+
+.customer-specification-detail-view,
+.customer-specification-detail-view > section {
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-specification-detail-view { gap: 16px; }
+.customer-specification-detail-view > section { gap: 8px; }
+
+.customer-specification-detail-view h3 {
+  margin: 0;
+  color: var(--mes-color-text);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 22px;
+}
+
+@media (max-width: 900px) {
+  .customer-requirement-strip { grid-template-columns: 36px minmax(0, 1fr); }
+  .customer-requirement-strip__totals {
+    grid-column: 2;
+    flex-flow: row wrap;
+    padding-right: 0;
+    text-align: left;
+    border-right: 0;
+  }
+  .customer-requirement-strip__actions { grid-column: 2; justify-content: flex-end; }
+}

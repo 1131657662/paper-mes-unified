@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -27,6 +28,14 @@ public class ProcessStepPricingAdjustmentDTO {
     /** 模式 3 使用。 */
     @DecimalMin(value = "0.00", message = "固定计费金额不能为负数")
     private BigDecimal billingAmount;
+
+    /** 附加工艺标准计费使用：TON=按吨，PIECE=按件。 */
+    @Pattern(regexp = "TON|PIECE", message = "附加工艺计费单位仅支持按件或按吨")
+    private String billingBasis;
+
+    /** 附加工艺标准计费使用；计费数量由系统根据母卷自动计算。 */
+    @DecimalMin(value = "0.0001", message = "附加工艺核定单价必须大于0")
+    private BigDecimal billingUnitPrice;
 
     @NotBlank(message = "计价调整原因不能为空")
     @Size(max = 255, message = "计价调整原因不能超过255个字符")

@@ -26,7 +26,7 @@ export default function OrderWeightBalanceSummary({ balance }: Props) {
       <div className="order-weight-balance__metrics">
         <SummaryMetric label="投入总重" value={balance.inputWeight} />
         <SummaryMetric label="成品总重" value={balance.finishWeight} />
-        <SummaryMetric label="切边总重" value={balance.trimWeight} />
+        <SummaryMetric label="损耗/余料总重" value={balance.trimWeight} />
         <SummaryMetric label="未分配差值" value={balance.difference} danger={balance.blocking} />
       </div>
     </section>

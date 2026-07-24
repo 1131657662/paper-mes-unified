@@ -14,6 +14,19 @@ body,
   overflow: hidden;
 }
 
+.app-shell > .ant-layout-sider {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell > .ant-layout-sider .ant-layout-sider-children {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .app-shell__main {
   display: flex;
   height: 100%;
@@ -59,6 +72,50 @@ body,
 
 .ant-layout-sider-collapsed .app-shell__brand-name {
   display: none;
+}
+
+.app-shell__nav {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 52px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+.app-shell__nav:hover,
+.app-shell__nav:focus-within {
+  scrollbar-color: rgb(255 255 255 / 24%) transparent;
+}
+
+.app-shell__nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.app-shell__nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-shell__nav::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.app-shell__nav:hover::-webkit-scrollbar-thumb,
+.app-shell__nav:focus-within::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 24%);
+}
+
+.app-shell__nav::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 38%);
+}
+
+.app-shell > .ant-layout-sider .ant-layout-sider-trigger {
+  border-top: 1px solid rgb(255 255 255 / 7%);
+  background: inherit;
 }
 
 .app-shell__header {

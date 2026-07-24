@@ -36,9 +36,10 @@ export function selectedTotals(items: SettleCandidateVO[]) {
       finishWeight: total.finishWeight + (item.finishRollWeight ?? 0),
       orderCount: total.orderCount + 1,
       rewind: total.rewind + (item.rewindAmount ?? 0),
+      service: total.service + (item.serviceAmount ?? 0),
       saw: total.saw + (item.sawAmount ?? 0),
       total: total.total + (item.totalAmount ?? 0),
     }),
-    { extra: 0, finishCount: 0, finishWeight: 0, orderCount: 0, rewind: 0, saw: 0, total: 0 },
+    { extra: 0, finishCount: 0, finishWeight: 0, orderCount: 0, rewind: 0, saw: 0, service: 0, total: 0 },
   )
 }

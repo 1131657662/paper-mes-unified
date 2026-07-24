@@ -21,7 +21,10 @@ public class ExportTask extends BaseEntity {
     private String operationCode;
     private String taskName;
     private String sourceUuid;
+    private String sourcePath;
     private String requestPayload;
+    private String querySnapshotUuid;
+    private String metricReleaseUuid;
     private String requesterUuid;
     private String requesterName;
     /** 1等待 2执行中 3成功 4失败 */

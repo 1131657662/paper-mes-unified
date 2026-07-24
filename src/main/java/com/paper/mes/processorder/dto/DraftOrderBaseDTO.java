@@ -19,6 +19,9 @@ import java.time.LocalDate;
 @Data
 public class DraftOrderBaseDTO {
 
+    @Min(value = 0, message = "草稿版本不能小于0")
+    private Integer expectedVersion;
+
     @NotBlank(message = "客户不能为空")
     private String customerUuid;
 

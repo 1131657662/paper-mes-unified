@@ -53,6 +53,7 @@ final class ProcessOrderPrintViewReader {
             throw corruptedSnapshot();
         }
         ProcessOrderDetailVO detail = ProcessOrderSnapshotDetailCodec.copy(live, objectMapper);
+        ProcessOrderPrintDetailPolicy.filter(detail);
         detail.getOrder().setSnapPrint(null);
         detail.getOrder().setSnapFinish(null);
         ProcessOrderPrintViewVO result = baseView(live, version);

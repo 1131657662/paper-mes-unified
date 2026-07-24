@@ -1,6 +1,11 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createOrderService } from '../services/createOrderService'
+import { invalidateCreateOrderDraft } from './invalidateCreateOrderDraft'
 
 export function useReplaceRolls() {
-  return useMutation({ mutationFn: createOrderService.replaceRolls })
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createOrderService.replaceRolls,
+    onSuccess: (_, variables) => invalidateCreateOrderDraft(queryClient, variables.uuid),
+  })
 }

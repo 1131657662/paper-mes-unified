@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 @Data
 public class SettleFeeLineVO {
 
-    /** saw / rewind / extra / tax */
+    /** saw / rewind / service / extra / tax */
     private String feeType;
     private String feeName;
     private Integer stageLevel;

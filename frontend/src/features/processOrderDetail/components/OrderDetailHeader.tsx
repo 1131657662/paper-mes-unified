@@ -1,6 +1,7 @@
 import { Button, Tag, Tooltip, message } from 'antd'
 import { CopyOutlined, DownloadOutlined } from '@ant-design/icons'
 import MesPageHeader from '../../../components/layout/MesPageHeader'
+import MesTooltip from '../../../components/biz/MesTooltip'
 import type { ProcessOrder } from '../../../types/processOrder'
 import { ORDER_STATUS, PRIORITY } from '../../../constants/processOrder'
 import { dict } from '../../../components/processOrder/shared/detailHelpers'
@@ -14,7 +15,11 @@ interface Props {
 
 export default function OrderDetailHeader({ exporting, order, onBack, onExport }: Props) {
   const status = order?.orderStatus != null ? ORDER_STATUS[order.orderStatus] : undefined
-  const printText = order?.printStatus === 1 ? `已打印 ${order.printCount ?? 1} 次` : '未打印'
+  const printText = order?.printStatus === 1
+    ? `已打印 ${order.printCount ?? 1} 次`
+    : order?.orderStatus != null && order.orderStatus >= 2 && order.orderStatus < 6
+      ? '已下发，未打印'
+      : '未打印'
 
   const copyOrderNo = async () => {
     if (!order?.orderNo) return
@@ -29,15 +34,19 @@ export default function OrderDetailHeader({ exporting, order, onBack, onExport }
   return (
     <MesPageHeader
       actions={(
-        <Button
-          aria-label="后台导出加工单资料"
-          icon={<DownloadOutlined />}
-          loading={exporting}
-          disabled={!order}
-          onClick={onExport}
-        >
-          后台导出
-        </Button>
+        <MesTooltip title={!order ? '加工单详情加载完成后才能导出' : undefined}>
+          <span className="order-detail-action-slot">
+            <Button
+              aria-label={!order ? '后台导出加工单资料：加工单详情未加载' : '后台导出加工单资料'}
+              icon={<DownloadOutlined />}
+              loading={exporting}
+              disabled={!order}
+              onClick={onExport}
+            >
+              后台导出
+            </Button>
+          </span>
+        </MesTooltip>
       )}
       className="order-detail-hero"
       onBack={onBack}
@@ -45,7 +54,7 @@ export default function OrderDetailHeader({ exporting, order, onBack, onExport }
         <>
           {status && <Tag color={status.color}>{status.text}</Tag>}
           {order?.isMixProcess === 1 && <Tag color="purple">混合工艺</Tag>}
-          <Tag color={order?.printStatus === 1 ? 'green' : 'default'}>{printText}</Tag>
+          <Tag color={order?.printStatus === 1 ? 'green' : order?.orderStatus != null && order.orderStatus >= 2 && order.orderStatus < 6 ? 'orange' : 'default'}>{printText}</Tag>
         </>
       )}
       title={order?.orderNo ?? '加工单详情'}

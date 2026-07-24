@@ -25,6 +25,7 @@ public class SystemRuntimeConfigController {
     private static final Set<String> PUBLIC_CONFIG_KEYS = Set.of(
             "ui.defaultPageSize",
             "print.processOrderTitle",
+            "process.autoFinishConfig",
             "process.spareRollNoCount",
             "process.weightTolerancePercent",
             "process.pricingAutoApproveLimit",

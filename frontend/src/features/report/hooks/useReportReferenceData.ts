@@ -5,6 +5,6 @@ export function useReportMachines() {
   return useQuery(queries.report.machines)
 }
 
-export function useReportPapers() {
-  return useQuery(queries.report.papers)
+export function useReportPapers(enabled = true) {
+  return useQuery({ ...queries.report.papers, enabled })
 }

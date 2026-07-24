@@ -176,8 +176,7 @@ public class SettleController {
 
     @PostMapping("/{uuid}/void")
     @RequirePermission(Permissions.SETTLE_MANAGE)
-    public R<Void> voidSettle(@PathVariable String uuid, @Valid @RequestBody SettleActionReasonDTO dto) {
-        settleService.voidSettle(uuid, dto);
-        return R.success();
+    public R<List<String>> voidSettle(@PathVariable String uuid, @Valid @RequestBody SettleActionReasonDTO dto) {
+        return R.success(settleService.voidSettle(uuid, dto));
     }
 }

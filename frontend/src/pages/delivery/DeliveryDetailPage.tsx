@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Button, Card, Space, Spin, message } from 'antd'
 import { CheckOutlined, DownloadOutlined, PlusOutlined, PrinterOutlined, RollbackOutlined, StopOutlined } from '@ant-design/icons'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { PERMISSIONS } from '../../constants/permissions'
 import DocumentAuditTimeline from '../../components/biz/DocumentAuditTimeline'
-import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { useDeliveryDetail } from '../../features/delivery/hooks/useDeliveryDetail'
@@ -13,12 +12,15 @@ import { useCancelPendingDelivery } from '../../features/delivery/hooks/useCance
 import { useCreateDeliveryOrderExportTask } from '../../features/exportTask/hooks/useCreateDeliveryOrderExportTask'
 import { useRemoveDeliveryDetail } from '../../features/delivery/hooks/useRemoveDeliveryDetail'
 import { useRollbackDelivery } from '../../features/delivery/hooks/useRollbackDelivery'
+import { useDeliveryCustomerSpecs } from '../../features/deliveryCustomerSpec/useDeliveryCustomerSpecs'
+import type { DeliveryDocumentView } from '../../features/deliveryCustomerSpec/deliveryCustomerSpecTypes'
 import type { DeliveryDetail } from '../../types/delivery'
 import DeliveryAppendItemsModal from './DeliveryAppendItemsModal'
 import DeliveryPrintSheet from './DeliveryPrintSheet'
 import DeliveryRollbackSnapshotCard from './DeliveryRollbackSnapshotCard'
-import { buildDeliveryDetailColumns } from './deliveryDetailColumns'
+import DeliveryCustomerDocumentSection from './DeliveryCustomerDocumentSection'
 import { DeliveryOverview, DeliveryPickupInfo, DeliveryStatusTag } from './DeliveryDetailSummary'
+import { useDeliveryPrintActions } from './useDeliveryPrintActions'
 import {
   askDeliveryCancelReason,
   askDeliveryRollbackReason,
@@ -33,9 +35,8 @@ export default function DeliveryDetailPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const [appendOpen, setAppendOpen] = useState(false)
+  const [documentView, setDocumentView] = useState<DeliveryDocumentView>('customer')
   const canManageDelivery = useHasPermission(PERMISSIONS.deliveryManage)
-  const autoPrintDoneRef = useRef(false)
-  const printPreviewRef = useRef<HTMLDivElement>(null)
   const detailQuery = useDeliveryDetail(uuid)
   const confirmMutation = useConfirmDelivery()
   const cancelMutation = useCancelPendingDelivery()
@@ -44,26 +45,19 @@ export default function DeliveryDetailPage() {
   const removeDetailMutation = useRemoveDeliveryDetail()
   const detail = detailQuery.data
   const order = detail?.order
+  const customerSpecQuery = useDeliveryCustomerSpecs(order?.deliveryStatus === 3 ? undefined : uuid)
   const shouldAutoPrint = new URLSearchParams(location.search).get('print') === '1'
-
-  useEffect(() => {
-    if (!detail || !shouldAutoPrint || autoPrintDoneRef.current) return
-    autoPrintDoneRef.current = true
-    printPreviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    window.setTimeout(() => window.print(), 220)
-  }, [detail, shouldAutoPrint])
+  const customerDocumentReady = documentView === 'physical' || Boolean(customerSpecQuery.data)
+  const { printPreviewRef, requestPrint } = useDeliveryPrintActions({
+    detailReady: Boolean(detail), documentReady: customerDocumentReady, shouldAutoPrint,
+  })
 
   const handleExport = async () => {
     if (exportMutation.isPending) return
     if (uuid) {
-      await exportMutation.mutateAsync({ uuid })
+      await exportMutation.mutateAsync({ uuid, customerRevisionNo: customerSpecQuery.data?.currentRevisionNo ?? 0 })
       message.success('已加入导出任务，可在右上角下载任务中心查看')
     }
-  }
-
-  const handlePrint = () => {
-    printPreviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    window.setTimeout(() => window.print(), 220)
   }
 
   const handleConfirm = async () => {
@@ -123,7 +117,7 @@ export default function DeliveryDetailPage() {
                 添加出库卷
               </Button>
             )}
-            <Button icon={<PrinterOutlined />} onClick={handlePrint}>打印预览</Button>
+            <Button icon={<PrinterOutlined />} onClick={requestPrint}>打印预览</Button>
             <Button icon={<DownloadOutlined />} loading={exportMutation.isPending} onClick={handleExport}>
               后台导出
             </Button>
@@ -156,23 +150,22 @@ export default function DeliveryDetailPage() {
 
             <DeliveryPickupInfo order={detail.order} />
 
-            <Card className="document-module-card" title="出库明细">
-              <div className="document-module-table">
-                <DocumentDetailTable
-                  storageKey="delivery-detail-items"
-                  rowKey="uuid"
-                  columns={buildDeliveryDetailColumns({
-                    canRemove: canManageDelivery,
-                    deliveryStatus: detail.order.deliveryStatus,
-                    onRemove: handleRemove,
-                  })}
-                  dataSource={detail.details}
-                  onReload={() => detailQuery.refetch()}
-                  pagination={false}
-                  scroll={{ x: 1280 }}
-                />
-              </div>
-            </Card>
+            {customerSpecQuery.isError && order?.deliveryStatus !== 3 && (
+              <QueryLoadErrorAlert message="客户单据口径加载失败"
+                description="为避免打印错误口径，客户单据与追溯视图暂不可打印；仓库实物视图不受影响。"
+                onRetry={() => void customerSpecQuery.refetch()} />
+            )}
+
+            <DeliveryCustomerDocumentSection
+              canManage={canManageDelivery}
+              customerSpecs={customerSpecQuery.data}
+              detail={detail}
+              loading={customerSpecQuery.isLoading}
+              view={documentView}
+              onReload={() => void detailQuery.refetch()}
+              onRemove={handleRemove}
+              onViewChange={setDocumentView}
+            />
 
             {detail.rollbackSnapshot && (
               <DeliveryRollbackSnapshotCard snapshot={detail.rollbackSnapshot} />
@@ -183,7 +176,7 @@ export default function DeliveryDetailPage() {
             </Card>
 
             <Card ref={printPreviewRef} className="document-module-card document-module-card--print" title="司机单据预览">
-              <DeliveryPrintSheet detail={detail} />
+              <DeliveryPrintSheet detail={detail} customerSpecs={customerSpecQuery.data} variant={documentView} />
             </Card>
 
             <DeliveryAppendItemsModal

@@ -4,7 +4,7 @@ import { DeleteOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import MesTooltip from '../../components/biz/MesTooltip'
 import TooltipText from '../../components/biz/TooltipText'
-import { FINISH_STATUS, ROLL_NO_STATUS } from '../../constants/processOrder'
+import { FINISH_SOURCE_TYPE, FINISH_STATUS, ROLL_NO_STATUS } from '../../constants/processOrder'
 import type { FinishRoll } from '../../types/processOrder'
 import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
 
@@ -43,8 +43,11 @@ function buildColumns(onVoid: (uuid: string) => void, settled: boolean): Columns
     { title: '成品卷号', dataIndex: 'finishRollNo', fixed: 'left', width: 140, render: (_, roll) => <RollIdentity roll={roll} /> },
     { title: '类型/来源', key: 'type', width: 116, render: (_, roll) => <RollType roll={roll} /> },
     { title: '成品规格', key: 'spec', width: 210, render: (_, roll) => <RollSpec roll={roll} /> },
-    { title: '重量', key: 'weight', width: 160, render: (_, roll) => <RollWeight roll={roll} /> },
-    { title: '成品状态', dataIndex: 'finishStatus', width: 100, render: (value) => FINISH_STATUS[value] ?? '-' },
+    { title: '重量', key: 'weight', align: 'right', width: 160, render: (_, roll) => <RollWeight roll={roll} /> },
+    { title: '成品状态', dataIndex: 'finishStatus', width: 100, render: (value) => {
+      const status = FINISH_STATUS[value]
+      return status ? <Tag color={status.color}>{status.text}</Tag> : '-'
+    } },
     { title: '操作', key: 'action', fixed: 'right', width: 64, render: (_, roll) => <VoidAction onVoid={onVoid} roll={roll} settled={settled} /> },
   ]
 }
@@ -60,10 +63,11 @@ function RollIdentity({ roll }: { roll: FinishRoll }) {
 }
 
 function RollType({ roll }: { roll: FinishRoll }) {
+  const source = FINISH_SOURCE_TYPE[roll.sourceType ?? 1]
   return (
     <div className="finish-roll-cell finish-roll-cell--inline">
       <Tag color={roll.isSpare === 1 ? 'orange' : undefined}>{roll.isSpare === 1 ? '备用' : '正式'}</Tag>
-      <Tag color={roll.sourceType === 2 ? 'green' : undefined}>{roll.sourceType === 2 ? '直发' : '加工'}</Tag>
+      <Tag color={source?.color}>{source?.text ?? '未知来源'}</Tag>
     </div>
   )
 }

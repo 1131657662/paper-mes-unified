@@ -12,9 +12,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/export-tasks")
@@ -32,5 +35,10 @@ public class ExportTaskEventController {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-store");
         response.setHeader("X-Accel-Buffering", "no");
         return publisher.subscribe(user.getUuid());
+    }
+
+    @ExceptionHandler(IOException.class)
+    public void handleClientDisconnect() {
+        // Closing an SSE tab is a normal client lifecycle event, not an API failure.
     }
 }

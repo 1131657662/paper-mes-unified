@@ -1,0 +1,173 @@
+.customer-spec-editor .ant-drawer-body { padding: 0; }
+
+.customer-spec-editor__body {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 0;
+}
+
+.customer-spec-batch-toolbar,
+.customer-weight-rule-panel,
+.customer-spec-editor__review {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mes-color-border-light);
+}
+
+.customer-spec-batch-toolbar,
+.customer-weight-rule-panel__head,
+.customer-weight-rule-panel__editor,
+.customer-spec-editor__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.customer-spec-batch-fields {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(170px, 1fr) 140px 150px auto;
+  gap: 8px;
+}
+
+.customer-weight-rule-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--mes-color-soft);
+}
+
+.customer-weight-rule-panel__head { justify-content: flex-start; }
+.customer-weight-rule-panel__head .ant-tag { margin-left: auto; }
+.customer-weight-rule-panel__editor {
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.customer-weight-rule-panel__apply { align-self: flex-end; }
+.customer-weight-rule-panel__editor > .customer-spec-number-input { width: 220px; }
+
+.customer-formula-editor {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 640px;
+  gap: 10px;
+}
+
+.customer-formula-editor__head,
+.customer-formula-editor__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.customer-formula-editor__head > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.customer-formula-editor__head .ant-select { width: 220px; }
+.customer-formula-editor__input { width: 100%; }
+
+.customer-formula-editor__tokens {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.customer-formula-editor__foot { align-items: flex-start; }
+.customer-formula-editor__foot > .ant-typography { min-width: 0; }
+
+.customer-zero-policy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--mes-color-text-secondary);
+  white-space: nowrap;
+}
+
+.customer-spec-edit-table { padding: 0 16px; }
+.customer-spec-edit-table .ant-table-container { border-top: 0 !important; }
+.customer-spec-edit-table .customer-spec-number-input { width: 100%; }
+
+.customer-spec-number-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.customer-spec-number-input .ant-input-number {
+  width: 100%;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.customer-spec-number-input > span {
+  display: flex;
+  min-width: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  color: var(--mes-color-text-secondary);
+  background: var(--mes-color-soft);
+  border: 1px solid var(--mes-color-border);
+  border-left: 0;
+  border-radius: 0 var(--mes-radius-sm) var(--mes-radius-sm) 0;
+  white-space: nowrap;
+}
+
+.customer-spec-physical-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.customer-spec-physical-cell span {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+.customer-spec-editor__review {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(500px, 1.5fr);
+  gap: 18px;
+  border-bottom: 0;
+}
+
+.customer-spec-editor__review .ant-form-item { margin-bottom: 0; }
+
+.customer-spec-preview-band {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px 12px;
+  background: var(--mes-color-soft);
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius-sm);
+}
+
+.customer-spec-preview-band.has-errors { border-color: var(--mes-color-danger); }
+.customer-spec-preview-band__status { display: inline-flex; align-items: center; gap: 7px; }
+.customer-spec-preview-band__status .anticon { color: var(--mes-color-success); }
+.customer-spec-preview-band.has-errors .anticon { color: var(--mes-color-danger); }
+
+@media (max-width: 900px) {
+  .customer-spec-batch-toolbar,
+  .customer-weight-rule-panel__head,
+  .customer-weight-rule-panel__editor { align-items: stretch; flex-direction: column; }
+  .customer-weight-rule-panel__head .ant-tag { margin-left: 0; align-self: flex-start; }
+  .customer-formula-editor { width: 100%; flex-basis: auto; }
+  .customer-formula-editor__head,
+  .customer-formula-editor__foot { align-items: stretch; flex-direction: column; }
+  .customer-formula-editor__head .ant-select { width: 100%; }
+  .customer-weight-rule-panel__apply { align-self: stretch; }
+  .customer-spec-batch-fields { width: 100%; grid-template-columns: 1fr 1fr; }
+  .customer-spec-editor__review { grid-template-columns: 1fr; }
+}

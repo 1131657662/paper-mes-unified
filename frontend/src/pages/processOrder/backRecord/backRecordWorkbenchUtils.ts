@@ -101,10 +101,29 @@ function buildOnSiteMetrics(item: BackRecordWorkItem, values: BackRecordFormValu
 
 export function workItemStatus(item: BackRecordWorkItem, values: BackRecordFormValues) {
   if (item.kind === 'pool') return { text: '待核对', color: 'warning' }
+  if (workItemRecorded(item)) return { text: '已入库', color: 'default' }
   if (item.roll?.processMode === 3) return { text: '直发', color: 'blue' }
   const metrics = buildWorkItemMetrics(item, values)
-  if (metrics.missingRoll || metrics.missingFinishes > 0 || metrics.missingFinishWidths > 0) return { text: '待补', color: 'warning' }
+  if (metrics.missingRoll || metrics.missingFinishes > 0 || metrics.missingFinishWidths > 0) {
+    return { text: item.roll?.processMode === 4 ? '待录整理结果' : '待补', color: 'warning' }
+  }
+  if (item.roll?.processMode === 4) return { text: '整理已录', color: 'success' }
   return { text: '已录', color: 'success' }
+}
+
+export function workItemRollUuids(item: BackRecordWorkItem): string[] {
+  const uuids = item.rollProductions
+    .map((production) => production.originalUuid)
+    .filter((uuid): uuid is string => Boolean(uuid))
+  if (uuids.length) return Array.from(new Set(uuids))
+  return item.roll?.uuid ? [item.roll.uuid] : []
+}
+
+export function workItemRecorded(item: BackRecordWorkItem): boolean {
+  const productions = item.rollProductions.length
+    ? item.rollProductions
+    : item.roll ? [{ isChecked: item.roll.isChecked }] : []
+  return productions.length > 0 && productions.every((production) => production.isChecked === 1)
 }
 
 export function processLines(item: BackRecordWorkItem): Array<{ header: string; details: string[] }> {
@@ -221,7 +240,7 @@ function validWidth(value?: number) {
   return positive(value) ? value : undefined
 }
 
-function processSteps(item: BackRecordWorkItem) {
+export function processSteps(item: BackRecordWorkItem) {
   const productions = item.rollProductions.length ? item.rollProductions : item.production ? [item.production] : []
   return Array.from(new Map(productions.flatMap((production) => production.steps ?? []).map((step) => [step.uuid, step])).values())
 }

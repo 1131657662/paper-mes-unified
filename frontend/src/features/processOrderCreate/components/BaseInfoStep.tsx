@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Button, Card, Form, Tag } from 'antd'
 import type { DraftOrderBaseDTO } from '../../../types/processOrder'
 import type { ReferenceOption } from '../types'
@@ -17,6 +18,11 @@ interface Props {
 
 export default function BaseInfoStep({ customers, warehouses, initialValue, loading, onChange, onNext }: Props) {
   const session = useBaseInfoStepForm({ customers, onChange })
+
+  useEffect(() => {
+    if (!initialValue || session.form.isFieldsTouched()) return
+    session.form.setFieldsValue(baseInfoInitialValues(initialValue))
+  }, [initialValue, session.form])
 
   return (
     <Card title="基础信息" className="process-order-base">

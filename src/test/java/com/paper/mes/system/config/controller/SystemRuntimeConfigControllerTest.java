@@ -29,6 +29,16 @@ class SystemRuntimeConfigControllerTest {
     }
 
     @Test
+    void configs_withProcessCreateKeys_queriesConfiguration() {
+        List<String> keys = List.of("process.autoFinishConfig", "process.spareRollNoCount");
+        when(configService.enabledByKeys(keys)).thenReturn(List.of());
+
+        controller.configs(String.join(",", keys));
+
+        verify(configService).enabledByKeys(keys);
+    }
+
+    @Test
     void configs_withPrivateKey_rejectsRequest() {
         assertThrows(BusinessException.class, () -> controller.configs("integration.secret"));
     }

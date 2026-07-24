@@ -1,7 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { queries } from '../../../queries'
-import type { ReportQuery } from '../../../types/report'
+import type { ReportDetailQuery } from '../../../types/report'
 
-export function useReportDetails(query: ReportQuery) {
-  return useQuery(queries.report.details(query))
+export function useReportDetails(query: ReportDetailQuery, enabled = true) {
+  return useQuery({
+    ...queries.report.details(query),
+    enabled,
+    placeholderData: keepPreviousData,
+  })
 }

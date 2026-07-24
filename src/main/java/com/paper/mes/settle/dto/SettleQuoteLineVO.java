@@ -11,6 +11,7 @@ public class SettleQuoteLineVO {
     private String orderUuid;
     private BigDecimal sawAmount;
     private BigDecimal rewindAmount;
+    private BigDecimal serviceAmount;
     private BigDecimal standardProcessAmount;
     private BigDecimal pricingAdjustmentAmount;
     private BigDecimal extraAmount;

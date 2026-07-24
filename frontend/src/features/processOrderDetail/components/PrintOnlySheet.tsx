@@ -13,7 +13,9 @@ export default function PrintOnlySheet({ copies, detail, version, view }: Props)
   return (
     <div className="print-issue-print-root">
       {Array.from({ length: copies }, (_, index) => (
-        <PrintPreviewSheet detail={detail} key={index} {...printVersionProps(version, view)} />
+        <div className="print-issue-print-copy" key={`copy-${index + 1}`}>
+          <PrintPreviewSheet detail={detail} {...printVersionProps(version, view)} />
+        </div>
       ))}
     </div>
   )

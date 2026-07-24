@@ -23,6 +23,8 @@ public class ProcessStepPricingBatchPreviewVO {
         private String originalUuid;
         private Integer stepType;
         private String stepName;
+        private Integer billingMode;
+        private String billingBasis;
         private BigDecimal quantity;
         private BigDecimal standardUnitPrice;
         private BigDecimal currentUnitPrice;

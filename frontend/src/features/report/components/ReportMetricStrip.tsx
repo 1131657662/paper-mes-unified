@@ -2,9 +2,9 @@ import {
   AccountBookOutlined,
   BarChartOutlined,
   DollarOutlined,
-  FieldTimeOutlined,
   FileDoneOutlined,
   ScissorOutlined,
+  WalletOutlined,
 } from '@ant-design/icons'
 import { StatisticCard } from '@ant-design/pro-components'
 import type { ReactNode } from 'react'
@@ -16,7 +16,27 @@ interface Props {
 }
 
 export default function ReportMetricStrip({ overview }: Props) {
-  const cards: MetricProps[] = [
+  return (
+    <StatisticCard.Group className="report-metrics" gutter={[10, 10]} ghost>
+      {buildCards(overview).map((item) => (
+        <StatisticCard
+          className={`report-metric report-metric--${item.tone ?? 'default'}`}
+          colSpan={{ xs: 24, sm: 12, md: 8, xl: 4 }}
+          key={item.title}
+          statistic={{
+            description: <span className="report-metric__description" title={item.sub}>{item.sub}</span>,
+            icon: <span className="report-metric__icon">{item.icon}</span>,
+            title: item.title,
+            value: item.main,
+          }}
+        />
+      ))}
+    </StatisticCard.Group>
+  )
+}
+
+function buildCards(overview?: ReportOverviewVO): MetricProps[] {
+  return [
     {
       icon: <FileDoneOutlined />,
       main: `${formatNumber(overview?.orderCount)} 单`,
@@ -46,35 +66,17 @@ export default function ReportMetricStrip({ overview }: Props) {
     {
       icon: <AccountBookOutlined />,
       main: formatMoney(overview?.unreceivedAmount),
-      sub: `已结清 ${formatMoney(overview?.receivedAmount)} / 待结算 ${formatMoney(overview?.pendingSettleAmount)}`,
+      sub: `已收金额 ${formatMoney(overview?.receivedAmount)} / 待结算 ${formatMoney(overview?.pendingSettleAmount)}`,
       title: '已结算未收',
       tone: 'danger',
     },
     {
-      icon: <FieldTimeOutlined />,
-      main: `${formatNumber(overview?.knifeCount)} 刀`,
-      sub: `现金 ${formatMoney(overview?.cashReceivedAmount)} / 废纸 ${formatMoney(overview?.scrapOffsetAmount)}`,
-      title: '结清组成',
+      icon: <WalletOutlined />,
+      main: formatMoney(overview?.receivedAmount),
+      sub: `现金 ${formatMoney(overview?.cashReceivedAmount)} / 废纸抵扣 ${formatMoney(overview?.scrapOffsetAmount)}`,
+      title: '回款构成',
     },
   ]
-
-  return (
-    <StatisticCard.Group className="report-metrics" gutter={[10, 10]} ghost>
-      {cards.map((item) => (
-        <StatisticCard
-          className={`report-metric report-metric--${item.tone ?? 'default'}`}
-          colSpan={{ xs: 24, sm: 12, md: 8, xl: 4 }}
-          key={item.title}
-          statistic={{
-            description: item.sub,
-            icon: <span className="report-metric__icon">{item.icon}</span>,
-            title: item.title,
-            value: item.main,
-          }}
-        />
-      ))}
-    </StatisticCard.Group>
-  )
 }
 
 interface MetricProps {

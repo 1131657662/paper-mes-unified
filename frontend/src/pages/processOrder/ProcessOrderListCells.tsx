@@ -4,8 +4,10 @@ import { CopyOutlined } from '@ant-design/icons'
 import type { ProcessOrder } from '../../types/processOrder'
 import { ORDER_STATUS } from '../../constants/processOrder'
 import { formatMoney, formatTonFromKg } from '../../utils/numberFormatters'
+import { processSummaryText } from './processOrderListModel'
 
 export function OrderNoCell({ onDetail, record }: { onDetail: (uuid: string) => void; record: ProcessOrder }) {
+  const processSummary = processSummaryText(record)
   return (
     <div className="process-order-list__order">
       <div className="process-order-list__order-line">
@@ -23,7 +25,9 @@ export function OrderNoCell({ onDetail, record }: { onDetail: (uuid: string) => 
         <OrderNoCopyButton orderNo={record.orderNo} />
       </div>
       <div className="process-order-list__order-meta">
-        <Typography.Text type="secondary">{record.isMixProcess === 1 ? '混合工艺' : '单一工艺'}</Typography.Text>
+        <Tooltip title={processSummary.full}>
+          <Typography.Text type="secondary">{processSummary.compact}</Typography.Text>
+        </Tooltip>
         {(record.priority ?? 1) > 1 && <PriorityPill value={record.priority} />}
       </div>
     </div>
@@ -100,7 +104,11 @@ export function BillingCell({ record }: { record: ProcessOrder }) {
 
 export function OrderStatusCell({ record }: { record: ProcessOrder }) {
   const status = record.orderStatus == null ? undefined : ORDER_STATUS[record.orderStatus]
-  const printText = record.printStatus === 1 ? `已下发 ${record.printCount ?? 1} 次` : '未下发'
+  const printText = record.printStatus === 1
+    ? `已打印 ${record.printCount ?? 1} 次`
+    : record.orderStatus != null && record.orderStatus >= 2 && record.orderStatus < 6
+      ? '已下发，未打印'
+      : '未下发'
   return (
     <div className="process-order-list__status">
       <Tag color={status?.color}>{status?.text ?? '-'}</Tag>

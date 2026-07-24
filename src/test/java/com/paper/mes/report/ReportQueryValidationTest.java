@@ -30,4 +30,29 @@ class ReportQueryValidationTest {
         assertThat(validator.validate(query)).extracting("message")
                 .contains("统计维度无效");
     }
+
+    @Test
+    void validate_whenInvoiceTypeIsNoInvoice_acceptsValueTwo() {
+        ReportQuery query = new ReportQuery();
+        query.setIsInvoice(2);
+
+        assertThat(validator.validate(query)).isEmpty();
+    }
+
+    @Test
+    void validate_whenMetricReleaseUuidIsMalformed_rejectsQuery() {
+        ReportQuery query = new ReportQuery();
+        query.setMetricReleaseUuid("not-a-release-id");
+
+        assertThat(validator.validate(query)).isNotEmpty();
+    }
+
+    @Test
+    void validate_whenInvoiceTypeIsOutsideDictionary_rejectsValue() {
+        ReportQuery query = new ReportQuery();
+        query.setIsInvoice(3);
+
+        assertThat(validator.validate(query)).extracting("message")
+                .contains("开票状态无效");
+    }
 }

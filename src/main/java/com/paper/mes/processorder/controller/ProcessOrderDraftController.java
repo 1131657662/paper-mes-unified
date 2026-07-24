@@ -7,15 +7,19 @@ import com.paper.mes.processorder.dto.DraftOrderBaseDTO;
 import com.paper.mes.processorder.dto.DraftOrderVO;
 import com.paper.mes.processorder.dto.DraftProgressDTO;
 import com.paper.mes.processorder.dto.DraftSummaryVO;
+import com.paper.mes.processorder.dto.DraftRollProcessBatchSaveDTO;
+import com.paper.mes.processorder.dto.DraftSubmitDTO;
 import com.paper.mes.processorder.dto.OriginalRollBatchSaveDTO;
 import com.paper.mes.processorder.dto.OriginalRollImportPreviewVO;
 import com.paper.mes.processorder.dto.PlanPreviewVO;
 import com.paper.mes.processorder.dto.ProcessConfigDraftSaveDTO;
 import com.paper.mes.processorder.dto.ProcessPlanBatchSaveDTO;
+import com.paper.mes.processorder.dto.ProcessPlanItemsBatchSaveDTO;
 import com.paper.mes.processorder.dto.ProcessPlanPreviewRequestDTO;
 import com.paper.mes.processorder.dto.ProcessOrderSubmitVO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
+import com.paper.mes.processorder.dto.ProcessRouteBatchSaveDTO;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
 import com.paper.mes.processorder.service.ProcessRouteDraftManager;
 import jakarta.validation.Valid;
@@ -68,14 +72,21 @@ public class ProcessOrderDraftController {
     @PutMapping("/{orderUuid}/draft-progress")
     public R<Void> saveDraftProgress(@PathVariable String orderUuid,
                                      @Valid @RequestBody DraftProgressDTO dto) {
-        draftService.saveDraftProgress(orderUuid, dto.getCurrentStep());
+        draftService.saveDraftProgress(orderUuid, dto.getCurrentStep(), dto.getExpectedVersion());
         return R.success();
     }
 
     @PutMapping("/{orderUuid}/original-rolls")
     public R<List<String>> replaceOriginalRolls(@PathVariable String orderUuid,
-                                                @Valid @RequestBody OriginalRollBatchSaveDTO dto) {
-        return R.success(draftService.replaceOriginalRolls(orderUuid, dto.getRolls()));
+                                                 @Valid @RequestBody OriginalRollBatchSaveDTO dto) {
+        return R.success(draftService.replaceOriginalRolls(orderUuid, dto.getRolls(), dto.getExpectedVersion()));
+    }
+
+    @PutMapping("/{orderUuid}/original-rolls/process-settings")
+    public R<Void> saveRollProcesses(@PathVariable String orderUuid,
+                                     @Valid @RequestBody DraftRollProcessBatchSaveDTO dto) {
+        draftService.saveRollProcesses(orderUuid, dto);
+        return R.success();
     }
 
     @PostMapping("/{orderUuid}/original-rolls/import-preview")
@@ -87,7 +98,8 @@ public class ProcessOrderDraftController {
     @PostMapping("/{orderUuid}/rolls/plan-preview")
     public R<PlanPreviewVO> previewProcessPlan(@PathVariable String orderUuid,
                                                @Valid @RequestBody ProcessPlanPreviewRequestDTO dto) {
-        return R.success(draftService.previewProcessPlan(orderUuid, dto.getOriginalUuid(), dto.getPlan()));
+        return R.success(draftService.previewProcessPlan(
+                orderUuid, dto.getOriginalUuid(), dto.getPlan(), dto.getExpectedVersion()));
     }
 
     @PostMapping("/{orderUuid}/rolls/route-preview")
@@ -105,15 +117,22 @@ public class ProcessOrderDraftController {
 
     @PutMapping("/{orderUuid}/rolls/route-plan")
     public R<ProcessRoutePreviewVO> saveProcessRoute(@PathVariable String orderUuid,
-                                                     @Valid @RequestBody ProcessRoutePreviewDTO dto) {
+                                                      @Valid @RequestBody ProcessRoutePreviewDTO dto) {
         return R.success(routeDraftManager.save(orderUuid, dto));
+    }
+
+    @PutMapping("/{orderUuid}/rolls/route-plan/batch")
+    public R<List<ProcessRoutePreviewVO>> saveProcessRouteBatch(
+            @PathVariable String orderUuid,
+            @Valid @RequestBody ProcessRouteBatchSaveDTO dto) {
+        return R.success(routeDraftManager.saveBatch(orderUuid, dto));
     }
 
     @PutMapping("/{orderUuid}/rolls/{rollUuid}/process-plan")
     public R<PlanPreviewVO> saveProcessPlan(@PathVariable String orderUuid,
                                             @PathVariable String rollUuid,
                                             @Valid @RequestBody ProcessPlanPreviewRequestDTO dto) {
-        return R.success(draftService.saveProcessPlan(orderUuid, rollUuid, dto.getPlan()));
+        return R.success(draftService.saveProcessPlan(orderUuid, rollUuid, dto.getPlan(), dto.getExpectedVersion()));
     }
 
     @PutMapping("/{orderUuid}/rolls/process-plan/batch")
@@ -122,16 +141,24 @@ public class ProcessOrderDraftController {
         return R.success(draftService.saveProcessPlanBatch(orderUuid, dto));
     }
 
+    @PutMapping("/{orderUuid}/rolls/process-plan/items-batch")
+    public R<List<PlanPreviewVO>> saveProcessPlanItemsBatch(
+            @PathVariable String orderUuid,
+            @Valid @RequestBody ProcessPlanItemsBatchSaveDTO dto) {
+        return R.success(draftService.saveProcessPlanItemsBatch(orderUuid, dto));
+    }
+
     @PutMapping("/{orderUuid}/rolls/{rollUuid}/process-config")
     public R<Void> saveProcessConfig(@PathVariable String orderUuid,
                                      @PathVariable String rollUuid,
                                      @Valid @RequestBody ProcessConfigDraftSaveDTO dto) {
-        draftService.saveProcessConfig(orderUuid, rollUuid, dto.getConfig());
+        draftService.saveProcessConfig(orderUuid, rollUuid, dto.getConfig(), dto.getExpectedVersion());
         return R.success();
     }
 
     @PostMapping("/{orderUuid}/submit")
-    public R<ProcessOrderSubmitVO> submit(@PathVariable String orderUuid) {
-        return R.success(draftService.submit(orderUuid));
+    public R<ProcessOrderSubmitVO> submit(@PathVariable String orderUuid,
+                                          @Valid @RequestBody DraftSubmitDTO dto) {
+        return R.success(draftService.submit(orderUuid, dto.getExpectedVersion()));
     }
 }

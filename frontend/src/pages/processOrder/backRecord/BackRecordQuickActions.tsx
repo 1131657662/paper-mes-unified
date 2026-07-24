@@ -3,22 +3,23 @@ import { CopyOutlined, SwapOutlined } from '@ant-design/icons'
 import type { FormInstance } from 'antd/es/form'
 import MesTooltip from '../../../components/biz/MesTooltip'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
+import { applyBackRecordFilledValues } from './applyBackRecordFilledValues'
 import type { BackRecordFormValues } from './backRecordUtils'
 import { theoreticalBackRecordValues } from './backRecordTheoryFill'
 
 interface Props {
   detail: ProcessOrderDetailVO | null
   form: FormInstance<BackRecordFormValues>
+  onDirty?: () => void
   onValuesFilled?: (values: BackRecordFormValues) => void
   onOpenChange: () => void
 }
 
-export default function BackRecordQuickActions({ detail, form, onOpenChange, onValuesFilled }: Props) {
+export default function BackRecordQuickActions({ detail, form, onDirty, onOpenChange, onValuesFilled }: Props) {
   const handleTheoryFill = () => {
     if (!detail) return
     const values = theoreticalBackRecordValues(detail)
-    form.setFieldsValue(values)
-    onValuesFilled?.(values)
+    applyBackRecordFilledValues({ form, onDirty, onValuesFilled, values })
     form.validateFields().catch(() => undefined)
     message.success('已按标称/预估回填整单，可继续逐卷微调')
   }

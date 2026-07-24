@@ -24,6 +24,27 @@ export interface Customer {
   remark?: string
   createTime?: string
   updateTime?: string
+  processPrices?: CustomerProcessPrice[]
+}
+
+export type CustomerProcessPriceBasis = 'PIECE' | 'TON' | 'FIXED'
+
+export interface CustomerProcessPrice {
+  catalogUuid: string
+  stepType?: number
+  processCode?: string
+  processName?: string
+  billingBasis: CustomerProcessPriceBasis
+  billingUnitName?: string
+  price: number
+  defaultOption: boolean
+}
+
+export interface CustomerProcessPriceSaveDTO {
+  catalogUuid: string
+  billingBasis: CustomerProcessPriceBasis
+  price: number
+  isDefault: number
 }
 
 /** 客户新增/修改入参，与后端 CustomerSaveDTO 对应。 */
@@ -46,6 +67,7 @@ export interface CustomerSaveDTO {
   customerLevel?: number
   exportTemplate?: string
   remark?: string
+  processPrices?: CustomerProcessPriceSaveDTO[]
 }
 
 /** 客户列表查询入参。 */

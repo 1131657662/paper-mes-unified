@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -27,9 +28,18 @@ public class FinishConfigSpecDTO {
     private Integer finishWidth;
     private Integer finishDiameter;
     private Integer finishCoreDiameter;
+    @Size(max = 100, message = "客户品名不能超过100个字符")
+    private String customerPaperName;
+    @Positive(message = "客户克重必须大于0")
+    private Integer customerGramWeight;
+    @Positive(message = "客户门幅必须大于0")
+    private Integer customerFinishWidth;
+    @Size(max = 255, message = "客户规格改写原因不能超过255个字符")
+    private String customerSpecOverrideReason;
 
     @NotNull(message = "数量不能为空")
     @Min(value = 1, message = "数量至少为1")
+    @Max(value = 500, message = "单个规格数量不能超过500")
     private Integer count;
 
     @PositiveOrZero(message = "预估重量不能为负")

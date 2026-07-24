@@ -6,6 +6,7 @@ import { formatMoney, formatNumber } from '../orderDetailUtils'
 import { buildPricingBatchRequest, initialPricingValues, type PricingBatchFormValues, type PricingStep } from '../pricingBatchModel'
 import { useApplyProcessStepPricingBatch } from '../hooks/useApplyProcessStepPricingBatch'
 import { usePreviewProcessStepPricingBatch } from '../hooks/usePreviewProcessStepPricingBatch'
+import ServicePricingBatchFields from './ServicePricingBatchFields'
 import './ProcessStepPricingBatchDrawer.css'
 
 interface Props {
@@ -21,7 +22,9 @@ export default function ProcessStepPricingBatchDrawer({ detail, open, selectedSt
   const { mutateAsync: previewPricing, data: preview, isPending: isPreviewing, reset: resetPreview } = usePreviewProcessStepPricingBatch()
   const { mutateAsync: applyPricing, isPending: isApplying } = useApplyProcessStepPricingBatch()
   const sawCount = selectedSteps.filter((step) => step.stepType === 1).length
-  const rewindCount = selectedSteps.length - sawCount
+  const rewindCount = selectedSteps.filter((step) => step.stepType === 2).length
+  const stripCount = selectedSteps.filter((step) => step.stepType === 3).length
+  const repackCount = selectedSteps.filter((step) => step.stepType === 4).length
 
   const request = async (requestId?: string) => {
     const values = await form.validateFields()
@@ -30,20 +33,22 @@ export default function ProcessStepPricingBatchDrawer({ detail, open, selectedSt
   const handlePreview = async () => previewPricing({ orderUuid: detail.order.uuid, values: await request() })
   const handleApply = async () => {
     await applyPricing({ orderUuid: detail.order.uuid, values: await request(crypto.randomUUID()) })
-    message.success(`已核定 ${selectedSteps.length} 道工序单价`)
+    message.success(`已核定 ${selectedSteps.length} 道工序费用`)
     onApplied()
   }
 
   return (
-    <Drawer className="pricing-batch-drawer" width="min(720px, 100vw)" open={open} title="核定工序单价"
+    <Drawer className="pricing-batch-drawer" width="min(720px, 100vw)" open={open} title="批量核定工序费用"
       destroyOnHidden onClose={onClose} footer={<DrawerFooter previewed={Boolean(preview)} loading={isPreviewing || isApplying}
         onApply={handleApply} onClose={onClose} onPreview={handlePreview} />}>
       <Alert type="info" showIcon message={`已选择 ${selectedSteps.length} 道工序`}
-        description={`切纸 ${sawCount} 道，复卷 ${rewindCount} 道。两类工序使用不同计价单位，系统会分别核定并一次重算整单费用。`} />
+        description={`切纸 ${sawCount} 道，复卷 ${rewindCount} 道，剥损整理 ${stripCount} 道，重新包装 ${repackCount} 道。系统会按工艺分别核定，并一次重算整单费用。`} />
       <Form form={form} layout="vertical" initialValues={initialPricingValues(selectedSteps)}
         onValuesChange={resetPreview}>
         {sawCount > 0 && <PriceGroupFields form={form} type="saw" count={sawCount} />}
         {rewindCount > 0 && <PriceGroupFields form={form} type="rewind" count={rewindCount} />}
+        {stripCount > 0 && <ServicePricingBatchFields form={form} prefix="strip" label="剥损整理" count={stripCount} />}
+        {repackCount > 0 && <ServicePricingBatchFields form={form} prefix="repack" label="重新包装" count={repackCount} />}
         <Form.Item name="reason" label="核定原因" rules={[{ required: true, whitespace: true, max: 255, message: '请填写核定原因（最多255字）' }]}>
           <Input.TextArea rows={3} maxLength={255} showCount placeholder="例如：客户协议价格、临时优惠或特殊加工约定" />
         </Form.Item>
@@ -98,12 +103,29 @@ function PricingPreview({ preview, detail }: { preview: NonNullable<ReturnType<t
 function previewColumns(detail: ProcessOrderDetailVO): ColumnsType<ProcessStepPricingBatchPreviewRow> {
   return [
     { title: '所属母卷', width: 130, render: (_, row) => rollLabel(detail, row.originalUuid) },
-    { title: '工序', width: 90, render: (_, row) => row.stepType === 1 ? '切纸' : '复卷' },
-    { title: '数量', width: 90, align: 'right', render: (_, row) => `${formatNumber(row.quantity, row.stepType === 1 ? 0 : 3)} ${row.stepType === 1 ? '刀' : 't'}` },
-    { title: '单价变化', width: 180, align: 'right', render: (_, row) => <Typography.Text>{formatNumber(row.currentUnitPrice, 4)} → <strong>{formatNumber(row.finalUnitPrice, 4)}</strong></Typography.Text> },
+    { title: '工序', width: 100, render: (_, row) => stepTypeName(row.stepType) },
+    { title: '数量', width: 110, align: 'right', render: (_, row) => quantityLabel(row) },
+    { title: '核价结果', width: 180, align: 'right', render: (_, row) => pricingResult(row) },
     { title: '最终金额', width: 110, align: 'right', render: (_, row) => formatMoney(row.finalAmount) },
     { title: '调整', width: 100, align: 'right', render: (_, row) => formatMoney(row.adjustmentAmount) },
   ]
+}
+
+function stepTypeName(type: number) {
+  return ({ 1: '切纸', 2: '复卷', 3: '剥损整理', 4: '重新包装' } as Record<number, string>)[type] ?? '其他工序'
+}
+
+function quantityLabel(row: ProcessStepPricingBatchPreviewRow) {
+  if (row.billingMode === 3) return '按合计金额'
+  if (row.billingMode === 4) return '免费'
+  const unit = row.stepType === 1 ? '刀' : row.billingBasis === 'PIECE' ? '件' : 't'
+  return `${formatNumber(row.quantity, unit === 't' ? 3 : 0)} ${unit}`
+}
+
+function pricingResult(row: ProcessStepPricingBatchPreviewRow) {
+  if (row.billingMode === 3) return <Typography.Text strong>固定金额</Typography.Text>
+  if (row.billingMode === 4) return <Typography.Text strong>免费</Typography.Text>
+  return <Typography.Text>{formatNumber(row.currentUnitPrice, 4)} → <strong>{formatNumber(row.finalUnitPrice, 4)}</strong></Typography.Text>
 }
 
 function rollLabel(detail: ProcessOrderDetailVO, originalUuid?: string) {

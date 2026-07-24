@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_PAGE_TAB_PATH, createTab, ensurePageTabs } from './pageTabModel'
 
 describe('pageTabModel', () => {
+  it('将旧统计报表标签迁移到经营总览', () => {
+    expect(createTab('/reports')).toMatchObject({ label: '经营总览', path: '/reports/overview' })
+  })
+
   it('空标签恢复到默认页', () => {
     expect(ensurePageTabs([])).toEqual([createTab(DEFAULT_PAGE_TAB_PATH)])
   })

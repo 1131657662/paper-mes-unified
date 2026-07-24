@@ -46,6 +46,9 @@ public class ProcessOrderDetailVO {
         private Integer processMode;
         private Integer mainStepType;
         private Integer rollStatus;
+        private Integer isChecked;
+        private String checkUser;
+        private java.time.LocalDateTime checkTime;
         private String remark;
         private List<ProcessStep> steps;
         private List<StageOutputVO> stageOutputs;

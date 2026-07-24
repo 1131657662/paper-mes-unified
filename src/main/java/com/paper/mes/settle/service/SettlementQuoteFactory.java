@@ -17,14 +17,14 @@ import java.util.Map;
 
 @Component
 public class SettlementQuoteFactory {
-    public static final String VERSION = "settlement-quote-v1";
+    public static final String VERSION = "settlement-quote-v2";
 
     public SettleQuoteVO create(List<ProcessOrder> orders, Integer isInvoice,
                                 SettlementAmountCalculator.Calculation calculation) {
         List<SettleQuoteLineVO> lines = quoteLines(orders, calculation.details());
         String hash = hash(orders, isInvoice, lines);
         return new SettleQuoteVO(VERSION, hash, orders.size(), calculation.pendingPriceCount(), isInvoice,
-                calculation.saw(), calculation.rewind(), calculation.extra(), calculation.noTax(),
+                calculation.saw(), calculation.rewind(), calculation.service(), calculation.extra(), calculation.noTax(),
                 calculation.tax(), calculation.total(), lines);
     }
 
@@ -37,13 +37,14 @@ public class SettlementQuoteFactory {
     private SettleQuoteLineVO quoteLine(ProcessOrder order, SettleDetail detail) {
         BigDecimal saw = money(detail.getSawAmount());
         BigDecimal rewind = money(detail.getRewindAmount());
+        BigDecimal service = money(detail.getServiceAmount());
         BigDecimal standardProcess = money(detail.getStandardProcessAmount());
         BigDecimal pricingAdjustment = money(detail.getPricingAdjustmentAmount());
         BigDecimal extra = money(detail.getExtraAmount());
         BigDecimal noTax = order.getTotalAmountNoTax() == null
-                ? saw.add(rewind).add(extra) : money(order.getTotalAmountNoTax());
+                ? saw.add(rewind).add(service).add(extra) : money(order.getTotalAmountNoTax());
         BigDecimal total = money(detail.getOrderAmount());
-        return new SettleQuoteLineVO(order.getUuid(), saw, rewind, standardProcess, pricingAdjustment,
+        return new SettleQuoteLineVO(order.getUuid(), saw, rewind, service, standardProcess, pricingAdjustment,
                 extra, noTax,
                 total.subtract(noTax).setScale(2, RoundingMode.HALF_UP), total);
     }
@@ -63,6 +64,7 @@ public class SettlementQuoteFactory {
                 .append(':').append(order.getOrderStatus())
                 .append(':').append(money(line.getSawAmount()))
                 .append(':').append(money(line.getRewindAmount()))
+                .append(':').append(money(line.getServiceAmount()))
                 .append(':').append(money(line.getStandardProcessAmount()))
                 .append(':').append(money(line.getPricingAdjustmentAmount()))
                 .append(':').append(money(line.getExtraAmount()))

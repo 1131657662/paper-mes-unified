@@ -9,7 +9,7 @@ import type {
 } from '../types/exportTask'
 import type { DeliveryInventoryFinishQuery } from '../types/deliveryInventory'
 import type { DeliveryQuery } from '../types/delivery'
-import type { ReportQuery } from '../types/report'
+import type { ReportExportRequest } from '../types/report'
 import { downloadFileFromResponse } from '../utils/downloadFile'
 
 export function getExportTaskSummary() {
@@ -36,12 +36,22 @@ export function createSettleExportTask(uuid: string, requestId: string) {
   return request<string>({ url: `/api/export-tasks/settle-orders/${uuid}`, method: 'post', data: { requestId } })
 }
 
-export function createProcessOrderExportTask(uuid: string, requestId: string = crypto.randomUUID()) {
-  return request<string>({ url: `/api/export-tasks/process-orders/${uuid}`, method: 'post', data: { requestId } })
+export function createProcessOrderExportTask(
+  uuid: string, requestId: string = crypto.randomUUID(), customerRevisionNo?: number,
+) {
+  return request<string>({
+    url: `/api/export-tasks/process-orders/${uuid}`, method: 'post',
+    data: { requestId, customerRevisionNo },
+  })
 }
 
-export function createDeliveryOrderExportTask(uuid: string, requestId: string = crypto.randomUUID()) {
-  return request<string>({ url: `/api/export-tasks/delivery-orders/${uuid}`, method: 'post', data: { requestId } })
+export function createDeliveryOrderExportTask(
+  uuid: string, requestId: string = crypto.randomUUID(), customerRevisionNo = 0,
+) {
+  return request<string>({
+    url: `/api/export-tasks/delivery-orders/${uuid}`, method: 'post',
+    data: { requestId, customerRevisionNo },
+  })
 }
 
 export function createDeliveryInventoryExportTask(
@@ -64,10 +74,10 @@ export function createDeliveryReconciliationExportTask(
   })
 }
 
-export function createReportExportTask(query: ReportQuery, requestId = crypto.randomUUID()) {
+export function createReportExportTask(input: ReportExportRequest, requestId = crypto.randomUUID()) {
   return request<string>({
     url: '/api/export-tasks/reports', method: 'post',
-    data: { requestId, query },
+    data: { requestId, query: input.query, reportPath: input.reportPath },
   })
 }
 

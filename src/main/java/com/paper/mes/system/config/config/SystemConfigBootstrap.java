@@ -101,6 +101,7 @@ public class SystemConfigBootstrap implements ApplicationRunner {
     }
 
     private void seedConfigItems() {
+        seedConfig("cfg-auto-finish-config", "process", "process.autoFinishConfig", "成品配置允许自动生成", "false", "boolean", null, 5, "开启后可生成默认成品配置，但提交前仍须人工确认");
         seedConfig("cfg-spare-roll-count", "process", "process.spareRollNoCount", "默认备用卷号数量", "0", "number", "个", 10, "新建加工单提交时默认生成的备用卷号数量");
         seedConfig("cfg-weight-tolerance", "process", "process.weightTolerancePercent", "回录重量警告阈值", "3", "number", "%", 20, "超过该阈值进入 WARN，需要填写原因");
         seedConfig("cfg-weight-block-tolerance", "process", "process.weightBlockTolerancePercent", "回录重量拦截阈值", "5", "number", "%", 30, "超过该阈值进入 BLOCK，需要授权放行");

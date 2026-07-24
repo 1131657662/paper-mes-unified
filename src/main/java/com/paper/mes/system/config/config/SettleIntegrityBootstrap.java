@@ -26,6 +26,7 @@ public class SettleIntegrityBootstrap implements ApplicationRunner {
     private static final String STANDARD_PROCESS_COLUMN = "standard_process_amount";
     private static final String PRICING_ADJUSTMENT_COLUMN = "pricing_adjustment_amount";
     private static final String PRICING_REASON_COLUMN = "pricing_adjustment_reason";
+    private static final String SERVICE_AMOUNT_COLUMN = "service_amount";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -38,6 +39,7 @@ public class SettleIntegrityBootstrap implements ApplicationRunner {
         addActiveOrderColumn();
         addActiveOrderIndex();
         addPricingSnapshotColumns();
+        addServiceAmountColumns();
         backfillDueDates();
         addDueDateIndex();
     }
@@ -141,6 +143,13 @@ public class SettleIntegrityBootstrap implements ApplicationRunner {
                 "DECIMAL(12,2) DEFAULT 0.00 COMMENT '最终加工费减标准加工费' AFTER `standard_process_amount`");
         addColumn(DETAIL_TABLE, PRICING_REASON_COLUMN,
                 "VARCHAR(255) DEFAULT NULL COMMENT '计价调整原因' AFTER `pricing_adjustment_amount`");
+    }
+
+    private void addServiceAmountColumns() {
+        addColumn(ORDER_TABLE, SERVICE_AMOUNT_COLUMN,
+                "DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '整理包装等服务工序费' AFTER `rewind_amount`");
+        addColumn(DETAIL_TABLE, SERVICE_AMOUNT_COLUMN,
+                "DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '本单服务工序费' AFTER `rewind_amount`");
     }
 
     private void addColumn(String tableName, String columnName, String definition) {

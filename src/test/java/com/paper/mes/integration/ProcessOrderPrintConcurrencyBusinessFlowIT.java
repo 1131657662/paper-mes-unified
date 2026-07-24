@@ -38,8 +38,28 @@ class ProcessOrderPrintConcurrencyBusinessFlowIT {
     }
 
     @Test
-    void firstPrint_whenSubmittedConcurrently_issuesExactlyOnce() throws Exception {
+    void issue_whenSubmittedConcurrently_issuesExactlyOnceWithoutPrinting() throws Exception {
         String orderUuid = scenario.order().getUuid();
+
+        var outcomes = ConcurrentBusinessActions.<PrintResultVO>runPair(
+                () -> processOrderService.issue(orderUuid),
+                () -> processOrderService.issue(orderUuid));
+
+        assertThat(outcomes).filteredOn(ConcurrentBusinessActions.Outcome::succeeded).hasSize(1);
+        assertThat(outcomes).filteredOn(outcome -> !outcome.succeeded())
+                .extracting(ConcurrentBusinessActions.Outcome::error)
+                .allMatch(BusinessException.class::isInstance);
+        var stored = processOrderMapper.selectById(orderUuid);
+        assertThat(stored.getOrderStatus()).isEqualTo(2);
+        assertThat(stored.getPrintCount()).isEqualTo(0);
+        assertThat(stored.getPrintStatus()).isEqualTo(0);
+        assertThat(stored.getSnapPrint()).contains("\"print_count\": 0");
+    }
+
+    @Test
+    void print_whenSubmittedConcurrentlyAfterIssue_recordsOnePhysicalPrint() throws Exception {
+        String orderUuid = scenario.order().getUuid();
+        processOrderService.issue(orderUuid);
 
         var outcomes = ConcurrentBusinessActions.<PrintResultVO>runPair(
                 () -> processOrderService.print(orderUuid, new PrintDTO()),
@@ -52,6 +72,7 @@ class ProcessOrderPrintConcurrencyBusinessFlowIT {
         var stored = processOrderMapper.selectById(orderUuid);
         assertThat(stored.getOrderStatus()).isEqualTo(2);
         assertThat(stored.getPrintCount()).isEqualTo(1);
-        assertThat(stored.getSnapPrint()).contains("\"print_count\": 1");
+        assertThat(stored.getPrintStatus()).isEqualTo(1);
+        assertThat(stored.getSnapPrint()).contains("\"print_count\": 0");
     }
 }

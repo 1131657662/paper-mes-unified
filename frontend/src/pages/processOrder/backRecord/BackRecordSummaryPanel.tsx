@@ -23,6 +23,7 @@ export default function BackRecordSummaryPanel({ detail, values }: Props) {
         <Metric label="工序损耗" value={formatKg(metrics.lossTotal)} />
         <Metric label="报废重量" value={formatKg(metrics.scrapTotal)} />
         <Metric label="直发卷" value={`${metrics.directShipCount} 卷`} />
+        {metrics.serviceOnlyCount > 0 && <Metric label="整理卷" value={`${metrics.serviceOnlyCount} 卷`} />}
         <StatusTag missingCount={missingCount} />
       </div>
       {missingCount > 0 && (

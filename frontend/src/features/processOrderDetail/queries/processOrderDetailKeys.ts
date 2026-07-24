@@ -1,5 +1,5 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
-import { getProcessOrder, getProcessOrderPrintView } from '../../../api/processOrder'
+import { getProcessOrder, getProcessOrderPrintView, getSnapshotDiff } from '../../../api/processOrder'
 import type { PrintViewVersion } from '../../../types/processOrder'
 
 export const processOrderDetailKeys = createQueryKeys('processOrderDetail', {
@@ -10,5 +10,9 @@ export const processOrderDetailKeys = createQueryKeys('processOrderDetail', {
   printView: (uuid: string, version: PrintViewVersion) => ({
     queryKey: [uuid, version],
     queryFn: () => getProcessOrderPrintView(uuid, version),
+  }),
+  snapshotDiff: (uuid: string) => ({
+    queryKey: [uuid],
+    queryFn: () => getSnapshotDiff(uuid),
   }),
 })

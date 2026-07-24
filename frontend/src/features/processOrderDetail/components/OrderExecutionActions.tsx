@@ -62,7 +62,7 @@ function PrimaryAction({ actions, capabilities, hasPrinted, loading, status }: P
   if (status === 3 && !capabilities.canBackRecord) return null
   if (status === 4 && !capabilities.canManageDelivery && !capabilities.canManageSettlement) return null
   if (status === 0) return <Button type="primary" onClick={actions.onEditDraft}>继续编辑草稿</Button>
-  if (status === 1) return <Button type="primary" icon={<PrinterOutlined />} onClick={actions.onPrint}>{hasPrinted ? '打印预览' : '打印预览并下发'}</Button>
+  if (status === 1) return <Button type="primary" icon={<PrinterOutlined />} onClick={actions.onPrint}>{hasPrinted ? '打印预览' : '下发并打印'}</Button>
   if (status === 2) return <Button type="primary" icon={<SendOutlined />} loading={loading.changingStatus} onClick={() => actions.onChangeStatus(3, '确认车间已完成加工，转入待回录？')}>转待回录</Button>
   if (status === 3) return <Button type="primary" icon={<FileDoneOutlined />} onClick={actions.onBackRecord}>进入回录工作台</Button>
   if (status === 4) return <CompletedActions actions={actions} capabilities={capabilities} />
@@ -78,11 +78,11 @@ function CompletedActions({ actions, capabilities }: Pick<Props, 'actions' | 'ca
   )
 }
 
-function SecondaryActions({ actions, capabilities, loading, status }: Props) {
+function SecondaryActions({ actions, capabilities, hasPrinted, loading, status }: Props) {
   const moreItems = buildMoreItems(status, actions, capabilities)
   return (
     <Space wrap size={[8, 8]}>
-      {status >= 2 && status <= 5 && capabilities.canManageOrder && <Button icon={<PrinterOutlined />} onClick={actions.onPrint}>打印预览</Button>}
+      {status >= 2 && status <= 5 && capabilities.canManageOrder && <Button icon={<PrinterOutlined />} onClick={actions.onPrint}>{status === 2 && !hasPrinted ? '完成打印' : '打印预览'}</Button>}
       {capabilities.canManageOrder && status >= 1 && status <= 3 && <Button onClick={actions.onManageRolls}>管理成品号</Button>}
       {capabilities.canManageOrder && status >= 2 && status <= 4 && <Button icon={<CalculatorOutlined />} loading={loading.calculatingFee} onClick={actions.onCalcFee}>重算计费</Button>}
       {(status === 4 || status === 5) && <Button icon={<DiffOutlined />} onClick={actions.onSnapshotDiff}>快照差异</Button>}

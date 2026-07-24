@@ -125,6 +125,17 @@ function PlanColumn({ row, trimWidth, trimWeight }: Props & { trimWidth: number;
     )
   }
 
+  if (production.processMode === 4) {
+    return (
+      <div>
+        <PlanHead label="仅附加工艺" color="cyan" />
+        <div className="production-roll__line">不锯纸、不复卷，品名 / 克重 / 门幅沿用母卷</div>
+        <div className="production-roll__line">完工后逐件回录成品实重与服务损耗</div>
+        <AdditionalSteps row={row} />
+      </div>
+    )
+  }
+
   return (
     <div>
       <PlanHead label={(isRewind ? rewindModeLabel(production) : '锯纸') ?? '复卷'} color={isRewind ? 'blue' : 'green'} />

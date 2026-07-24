@@ -3,6 +3,7 @@ package com.paper.mes.performance;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.report.dto.ReportQuery;
+import com.paper.mes.report.dto.ReportDetailQuery;
 import com.paper.mes.report.service.ReportService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,10 +65,10 @@ class ProductionScalePerformanceIT {
     @Test
     void reportDetails_withOneHundredThousandRows_meetsDisplayBaseline() {
         long started = System.nanoTime();
-        var result = reportService.detailRows(reportQuery());
+        ReportDetailQuery query = reportDetailQuery();
+        var result = reportService.detailRows(query);
         assertThat(result.getTotal()).isEqualTo(100_000L);
-        assertThat(result.getRows()).hasSize(1_000);
-        assertThat(result.isTruncated()).isTrue();
+        assertThat(result.getRecords()).hasSize(100);
         assertThat(elapsedMs(started)).isLessThan(10_000L);
     }
 
@@ -119,6 +120,14 @@ class ProductionScalePerformanceIT {
         ReportQuery query = new ReportQuery();
         query.setCustomerUuid(PERF_CUSTOMER_UUID);
         query.setDimension("month");
+        return query;
+    }
+
+    private ReportDetailQuery reportDetailQuery() {
+        ReportDetailQuery query = new ReportDetailQuery();
+        query.setCustomerUuid(PERF_CUSTOMER_UUID);
+        query.setDimension("month");
+        query.setSize(100);
         return query;
     }
 

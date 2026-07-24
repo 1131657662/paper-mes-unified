@@ -3,6 +3,12 @@ export function formatNumber(value?: number | null, digits = 0): string {
   return Number.isFinite(numeric) ? numeric.toFixed(digits) : Number(0).toFixed(digits)
 }
 
+export function formatFixedNumberInput(value: string | number | undefined, digits = 0): string {
+  if (value == null || value === '') return ''
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric.toFixed(Math.max(0, digits)) : String(value)
+}
+
 export function formatOptionalNumber(value?: number | null, digits = 0): string {
   if (value == null) return '-'
   return formatNumber(value, digits)
@@ -32,6 +38,10 @@ export function formatOptionalMoney(value?: number | null): string {
 
 export function formatKg(value?: number | null): string {
   return `${formatTrimmedNumber(value ?? 0, 3)} kg`
+}
+
+export function formatWholeKg(value?: number | null): string {
+  return `${formatNumber(value, 0)} kg`
 }
 
 export function formatKgWithMaxDecimals(value?: number | null, maxDigits = 3): string {

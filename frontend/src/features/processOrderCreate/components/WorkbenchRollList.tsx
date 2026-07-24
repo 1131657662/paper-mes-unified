@@ -15,6 +15,7 @@ export interface WorkbenchRollListData {
   previews: Record<string, PlanPreviewVO>
   rolls: RollDraft[]
   routePreviews?: Record<string, ProcessRoutePreviewVO>
+  serviceConfigured?: Record<string, boolean>
 }
 
 export interface WorkbenchRollListSelection {
@@ -25,6 +26,7 @@ export interface WorkbenchRollListSelection {
 export interface WorkbenchRollListActions extends WorkbenchRollItemActions {
   onClearSelection: () => void
   onSelectSameSpec: () => void
+  selectAllLabel?: string
 }
 
 interface Props {
@@ -44,6 +46,7 @@ export default function WorkbenchRollList({ actions, data, selection }: Props) {
         preference={preference}
         onClearSelection={actions.onClearSelection}
         onSelectSameSpec={actions.onSelectSameSpec}
+        selectAllLabel={actions.selectAllLabel}
         onSortChange={setPreference}
       />
       <List
@@ -60,7 +63,12 @@ export default function WorkbenchRollList({ actions, data, selection }: Props) {
                 index: originalIndex,
                 lock,
                 machines: data.machines,
-                previewStatus: rollPreviewStatus({ roll, preview: data.previews[roll.localId], lock }),
+                previewStatus: rollPreviewStatus({
+                  roll,
+                  preview: data.previews[roll.localId],
+                  lock,
+                  serviceConfigured: Boolean(roll.uuid && data.serviceConfigured?.[roll.uuid]),
+                }),
                 roll,
                 routePreview: roll.uuid ? routePreviews[roll.uuid] : undefined,
                 selected: selection.selectedId === roll.localId,

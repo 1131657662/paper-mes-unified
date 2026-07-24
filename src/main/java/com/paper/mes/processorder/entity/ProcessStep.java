@@ -39,6 +39,9 @@ public class ProcessStep extends BaseEntity {
     private Integer knifeCount;
     /** 复卷专用：加工吨位 */
     private BigDecimal processWeight;
+    /** TON=按吨，PIECE=按件；固定金额和免费由 billingMode 控制。 */
+    private String billingBasis;
+    private BigDecimal serviceQuantity;
     /** 客户档案/加工单解析得到的标准单价快照。 */
     private BigDecimal unitPrice;
     /** 人工核定单价；为空时沿用标准单价。 */
@@ -60,6 +63,9 @@ public class ProcessStep extends BaseEntity {
     private String pricingAdjustedBy;
     private java.time.LocalDateTime pricingAdjustedAt;
     private String pricingAdjustmentBatchId;
+    private String widthDifferencePolicy;
+    private Integer plannedLossWidth;
+    private BigDecimal plannedLossWeight;
     private BigDecimal lossWeight;
     private String operator;
     private String remark;

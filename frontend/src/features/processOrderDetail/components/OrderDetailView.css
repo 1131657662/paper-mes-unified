@@ -349,6 +349,12 @@
   width: 100%;
 }
 
+.process-route-config__reference-loading {
+  display: grid;
+  min-height: 240px;
+  place-items: center;
+}
+
 .process-route-config__select {
   width: 320px;
   max-width: 100%;
@@ -692,4 +698,7 @@
   .process-route-source-picker__tools {
     justify-content: flex-start;
   }
+}
+.order-detail-action-slot {
+  display: inline-flex;
 }

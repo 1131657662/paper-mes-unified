@@ -30,6 +30,7 @@ export default function DownloadTaskHistory({ enabled, handlers, unacknowledgedC
       onKeywordChange={(keyword) => dispatch({ type: 'keyword', keyword })}
       onStatusChange={(taskStatus) => dispatch({ type: 'status', taskStatus })}
       onModuleChange={(moduleCode) => dispatch({ type: 'module', moduleCode })}
+      onOperationChange={(operationCode) => dispatch({ type: 'operation', operationCode })}
       onAttentionChange={(attentionOnly) => dispatch({ type: 'attention', attentionOnly })} />
     <DownloadTaskHistoryResults history={history} handlers={handlers} isFetching={isFetching} query={query}
       onPageChange={(current, size) => dispatch({ type: 'page', current, size })} />

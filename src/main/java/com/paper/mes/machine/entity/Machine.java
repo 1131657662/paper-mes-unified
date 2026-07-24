@@ -22,6 +22,8 @@ public class Machine extends BaseEntity {
     private String machineName;
     /** 机台类型 1锯纸 2复卷 3通用 */
     private Integer machineType;
+    /** MACHINE设备 WORKSTATION工位 */
+    private String resourceKind;
     /** 1启用 2停用 */
     private Integer status;
     private String remark;

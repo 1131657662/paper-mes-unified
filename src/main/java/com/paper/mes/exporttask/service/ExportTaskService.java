@@ -57,6 +57,8 @@ public class ExportTaskService {
                 .eq(filter.getTaskStatus() != null, ExportTask::getTaskStatus, filter.getTaskStatus())
                 .eq(filter.getModuleCode() != null && !filter.getModuleCode().isBlank(),
                         ExportTask::getModuleCode, filter.getModuleCode())
+                .eq(filter.getOperationCode() != null && !filter.getOperationCode().isBlank(),
+                        ExportTask::getOperationCode, filter.getOperationCode())
                 .and(keyword != null, condition -> condition.like(ExportTask::getTaskName, keyword)
                         .or().like(ExportTask::getFileName, keyword))
                 .isNull(ExportTask::getAcknowledgedAt)

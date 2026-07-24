@@ -19,7 +19,8 @@ final class BackRecordFinishRules {
 
     static boolean requiresRecord(FinishRoll finish) {
         return !Integer.valueOf(SOURCE_DIRECT_SHIP).equals(finish.getSourceType())
-                && !Integer.valueOf(VOID).equals(finish.getRollNoStatus());
+                && !Integer.valueOf(VOID).equals(finish.getRollNoStatus())
+                && !FinishRollStatusPolicy.isScrapped(finish);
     }
 
     static boolean unusedSpare(FinishRoll finish, BackRecordFinishDTO dto) {

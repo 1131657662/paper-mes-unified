@@ -3,10 +3,15 @@ package com.paper.mes.system.config.service;
 import com.paper.mes.customer.dto.CustomerSaveDTO;
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.mapper.CustomerMapper;
+import com.paper.mes.customer.service.CustomerProcessPriceReader;
+import com.paper.mes.customer.service.CustomerProcessPriceWriter;
 import com.paper.mes.customer.service.impl.CustomerServiceImpl;
 import com.paper.mes.machine.dto.MachineSaveDTO;
+import com.paper.mes.machine.dto.MachineCapabilitySaveDTO;
 import com.paper.mes.machine.entity.Machine;
 import com.paper.mes.machine.mapper.MachineMapper;
+import com.paper.mes.machine.service.MachineCapabilityReader;
+import com.paper.mes.machine.service.MachineCapabilityWriter;
 import com.paper.mes.machine.service.impl.MachineServiceImpl;
 import com.paper.mes.paper.dto.PaperSaveDTO;
 import com.paper.mes.paper.entity.Paper;
@@ -22,6 +27,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,7 +43,7 @@ class ArchiveAutoCodeServiceTest {
         DocumentNoService noService = mockNoService(NoRuleBizType.CUSTOMER, "KH000123");
         CustomerMapper mapper = mock(CustomerMapper.class);
         when(mapper.insert(any(Customer.class))).thenReturn(1);
-        CustomerServiceImpl service = new CustomerServiceImpl(noService);
+        CustomerServiceImpl service = customerService(noService);
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
         CustomerSaveDTO dto = new CustomerSaveDTO();
         dto.setCustomerCode("MANUAL");
@@ -73,7 +79,7 @@ class ArchiveAutoCodeServiceTest {
         DocumentNoService noService = mockNoService(NoRuleBizType.MACHINE, "JT000123");
         MachineMapper mapper = mock(MachineMapper.class);
         when(mapper.insert(any(Machine.class))).thenReturn(1);
-        MachineServiceImpl service = new MachineServiceImpl(noService);
+        MachineServiceImpl service = machineService(noService);
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
         MachineSaveDTO dto = new MachineSaveDTO();
         dto.setMachineCode("MANUAL");
@@ -109,7 +115,7 @@ class ArchiveAutoCodeServiceTest {
         CustomerMapper mapper = mock(CustomerMapper.class);
         when(mapper.selectById("customer-1")).thenReturn(customer("customer-1", "KH000123"));
         when(mapper.updateById(any(Customer.class))).thenReturn(1);
-        CustomerServiceImpl service = new CustomerServiceImpl(mock(DocumentNoService.class));
+        CustomerServiceImpl service = customerService(mock(DocumentNoService.class));
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
         CustomerSaveDTO dto = new CustomerSaveDTO();
         dto.setCustomerCode("MANUAL");
@@ -145,7 +151,7 @@ class ArchiveAutoCodeServiceTest {
         MachineMapper mapper = mock(MachineMapper.class);
         when(mapper.selectById("machine-1")).thenReturn(machine("machine-1", "JT000123"));
         when(mapper.updateById(any(Machine.class))).thenReturn(1);
-        MachineServiceImpl service = new MachineServiceImpl(mock(DocumentNoService.class));
+        MachineServiceImpl service = machineService(mock(DocumentNoService.class));
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
         MachineSaveDTO dto = new MachineSaveDTO();
         dto.setMachineCode("MANUAL");
@@ -180,6 +186,20 @@ class ArchiveAutoCodeServiceTest {
         DocumentNoService noService = mock(DocumentNoService.class);
         when(noService.next(eq(bizType), any(LocalDate.class))).thenReturn(code);
         return noService;
+    }
+
+    private MachineServiceImpl machineService(DocumentNoService noService) {
+        MachineCapabilityWriter writer = mock(MachineCapabilityWriter.class);
+        MachineCapabilitySaveDTO capability = new MachineCapabilitySaveDTO();
+        capability.setCatalogUuid("saw");
+        when(writer.normalize(any(), any())).thenReturn(List.of(capability));
+        when(writer.legacyType(any())).thenReturn(1);
+        return new MachineServiceImpl(noService, mock(MachineCapabilityReader.class), writer);
+    }
+
+    private CustomerServiceImpl customerService(DocumentNoService noService) {
+        return new CustomerServiceImpl(noService, mock(CustomerProcessPriceReader.class),
+                mock(CustomerProcessPriceWriter.class));
     }
 
     private Customer customer(String uuid, String code) {

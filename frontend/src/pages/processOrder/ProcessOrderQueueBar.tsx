@@ -1,3 +1,5 @@
+import { Segmented } from 'antd'
+
 interface QueueOption {
   label: string
   value: QueueStatus
@@ -25,16 +27,12 @@ export default function ProcessOrderQueueBar({ value, onChange }: Props) {
   return (
     <div className="process-order-queue">
       <div className="process-order-queue__tabs">
-        {queueOptions.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={option.value === value ? 'is-active' : undefined}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
+        <Segmented<QueueStatus>
+          aria-label="加工单状态筛选"
+          options={queueOptions}
+          value={value}
+          onChange={onChange}
+        />
       </div>
     </div>
   )

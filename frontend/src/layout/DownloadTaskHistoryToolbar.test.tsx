@@ -49,7 +49,8 @@ function renderToolbar(
         asOf: snapshotAt, current: snapshotCurrent, unacknowledgedCount: 3,
       } : undefined}
         onAttentionChange={() => undefined} onKeywordChange={() => undefined}
-        onModuleChange={() => undefined} onStatusChange={() => undefined} />
+        onModuleChange={() => undefined} onOperationChange={() => undefined}
+        onStatusChange={() => undefined} />
     </QueryClientProvider>,
   )
 }

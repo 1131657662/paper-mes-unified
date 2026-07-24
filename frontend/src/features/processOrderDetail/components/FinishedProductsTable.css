@@ -26,6 +26,28 @@
   border-radius: var(--mes-radius-sm);
 }
 
+.physical-specification-detail-view,
+.physical-specification-detail-view > section {
+  display: flex;
+  flex-direction: column;
+}
+
+.physical-specification-detail-view {
+  gap: 16px;
+}
+
+.physical-specification-detail-view > section {
+  gap: 8px;
+}
+
+.physical-specification-detail-view h3 {
+  margin: 0;
+  color: var(--mes-color-text);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 22px;
+}
+
 .finished-product-cell,
 .finished-product-sources,
 .finished-product-sources > div {

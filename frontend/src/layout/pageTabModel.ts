@@ -35,6 +35,7 @@ export function normalizePageTabPath(pathname: string) {
   const cleanedPath = pathOnly.trim()
   const withoutTrailingSlash = cleanedPath.length > 1 ? cleanedPath.replace(/\/+$/, '') : cleanedPath
   if (!withoutTrailingSlash || withoutTrailingSlash === '/') return DEFAULT_PAGE_TAB_PATH
+  if (withoutTrailingSlash === '/reports') return '/reports/overview'
   return withoutTrailingSlash
 }
 

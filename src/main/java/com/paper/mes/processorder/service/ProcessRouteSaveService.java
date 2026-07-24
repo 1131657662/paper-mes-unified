@@ -3,6 +3,7 @@ package com.paper.mes.processorder.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ErrorCode;
+import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.OriginalRoll;
@@ -12,6 +13,8 @@ import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -26,6 +29,7 @@ public class ProcessRouteSaveService {
     private final ProcessRoutePersistenceService persistenceService;
     private final ProcessOrderService processOrderService;
     private final ProcessRoutePriceResolver priceResolver;
+    private final BusinessLockService businessLockService;
 
     public ProcessRoutePreviewVO preview(String orderUuid, ProcessRoutePreviewDTO dto) {
         ProcessRouteContext context = loadContext(orderUuid, dto.getOriginalUuid());
@@ -35,6 +39,7 @@ public class ProcessRouteSaveService {
 
     @Transactional(rollbackFor = Exception.class)
     public ProcessRoutePreviewVO save(String orderUuid, ProcessRoutePreviewDTO dto) {
+        businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessRouteContext context = loadContext(orderUuid, dto.getOriginalUuid());
         priceResolver.applyDefaultPrices(context.order(), dto);
         ProcessRoutePreviewVO preview = routePreviewer.preview(context.roll(), dto);
