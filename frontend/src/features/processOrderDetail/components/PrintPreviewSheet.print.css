@@ -20,7 +20,7 @@
     overflow: visible !important;
   }
 
-  body > *:not(.print-issue-print-root) {
+  body:has(> .print-issue-print-root) > *:not(.print-issue-print-root) {
     display: none !important;
   }
 
