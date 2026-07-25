@@ -1,4 +1,4 @@
-.settle-create-page {
+.document-module-page.settle-create-page {
   display: grid;
   height: max(600px, calc(100vh - 126px));
   min-height: 0;
@@ -7,7 +7,7 @@
 }
 
 @supports (height: 100dvh) {
-  .settle-create-page {
+  .document-module-page.settle-create-page {
     height: max(600px, calc(100dvh - 126px));
   }
 }
@@ -120,7 +120,7 @@
 }
 
 @media (max-width: 860px) {
-  .settle-create-page {
+  .document-module-page.settle-create-page {
     grid-template-rows: auto auto minmax(280px, 1fr) auto;
     overflow: visible;
   }
