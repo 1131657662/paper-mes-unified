@@ -5,6 +5,7 @@ import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.mapper.CustomerMapper;
 import com.paper.mes.customer.service.CustomerProcessPriceReader;
 import com.paper.mes.customer.service.CustomerProcessPriceWriter;
+import com.paper.mes.customer.service.CustomerBusinessReferenceGuard;
 import com.paper.mes.customer.service.impl.CustomerServiceImpl;
 import com.paper.mes.machine.dto.MachineSaveDTO;
 import com.paper.mes.machine.dto.MachineCapabilitySaveDTO;
@@ -22,6 +23,7 @@ import com.paper.mes.warehouse.dto.WarehouseSaveDTO;
 import com.paper.mes.warehouse.entity.Warehouse;
 import com.paper.mes.warehouse.mapper.WarehouseMapper;
 import com.paper.mes.warehouse.service.impl.WarehouseServiceImpl;
+import com.paper.mes.warehouse.service.WarehouseInventoryGuard;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -97,7 +99,7 @@ class ArchiveAutoCodeServiceTest {
         DocumentNoService noService = mockNoService(NoRuleBizType.WAREHOUSE, "CKD000123");
         WarehouseMapper mapper = mock(WarehouseMapper.class);
         when(mapper.insert(any(Warehouse.class))).thenReturn(1);
-        WarehouseServiceImpl service = new WarehouseServiceImpl(noService);
+        WarehouseServiceImpl service = new WarehouseServiceImpl(noService, mock(WarehouseInventoryGuard.class));
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
         WarehouseSaveDTO dto = new WarehouseSaveDTO();
         dto.setWarehouseCode("MANUAL");
@@ -169,7 +171,8 @@ class ArchiveAutoCodeServiceTest {
         WarehouseMapper mapper = mock(WarehouseMapper.class);
         when(mapper.selectById("warehouse-1")).thenReturn(warehouse("warehouse-1", "CKD000123"));
         when(mapper.updateById(any(Warehouse.class))).thenReturn(1);
-        WarehouseServiceImpl service = new WarehouseServiceImpl(mock(DocumentNoService.class));
+        WarehouseServiceImpl service = new WarehouseServiceImpl(mock(DocumentNoService.class),
+                mock(WarehouseInventoryGuard.class));
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
         WarehouseSaveDTO dto = new WarehouseSaveDTO();
         dto.setWarehouseCode("MANUAL");
@@ -198,7 +201,8 @@ class ArchiveAutoCodeServiceTest {
     }
 
     private CustomerServiceImpl customerService(DocumentNoService noService) {
-        return new CustomerServiceImpl(noService, mock(CustomerProcessPriceReader.class),
+        return new CustomerServiceImpl(noService, mock(CustomerBusinessReferenceGuard.class),
+                mock(CustomerProcessPriceReader.class),
                 mock(CustomerProcessPriceWriter.class));
     }
 

@@ -10,14 +10,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DashboardMapperSqlContractTest {
 
     @Test
-    void monthlyTrendGroupsCompletedOrdersByBackRecordTime() throws IOException {
+    void monthlyTrendGroupsCompletedOrdersByAccountingDate() throws IOException {
         String sql = monthlyTrendSql();
 
-        assertTrue(sql.contains("DATE_FORMAT(COALESCE(o.back_record_time, o.order_date), '%Y-%m') AS month"));
-        assertTrue(sql.contains("o.back_record_time &gt;= #{monthStart}"));
-        assertTrue(sql.contains("o.back_record_time &lt; DATE_ADD(#{today}, INTERVAL 1 DAY)"));
-        assertTrue(sql.contains("o.back_record_time IS NULL"));
-        assertTrue(sql.contains("o.order_date &gt;= #{monthStart}"));
+        assertTrue(sql.contains("DATE_FORMAT(o.accounting_date, '%Y-%m') AS month"));
+        assertTrue(sql.contains("o.accounting_date &gt;= #{monthStart}"));
+        assertTrue(sql.contains("o.accounting_date &lt;= #{today}"));
+    }
+
+    @Test
+    void metricsUsesRemainingInventoryWeightAndAccountingDate() throws IOException {
+        String xml = resourceText("mapper/dashboard/DashboardMapper.xml");
+        int start = xml.indexOf("<select id=\"metrics\"");
+        int end = xml.indexOf("</select>", start);
+        String sql = xml.substring(start, end).replaceAll("\\s+", " ").trim();
+
+        assertTrue(sql.contains("COALESCE(f.remaining_weight, f.actual_weight, f.estimate_weight, 0)"));
+        assertTrue(sql.contains("o.accounting_date &gt;= #{monthStart}"));
     }
 
     private String monthlyTrendSql() throws IOException {

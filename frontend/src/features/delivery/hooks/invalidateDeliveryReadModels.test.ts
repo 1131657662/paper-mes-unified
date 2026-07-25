@@ -19,12 +19,14 @@ describe('出库写入后的跨模块缓存失效', () => {
 
 function deliveryDependentKeys() {
   return [
+    queries.dashboard.overview.queryKey,
     queries.delivery.detail('delivery-1').queryKey,
     queries.delivery.inventorySummary({}).queryKey,
     queries.deliveryCustomerSpec.current('delivery-1').queryKey,
     queries.processOrderDetail.detail('order-1').queryKey,
     queries.processOrderDetail.printView('order-1', 'FINISHED').queryKey,
     queries.processOrderDetail.snapshotDiff('order-1').queryKey,
+    queries.report.overview({}).queryKey,
     queries.settle.candidates({ current: 1, size: 20 }).queryKey,
     queries.settle.quoteByOrders({ orderUuids: ['order-1'] }).queryKey,
     queries.settle.quoteByMonth({

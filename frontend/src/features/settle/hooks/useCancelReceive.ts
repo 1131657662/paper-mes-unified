@@ -1,19 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { queries } from '../../../queries'
 import { settleService } from '../services/settleService'
+import { invalidateSettleFinancialChange } from '../queries/invalidateSettleFinancialChange'
 
 export function useCancelReceive() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: settleService.cancelReceive,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: queries.settle.detail(variables.uuid).queryKey })
-      queryClient.invalidateQueries({ queryKey: queries.settle.detailHeader(variables.uuid).queryKey })
-      queryClient.invalidateQueries({ queryKey: queries.settle.receives(variables.uuid).queryKey })
-      queryClient.invalidateQueries({ queryKey: queries.settle.list._def })
-      queryClient.invalidateQueries({ queryKey: queries.settle.summary._def })
-      queryClient.invalidateQueries({ queryKey: queries.settle.collectionSummary._def })
-    },
+    onSuccess: (_, variables) => invalidateSettleFinancialChange(queryClient, variables.uuid),
   })
 }

@@ -20,6 +20,8 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -40,17 +42,22 @@ public class ReportQueryCoordinator {
     }
 
     public ReportQueryExecutionMetaVO prepare(ReportQuery query) {
+        return prepare(query, Set.of());
+    }
+
+    public ReportQueryExecutionMetaVO prepare(ReportQuery query, Set<String> requiredMetrics) {
+        Set<String> required = requiredMetrics == null ? Set.of() : Set.copyOf(requiredMetrics);
         ReportMetricReleaseDetailVO release = resolveRelease(query);
-        validateRelease(release);
+        validateRelease(release, required);
         LocalDateTime watermark = jdbcTemplate.queryForObject("SELECT CURRENT_TIMESTAMP", LocalDateTime.class);
         if (watermark == null) throw new BusinessException("无法读取报表数据时点");
-        return new ReportQueryExecutionMetaVO(UUID.randomUUID().toString(), hash(query, release),
+        return new ReportQueryExecutionMetaVO(UUID.randomUUID().toString(), hash(query, release, required),
                 release.release().releaseUuid(), versionMap(release.metrics()), watermark, watermark,
                 "LIVE_DB_READ", "LIVE_ONLY", warnings(release), sectionStatuses());
     }
 
     public void requireExecutable(ReportQuery query) {
-        validateRelease(resolveRelease(query));
+        validateRelease(resolveRelease(query), Set.of());
     }
 
     private ReportMetricReleaseDetailVO resolveRelease(ReportQuery query) {
@@ -68,12 +75,27 @@ public class ReportQueryCoordinator {
         return loaded;
     }
 
-    private void validateRelease(ReportMetricReleaseDetailVO release) {
+    private void validateRelease(ReportMetricReleaseDetailVO release, Set<String> requiredMetrics) {
         if (release.release().releaseStatus() == 1) {
             throw new BusinessException("指标发布包尚未发布，不能用于报表查询");
         }
         if (release.metrics().isEmpty()) throw new BusinessException("指标发布包不包含可执行指标");
         liveMetricRegistry.requireExecutable(release.metrics());
+        requireMetrics(release.metrics(), requiredMetrics);
+    }
+
+    private void requireMetrics(List<ReportMetricVersionAuditVO> metrics, Set<String> requiredMetrics) {
+        if (requiredMetrics == null || requiredMetrics.isEmpty()) {
+            return;
+        }
+        Set<String> actual = metrics.stream()
+                .map(ReportMetricVersionAuditVO::metricCode)
+                .collect(java.util.stream.Collectors.toSet());
+        Set<String> missing = new TreeSet<>(requiredMetrics);
+        missing.removeAll(actual);
+        if (!missing.isEmpty()) {
+            throw new BusinessException("指标发布包缺少当前报表所需指标: " + String.join(", ", missing));
+        }
     }
 
     private Map<String, String> versionMap(List<ReportMetricVersionAuditVO> metrics) {
@@ -97,7 +119,7 @@ public class ReportQueryCoordinator {
         return Map.of("overview", "READY", "dimensions", "READY", "details", "READY");
     }
 
-    private String hash(ReportQuery query, ReportMetricReleaseDetailVO release) {
+    private String hash(ReportQuery query, ReportMetricReleaseDetailVO release, Set<String> requiredMetrics) {
         String value = String.join("|", release.release().releaseUuid(),
                 value(query == null ? null : query.getDateFrom()), value(query == null ? null : query.getDateTo()),
                 value(query == null ? null : query.getCustomerUuid()), value(query == null ? null : query.getPaperName()),
@@ -105,7 +127,8 @@ public class ReportQueryCoordinator {
                 value(query == null ? null : query.getProcessMode()),
                 value(query == null ? null : query.getMachineUuid()), value(query == null ? null : query.getSettleType()),
                 value(query == null ? null : query.getIsInvoice()), value(query == null ? null : query.getOrderStatus()),
-                value(query == null ? null : query.getDimension()));
+                value(query == null ? null : query.getDimension()),
+                String.join(",", new TreeSet<>(requiredMetrics == null ? Set.of() : requiredMetrics)));
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(value.getBytes(StandardCharsets.UTF_8)));

@@ -13,6 +13,7 @@ import com.paper.mes.warehouse.dto.WarehouseSaveDTO;
 import com.paper.mes.warehouse.entity.Warehouse;
 import com.paper.mes.warehouse.mapper.WarehouseMapper;
 import com.paper.mes.warehouse.service.WarehouseService;
+import com.paper.mes.warehouse.service.WarehouseInventoryGuard;
 import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.service.DocumentNoService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
     private static final int STATUS_ENABLED = 1;
 
     private final DocumentNoService documentNoService;
+    private final WarehouseInventoryGuard inventoryGuard;
 
     @Override
     public PageResult<Warehouse> pageWarehouses(WarehouseQuery query) {
@@ -75,6 +77,7 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
     @Transactional(rollbackFor = Exception.class)
     public void update(String uuid, WarehouseSaveDTO dto) {
         Warehouse existing = getByUuid(uuid);
+        requireInventoryFreeBeforeDisable(existing, dto.getStatus());
         Integer savedVersion = existing.getVersion();
         Integer keepStatus = existing.getStatus();
         Integer keepDefault = existing.getIsDefault();
@@ -95,9 +98,18 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(String uuid) {
         getByUuid(uuid);
-        removeById(uuid);
+        inventoryGuard.requireNoActiveInventory(uuid);
+        ConcurrencyGuard.requireUpdated(removeById(uuid));
+    }
+
+    private void requireInventoryFreeBeforeDisable(Warehouse warehouse, Integer nextStatus) {
+        if (nextStatus == null || nextStatus == STATUS_ENABLED || warehouse.getStatus() != STATUS_ENABLED) {
+            return;
+        }
+        inventoryGuard.requireNoActiveInventory(warehouse.getUuid());
     }
 
     private String keepCodeOrGenerate(String code) {

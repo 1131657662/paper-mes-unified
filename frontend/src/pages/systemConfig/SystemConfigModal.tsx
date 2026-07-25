@@ -23,6 +23,7 @@ interface ConfigModalProps {
 
 export function DictItemModal({ item, onCancel, onSubmit, onDirtyChange, open, submitting }: DictModalProps) {
   const [form] = Form.useForm<DictItemSaveDTO>()
+  const metadataLocked = item?.builtIn === 1
   return (
     <Modal
       title={item ? '编辑字典项' : '新增字典项'}
@@ -36,19 +37,19 @@ export function DictItemModal({ item, onCancel, onSubmit, onDirtyChange, open, s
       <Form className="mes-modal-form" form={form} initialValues={item ? toDictValues(item) : dictDefaults} layout="vertical" onFieldsChange={() => onDirtyChange?.(form.isFieldsTouched())} onFinish={onSubmit}>
         <div className="mes-form-grid">
           <Form.Item name="dictType" label="字典分类" rules={[{ required: true, message: '请输入字典分类' }, { max: 50, message: '字典分类不能超过50个字符' }]}>
-            <Input maxLength={50} placeholder="如 settle_type" />
+            <Input disabled={metadataLocked} maxLength={50} placeholder="如 settle_type" />
           </Form.Item>
           <Form.Item name="dictName" label="分类名称" rules={[{ required: true, message: '请输入分类名称' }, { max: 80, message: '分类名称不能超过80个字符' }]}>
-            <Input maxLength={80} placeholder="如 结算方式" />
+            <Input disabled={metadataLocked} maxLength={80} placeholder="如 结算方式" />
           </Form.Item>
           <Form.Item name="itemCode" label="字典编码" rules={[{ required: true, message: '请输入字典编码' }, { max: 50, message: '字典编码不能超过50个字符' }]}>
-            <Input maxLength={50} placeholder="如 monthly" />
+            <Input disabled={metadataLocked} maxLength={50} placeholder="如 monthly" />
           </Form.Item>
           <Form.Item name="itemName" label="字典名称" rules={[{ required: true, message: '请输入字典名称' }, { max: 80, message: '字典名称不能超过80个字符' }]}>
             <Input maxLength={80} placeholder="如 月结" />
           </Form.Item>
           <Form.Item name="itemValue" label="兼容枚举值">
-            <InputNumber placeholder="旧业务数字值" />
+            <InputNumber disabled={metadataLocked} placeholder="旧业务数字值" />
           </Form.Item>
           <Form.Item name="sortNo" label="排序">
             <InputNumber min={0} />

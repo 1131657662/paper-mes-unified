@@ -97,7 +97,7 @@ export default function WarehouseList() {
           {canManageBase && (
             <Popconfirm
               title="确认删除该仓库？"
-              description="删除后新单不能选择该仓库，已产生的出入库记录不受影响。"
+              description="仓库仍有在库成品时不能删除或停用；请先完成出库或调整库存归属。"
               onConfirm={() => handleDelete(record)}
             >
               <Button danger type="link" size="small">删除</Button>

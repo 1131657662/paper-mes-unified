@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button, Form, Input, InputNumber, Modal, Select, Tag, message } from 'antd'
+import { Button, Modal, Tag, message } from 'antd'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { pageNoRules, previewNoRule } from '../../api/systemConfig'
@@ -12,6 +12,7 @@ import { useResizableTableColumns } from '../../components/useResizableTableColu
 import { useUpdateNoRule } from '../../features/systemConfig/hooks/useSystemConfigMutations'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import type { ConfigStatus, NoRule, NoRuleSaveDTO } from '../../types/systemConfig'
+import NoRuleModal from './NoRuleModal'
 import { statusOptions, statusTag } from './systemConfigDisplay'
 
 interface NoRulePanelProps {
@@ -160,92 +161,6 @@ function PreviewButton({ bizType }: { bizType: string }) {
       {text || '查看下一号'}
     </Button>
   )
-}
-
-function NoRuleModal({ item, onCancel, onDirtyChange, onSubmit, open, submitting }: {
-  item?: NoRule
-  open: boolean
-  submitting: boolean
-  onCancel: () => void
-  onDirtyChange?: (dirty: boolean) => void
-  onSubmit: (values: NoRuleSaveDTO) => Promise<void>
-}) {
-  const [form] = Form.useForm<NoRuleSaveDTO>()
-  return (
-    <Modal
-      title="编辑单号规则"
-      open={open}
-      width={720}
-      destroyOnHidden
-      confirmLoading={submitting}
-      onCancel={onCancel}
-      onOk={() => form.submit()}
-    >
-      <Form className="mes-modal-form" form={form} initialValues={item ? toValues(item) : undefined} layout="vertical" onFieldsChange={() => onDirtyChange?.(form.isFieldsTouched())} onFinish={onSubmit}>
-        <div className="mes-form-grid">
-          <Form.Item name="bizType" label="业务类型" rules={[{ required: true, message: '业务类型不能为空' }]}>
-            <Input disabled />
-          </Form.Item>
-          <Form.Item name="ruleName" label="规则名称" rules={[{ required: true, message: '请输入规则名称' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="prefix" label="前缀" rules={[{ required: true, message: '请输入前缀' }]}>
-            <Input placeholder="如 JG、CK、JS、A" />
-          </Form.Item>
-          <Form.Item name="patternType" label="格式" rules={[{ required: true, message: '请选择格式' }]}>
-            <Select options={patternOptions} />
-          </Form.Item>
-          <Form.Item name="datePattern" label="日期格式">
-            <Select options={datePatternOptions} />
-          </Form.Item>
-          <Form.Item name="serialLength" label="流水位数" rules={[{ required: true, message: '请输入流水位数' }]}>
-            <InputNumber min={3} max={10} />
-          </Form.Item>
-          <Form.Item name="resetCycle" label="重置周期" rules={[{ required: true, message: '请选择重置周期' }]}>
-            <Select options={resetOptions} />
-          </Form.Item>
-          <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
-            <Select options={statusOptions} />
-          </Form.Item>
-          <Form.Item className="mes-form-grid__full" name="remark" label="备注">
-            <Input.TextArea rows={3} placeholder="说明该单号规则适用的业务场景" />
-          </Form.Item>
-        </div>
-      </Form>
-    </Modal>
-  )
-}
-
-const patternOptions = [
-  { label: '前缀 + 日期 + 序号', value: 1 },
-  { label: '前缀 + 序号', value: 2 },
-]
-
-const datePatternOptions = [
-  { label: 'yyyyMMdd', value: 'yyyyMMdd' },
-  { label: 'yyyyMM', value: 'yyyyMM' },
-  { label: 'yyyy', value: 'yyyy' },
-]
-
-const resetOptions = [
-  { label: '不重置', value: 0 },
-  { label: '按日', value: 1 },
-  { label: '按月', value: 2 },
-  { label: '按年', value: 3 },
-]
-
-function toValues(item: NoRule): NoRuleSaveDTO {
-  return {
-    bizType: item.bizType,
-    datePattern: item.datePattern || 'yyyyMMdd',
-    patternType: item.patternType,
-    prefix: item.prefix,
-    remark: item.remark,
-    resetCycle: item.resetCycle,
-    ruleName: item.ruleName,
-    serialLength: item.serialLength,
-    status: item.status,
-  }
 }
 
 function bizTypeTag(value: string) {

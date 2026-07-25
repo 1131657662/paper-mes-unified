@@ -10,13 +10,17 @@ describe('创建结算单后的缓存失效范围', () => {
     const list = queries.settle.list({ current: 1, size: 20 }).queryKey
     const summary = queries.settle.summary({ current: 1, size: 20 }).queryKey
     const quote = queries.settle.quoteByOrders({ orderUuids: ['order-1'] }).queryKey
-    for (const key of [candidates, list, summary, quote]) queryClient.setQueryData(key, {})
+    const dashboard = queries.dashboard.overview.queryKey
+    const report = queries.report.overview({}).queryKey
+    for (const key of [candidates, list, summary, quote, dashboard, report]) queryClient.setQueryData(key, {})
 
     await invalidateSettleAfterCreate(queryClient)
 
     expect(queryClient.getQueryState(candidates)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(list)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(summary)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(dashboard)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(report)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(quote)?.isInvalidated).toBe(false)
   })
 })

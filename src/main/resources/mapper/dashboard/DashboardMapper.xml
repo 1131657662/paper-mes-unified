@@ -146,12 +146,12 @@
             ) settle ON settle.order_uuid = o.uuid
             WHERE o.is_deleted = 0
               AND o.order_status IN (4, 5)
-              AND o.order_date &gt;= #{monthStart}
-              AND o.order_date &lt;= #{today}
+              AND o.accounting_date &gt;= #{monthStart}
+              AND o.accounting_date &lt;= #{today}
         ) monthly
         CROSS JOIN (
             SELECT COUNT(*) AS inStockFinishCount,
-                   COALESCE(SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)), 0) AS inStockFinishWeight
+                   COALESCE(SUM(COALESCE(f.remaining_weight, f.actual_weight, f.estimate_weight, 0)), 0) AS inStockFinishWeight
             FROM biz_finish_roll f
             WHERE <include refid="EffectiveFinishRollWhere"/>
               AND f.finish_status = 2
@@ -205,7 +205,7 @@
     </select>
 
     <select id="monthlyTrend" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardTrendVO">
-        SELECT DATE_FORMAT(COALESCE(o.back_record_time, o.order_date), '%Y-%m') AS month,
+        SELECT DATE_FORMAT(o.accounting_date, '%Y-%m') AS month,
                COUNT(*) AS orderCount,
                COALESCE(SUM(orig.originalWeight), 0) AS originalWeight,
                COALESCE(SUM(fin.finishWeight), 0) AS finishWeight,
@@ -231,25 +231,20 @@
         ) settle ON settle.order_uuid = o.uuid
         WHERE o.is_deleted = 0
           AND o.order_status IN (4, 5)
-          AND (
-              (o.back_record_time IS NOT NULL
-                  AND o.back_record_time &gt;= #{monthStart}
-                  AND o.back_record_time &lt; DATE_ADD(#{today}, INTERVAL 1 DAY))
-              OR (o.back_record_time IS NULL
-                  AND o.order_date &gt;= #{monthStart}
-                  AND o.order_date &lt;= #{today})
-          )
-        GROUP BY DATE_FORMAT(COALESCE(o.back_record_time, o.order_date), '%Y-%m')
+          AND o.accounting_date &gt;= #{monthStart}
+          AND o.accounting_date &lt;= #{today}
+        GROUP BY DATE_FORMAT(o.accounting_date, '%Y-%m')
         ORDER BY month
     </select>
 
     <select id="customerRank" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRankVO">
         SELECT o.customer_uuid AS id,
-               o.customer_name AS name,
+               COALESCE(MAX(c.customer_name), MAX(o.customer_name)) AS name,
                COUNT(*) AS count,
                COALESCE(SUM(orig.originalWeight), 0) AS weight,
                COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS amount
         FROM biz_process_order o
+        LEFT JOIN sys_customer c ON c.uuid = o.customer_uuid AND c.is_deleted = 0
         LEFT JOIN (
             SELECT order_uuid,
                    SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
@@ -263,20 +258,21 @@
         ) settle ON settle.order_uuid = o.uuid
         WHERE o.is_deleted = 0
           AND o.order_status IN (4, 5)
-          AND o.order_date &gt;= #{monthStart}
-          AND o.order_date &lt;= #{today}
-        GROUP BY o.customer_uuid, o.customer_name
+          AND o.accounting_date &gt;= #{monthStart}
+          AND o.accounting_date &lt;= #{today}
+        GROUP BY o.customer_uuid
         ORDER BY amount DESC
         LIMIT 6
     </select>
 
     <select id="customerYearRank" resultType="com.paper.mes.dashboard.dto.DashboardOverviewVO$DashboardRankVO">
         SELECT o.customer_uuid AS id,
-               o.customer_name AS name,
+               COALESCE(MAX(c.customer_name), MAX(o.customer_name)) AS name,
                COUNT(*) AS count,
                COALESCE(SUM(orig.originalWeight), 0) AS weight,
                COALESCE(SUM(COALESCE(settle.billedAmount, o.total_amount, 0)), 0) AS amount
         FROM biz_process_order o
+        LEFT JOIN sys_customer c ON c.uuid = o.customer_uuid AND c.is_deleted = 0
         LEFT JOIN (
             SELECT order_uuid,
                    SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS originalWeight
@@ -290,9 +286,9 @@
         ) settle ON settle.order_uuid = o.uuid
         WHERE o.is_deleted = 0
           AND o.order_status IN (4, 5)
-          AND o.order_date &gt;= #{yearStart}
-          AND o.order_date &lt;= #{today}
-        GROUP BY o.customer_uuid, o.customer_name
+          AND o.accounting_date &gt;= #{yearStart}
+          AND o.accounting_date &lt;= #{today}
+        GROUP BY o.customer_uuid
         ORDER BY amount DESC
         LIMIT 8
     </select>
@@ -305,8 +301,8 @@
                COALESCE(SUM(stepAmount), 0) AS amount
         FROM (
             <include refid="MachineRankRows"/>
-              AND o.order_date &gt;= #{monthStart}
-              AND o.order_date &lt;= #{today}
+              AND o.accounting_date &gt;= #{monthStart}
+              AND o.accounting_date &lt;= #{today}
         ) rankedStep
         GROUP BY machine_uuid, machine_name
         ORDER BY weight DESC
@@ -321,8 +317,8 @@
                COALESCE(SUM(stepAmount), 0) AS amount
         FROM (
             <include refid="MachineRankRows"/>
-              AND o.order_date &gt;= #{yearStart}
-              AND o.order_date &lt;= #{today}
+              AND o.accounting_date &gt;= #{yearStart}
+              AND o.accounting_date &lt;= #{today}
         ) rankedStep
         GROUP BY machine_uuid, machine_name
         ORDER BY weight DESC

@@ -10,6 +10,8 @@ const localReadModelKeys = (orderUuid: string) => [
 ]
 
 const businessDependentKeys = () => [
+  queries.dashboard._def,
+  queries.report._def,
   queries.settle.candidates._def,
   queries.settle.quoteByOrders._def,
   queries.settle.quoteByMonth._def,

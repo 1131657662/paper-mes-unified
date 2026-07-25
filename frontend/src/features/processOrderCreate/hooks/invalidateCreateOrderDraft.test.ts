@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it } from 'vitest'
 import { queries } from '../../../queries'
-import { invalidateCreateOrderDraft } from './invalidateCreateOrderDraft'
+import { invalidateCreateOrderDraft, invalidateSubmittedProcessOrder } from './invalidateCreateOrderDraft'
 
 describe('新建加工单草稿缓存失效', () => {
   it('保存步骤后同时失效当前草稿与草稿列表', async () => {
@@ -15,5 +15,21 @@ describe('新建加工单草稿缓存失效', () => {
 
     expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
+  })
+
+  it('提交加工单后刷新草稿列表、仪表盘和报表', async () => {
+    const queryClient = new QueryClient()
+    const keys = [
+      queries.createOrder.drafts.queryKey,
+      queries.dashboard.overview.queryKey,
+      queries.report.overview({}).queryKey,
+    ]
+    keys.forEach((queryKey) => queryClient.setQueryData(queryKey, {}))
+
+    await invalidateSubmittedProcessOrder(queryClient)
+
+    keys.forEach((queryKey) => {
+      expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
+    })
   })
 })

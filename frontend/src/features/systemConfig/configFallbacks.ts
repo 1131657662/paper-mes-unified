@@ -11,9 +11,16 @@ export const DICT_TYPES = {
 
 export const CONFIG_KEYS = {
   autoFinishConfig: 'process.autoFinishConfig',
+  backupRetentionDays: 'backup.retentionDays',
+  cashSettleBlockMode: 'delivery.cashSettleBlockMode',
   defaultPageSize: 'ui.defaultPageSize',
+  discountAutoApproveLimit: 'settle.discountAutoApproveLimit',
+  discountMaxAmount: 'settle.discountMaxAmount',
+  discountMaxPercent: 'settle.discountMaxPercent',
   processOrderTitle: 'print.processOrderTitle',
+  pricingAutoApproveLimit: 'process.pricingAutoApproveLimit',
   spareRollNoCount: 'process.spareRollNoCount',
+  weightBlockTolerancePercent: 'process.weightBlockTolerancePercent',
   weightTolerancePercent: 'process.weightTolerancePercent',
 } as const
 

@@ -834,7 +834,12 @@
             </when>
             <otherwise>
                 SELECT d.dimensionKey,
-                       d.dimensionName,
+                       <choose>
+                           <when test="dimension == 'customer'">
+                               COALESCE(MAX(currentCustomer.customer_name), MAX(d.dimensionName)) AS dimensionName,
+                           </when>
+                           <otherwise>MAX(d.dimensionName) AS dimensionName,</otherwise>
+                       </choose>
                        COUNT(*) AS orderCount,
                        COALESCE(SUM(orig.originalRollCount), 0) AS originalRollCount,
                        COALESCE(SUM(fin.finishRollCount), 0) AS finishRollCount,
@@ -935,6 +940,9 @@
                     FROM biz_process_order oi
                     WHERE oi.is_deleted = 0
                 ) d ON d.order_uuid = o.uuid
+                LEFT JOIN sys_customer currentCustomer
+                  ON currentCustomer.uuid = o.customer_uuid
+                 AND currentCustomer.is_deleted = 0
                 LEFT JOIN (
                     SELECT r.order_uuid,
                            COUNT(*) AS originalRollCount,
@@ -973,7 +981,7 @@
                 <where>
                     <include refid="OrderFilters"/>
                 </where>
-                GROUP BY d.dimensionKey, d.dimensionName
+                GROUP BY d.dimensionKey
                 ORDER BY
                 <choose>
                     <when test="dimension == 'month'">d.dimensionKey ASC</when>

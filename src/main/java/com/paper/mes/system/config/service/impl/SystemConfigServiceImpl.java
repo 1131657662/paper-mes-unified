@@ -28,9 +28,12 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
     private static final int STATUS_ENABLED = 1;
 
     private final OperationLogService operationLogService;
+    private final SystemConfigWeightThresholdPolicy weightThresholdPolicy;
 
-    public SystemConfigServiceImpl(OperationLogService operationLogService) {
+    public SystemConfigServiceImpl(OperationLogService operationLogService,
+                                   SystemConfigWeightThresholdPolicy weightThresholdPolicy) {
         this.operationLogService = operationLogService;
+        this.weightThresholdPolicy = weightThresholdPolicy;
     }
 
     @Override
@@ -70,7 +73,9 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
     public String create(ConfigItemSaveDTO dto) {
         ensureStatus(dto.getStatus());
         ensureValueType(dto.getValueType());
-        SystemConfigValueValidator.validate(dto.getConfigKey(), dto.getConfigValue(), dto.getValueType());
+        SystemConfigValueValidator.validate(dto.getConfigKey().trim(), dto.getConfigValue(), dto.getValueType());
+        weightThresholdPolicy.validateEffectivePair(
+                dto.getConfigKey().trim(), dto.getConfigValue(), dto.getStatus());
         ensureUnique(dto.getConfigKey(), null);
         SysConfigItem item = new SysConfigItem();
         applyDto(item, dto);
@@ -102,13 +107,16 @@ public class SystemConfigServiceImpl extends ServiceImpl<SysConfigItemMapper, Sy
     private void updateBuiltIn(SysConfigItem item, ConfigItemSaveDTO dto) {
         BuiltInConfigMetadataGuard.ensureUnchanged(item, dto);
         SystemConfigValueValidator.validate(item.getConfigKey(), dto.getConfigValue(), item.getValueType());
+        weightThresholdPolicy.validateEffectivePair(item.getConfigKey(), dto.getConfigValue(), dto.getStatus());
         item.setConfigValue(dto.getConfigValue().trim());
         item.setStatus(dto.getStatus());
     }
 
     private void updateCustom(SysConfigItem item, ConfigItemSaveDTO dto, String uuid) {
         ensureValueType(dto.getValueType());
-        SystemConfigValueValidator.validate(dto.getConfigKey(), dto.getConfigValue(), dto.getValueType());
+        SystemConfigValueValidator.validate(dto.getConfigKey().trim(), dto.getConfigValue(), dto.getValueType());
+        weightThresholdPolicy.validateEffectivePair(
+                dto.getConfigKey().trim(), dto.getConfigValue(), dto.getStatus());
         ensureUnique(dto.getConfigKey(), uuid);
         applyDto(item, dto);
     }

@@ -13,6 +13,7 @@ import com.paper.mes.customer.dto.CustomerVO;
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.mapper.CustomerMapper;
 import com.paper.mes.customer.service.CustomerService;
+import com.paper.mes.customer.service.CustomerBusinessReferenceGuard;
 import com.paper.mes.customer.service.CustomerProcessPriceReader;
 import com.paper.mes.customer.service.CustomerProcessPriceWriter;
 import com.paper.mes.system.config.constant.NoRuleBizType;
@@ -33,6 +34,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
     private static final int DEFAULT_INVOICE = 2;
 
     private final DocumentNoService documentNoService;
+    private final CustomerBusinessReferenceGuard businessReferenceGuard;
     private final CustomerProcessPriceReader priceReader;
     private final CustomerProcessPriceWriter priceWriter;
 
@@ -107,8 +109,9 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
     @Transactional(rollbackFor = Exception.class)
     public void delete(String uuid) {
         getByUuid(uuid);
+        businessReferenceGuard.requireDeletable(uuid);
         priceWriter.remove(uuid);
-        removeById(uuid);
+        ConcurrencyGuard.requireUpdated(removeById(uuid));
     }
 
     private String keepCodeOrGenerate(String code, String bizType) {

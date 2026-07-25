@@ -73,6 +73,8 @@ function relatedKeys(orderUuid: string) {
 
 function dependentKeys() {
   return [
+    queries.dashboard.overview.queryKey,
+    queries.report.overview({}).queryKey,
     queries.settle.candidates({ current: 1, size: 20 }).queryKey,
     queries.settle.quoteByOrders({ orderUuids: ['order-1'] }).queryKey,
     queries.settle.quoteByMonth({

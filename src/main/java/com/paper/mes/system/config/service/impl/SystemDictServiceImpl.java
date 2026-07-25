@@ -82,6 +82,9 @@ public class SystemDictServiceImpl extends ServiceImpl<SysDictItemMapper, SysDic
     public void update(String uuid, DictItemSaveDTO dto) {
         ensureStatus(dto.getStatus());
         SysDictItem item = getByUuid(uuid);
+        if (Integer.valueOf(1).equals(item.getBuiltIn())) {
+            BuiltInDictMetadataGuard.ensureUnchanged(item, dto);
+        }
         ensureUnique(dto.getDictType(), dto.getItemCode(), uuid);
         Integer version = item.getVersion();
         Integer builtIn = item.getBuiltIn();

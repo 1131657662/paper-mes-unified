@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -69,6 +70,22 @@ class ReportQueryCoordinatorTest {
 
         assertEquals(19, metadata.metricVersionMap().size());
         assertEquals("version-order_count", metadata.metricVersionMap().get("order_count"));
+    }
+
+    @Test
+    void prepare_whenV1BundleMissesOperationalMetrics_rejectsTopicExecution() {
+        ReportMetricCatalogService catalog = mock(ReportMetricCatalogService.class);
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ReportQuery query = new ReportQuery();
+        query.setMetricReleaseUuid("release-v1");
+        when(catalog.releaseDetail("release-v1")).thenReturn(v1Release());
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> new ReportQueryCoordinator(catalog, jdbc, new ReportLiveMetricRegistry())
+                        .prepare(query, Set.of("inventory_roll_count", "inventory_weight_kg")));
+
+        assertTrue(error.getMessage().contains("inventory_roll_count"));
+        assertTrue(error.getMessage().contains("inventory_weight_kg"));
     }
 
     private ReportMetricReleaseDetailVO release(int status, String implementationKey) {

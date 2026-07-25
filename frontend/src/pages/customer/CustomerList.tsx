@@ -116,7 +116,7 @@ export default function CustomerList() {
           {canManageBase && (
             <Popconfirm
               title="确认删除该客户？"
-              description="删除后新建加工单不能再选择该客户，历史单据不受影响。"
+              description="已关联加工单、出库单或结算单的客户不能删除；请保留档案以确保历史业务可追溯。"
               onConfirm={() => handleDelete(record)}
             >
               <Button danger type="link" size="small">删除</Button>

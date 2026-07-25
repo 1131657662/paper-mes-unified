@@ -30,9 +30,11 @@ class ReportOperationalSqlContractTest {
 
     @Test
     void inventoryTopic_onlyCountsCurrentStoredRollsAndActiveLocks() {
+        String inventoryWhere = section("<sql id=\"InventoryWhere\"", "</sql>");
         assertTrue(mapper.contains("f.finish_status = 2"));
         assertTrue(mapper.contains("lockRow.stock_lock_status = 1"));
-        assertTrue(mapper.contains("f.stock_in_time IS NULL OR f.stock_in_time &gt;= #{q.dateFrom}"));
+        assertTrue(inventoryWhere.contains("f.stock_in_time &gt;= #{q.dateFrom}"));
+        assertFalse(inventoryWhere.contains("f.stock_in_time IS NULL OR"));
         assertFalse(mapper.contains("CURRENT_STOCK_BY_STOCK_IN_MONTH"));
     }
 

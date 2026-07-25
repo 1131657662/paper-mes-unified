@@ -109,6 +109,15 @@ class ReportMapperDimensionSqlContractTest {
     }
 
     @Test
+    void reportSql_whenGroupingCustomers_usesUuidAndCurrentDisplayName() throws IOException {
+        String sql = resourceText("mapper/report/ReportMapper.xml");
+
+        assertTrue(sql.contains("COALESCE(MAX(currentCustomer.customer_name), MAX(d.dimensionName)) AS dimensionName"));
+        assertTrue(sql.contains("LEFT JOIN sys_customer currentCustomer"));
+        assertTrue(sql.contains("GROUP BY d.dimensionKey"));
+    }
+
+    @Test
     void reportAndDashboard_whenUsingProcessWeight_convertTonsToKilogramsForWeightColumns() throws IOException {
         String reportSql = resourceText("mapper/report/ReportMapper.xml");
         String dashboardSql = resourceText("mapper/dashboard/DashboardMapper.xml");

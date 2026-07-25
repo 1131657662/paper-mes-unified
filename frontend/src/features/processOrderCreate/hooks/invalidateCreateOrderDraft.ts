@@ -7,3 +7,11 @@ export async function invalidateCreateOrderDraft(queryClient: QueryClient, order
     queryClient.invalidateQueries({ queryKey: queries.createOrder.drafts.queryKey }),
   ])
 }
+
+export async function invalidateSubmittedProcessOrder(queryClient: QueryClient): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queries.createOrder.drafts.queryKey }),
+    queryClient.invalidateQueries({ queryKey: queries.dashboard._def }),
+    queryClient.invalidateQueries({ queryKey: queries.report._def }),
+  ])
+}

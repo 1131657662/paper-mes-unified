@@ -9,12 +9,17 @@ describe('作废结算后的加工单缓存', () => {
     const firstOrder = queries.processOrderDetail.detail('order-1').queryKey
     const secondOrder = queries.processOrderDetail.detail('order-2').queryKey
     const candidateKey = queries.settle.candidates({ current: 1, size: 20 }).queryKey
-    ;[firstOrder, secondOrder, candidateKey].forEach((queryKey) => queryClient.setQueryData(queryKey, {}))
+    const dashboardKey = queries.dashboard.overview.queryKey
+    const reportKey = queries.report.overview({}).queryKey
+    ;[firstOrder, secondOrder, candidateKey, dashboardKey, reportKey]
+      .forEach((queryKey) => queryClient.setQueryData(queryKey, {}))
 
     await invalidateVoidedSettle(queryClient, ['order-1'])
 
     expect(queryClient.getQueryState(firstOrder)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(secondOrder)?.isInvalidated).toBe(false)
     expect(queryClient.getQueryState(candidateKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(dashboardKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(reportKey)?.isInvalidated).toBe(true)
   })
 })

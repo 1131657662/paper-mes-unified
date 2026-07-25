@@ -8,6 +8,7 @@ import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.common.PageRequestBounds;
 import com.paper.mes.oplog.service.OperationLogService;
+import com.paper.mes.system.config.constant.NoRuleBizType;
 import com.paper.mes.system.config.dto.NoRulePreviewVO;
 import com.paper.mes.system.config.dto.NoRuleQuery;
 import com.paper.mes.system.config.dto.NoRuleSaveDTO;
@@ -80,6 +81,7 @@ public class NoRuleServiceImpl extends ServiceImpl<SysNoRuleMapper, SysNoRule> i
     @Transactional(rollbackFor = Exception.class)
     public void update(String uuid, NoRuleSaveDTO dto) {
         SysNoRule rule = getByUuid(uuid);
+        ensureCoreRuleAvailable(rule, dto);
         ensureUnique(dto.getBizType(), uuid);
         Integer version = rule.getVersion();
         applyDto(rule, dto);
@@ -87,6 +89,18 @@ public class NoRuleServiceImpl extends ServiceImpl<SysNoRuleMapper, SysNoRule> i
         rule.setVersion(version);
         ConcurrencyGuard.requireUpdated(updateById(rule));
         record(rule, "编辑单号规则");
+    }
+
+    private void ensureCoreRuleAvailable(SysNoRule rule, NoRuleSaveDTO dto) {
+        if (!NoRuleBizType.isCore(rule.getBizType())) {
+            return;
+        }
+        if (!rule.getBizType().equals(dto.getBizType())) {
+            throw new BusinessException("核心单号规则不允许修改业务类型");
+        }
+        if (!Integer.valueOf(STATUS_ENABLED).equals(dto.getStatus())) {
+            throw new BusinessException("核心单号规则不允许停用");
+        }
     }
 
     @Override
