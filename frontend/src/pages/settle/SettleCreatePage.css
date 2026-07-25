@@ -6,6 +6,12 @@
   overflow: visible;
 }
 
+@supports (height: 100dvh) {
+  .settle-create-page {
+    height: max(600px, calc(100dvh - 126px));
+  }
+}
+
 .settle-create-page__info .ant-card-body {
   padding-block: 12px;
 }
@@ -115,8 +121,6 @@
 
 @media (max-width: 860px) {
   .settle-create-page {
-    height: auto;
-    min-height: 600px;
     grid-template-rows: auto auto minmax(280px, 1fr) auto;
     overflow: visible;
   }

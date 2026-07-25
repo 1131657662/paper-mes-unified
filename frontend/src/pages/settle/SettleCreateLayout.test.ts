@@ -12,4 +12,11 @@ describe('settlement create layout', () => {
     expect(css).toMatch(/\.settle-create-footer\s*\{[^}]*position:\s*sticky/s)
     expect(css).toMatch(/\.settle-create-footer\s*\{[^}]*bottom:\s*0/s)
   })
+
+  it('keeps candidate space allocated on narrow screens', () => {
+    const narrowPageRule = css.match(/@media \(max-width: 860px\) \{\s*\.settle-create-page \{([\s\S]*?)\n  \}/)
+
+    expect(css).toContain('height: max(600px, calc(100dvh - 126px))')
+    expect(narrowPageRule?.[1]).not.toContain('height:')
+  })
 })
