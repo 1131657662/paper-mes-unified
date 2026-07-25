@@ -9,6 +9,7 @@ import {
   type DefaultPlanOptions,
 } from '../draftMappers'
 import { normalizeLayeredRewindPlan } from '../rewindLayerPlanUtils'
+import { reconcileConfiguredPlanIds } from '../configuredPlanStatus'
 import { prepareBatchPlan, prepareSingleRollPlan } from '../prepareProcessPlan'
 import type { RollDraft } from '../types'
 import type { CreateOrderDraftState } from './useCreateOrderDraftState'
@@ -38,17 +39,20 @@ export function useCreateOrderPlanActions(options: UseCreateOrderPlanActionsOpti
     })
     state.setPlans((previous) => ({ ...previous, [roll.localId]: nextPlan }))
     state.setPreviews((previous) => ({ ...previous, [roll.localId]: preview }))
-    state.setConfiguredPlanIds((previous) => [...new Set([...previous, roll.localId])])
-    return true
+    state.setConfiguredPlanIds((previous) => reconcileConfiguredPlanIds(previous, [
+      { localId: roll.localId, preview },
+    ]))
+    return preview
   }
 
   const handlePreviewPlan = async (roll: RollDraft, plan: ProcessPlanDTO) => {
     if (!state.orderUuid || !roll.uuid) return
+    const expectedVersion = state.getDraftVersion()
     const nextPlan = prepareSingleRollPlan({ defaultPlanOptions, machines, plan, roll })
     const preview = await previewPlan({
       orderUuid: state.orderUuid,
       request: {
-        expectedVersion: state.draftVersion,
+        expectedVersion,
         originalUuid: roll.uuid,
         plan: nextPlan,
       },
@@ -58,14 +62,17 @@ export function useCreateOrderPlanActions(options: UseCreateOrderPlanActionsOpti
   }
 
   const handleSavePlan = async (roll: RollDraft, plan: ProcessPlanDTO) => {
-    if (!await saveRollPlan(roll, plan, state.draftVersion)) return false
+    const preview = await saveRollPlan(roll, plan, state.getDraftVersion())
+    if (!preview) return false
     state.setDraftVersion((version) => version + 1)
-    message.success('方案已保存')
+    if (preview.ready) message.success('方案已保存')
+    else message.warning(preview.errors?.join('；') || '方案已保存，但仍未完成配置')
     return true
   }
 
   const handleSavePlanBatch = async (targetRolls: RollDraft[], plan: ProcessPlanDTO) => {
     if (!state.orderUuid) return false
+    const expectedVersion = state.getDraftVersion()
     const savedRolls = targetRolls.filter((roll) => roll.uuid)
     const firstSavedRoll = savedRolls[0]
     if (!firstSavedRoll) {
@@ -76,16 +83,20 @@ export function useCreateOrderPlanActions(options: UseCreateOrderPlanActionsOpti
     const result = await savePlanBatch({
       orderUuid: state.orderUuid,
       dto: {
-        expectedVersion: state.draftVersion,
+        expectedVersion,
         originalUuids: savedRolls.map((roll) => roll.uuid!),
         plan: batchPlan,
       },
     })
     state.setPlans((previous) => ({ ...previous, ...plansFromBatch(savedRolls, batchPlan) }))
-    state.setPreviews((previous) => ({ ...previous, ...previewsFromBatch(savedRolls, result) }))
-    state.setConfiguredPlanIds((previous) => [...new Set([...previous, ...savedRolls.map((roll) => roll.localId)])])
+    const savedPreviews = previewsFromBatch(savedRolls, result)
+    state.setPreviews((previous) => ({ ...previous, ...savedPreviews }))
+    state.setConfiguredPlanIds((previous) => reconcileConfiguredPlanIds(previous,
+      savedRolls.map((roll) => ({ localId: roll.localId, preview: savedPreviews[roll.localId] }))))
     state.setDraftVersion((version) => version + 1)
-    message.success(`已应用到 ${savedRolls.length} 卷母卷`)
+    const readyCount = Object.values(savedPreviews).filter((preview) => preview.ready).length
+    if (readyCount === savedRolls.length) message.success(`已应用到 ${savedRolls.length} 卷母卷`)
+    else message.warning(`已保存 ${savedRolls.length} 卷，其中 ${savedRolls.length - readyCount} 卷仍需检查`)
     return true
   }
 

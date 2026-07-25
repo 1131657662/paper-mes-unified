@@ -1,12 +1,12 @@
 /** 加工单状态字典：0草稿 1待下发 2加工中 3待回录 4已完成 5已结算 6已作废。 */
-export const ORDER_STATUS: Record<number, { text: string; color: string }> = {
-  0: { text: '草稿', color: 'default' },
-  1: { text: '待下发', color: 'orange' },
-  2: { text: '加工中', color: 'processing' },
-  3: { text: '待回录', color: 'orange' },
-  4: { text: '已完成', color: 'success' },
-  5: { text: '已结算', color: 'blue' },
-  6: { text: '已作废', color: 'error' },
+export const ORDER_STATUS: Record<number, { text: string; color: string; timelineColor: string }> = {
+  0: { text: '草稿', color: 'default', timelineColor: 'gray' },
+  1: { text: '待下发', color: 'orange', timelineColor: 'gray' },
+  2: { text: '加工中', color: 'processing', timelineColor: 'blue' },
+  3: { text: '待回录', color: 'orange', timelineColor: 'orange' },
+  4: { text: '已完成', color: 'success', timelineColor: 'green' },
+  5: { text: '已结算', color: 'purple', timelineColor: 'purple' },
+  6: { text: '已作废', color: 'error', timelineColor: 'gray' },
 }
 
 /** 优先级字典：1普通 2加急 3特急。 */

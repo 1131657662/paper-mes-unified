@@ -91,6 +91,7 @@ import com.paper.mes.processorder.service.ProcessMixProcessResolver;
 import com.paper.mes.processorder.service.ProcessModePolicy;
 import com.paper.mes.processorder.service.ProcessCatalogStepValidator;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.RewindPlanPreviewContext;
 import com.paper.mes.processorder.service.ProcessRouteCleanupService;
 import com.paper.mes.processorder.service.ProcessRouteContext;
 import com.paper.mes.processorder.service.ProcessStepPricingSettings;
@@ -830,6 +831,18 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     @Override
     public FinishPreviewVO previewRewindPlan(String orderUuid, String rollUuid, RewindPlanPreviewDTO dto) {
         FinishConfigQuantityValidator.requireWithinLimit(dto);
+        RewindPlanPreviewContext context = loadRewindPreviewContext(orderUuid, rollUuid, dto);
+        return previewLoadedRewindPlan(context, dto);
+    }
+
+    @Override
+    public FinishPreviewVO previewRewindPlan(RewindPlanPreviewContext context, RewindPlanPreviewDTO dto) {
+        FinishConfigQuantityValidator.requireWithinLimit(dto);
+        return previewLoadedRewindPlan(context, dto);
+    }
+
+    private RewindPlanPreviewContext loadRewindPreviewContext(String orderUuid, String rollUuid,
+                                                              RewindPlanPreviewDTO dto) {
         ProcessOrder order = getById(orderUuid);
         if (order == null) {
             throw new BusinessException(ErrorCode.E002, "加工单不存在");
@@ -838,12 +851,33 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (roll == null || !orderUuid.equals(roll.getOrderUuid())) {
             throw new BusinessException(ErrorCode.E002, "原纸明细不存在");
         }
+        Map<String, OriginalRoll> sourceRolls = isMultiSource(dto) ? orderRollMap(orderUuid) : Map.of();
+        return new RewindPlanPreviewContext(order, roll, sourceRolls);
+    }
+
+    private FinishPreviewVO previewLoadedRewindPlan(RewindPlanPreviewContext context,
+                                                    RewindPlanPreviewDTO dto) {
+        requireValidPreviewContext(context);
         validateRewindPreviewPlan(dto);
-        validateSameSpecRewind(dto, roll);
-        if (dto.getRewindMode() != null && dto.getRewindMode() == 5) {
-            validateRewindSegmentSources(dto.getSegments(), orderRollMap(orderUuid));
+        validateSameSpecRewind(dto, context.roll());
+        Map<String, OriginalRoll> sourceRolls = isMultiSource(dto) ? context.sourceRolls() : Map.of();
+        if (isMultiSource(dto)) {
+            validateRewindSegmentSources(dto.getSegments(), sourceRolls);
         }
-        return buildRewindPreview(orderUuid, roll, dto);
+        return buildRewindPreview(context.roll(), dto, sourceRolls);
+    }
+
+    private void requireValidPreviewContext(RewindPlanPreviewContext context) {
+        if (context == null || context.order() == null || context.roll() == null) {
+            throw new BusinessException(ErrorCode.E002, "加工单或原纸明细不存在");
+        }
+        if (!Objects.equals(context.order().getUuid(), context.roll().getOrderUuid())) {
+            throw new BusinessException(ErrorCode.E002, "原纸明细不存在");
+        }
+    }
+
+    private boolean isMultiSource(RewindPlanPreviewDTO dto) {
+        return dto != null && Integer.valueOf(5).equals(dto.getRewindMode());
     }
 
     @Override
@@ -2932,12 +2966,15 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     private FinishPreviewVO buildRewindPreview(String orderUuid, OriginalRoll roll, RewindPlanPreviewDTO dto) {
+        Map<String, OriginalRoll> sourceRolls = isMultiSource(dto) ? orderRollMap(orderUuid) : Map.of();
+        return buildRewindPreview(roll, dto, sourceRolls);
+    }
+
+    private FinishPreviewVO buildRewindPreview(OriginalRoll roll, RewindPlanPreviewDTO dto,
+                                               Map<String, OriginalRoll> sourceRolls) {
         List<PreviewPiece> pieces = new ArrayList<>();
         List<FinishPreviewVO.SegmentPreview> segmentPreviews = new ArrayList<>();
         int originalWidth = roll.getOriginalWidth() == null ? 0 : roll.getOriginalWidth();
-        Map<String, OriginalRoll> sourceRolls = dto.getRewindMode() != null && dto.getRewindMode() == 5
-                ? orderRollMap(orderUuid)
-                : Map.of();
         boolean consumptionPlan = dto.getRewindMode() != null && dto.getRewindMode() == 5
                 && MultiSourceConsumptionNormalizer.hasConsumption(dto.getSegments());
         BigDecimal totalWeight = consumptionPlan
@@ -4197,6 +4234,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         validateAddStepStatus(order, dto);
         validateStepRollBelongsToOrder(orderUuid, dto.getOriginalUuid());
         validateMainStepUnique(dto);
+        validateServiceStepUnique(dto.getOriginalUuid(), dto.getStepType(), null);
 
         // 3. 自动分配stepSort
         Integer maxSort = processStepMapper.selectMaxStepOrder(dto.getOriginalUuid());
@@ -4270,6 +4308,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         // 2. 校验状态
         ProcessOrder order = getById(step.getOrderUuid());
         ProcessStepEditStatusPolicy.requireChangeAllowed(order.getOrderStatus());
+        validateServiceStepUnique(step.getOriginalUuid(), dto.getStepType(), step.getUuid());
 
         // 3. 更新工序（不允许修改orderUuid、originalUuid、isMain）
         if (dto.getStepType() != null && !dto.getStepType().equals(step.getStepType())) {
@@ -4420,6 +4459,19 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
         if (step.getUnitPrice() != null && step.getUnitPrice().signum() <= 0) {
             throw new BusinessException("服务单价必须大于0，暂不定价请留空");
+        }
+    }
+
+    private void validateServiceStepUnique(String originalUuid, Integer stepType, String excludedStepUuid) {
+        if (!isServiceStep(stepType)) return;
+        long count = processStepMapper.selectCount(new LambdaQueryWrapper<ProcessStep>()
+                .eq(ProcessStep::getOriginalUuid, originalUuid)
+                .eq(ProcessStep::getStepType, stepType)
+                .eq(ProcessStep::getIsMain, 0)
+                .eq(ProcessStep::getIsDeleted, 0)
+                .ne(StringUtils.hasText(excludedStepUuid), ProcessStep::getUuid, excludedStepUuid));
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.E003, "当前母卷已存在相同附加工艺，不可重复添加或转换");
         }
     }
 

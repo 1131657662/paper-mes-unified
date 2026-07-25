@@ -29,10 +29,12 @@ import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessConfigDraft;
 import com.paper.mes.processorder.entity.ProcessOrder;
+import com.paper.mes.processorder.entity.ProcessStep;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessConfigDraftMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
+import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.processorder.service.DraftOrderReader;
 import com.paper.mes.processorder.service.OriginalRollImportParser;
 import com.paper.mes.processorder.service.ProcessPlanDraftManager;
@@ -73,6 +75,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     private final ProcessOrderMapper processOrderMapper;
     private final OriginalRollMapper originalRollMapper;
     private final ProcessConfigDraftMapper draftMapper;
+    private final ProcessStepMapper processStepMapper;
     private final FinishRollMapper finishRollMapper;
     private final CustomerService customerService;
     private final ProcessOrderService processOrderService;
@@ -311,6 +314,8 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     }
 
     private void deleteDraftRolls(String orderUuid) {
+        processStepMapper.delete(new LambdaQueryWrapper<ProcessStep>()
+                .eq(ProcessStep::getOrderUuid, orderUuid));
         draftMapper.delete(new LambdaQueryWrapper<ProcessConfigDraft>()
                 .eq(ProcessConfigDraft::getOrderUuid, orderUuid));
         originalRollMapper.delete(new LambdaQueryWrapper<OriginalRoll>()

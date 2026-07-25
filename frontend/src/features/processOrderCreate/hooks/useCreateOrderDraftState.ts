@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import type {
   DraftOrderBaseDTO,
   DraftOrderVO,
@@ -43,7 +44,14 @@ export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOption
   const hydratedDraftUuid = useRef<string>()
   const [current, setCurrent] = useState(() => localDraft?.current ?? 0)
   const [orderUuid, setOrderUuid] = useState<string | undefined>(() => localDraft?.orderUuid)
-  const [draftVersion, setDraftVersion] = useState(() => localDraft?.orderVersion ?? 1)
+  const [draftVersion, setDraftVersionState] = useState(() => localDraft?.orderVersion ?? 1)
+  const draftVersionRef = useRef(draftVersion)
+  const setDraftVersion: Dispatch<SetStateAction<number>> = useCallback((update) => {
+    const next = typeof update === 'function' ? update(draftVersionRef.current) : update
+    draftVersionRef.current = next
+    setDraftVersionState(next)
+  }, [])
+  const getDraftVersion = useCallback(() => draftVersionRef.current, [])
   const [baseInfo, setBaseInfo] = useState<DraftOrderBaseDTO | undefined>(() => localDraft?.baseInfo)
   const [rolls, setRolls] = useState<RollDraft[]>(() => localDraft?.rolls ?? [newRollDraft()])
   const [selectedId, setSelectedId] = useState<string | undefined>(() => localDraft?.selectedId)
@@ -108,7 +116,7 @@ export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOption
     setCurrent(state.current)
     setDraftVersion(draft.order?.version ?? 1)
     hydratedDraftUuid.current = draftUuid
-  }, [draft, draftUuid])
+  }, [draft, draftUuid, setDraftVersion])
 
   useEffect(() => {
     if (!draftUuid || !draft || hydratedDraftUuid.current !== draftUuid) return
@@ -121,6 +129,7 @@ export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOption
     baseInfo,
     current,
     draftVersion,
+    getDraftVersion,
     orderUuid,
     plans,
     configuredPlanIds,

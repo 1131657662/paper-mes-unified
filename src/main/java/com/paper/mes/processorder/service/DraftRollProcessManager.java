@@ -5,14 +5,17 @@ import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
 import com.paper.mes.common.db.BusinessLockService;
+import com.paper.mes.processorder.calc.FeeCalculator;
 import com.paper.mes.processorder.dto.DraftRollProcessBatchSaveDTO;
 import com.paper.mes.processorder.dto.DraftRollProcessDTO;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessConfigDraft;
 import com.paper.mes.processorder.entity.ProcessOrder;
+import com.paper.mes.processorder.entity.ProcessStep;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.mapper.ProcessConfigDraftMapper;
+import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +35,7 @@ public class DraftRollProcessManager {
     private final ProcessOrderMapper orderMapper;
     private final OriginalRollMapper rollMapper;
     private final ProcessConfigDraftMapper draftMapper;
+    private final ProcessStepMapper processStepMapper;
     private final BusinessLockService businessLockService;
     private final DraftOrderVersionGuard versionGuard;
 
@@ -82,6 +86,15 @@ public class DraftRollProcessManager {
                     .eq(ProcessConfigDraft::getOrderUuid, roll.getOrderUuid())
                     .eq(ProcessConfigDraft::getOriginalUuid, roll.getUuid()));
         }
+        if (ProcessModePolicy.isDirectShip(item.getProcessMode())) {
+            processStepMapper.delete(new LambdaQueryWrapper<ProcessStep>()
+                    .eq(ProcessStep::getOrderUuid, roll.getOrderUuid())
+                    .eq(ProcessStep::getOriginalUuid, roll.getUuid())
+                    .eq(ProcessStep::getIsMain, 0)
+                    .in(ProcessStep::getStepType,
+                            FeeCalculator.STEP_TYPE_STRIP_SORT,
+                            FeeCalculator.STEP_TYPE_REPACKAGE));
+        }
         roll.setProcessMode(item.getProcessMode());
         roll.setMainStepType(item.getMainStepType());
         roll.setMachineUuid(item.getMachineUuid());
@@ -93,4 +106,5 @@ public class DraftRollProcessManager {
                 || !java.util.Objects.equals(roll.getMainStepType(), item.getMainStepType())
                 || !java.util.Objects.equals(roll.getMachineUuid(), item.getMachineUuid());
     }
+
 }

@@ -12,11 +12,12 @@ interface Props {
   extraOnly: boolean
   batchMode?: boolean
   compact?: boolean
+  lockStepType?: boolean
   onValuesChange?: (changed: Partial<ProcessStepFormValues>) => void
 }
 
 export default function ProcessStepFormFields({
-  state, originalRolls, editMode, extraOnly, batchMode, compact, onValuesChange,
+  state, originalRolls, editMode, extraOnly, batchMode, compact, lockStepType, onValuesChange,
 }: Props) {
   const singleRoll = originalRolls.length === 1 ? originalRolls[0] : undefined
   return (
@@ -37,7 +38,7 @@ export default function ProcessStepFormFields({
         <Select
           showSearch
           loading={state.isLoading}
-          disabled={state.isLoading || state.isError}
+          disabled={lockStepType || state.isLoading || state.isError}
           optionFilterProp="label"
           placeholder={processTypePlaceholder(state)}
           options={state.catalogs?.map((catalog) => ({ label: catalog.name, value: catalog.stepType }))}

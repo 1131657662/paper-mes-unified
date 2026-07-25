@@ -16,11 +16,40 @@ describe('pendingConfigurationRolls', () => {
     const pending = pendingConfigurationRolls({
       configuredPlanIds: ['configured'],
       plans: Object.fromEntries(rolls.map((item) => [item.localId, plan(item)])),
+      previews: { configured: { originalUuid: 'configured', ready: true } },
+      routePreviews: { route: { originalUuid: 'route', stages: [] } },
       rolls,
-      routes: { route: { originalUuid: 'route', stages: [] } },
     })
 
     expect(pending.map((item) => item.localId)).toEqual(['manual'])
+  })
+
+  it('keeps a saved id pending when the persisted preview is not ready', () => {
+    const blocked = roll('blocked')
+
+    const pending = pendingConfigurationRolls({
+      configuredPlanIds: ['blocked'],
+      plans: { blocked: plan(blocked) },
+      previews: { blocked: { originalUuid: 'blocked', ready: false } },
+      routePreviews: {},
+      rolls: [blocked],
+    })
+
+    expect(pending).toEqual([blocked])
+  })
+
+  it('keeps a route roll pending until a saved route preview exists', () => {
+    const route = roll('route')
+
+    const pending = pendingConfigurationRolls({
+      configuredPlanIds: [],
+      plans: { route: plan(route) },
+      previews: {},
+      routePreviews: {},
+      rolls: [route],
+    })
+
+    expect(pending).toEqual([route])
   })
 })
 

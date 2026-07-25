@@ -94,6 +94,7 @@ function ProcessModeEditor({ selected, selectedCount, patchSelected, batchApply 
         <Typography.Text type="secondary">请先在左侧勾选母卷</Typography.Text>
         <Button disabled={!selectedCount} onClick={() => batchApply(1, 2)}>应用到已选 {selectedCount} 卷：标准复卷</Button>
         <Button disabled={!selectedCount} onClick={() => batchApply(1, 1)}>应用到已选 {selectedCount} 卷：标准锯纸</Button>
+        <Button disabled={!selectedCount} onClick={() => batchApply(2, 2)}>应用到已选 {selectedCount} 卷：现场定尺</Button>
         <Button disabled={!selectedCount} onClick={() => batchApply(4)}>应用到已选 {selectedCount} 卷：仅附加工艺</Button>
         <Button disabled={!selectedCount} onClick={() => batchApply(3)}>应用到已选 {selectedCount} 卷：直发</Button>
       </Space>

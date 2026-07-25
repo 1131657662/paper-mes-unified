@@ -13,7 +13,7 @@ export interface RollPreviewStatus {
 }
 
 export function rollPreviewStatus(options: RollPreviewStatusOptions): RollPreviewStatus {
-  const { roll, preview, lock, serviceConfigured } = options
+  const { configured, roll, preview, lock, serviceConfigured } = options
   if (lock) {
     return {
       kind: 'merged',
@@ -38,7 +38,7 @@ export function rollPreviewStatus(options: RollPreviewStatusOptions): RollPrevie
       return {
         kind: 'ready',
         color: 'success',
-        label: '附加工艺已就绪',
+        label: '已保存，可预览',
         detail: preview?.summary || '已配置剥损整理或重新包装，提交时按服务工艺生成整理成品',
         blocking: false,
       }
@@ -47,7 +47,7 @@ export function rollPreviewStatus(options: RollPreviewStatusOptions): RollPrevie
     return {
       kind: hasBackendResult ? 'blocked' : 'pending',
       color: hasBackendResult ? 'error' : 'warning',
-      label: hasBackendResult ? '附加工艺未通过' : '待配置附加工艺',
+      label: hasBackendResult ? '附加工艺未通过' : '待保存附加工艺',
       detail: preview?.errors?.join('；') || '请在工艺配置中选择剥损整理或重新包装',
       blocking: true,
     }
@@ -56,8 +56,8 @@ export function rollPreviewStatus(options: RollPreviewStatusOptions): RollPrevie
     return {
       kind: 'pending',
       color: 'warning',
-      label: '待预览',
-      detail: '尚未取得后端预览，请返回工艺配置保存或刷新预览',
+      label: configured ? '已保存，待刷新' : '待保存加工方案',
+      detail: configured ? '方案已保存，尚未取得后端预览' : '加工方案尚未保存',
       blocking: true,
     }
   }
@@ -70,23 +70,26 @@ export function rollPreviewStatus(options: RollPreviewStatusOptions): RollPrevie
       blocking: true,
     }
   }
+  if (configured === false) {
+    return {
+      kind: 'pending',
+      color: 'warning',
+      label: '已验证，未保存',
+      detail: '当前方案预览已通过，但尚未保存到加工单',
+      blocking: true,
+    }
+  }
   return {
     kind: 'ready',
     color: 'success',
-    label: readyLabel(roll),
+    label: '已保存，可预览',
     detail: preview.summary || '后端预览已通过',
     blocking: false,
   }
 }
 
-function readyLabel(roll: RollDraft): string {
-  if (roll.processMode === 4) return '附加工艺已就绪'
-  if (roll.processMode === 2) return '现场定尺已就绪'
-  if (roll.mainStepType === 1) return '锯纸已就绪'
-  return '复卷已就绪'
-}
-
 interface RollPreviewStatusOptions {
+  configured?: boolean
   roll: RollDraft
   preview?: PlanPreviewVO
   lock?: MergedSourceLock

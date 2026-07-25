@@ -4,12 +4,14 @@ import type { PlanPreviewVO, ProcessRoutePreviewVO } from '../../../types/proces
 import '../../../components/processOrder/ProcessOrderShared.css'
 import { useWorkbenchRollSort } from '../hooks/useWorkbenchRollSort'
 import { rollPreviewStatus } from '../previewStatusUtils'
+import { isConfiguredPlanReady, previewForRoll } from '../configuredPlanStatus'
 import type { MergedSourceLock } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
 import WorkbenchRollItem, { type WorkbenchRollItemActions } from './WorkbenchRollItem'
 import WorkbenchRollToolbar from './WorkbenchRollToolbar'
 
 export interface WorkbenchRollListData {
+  configuredPlanIds?: string[]
   lockedRolls?: Record<string, MergedSourceLock>
   machines: Machine[]
   previews: Record<string, PlanPreviewVO>
@@ -37,6 +39,7 @@ interface Props {
 
 export default function WorkbenchRollList({ actions, data, selection }: Props) {
   const { preference, sortedRolls, setPreference } = useWorkbenchRollSort(data.rolls)
+  const configured = new Set(data.configuredPlanIds ?? [])
   const lockedRolls = data.lockedRolls ?? {}
   const routePreviews = data.routePreviews ?? {}
   return (
@@ -64,8 +67,9 @@ export default function WorkbenchRollList({ actions, data, selection }: Props) {
                 lock,
                 machines: data.machines,
                 previewStatus: rollPreviewStatus({
+                  configured: isConfiguredPlanReady(roll, configured, data.previews),
                   roll,
-                  preview: data.previews[roll.localId],
+                  preview: previewForRoll(roll, data.previews),
                   lock,
                   serviceConfigured: Boolean(roll.uuid && data.serviceConfigured?.[roll.uuid]),
                 }),

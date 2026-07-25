@@ -3,12 +3,12 @@ import { Card, Spin, Steps } from 'antd'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
-import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import BaseInfoStep from '../../features/processOrderCreate/components/BaseInfoStep'
 import ConfigStep from '../../features/processOrderCreate/components/ConfigStep'
 import PreviewStep from '../../features/processOrderCreate/components/PreviewStep'
 import ProcessModeStep from '../../features/processOrderCreate/components/ProcessModeStep'
 import RollInputStep from '../../features/processOrderCreate/components/RollInputStep'
+import { useCreateOrderDirtyGuard } from '../../features/processOrderCreate/hooks/useCreateOrderDirtyGuard'
 import { useCreateOrderPage } from '../../features/processOrderCreate/hooks/useCreateOrderPage'
 
 const steps = ['基础信息', '原纸录入', '加工方式', '工艺配置', '预览确认']
@@ -26,21 +26,11 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
   const navigate = useNavigate()
   const pageRef = useRef<HTMLDivElement | null>(null)
   const state = useCreateOrderPage(draftUuid, { resetLocalDraft })
-  const discardedSnapshot = useRef<ReturnType<typeof state.captureSnapshot>>()
-  const discardChanges = () => {
-    if (!discardedSnapshot.current) return
-    state.restoreSnapshot(discardedSnapshot.current)
-    discardedSnapshot.current = undefined
-  }
-  const { clearDirty, markDirty, runIfClean } = useUnsavedChangesGuard({ onDiscard: discardChanges })
-  const markEdited = () => {
-    if (!discardedSnapshot.current) discardedSnapshot.current = state.captureSnapshot()
-    markDirty()
-  }
-  const clearDirtyAfterSuccess = () => {
-    discardedSnapshot.current = undefined
-    clearDirty()
-  }
+  const dirtyGuard = useCreateOrderDirtyGuard({
+    captureSnapshot: state.captureSnapshot,
+    restoreSnapshot: state.restoreSnapshot,
+  })
+  const { clearDraftDirty: clearDirtyAfterSuccess, markDraftDirty: markEdited, runIfClean } = dirtyGuard
   const createAnother = () => navigate(`/process-orders/create?fresh=${Date.now()}`, { replace: true })
   const handleSubmit = async () => {
     if (await state.handleSubmit()) clearDirtyAfterSuccess()
@@ -117,6 +107,8 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             machines={state.machines}
             rolls={state.rolls}
             selectedId={state.selectedId}
+            configuredPlanIds={state.configuredPlanIds}
+            draftVersion={state.draftVersion}
             plans={state.plans}
             previews={state.previews}
             routePreviews={state.routePreviews}
@@ -130,7 +122,12 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             onPlanChange={(localId, plan) => { markEdited(); state.handlePlanChange(localId, plan) }}
             onPreviewPlan={state.handlePreviewPlan}
             onSavePlan={async (roll, plan) => { if (await state.handleSavePlan(roll, plan)) clearDirtyAfterSuccess() }}
-            onSavePlanBatch={async (rolls, plan) => { if (await state.handleSavePlanBatch(rolls, plan)) clearDirtyAfterSuccess() }}
+            onSavePlanBatch={async (rolls, plan) => {
+              if (await state.handleSavePlanBatch(rolls, plan)
+                && rolls.some((roll) => roll.localId === state.selectedId)) clearDirtyAfterSuccess()
+            }}
+            onServiceDirtyChange={dirtyGuard.setServiceDirty}
+            onDraftVersionChange={state.setDraftVersion}
             onPrev={() => runIfClean(() => state.setCurrent(2))}
             onNext={async () => { if (await state.handleConfigNext()) clearDirtyAfterSuccess() }}
           />

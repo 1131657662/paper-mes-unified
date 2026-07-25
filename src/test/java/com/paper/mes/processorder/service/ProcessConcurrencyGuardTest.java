@@ -54,12 +54,25 @@ class ProcessConcurrencyGuardTest {
         order.setOrderStatus(0);
         order.setVersion(1);
         when(orderMapper.selectById("order-1")).thenReturn(order);
-        when(rollMapper.selectById("roll-1")).thenReturn(roll());
+        OriginalRoll roll = roll();
+        roll.setProcessMode(3);
+        when(rollMapper.selectById("roll-1")).thenReturn(roll);
+        when(rollMapper.selectBatchIds(any())).thenReturn(List.of(roll));
         when(rollMapper.updateById(any(OriginalRoll.class))).thenReturn(0);
+        ObjectMapper objectMapper = new ObjectMapper();
+        ProcessPlanDraftStore store = new ProcessPlanDraftStore(
+                rollMapper, mock(ProcessConfigDraftMapper.class), objectMapper);
+        ProcessPlanDraftPreviewer previewer = mock(ProcessPlanDraftPreviewer.class);
+        when(previewer.preview(any(), any(), any())).thenReturn(new com.paper.mes.processorder.dto.PlanPreviewVO());
         ProcessPlanDraftManager manager = new ProcessPlanDraftManager(
-                orderMapper, rollMapper, mock(ProcessConfigDraftMapper.class), mock(ProcessOrderService.class),
-                mock(ProcessPlanMapper.class), mock(SawPlanPreviewer.class), mock(OnSitePlanPreviewer.class),
-                new ObjectMapper(), mock(BusinessLockService.class), mock(ServiceOnlyProcessPolicy.class), versionGuard);
+                orderMapper,
+                store,
+                new ProcessPlanSaveWorkLoader(
+                        store, new ProcessPlanBatchTargetFactory(objectMapper)),
+                previewer,
+                mock(BusinessLockService.class),
+                versionGuard,
+                new ProcessPlanSavePolicy(objectMapper));
         ProcessPlanDTO plan = new ProcessPlanDTO();
         plan.setProcessMode(3);
 
@@ -74,7 +87,8 @@ class ProcessConcurrencyGuardTest {
         ProcessRouteFinishWriter finishWriter = mock(ProcessRouteFinishWriter.class);
         when(rollMapper.updateById(any(OriginalRoll.class))).thenReturn(0);
         ProcessRoutePersistenceService service = new ProcessRoutePersistenceService(
-                rollMapper, mock(ProcessRouteCleanupService.class), stepWriter, finishWriter);
+                rollMapper, mock(ProcessRouteCleanupService.class), stepWriter, finishWriter,
+                mock(ProcessRouteModePolicy.class));
         ProcessRoutePreviewDTO dto = new ProcessRoutePreviewDTO();
         ProcessRoutePreviewDTO.RouteStageDTO stage = new ProcessRoutePreviewDTO.RouteStageDTO();
         stage.setStepType(1);

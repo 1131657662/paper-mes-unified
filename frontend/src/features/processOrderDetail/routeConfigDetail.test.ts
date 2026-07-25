@@ -78,8 +78,9 @@ describe('routeConfigDetail', () => {
   it('serializes configured stage outputs into the route preview DTO', () => {
     const roll = originalRoll()
     const form = initialDetailRouteForm(roll)
-    const dto = buildDetailRouteDto(roll, form)
+    const dto = buildDetailRouteDto(roll, form, 7)
 
+    expect(dto.expectedVersion).toBe(7)
     expect(dto.originalUuid).toBe('roll-1')
     expect(dto.stages[0]).toMatchObject({
       stageLevel: 1,

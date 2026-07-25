@@ -4,6 +4,7 @@ import type { ProcessStep } from '../../../types/processOrder'
 import { formatMoney, formatNumber } from '../../processOrderDetail/orderDetailUtils'
 
 interface Props {
+  disabled?: boolean
   step: ProcessStep
   onDelete: () => void
   onEdit: () => void
@@ -19,9 +20,10 @@ export default function DraftServiceStepRow(props: Props) {
       <Tag color="blue">{basisText(props.step)}</Tag>
       <div className="draft-service-process-row__actions">
         <Button type="text" size="small" icon={<EditOutlined />}
-          aria-label="编辑附加工艺" onClick={props.onEdit} />
-        <Popconfirm title="删除这条附加工艺？" onConfirm={props.onDelete}>
-          <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="删除附加工艺" />
+          aria-label="编辑附加工艺" disabled={props.disabled} onClick={props.onEdit} />
+        <Popconfirm title="删除这条附加工艺？" disabled={props.disabled} onConfirm={props.onDelete}>
+          <Button type="text" danger size="small" disabled={props.disabled}
+            icon={<DeleteOutlined />} aria-label="删除附加工艺" />
         </Popconfirm>
       </div>
     </div>

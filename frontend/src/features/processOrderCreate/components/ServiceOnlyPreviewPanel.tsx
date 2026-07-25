@@ -82,7 +82,7 @@ function EmptyState() {
         type="warning"
         showIcon
         message="尚未配置附加工艺"
-        description="请在中栏选择剥损整理或重新包装，并保存当前卷，或直接应用到左侧选中的仅附加工艺母卷。"
+        description="请在中栏选择剥损整理或重新包装，并保存本卷附加工艺，或批量应用到左侧选中的母卷。"
       />
     </div>
   )

@@ -18,19 +18,67 @@
 }
 
 .config-step-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
   flex: 0 0 auto;
-  justify-content: flex-end;
   margin-top: 12px;
 }
 
-.config-step-footer__actions {
-  width: 100%;
-  justify-content: flex-end;
-}
-
-.config-light-step__footer {
+.config-step-footer__summary {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 12px;
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.config-step-footer__summary strong {
+  color: var(--mes-color-warning);
+  font-weight: 500;
+}
+
+.process-plan-actions {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--mes-color-border-light);
+}
+
+.process-plan-actions__scope {
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.process-plan-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.process-plan-actions__tooltip {
+  display: inline-flex;
+}
+
+@media (max-width: 640px) {
+  .config-step-footer {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .config-step-footer__summary {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .config-step-footer > .ant-btn:last-child {
+    justify-self: end;
+  }
+
+  .process-plan-actions__buttons {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

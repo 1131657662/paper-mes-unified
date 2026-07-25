@@ -107,6 +107,8 @@ export function useCreateOrderPage(
     autoFinishConfigEnabled,
     baseInfo: state.baseInfo,
     current: state.current,
+    configuredPlanIds: state.configuredPlanIds,
+    draftVersion: state.draftVersion,
     defaultSpareCount,
     defaultPlanOptions,
     loadError: isDraftError
@@ -141,6 +143,7 @@ export function useCreateOrderPage(
     submitting: submission.submitting,
     retryLoad,
     setCurrent: state.setCurrent,
+    setDraftVersion: state.setDraftVersion,
     setRolls: state.setRolls,
     setSelectedId: state.setSelectedId,
     handleBaseInfoChange: setupActions.handleBaseInfoChange,

@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -22,7 +24,22 @@ public class ServiceOnlyProcessPolicy {
                 .eq(ProcessStep::getIsMain, 0)
                 .in(ProcessStep::getStepType, List.of(
                         FeeCalculator.STEP_TYPE_STRIP_SORT,
-                        FeeCalculator.STEP_TYPE_REPACKAGE))) > 0;
+                FeeCalculator.STEP_TYPE_REPACKAGE))) > 0;
+    }
+
+    public Set<String> configuredRollUuids(List<String> originalUuids) {
+        if (originalUuids == null || originalUuids.isEmpty()) {
+            return Set.of();
+        }
+        return stepMapper.selectList(new LambdaQueryWrapper<ProcessStep>()
+                        .in(ProcessStep::getOriginalUuid, originalUuids)
+                        .eq(ProcessStep::getIsMain, 0)
+                        .in(ProcessStep::getStepType, List.of(
+                                FeeCalculator.STEP_TYPE_STRIP_SORT,
+                                FeeCalculator.STEP_TYPE_REPACKAGE)))
+                .stream()
+                .map(ProcessStep::getOriginalUuid)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     public void requireConfiguredStep(String originalUuid) {

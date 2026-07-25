@@ -75,6 +75,10 @@ export function countServiceApplyTargets(options: ServiceApplyTargetOptions): nu
   return resolveServiceApplyTargets(options).targetUuids.length
 }
 
+export function serviceBatchIncludesCurrentRoll(targetUuids: string[], currentRollUuid: string): boolean {
+  return targetUuids.includes(currentRollUuid)
+}
+
 interface ServiceApplyTargetOptions {
   rolls: RollDraft[]
   stepType?: number

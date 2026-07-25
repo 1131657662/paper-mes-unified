@@ -13,7 +13,7 @@ export function useProcessModeRollSelection(
   rolls: RollDraft[],
   initialLocalId?: string,
 ): ProcessModeRollSelection {
-  const eligibleRolls = rolls.filter((roll) => roll.uuid && roll.processMode !== 3)
+  const eligibleRolls = rolls.filter((roll) => Boolean(roll.uuid))
   const initialCheckedIds = initialLocalId && eligibleRolls.some((roll) => roll.localId === initialLocalId)
     ? [initialLocalId]
     : []

@@ -1,8 +1,10 @@
-import { Button, Card, Space, Table, Tag } from 'antd'
+import { Card, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
+import { configStepProgress } from '../configStepProgress'
 import type { RollDraft } from '../types'
+import ConfigStepFooter from './ConfigStepFooter'
 
 interface Props {
   lockedRolls: ReturnType<typeof mergedSourceLocks>
@@ -12,6 +14,14 @@ interface Props {
 }
 
 export default function ConfigStepLight({ lockedRolls, onNext, onPrev, rolls }: Props) {
+  const progress = configStepProgress({
+    configuredPlanIds: [],
+    lockedRolls,
+    previews: {},
+    routePreviews: {},
+    rolls,
+    serviceConfigured: {},
+  })
   return (
     <Card title="无需单独配置的母卷" className="config-light-step">
       <Table
@@ -22,12 +32,8 @@ export default function ConfigStepLight({ lockedRolls, onNext, onPrev, rolls }: 
         dataSource={rolls}
         scroll={{ x: 760 }}
       />
-      <div className="config-light-step__footer">
-        <Space wrap>
-          <Button onClick={onPrev}>上一步</Button>
-          <Button type="primary" onClick={onNext}>下一步：预览确认</Button>
-        </Space>
-      </div>
+      <ConfigStepFooter hasUnsavedServiceChanges={false} onNext={onNext}
+        onPrev={onPrev} progress={progress} saving={false} serviceWritePending={false} />
     </Card>
   )
 }

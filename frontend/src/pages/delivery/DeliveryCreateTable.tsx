@@ -98,9 +98,10 @@ export default function DeliveryCreateTable(props: Props) {
         onExpand: handleExpand,
       }}
       rowSelection={{
-        checkStrictly: false,
+        checkStrictly: true,
         columnWidth: 44,
         fixed: true,
+        getCheckboxProps: (row) => ({ disabled: isDeliveryGroupRow(row) }),
         preserveSelectedRowKeys: true,
         selectedRowKeys,
         onChange: (keys) => onSelectionChange(removeGroupKeys(keys)),

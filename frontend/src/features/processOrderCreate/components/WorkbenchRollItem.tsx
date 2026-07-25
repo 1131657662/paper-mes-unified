@@ -5,6 +5,7 @@ import type { ProcessRoutePreviewVO } from '../../../types/processOrder'
 import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
 import type { MergedSourceLock } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
+import { supportsRouteDesigner } from '../configStepSelection'
 
 interface Props {
   actions: WorkbenchRollItemActions
@@ -41,7 +42,7 @@ export default function WorkbenchRollItem({ actions, state }: Props) {
       <div className="process-roll-option__content">
         <RollHeading actions={actions} disabled={disabled} state={state} />
         <RollTags state={state} />
-        {processModeRequiresMain(state.roll.processMode) && <RouteButton actions={actions} state={state} />}
+        {supportsRouteDesigner(state.roll.processMode) && <RouteButton actions={actions} state={state} />}
       </div>
     </List.Item>
   )

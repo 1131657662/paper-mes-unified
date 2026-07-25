@@ -52,22 +52,6 @@
   white-space: nowrap;
 }
 
-.service-editor-footer {
-  display: contents;
-}
-
-.service-editor-footer__scope {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding-inline: 10px;
-  border: 1px solid var(--mes-color-border-light);
-  border-radius: var(--mes-radius-sm);
-  background: var(--mes-color-soft);
-  color: var(--mes-color-text-muted);
-  font-size: 12px;
-}
-
 .service-editor-action-tooltip {
   display: inline-flex;
 }
@@ -114,7 +98,10 @@
 }
 
 .draft-service-editor__actions .ant-btn {
+  height: auto;
+  min-height: 32px;
   min-width: 0;
+  white-space: normal;
 }
 
 .process-step-form--compact {
@@ -192,8 +179,12 @@
     width: 100%;
   }
 
-  .draft-service-editor__actions .ant-btn-primary:last-child {
+  .draft-service-editor__actions .service-editor-action-tooltip:last-child {
     grid-column: 1 / -1;
+  }
+
+  .draft-service-editor__actions .service-editor-action-tooltip:last-child .ant-btn {
+    width: 100%;
   }
 
   .process-step-form--compact,

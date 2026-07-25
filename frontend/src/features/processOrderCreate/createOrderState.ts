@@ -125,8 +125,11 @@ export function plansFromBatch(rolls: RollDraft[], plan: ProcessPlanDTO) {
 }
 
 export function previewsFromBatch(rolls: RollDraft[], previews: PlanPreviewVO[]) {
-  return Object.fromEntries(rolls.flatMap((roll, index) => {
-    const preview = previews[index]
+  const byOriginalUuid = new Map(previews
+    .filter((preview) => preview.originalUuid)
+    .map((preview) => [preview.originalUuid!, preview]))
+  return Object.fromEntries(rolls.flatMap((roll) => {
+    const preview = roll.uuid ? byOriginalUuid.get(roll.uuid) : undefined
     return preview ? [[roll.localId, preview]] : []
   }))
 }

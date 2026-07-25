@@ -34,7 +34,6 @@ public class ProcessRouteDraftManager {
     public static final String CONFIG_TYPE_SINGLE = "singlePlan";
 
     private static final int STATUS_DRAFT = 0;
-    private static final int PROCESS_MODE_STANDARD = 1;
     private static final int IS_REMAIN_YES = 1;
 
     private final ProcessOrderMapper orderMapper;
@@ -46,11 +45,13 @@ public class ProcessRouteDraftManager {
     private final ObjectMapper objectMapper;
     private final BusinessLockService businessLockService;
     private final DraftOrderVersionGuard versionGuard;
+    private final ProcessRouteModePolicy routeModePolicy;
 
     public ProcessRoutePreviewVO preview(String orderUuid, ProcessRoutePreviewDTO dto) {
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, dto.getExpectedVersion());
         OriginalRoll roll = requireRoll(orderUuid, dto.getOriginalUuid());
+        routeModePolicy.requireCompatible(roll, dto);
         return routePreview(order, roll, dto);
     }
 
@@ -65,9 +66,12 @@ public class ProcessRouteDraftManager {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, dto.getExpectedVersion());
-        versionGuard.advance(orderUuid, dto.getExpectedVersion());
         OriginalRoll roll = requireRoll(orderUuid, dto.getOriginalUuid());
-        return saveOne(order, roll, dto);
+        routeModePolicy.requireCompatible(roll, dto);
+        ProcessRoutePreviewVO preview = prepare(order, roll, dto);
+        versionGuard.advance(orderUuid, dto.getExpectedVersion());
+        persist(order, roll, dto, preview);
+        return preview;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -76,19 +80,33 @@ public class ProcessRouteDraftManager {
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, dto.getExpectedVersion());
         Map<String, OriginalRoll> rolls = requireRolls(orderUuid, dto.getRoutes());
-        versionGuard.advance(orderUuid, dto.getExpectedVersion());
-        return dto.getRoutes().stream()
-                .map(route -> saveOne(order, rolls.get(route.getOriginalUuid()), route))
+        List<PreparedRouteDraft> prepared = dto.getRoutes().stream()
+                .map(route -> prepareRoute(order, rolls.get(route.getOriginalUuid()), route))
                 .toList();
+        versionGuard.advance(orderUuid, dto.getExpectedVersion());
+        for (PreparedRouteDraft item : prepared) {
+            persist(order, item.roll(), item.dto(), item.preview());
+        }
+        return prepared.stream().map(PreparedRouteDraft::preview).toList();
     }
 
-    private ProcessRoutePreviewVO saveOne(ProcessOrder order, OriginalRoll roll,
-                                           ProcessRoutePreviewDTO dto) {
+    private PreparedRouteDraft prepareRoute(ProcessOrder order, OriginalRoll roll,
+                                            ProcessRoutePreviewDTO dto) {
+        routeModePolicy.requireCompatible(roll, dto);
+        return new PreparedRouteDraft(roll, dto, prepare(order, roll, dto));
+    }
+
+    private ProcessRoutePreviewVO prepare(ProcessOrder order, OriginalRoll roll,
+                                          ProcessRoutePreviewDTO dto) {
         ProcessRoutePreviewVO preview = routePreview(order, roll, dto);
         requireFinalOutputs(preview);
+        return preview;
+    }
+
+    private void persist(ProcessOrder order, OriginalRoll roll, ProcessRoutePreviewDTO dto,
+                         ProcessRoutePreviewVO preview) {
         updateRollRoute(roll, dto);
         upsertDraft(order.getUuid(), roll.getUuid(), dto, preview);
-        return preview;
     }
 
     public boolean isRouteDraft(ProcessConfigDraft draft) {
@@ -109,6 +127,7 @@ public class ProcessRouteDraftManager {
 
     public ProcessRoutePreviewVO submit(ProcessOrder order, OriginalRoll roll, ProcessConfigDraft draft) {
         ProcessRoutePreviewDTO dto = readRouteDraft(draft);
+        routeModePolicy.requireCompatible(roll, dto);
         ProcessRoutePreviewVO preview = routePreview(order, roll, dto);
         requireFinalOutputs(preview);
         persistenceService.replaceRoute(new ProcessRouteContext(order, roll), dto, preview);
@@ -180,7 +199,6 @@ public class ProcessRouteDraftManager {
 
     private void updateRollRoute(OriginalRoll roll, ProcessRoutePreviewDTO dto) {
         ProcessRoutePreviewDTO.RouteStageDTO first = dto.getStages().get(0);
-        roll.setProcessMode(PROCESS_MODE_STANDARD);
         roll.setMainStepType(first.getStepType());
         roll.setMachineUuid(resolveStageMachine(first));
         ConcurrencyGuard.requireRowUpdated(rollMapper.updateById(roll));
@@ -200,7 +218,7 @@ public class ProcessRouteDraftManager {
             draft.setOrderUuid(orderUuid);
             draft.setOriginalUuid(rollUuid);
         }
-        draft.setProcessMode(PROCESS_MODE_STANDARD);
+        draft.setProcessMode(ProcessModePolicy.STANDARD);
         draft.setMainStepType(dto.getStages().get(0).getStepType());
         draft.setConfigJson(toJson(dto));
         draft.setPreviewJson(toJson(preview));
@@ -226,5 +244,9 @@ public class ProcessRouteDraftManager {
         } catch (JsonProcessingException e) {
             throw new BusinessException("链式工艺草稿序列化失败");
         }
+    }
+
+    private record PreparedRouteDraft(OriginalRoll roll, ProcessRoutePreviewDTO dto,
+                                      ProcessRoutePreviewVO preview) {
     }
 }

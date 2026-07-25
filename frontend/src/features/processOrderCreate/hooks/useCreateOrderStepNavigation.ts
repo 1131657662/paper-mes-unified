@@ -7,7 +7,7 @@ export function useCreateOrderStepNavigation(state: CreateOrderDraftState) {
   const moveToStep = async (
     nextStep: number,
     uuid = state.orderUuid,
-    expectedVersion = state.draftVersion,
+    expectedVersion = state.getDraftVersion(),
   ) => {
     if (uuid) {
       await saveProgress({ uuid, currentStep: nextStep, expectedVersion })

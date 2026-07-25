@@ -9,6 +9,7 @@ import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessConfigDraftMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
+import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -28,6 +29,7 @@ class DraftRollProcessManagerTest {
     private ProcessOrderMapper orderMapper;
     private OriginalRollMapper rollMapper;
     private ProcessConfigDraftMapper draftMapper;
+    private ProcessStepMapper processStepMapper;
     private DraftOrderVersionGuard versionGuard;
     private DraftRollProcessManager manager;
 
@@ -36,9 +38,11 @@ class DraftRollProcessManagerTest {
         orderMapper = mock(ProcessOrderMapper.class);
         rollMapper = mock(OriginalRollMapper.class);
         draftMapper = mock(ProcessConfigDraftMapper.class);
+        processStepMapper = mock(ProcessStepMapper.class);
         versionGuard = mock(DraftOrderVersionGuard.class);
         manager = new DraftRollProcessManager(
-                orderMapper, rollMapper, draftMapper, mock(BusinessLockService.class), versionGuard);
+                orderMapper, rollMapper, draftMapper, processStepMapper,
+                mock(BusinessLockService.class), versionGuard);
     }
 
     @Test
@@ -81,6 +85,47 @@ class DraftRollProcessManagerTest {
         verify(draftMapper).delete(any());
     }
 
+    @Test
+    void save_whenChangingToDirectShip_removesServiceStepsForRoll() {
+        OriginalRoll roll = roll("roll-1");
+        roll.setProcessMode(ProcessModePolicy.STANDARD);
+        roll.setMainStepType(2);
+        when(orderMapper.selectById("order-1")).thenReturn(order());
+        when(rollMapper.selectBatchIds(anyCollection())).thenReturn(List.of(roll));
+        when(rollMapper.updateById(any(OriginalRoll.class))).thenReturn(1);
+
+        manager.save("order-1", requestWithMode("roll-1", ProcessModePolicy.DIRECT_SHIP, null));
+
+        verify(processStepMapper).delete(any());
+    }
+
+    @Test
+    void save_whenRollIsAlreadyDirectShip_removesLegacyServiceSteps() {
+        OriginalRoll roll = roll("roll-1");
+        roll.setProcessMode(ProcessModePolicy.DIRECT_SHIP);
+        when(orderMapper.selectById("order-1")).thenReturn(order());
+        when(rollMapper.selectBatchIds(anyCollection())).thenReturn(List.of(roll));
+        when(rollMapper.updateById(any(OriginalRoll.class))).thenReturn(1);
+
+        manager.save("order-1", requestWithMode("roll-1", ProcessModePolicy.DIRECT_SHIP, null));
+
+        verify(processStepMapper).delete(any());
+    }
+
+    @Test
+    void save_whenChangingBetweenServiceCompatibleModes_keepsServiceSteps() {
+        OriginalRoll roll = roll("roll-1");
+        roll.setProcessMode(ProcessModePolicy.STANDARD);
+        roll.setMainStepType(2);
+        when(orderMapper.selectById("order-1")).thenReturn(order());
+        when(rollMapper.selectBatchIds(anyCollection())).thenReturn(List.of(roll));
+        when(rollMapper.updateById(any(OriginalRoll.class))).thenReturn(1);
+
+        manager.save("order-1", requestWithMode("roll-1", ProcessModePolicy.ON_SITE, 2));
+
+        verify(processStepMapper, never()).delete(any());
+    }
+
     private DraftRollProcessBatchSaveDTO request(String... ids) {
         DraftRollProcessBatchSaveDTO dto = new DraftRollProcessBatchSaveDTO();
         dto.setExpectedVersion(7);
@@ -94,6 +139,16 @@ class DraftRollProcessManagerTest {
         item.setProcessMode(1);
         item.setMainStepType(1);
         return item;
+    }
+
+    private DraftRollProcessBatchSaveDTO requestWithMode(String id, int processMode, Integer mainStepType) {
+        DraftRollProcessBatchSaveDTO dto = new DraftRollProcessBatchSaveDTO();
+        dto.setExpectedVersion(7);
+        DraftRollProcessDTO item = item(id);
+        item.setProcessMode(processMode);
+        item.setMainStepType(mainStepType);
+        dto.setRolls(List.of(item));
+        return dto;
     }
 
     private ProcessOrder order() {

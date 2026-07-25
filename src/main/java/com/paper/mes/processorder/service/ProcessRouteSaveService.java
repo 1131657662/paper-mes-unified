@@ -30,9 +30,13 @@ public class ProcessRouteSaveService {
     private final ProcessOrderService processOrderService;
     private final ProcessRoutePriceResolver priceResolver;
     private final BusinessLockService businessLockService;
+    private final DraftOrderVersionGuard versionGuard;
+    private final ProcessRouteModePolicy routeModePolicy;
 
     public ProcessRoutePreviewVO preview(String orderUuid, ProcessRoutePreviewDTO dto) {
         ProcessRouteContext context = loadContext(orderUuid, dto.getOriginalUuid());
+        versionGuard.assertExpected(context.order(), dto.getExpectedVersion());
+        routeModePolicy.requireCompatible(context.roll(), dto);
         priceResolver.applyDefaultPrices(context.order(), dto);
         return routePreviewer.preview(context.roll(), dto);
     }
@@ -41,6 +45,8 @@ public class ProcessRouteSaveService {
     public ProcessRoutePreviewVO save(String orderUuid, ProcessRoutePreviewDTO dto) {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessRouteContext context = loadContext(orderUuid, dto.getOriginalUuid());
+        versionGuard.assertExpected(context.order(), dto.getExpectedVersion());
+        routeModePolicy.requireCompatible(context.roll(), dto);
         priceResolver.applyDefaultPrices(context.order(), dto);
         ProcessRoutePreviewVO preview = routePreviewer.preview(context.roll(), dto);
         requireFinalOutputs(preview);

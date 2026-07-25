@@ -15,6 +15,12 @@ class ProcessDraftSafetyContractTest {
             "src/main/java/com/paper/mes/processorder/service/impl/ProcessOrderDraftServiceImpl.java";
     private static final String PLAN_DRAFT_MANAGER =
             "src/main/java/com/paper/mes/processorder/service/ProcessPlanDraftManager.java";
+    private static final String PLAN_DRAFT_PREVIEWER =
+            "src/main/java/com/paper/mes/processorder/service/ProcessPlanDraftPreviewer.java";
+    private static final String PLAN_DRAFT_STORE =
+            "src/main/java/com/paper/mes/processorder/service/ProcessPlanDraftStore.java";
+    private static final String PLAN_SAVE_POLICY =
+            "src/main/java/com/paper/mes/processorder/service/ProcessPlanSavePolicy.java";
     private static final String ROUTE_DRAFT_MANAGER =
             "src/main/java/com/paper/mes/processorder/service/ProcessRouteDraftManager.java";
 
@@ -22,6 +28,9 @@ class ProcessDraftSafetyContractTest {
     void draftPreviewSaveAndSubmit_useFormalProcessPlanEntryPoints() throws IOException {
         String draftService = source(DRAFT_SERVICE);
         String planManager = source(PLAN_DRAFT_MANAGER);
+        String planPreviewer = source(PLAN_DRAFT_PREVIEWER);
+        String planStore = source(PLAN_DRAFT_STORE);
+        String planSavePolicy = source(PLAN_SAVE_POLICY);
         String routeManager = source(ROUTE_DRAFT_MANAGER);
 
         assertContainsAll(slice(draftService, "public void saveProcessConfig", "public PlanPreviewVO previewProcessPlan"),
@@ -29,8 +38,10 @@ class ProcessDraftSafetyContractTest {
         assertContainsAll(slice(draftService, "public void saveBaseInfo", "public void saveDraftProgress"),
                 "versionGuard.assertExpected(order, dto.getExpectedVersion());",
                 "ConcurrencyGuard.requireRowUpdated(processOrderMapper.updateById(order));");
-        assertContainsAll(slice(planManager, "private PlanPreviewVO previewOnly", "private PlanPreviewVO errorPreview"),
-                "orderService.previewRewindPlan(orderUuid, roll.getUuid(), planMapper.toPreviewDto(plan))");
+        assertContainsAll(planPreviewer,
+                "orderService.previewRewindPlan(",
+                "new RewindPlanPreviewContext(context.order(), roll, context.sourceRolls()),",
+                "planMapper.toPreviewDto(plan));");
         assertContainsAll(slice(draftService, "private ProcessOrderSubmitVO generateFinishConfigs",
                         "private Set<String> coveredByMultiSourceDrafts"),
                 "processOrderService.saveFinishConfig(",
@@ -54,7 +65,18 @@ class ProcessDraftSafetyContractTest {
                 "businessLockService.lockProcessOrders(List.of(orderUuid));",
                 "versionGuard.assertExpected(order, expectedVersion);",
                 "versionGuard.advance(orderUuid, expectedVersion);",
-                "upsertDraft(orderUuid, roll.getUuid(), plan, preview)");
+                "store.persist(orderUuid, prepared);");
+        assertContainsAll(planSavePolicy,
+                "requireProcessMatches(candidate.roll(), candidate.plan());",
+                "requireNotRouteDraft(candidate.existingDraft());",
+                "config.has(\"stages\")");
+        assertContainsAll(planStore,
+                "roll.setMachineUuid(candidate.plan().getMachineUuid());",
+                "ConcurrencyGuard.requireRowUpdated(rollMapper.updateById(roll));");
+        assertTrue(!planStore.contains("roll.setProcessMode("),
+                "saving a plan must not silently change the roll process mode");
+        assertTrue(!planStore.contains("roll.setMainStepType("),
+                "saving a plan must not silently change the roll main step");
         assertContainsAll(slice(routeManager,
                 "public ProcessRoutePreviewVO save(String orderUuid, ProcessRoutePreviewDTO dto)",
                         "public boolean isRouteDraft"),

@@ -69,6 +69,9 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
     /** 根据复卷方案生成成品预览，不分配正式卷号。 */
     FinishPreviewVO previewRewindPlan(String orderUuid, String rollUuid, RewindPlanPreviewDTO dto);
 
+    /** 使用调用方已加载的订单、目标卷和来源卷生成预览，供批量草稿配置复用。 */
+    FinishPreviewVO previewRewindPlan(RewindPlanPreviewContext context, RewindPlanPreviewDTO dto);
+
     /** 加工单状态流转（状态机校验合法性，乐观锁更新）。 */
     void changeStatus(String uuid, Integer targetStatus, String reason);
 

@@ -1,5 +1,4 @@
 import { Alert, Button, Form, Typography } from 'antd'
-import { createPortal } from 'react-dom'
 import type { ProcessStepDTO } from '../../../api/processOrder'
 import ProcessStepFormFields from '../../../components/processOrder/ProcessStepFormFields'
 import {
@@ -13,6 +12,7 @@ import type {
   FixedAmountScope,
   ServiceApplyTargets,
 } from '../serviceStepBatchModel'
+import { serviceBatchIncludesCurrentRoll } from '../serviceStepBatchModel'
 import type { MachineContext } from '../machineDefaults'
 import type { ServiceEditorStatus } from '../serviceStepEditorTypes'
 import {
@@ -24,12 +24,13 @@ import './DraftServiceStepEditor.css'
 
 interface Props {
   customerPrices?: CustomerProcessPrice[]
-  footerContainer?: HTMLElement | null
+  editingStepUuid?: string
   initialValues?: ProcessStepDTO & { uuid?: string }
   roll: { uuid: string; rollName: string; machineContext?: MachineContext }
   savedSteps: ProcessStep[]
   saving: boolean
   batchSaving: boolean
+  writePending: boolean
   selectedRollCount: number
   getTargetAnalysis: (stepType?: number) => ServiceApplyTargets
   onCancel: () => void
@@ -53,7 +54,10 @@ export default function DraftServiceStepEditor(props: Props) {
     onOk: props.onSave,
   })
   const values = Form.useWatch([], state.form) as ProcessStepFormValues | undefined
-  const savedStep = findSavedStep(props.savedSteps, values?.stepType)
+  const editingStep = props.editingStepUuid
+    ? props.savedSteps.find((step) => step.uuid === props.editingStepUuid)
+    : undefined
+  const savedStep = editingStep ?? findSavedStep(props.savedSteps, values?.stepType)
   const analysis = props.getTargetAnalysis(values?.stepType)
   const status = buildEditorStatus(values, savedStep, analysis)
   const formChange = (changed: Partial<ProcessStepFormValues>) => {
@@ -66,11 +70,16 @@ export default function DraftServiceStepEditor(props: Props) {
     const existing = findSavedStep(props.savedSteps, nextValues.stepType)
     props.onStatusChange(buildEditorStatus(nextValues, existing, props.getTargetAnalysis(nextValues.stepType)))
   }
-  const saveCurrent = () => state.submitWith((payload) => props.onSave(payload, savedStep?.uuid))
-  const applySelected = () => state.submitWith((payload) => props.onSaveToSelected(
-    payload,
-    state.form.getFieldValue('fixedAmountScope') ?? 'TOTAL',
-  ))
+  const saveCurrent = () => state.submitWith(
+    (payload) => props.onSave(payload, props.editingStepUuid ?? savedStep?.uuid),
+  )
+  const applySelected = () => state.submitWith(
+    (payload) => props.onSaveToSelected(
+      payload,
+      state.form.getFieldValue('fixedAmountScope') ?? 'TOTAL',
+    ),
+    serviceBatchIncludesCurrentRoll(analysis.targetUuids, props.roll.uuid),
+  )
 
   return (
     <div className="draft-service-editor">
@@ -82,22 +91,22 @@ export default function DraftServiceStepEditor(props: Props) {
         editMode={Boolean(savedStep)}
         extraOnly
         compact
+        lockStepType={Boolean(props.editingStepUuid)}
         onValuesChange={formChange}
       />
-      {props.footerContainer && createPortal(
-        <ServiceStepEditorActions
-          actions={{ onApply: applySelected, onReset: reset, onSave: saveCurrent }}
-          state={{
-            analysis,
-            batchSaving: props.batchSaving,
-            disabled: state.isLoading || !state.selectedCatalog,
-            saving: props.saving,
-            selectedRollCount: props.selectedRollCount,
-            updatingCurrent: Boolean(savedStep),
-          }}
-        />,
-        props.footerContainer,
-      )}
+      <ServiceStepEditorActions
+        actions={{ onApply: applySelected, onReset: reset, onSave: saveCurrent }}
+        state={{
+          analysis,
+          batchSaving: props.batchSaving,
+          currentRollUuid: props.roll.uuid,
+          dirty: status?.dirty === true,
+          disabled: state.isLoading || !state.selectedCatalog,
+          saving: props.saving,
+          selectedRollCount: props.selectedRollCount,
+          writePending: props.writePending,
+        }}
+      />
     </div>
   )
 }

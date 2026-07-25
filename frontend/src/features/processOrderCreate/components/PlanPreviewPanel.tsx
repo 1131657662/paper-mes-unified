@@ -1,5 +1,4 @@
-import { Alert, Button, Descriptions, Empty, Space, Table, Tag, Typography } from 'antd'
-import { ReloadOutlined } from '@ant-design/icons'
+import { Alert, Descriptions, Empty, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { ReactNode } from 'react'
 import TooltipText from '../../../components/biz/TooltipText'
@@ -11,6 +10,7 @@ import type {
 import { formatKgWithMaxDecimals, formatMm } from '../../../utils/numberFormatters'
 import { createStableObjectRowKey } from '../../../utils/createStableObjectRowKey'
 import type { RollWeightBalance } from '../weightBalanceModel'
+import PlanPreviewToolbar from './PlanPreviewToolbar'
 import WeightBalanceStrip from './WeightBalanceStrip'
 import './PlanPreviewPanel.css'
 import './WeightBalanceStrip.css'
@@ -20,6 +20,7 @@ interface Props {
   loading?: boolean
   onPreview?: () => void
   balance?: RollWeightBalance
+  configured: boolean
 }
 
 const segmentColumns: ColumnsType<RewindSegmentPreview> = [
@@ -46,27 +47,11 @@ const sawFinishColumns = finishColumns.filter((column) => !('dataIndex' in colum
 const segmentRowKey = createStableObjectRowKey('preview-segment')
 const finishRowKey = createStableObjectRowKey('preview-finish')
 
-export default function PlanPreviewPanel({ preview, loading, onPreview, balance }: Props) {
+export default function PlanPreviewPanel({ preview, loading, onPreview, balance, configured }: Props) {
   return (
     <div className="plan-preview-panel">
-      <PreviewToolbar preview={preview} loading={loading} onPreview={onPreview} />
+      <PlanPreviewToolbar preview={preview} loading={loading} onPreview={onPreview} configured={configured} />
       {!preview ? <EmptyPreview /> : <PreviewContent preview={preview} balance={balance} />}
-    </div>
-  )
-}
-
-function PreviewToolbar({ preview, loading, onPreview }: Props) {
-  return (
-    <div className="plan-preview-panel__toolbar">
-      <Space size={8} wrap>
-        {preview && <Tag color={preview.ready ? 'success' : 'error'}>{preview.ready ? '可提交' : '需修正'}</Tag>}
-        {loading && <Tag color="processing">预览中</Tag>}
-      </Space>
-      {onPreview && (
-        <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={onPreview}>
-          刷新预览
-        </Button>
-      )}
     </div>
   )
 }

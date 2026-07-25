@@ -37,6 +37,32 @@ describe('仅附加工艺预览状态', () => {
   })
 })
 
+describe('主加工方案保存状态', () => {
+  it('预览通过但未持久化时明确显示未保存并阻断继续', () => {
+    const status = rollPreviewStatus({
+      configured: false,
+      roll: standardRoll(),
+      preview: servicePreview({ ready: true, summary: '预览通过' }),
+    })
+
+    expect(status).toMatchObject({
+      kind: 'pending',
+      label: '已验证，未保存',
+      blocking: true,
+    })
+  })
+
+  it('持久化且预览通过时显示已保存并可预览', () => {
+    const status = rollPreviewStatus({
+      configured: true,
+      roll: standardRoll(),
+      preview: servicePreview({ ready: true }),
+    })
+
+    expect(status).toMatchObject({ kind: 'ready', label: '已保存，可预览', blocking: false })
+  })
+})
+
 function serviceOnlyRoll(): RollDraft {
   return {
     localId: 'local-1',
@@ -51,4 +77,8 @@ function serviceOnlyRoll(): RollDraft {
 
 function servicePreview(overrides: Partial<PlanPreviewVO>): PlanPreviewVO {
   return { processMode: 4, originalUuid: 'roll-1', ...overrides }
+}
+
+function standardRoll(): RollDraft {
+  return { ...serviceOnlyRoll(), mainStepType: 2, processMode: 1 }
 }

@@ -79,7 +79,12 @@ export default function ProcessRouteConfigDrawer({
     setForm(next)
     clearPreview()
   }
-  const currentRequest = roll && form ? (appendMode ? buildAppendRouteDto(roll, form) : buildDetailRouteDto(roll, form)) : undefined
+  const expectedVersion = detail?.order.version
+  const currentRequest = roll && form
+    ? (appendMode
+        ? buildAppendRouteDto(roll, form, expectedVersion)
+        : buildDetailRouteDto(roll, form, expectedVersion))
+    : undefined
   const previewCurrent = isRoutePreviewCurrent(previewFingerprint, currentRequest)
 
   const handleRollChange = (uuid: string) => {
@@ -102,7 +107,9 @@ export default function ProcessRouteConfigDrawer({
   const handlePreview = async () => {
     if (!detail?.order.uuid || !roll || !form) return
     if (!requireRouteReady(form, appendMode)) return
-    const request = appendMode ? buildAppendRouteDto(roll, form) : buildDetailRouteDto(roll, form)
+    const request = appendMode
+      ? buildAppendRouteDto(roll, form, expectedVersion)
+      : buildDetailRouteDto(roll, form, expectedVersion)
     const action = appendMode ? previewAppendRoute : previewRoute
     setPreview(await action({ orderUuid: detail.order.uuid, request }))
     setPreviewFingerprint(routeRequestFingerprint(request))
@@ -118,7 +125,9 @@ export default function ProcessRouteConfigDrawer({
   const handleSave = () => {
     if (!detail?.order.uuid || !roll || !form) return
     if (!requireRouteReady(form, appendMode)) return
-    const request = appendMode ? buildAppendRouteDto(roll, form) : buildDetailRouteDto(roll, form)
+    const request = appendMode
+      ? buildAppendRouteDto(roll, form, expectedVersion)
+      : buildDetailRouteDto(roll, form, expectedVersion)
     if (!previewCurrent || routeRequestFingerprint(request) !== previewFingerprint) {
       message.warning('表单已变化，请先重新预览费用与最终产出')
       return

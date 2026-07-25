@@ -10,7 +10,7 @@ export function useCreateOrderSubmission(state: CreateOrderDraftState) {
     if (!state.orderUuid) return false
     const result = await submitDraft({
       uuid: state.orderUuid,
-      expectedVersion: state.draftVersion,
+      expectedVersion: state.getDraftVersion(),
     })
     clearCreateOrderLocalDraft()
     state.setSubmitResult(result)

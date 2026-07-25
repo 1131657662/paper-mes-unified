@@ -69,8 +69,11 @@ export function useProcessStepFormState(options: ProcessStepFormOptions) {
     stepType,
   ])
   const submit = () => submitForm({ options, form, selectedCatalog })
-  const submitWith = (onValid: (values: ProcessStepDTO) => Promise<void>) => (
-    submitForm({ options, form, selectedCatalog }, onValid)
+  const submitWith = (
+    onValid: (values: ProcessStepDTO) => Promise<void>,
+    closeOnSuccess = true,
+  ) => (
+    submitForm({ options, form, selectedCatalog }, onValid, closeOnSuccess)
   )
   const change = (changed: Partial<ProcessStepFormValues>) => applyFormChange({
     changed,
@@ -97,6 +100,7 @@ interface SubmitOptions {
 async function submitForm(
   { options, form, selectedCatalog }: SubmitOptions,
   onValid?: (values: ProcessStepDTO) => Promise<void>,
+  closeOnSuccess = true,
 ) {
   try {
     const values = await form.validateFields()
@@ -109,7 +113,7 @@ async function submitForm(
     } else {
       await options.onOk(payload, options.initialValues?.uuid)
     }
-    options.onCancel()
+    if (closeOnSuccess) options.onCancel()
   } catch {
     // Ant Design keeps field and request errors visible at their source.
   }

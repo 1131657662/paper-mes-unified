@@ -8,6 +8,7 @@ import type { PlanPreviewVO, ProcessPlanDTO } from '../../../types/processOrder'
 import type { CreateOrderDraftState } from './useCreateOrderDraftState'
 import type { MoveToCreateOrderStep } from './useCreateOrderStepNavigation'
 import { useSavePlanItemsBatch } from './useSavePlanItemsBatch'
+import { reconcileConfiguredPlanIds } from '../configuredPlanStatus'
 
 interface Options {
   autoFinishConfigEnabled: boolean
@@ -28,7 +29,7 @@ export function useAdvanceFromConfigStep(options: Options) {
     }
     if (!options.autoFinishConfigEnabled) {
       options.state.setSelectedId(pending[0]?.localId)
-      message.warning('请逐卷检查成品配置并点击“保存当前方案”后再继续')
+      message.warning(`仍有 ${pending.length} 卷加工方案未保存，请保存本卷方案或批量应用后再继续`)
       return false
     }
 
@@ -42,8 +43,13 @@ export function useAdvanceFromConfigStep(options: Options) {
       }),
     }))
     if (!await confirmAutoFinishConfigs(items)) return false
-    const nextVersion = await persistPlans(items, options, savePlanItemsBatch)
-    await moveToPreview(options.state, options.moveToStep, nextVersion)
+    const result = await persistPlans(items, options, savePlanItemsBatch)
+    if (result.blockedRolls.length) {
+      options.state.setSelectedId(result.blockedRolls[0]?.localId)
+      message.warning(`仍有 ${result.blockedRolls.length} 卷方案未通过校验，请检查后重新保存`)
+      return false
+    }
+    await moveToPreview(options.state, options.moveToStep, result.version)
     return true
   }
 
@@ -54,14 +60,15 @@ async function persistPlans(
   items: AutoFinishConfigItem[],
   options: Options,
   savePlan: (variables: SavePlanItemsBatchVariables) => Promise<PlanPreviewVO[]>,
-): Promise<number> {
-  if (!options.state.orderUuid) return options.state.draftVersion
+): Promise<PersistPlansResult> {
+  const expectedVersion = options.state.getDraftVersion()
+  if (!options.state.orderUuid) return { blockedRolls: [], version: expectedVersion }
   const savedItems = items.filter((item) => item.roll.uuid)
-  if (!savedItems.length) return options.state.draftVersion
+  if (!savedItems.length) return { blockedRolls: [], version: expectedVersion }
   const previews = await savePlan({
     orderUuid: options.state.orderUuid,
     dto: {
-      expectedVersion: options.state.draftVersion,
+      expectedVersion,
       items: savedItems.map((item) => ({ originalUuid: item.roll.uuid!, plan: item.plan })),
     },
   })
@@ -79,13 +86,24 @@ async function persistPlans(
     ...previous,
     ...Object.fromEntries(savedItems.map((item) => [item.roll.localId, item.plan])),
   }))
-  options.state.setConfiguredPlanIds((previous) => [...new Set([
-    ...previous,
-    ...savedItems.map((item) => item.roll.localId),
-  ])])
-  const version = options.state.draftVersion + 1
+  options.state.setConfiguredPlanIds((previous) => reconcileConfiguredPlanIds(previous,
+    savedItems.map((item) => ({
+      localId: item.roll.localId,
+      preview: savedPreviews[item.roll.localId],
+    }))))
+  const version = expectedVersion + 1
   options.state.setDraftVersion(version)
-  return version
+  return {
+    blockedRolls: savedItems
+      .filter((item) => savedPreviews[item.roll.localId]?.ready !== true)
+      .map((item) => item.roll),
+    version,
+  }
+}
+
+interface PersistPlansResult {
+  blockedRolls: AutoFinishConfigItem['roll'][]
+  version: number
 }
 
 interface SavePlanItemsBatchVariables {
@@ -99,7 +117,7 @@ interface SavePlanItemsBatchVariables {
 async function moveToPreview(
   state: CreateOrderDraftState,
   moveToStep: MoveToCreateOrderStep,
-  expectedVersion = state.draftVersion,
+  expectedVersion = state.getDraftVersion(),
 ) {
   await moveToStep(4, state.orderUuid, expectedVersion)
 }

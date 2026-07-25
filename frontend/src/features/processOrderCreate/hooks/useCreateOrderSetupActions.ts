@@ -35,7 +35,7 @@ export function useCreateOrderSetupActions(options: UseCreateOrderSetupActionsOp
   const handleBaseNext = async (value: DraftOrderBaseDTO) => {
     const dto = normalizeBaseInfo(value)
     const uuid = state.orderUuid ?? await createDraft(dto)
-    let version = state.orderUuid ? state.draftVersion : 1
+    let version = state.orderUuid ? state.getDraftVersion() : 1
     if (state.orderUuid) {
       await saveBaseInfo({ uuid: state.orderUuid, dto: { ...dto, expectedVersion: version } })
       version += 1
@@ -49,6 +49,7 @@ export function useCreateOrderSetupActions(options: UseCreateOrderSetupActionsOp
 
   const handleRollsNext = async () => {
     if (!state.orderUuid) return false
+    const expectedVersion = state.getDraftVersion()
     if (state.rolls.some((roll) => !isRollReadyForSave(roll))) {
       message.warning('请补全品名和单重')
       return false
@@ -57,9 +58,9 @@ export function useCreateOrderSetupActions(options: UseCreateOrderSetupActionsOp
     const uuids = await replaceRolls({
       uuid: state.orderUuid,
       rolls: rollsWithMachines.map(toRollDto),
-      expectedVersion: state.draftVersion,
+      expectedVersion,
     })
-    const nextVersion = state.draftVersion + 1
+    const nextVersion = expectedVersion + 1
     state.setDraftVersion(nextVersion)
     resetPlanStateAfterRollSave(state, attachSavedUuids(rollsWithMachines, uuids), defaultPlanOptions)
     await moveToStep(2, state.orderUuid, nextVersion)
@@ -68,12 +69,13 @@ export function useCreateOrderSetupActions(options: UseCreateOrderSetupActionsOp
 
   const handleProcessNext = async () => {
     if (!state.orderUuid) return false
+    const expectedVersion = state.getDraftVersion()
     const rollsWithMachines = applyDefaultMachinesToRolls(state.rolls, machines)
     state.setRolls(rollsWithMachines)
     await saveRollProcesses({
       orderUuid: state.orderUuid,
       dto: {
-        expectedVersion: state.draftVersion,
+        expectedVersion,
         rolls: rollsWithMachines.filter((roll) => roll.uuid).map((roll) => ({
           originalUuid: roll.uuid!,
           processMode: roll.processMode ?? 1,
@@ -82,13 +84,15 @@ export function useCreateOrderSetupActions(options: UseCreateOrderSetupActionsOp
         })),
       },
     })
-    const nextVersion = state.draftVersion + 1
+    const nextVersion = expectedVersion + 1
     state.setDraftVersion(nextVersion)
     state.setPlans(plansForRolls(rollsWithMachines, state.plans, defaultPlanOptions))
     state.setConfiguredPlanIds([])
     state.setPreviews({})
     state.setRoutes({})
     state.setRoutePreviews({})
+    state.setSelectedId(rollsWithMachines.find((roll) => roll.processMode !== 3)?.localId
+      ?? rollsWithMachines[0]?.localId)
     await moveToStep(3, state.orderUuid, nextVersion)
     return true
   }

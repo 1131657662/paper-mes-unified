@@ -128,8 +128,10 @@ export function routeOutputRowsForPlan(
 export function buildDetailRouteDto(
   roll: OriginalRoll,
   form: DetailRouteFormState,
+  expectedVersion?: number,
 ): ProcessRoutePreviewDTO {
   return {
+    expectedVersion,
     originalUuid: roll.uuid,
     stages: [firstStage(form), ...form.stages.map((stage) => stageDto(form, stage))],
   }
@@ -138,8 +140,10 @@ export function buildDetailRouteDto(
 export function buildAppendRouteDto(
   roll: OriginalRoll,
   form: DetailRouteFormState,
+  expectedVersion?: number,
 ): ProcessRoutePreviewDTO {
   return {
+    expectedVersion,
     originalUuid: roll.uuid,
     stages: form.stages.map((stage) => stageDto(form, stage)),
   }

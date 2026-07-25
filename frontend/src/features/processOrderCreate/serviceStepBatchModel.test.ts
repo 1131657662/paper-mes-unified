@@ -5,6 +5,7 @@ import {
   countServiceApplyTargets,
   distributeFixedTotal,
   resolveServiceApplyTargets,
+  serviceBatchIncludesCurrentRoll,
 } from './serviceStepBatchModel'
 
 describe('service step batch application', () => {
@@ -70,6 +71,11 @@ describe('service step batch application', () => {
 
   it('returns zero targets until a process type is selected', () => {
     expect(countServiceApplyTargets({ rolls: [roll('local-1', 'roll-1')] })).toBe(0)
+  })
+
+  it('only closes the current editor when the current roll is in the batch targets', () => {
+    expect(serviceBatchIncludesCurrentRoll(['roll-b'], 'roll-a')).toBe(false)
+    expect(serviceBatchIncludesCurrentRoll(['roll-a', 'roll-b'], 'roll-a')).toBe(true)
   })
 })
 

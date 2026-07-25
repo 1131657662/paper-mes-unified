@@ -8,6 +8,7 @@ import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
+import com.paper.mes.processorder.dto.ProcessStepDTO;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.entity.ProcessStep;
@@ -37,6 +38,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 
 class ProcessOrderServiceImplCatalogGuardTest {
@@ -57,6 +59,29 @@ class ProcessOrderServiceImplCatalogGuardTest {
         assertEquals("工序类型未启用或不存在", error.getMessage());
         verify(rollMapper, never()).insert(any(OriginalRoll.class));
         verify(stepMapper, never()).insert(any(ProcessStep.class));
+    }
+
+    @Test
+    void updateProcessStep_whenTargetServiceTypeExists_rejectsDuplicate() {
+        ProcessOrder order = pendingOrder();
+        order.setOrderStatus(0);
+        ProcessStep existing = new ProcessStep();
+        existing.setUuid("step-strip");
+        existing.setOrderUuid("order-1");
+        existing.setOriginalUuid("roll-1");
+        existing.setStepType(3);
+        existing.setIsMain(0);
+        when(stepMapper.selectById("step-strip")).thenReturn(existing);
+        when(stepMapper.selectCount(any())).thenReturn(1L);
+        ProcessStepDTO dto = new ProcessStepDTO();
+        dto.setOriginalUuid("roll-1");
+        dto.setStepType(4);
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service(order).updateProcessStep("step-strip", dto));
+
+        assertEquals("当前母卷已存在相同附加工艺，不可重复添加或转换", error.getMessage());
+        verify(stepMapper, never()).updateById(any(ProcessStep.class));
     }
 
     private ProcessOrderServiceImpl service(ProcessOrder order) {

@@ -47,7 +47,8 @@ class ProcessRouteDraftManagerBatchTest {
                 mock(ProcessRoutePersistenceService.class),
                 new ObjectMapper(),
                 mock(BusinessLockService.class),
-                versionGuard);
+                versionGuard,
+                mock(ProcessRouteModePolicy.class));
     }
 
     @Test

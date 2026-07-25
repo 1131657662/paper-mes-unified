@@ -89,7 +89,7 @@ export function useBackRecordSubmission(options: UseBackRecordSubmissionOptions)
       }
       const reload = await reloadBackRecordConflict(options)
       if (!reload.reloaded) {
-        notifyErrorOnce(reload.error, '鍥炲綍宸蹭繚瀛橈紝浣嗘湇鍔″櫒鏈€鏂版暟鎹姞杞藉け璐ワ紝璇蜂繚鐣欏綋鍓嶉〉闈㈠苟閲嶈瘯')
+        notifyErrorOnce(reload.error, '回录已保存，但服务器最新数据加载失败，请保留当前页面并重试')
       }
     } catch (error) {
       await handleSubmitError(error)

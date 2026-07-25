@@ -37,7 +37,7 @@ export default function RollSelectorPanel({ machines, rolls, selectedId, configu
               index,
               machines,
               roll,
-              selectable: Boolean(roll.uuid && roll.processMode !== 3),
+              selectable: Boolean(roll.uuid),
               selected: selectedId === roll.localId,
             }}
           />

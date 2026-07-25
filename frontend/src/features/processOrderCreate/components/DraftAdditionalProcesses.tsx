@@ -1,20 +1,18 @@
 import { Typography, message } from 'antd'
-import { useState } from 'react'
-import type { ProcessStepBatchResult, ProcessStepDTO } from '../../../api/processOrder'
+import { useRef, useState } from 'react'
+import type { ProcessStepDTO } from '../../../api/processOrder'
 import type { CustomerProcessPrice } from '../../../types/customer'
 import type { ProcessStep } from '../../../types/processOrder'
 import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
-import { useAddProcessStep } from '../../processOrderDetail/hooks/useAddProcessStep'
-import { useAddProcessStepsBatch } from '../../processOrderDetail/hooks/useAddProcessStepsBatch'
-import { useDeleteProcessStep } from '../../processOrderDetail/hooks/useDeleteProcessStep'
-import { useUpdateProcessStep } from '../../processOrderDetail/hooks/useUpdateProcessStep'
+import { useApplyDraftServiceStep } from '../hooks/useApplyDraftServiceStep'
+import { useDeleteDraftServiceStep } from '../hooks/useDeleteDraftServiceStep'
+import { useSaveDraftServiceStep } from '../hooks/useSaveDraftServiceStep'
+import { serviceEditorActionBlockedReason } from '../serviceEditorGuard'
 import type { RollDraft } from '../types'
 import {
-  buildServiceStepBatch,
   resolveServiceApplyTargets,
   serviceStepsForRoll,
   serviceStepTemplate,
-  type FixedAmountScope,
 } from '../serviceStepBatchModel'
 import DraftServiceStepRow from './DraftServiceStepRow'
 import DraftServiceStepEditor from './DraftServiceStepEditor'
@@ -27,59 +25,63 @@ interface Props {
   roll?: RollDraft
   selectedRolls?: RollDraft[]
   customerPrices?: CustomerProcessPrice[]
-  footerContainer?: HTMLElement | null
   detailError: boolean
   detailLoading: boolean
   onRetryDetail: () => void
   onStatusChange: (status?: ServiceEditorStatus) => void
+  onSynchronizeVersion: () => Promise<void>
+  onVersionSyncBlockedChange: (blocked: boolean) => void
+  onWritePendingChange: (pending: boolean) => void
+  versionSyncBlocked: boolean
 }
 
 export default function DraftAdditionalProcesses({
-  allSteps, orderUuid, roll, selectedRolls = [], customerPrices, footerContainer,
+  allSteps, orderUuid, roll, selectedRolls = [], customerPrices,
   detailError, detailLoading, onRetryDetail, onStatusChange,
+  onSynchronizeVersion, onVersionSyncBlockedChange, onWritePendingChange, versionSyncBlocked,
 }: Props) {
   const [editor, setEditor] = useState<EditorState>({ mode: 'create', revision: 0 })
-  const addMutation = useAddProcessStep()
-  const batchMutation = useAddProcessStepsBatch()
-  const updateMutation = useUpdateProcessStep()
-  const deleteMutation = useDeleteProcessStep()
+  const [editorStatus, setEditorStatus] = useState<ServiceEditorStatus>()
+  const [writing, setWriting] = useState(false)
+  const pendingWriteCount = useRef(0)
   const steps = serviceStepsForRoll(allSteps, roll?.uuid)
+  const mutationOptions = {
+    onSynchronizeVersion,
+    onVersionSyncBlockedChange,
+    orderUuid,
+    versionSyncBlocked,
+  }
+  const saveMutation = useSaveDraftServiceStep({ ...mutationOptions, steps })
+  const applyMutation = useApplyDraftServiceStep({
+    ...mutationOptions,
+    allSteps,
+    selectedRolls,
+  })
+  const deleteMutation = useDeleteDraftServiceStep(mutationOptions)
+  const writePending = writing || saveMutation.isPending || applyMutation.isPending || deleteMutation.isPending
+  const runWrite = async (operation: () => Promise<void>) => {
+    pendingWriteCount.current += 1
+    if (pendingWriteCount.current === 1) {
+      setWriting(true)
+      onWritePendingChange(true)
+    }
+    try {
+      await operation()
+    } finally {
+      pendingWriteCount.current -= 1
+      if (pendingWriteCount.current === 0) {
+        setWriting(false)
+        onWritePendingChange(false)
+      }
+    }
+  }
   const resetEditor = () => setEditor((current) => ({
     mode: 'create',
     revision: current.mode === 'create' ? current.revision + 1 : 0,
   }))
-  const save = async (values: ProcessStepDTO, stepUuid?: string) => {
-    if (!orderUuid) return
-    const sameType = steps.filter((step) => step.stepType === values.stepType)
-    if (sameType.length > 1) {
-      message.error('当前卷存在重复同类工艺，请先删除重复项')
-      throw new Error('duplicate service steps')
-    }
-    const updateUuid = stepUuid ?? sameType[0]?.uuid
-    if (updateUuid) await updateMutation.mutateAsync({ orderUuid, stepUuid: updateUuid, values })
-    else await addMutation.mutateAsync({ orderUuid, values })
-    message.success(updateUuid ? '当前卷附加工艺已更新' : '当前卷附加工艺已添加')
-  }
-  const saveToSelected = async (values: ProcessStepDTO, scope: FixedAmountScope) => {
-    if (!orderUuid) return
-    const targets = resolveServiceApplyTargets({
-      rolls: selectedRolls,
-      stepType: values.stepType,
-      steps: allSteps,
-    })
-    if (!targets.targetUuids.length) {
-      message.warning('请先在左侧勾选已保存且非直发的母卷')
-      return
-    }
-    const result = await batchMutation.mutateAsync({ orderUuid, values: {
-      steps: buildServiceStepBatch(values, targets.targetUuids, scope),
-    } })
-    showBatchSuccess(result, targets.excludedCount)
-  }
-  const remove = async (stepUuid: string) => {
-    if (!orderUuid) return
-    await deleteMutation.mutateAsync({ orderUuid, stepUuid })
-    message.success('附加工艺已删除')
+  const publishStatus = (status?: ServiceEditorStatus) => {
+    setEditorStatus(status)
+    onStatusChange(status)
   }
   return (
     <section className="draft-service-processes">
@@ -102,11 +104,12 @@ export default function DraftAdditionalProcesses({
             },
           }}
           customerPrices={customerPrices}
-          footerContainer={footerContainer}
+          editingStepUuid={editor.mode === 'edit' ? editor.step.uuid : undefined}
           initialValues={stepInitialValues(editor.mode === 'edit' ? editor.step : steps[0])}
           savedSteps={steps}
-          saving={addMutation.isPending || updateMutation.isPending}
-          batchSaving={batchMutation.isPending}
+          saving={saveMutation.isPending}
+          batchSaving={applyMutation.isPending}
+          writePending={writePending}
           selectedRollCount={selectedRolls.length}
           getTargetAnalysis={(stepType) => resolveServiceApplyTargets({
             rolls: selectedRolls,
@@ -114,9 +117,13 @@ export default function DraftAdditionalProcesses({
             steps: allSteps,
           })}
           onCancel={resetEditor}
-          onSave={save}
-          onSaveToSelected={saveToSelected}
-          onStatusChange={onStatusChange}
+          onSave={(values, stepUuid) => runWrite(
+            () => saveMutation.mutateAsync({ values, stepUuid }),
+          )}
+          onSaveToSelected={(values, scope) => runWrite(
+            () => applyMutation.mutateAsync({ values, scope }),
+          )}
+          onStatusChange={publishStatus}
         />}
         <div className="draft-service-processes__list-header">
           <Typography.Text strong>当前卷已保存配置</Typography.Text>
@@ -127,10 +134,15 @@ export default function DraftAdditionalProcesses({
             {steps.map((step) => (
               <DraftServiceStepRow key={step.uuid} step={step}
                 onEdit={() => {
-                  onStatusChange(undefined)
-                  setEditor({ mode: 'edit', step })
+                  runSavedStepAction(editorStatus, writePending, () => {
+                    publishStatus(undefined)
+                    setEditor({ mode: 'edit', step })
+                  })
                 }}
-                onDelete={() => remove(step.uuid)} />
+                onDelete={() => runSavedStepAction(
+                  editorStatus, writePending,
+                  () => runWrite(() => deleteMutation.mutateAsync(step.uuid)).catch(() => undefined),
+                )} disabled={writePending} />
             ))}
           </div>
         ) : (
@@ -141,9 +153,21 @@ export default function DraftAdditionalProcesses({
   )
 }
 
-function showBatchSuccess(result: ProcessStepBatchResult, excludedCount: number) {
-  const excluded = excludedCount ? `，${excludedCount} 卷因未保存或为直发未参与` : ''
-  message.success(`已应用 ${result.selectedCount} 卷：新增 ${result.createdCount}，更新 ${result.updatedCount}${excluded}`)
+function runSavedStepAction(
+  status: ServiceEditorStatus | undefined,
+  writePending: boolean,
+  action: () => void,
+) {
+  if (writePending) {
+    message.info('附加工艺正在保存，请稍候')
+    return
+  }
+  const reason = serviceEditorActionBlockedReason(status)
+  if (reason) {
+    message.warning(reason)
+    return
+  }
+  action()
 }
 
 type EditorState = { mode: 'create'; revision: number } | { mode: 'edit'; step: ProcessStep }

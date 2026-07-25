@@ -12,9 +12,12 @@ interface Props {
   orderUuid?: string
   roll: RollDraft
   selectedRolls: RollDraft[]
-  footerContainer?: HTMLElement | null
   onStatusChange: (status?: ServiceEditorStatus) => void
   onRetryDetail: () => void
+  onSynchronizeVersion: () => Promise<void>
+  onVersionSyncBlockedChange: (blocked: boolean) => void
+  onWritePendingChange: (pending: boolean) => void
+  versionSyncBlocked: boolean
 }
 
 export default function ServiceOnlyConfigEditor({
@@ -25,9 +28,12 @@ export default function ServiceOnlyConfigEditor({
   orderUuid,
   roll,
   selectedRolls,
-  footerContainer,
   onStatusChange,
   onRetryDetail,
+  onSynchronizeVersion,
+  onVersionSyncBlockedChange,
+  onWritePendingChange,
+  versionSyncBlocked,
 }: Props) {
   return (
     <div className="service-only-config-editor">
@@ -40,9 +46,12 @@ export default function ServiceOnlyConfigEditor({
         customerPrices={customerPrices}
         detailError={detailError}
         detailLoading={detailLoading}
-        footerContainer={footerContainer}
         onStatusChange={onStatusChange}
         onRetryDetail={onRetryDetail}
+        onSynchronizeVersion={onSynchronizeVersion}
+        onVersionSyncBlockedChange={onVersionSyncBlockedChange}
+        onWritePendingChange={onWritePendingChange}
+        versionSyncBlocked={versionSyncBlocked}
       />
     </div>
   )

@@ -21,9 +21,11 @@ public class ProcessRoutePersistenceService {
     private final ProcessRouteCleanupService cleanupService;
     private final ProcessRouteStepWriter stepWriter;
     private final ProcessRouteFinishWriter finishWriter;
+    private final ProcessRouteModePolicy routeModePolicy;
 
     public void replaceRoute(ProcessRouteContext context, ProcessRoutePreviewDTO dto,
                              ProcessRoutePreviewVO preview) {
+        routeModePolicy.requireCompatible(context.roll(), dto);
         cleanupService.clearExistingRoute(context);
         updateRollRoute(context.roll(), firstStage(dto));
         Map<String, ProcessStageOutput> outputsByKey = stepWriter.write(context, dto, preview);
@@ -38,7 +40,6 @@ public class ProcessRoutePersistenceService {
     }
 
     private void updateRollRoute(OriginalRoll roll, ProcessRoutePreviewDTO.RouteStageDTO firstStage) {
-        roll.setProcessMode(1);
         roll.setMainStepType(firstStage.getStepType());
         roll.setMachineUuid(resolveStageMachine(firstStage));
         ConcurrencyGuard.requireRowUpdated(originalRollMapper.updateById(roll));
