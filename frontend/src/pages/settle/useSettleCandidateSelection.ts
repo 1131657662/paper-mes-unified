@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useSettleCandidates } from '../../features/settle/hooks/useSettleCandidates'
 import type { SettleCandidateQuery, SettleCandidateVO } from '../../types/settle'
-import { mergeCandidateSelection } from './settleCandidateSelectionModel'
+import { mergeCandidateSelection, resolveCandidateSelection } from './settleCandidateSelectionModel'
 
 const DEFAULT_PAGE_SIZE = 20
 
@@ -16,8 +16,7 @@ export function useSettleCandidateSelection(enabled: boolean, initialOrderUuids:
   const candidatesQuery = useSettleCandidates(query, enabled)
   const { refetch } = candidatesQuery
   const candidates = enabled ? candidatesQuery.data?.records ?? [] : []
-  const initialKeys = new Set(initialSelection)
-  const selectedCandidateMap = mergeCandidateSelection(selectedByUuid, candidates, initialKeys)
+  const selectedCandidateMap = resolveCandidateSelection(selectedByUuid, candidates, initialSelection)
   const selectedCandidates = Object.values(selectedCandidateMap)
   const lockedCustomerUuid = selectedCandidates[0]?.customerUuid
 
