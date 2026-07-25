@@ -25,6 +25,7 @@ export interface CreateOrderState {
 export interface ReferenceOption {
   label: string
   value: string
+  version?: number
   defaultInvoice?: number
   settleDay?: number
   settleType?: number

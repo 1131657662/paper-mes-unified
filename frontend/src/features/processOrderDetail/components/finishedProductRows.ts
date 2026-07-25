@@ -63,7 +63,19 @@ export function calculateFinishedProductTotals(
 
 function fallbackSources(production: RollProductionVO): FinishSourceVO[] {
   if (!production.rollNo && !production.paperName) return []
-  return [{ rollNo: production.rollNo, paperName: production.paperName }]
+  return [{
+    originalUuid: production.originalUuid,
+    extraNo: production.extraNo,
+    rollNo: production.rollNo,
+    paperName: production.paperName,
+    gramWeight: production.gramWeight,
+    actualGramWeight: production.actualGramWeight,
+    originalWidth: production.originalWidth,
+    actualWidth: production.actualWidth,
+    rollWeight: production.rollWeight,
+    pieceNum: production.pieceNum,
+    actualWeight: production.actualWeight,
+  }]
 }
 
 function sumWeight(

@@ -63,37 +63,54 @@ function renderSources(sources: FinishSourceVO[]) {
   if (sources.length === 0) return '-'
   return (
     <div className="customer-source-rolls">
-      {sources.map((source, index) => (
-        <div key={source.originalUuid ?? `${source.rollNo ?? 'source'}-${index}`}>
-          <Typography.Text strong>{sourceLabel(source, index)}</Typography.Text>
-          <span>{sourceDetailText(source)}</span>
+      {sources.map((source) => (
+        <div key={sourceKey(source)}>
+          <div className="customer-source-rolls__spec">
+            <Typography.Text strong>{source.paperName ?? '-'}</Typography.Text>
+            <span>{sourceGram(source)}</span>
+            <span>{sourceWidth(source)}</span>
+          </div>
+          <div className="customer-source-rolls__identity">
+            <span>{sourceRollNo(source)}</span>
+            <span>编号 {source.extraNo ?? '-'}</span>
+            <span>{sourcePieceWeightText(source)}</span>
+          </div>
         </div>
       ))}
     </div>
   )
 }
 
-function sourceLabel(source: FinishSourceVO, index: number) {
-  return source.rollNo ? `卷号 ${source.rollNo}` : `母卷${source.rowSort ?? index + 1}`
+function sourceRollNo(source: FinishSourceVO) {
+  return `卷号 ${source.rollNo ?? '-'}`
 }
 
-function sourceDetailText(source: FinishSourceVO) {
-  const identity = source.extraNo ? `编号 ${source.extraNo}` : undefined
+function sourceKey(source: FinishSourceVO) {
+  return source.originalUuid ?? source.rollNo ?? source.extraNo
+    ?? `${source.paperName ?? '-'}-${source.gramWeight ?? '-'}-${source.originalWidth ?? '-'}`
+}
+
+function sourceGram(source: FinishSourceVO) {
   const gram = source.actualGramWeight ?? source.gramWeight
-  const width = source.actualWidth ?? source.originalWidth
-  const weight = source.actualWeight ?? source.totalWeight ?? sourceWeight(source)
-  return [
-    identity,
-    source.paperName,
-    gram == null ? undefined : formatGram(gram),
-    width == null ? undefined : formatMm(width),
-    weight == null ? undefined : formatKg(weight),
-  ].filter(Boolean).join(' / ') || '-'
+  return gram == null ? '-' : formatGram(gram)
 }
 
-function sourceWeight(source: FinishSourceVO) {
-  if (source.rollWeight == null) return undefined
-  return source.rollWeight * (source.pieceNum ?? 1)
+function sourceWidth(source: FinishSourceVO) {
+  const width = source.actualWidth ?? source.originalWidth
+  return width == null ? '-' : formatMm(width)
+}
+
+function sourcePieceWeight(source: FinishSourceVO) {
+  if (source.rollWeight != null) return source.rollWeight
+  const count = Math.max(1, source.pieceNum ?? 1)
+  if (source.actualWeight != null) return source.actualWeight / count
+  if (source.totalWeight != null) return source.totalWeight / count
+  return undefined
+}
+
+function sourcePieceWeightText(source: FinishSourceVO) {
+  const weight = sourcePieceWeight(source)
+  return `件重 ${weight == null ? '-' : formatKg(weight)}`
 }
 
 function renderSummary(count: number, weight: number) {

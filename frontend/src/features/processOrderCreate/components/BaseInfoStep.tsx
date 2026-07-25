@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { Button, Card, Form, Tag } from 'antd'
+import { ReloadOutlined } from '@ant-design/icons'
+import { Button, Card, Form, Tag, Tooltip } from 'antd'
 import type { DraftOrderBaseDTO } from '../../../types/processOrder'
 import type { ReferenceOption } from '../types'
 import BaseInfoFormSections from './BaseInfoFormSections'
@@ -33,9 +34,17 @@ export default function BaseInfoStep({ customers, warehouses, initialValue, load
         onValuesChange={session.onValuesChange}
         onFinish={(value) => onNext(toBaseInfoDto(value))}
       >
-        <CustomerDefaults customer={session.selectedCustomer} />
+        <CustomerDefaults
+          customer={session.selectedCustomer}
+          settleMode={session.settleMode}
+          stale={session.customerVersionStale}
+          onRefresh={session.refreshCustomerSettlement}
+        />
         <BaseInfoFormSections
+          customerSelected={Boolean(session.selectedCustomer)}
           onCustomerChange={session.onCustomerChange}
+          onSettleModeChange={session.onSettleModeChange}
+          settleMode={session.settleMode}
           settleType={session.settleType}
           options={{ customers, warehouses, priorities: session.priorityOptions, invoices: session.invoiceOptions, settlements: session.settleOptions }}
         />
@@ -49,14 +58,35 @@ export default function BaseInfoStep({ customers, warehouses, initialValue, load
   )
 }
 
-function CustomerDefaults({ customer }: { customer?: ReferenceOption }) {
+function CustomerDefaults({
+  customer, onRefresh, settleMode, stale,
+}: {
+  customer?: ReferenceOption
+  onRefresh: () => void
+  settleMode?: 'INHERIT' | 'OVERRIDE'
+  stale: boolean
+}) {
   if (!customer) return null
   return (
     <div className="process-order-base__defaults">
-      <Tag color="blue">客户默认</Tag>
+      <Tag color={sourceTagColor(settleMode)}>{sourceTagText(settleMode)}</Tag>
       <span>{settleSummary(customer)} / {invoiceSummary(customer)} / 税率 {customer.taxRate ?? 0}%</span>
+      {stale && <Tag color="red">客户资料已更新</Tag>}
+      {stale && <Tooltip title="按客户最新资料重新确认"><Button type="text" size="small" aria-label="按客户最新资料重新确认" icon={<ReloadOutlined />} onClick={onRefresh} /></Tooltip>}
     </div>
   )
+}
+
+function sourceTagColor(mode?: 'INHERIT' | 'OVERRIDE') {
+  if (mode === 'OVERRIDE') return 'orange'
+  if (mode === 'INHERIT') return 'blue'
+  return 'default'
+}
+
+function sourceTagText(mode?: 'INHERIT' | 'OVERRIDE') {
+  if (mode === 'OVERRIDE') return '本单覆盖'
+  if (mode === 'INHERIT') return '客户默认'
+  return '待确认'
 }
 
 function settleSummary(customer: ReferenceOption) {
@@ -64,7 +94,7 @@ function settleSummary(customer: ReferenceOption) {
   if (customer.settleType === 2) {
     return customer.settleDay ? `月结 ${customer.settleDay}日` : '月结'
   }
-  return '月结'
+  return '未配置结算方式'
 }
 
 function invoiceSummary(customer: ReferenceOption) {

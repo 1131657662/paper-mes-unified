@@ -59,6 +59,17 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
     }
 
     @Override
+    public Customer getByUuidForUpdate(String uuid) {
+        Customer customer = getOne(new LambdaQueryWrapper<Customer>()
+                .eq(Customer::getUuid, uuid)
+                .last("FOR UPDATE"));
+        if (customer == null) {
+            throw new BusinessException("客户不存在");
+        }
+        return customer;
+    }
+
+    @Override
     public CustomerVO getProfile(String uuid) {
         return priceReader.toView(getByUuid(uuid));
     }

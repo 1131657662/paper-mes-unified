@@ -91,6 +91,7 @@ import com.paper.mes.processorder.service.ProcessMixProcessResolver;
 import com.paper.mes.processorder.service.ProcessModePolicy;
 import com.paper.mes.processorder.service.ProcessCatalogStepValidator;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.ProcessOrderSettlementPolicy;
 import com.paper.mes.processorder.service.RewindPlanPreviewContext;
 import com.paper.mes.processorder.service.ProcessRouteCleanupService;
 import com.paper.mes.processorder.service.ProcessRouteContext;
@@ -165,7 +166,6 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private static final int FINISH_STATUS_PENDING = 1;
     private static final int FINISH_STATUS_IN_STOCK = 2;
     private static final int FINISH_STATUS_OUT = 3;
-    private static final int DEFAULT_SETTLE_TYPE = 2;
     private static final int DEFAULT_IS_INVOICE = 2;
     private static final String BIZ_TYPE_ORDER = "加工单";
     /** 快照结构版本，写入 snap_print 根节点；缺失则拒绝写入（V4.1 §6.1）。 */
@@ -209,6 +209,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private final ServiceStepBatchUpsertWriter serviceStepBatchUpsertWriter;
     private final ServiceOnlyProcessPolicy serviceOnlyProcessPolicy;
     private final ProcessRouteCleanupService processRouteCleanupService;
+    private final ProcessOrderSettlementPolicy settlementPolicy;
 
     @Override
     public PageResult<ProcessOrder> pageOrders(ProcessOrderQuery query) {
@@ -606,10 +607,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String create(ProcessOrderCreateDTO dto) {
-        Customer customer = customerService.getById(dto.getCustomerUuid());
-        if (customer == null) {
-            throw new BusinessException("客户不存在");
-        }
+        Customer customer = customerService.getByUuidForUpdate(dto.getCustomerUuid());
         validateCreateMainProcesses(dto.getOriginalRolls());
 
         ProcessOrder order = new ProcessOrder();
@@ -632,13 +630,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     private void applyCustomerDefaults(ProcessOrderCreateDTO dto, ProcessOrder order, Customer customer) {
-        Integer customerSettleType = customer.getSettleType() == null ? DEFAULT_SETTLE_TYPE : customer.getSettleType();
         Integer customerInvoice = customer.getDefaultInvoice() == null ? DEFAULT_IS_INVOICE : customer.getDefaultInvoice();
-        Integer settleType = dto.getSettleType() == null ? customerSettleType : dto.getSettleType();
-        order.setSettleType(settleType);
-        order.setSettleDay(settleType == DEFAULT_SETTLE_TYPE
-                ? (dto.getSettleDay() == null ? customer.getSettleDay() : dto.getSettleDay())
-                : null);
+        settlementPolicy.applySelection(order, dto, customer);
         order.setIsInvoice(dto.getIsInvoice() == null ? customerInvoice : dto.getIsInvoice());
         order.setTaxRate(dto.getTaxRate() == null ? BigDecimal.ZERO : dto.getTaxRate());
         if (dto.getTaxRate() == null && customer.getTaxRate() != null) {

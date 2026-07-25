@@ -106,12 +106,30 @@
   gap: 2px;
 }
 
+.customer-source-rolls__spec,
+.customer-source-rolls__identity {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.customer-source-rolls__spec > :first-child {
+  min-width: 88px;
+}
+
+.customer-source-rolls__identity {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
 .customer-source-rolls > div + div {
   padding-top: 7px;
   border-top: 1px dashed var(--mes-color-border-light);
 }
 
-.customer-source-rolls span {
+.customer-source-rolls__spec span,
+.customer-source-rolls__identity span {
   color: var(--mes-color-text-secondary);
   font-size: 12px;
   line-height: 1.45;

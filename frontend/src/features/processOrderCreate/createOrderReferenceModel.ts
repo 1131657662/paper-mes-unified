@@ -13,6 +13,7 @@ export function toCustomerOptions(items: Customer[]) {
   return items.map((item) => ({
     label: item.customerName,
     value: item.uuid,
+    version: item.version,
     defaultInvoice: item.defaultInvoice,
     priceIncludeTax: item.priceIncludeTax,
     rewindPrice: item.rewindPrice,

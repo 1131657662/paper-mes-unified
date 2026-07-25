@@ -42,6 +42,10 @@ public class ProcessOrder extends BaseEntity {
     private Integer settleType;
     /** 月结对账日，创建时取客户默认值，单据可覆盖 */
     private Integer settleDay;
+    /** INHERIT or OVERRIDE; null marks historical rows whose intent is unknown. */
+    private String settleSource;
+    private Integer settleCustomerVersion;
+    private String settleOverrideReason;
     private BigDecimal taxRate;
     private BigDecimal urgentFee;
     private BigDecimal palletFee;

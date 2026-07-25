@@ -19,11 +19,22 @@ export function buildBillingInfo(order?: ProcessOrder): BillingInfoItem[] {
 
   return [
     { label: '结算方式', value: settleText(order) },
+    { label: '结算来源', value: settleSourceText(order) },
+    ...(order?.settleSource === 'OVERRIDE' && order.settleOverrideReason
+      ? [{ label: '覆盖原因', value: order.settleOverrideReason }]
+      : []),
     { label: '开票', value: dict(IS_INVOICE, order?.isInvoice) },
     { label: '税率', value: order?.taxRate == null ? '-' : `${order.taxRate}%` },
     ...fees.map((item) => ({ label: item.label, value: formatMoney(item.amount) })),
     { label: '附加费合计', value: formatMoney(order?.totalExtraAmount) },
   ]
+}
+
+function settleSourceText(order?: ProcessOrder): string {
+  const version = order?.settleCustomerVersion == null ? '' : ` · 客户版本 ${order.settleCustomerVersion}`
+  if (order?.settleSource === 'INHERIT') return `跟随客户${version}`
+  if (order?.settleSource === 'OVERRIDE') return `本单覆盖${version}`
+  return '历史快照（来源未记录）'
 }
 
 function settleText(order?: ProcessOrder): string {

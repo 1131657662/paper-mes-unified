@@ -6,9 +6,12 @@ describe('客户成品逐件明细', () => {
   it('展示完整来源母卷和回录备注但隐藏生产内部参数', () => {
     const markup = renderToStaticMarkup(<CustomerFinishedProductDetailTable rows={[row()]} />)
 
-    expect(markup).toContain('母卷2')
+    expect(markup).toContain('卷号 -')
     expect(markup).toContain('编号 NO-2')
-    expect(markup).toContain('白卡 / 302 g / 2510 mm / 2190 kg')
+    expect(markup).toContain('白卡')
+    expect(markup).toContain('302 g')
+    expect(markup).toContain('2510 mm')
+    expect(markup).toContain('件重 1100 kg')
     expect(markup).toContain('边部轻微压痕')
     expect(markup).not.toContain('直径')
     expect(markup).not.toContain('纸芯')
@@ -42,6 +45,8 @@ function row() {
       actualWidth: 2510,
       totalWeight: 2200,
       actualWeight: 2190,
+      rollWeight: 1100,
+      pieceNum: 2,
       shareRatio: 100,
       shareWeight: 950,
     }],

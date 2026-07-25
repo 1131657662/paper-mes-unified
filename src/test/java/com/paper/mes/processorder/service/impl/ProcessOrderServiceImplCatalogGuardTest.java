@@ -118,7 +118,8 @@ class ProcessOrderServiceImplCatalogGuardTest {
                 catalogValidator,
                 null,
                 null,
-                null) {
+                null,
+                new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy()) {
             @Override
             public ProcessOrder getById(java.io.Serializable id) {
                 return order;

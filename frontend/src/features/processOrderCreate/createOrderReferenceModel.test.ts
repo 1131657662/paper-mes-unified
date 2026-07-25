@@ -18,6 +18,7 @@ describe('createOrderReferenceModel', () => {
   it('maps customer pricing defaults without dropping settlement fields', () => {
     const options = toCustomerOptions([customer({
       defaultInvoice: 1,
+      version: 7,
       rewindPrice: 210,
       sawPrice: 1.8,
       settleDay: 30,
@@ -29,6 +30,7 @@ describe('createOrderReferenceModel', () => {
       label: '测试客户',
       value: 'customer-1',
       defaultInvoice: 1,
+      version: 7,
       rewindPrice: 210,
       sawPrice: 1.8,
       settleDay: 30,

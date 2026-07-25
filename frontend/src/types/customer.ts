@@ -3,6 +3,7 @@ import type { PageQuery } from './common'
 /** 客户实体，与后端 Customer 对应（含 BaseEntity 通用字段，按需取用）。 */
 export interface Customer {
   uuid: string
+  version?: number
   customerCode?: string
   customerName: string
   contact?: string

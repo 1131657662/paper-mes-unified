@@ -181,6 +181,9 @@ CREATE TABLE `biz_process_order` (
   `is_invoice`            TINYINT       NOT NULL DEFAULT 2      COMMENT '1开票 2不开票',
   `settle_type`           TINYINT       NOT NULL DEFAULT 2      COMMENT '1次结 2月结，本单结算方式快照/覆盖',
   `settle_day`            TINYINT       DEFAULT NULL            COMMENT '月结对账日，本单快照/覆盖',
+  `settle_source`         VARCHAR(16)   DEFAULT NULL            COMMENT 'INHERIT继承客户 / OVERRIDE本单覆盖',
+  `settle_customer_version` INT         DEFAULT NULL            COMMENT '生成结算快照时的客户版本',
+  `settle_override_reason` VARCHAR(200) DEFAULT NULL            COMMENT '本单覆盖客户结算方式原因',
   `tax_rate`              DECIMAL(5,2)  DEFAULT 0.00            COMMENT '税率',
   `urgent_fee`            DECIMAL(10,2) DEFAULT 0.00            COMMENT '加急费',
   `pallet_fee`            DECIMAL(10,2) DEFAULT 0.00            COMMENT '托盘费',
@@ -236,7 +239,16 @@ CREATE TABLE `biz_process_order` (
   KEY `idx_order_customer_status_accounting` (`customer_uuid`, `order_status`, `accounting_date`, `uuid`),
   KEY `idx_order_report_scope` (`is_deleted`, `order_status`, `accounting_date`, `uuid`),
   KEY `idx_order_date` (`order_date`),
-  KEY `idx_is_deleted` (`is_deleted`)
+  KEY `idx_is_deleted` (`is_deleted`),
+  CONSTRAINT `chk_order_settle_source`
+    CHECK (`settle_source` IS NULL OR `settle_source` IN ('INHERIT', 'OVERRIDE')),
+  CONSTRAINT `chk_order_settle_customer_version`
+    CHECK (`settle_source` IS NULL OR `settle_customer_version` IS NOT NULL),
+  CONSTRAINT `chk_order_settle_override_reason`
+    CHECK (`settle_source` IS NULL
+      OR (`settle_source` = 'INHERIT' AND `settle_override_reason` IS NULL)
+      OR (`settle_source` = 'OVERRIDE'
+        AND NULLIF(TRIM(`settle_override_reason`), '') IS NOT NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单主表';
 
 -- -----------------------------------------------------------------------------

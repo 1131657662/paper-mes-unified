@@ -1,5 +1,7 @@
 import type { PageQuery } from './common'
 
+export type OrderSettlementMode = 'INHERIT' | 'OVERRIDE'
+
 /** 加工单主表，与后端 ProcessOrder 对应（含 BaseEntity 通用字段，按需取用）。 */
 export interface ProcessOrder {
   uuid: string
@@ -19,6 +21,9 @@ export interface ProcessOrder {
   /** 1次结 2月结，本单可覆盖客户默认值。 */
   settleType?: number
   settleDay?: number
+  settleSource?: OrderSettlementMode
+  settleCustomerVersion?: number
+  settleOverrideReason?: string
   taxRate?: number
   urgentFee?: number
   palletFee?: number
@@ -664,6 +669,9 @@ export interface ProcessOrderCreateDTO {
   isInvoice?: number
   settleType?: number
   settleDay?: number
+  settleMode?: OrderSettlementMode
+  customerVersion?: number
+  settleOverrideReason?: string
   taxRate?: number
   urgentFee?: number
   palletFee?: number
@@ -687,6 +695,9 @@ export interface DraftOrderBaseDTO {
   isInvoice?: number
   settleType?: number
   settleDay?: number
+  settleMode?: OrderSettlementMode
+  customerVersion?: number
+  settleOverrideReason?: string
   taxRate?: number
   urgentFee?: number
   palletFee?: number

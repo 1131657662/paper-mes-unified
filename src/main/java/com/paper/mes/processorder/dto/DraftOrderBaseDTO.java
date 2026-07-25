@@ -17,7 +17,7 @@ import java.time.LocalDate;
  * 融合版新建加工单向导的基础信息草稿。
  */
 @Data
-public class DraftOrderBaseDTO {
+public class DraftOrderBaseDTO implements OrderSettlementSelection {
 
     @Min(value = 0, message = "草稿版本不能小于0")
     private Integer expectedVersion;
@@ -47,6 +47,12 @@ public class DraftOrderBaseDTO {
     @Min(value = 1, message = "月结日必须在1-31之间")
     @Max(value = 31, message = "月结日必须在1-31之间")
     private Integer settleDay;
+    /** INHERIT follows the current customer profile; OVERRIDE requires an explicit reason. */
+    private OrderSettlementMode settleMode;
+    @Min(value = 0, message = "客户资料版本不能小于0")
+    private Integer customerVersion;
+    @Size(max = 200, message = "结算方式覆盖原因不能超过200字")
+    private String settleOverrideReason;
     @DecimalMin(value = "0.00", message = "税率不能为负")
     @DecimalMax(value = "100.00", message = "税率不能超过100%")
     private BigDecimal taxRate;

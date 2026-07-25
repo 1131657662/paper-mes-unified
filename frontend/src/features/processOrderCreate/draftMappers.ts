@@ -112,6 +112,9 @@ export function baseInfoFromOrder(order: { [key: string]: unknown }): DraftOrder
     isInvoice: order.isInvoice as number | undefined,
     settleType: order.settleType as number | undefined,
     settleDay: order.settleDay as number | undefined,
+    settleMode: order.settleSource as DraftOrderBaseDTO['settleMode'],
+    customerVersion: order.settleCustomerVersion as number | undefined,
+    settleOverrideReason: order.settleOverrideReason as string | undefined,
     taxRate: order.taxRate as number | undefined,
     urgentFee: order.urgentFee as number | undefined,
     palletFee: order.palletFee as number | undefined,
@@ -132,7 +135,6 @@ export function normalizeBaseInfo(values: DraftOrderBaseDTO): DraftOrderBaseDTO 
     ...values,
     priority: values.priority ?? 1,
     isInvoice: values.isInvoice ?? 2,
-    settleType: values.settleType ?? 2,
   }
 }
 

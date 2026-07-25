@@ -13,6 +13,8 @@ public interface CustomerService extends IService<Customer> {
 
     Customer getByUuid(String uuid);
 
+    Customer getByUuidForUpdate(String uuid);
+
     CustomerVO getProfile(String uuid);
 
     String create(CustomerSaveDTO dto);

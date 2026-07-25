@@ -24,6 +24,26 @@ describe('母卷成品明细排序', () => {
       'finish-b2',
     ])
   })
+
+  it('来源关系缺失时从所属母卷补齐逐件展示字段', () => {
+    const source = production({
+      originalUuid: 'roll-a',
+      gramWeight: 200,
+      originalWidth: 1300,
+      finishes: [finish({ uuid: 'finish-a1', gramWeight: 200, finishWidth: 900, actualWeight: 600 })],
+    })
+    source.extraNo = 'NO-1'
+    source.rollNo = 'ROLL-1'
+    source.pieceNum = 2
+
+    const result = buildFinishedProductRows([source])[0]
+
+    expect(result).toBeDefined()
+    expect(result?.sources[0]).toMatchObject({
+      originalUuid: 'roll-a', extraNo: 'NO-1', rollNo: 'ROLL-1', paperName: '白卡',
+      gramWeight: 200, originalWidth: 1300, rollWeight: 1000, pieceNum: 2,
+    })
+  })
 })
 
 function production(options: {

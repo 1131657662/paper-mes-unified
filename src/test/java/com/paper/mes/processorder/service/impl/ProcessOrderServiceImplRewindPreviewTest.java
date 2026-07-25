@@ -221,6 +221,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 null,
                 null,
                 null,
-                null);
+                null,
+                new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy());
     }
 }

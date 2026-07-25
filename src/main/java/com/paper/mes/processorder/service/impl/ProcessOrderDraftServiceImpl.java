@@ -41,6 +41,7 @@ import com.paper.mes.processorder.service.ProcessPlanDraftManager;
 import com.paper.mes.processorder.service.ProcessPlanMapper;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.ProcessOrderSettlementPolicy;
 import com.paper.mes.processorder.service.ProcessModePolicy;
 import com.paper.mes.processorder.service.ProcessRouteDraftManager;
 import com.paper.mes.system.config.constant.NoRuleBizType;
@@ -70,7 +71,6 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     private static final int ROLL_STATUS_PENDING = 1;
     private static final int ROLL_NO_VOID = 3;
     private static final int IS_SPARE_YES = 1;
-    private static final int DEFAULT_SETTLE_TYPE = 2;
     private static final int DEFAULT_IS_INVOICE = 2;
     private final ProcessOrderMapper processOrderMapper;
     private final OriginalRollMapper originalRollMapper;
@@ -89,6 +89,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     private final BusinessLockService businessLockService;
     private final com.paper.mes.processorder.service.DraftOrderVersionGuard versionGuard;
     private final com.paper.mes.processorder.service.DraftRollProcessManager rollProcessManager;
+    private final ProcessOrderSettlementPolicy settlementPolicy;
 
     @Override
     public List<DraftSummaryVO> listDrafts() {
@@ -230,6 +231,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
             throw new BusinessException(ErrorCode.E001, "只有草稿加工单可提交");
         }
         versionGuard.assertExpected(order, expectedVersion);
+        settlementPolicy.assertCustomerVersionAtSubmit(order, requireCustomer(order.getCustomerUuid()));
         List<OriginalRoll> rolls = listRolls(orderUuid);
         Map<String, ProcessConfigDraft> drafts = draftMap(orderUuid);
         validateSubmit(rolls, drafts);
@@ -244,13 +246,8 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     }
 
     private void applyCustomerDefaults(DraftOrderBaseDTO dto, ProcessOrder order, Customer customer) {
-        Integer customerSettleType = customer.getSettleType() == null ? DEFAULT_SETTLE_TYPE : customer.getSettleType();
         Integer customerInvoice = customer.getDefaultInvoice() == null ? DEFAULT_IS_INVOICE : customer.getDefaultInvoice();
-        Integer settleType = dto.getSettleType() == null ? customerSettleType : dto.getSettleType();
-        order.setSettleType(settleType);
-        order.setSettleDay(settleType == DEFAULT_SETTLE_TYPE
-                ? (dto.getSettleDay() == null ? customer.getSettleDay() : dto.getSettleDay())
-                : null);
+        settlementPolicy.applySelection(order, dto, customer);
         order.setIsInvoice(dto.getIsInvoice() == null ? customerInvoice : dto.getIsInvoice());
         order.setTaxRate(dto.getTaxRate() == null ? BigDecimal.ZERO : dto.getTaxRate());
         if (dto.getTaxRate() == null && customer.getTaxRate() != null) {
@@ -259,11 +256,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     }
 
     private Customer requireCustomer(String customerUuid) {
-        Customer customer = customerService.getById(customerUuid);
-        if (customer == null) {
-            throw new BusinessException("客户不存在");
-        }
-        return customer;
+        return customerService.getByUuidForUpdate(customerUuid);
     }
 
     private ProcessOrder requireOrder(String orderUuid) {

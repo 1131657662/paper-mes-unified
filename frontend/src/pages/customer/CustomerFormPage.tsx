@@ -1,11 +1,13 @@
 import { Button, Card, Form, Skeleton, Space, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { createCustomer, getCustomer, updateCustomer } from '../../api/customer'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { Customer, CustomerSaveDTO } from '../../types/customer'
 import CustomerProfileForm from './CustomerProfileForm'
+import { queries } from '../../queries'
 import '../documentModule.css'
 import './CustomerProfile.css'
 
@@ -16,6 +18,7 @@ interface Props {
 export default function CustomerFormPage({ mode }: Props) {
   const [form] = Form.useForm<CustomerSaveDTO>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { uuid } = useParams()
   const [loading, setLoading] = useState(mode === 'edit')
   const [submitting, setSubmitting] = useState(false)
@@ -37,6 +40,7 @@ export default function CustomerFormPage({ mode }: Props) {
     try {
       const savedUuid = isEdit && uuid ? uuid : await createCustomer(values)
       if (isEdit && uuid) await updateCustomer(uuid, values)
+      await queryClient.invalidateQueries({ queryKey: queries.createOrder.customers.queryKey })
       clearDirty()
       message.success(isEdit ? '客户资料已保存' : '客户已新增')
       navigate(`/customers/${savedUuid}`)
