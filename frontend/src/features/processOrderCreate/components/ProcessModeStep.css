@@ -1,0 +1,29 @@
+.process-mode-workbench.ant-card {
+  display: flex;
+  height: clamp(460px, calc(100vh - 300px), 820px);
+  height: clamp(460px, calc(100dvh - 300px), 820px);
+  flex-direction: column;
+}
+
+.process-mode-batch-command {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius);
+  background: var(--mes-color-soft);
+}
+
+.process-mode-batch-command > div {
+  display: grid;
+  gap: 2px;
+}
+
+@container (max-width: 520px) {
+  .process-mode-batch-command {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

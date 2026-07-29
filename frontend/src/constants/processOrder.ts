@@ -62,10 +62,10 @@ export const STEP_TYPE: Record<number, string> = {
   4: '重新包装',
 }
 
-export const DEFAULT_WIDTH_DIFFERENCE_POLICY: WidthDifferencePolicy = 'ALLOCATE'
+export const DEFAULT_WIDTH_DIFFERENCE_POLICY: WidthDifferencePolicy = 'REMAINDER'
 export const WIDTH_DIFFERENCE_POLICY_OPTIONS = [
-  { label: '分摊', value: 'ALLOCATE' },
   { label: '留余料', value: 'REMAINDER' },
+  { label: '分摊', value: 'ALLOCATE' },
   { label: '计损耗', value: 'LOSS' },
 ] satisfies Array<{ label: string; value: WidthDifferencePolicy }>
 

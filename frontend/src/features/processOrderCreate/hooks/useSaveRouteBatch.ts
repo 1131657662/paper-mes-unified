@@ -7,20 +7,35 @@ import type {
   ProcessRoutePreviewVO,
 } from '../../../types/processOrder'
 import { createOrderService } from '../services/createOrderService'
+import {
+  batchRoutesMatch,
+  readLatestDraft,
+  recoverRoutePreviews,
+  runReconciledDraftWrite,
+} from '../draftWriteReconciliation'
 
 export function useSaveRouteBatch() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: createOrderService.saveRouteBatch,
-    onSuccess: (previews, variables) => {
+    mutationFn: (variables: Parameters<typeof createOrderService.saveRouteBatch>[0]) => runReconciledDraftWrite({
+      expectedVersion: variables.dto.expectedVersion,
+      isApplied: (draft) => batchRoutesMatch(draft, variables.dto),
+      readLatest: () => readLatestDraft(queryClient, variables.orderUuid),
+      recoverData: (draft) => recoverRoutePreviews(
+        draft,
+        variables.dto.routes.map((route) => route.originalUuid),
+      ),
+      write: () => createOrderService.saveRouteBatch(variables),
+    }),
+    onSuccess: (result, variables) => {
       queryClient.setQueryData(
         queries.createOrder.draft(variables.orderUuid).queryKey,
         (draft: DraftOrderVO | undefined) => updateDraft(
           draft,
-          variables.dto.expectedVersion,
+          result.version,
           variables.dto.routes,
-          previews,
+          result.data,
         ),
       )
       queryClient.invalidateQueries({ queryKey: queries.createOrder.draft(variables.orderUuid).queryKey })
@@ -31,7 +46,7 @@ export function useSaveRouteBatch() {
 
 function updateDraft(
   draft: DraftOrderVO | undefined,
-  expectedVersion: number,
+  version: number,
   routes: ProcessRoutePreviewDTO[],
   previews: ProcessRoutePreviewVO[],
 ): DraftOrderVO | undefined {
@@ -40,7 +55,7 @@ function updateDraft(
     (current, route, index) => upsertRoute(current, route, previews[index]),
     draft.configs ?? [],
   )
-  const order = draft.order ? { ...draft.order, version: expectedVersion + 1 } : draft.order
+  const order = draft.order ? { ...draft.order, version } : draft.order
   return { ...draft, configs, order }
 }
 

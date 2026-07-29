@@ -26,6 +26,12 @@ export function useBackRecordSelection(detail?: ProcessOrderDetailVO) {
     else next.delete(key)
     setState({ scopeKey, keys: next })
   }
+  const replace = (keys: string[]) => setState({ scopeKey, keys: new Set(keys) })
+  const selectAfterRefresh = (keys: string[]) => {
+    if (!detail) return
+    const nextVersion = (detail.order.version ?? 0) + 1
+    setState({ scopeKey: `${detail.order.uuid}:${nextVersion}`, keys: new Set(keys) })
+  }
 
   return {
     allRemainingSelected: remainingItems.length > 0 && selectedItems.length === remainingItems.length,
@@ -34,6 +40,10 @@ export function useBackRecordSelection(detail?: ProcessOrderDetailVO) {
     selectedFinishUuids,
     selectedItemKeys: selectedKeys,
     selectedRollUuids,
+    clear: () => replace([]),
+    selectAll: () => replace(remainingItems.map((item) => item.key)),
+    selectAfterRefresh,
+    selectOnly: (key: string) => replace(remainingItems.some((item) => item.key === key) ? [key] : []),
     toggle,
   }
 }

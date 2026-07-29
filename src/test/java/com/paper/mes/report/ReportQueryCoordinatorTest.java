@@ -15,6 +15,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -23,6 +28,36 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class ReportQueryCoordinatorTest {
+
+    @Test
+    void prepare_whenCacheIsFilledConcurrently_returnsOneCanonicalRelease() throws Exception {
+        ReportMetricCatalogService catalog = mock(ReportMetricCatalogService.class);
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        CountDownLatch bothLoadsStarted = new CountDownLatch(2);
+        AtomicInteger loadCount = new AtomicInteger();
+        when(catalog.releaseDetail("release-1")).thenAnswer(ignored -> {
+            int load = loadCount.incrementAndGet();
+            bothLoadsStarted.countDown();
+            assertTrue(bothLoadsStarted.await(5, TimeUnit.SECONDS));
+            return release(2, "report.sql.order_count", "version-race-" + load);
+        });
+        when(jdbc.queryForObject("SELECT CURRENT_TIMESTAMP", LocalDateTime.class))
+                .thenReturn(LocalDateTime.of(2026, 7, 21, 1, 30));
+        ReportQuery query = new ReportQuery();
+        query.setMetricReleaseUuid("release-1");
+        ReportQueryCoordinator coordinator = new ReportQueryCoordinator(catalog, jdbc, new ReportLiveMetricRegistry());
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            var first = executor.submit(() -> coordinator.prepare(query));
+            var second = executor.submit(() -> coordinator.prepare(query));
+            String firstVersion = first.get(10, TimeUnit.SECONDS).metricVersionMap().get("order_count");
+            String secondVersion = second.get(10, TimeUnit.SECONDS).metricVersionMap().get("order_count");
+            assertEquals(firstVersion, secondVersion);
+            assertEquals(2, loadCount.get());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
 
     @Test
     void prepare_whenReleaseIsExecutable_returnsVersionedLiveMetadata() {
@@ -89,11 +124,16 @@ class ReportQueryCoordinatorTest {
     }
 
     private ReportMetricReleaseDetailVO release(int status, String implementationKey) {
+        return release(status, implementationKey, "version-order_count");
+    }
+
+    private ReportMetricReleaseDetailVO release(int status, String implementationKey, String orderCountVersion) {
         var summary = new ReportMetricReleaseSummaryVO("release-1", "R1", "Release 1", status,
                 "checksum", 38, LocalDateTime.now(), "system", null, null,
                 LocalDateTime.now(), LocalDateTime.now());
         List<ReportMetricVersionAuditVO> metrics = metricCodes().stream()
-                .map(code -> metric(code, "order_count".equals(code) ? implementationKey : "report.sql." + code))
+                .map(code -> metric(code, "order_count".equals(code) ? implementationKey : "report.sql." + code,
+                        "order_count".equals(code) ? orderCountVersion : "version-" + code))
                 .toList();
         return new ReportMetricReleaseDetailVO(summary, metrics);
     }
@@ -108,8 +148,12 @@ class ReportQueryCoordinatorTest {
     }
 
     private ReportMetricVersionAuditVO metric(String code, String implementationKey) {
+        return metric(code, implementationKey, "version-" + code);
+    }
+
+    private ReportMetricVersionAuditVO metric(String code, String implementationKey, String versionUuid) {
         return new ReportMetricVersionAuditVO("metric-" + code, code, code, "", "DECIMAL", "COUNT",
-                2, 10, "version-" + code, 1, implementationKey, "{}", "checksum", 2,
+                2, 10, versionUuid, 1, implementationKey, "{}", "checksum", 2,
                 LocalDateTime.now(), "system");
     }
 

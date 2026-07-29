@@ -1,6 +1,10 @@
 import { message } from 'antd'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { addProcessStepsBatch, type ProcessStepBatchResult, type ProcessStepDTO } from '../../../api/processOrder'
+import {
+  addDraftProcessStepsBatch,
+  type ProcessStepBatchResult,
+  type ProcessStepDTO,
+} from '../../../api/processOrder'
 import type { ProcessStep } from '../../../types/processOrder'
 import {
   buildServiceStepBatch,
@@ -8,8 +12,10 @@ import {
   type FixedAmountScope,
 } from '../serviceStepBatchModel'
 import { runVersionSynchronizedMutation } from '../serviceMutationCommit'
+import { serviceStepsMatchRequests } from '../serviceStepWriteModel'
 import type { RollDraft } from '../types'
 import {
+  currentProcessOrderSteps,
   draftServiceMutationLifecycle,
   requiredDraftOrderUuid,
   type DraftServiceMutationOptions,
@@ -37,11 +43,24 @@ export function useApplyDraftServiceStep(options: Options) {
         steps: options.allSteps,
       })
       if (!targets.targetUuids.length) throw noBatchTargetError()
+      const requests = buildServiceStepBatch(values, targets.targetUuids, scope)
+      let expectedVersion = options.draftVersion
       const result = await runVersionSynchronizedMutation({
-        ensureVersionReady: () => lifecycle.ensureVersionReady(queryClient, orderUuid),
+        clearVersionSyncRequired: lifecycle.clearVersionSyncRequired,
+        ensureVersionReady: async () => {
+          expectedVersion = await lifecycle.ensureVersionReady(queryClient, orderUuid)
+        },
+        isAppliedAfterSync: () => serviceStepsMatchRequests(
+          currentProcessOrderSteps(queryClient, orderUuid),
+          requests,
+        ),
         markVersionSyncRequired: lifecycle.markVersionSyncRequired,
-        mutate: () => addProcessStepsBatch(orderUuid, {
-          steps: buildServiceStepBatch(values, targets.targetUuids, scope),
+        mutate: () => addDraftProcessStepsBatch(orderUuid, { steps: requests }, expectedVersion),
+        recoverResult: () => ({
+          selectedCount: requests.length,
+          createdCount: 0,
+          updatedCount: 0,
+          recovered: true,
         }),
         synchronizeVersion: () => lifecycle.synchronizeLatest(queryClient, orderUuid),
       })
@@ -56,6 +75,10 @@ function noBatchTargetError(): Error {
 }
 
 function showBatchSuccess(result: ProcessStepBatchResult, excludedCount: number) {
+  if (result.recovered) {
+    message.success(`已确认应用到 ${result.selectedCount} 卷${excludedCount ? `，${excludedCount} 卷未参与` : ''}`)
+    return
+  }
   const excluded = excludedCount ? `，${excludedCount} 卷因未保存或为直发未参与` : ''
   message.success(`已应用 ${result.selectedCount} 卷：新增 ${result.createdCount}，更新 ${result.updatedCount}${excluded}`)
 }

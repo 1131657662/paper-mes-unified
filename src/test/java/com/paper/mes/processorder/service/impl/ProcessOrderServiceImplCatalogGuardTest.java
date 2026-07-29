@@ -108,6 +108,7 @@ class ProcessOrderServiceImplCatalogGuardTest {
                 null,
                 null,
                 null,
+                null,
                 new BackRecordScopeResolver(),
                 null,
                 mock(BackRecordWarehousePolicy.class),

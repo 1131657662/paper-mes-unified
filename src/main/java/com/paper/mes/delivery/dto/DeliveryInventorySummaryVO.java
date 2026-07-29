@@ -15,6 +15,15 @@ public class DeliveryInventorySummaryVO {
     private long productRollCount;
     private long remainRollCount;
     private long directRollCount;
+    private BigDecimal productWeight;
+    private BigDecimal remainWeight;
+    private BigDecimal directWeight;
+    private long productAvailableRollCount;
+    private long remainAvailableRollCount;
+    private long directAvailableRollCount;
+    private BigDecimal productAvailableWeight;
+    private BigDecimal remainAvailableWeight;
+    private BigDecimal directAvailableWeight;
     private BigDecimal totalWeight;
     private BigDecimal availableWeight;
     private BigDecimal lockedWeight;

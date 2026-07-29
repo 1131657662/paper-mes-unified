@@ -18,14 +18,14 @@ const sawRoll: RollDraft = {
 }
 
 describe('width difference policy defaults', () => {
-  it('orders allocation first and loss last', () => {
+  it('orders remainder first and loss last', () => {
     expect(WIDTH_DIFFERENCE_POLICY_OPTIONS.map((option) => option.value))
-      .toEqual(['ALLOCATE', 'REMAINDER', 'LOSS'])
+      .toEqual(['REMAINDER', 'ALLOCATE', 'LOSS'])
   })
 
-  it('defaults new saw plans to allocation', () => {
-    expect(DEFAULT_WIDTH_DIFFERENCE_POLICY).toBe('ALLOCATE')
-    expect(defaultPlanForRoll(sawRoll).widthDifferencePolicy).toBe('ALLOCATE')
+  it('defaults new saw plans to remainder', () => {
+    expect(DEFAULT_WIDTH_DIFFERENCE_POLICY).toBe('REMAINDER')
+    expect(defaultPlanForRoll(sawRoll).widthDifferencePolicy).toBe('REMAINDER')
   })
 })
 

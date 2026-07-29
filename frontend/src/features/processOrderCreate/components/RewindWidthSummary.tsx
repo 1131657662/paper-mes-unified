@@ -1,6 +1,6 @@
-import { Button, Progress, Space, Tag, Typography } from 'antd'
+import { Alert, Button, Progress, Space, Tag, Typography } from 'antd'
 import MesTooltip from '../../../components/biz/MesTooltip'
-import type { RewindLayoutItemPlanDTO, RewindSegmentPlanDTO } from '../../../types/processOrder'
+import type { RewindLayoutItemPlanDTO, RewindSegmentPlanDTO, WidthDifferencePolicy } from '../../../types/processOrder'
 import { formatMm } from '../../../utils/numberFormatters'
 import { calcRewindWidthUsage, rewindWidthPolicy } from '../rewindWidthUsage'
 import './RewindWidthSummary.css'
@@ -9,10 +9,11 @@ interface Props {
   mode: number
   originalWidth?: number
   segment: RewindSegmentPlanDTO
+  widthDifferencePolicy: WidthDifferencePolicy
   onFillTrim: () => void
 }
 
-export default function RewindWidthSummary({ mode, originalWidth, segment, onFillTrim }: Props) {
+export default function RewindWidthSummary({ mode, originalWidth, segment, widthDifferencePolicy, onFillTrim }: Props) {
   const policy = rewindWidthPolicy(mode)
   if (!policy.enabled) return <ModeNote note={policy.note} />
 
@@ -25,14 +26,14 @@ export default function RewindWidthSummary({ mode, originalWidth, segment, onFil
       <Space wrap size={8}>
         <Tag color="blue">成品 {formatMm(usage.finishWidth)} / {usage.finishCount}件</Tag>
         <Tag color={usage.trimWidth > 0 ? 'orange' : 'default'}>修边 {formatMm(usage.trimWidth)}</Tag>
-        {usage.implicitTrimWidth > 0 && <Tag color="gold">可转修边 {formatMm(usage.implicitTrimWidth)}</Tag>}
+        {usage.remainingWidth > 0 && <Tag color="gold">未分配 {formatMm(usage.remainingWidth)}</Tag>}
         <Typography.Text type={overflow ? 'danger' : 'secondary'}>
           门幅 {usage.usedWidth}/{usage.originalWidth || '-'} mm
           {overflow ? `，超出 ${formatMm(Math.abs(usage.remainingWidth))}` : `，剩余 ${formatMm(Math.max(0, usage.remainingWidth))}`}
         </Typography.Text>
-        <Button size="small" disabled={usage.remainingWidth <= 0} onClick={onFillTrim}>
-          剩余转修边
-        </Button>
+        {widthDifferencePolicy === 'REMAINDER' && (
+          <Button size="small" disabled={usage.remainingWidth <= 0} onClick={onFillTrim}>剩余转余料</Button>
+        )}
       </Space>
       {usage.originalWidth > 0 && (
         <Progress
@@ -42,6 +43,17 @@ export default function RewindWidthSummary({ mode, originalWidth, segment, onFil
         />
       )}
       <LayoutStrip items={segment.layoutItems ?? []} originalWidth={usage.originalWidth} />
+      {widthDifferencePolicy === 'REMAINDER' && usage.remainingWidth > 0 && (
+        <Alert showIcon type="warning" message={`还有 ${formatMm(usage.remainingWidth)} 未分配`}
+          description="留余料要求每个分段都与母卷门幅闭合，请补齐余料后再保存。" />
+      )}
+      {widthDifferencePolicy !== 'REMAINDER' && usage.remainingWidth > 0 && (
+        <Typography.Text type="secondary" className="rewind-width-summary__note">
+          {widthDifferencePolicy === 'ALLOCATE'
+            ? `未分配的 ${formatMm(usage.remainingWidth)} 对应重量将均匀分摊到本段成品和余料。`
+            : `未分配的 ${formatMm(usage.remainingWidth)} 将计入计划损耗，不生成库存。`}
+        </Typography.Text>
+      )}
       <Typography.Text type="secondary" className="rewind-width-summary__note">
         {policy.note}
       </Typography.Text>

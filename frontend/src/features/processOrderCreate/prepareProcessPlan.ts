@@ -3,7 +3,7 @@ import type { ProcessPlanDTO } from '../../types/processOrder'
 import { rebasePlanForRoll } from './createOrderState'
 import { applyLegacyPlanPriceDefaults, type DefaultPlanOptions } from './draftMappers'
 import { applyDefaultMachineToPlan } from './machineDefaults'
-import { normalizeLayeredRewindPlan } from './rewindLayerPlanUtils'
+import { normalizeRewindPlan } from './rewindLayerPlanUtils'
 import type { RollDraft } from './types'
 
 export interface PreparePlanOptions {
@@ -15,7 +15,7 @@ export interface PreparePlanOptions {
 
 export function prepareSingleRollPlan(options: PreparePlanOptions): ProcessPlanDTO {
   const pricedPlan = applyLegacyPlanPriceDefaults(options.plan, options.defaultPlanOptions)
-  return normalizeLayeredRewindPlan(
+  return normalizeRewindPlan(
     applyDefaultMachineToPlan(rebasePlanForRoll(pricedPlan, options.roll), options.machines),
     options.roll,
   )
@@ -23,7 +23,7 @@ export function prepareSingleRollPlan(options: PreparePlanOptions): ProcessPlanD
 
 export function prepareBatchPlan(options: PreparePlanOptions): ProcessPlanDTO {
   const pricedPlan = applyLegacyPlanPriceDefaults(options.plan, options.defaultPlanOptions)
-  return normalizeLayeredRewindPlan(
+  return normalizeRewindPlan(
     applyDefaultMachineToPlan(pricedPlan, options.machines),
     options.roll,
   )

@@ -9,6 +9,7 @@ import type { CreateOrderDraftState } from './useCreateOrderDraftState'
 import type { MoveToCreateOrderStep } from './useCreateOrderStepNavigation'
 import { useSavePlanItemsBatch } from './useSavePlanItemsBatch'
 import { reconcileConfiguredPlanIds } from '../configuredPlanStatus'
+import type { VersionedWriteResult } from '../draftWriteTypes'
 
 interface Options {
   autoFinishConfigEnabled: boolean
@@ -59,20 +60,20 @@ export function useAdvanceFromConfigStep(options: Options) {
 async function persistPlans(
   items: AutoFinishConfigItem[],
   options: Options,
-  savePlan: (variables: SavePlanItemsBatchVariables) => Promise<PlanPreviewVO[]>,
+  savePlan: (variables: SavePlanItemsBatchVariables) => Promise<VersionedWriteResult<PlanPreviewVO[]>>,
 ): Promise<PersistPlansResult> {
   const expectedVersion = options.state.getDraftVersion()
   if (!options.state.orderUuid) return { blockedRolls: [], version: expectedVersion }
   const savedItems = items.filter((item) => item.roll.uuid)
   if (!savedItems.length) return { blockedRolls: [], version: expectedVersion }
-  const previews = await savePlan({
+  const saveResult = await savePlan({
     orderUuid: options.state.orderUuid,
     dto: {
       expectedVersion,
       items: savedItems.map((item) => ({ originalUuid: item.roll.uuid!, plan: item.plan })),
     },
   })
-  const previewByRoll = new Map(previews.map((preview) => [preview.originalUuid, preview]))
+  const previewByRoll = new Map(saveResult.data.map((preview) => [preview.originalUuid, preview]))
   const savedPreviews: Record<string, PlanPreviewVO> = {}
   for (const item of savedItems) {
     const preview = previewByRoll.get(item.roll.uuid!)
@@ -91,7 +92,7 @@ async function persistPlans(
       localId: item.roll.localId,
       preview: savedPreviews[item.roll.localId],
     }))))
-  const version = expectedVersion + 1
+  const version = saveResult.version
   options.state.setDraftVersion(version)
   return {
     blockedRolls: savedItems

@@ -13,95 +13,120 @@ import java.util.List;
 public class SawPlanCalculator {
 
     private static final String ITEM_TRIM = "TRIM";
+    private static final int SCALE = 3;
 
-    public SawPlanCalculation calculate(List<FinishConfigSpecDTO> source, OriginalRoll roll, String policyValue) {
+    public SawPlanCalculation calculate(List<FinishConfigSpecDTO> source, OriginalRoll roll,
+                                        String policyValue) {
         List<FinishConfigSpecDTO> specs = source == null ? List.of() : source;
-        List<FinishConfigSpecDTO> finishes = specs.stream().filter(this::isFinish).toList();
-        WidthDifferencePolicy policy = resolvePolicy(policyValue, specs);
+        WidthDifferencePolicy policy = WidthDifferencePolicy.resolve(policyValue);
         int sourceWidth = effectiveSourceWidth(roll);
-        int finishWidth = totalWidth(finishes);
-        int differenceWidth = Math.max(0, sourceWidth - finishWidth);
-        validate(specs, policy, sourceWidth, finishWidth, differenceWidth);
-        BigDecimal differenceWeight = differenceWeight(roll, differenceWidth, sourceWidth);
-        List<SawPlanCalculation.CalculatedFinish> rows = calculateFinishes(finishes, roll, policy, differenceWeight);
-        int knives = rows.isEmpty() ? 0 : Math.max(0, rows.size() - 1) + (differenceWidth > 0 ? 1 : 0);
-        return new SawPlanCalculation(rows, policy, sourceWidth, finishWidth,
-                differenceWidth, differenceWeight, knives);
-    }
+        int finishWidth = totalWidth(specs.stream().filter(this::isFinish).toList());
+        int trimWidth = totalWidth(specs.stream().filter(this::isTrim).toList());
+        int usedWidth = finishWidth + trimWidth;
+        int differenceWidth = Math.max(0, sourceWidth - usedWidth);
+        validate(policy, sourceWidth, finishWidth, usedWidth, differenceWidth);
 
-    private List<SawPlanCalculation.CalculatedFinish> calculateFinishes(
-            List<FinishConfigSpecDTO> specs, OriginalRoll roll,
-            WidthDifferencePolicy policy, BigDecimal differenceWeight) {
+        BigDecimal totalWeight = totalWeight(roll);
+        BigDecimal differenceWeight = proportionalWeight(totalWeight, differenceWidth, sourceWidth);
         List<FinishConfigSpecDTO> expanded = expand(specs);
-        BigDecimal allocatable = totalWeight(roll);
-        if (policy != WidthDifferencePolicy.ALLOCATE) {
-            allocatable = allocatable.subtract(differenceWeight);
-        }
-        BigDecimal widthBasis = BigDecimal.valueOf(totalWidth(specs));
-        return allocate(expanded, allocatable, widthBasis);
+        List<SawPlanCalculation.CalculatedFinish> calculated = calculateOutputs(
+                expanded, totalWeight, differenceWeight, policy, usedWidth);
+        List<SawPlanCalculation.CalculatedFinish> finishes = calculated.stream()
+                .filter(item -> isFinish(item.specification())).toList();
+        List<SawPlanCalculation.CalculatedFinish> trims = calculated.stream()
+                .filter(item -> isTrim(item.specification())).toList();
+        int physicalPieces = expanded.size() + (differenceWidth > 0 ? 1 : 0);
+        int knives = physicalPieces <= 0 ? 0 : Math.max(0, physicalPieces - 1);
+        return new SawPlanCalculation(finishes, trims, policy, sourceWidth, finishWidth,
+                trimWidth, differenceWidth, differenceWeight, knives);
     }
 
-    private List<SawPlanCalculation.CalculatedFinish> allocate(
-            List<FinishConfigSpecDTO> specs, BigDecimal weight, BigDecimal widthBasis) {
-        List<SawPlanCalculation.CalculatedFinish> result = new ArrayList<>();
-        BigDecimal allocated = BigDecimal.ZERO;
+    private List<SawPlanCalculation.CalculatedFinish> calculateOutputs(
+            List<FinishConfigSpecDTO> specs, BigDecimal totalWeight,
+            BigDecimal differenceWeight, WidthDifferencePolicy policy, int usedWidth) {
+        BigDecimal configuredWeight = totalWeight.subtract(differenceWeight);
+        List<BigDecimal> weights = allocateByWidth(specs, configuredWeight, usedWidth);
+        if (policy == WidthDifferencePolicy.ALLOCATE && differenceWeight.signum() > 0) {
+            distributeEqually(specs, weights, differenceWeight);
+        }
+        List<SawPlanCalculation.CalculatedFinish> result = new ArrayList<>(specs.size());
         for (int index = 0; index < specs.size(); index++) {
-            FinishConfigSpecDTO spec = specs.get(index);
-            BigDecimal current = allocatedWeight(spec, index, specs.size(), weight, widthBasis, allocated);
-            result.add(new SawPlanCalculation.CalculatedFinish(spec, current));
-            allocated = allocated.add(current);
+            result.add(new SawPlanCalculation.CalculatedFinish(specs.get(index), weights.get(index)));
         }
         return result;
     }
 
-    private BigDecimal allocatedWeight(FinishConfigSpecDTO spec, int index, int count,
-                                       BigDecimal total, BigDecimal widthBasis, BigDecimal allocated) {
-        if (count == 0 || total.signum() <= 0 || widthBasis.signum() <= 0) {
-            return BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP);
+    private List<BigDecimal> allocateByWidth(List<FinishConfigSpecDTO> specs,
+                                             BigDecimal total, int widthBasis) {
+        List<BigDecimal> result = new ArrayList<>(specs.size());
+        for (FinishConfigSpecDTO spec : specs) {
+            result.add(total.multiply(BigDecimal.valueOf(spec.getFinishWidth()))
+                    .divide(BigDecimal.valueOf(widthBasis), SCALE, RoundingMode.HALF_UP));
         }
-        if (index == count - 1) {
-            return total.subtract(allocated).setScale(3, RoundingMode.HALF_UP);
-        }
-        BigDecimal width = BigDecimal.valueOf(spec.getFinishWidth() == null ? 0 : spec.getFinishWidth());
-        return total.multiply(width).divide(widthBasis, 3, RoundingMode.HALF_UP);
+        applyRoundingRemainder(specs, result, total);
+        return result;
     }
 
-    private void validate(List<FinishConfigSpecDTO> specs, WidthDifferencePolicy policy,
-                          int sourceWidth, int finishWidth, int differenceWidth) {
+    private void distributeEqually(List<FinishConfigSpecDTO> specs, List<BigDecimal> weights,
+                                   BigDecimal differenceWeight) {
+        if (weights.isEmpty()) return;
+        BigDecimal share = differenceWeight.divide(BigDecimal.valueOf(weights.size()),
+                SCALE, RoundingMode.HALF_UP);
+        BigDecimal expectedTotal = sum(weights).add(differenceWeight);
+        for (int index = 0; index < weights.size(); index++) {
+            weights.set(index, weights.get(index).add(share).setScale(SCALE, RoundingMode.HALF_UP));
+        }
+        applyRoundingRemainder(specs, weights, expectedTotal);
+    }
+
+    private void applyRoundingRemainder(List<FinishConfigSpecDTO> specs,
+                                        List<BigDecimal> weights, BigDecimal expectedTotal) {
+        BigDecimal remainder = expectedTotal.subtract(sum(weights)).setScale(SCALE, RoundingMode.HALF_UP);
+        if (remainder.signum() == 0) return;
+        int target = lastFinishIndex(specs);
+        weights.set(target, weights.get(target).add(remainder).setScale(SCALE, RoundingMode.HALF_UP));
+    }
+
+    private BigDecimal sum(List<BigDecimal> weights) {
+        return weights.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private int lastFinishIndex(List<FinishConfigSpecDTO> specs) {
+        for (int index = specs.size() - 1; index >= 0; index--) {
+            if (isFinish(specs.get(index))) return index;
+        }
+        throw new BusinessException("锯纸至少需要一条成品规格");
+    }
+
+    private void validate(WidthDifferencePolicy policy, int sourceWidth, int finishWidth,
+                          int usedWidth, int differenceWidth) {
         if (finishWidth <= 0) {
             throw new BusinessException("锯纸至少需要一条成品规格");
         }
-        if (sourceWidth > 0 && finishWidth > sourceWidth) {
-            throw new BusinessException("锯纸成品门幅不能超过母卷门幅");
+        if (sourceWidth <= 0) {
+            throw new BusinessException("母卷有效门幅必须大于0");
         }
-        int explicitTrim = totalWidth(specs.stream().filter(this::isTrim).toList());
-        if (sourceWidth > 0 && finishWidth + explicitTrim > sourceWidth) {
+        if (usedWidth > sourceWidth) {
             throw new BusinessException("锯纸成品门幅加切边不能超过母卷门幅");
         }
-        if (policy != WidthDifferencePolicy.REMAINDER && explicitTrim > 0) {
-            throw new BusinessException("计损耗或分摊模式不能再添加实体切边");
-        }
-        if (policy == WidthDifferencePolicy.REMAINDER && explicitTrim > 0 && explicitTrim != differenceWidth) {
-            throw new BusinessException("实体余料门幅必须等于母卷与成品的门幅差额");
+        if (policy == WidthDifferencePolicy.REMAINDER && differenceWidth > 0) {
+            throw new BusinessException("留余料模式还有 " + differenceWidth
+                    + "mm 未分配，请补齐余料后再保存");
         }
     }
 
     private List<FinishConfigSpecDTO> expand(List<FinishConfigSpecDTO> specs) {
         List<FinishConfigSpecDTO> result = new ArrayList<>();
         for (FinishConfigSpecDTO spec : specs) {
-            for (int index = 0; index < count(spec); index++) {
-                result.add(spec);
-            }
+            for (int index = 0; index < count(spec); index++) result.add(spec);
         }
         return result;
     }
 
-    private BigDecimal differenceWeight(OriginalRoll roll, int differenceWidth, int sourceWidth) {
-        if (differenceWidth <= 0 || sourceWidth <= 0) {
-            return BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP);
-        }
-        return totalWeight(roll).multiply(BigDecimal.valueOf(differenceWidth))
-                .divide(BigDecimal.valueOf(sourceWidth), 3, RoundingMode.HALF_UP);
+    private BigDecimal proportionalWeight(BigDecimal totalWeight, int width, int sourceWidth) {
+        if (width <= 0 || sourceWidth <= 0) return BigDecimal.ZERO.setScale(SCALE);
+        return totalWeight.multiply(BigDecimal.valueOf(width))
+                .divide(BigDecimal.valueOf(sourceWidth), SCALE, RoundingMode.HALF_UP);
     }
 
     private BigDecimal totalWeight(OriginalRoll roll) {
@@ -110,14 +135,13 @@ public class SawPlanCalculator {
     }
 
     private int effectiveSourceWidth(OriginalRoll roll) {
-        if (roll.getActualWidth() != null && roll.getActualWidth() > 0) {
-            return roll.getActualWidth();
-        }
+        if (roll.getActualWidth() != null && roll.getActualWidth() > 0) return roll.getActualWidth();
         return roll.getOriginalWidth() == null ? 0 : roll.getOriginalWidth();
     }
 
     private int totalWidth(List<FinishConfigSpecDTO> specs) {
-        return specs.stream().mapToInt(spec -> (spec.getFinishWidth() == null ? 0 : spec.getFinishWidth()) * count(spec)).sum();
+        return specs.stream().mapToInt(spec ->
+                (spec.getFinishWidth() == null ? 0 : spec.getFinishWidth()) * count(spec)).sum();
     }
 
     private int count(FinishConfigSpecDTO spec) {
@@ -130,13 +154,5 @@ public class SawPlanCalculator {
 
     private boolean isTrim(FinishConfigSpecDTO spec) {
         return ITEM_TRIM.equalsIgnoreCase(spec.getItemType());
-    }
-
-    private WidthDifferencePolicy resolvePolicy(String policyValue, List<FinishConfigSpecDTO> specs) {
-        if (policyValue == null || policyValue.isBlank()) {
-            boolean hasLegacyRemainder = specs.stream().anyMatch(this::isTrim);
-            return hasLegacyRemainder ? WidthDifferencePolicy.REMAINDER : WidthDifferencePolicy.ALLOCATE;
-        }
-        return WidthDifferencePolicy.resolve(policyValue);
     }
 }

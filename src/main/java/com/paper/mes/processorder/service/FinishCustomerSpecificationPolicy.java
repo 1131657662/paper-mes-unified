@@ -17,6 +17,10 @@ public final class FinishCustomerSpecificationPolicy {
         finish.setCustomerPaperName(trimToNull(spec.getCustomerPaperName()));
         finish.setCustomerGramWeight(spec.getCustomerGramWeight());
         finish.setCustomerFinishWidth(spec.getCustomerFinishWidth());
+        requireOverrideReason(
+                finish.getPaperName(), finish.getGramWeight(), finish.getFinishWidth(),
+                finish.getCustomerPaperName(), finish.getCustomerGramWeight(),
+                finish.getCustomerFinishWidth(), spec.getCustomerSpecOverrideReason());
         if (!isOverride(finish)) {
             return;
         }
@@ -27,6 +31,21 @@ public final class FinishCustomerSpecificationPolicy {
         finish.setCustomerSpecOverrideReason(reason);
         finish.setCustomerSpecOverrideBy(operator);
         finish.setCustomerSpecOverrideAt(LocalDateTime.now());
+    }
+
+    public static void requireOverrideReason(String physicalPaperName,
+                                             Integer physicalGramWeight,
+                                             Integer physicalWidth,
+                                             String customerPaperName,
+                                             Integer customerGramWeight,
+                                             Integer customerWidth,
+                                             String reason) {
+        boolean override = differs(trimToNull(customerPaperName), physicalPaperName)
+                || differs(customerGramWeight, physicalGramWeight)
+                || differs(customerWidth, physicalWidth);
+        if (override && trimToNull(reason) == null) {
+            throw new BusinessException("客户销售规格与物理规格不同时必须填写改写原因");
+        }
     }
 
     private static boolean isOverride(FinishRoll finish) {

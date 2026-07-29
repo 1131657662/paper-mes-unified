@@ -7,11 +7,12 @@ import type { BackRecordSourceOption } from './BackRecordFinishFields'
 
 interface Props {
   item: BackRecordWorkItem
+  onDirty?: () => void
   onFieldExhausted: () => void
   sourceOptions: BackRecordSourceOption[]
 }
 
-export default function BackRecordTrimEntryList({ item, onFieldExhausted, sourceOptions }: Props) {
+export default function BackRecordTrimEntryList({ item, onDirty, onFieldExhausted, sourceOptions }: Props) {
   const options = itemSourceOptions(item, sourceOptions)
   if (item.kind !== 'roll' || options.length === 0) return null
   return (
@@ -21,7 +22,7 @@ export default function BackRecordTrimEntryList({ item, onFieldExhausted, source
           <>
             <div className="back-record-panel__head">
               <Typography.Text strong>切边 / 余料</Typography.Text>
-              <Button size="small" icon={<PlusOutlined />} onClick={() => add(defaultTrim(options))}>新增切边</Button>
+              <Button size="small" icon={<PlusOutlined />} onClick={() => { add(defaultTrim(options)); onDirty?.() }}>新增切边</Button>
             </div>
             {fields.length === 0 ? (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="本次没有保留切边" />
@@ -29,13 +30,13 @@ export default function BackRecordTrimEntryList({ item, onFieldExhausted, source
               <div className="back-record-trim-list">
                 {fields.map((field, index) => (
                   <TrimRow
-                    key={field.key}
+                    key={`${item.key}:${field.key}:${field.name}`}
                     fieldName={field.name}
                     index={index}
                     itemKey={item.key}
                     onFieldExhausted={onFieldExhausted}
                     options={options}
-                    onRemove={() => remove(field.name)}
+                    onRemove={() => { remove(field.name); onDirty?.() }}
                   />
                 ))}
               </div>

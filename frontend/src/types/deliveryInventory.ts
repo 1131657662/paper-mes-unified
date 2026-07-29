@@ -2,6 +2,7 @@ import type { PageQuery } from './common'
 
 export type DeliveryInventoryStockState = 1 | 2
 export type DeliveryInventoryType = 1 | 2 | 3
+export type DeliveryInventoryScope = 'product' | 'remain'
 
 export interface DeliveryInventoryFilter {
   customerUuid?: string
@@ -10,6 +11,7 @@ export interface DeliveryInventoryFilter {
   keyword?: string
   stockState?: DeliveryInventoryStockState
   inventoryType?: DeliveryInventoryType
+  inventoryScope?: DeliveryInventoryScope
   stockAgeMinDays?: number
 }
 
@@ -25,6 +27,15 @@ export interface DeliveryInventorySummary {
   productRollCount: number
   remainRollCount: number
   directRollCount: number
+  productWeight: number
+  remainWeight: number
+  directWeight: number
+  productAvailableRollCount: number
+  remainAvailableRollCount: number
+  directAvailableRollCount: number
+  productAvailableWeight: number
+  remainAvailableWeight: number
+  directAvailableWeight: number
   totalWeight: number
   availableWeight: number
   lockedWeight: number
@@ -43,6 +54,18 @@ export interface DeliveryInventoryCustomer {
   availableWeight: number
   lockedWeight: number
   plannedOutWeight: number
+  productRollCount: number
+  remainRollCount: number
+  directRollCount: number
+  productWeight: number
+  remainWeight: number
+  directWeight: number
+  productAvailableRollCount: number
+  remainAvailableRollCount: number
+  directAvailableRollCount: number
+  productAvailableWeight: number
+  remainAvailableWeight: number
+  directAvailableWeight: number
   oldestStockInTime?: string
   stockInTimeUnknownCount: number
   warehouseCount: number

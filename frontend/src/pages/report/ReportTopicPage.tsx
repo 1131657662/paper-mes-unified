@@ -15,7 +15,7 @@ import type { ReportTopicCode } from '../../features/report/services/reportServi
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import ReportSubscriptionButton from '../../features/reportSubscription/components/ReportSubscriptionButton'
 import type { ReportQuery, ReportTopicAnalysisVO } from '../../types/report'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { reportFiltersFromQuery, reportQueryFromFilters } from './reportFilterState'
 import { findReportNavigation, resolveReportSourcePath } from './reportNavigation'
 import { parseReportUrlState, serializeReportUrlState } from './reportUrlState'

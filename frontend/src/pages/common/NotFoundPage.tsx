@@ -1,5 +1,5 @@
 import { Button, Result, Space } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import '../documentModule.css'
 
 export default function NotFoundPage() {

@@ -37,6 +37,6 @@ describe('calculateRollWeightBalance', () => {
     expect(balance.finishWeight).toBe(2285)
     expect(balance.trimWeight).toBe(0)
     expect(balance.difference).toBe(0)
-    expect(balance.detail).toContain('已并入成品重量')
+    expect(balance.detail).toContain('已分摊到所有实际产出件重量')
   })
 })

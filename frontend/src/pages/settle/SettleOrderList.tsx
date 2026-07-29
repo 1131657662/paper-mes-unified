@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Form, message } from 'antd'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router'
 import DocumentListShell from '../../components/biz/DocumentListShell'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import { useDocumentRowSelection } from '../../components/biz/useDocumentRowSelection'

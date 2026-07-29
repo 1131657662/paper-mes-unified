@@ -130,12 +130,14 @@ public class DeliveryCustomerRevisionPreviewService {
         result.setCurrentRevisionNo(nextRevisionNo - 1);
         result.setCurrentRevisionKind(revisionKind);
         result.setNextRevisionNo(nextRevisionNo);
-        result.setItemCount(items.size());
-        result.setValidItemCount((int) items.stream().filter(DeliveryCustomerSpecVO::isValid).count());
+        int itemCount = items.size();
+        int validItemCount = (int) items.stream().filter(DeliveryCustomerSpecVO::isValid).count();
+        result.setItemCount(itemCount);
+        result.setValidItemCount(validItemCount);
         result.setPhysicalTotalWeight(physical);
         result.setCustomerTotalWeight(customer);
         result.setDifferenceWeight(customer.subtract(physical).setScale(3));
-        result.setHasErrors(result.getValidItemCount() != result.getItemCount());
+        result.setHasErrors(validItemCount != itemCount);
         result.setItems(items);
         return result;
     }

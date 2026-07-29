@@ -1,7 +1,7 @@
 import { BellOutlined } from '@ant-design/icons'
 import { Badge, Button, Drawer, Skeleton, Tooltip } from 'antd'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,

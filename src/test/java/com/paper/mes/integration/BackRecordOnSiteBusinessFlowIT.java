@@ -100,6 +100,7 @@ class BackRecordOnSiteBusinessFlowIT {
         scenario.order().setPrintCount(0);
         processOrderMapper.updateById(scenario.order());
 
+        processOrderService.issue(scenario.order().getUuid());
         var result = processOrderService.print(scenario.order().getUuid(), new PrintDTO());
 
         assertThat(result.getFinishRollNos()).isEmpty();

@@ -3,12 +3,13 @@ import type { ProcessOrderPrintViewVO, PrintViewVersion } from '../../../types/p
 import { paperVersionText, printVersionMetadata, printVersionWarning } from '../printVersionModel'
 
 interface Props {
+  disabled?: boolean
   value: PrintViewVersion
   view?: ProcessOrderPrintViewVO
   onChange: (version: PrintViewVersion) => void
 }
 
-export default function PrintVersionControl({ value, view, onChange }: Props) {
+export default function PrintVersionControl({ disabled, value, view, onChange }: Props) {
   const versions = view?.availableVersions ?? ['ISSUED']
   const metadata = printVersionMetadata(view)
   const warning = printVersionWarning(view)
@@ -17,6 +18,7 @@ export default function PrintVersionControl({ value, view, onChange }: Props) {
       <div className="print-version__switch-row">
         <Segmented<PrintViewVersion>
           aria-label="加工单打印版本"
+          disabled={disabled}
           value={value}
           options={versions.map((version) => ({ label: versionText(version), value: version }))}
           onChange={onChange}

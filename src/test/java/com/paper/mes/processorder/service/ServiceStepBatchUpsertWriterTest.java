@@ -23,6 +23,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,7 +47,7 @@ class ServiceStepBatchUpsertWriterTest {
         writer = new ServiceStepBatchUpsertWriter(stepMapper, mock(MachineMapper.class), catalogValidator);
         when(catalogValidator.validate(any(ProcessStep.class), any(OriginalRoll.class))).thenReturn(catalog());
         when(stepMapper.insert(any(ProcessStep.class))).thenReturn(1);
-        when(stepMapper.updateById(any(ProcessStep.class))).thenReturn(1);
+        when(stepMapper.update(isNull(), any())).thenReturn(1);
     }
 
     @Test
@@ -63,7 +64,7 @@ class ServiceStepBatchUpsertWriterTest {
         assertThat(existing.getBillingMode()).isEqualTo(1);
         assertThat(existing.getBillingAmount()).isNull();
         assertThat(existing.getUnitPrice()).isEqualByComparingTo("20");
-        verify(stepMapper).updateById(existing);
+        verify(stepMapper).update(isNull(), any());
         ArgumentCaptor<ProcessStep> inserted = ArgumentCaptor.forClass(ProcessStep.class);
         verify(stepMapper).insert(inserted.capture());
         assertThat(inserted.getValue().getOriginalUuid()).isEqualTo("roll-2");
@@ -114,7 +115,7 @@ class ServiceStepBatchUpsertWriterTest {
     void upsert_whenExistingStepHasConcurrentChange_rejectsBatch() {
         ProcessStep existing = existingStep();
         when(stepMapper.selectList(any())).thenReturn(List.of(existing));
-        when(stepMapper.updateById(existing)).thenReturn(0);
+        when(stepMapper.update(isNull(), any())).thenReturn(0);
 
         assertThatThrownBy(() -> writer.upsert("order-1",
                 List.of(standardRequest("roll-1")), Map.of("roll-1", roll("roll-1"))))
@@ -132,6 +133,8 @@ class ServiceStepBatchUpsertWriterTest {
         step.setIsMain(0);
         step.setBillingMode(3);
         step.setBillingAmount(new BigDecimal("7.50"));
+        step.setVersion(2);
+        step.setIsDeleted(0);
         return step;
     }
 

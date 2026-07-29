@@ -1,11 +1,11 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { HeaderActions } from './ConfigFinishPage'
+import ConfigFinishHeaderActions from './ConfigFinishHeaderActions'
 
 describe('成品规格配置页操作区', () => {
   it('详情未加载完成时禁用批量保存并说明原因', () => {
     const markup = renderToStaticMarkup(
-      <HeaderActions
+      <ConfigFinishHeaderActions
         disabledReason="加工单与母卷信息加载中"
         saving={false}
         onCancel={() => undefined}

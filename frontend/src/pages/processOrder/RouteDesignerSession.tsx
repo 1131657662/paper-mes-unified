@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal, message } from 'antd'
 import { usePreviewRoute } from '../../features/processOrderCreate/hooks/usePreviewRoute'
 import { useSaveRoute } from '../../features/processOrderCreate/hooks/useSaveRoute'
@@ -12,7 +12,9 @@ import {
   removeOutputFromRoute,
 } from '../../features/processOrderRouteDraft/routeDraftModel'
 import type { RouteDraftStage } from '../../features/processOrderRouteDraft/routeDraftModel'
+import { routeBatchTargets } from '../../features/processOrderRouteDraft/routeBatchTargets'
 import type { DetailRouteOutputRow } from '../../features/processOrderDetail/routeConfigDetail'
+import { createRoutePreviewRequestGate } from '../../features/processOrderDetail/routePreviewGuard'
 import type { Customer } from '../../types/customer'
 import type { Machine } from '../../types/machine'
 import type {
@@ -23,7 +25,6 @@ import type {
 } from '../../types/processOrder'
 import RouteDesignerWorkspace from './RouteDesignerWorkspace'
 import type { RouteDesignerActionState, RouteDesignerCommands } from './RouteDesignerWorkspace'
-
 interface Props {
   config?: ProcessConfigDraftVO
   customer?: Customer
@@ -33,34 +34,32 @@ interface Props {
   roll: OriginalRoll
   uuid: string
 }
-
-interface OperationFeedback {
-  description: string
-  title: string
-}
-
+interface OperationFeedback { description: string; title: string }
 export default function RouteDesignerSession({ config, customer, draft, machines, onBack, roll, uuid }: Props) {
   const history = useRouteDraftHistory(createRouteStages(roll, config?.route, {
     rewindPrice: customer?.rewindPrice,
     sawPrice: customer?.sawPrice,
   }))
-  const { clearDirty, markDirty, runIfClean } = useUnsavedChangesGuard()
   const [preview, setPreview] = useState<ProcessRoutePreviewVO | undefined>(config?.routePreview)
   const [feedback, setFeedback] = useState<OperationFeedback>()
   const [selectedOutputKey, setSelectedOutputKey] = useState(ORIGINAL_OUTPUT_KEY)
   const [quickAction, setQuickAction] = useState<{ nonce: number; sourceKey: string; stepType: number }>()
+  const previewRequestGate = useRef(createRoutePreviewRequestGate())
   const { mutateAsync: previewRoute, isPending: isPreviewing } = usePreviewRoute()
   const { mutateAsync: saveRoute, isPending: isSaving } = useSaveRoute()
   const { mutateAsync: saveRouteBatch, isPending: isSavingBatch } = useSaveRouteBatch()
+  const { clearDirty, markDirty, runIfClean } = useUnsavedChangesGuard({
+    pending: isSaving || isSavingBatch,
+  })
   const draftVersion = draft.order?.version
-  const targets = sameSpecRolls(draft.rolls ?? [], roll)
-
+  const targets = routeBatchTargets(draft.rolls ?? [], roll)
   useEffect(() => {
     if (history.canUndo) markDirty()
     else clearDirty()
   }, [clearDirty, history.canUndo, markDirty])
 
   const clearPreview = () => {
+    previewRequestGate.current.invalidate()
     setPreview(undefined)
     setFeedback(undefined)
   }
@@ -92,12 +91,15 @@ export default function RouteDesignerSession({ config, customer, draft, machines
   }
   const runPreview = async () => {
     if (draftVersion == null || history.stages.length === 0) return
+    const requestId = previewRequestGate.current.begin()
     try {
       const result = await previewRoute({ orderUuid: uuid, request: routeRequest(roll, history.stages, draftVersion) })
+      if (!previewRequestGate.current.isCurrent(requestId)) return
       setPreview(result)
       setFeedback(undefined)
       message.success('预览校验通过')
     } catch (error) {
+      if (!previewRequestGate.current.isCurrent(requestId)) return
       setPreview(undefined)
       setFeedback({ title: '预览校验未通过', description: errorMessage(error) })
     }
@@ -106,9 +108,10 @@ export default function RouteDesignerSession({ config, customer, draft, machines
     if (draftVersion == null || history.stages.length === 0) return
     try {
       const result = await saveRoute({ orderUuid: uuid, request: routeRequest(roll, history.stages, draftVersion) })
+      previewRequestGate.current.invalidate()
       history.reset(history.stages)
       clearDirty()
-      setPreview(result)
+      setPreview(result.data)
       setFeedback(undefined)
       message.success('链式工艺已保存')
     } catch (error) {
@@ -161,7 +164,6 @@ export default function RouteDesignerSession({ config, customer, draft, machines
       actionState={actionState}
       busy={isPreviewing || isSaving || isSavingBatch}
       commands={commands}
-      defaultPlanOptions={{ rewindPrice: customer?.rewindPrice, sawPrice: customer?.sawPrice }}
       feedback={feedback}
       machines={machines}
       orderLabel={`加工单：${draft.order?.orderNo || '未生成单号'}`}
@@ -191,13 +193,6 @@ function saveDisabledReason(stageCount: number, draftVersion: number | undefined
 
 function applyDisabledReason(stageCount: number, targetCount: number, draftVersion?: number) {
   return routeDisabledReason(stageCount, draftVersion) ?? (targetCount === 0 ? '没有其他同品名、克重和门幅的母卷' : undefined)
-}
-
-function sameSpecRolls(rolls: OriginalRoll[], current: OriginalRoll) {
-  return rolls.filter((item) => item.uuid !== current.uuid
-    && item.paperName === current.paperName
-    && item.gramWeight === current.gramWeight
-    && item.originalWidth === current.originalWidth)
 }
 
 function errorMessage(error: unknown) {

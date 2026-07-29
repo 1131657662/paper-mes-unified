@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Input, Modal, message } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router'
 import { PERMISSIONS } from '../../../constants/permissions'
 import { useHasPermission } from '../../../stores/authStore'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'

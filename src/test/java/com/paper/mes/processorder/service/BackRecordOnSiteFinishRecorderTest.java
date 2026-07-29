@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class BackRecordOnSiteFinishRecorderTest {
@@ -75,14 +76,50 @@ class BackRecordOnSiteFinishRecorderTest {
     }
 
     @Test
-    void record_omittedLegacyPlaceholder_voidsUnusedRollNo() {
+    void record_unusedSpareWithoutSpecification_leavesItUnchanged() {
+        FinishRoll spare = finish("finish-spare");
+        spare.setIsSpare(1);
+        BackRecordFinishDTO dto = new BackRecordFinishDTO();
+        dto.setUuid(spare.getUuid());
+        dto.setIsRemain(0);
+        dto.setIsAbnormal(0);
+
+        BackRecordOnSiteFinishRecorder.Result result = recorder.record(
+                List.of(dto), context(List.of(spare), List.of(relation(spare))));
+
+        assertThat(result.managedExistingUuids()).contains(spare.getUuid());
+        verify(finishRollMapper, never()).updateById(spare);
+    }
+
+    @Test
+    void record_omittedExistingOutput_voidsItAndClearsAvailableInventory() {
         FinishRoll existing = finish("finish-old");
-        when(finishRollMapper.updateById(existing)).thenReturn(1);
+        existing.setActualWeight(new BigDecimal("45.000"));
+        existing.setRemainingWeight(new BigDecimal("45.000"));
+        when(finishRollMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
 
         recorder.record(List.of(), context(List.of(existing), List.of(relation(existing))));
 
         assertThat(existing.getRollNoStatus()).isEqualTo(3);
+        assertThat(existing.getFinishStatus()).isEqualTo(4);
+        assertThat(existing.getActualWeight()).isNull();
+        assertThat(existing.getRemainingWeight()).isNull();
+        assertThat(existing.getProductionResult()).isEqualTo(3);
         assertThat(existing.getActualRemark()).contains("自动作废");
+    }
+
+    @Test
+    void record_omittedActualAddition_keepsAddedClassificationWhileVoidingIt() {
+        FinishRoll existing = finish("finish-added");
+        existing.setProductionResult(4);
+        existing.setActualWeight(new BigDecimal("45.000"));
+        when(finishRollMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
+
+        recorder.record(List.of(), context(List.of(existing), List.of(relation(existing))));
+
+        assertThat(existing.getProductionResult()).isEqualTo(4);
+        assertThat(existing.getRollNoStatus()).isEqualTo(3);
+        assertThat(existing.getActualWeight()).isNull();
     }
 
     @Test
@@ -122,13 +159,16 @@ class BackRecordOnSiteFinishRecorderTest {
     }
 
     @Test
-    void record_newFinishWithStandardSource_rejectsSubmission() {
+    void record_newFinishWithStandardSource_ignoresOnSiteRecorder() {
         BackRecordFinishDTO dto = newFinish();
         dto.setOriginalUuid("roll-standard");
 
-        assertThatThrownBy(() -> recorder.record(
-                List.of(dto), context(List.of(), List.of())))
-                .hasMessageContaining("必须选择来源母卷");
+        BackRecordOnSiteFinishRecorder.Result result = recorder.record(
+                List.of(dto), context(List.of(source(), standardSource()), List.of(), List.of()));
+
+        assertThat(result.finishes()).isEmpty();
+        assertThat(result.managedExistingUuids()).isEmpty();
+        verify(finishRollMapper, org.mockito.Mockito.never()).insert(any(FinishRoll.class));
     }
 
     @Test
@@ -153,6 +193,14 @@ class BackRecordOnSiteFinishRecorderTest {
                 order, List.of(source()), finishes, relations);
     }
 
+    private BackRecordOnSiteFinishRecorder.Context context(
+            List<OriginalRoll> rolls, List<FinishRoll> finishes, List<FinishOriginalRel> relations) {
+        ProcessOrder order = new ProcessOrder();
+        order.setUuid("order-1");
+        order.setWarehouseUuid("warehouse-1");
+        return new BackRecordOnSiteFinishRecorder.Context(order, rolls, finishes, relations);
+    }
+
     private BackRecordFinishDTO newFinish() {
         BackRecordFinishDTO dto = new BackRecordFinishDTO();
         dto.setOriginalUuid("roll-1");
@@ -171,6 +219,14 @@ class BackRecordOnSiteFinishRecorderTest {
         roll.setPaperName("牛卡纸");
         roll.setGramWeight(120);
         roll.setOriginalWidth(1200);
+        return roll;
+    }
+
+    private OriginalRoll standardSource() {
+        OriginalRoll roll = source();
+        roll.setUuid("roll-standard");
+        roll.setProcessMode(1);
+        roll.setOriginalWidth(2400);
         return roll;
     }
 

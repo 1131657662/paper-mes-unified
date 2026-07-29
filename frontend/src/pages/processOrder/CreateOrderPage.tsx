@@ -1,8 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Card, Spin, Steps } from 'antd'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import MesPageHeader from '../../components/layout/MesPageHeader'
-import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import BaseInfoStep from '../../features/processOrderCreate/components/BaseInfoStep'
 import ConfigStep from '../../features/processOrderCreate/components/ConfigStep'
 import PreviewStep from '../../features/processOrderCreate/components/PreviewStep'
@@ -10,6 +9,10 @@ import ProcessModeStep from '../../features/processOrderCreate/components/Proces
 import RollInputStep from '../../features/processOrderCreate/components/RollInputStep'
 import { useCreateOrderDirtyGuard } from '../../features/processOrderCreate/hooks/useCreateOrderDirtyGuard'
 import { useCreateOrderPage } from '../../features/processOrderCreate/hooks/useCreateOrderPage'
+import { notifyErrorOnce } from '../../api/request'
+import CreateOrderLoadError from './CreateOrderLoadError'
+
+export { default as CreateOrderLoadError } from './CreateOrderLoadError'
 
 const steps = ['基础信息', '原纸录入', '加工方式', '工艺配置', '预览确认']
 
@@ -26,14 +29,20 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
   const navigate = useNavigate()
   const pageRef = useRef<HTMLDivElement | null>(null)
   const state = useCreateOrderPage(draftUuid, { resetLocalDraft })
+  const [serviceWritePending, setServiceWritePending] = useState(false)
   const dirtyGuard = useCreateOrderDirtyGuard({
     captureSnapshot: state.captureSnapshot,
+    pending: state.workflowPending || serviceWritePending,
     restoreSnapshot: state.restoreSnapshot,
   })
-  const { clearDraftDirty: clearDirtyAfterSuccess, markDraftDirty: markEdited, runIfClean } = dirtyGuard
+  const { clearDraftDirty: clearDirtyAfterSuccess, commitPlanChanges,
+    markDraftDirty: markEdited, markPlanDirty, reconcilePlanDirty, runIfClean } = dirtyGuard
   const createAnother = () => navigate(`/process-orders/create?fresh=${Date.now()}`, { replace: true })
   const handleSubmit = async () => {
     if (await state.handleSubmit()) clearDirtyAfterSuccess()
+  }
+  const runPageAction = (action: () => Promise<void>, fallback: string) => {
+    void action().catch((error) => notifyErrorOnce(error, fallback))
   }
 
   useEffect(() => {
@@ -52,6 +61,10 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
 
   if (state.loadingPage) {
     return <Spin wrapperClassName="mes-spin-fill process-order-create-spin" spinning />
+  }
+
+  if (state.nonDraftOrderUuid) {
+    return <Navigate replace to={`/process-orders/${state.nonDraftOrderUuid}`} />
   }
 
   return (
@@ -73,7 +86,9 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             initialValue={state.baseInfo}
             loading={state.creatingDraft || state.savingBase}
             onChange={(value) => { markEdited(); state.handleBaseInfoChange(value) }}
-            onNext={async (value) => { if (await state.handleBaseNext(value)) clearDirtyAfterSuccess() }}
+            onNext={(value) => runPageAction(async () => {
+              if (await state.handleBaseNext(value)) clearDirtyAfterSuccess()
+            }, '基础信息保存失败')}
           />
         )}
         {state.current === 1 && (
@@ -83,7 +98,9 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             onChange={(value) => { markEdited(); state.setRolls(value) }}
             onImportPreview={state.handleImportPreview}
             onPrev={() => runIfClean(() => state.setCurrent(0))}
-            onNext={async () => { if (await state.handleRollsNext()) clearDirtyAfterSuccess() }}
+            onNext={() => runPageAction(async () => {
+              if (await state.handleRollsNext()) clearDirtyAfterSuccess()
+            }, '原纸明细保存失败')}
           />
         )}
         {state.current === 2 && (
@@ -92,14 +109,17 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             rolls={state.rolls}
             selectedId={state.selectedId}
             loading={state.updatingRolls}
-            onSelect={(value) => runIfClean(() => state.setSelectedId(value))}
+            onSelect={state.setSelectedId}
             onChange={(value) => { markEdited(); state.setRolls(value) }}
             onPrev={() => runIfClean(() => state.setCurrent(1))}
-            onNext={async () => { if (await state.handleProcessNext()) clearDirtyAfterSuccess() }}
+            onNext={() => runPageAction(async () => {
+              if (await state.handleProcessNext()) clearDirtyAfterSuccess()
+            }, '加工方式保存失败')}
           />
         )}
         {state.current === 3 && (
           <ConfigStep
+            autoFinishConfigEnabled={state.autoFinishConfigEnabled}
             defaultSpareCount={state.defaultSpareCount}
             defaultPlanOptions={state.defaultPlanOptions}
             orderUuid={state.orderUuid}
@@ -113,20 +133,31 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             previews={state.previews}
             routePreviews={state.routePreviews}
             saving={state.savingWorkbench}
+            operation={state.workbenchOperation}
             onOpenRouteDesigner={(roll) => {
               if (state.orderUuid && roll.uuid) {
                 runIfClean(() => navigate(`/process-orders/create/${state.orderUuid}/routes/${roll.uuid}`))
               }
             }}
-            onSelect={(value) => runIfClean(() => state.setSelectedId(value))}
-            onPlanChange={(localId, plan) => { markEdited(); state.handlePlanChange(localId, plan) }}
+            onSelect={state.setSelectedId}
+            onPlanChange={(localId, plan) => {
+              markPlanDirty(localId)
+              state.handlePlanChange(localId, plan)
+              reconcilePlanDirty(localId, plan)
+            }}
             onPreviewPlan={state.handlePreviewPlan}
-            onSavePlan={async (roll, plan) => { if (await state.handleSavePlan(roll, plan)) clearDirtyAfterSuccess() }}
+            onSavePlan={async (roll, plan) => {
+              const saved = await state.handleSavePlan(roll, plan)
+              if (saved && saved.applied) commitPlanChanges([roll.localId])
+              return saved
+            }}
             onSavePlanBatch={async (rolls, plan) => {
-              if (await state.handleSavePlanBatch(rolls, plan)
-                && rolls.some((roll) => roll.localId === state.selectedId)) clearDirtyAfterSuccess()
+              const result = await state.handleSavePlanBatch(rolls, plan)
+              if (result) commitPlanChanges(result.appliedIds)
+              return result
             }}
             onServiceDirtyChange={dirtyGuard.setServiceDirty}
+            onPendingChange={setServiceWritePending}
             onDraftVersionChange={state.setDraftVersion}
             onPrev={() => runIfClean(() => state.setCurrent(2))}
             onNext={async () => { if (await state.handleConfigNext()) clearDirtyAfterSuccess() }}
@@ -150,39 +181,12 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
                 state.setCurrent(3)
               })
             }}
-            onSubmit={() => void handleSubmit()}
+            onSubmit={() => runPageAction(handleSubmit, '加工单提交失败')}
             onViewDetail={(orderUuid) => navigate(`/process-orders/${orderUuid}`)}
           />
         )}
       </div>
     </Spin>
-  )
-}
-
-export function CreateOrderLoadError({ kind, onBack, onRetry }: {
-  kind: 'draft' | 'reference' | 'settings'
-  onBack: () => void
-  onRetry: () => void
-}) {
-  const isDraft = kind === 'draft'
-  const isSettings = kind === 'settings'
-  return (
-    <div className="mes-scroll-page mes-form-page">
-      <MesPageHeader backText="返回列表" eyebrow="加工单" title="新建加工单" onBack={onBack} />
-      <QueryLoadErrorAlert
-        message={isDraft
-          ? '加工单草稿加载失败'
-          : isSettings
-            ? '加工单运行参数加载失败'
-            : '新建加工单基础资料加载失败'}
-        description={isDraft
-          ? '当前空白不代表草稿不存在，重新加载成功前不会覆盖或保存草稿。'
-          : isSettings
-            ? '自动成品配置和备用卷号参数未完整加载，为避免使用错误默认值，当前暂停录入。'
-            : '客户、仓库或机台资料未完整加载，为避免使用错误默认值，当前暂停录入。'}
-        onRetry={onRetry}
-      />
-    </div>
   )
 }
 

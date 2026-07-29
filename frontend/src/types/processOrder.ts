@@ -133,6 +133,9 @@ export interface FinishRoll {
   isAbnormal?: number
   abnormalType?: string
   actualRemark?: string
+  /** 1计划产出 2正常产出 3计划未产出 4实际新增产出 */
+  productionResult?: number
+  productionAdjustmentReason?: string
   /** 1待入库 2已入库 3已出库 4报废 */
   finishStatus?: number
   remark?: string
@@ -222,6 +225,8 @@ export interface FinishProductionVO {
   trimWeightShare?: number
   actualRemark?: string
   finishStatus?: number
+  productionResult?: number
+  productionAdjustmentReason?: string
   sources?: FinishSourceVO[]
 }
 
@@ -419,6 +424,7 @@ export interface RewindSegmentDTO {
 export interface RewindPlanPreviewDTO {
   rewindMode: number
   spareCount?: number
+  widthDifferencePolicy?: WidthDifferencePolicy
   segments?: RewindSegmentDTO[]
 }
 
@@ -430,6 +436,8 @@ export interface RewindSegmentPreview {
   layoutWidth?: number
   trimWidth?: number
   trimWeight?: number
+  widthDifference?: number
+  lossWeight?: number
   summary?: string
 }
 
@@ -459,6 +467,10 @@ export interface FinishPreviewVO {
   spareCount?: number
   totalEstimateWeight?: number
   totalTrimWeight?: number
+  widthDifferencePolicy?: WidthDifferencePolicy
+  widthDifference?: number
+  widthDifferenceWeight?: number
+  calculatedLossWeight?: number
   segments?: RewindSegmentPreview[]
   finishes?: RewindFinishItemPreview[]
 }
@@ -905,9 +917,33 @@ export interface BackRecordRollDTO {
 }
 
 /** 成品卷回录入参。 */
+export type BackRecordFinishAction = 'PRODUCED' | 'NOT_PRODUCED' | 'ADDED'
+
+export interface BackRecordAddedFinishValues {
+  uuid: string
+  originalUuid: string
+  finishWidth?: number
+  finishDiameter?: number
+  finishCoreDiameter?: number
+  actualWeight?: number
+  scrapWeight?: number
+  isAbnormal?: number
+  abnormalType?: string
+  actualRemark?: string
+}
+
+export interface BackRecordFinishAdjustmentValues {
+  plannedFinishUuids: string[]
+  producedFinishUuids: string[]
+  reason: string
+  added: BackRecordAddedFinishValues[]
+}
+
 export interface BackRecordFinishDTO {
   uuid?: string
   originalUuid?: string
+  productionAction?: BackRecordFinishAction
+  productionAdjustmentReason?: string
   finishWidth?: number
   finishDiameter?: number
   finishCoreDiameter?: number
@@ -946,6 +982,11 @@ export interface BackRecordDTO {
   finishes?: BackRecordFinishDTO[]
   trims?: BackRecordTrimDTO[]
   steps?: BackRecordStepDTO[]
+}
+
+export interface BackRecordReopenDTO {
+  expectedVersion: number
+  rollUuids: string[]
 }
 
 /** 单卷闭合校验结论（实际为整单聚合）。 */

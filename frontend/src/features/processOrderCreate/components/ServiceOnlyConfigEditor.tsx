@@ -9,12 +9,15 @@ interface Props {
   customerPrices?: CustomerProcessPrice[]
   detailError: boolean
   detailLoading: boolean
+  draftVersion: number
   orderUuid?: string
   roll: RollDraft
   selectedRolls: RollDraft[]
+  onBatchApplied: () => void
+  onCurrentSaved: () => void
   onStatusChange: (status?: ServiceEditorStatus) => void
   onRetryDetail: () => void
-  onSynchronizeVersion: () => Promise<void>
+  onSynchronizeVersion: () => Promise<number>
   onVersionSyncBlockedChange: (blocked: boolean) => void
   onWritePendingChange: (pending: boolean) => void
   versionSyncBlocked: boolean
@@ -25,9 +28,12 @@ export default function ServiceOnlyConfigEditor({
   customerPrices,
   detailError,
   detailLoading,
+  draftVersion,
   orderUuid,
   roll,
   selectedRolls,
+  onBatchApplied,
+  onCurrentSaved,
   onStatusChange,
   onRetryDetail,
   onSynchronizeVersion,
@@ -43,9 +49,12 @@ export default function ServiceOnlyConfigEditor({
         orderUuid={orderUuid}
         roll={roll}
         selectedRolls={selectedRolls}
+        onBatchApplied={onBatchApplied}
+        onCurrentSaved={onCurrentSaved}
         customerPrices={customerPrices}
         detailError={detailError}
         detailLoading={detailLoading}
+        draftVersion={draftVersion}
         onStatusChange={onStatusChange}
         onRetryDetail={onRetryDetail}
         onSynchronizeVersion={onSynchronizeVersion}

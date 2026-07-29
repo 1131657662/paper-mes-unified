@@ -39,9 +39,11 @@ public class ProcessRouteAppendService {
     private final ProcessRoutePriceResolver priceResolver;
     private final ProcessOrderService processOrderService;
     private final BusinessLockService businessLockService;
+    private final DraftOrderVersionGuard versionGuard;
 
     public ProcessRoutePreviewVO preview(String orderUuid, ProcessRoutePreviewDTO dto) {
         ProcessRouteContext context = loadContext(orderUuid, dto.getOriginalUuid());
+        versionGuard.assertExpected(context.order(), dto.getExpectedVersion());
         requireAppendStages(dto);
         priceResolver.applyDefaultPrices(context.order(), dto);
         Map<String, ProcessStageOutput> sources = outputResolver.resolveForPreview(context, dto);
@@ -52,6 +54,8 @@ public class ProcessRouteAppendService {
     public ProcessRoutePreviewVO save(String orderUuid, ProcessRoutePreviewDTO dto) {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessRouteContext context = loadContext(orderUuid, dto.getOriginalUuid());
+        versionGuard.assertExpected(context.order(), dto.getExpectedVersion());
+        versionGuard.assertLockedExpected(orderUuid, dto.getExpectedVersion());
         requireAppendStages(dto);
         priceResolver.applyDefaultPrices(context.order(), dto);
         Map<String, ProcessStageOutput> sources = outputResolver.resolveForSave(context, dto);

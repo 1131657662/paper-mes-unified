@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import DashboardActivityTimeline from '../../features/dashboard/components/DashboardActivityTimeline'
 import DashboardHeader from '../../features/dashboard/components/DashboardHeader'

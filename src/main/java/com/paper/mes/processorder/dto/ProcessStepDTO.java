@@ -16,6 +16,9 @@ import java.math.BigDecimal;
  */
 @Data
 public class ProcessStepDTO {
+    @Min(value = 0, message = "加工单版本不能小于0")
+    private Integer expectedVersion;
+
     /**
      * 工序UUID（修改时必填）
      */

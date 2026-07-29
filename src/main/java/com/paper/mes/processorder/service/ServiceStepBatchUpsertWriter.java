@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ServiceStepBatchUpsertWriter {
 
-    private static final int STANDARD = ProcessStepPricingPolicy.STANDARD;
     private static final int FIXED_AMOUNT = ProcessStepPricingPolicy.FIXED_AMOUNT;
     private static final int FREE = ProcessStepPricingPolicy.FREE;
 
@@ -54,7 +53,7 @@ public class ServiceStepBatchUpsertWriter {
                 created++;
             } else {
                 applyTemplate(step, request, roll, machineNames);
-                ConcurrencyGuard.requireRowUpdated(stepMapper.updateById(step));
+                ServiceStepDefinitionWriter.update(stepMapper, step);
                 updated++;
             }
         }
@@ -121,30 +120,12 @@ public class ServiceStepBatchUpsertWriter {
         step.setMachineUuid(resolveMachineUuid(request));
         step.setMachineNameSnap(StringUtils.hasText(step.getMachineUuid())
                 ? machineNames.get(step.getMachineUuid()) : null);
-        step.setBillingMode(request.getBillingMode() == null ? STANDARD : request.getBillingMode());
-        step.setBillingBasis(normalizeBasis(request.getBillingBasis()));
-        step.setUnitPrice(request.getUnitPrice());
-        step.setBillingAmount(request.getBillingAmount());
+        DraftServiceStepPricingNormalizer.apply(step, request);
         step.setRemark(request.getRemark());
-        clearIncompatiblePricing(step);
         step.setServiceQuantity(ServiceStepQuantityResolver.resolve(step.getBillingBasis(), roll));
         ProcessCatalogVO catalog = catalogValidator.validate(step, roll);
         if (!StringUtils.hasText(step.getStepName())) step.setStepName(catalog.name());
         validatePricing(step);
-    }
-
-    private void clearIncompatiblePricing(ProcessStep step) {
-        int mode = step.getBillingMode();
-        step.setBillingUnitPrice(null);
-        step.setBillingQuantity(null);
-        step.setPricingAdjustmentReason(null);
-        step.setPricingAdjustedBy(null);
-        step.setPricingAdjustedAt(null);
-        if (mode != FIXED_AMOUNT) step.setBillingAmount(mode == FREE ? java.math.BigDecimal.ZERO : null);
-        if (mode == FIXED_AMOUNT || mode == FREE) {
-            step.setBillingBasis(null);
-            step.setUnitPrice(null);
-        }
     }
 
     private void validatePricing(ProcessStep step) {
@@ -176,10 +157,6 @@ public class ServiceStepBatchUpsertWriter {
         // Service-only steps must not inherit the roll's main-process machine.
         // A rewind/sawing machine may be incompatible with strip sorting or repackaging.
         return StringUtils.hasText(request.getMachineUuid()) ? request.getMachineUuid() : null;
-    }
-
-    private String normalizeBasis(String basis) {
-        return StringUtils.hasText(basis) ? basis.trim().toUpperCase() : null;
     }
 
     private boolean isServiceStep(Integer stepType) {

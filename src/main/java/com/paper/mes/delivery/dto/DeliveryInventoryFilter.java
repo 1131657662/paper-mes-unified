@@ -2,6 +2,7 @@ package com.paper.mes.delivery.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -19,6 +20,10 @@ public class DeliveryInventoryFilter {
 
     @Size(max = 100, message = "搜索关键字不能超过100个字符")
     private String keyword;
+
+    /** 快捷库存范围：product=非余料成品（含原纸直发），remain=余料。 */
+    @Pattern(regexp = "product|remain", message = "库存范围无效")
+    private String inventoryScope;
 
     /** 1 可出库，2 待出库占用。 */
     @Min(value = 1, message = "库存状态无效")

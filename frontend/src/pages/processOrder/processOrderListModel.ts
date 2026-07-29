@@ -16,5 +16,5 @@ export function processSummaryText(record: ProcessOrder): ProcessSummaryText {
     return { compact: `${full} · 多段`, full: `${full} · 多段工艺` }
   }
   if (names.length <= 2) return { compact: full, full }
-  return { compact: `${names.slice(0, 2).join(' + ')} +${names.length - 2}`, full }
+  return { compact: `${names.slice(0, 2).join(' + ')} +${names.length - 2}项工艺`, full }
 }

@@ -16,25 +16,26 @@ import BackRecordCurrentToolbar from './BackRecordCurrentToolbar'
 
 interface Props {
   item: BackRecordWorkItem
+  onDirty?: () => void
   onNext: () => void
   onPrevious: () => void
   onProcessChange: (item: BackRecordWorkItem) => void
   sourceOptions: BackRecordSourceOption[]
 }
 
-export default function BackRecordActivePanel({ item, onNext, onPrevious, onProcessChange, sourceOptions }: Props) {
+export default function BackRecordActivePanel({ item, onDirty, onNext, onPrevious, onProcessChange, sourceOptions }: Props) {
   return (
     <main className="back-record-active">
-      <BackRecordCurrentToolbar item={item} onNext={onNext} onPrevious={onPrevious} />
+      <BackRecordCurrentToolbar item={item} onDirty={onDirty} onNext={onNext} onPrevious={onPrevious} />
 
       {item.kind === 'roll' && <RollActualPanel item={item} onFieldExhausted={onNext} />}
       <ProcessPanel item={item} onFieldExhausted={onNext} onProcessChange={onProcessChange} />
       {item.roll?.processMode === 2 ? (
-        <BackRecordOnSiteOutputList item={item} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
+        <BackRecordOnSiteOutputList item={item} onDirty={onDirty} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
       ) : (
         <>
-          <BackRecordFinishEntryList item={item} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
-          <BackRecordTrimEntryList item={item} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
+          <BackRecordFinishEntryList item={item} onDirty={onDirty} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
+          <BackRecordTrimEntryList item={item} onDirty={onDirty} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
         </>
       )}
     </main>

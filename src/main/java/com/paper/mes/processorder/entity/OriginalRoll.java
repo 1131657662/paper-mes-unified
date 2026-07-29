@@ -35,9 +35,9 @@ public class OriginalRoll extends BaseEntity {
     /** 标称门幅 mm */
     private Integer originalWidth;
     private Integer actualWidth;
-    /** 原卷直径 英寸 */
+    /** 原卷直径：现行数据为 mm，历史小值按英寸兼容。 */
     private Integer originalDiameter;
-    /** 纸芯直径 英寸 */
+    /** 纸芯直径：支持 3/6 英寸及 76/152 mm 历史数据。 */
     private Integer coreDiameter;
     /** 来料长度 米 */
     private Integer originalLength;

@@ -1,7 +1,7 @@
 import { SearchOutlined } from '@ant-design/icons'
 import { Alert, Button, Empty, Input, Pagination, Segmented, Skeleton, Space } from 'antd'
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import ReportAlertEventCard from '../../features/reportAlert/components/ReportAlertEventCard'
 import { useAcknowledgeReportAlertEvent } from '../../features/reportAlert/hooks/useAcknowledgeReportAlertEvent'
 import { useIgnoreReportAlertEvent } from '../../features/reportAlert/hooks/useIgnoreReportAlertEvent'

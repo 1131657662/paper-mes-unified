@@ -31,6 +31,22 @@ public final class RewindWeightCalculator {
         return inch.multiply(INCH_TO_MM, MC);
     }
 
+    /** 历史卷径小值以英寸保存，现行数据直接以毫米保存。 */
+    public static BigDecimal storedDiameterToMm(BigDecimal value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        return value.signum() > 0 && value.compareTo(new BigDecimal("100")) < 0
+                ? inchToMm(value) : value;
+    }
+
+    /** 纸芯历史数据通常以 3/6 英寸保存，76/152 则按毫米保存。 */
+    public static BigDecimal storedCoreDiameterToMm(BigDecimal value) {
+        if (value == null) return BigDecimal.ZERO;
+        return value.signum() > 0 && value.compareTo(new BigDecimal("10")) < 0
+                ? inchToMm(value) : value;
+    }
+
     /** 纸卷横截面积 S = π × ((D_out/2)² − (D_core/2)²)，单位 mm²。入参为 mm。 */
     public static BigDecimal crossSectionArea(BigDecimal dOutMm, BigDecimal dCoreMm) {
         BigDecimal rOut = dOutMm.divide(TWO, MC);
@@ -102,40 +118,55 @@ public final class RewindWeightCalculator {
         // 实称值优先：先扣除已实称件重量，剩余在未实称件间按面积分摊。
         BigDecimal measuredSum = BigDecimal.ZERO;
         BigDecimal unmeasuredAreaTotal = BigDecimal.ZERO;
-        for (PieceInput p : pieces) {
+        int lastUnmeasuredIndex = -1;
+        for (int i = 0; i < pieces.size(); i++) {
+            PieceInput p = pieces.get(i);
             if (p.actualWeight != null) {
-                measuredSum = measuredSum.add(p.actualWeight);
+                measuredSum = measuredSum.add(roundedWeight(p.actualWeight));
             } else {
                 unmeasuredAreaTotal = unmeasuredAreaTotal.add(p.areaBasis);
+                lastUnmeasuredIndex = i;
             }
         }
         // 未实称件可分配的总量 = W_actual − 已实称合计 − 总损耗 − 修边总重。
         // 修边重量是整卷损耗，从分配池整体扣除；非末件再各自减 trimShare 体现到件重。
         BigDecimal distributable = wActual.subtract(measuredSum).subtract(loss).subtract(trimTotal);
+        requireValidDistributable(distributable, lastUnmeasuredIndex);
 
         List<PieceResult> results = new ArrayList<>(n);
-        BigDecimal allocatedExceptLast = BigDecimal.ZERO;
+        BigDecimal allocatedUnmeasured = BigDecimal.ZERO;
         for (int i = 0; i < n; i++) {
             PieceInput p = pieces.get(i);
-            boolean isLast = (i == n - 1);
             BigDecimal weight;
-            if (isLast) {
-                // 末件倒挤：W_actual − Σ前(N−1)件 − 总损耗 − 修边总重，吸收全部尾差。
-                weight = wActual.subtract(allocatedExceptLast).subtract(loss).subtract(trimTotal)
+            if (p.actualWeight != null) {
+                weight = roundedWeight(p.actualWeight);
+            } else if (i == lastUnmeasuredIndex) {
+                // 最后一个未实称件倒挤，避免覆盖排在末尾的实称值。
+                weight = distributable.subtract(allocatedUnmeasured)
                         .setScale(WEIGHT_SCALE, RoundingMode.HALF_UP);
-            } else if (p.actualWeight != null) {
-                weight = p.actualWeight.setScale(WEIGHT_SCALE, RoundingMode.HALF_UP);
-                allocatedExceptLast = allocatedExceptLast.add(weight);
             } else {
                 BigDecimal raw = unmeasuredAreaTotal.signum() == 0
                         ? BigDecimal.ZERO
                         : distributable.multiply(p.areaBasis, MC).divide(unmeasuredAreaTotal, MC);
-                weight = raw.setScale(WEIGHT_SCALE, RoundingMode.HALF_UP);
-                allocatedExceptLast = allocatedExceptLast.add(weight);
+                weight = roundedWeight(raw);
+                allocatedUnmeasured = allocatedUnmeasured.add(weight);
             }
             results.add(new PieceResult(weight, trimShare.setScale(WEIGHT_SCALE, RoundingMode.HALF_UP)));
         }
         return results;
+    }
+
+    private static void requireValidDistributable(BigDecimal distributable, int lastUnmeasuredIndex) {
+        if (distributable.signum() < 0) {
+            throw new IllegalArgumentException("实称重量、损耗与修边重量合计不能超过原纸实际总重");
+        }
+        if (lastUnmeasuredIndex < 0 && distributable.setScale(WEIGHT_SCALE, RoundingMode.HALF_UP).signum() != 0) {
+            throw new IllegalArgumentException("全部成品均已实称时，重量合计必须与原纸实际总重闭合");
+        }
+    }
+
+    private static BigDecimal roundedWeight(BigDecimal weight) {
+        return weight.setScale(WEIGHT_SCALE, RoundingMode.HALF_UP);
     }
 
     /** 模式4 分层入参：单层的外径与纸芯内径 mm。 */

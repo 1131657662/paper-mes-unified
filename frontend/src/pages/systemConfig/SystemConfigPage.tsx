@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Badge, Card, Modal, Tabs } from 'antd'
 import type { TabsProps } from 'antd'
-import { useBlocker, useSearchParams } from 'react-router-dom'
+import { useBlocker, useSearchParams } from 'react-router'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import { PERMISSIONS } from '../../constants/permissions'
 import { useHasPermission } from '../../stores/authStore'

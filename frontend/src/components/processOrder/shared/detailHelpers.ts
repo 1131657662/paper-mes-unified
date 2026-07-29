@@ -1,4 +1,4 @@
-import type { FinishProductionVO, RollProductionVO } from '../../../types/processOrder'
+import type { FinishProductionVO, ProcessStep, RollProductionVO } from '../../../types/processOrder'
 import { formatKg, formatTon } from '../../../utils/numberFormatters'
 import { buildFinishLayers, layersSummaryText } from './layeredRewindView'
 import type { FinishGroup } from './types'
@@ -121,6 +121,7 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
   const additionalSteps = (record.steps ?? [])
     .filter((s) => s.isMain !== 1)
     .sort((a, b) => (a.stepSort ?? 0) - (b.stepSort ?? 0))
+  const mainStep = record.steps?.find((step) => step.isMain === 1)
 
   // 主工艺
   if (record.processMode === 3) {
@@ -160,7 +161,7 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
 
   // 锯纸
   if (!isRewind) {
-    const knifeCount = record.steps?.find((s) => s.isMain === 1)?.knifeCount ?? (groups.reduce((s, g) => s + g.count, 0) - 1)
+    const knifeCount = mainStep?.knifeCount ?? (groups.reduce((s, g) => s + g.count, 0) - 1)
     const widthLayout = groups.map((g) => `${g.width} mm × ${g.count}件`).join(', ')
     if (knifeCount > 0) mainDetails.push(`切 ${knifeCount}刀 | 门幅 ${widthLayout}`)
     else if (widthLayout) mainDetails.push(`门幅 ${widthLayout}`)
@@ -172,6 +173,9 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
       mainDetails.push(`预估产成品 ${totalCount}件${weightStr}`)
     }
   }
+
+  const differenceDetail = widthDifferenceDetail(mainStep)
+  if (differenceDetail) mainDetails.push(differenceDetail)
 
   // 复卷
   if (isRewind) {
@@ -246,6 +250,15 @@ export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLin
   }
 
   return result
+}
+
+export function widthDifferenceDetail(step?: ProcessStep) {
+  if (!step?.widthDifferencePolicy) return null
+  if (step.widthDifferencePolicy === 'REMAINDER') return '门幅差额：留余料'
+  if (step.widthDifferencePolicy === 'ALLOCATE') return '门幅差额：分摊到实际产出'
+  const width = step.plannedLossWidth == null ? '' : ` ${step.plannedLossWidth} mm`
+  const weight = step.plannedLossWeight == null ? '' : ` / ${formatKg(step.plannedLossWeight)}`
+  return `门幅差额：计划损耗${width}${weight}`
 }
 
 /* ---------- 跨卷来源汇总 ---------- */

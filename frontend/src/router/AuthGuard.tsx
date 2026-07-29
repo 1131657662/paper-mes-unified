@@ -1,5 +1,5 @@
 import { Spin } from 'antd'
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router'
 import { useCurrentUser } from '../features/auth/hooks/useCurrentUser'
 import { useAuthUser } from '../stores/authStore'
 

@@ -120,6 +120,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, dto.getExpectedVersion());
+        versionGuard.assertLockedExpected(orderUuid, dto.getExpectedVersion());
         Customer customer = requireCustomer(dto.getCustomerUuid());
         copyBaseFields(dto, order, customer);
         order.setCustomerName(customer.getCustomerName());
@@ -138,6 +139,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, expectedVersion);
+        versionGuard.assertLockedExpected(orderUuid, expectedVersion);
         order.setExtNum1(currentStep == null ? BigDecimal.ZERO : BigDecimal.valueOf(currentStep));
         ConcurrencyGuard.requireRowUpdated(processOrderMapper.updateById(order));
     }
@@ -154,6 +156,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, expectedVersion);
+        versionGuard.assertLockedExpected(orderUuid, expectedVersion);
         versionGuard.advance(orderUuid, expectedVersion);
         deleteDraftRolls(orderUuid);
         List<String> rollUuids = new ArrayList<>(rolls.size());
@@ -231,6 +234,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
             throw new BusinessException(ErrorCode.E001, "只有草稿加工单可提交");
         }
         versionGuard.assertExpected(order, expectedVersion);
+        versionGuard.assertLockedExpected(orderUuid, expectedVersion);
         settlementPolicy.assertCustomerVersionAtSubmit(order, requireCustomer(order.getCustomerUuid()));
         List<OriginalRoll> rolls = listRolls(orderUuid);
         Map<String, ProcessConfigDraft> drafts = draftMap(orderUuid);

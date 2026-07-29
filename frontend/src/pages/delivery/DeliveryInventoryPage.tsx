@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useState } from 'react'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
@@ -13,6 +13,7 @@ import DeliveryInventoryPageHeader from './DeliveryInventoryPageHeader'
 import DeliveryInventorySummary from './DeliveryInventorySummary'
 import DeliveryInventoryWarehouseRepairDrawer from './DeliveryInventoryWarehouseRepairDrawer'
 import { useDeliveryInventoryPage } from './useDeliveryInventoryPage'
+import { inventoryProductLabel, inventoryQuickFilterValue } from './deliveryInventoryModel'
 import './DeliveryInventoryPage.css'
 import './DeliveryInventoryTable.css'
 
@@ -57,11 +58,13 @@ export default function DeliveryInventoryPage() {
       {model.activeQuery.isError || model.summaryQuery.isError ? (
         <QueryLoadErrorAlert message="成品库存加载失败" description="库存数据未完整加载，当前空表不代表没有库存。" onRetry={model.refresh} />
       ) : null}
-      <DeliveryInventorySummary summary={model.summaryQuery.data} />
+      <DeliveryInventorySummary inventoryProductLabel={inventoryProductLabel(model.filters)} inventoryScope={inventoryQuickFilterValue(model.filters)} summary={model.summaryQuery.data} />
       <div className="delivery-inventory-grid">
         <div className="delivery-inventory-table-shell delivery-inventory-results">
           {model.view === 'customers' ? (
             <DeliveryInventoryCustomerTable canManage={canManage} data={model.customerQuery.data?.records ?? []}
+              inventoryScope={inventoryQuickFilterValue(model.filters)}
+              productInventoryLabel={inventoryProductLabel(model.filters)}
               tableTitle="客户库存" fillHeight loading={model.customerQuery.isLoading || model.customerQuery.isFetching}
               onReload={model.refresh} onCreateDelivery={createDelivery}
               onView={(customer) => navigate(`/delivery-orders/inventory/customers/${customer.customerUuid}`)} />

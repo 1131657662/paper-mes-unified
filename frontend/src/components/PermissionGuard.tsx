@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Button, Result, Space, Tag } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { getPermissionLabel, getRoleProfile } from '../constants/permissionMeta'
 import { useAuthUser, useHasAnyPermission } from '../stores/authStore'
 

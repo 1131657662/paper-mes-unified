@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 
 export default function RouteErrorBoundary({ children }: { children: ReactNode }) {

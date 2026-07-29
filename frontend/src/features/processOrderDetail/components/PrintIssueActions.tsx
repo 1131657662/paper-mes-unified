@@ -8,6 +8,7 @@ import PrintResultSummary from './PrintResultSummary'
 
 export interface PendingPrintConfirmation {
   reason?: string
+  version: PrintViewVersion
 }
 
 interface ActionProps {
@@ -59,12 +60,4 @@ export function IssueNotice({ mode, pendingConfirmation, result }: { mode: Print
   }
   const reprint = mode === 'reprint' || mode === 'audited-reprint'
   return <Alert type="info" showIcon message={reprint ? '补打不会改变单据状态' : '下发与打印分两步确认'} description={reprint ? '填写补打原因后打开打印，确认纸张已输出才会记录补打次数。' : '确认下发后系统会锁定下发快照，再打开浏览器打印窗口。'} />
-}
-
-export function drawerTitle(mode: PrintIssueMode, version: PrintViewVersion): string {
-  if (mode === 'issue') return '下发加工单'
-  if (mode === 'unprinted') return '确认加工单打印'
-  if (mode === 'reprint') return '补打加工单'
-  if (mode === 'audited-reprint') return version === 'FINISHED' ? '补打完工版本' : '补打下发版本'
-  return version === 'FINISHED' ? '完工版本打印预览' : '下发版本打印预览'
 }

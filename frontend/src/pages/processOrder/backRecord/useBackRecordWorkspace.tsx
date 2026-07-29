@@ -41,8 +41,11 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onPersis
     detail: detailQuery.data,
     enabled,
     onClose,
+    onPersisted,
     onRefetch: detailQuery.refetch,
+    onReloaded: formState.initialize,
     onResetInitialization: formState.resetInitialization,
+    onSelectAfterRefresh: selection.selectAfterRefresh,
     onSuccess,
     uuid,
   })
@@ -83,6 +86,8 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onPersis
     warehouse,
     syncFilledValues: formState.syncFilledValues,
     openChangeGuide: changes.openChangeGuide,
+    reopenBatch: changes.reopenBatch,
+    reopening: changes.reopening,
     submit: submission.submit,
   }
 }

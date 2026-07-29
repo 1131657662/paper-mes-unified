@@ -54,6 +54,7 @@ public class ProcessPlanDraftManager {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, expectedVersion);
+        versionGuard.assertLockedExpected(orderUuid, expectedVersion);
         ProcessPlanSaveWork work = workLoader.forSingleSave(orderUuid, rollUuid, plan);
         validateCandidates(work.candidates());
         ProcessPlanDraftPreviewContext context = previewer.createContext(
@@ -69,6 +70,7 @@ public class ProcessPlanDraftManager {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, dto.getExpectedVersion());
+        versionGuard.assertLockedExpected(orderUuid, dto.getExpectedVersion());
         savePolicy.requireDistinctTargets(dto.getOriginalUuids());
         savePolicy.requireGenericBatchAllowed(dto.getPlan());
         ProcessPlanSaveWork work = workLoader.forBatch(orderUuid, dto);
@@ -80,6 +82,7 @@ public class ProcessPlanDraftManager {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, dto.getExpectedVersion());
+        versionGuard.assertLockedExpected(orderUuid, dto.getExpectedVersion());
         List<String> rollUuids = dto.getItems().stream()
                 .map(ProcessPlanBatchItemDTO::getOriginalUuid)
                 .toList();

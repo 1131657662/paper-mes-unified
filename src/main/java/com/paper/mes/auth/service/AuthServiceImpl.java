@@ -44,7 +44,7 @@ public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
             throw new BusinessException(ResultCode.BAD_REQUEST, "用户名或密码错误");
         }
         if (!isEnabled(user)) {
-            throw new BusinessException(ResultCode.BAD_REQUEST, "账号已停用，请联系管理员");
+            throw new BusinessException(ResultCode.BAD_REQUEST, "用户名或密码错误");
         }
         String token = createSession(user.getUuid());
         user.setLastLoginTime(LocalDateTime.now());

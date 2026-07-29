@@ -53,8 +53,7 @@ class ProcessRouteSafetyContractTest {
 
     @Test
     void processRouteCleanup_whenReplacingRoute_removesOldInputRelations() throws IOException {
-        String source = source(CLEANUP_SERVICE);
-        String cleanup = slice(source, "public void clearExistingRoute", "private void voidExistingFinishes");
+        String cleanup = source(CLEANUP_SERVICE);
 
         assertContainsAll(cleanup,
                 "stageInputRelMapper.delete",
@@ -141,6 +140,15 @@ class ProcessRouteSafetyContractTest {
     }
 
     @Test
+    void additionalProcessWrites_recalculateOrderSummaryOnlyOnce() throws IOException {
+        String source = source("src/main/java/com/paper/mes/processorder/service/impl/ProcessOrderServiceImpl.java");
+        assertSingleSummaryUpdate(slice(source, "public void addProcessStep", "public ProcessStepBatchResultVO addProcessSteps"));
+        assertSingleSummaryUpdate(slice(source, "public ProcessStepBatchResultVO addProcessSteps", "private void validateBatchServiceStep"));
+        assertSingleSummaryUpdate(slice(source, "public void updateProcessStep", "public void deleteProcessStep"));
+        assertSingleSummaryUpdate(slice(source, "public void deleteProcessStep", "private void validateAddStepStatus"));
+    }
+
+    @Test
     void processOrderDetail_whenMappingStageOutputs_exposesRouteParentFields() throws IOException {
         String source = source("src/main/java/com/paper/mes/processorder/service/impl/ProcessOrderServiceImpl.java");
         String mapper = slice(source, "private ProcessOrderDetailVO.StageOutputVO toDetailStageOutput", "private List<ProcessOrderDetailVO.RewindParamVO>");
@@ -167,8 +175,8 @@ class ProcessRouteSafetyContractTest {
                 "result.trimWeightShare");
         assertContainsAll(source,
                 "RewindWeightCalculator.crossSectionArea(",
-                "RewindWeightCalculator.inchToMm(BigDecimal.valueOf(outDiameter))",
-                "RewindWeightCalculator.inchToMm(BigDecimal.valueOf(coreDiameter))");
+                "RewindWeightCalculator.storedDiameterToMm(BigDecimal.valueOf(outDiameter))",
+                "RewindWeightCalculator.storedCoreDiameterToMm(BigDecimal.valueOf(coreDiameter))");
         assertContainsAll(save,
                 "FinishPreviewVO preview = buildRewindPreview(orderUuid, roll, previewDto)",
                 "spec.setEstimateWeight(finish.getEstimateWeight())");
@@ -194,5 +202,11 @@ class ProcessRouteSafetyContractTest {
         for (String snippet : snippets) {
             assertTrue(text.contains(snippet), "Missing snippet: " + snippet);
         }
+    }
+
+    private void assertSingleSummaryUpdate(String method) {
+        assertTrue(method.contains("calcFee("), "Additional-process write must recalculate the order summary");
+        assertTrue(!method.contains("updateMixProcessFlag("),
+                "Additional-process write must not update the order before calcFee");
     }
 }

@@ -68,10 +68,16 @@ export default function BackRecordWorkspace({
             <BackRecordWorkbench
               key={workspace.detail.order.uuid}
               detail={workspace.detail}
+              onClearSelection={workspace.selection.clear}
+              onDirty={onDirty}
               values={workspace.values}
               onProcessChange={workspace.openChangeGuide}
+              onReopen={workspace.reopenBatch}
+              onSelectAll={workspace.selection.selectAll}
+              onSelectOnly={workspace.selection.selectOnly}
               onToggleSelection={workspace.selection.toggle}
               selectedKeys={workspace.selection.selectedItemKeys}
+              reopening={workspace.reopening}
             />
           </Form>
         ) : viewState === 'empty' ? <Empty description="加工单不存在或不可回录" /> : null}

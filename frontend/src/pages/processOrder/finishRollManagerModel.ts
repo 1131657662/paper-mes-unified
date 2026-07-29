@@ -17,6 +17,7 @@ export interface FinishRollStats {
 
 export function filterFinishRolls(rolls: FinishRoll[], filters: FinishRollFilters): FinishRoll[] {
   return rolls.filter((roll) => {
+    if (filters.status === undefined && roll.rollNoStatus === 3) return false
     if (filters.status !== undefined && roll.rollNoStatus !== filters.status) return false
     if (filters.spare !== undefined && roll.isSpare !== filters.spare) return false
     if (filters.source !== undefined && roll.sourceType !== filters.source) return false

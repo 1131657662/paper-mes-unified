@@ -6,11 +6,12 @@ import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 
 interface Props {
   item: BackRecordWorkItem
+  onDirty?: () => void
   onNext: () => void
   onPrevious: () => void
 }
 
-export default function BackRecordCurrentToolbar({ item, onNext, onPrevious }: Props) {
+export default function BackRecordCurrentToolbar({ item, onDirty, onNext, onPrevious }: Props) {
   const form = Form.useFormInstance<BackRecordFormValues>()
   const canFillFinishes = item.roll?.processMode !== 2 && item.finishes.length > 0
 
@@ -22,12 +23,12 @@ export default function BackRecordCurrentToolbar({ item, onNext, onPrevious }: P
       </div>
       <Space wrap size={8} className="back-record-active__toolbar-actions">
         {item.roll && (
-          <Button size="small" icon={<CopyOutlined />} onClick={() => fillRoll(form, item)}>
+          <Button size="small" icon={<CopyOutlined />} onClick={() => { fillRoll(form, item); onDirty?.() }}>
             带入标称
           </Button>
         )}
         {canFillFinishes && (
-          <Button size="small" icon={<CopyOutlined />} onClick={() => fillFinishes(form, item)}>
+          <Button size="small" icon={<CopyOutlined />} onClick={() => { fillFinishes(form, item); onDirty?.() }}>
             带入预估
           </Button>
         )}

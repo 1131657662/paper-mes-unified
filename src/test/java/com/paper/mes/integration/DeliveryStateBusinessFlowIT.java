@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
-class DeliveryStateBusinessFlowIT {
+class DeliveryStateBusinessFlowIT extends AuthenticatedBusinessFlowIT {
 
     @Autowired private BusinessFlowFixtureFactory fixtures;
     @Autowired private DeliveryService deliveryService;
@@ -108,7 +108,7 @@ class DeliveryStateBusinessFlowIT {
     void pendingDelivery_whenAppendingFinishFromNonDeliverableOrder_rejectsOperation() {
         BusinessFlowFixtureFactory.Scenario scenario = fixtures.createCompletedOrderWithTwoFinishes();
         String deliveryUuid = deliveryService.create(createRequest(scenario));
-        scenario.order().setOrderStatus(3);
+        scenario.order().setOrderStatus(2);
         processOrderMapper.updateById(scenario.order());
 
         assertThatThrownBy(() -> deliveryService.appendDetails(
@@ -134,6 +134,7 @@ class DeliveryStateBusinessFlowIT {
     private DeliveryCreateDTO createRequest(BusinessFlowFixtureFactory.Scenario scenario) {
         DeliveryCreateDTO request = new DeliveryCreateDTO();
         request.setCustomerUuid(scenario.customer().getUuid());
+        request.setWarehouseUuid(scenario.order().getWarehouseUuid());
         request.setDeliveryDate(LocalDate.now());
         request.setItems(List.of(createItem(scenario.first().getUuid())));
         return request;

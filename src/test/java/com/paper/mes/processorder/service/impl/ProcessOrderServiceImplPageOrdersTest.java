@@ -67,6 +67,20 @@ class ProcessOrderServiceImplPageOrdersTest {
         assertFalse(sql.contains("order_status <>"));
     }
 
+    @Test
+    void pageOrders_withKeyword_searchesOrderCustomerAndRemark() {
+        CapturingProcessOrderService service = service();
+        ProcessOrderQuery query = new ProcessOrderQuery();
+        query.setKeyword("special note");
+
+        service.pageOrders(query);
+
+        String sql = service.lastSqlSegment();
+        assertTrue(sql.contains("order_no LIKE"));
+        assertTrue(sql.contains("customer_name LIKE"));
+        assertTrue(sql.contains("remark LIKE"));
+    }
+
     private CapturingProcessOrderService service() {
         return new CapturingProcessOrderService();
     }
@@ -95,6 +109,7 @@ class ProcessOrderServiceImplPageOrdersTest {
                     mock(BusinessLockService.class),
                     mock(MachineMapper.class),
                     mock(WeightCheckThresholdService.class),
+                    null,
                     null,
                     null,
                     null,

@@ -77,17 +77,49 @@
 .delivery-inventory-filters {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(200px, 1fr) 128px 178px 128px 128px;
+  grid-template-columns: minmax(200px, 1fr) 128px 178px 128px minmax(300px, 1.5fr);
   align-items: center;
   gap: 8px;
 }
 
 .delivery-inventory-filters > .ant-input-search,
 .delivery-inventory-filters > .ant-select,
-.delivery-inventory-filters > .ant-input-number,
-.delivery-inventory-filters > .ant-segmented {
+.delivery-inventory-filters > .ant-input-number {
   width: 100%;
   min-width: 0;
+}
+
+.delivery-inventory-filter-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.delivery-inventory-filter-group__label {
+  color: var(--mes-color-text-muted);
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.delivery-inventory-filter-group > .ant-segmented {
+  width: 100%;
+  min-width: 0;
+}
+
+.delivery-inventory-scope-group {
+  align-items: flex-start;
+}
+
+.delivery-inventory-scope-group > .delivery-inventory-scope-segmented {
+  width: max-content;
+  max-width: 100%;
+}
+
+.delivery-inventory-scope-segmented .ant-segmented-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .delivery-inventory-summary {
@@ -109,8 +141,7 @@
   border-right: 0;
 }
 
-.delivery-inventory-summary__metric span,
-.delivery-inventory-summary__metric em {
+.delivery-inventory-summary__metric > .delivery-inventory-summary__sub {
   display: block;
   overflow: hidden;
   color: var(--mes-color-text-muted);
@@ -149,9 +180,65 @@
   color: var(--mes-color-primary);
 }
 
+.delivery-inventory-summary__breakdown {
+  display: flex !important;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 2px;
+  overflow: visible !important;
+  color: var(--mes-color-text-secondary) !important;
+  white-space: normal !important;
+}
+
+.delivery-inventory-summary__breakdown-line {
+  display: grid !important;
+  grid-template-columns: max-content max-content 1fr;
+  align-items: baseline;
+  gap: 5px;
+  overflow: visible !important;
+  color: var(--mes-color-text-secondary) !important;
+  font-size: 11px !important;
+  line-height: 16px;
+  white-space: nowrap !important;
+}
+
+.delivery-inventory-summary__breakdown-line > span {
+  overflow: hidden;
+  max-width: 72px;
+  text-overflow: ellipsis;
+}
+
+.delivery-inventory-summary__breakdown-line strong {
+  margin: 0;
+  color: var(--mes-color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.delivery-inventory-summary__breakdown-line em {
+  overflow: visible;
+  color: var(--mes-color-text-muted);
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.delivery-inventory-summary__breakdown small {
+  overflow: hidden;
+  color: var(--mes-color-text-muted);
+  font-size: 10px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 900px) {
   .delivery-inventory-filters {
     grid-template-columns: minmax(200px, 1fr) 128px 178px;
+  }
+
+  .delivery-inventory-scope-group {
+    grid-column: span 2;
   }
 
   .delivery-inventory-header {
@@ -161,6 +248,28 @@
 
   .delivery-inventory-header__actions {
     margin-left: 42px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .delivery-inventory-scope-group {
+    grid-column: 1 / -1;
+  }
+
+  .delivery-inventory-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .delivery-inventory-summary__metric {
+    padding: 10px 12px;
+  }
+
+  .delivery-inventory-summary__metric:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .delivery-inventory-summary__metric:nth-child(n + 4) {
+    border-top: 1px solid var(--mes-color-border-light);
   }
 }
 
@@ -187,6 +296,22 @@
   }
 
   .delivery-inventory-filters > .ant-input-search {
+    grid-column: 1 / -1;
+  }
+
+  .delivery-inventory-summary__metric:nth-child(3n) {
+    border-right: 1px solid var(--mes-color-border-light);
+  }
+
+  .delivery-inventory-summary__metric:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .delivery-inventory-summary__metric:nth-child(n + 3) {
+    border-top: 1px solid var(--mes-color-border-light);
+  }
+
+  .delivery-inventory-scope-group {
     grid-column: 1 / -1;
   }
 }

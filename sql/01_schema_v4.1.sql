@@ -674,6 +674,8 @@ CREATE TABLE `biz_finish_roll` (
   `scrap_weight`         DECIMAL(10,3) DEFAULT 0.000           COMMENT '报废重量 kg',
   `quality_status`       TINYINT       DEFAULT 1               COMMENT '1待检 2合格 3不合格 4让步接收',
   `finish_status`        TINYINT       NOT NULL DEFAULT 1      COMMENT '1待入库 2已入库 3已出库 4报废',
+  `production_result`    TINYINT       DEFAULT NULL            COMMENT '1计划产出 2正常产出 3计划未产出 4实际新增产出',
+  `production_adjustment_reason` VARCHAR(255) DEFAULT NULL    COMMENT '回录产出调整原因',
   `stock_in_time`        DATETIME      DEFAULT NULL            COMMENT '首次正式入库时间',
   `warehouse_uuid`       VARCHAR(36)   DEFAULT NULL            COMMENT '存放仓库',
   `original_roll_nos`    TEXT          DEFAULT NULL            COMMENT '来源母卷号拼接，用于溯源',
@@ -697,11 +699,12 @@ CREATE TABLE `biz_finish_roll` (
   KEY `idx_report_inventory_scope` (`finish_status`, `is_deleted`, `stock_in_time`, `order_uuid`),
   KEY `idx_roll_no_status` (`roll_no_status`),
   KEY `idx_source_type` (`source_type`),
+  KEY `idx_finish_production_result` (`order_uuid`, `production_result`, `finish_status`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='成品明细表（全局唯一卷号）';
 
 -- 说明: finish_roll_no 全局唯一索引 uk_finish_roll_no 兜底防重；
---       source_type=2 直发记录沿用母卷号且不占字母流水，唯一索引允许其与母卷号同值（直发记录全局也唯一）。
+--       source_type=2 直发记录同样使用全局成品号，来源母卷通过 biz_finish_original_rel.original_uuid 追溯。
 
 -- -----------------------------------------------------------------------------
 -- 3.3.6 biz_process_param 复卷分层/直径拆分工艺参数表

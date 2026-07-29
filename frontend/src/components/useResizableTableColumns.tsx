@@ -25,7 +25,7 @@ export function useResizableTableColumns<
   RecordType,
   ColumnType,
 >(columns: ColumnType[], storageKey: string) {
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [widths, setWidths] = useState<ColumnWidths>(() => loadNormalizedWidths<RecordType, ColumnType>(columns, storageKey))
 
   useEffect(() => {

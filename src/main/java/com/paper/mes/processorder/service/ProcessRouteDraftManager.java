@@ -66,6 +66,7 @@ public class ProcessRouteDraftManager {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, dto.getExpectedVersion());
+        versionGuard.assertLockedExpected(orderUuid, dto.getExpectedVersion());
         OriginalRoll roll = requireRoll(orderUuid, dto.getOriginalUuid());
         routeModePolicy.requireCompatible(roll, dto);
         ProcessRoutePreviewVO preview = prepare(order, roll, dto);
@@ -79,6 +80,7 @@ public class ProcessRouteDraftManager {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, dto.getExpectedVersion());
+        versionGuard.assertLockedExpected(orderUuid, dto.getExpectedVersion());
         Map<String, OriginalRoll> rolls = requireRolls(orderUuid, dto.getRoutes());
         List<PreparedRouteDraft> prepared = dto.getRoutes().stream()
                 .map(route -> prepareRoute(order, rolls.get(route.getOriginalUuid()), route))
@@ -201,6 +203,8 @@ public class ProcessRouteDraftManager {
         ProcessRoutePreviewDTO.RouteStageDTO first = dto.getStages().get(0);
         roll.setMainStepType(first.getStepType());
         roll.setMachineUuid(resolveStageMachine(first));
+        roll.setUpdateBy(null);
+        roll.setUpdateTime(null);
         ConcurrencyGuard.requireRowUpdated(rollMapper.updateById(roll));
     }
 
@@ -225,9 +229,11 @@ public class ProcessRouteDraftManager {
         draft.setConfigStatus(1);
         draft.setLastError(null);
         if (draft.getUuid() == null) {
-            draftMapper.insert(draft);
+            ConcurrencyGuard.requireRowUpdated(draftMapper.insert(draft));
         } else {
-            draftMapper.updateById(draft);
+            draft.setUpdateBy(null);
+            draft.setUpdateTime(null);
+            ConcurrencyGuard.requireRowUpdated(draftMapper.updateById(draft));
         }
     }
 

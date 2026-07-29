@@ -1,16 +1,11 @@
 package com.paper.mes.processorder.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
-import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.ProcessStageOutput;
 import com.paper.mes.processorder.entity.ProcessStep;
-import com.paper.mes.processorder.mapper.FinishOriginalRelMapper;
-import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
-import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -31,9 +26,7 @@ public class ProcessRouteExistingOutputResolver {
     private static final int ROLL_NO_VOID = 3;
 
     private final ProcessStageOutputMapper stageOutputMapper;
-    private final FinishRollMapper finishRollMapper;
-    private final FinishOriginalRelMapper finishOriginalRelMapper;
-    private final ProcessStepMapper processStepMapper;
+    private final ProcessRouteExistingOutputLoader loader;
     public Map<String, ProcessStageOutput> resolveForPreview(ProcessRouteContext context,
                                                              ProcessRoutePreviewDTO dto) {
         return resolve(context, dto, false);
@@ -46,20 +39,27 @@ public class ProcessRouteExistingOutputResolver {
                                                     ProcessRoutePreviewDTO dto,
                                                     boolean persistMissing) {
         List<String> keys = firstStageInputKeys(dto);
-        List<ProcessStageOutput> existingOutputs = stageOutputs(context);
+        List<ProcessStageOutput> existingOutputs = loader.stageOutputs(context);
+        List<FinishRoll> finishes = loader.finishRolls(context);
+        Map<String, FinishRoll> finishesByKey = indexFinishes(finishes);
         Map<String, ProcessStageOutput> result = new LinkedHashMap<>();
+        Map<String, FinishRoll> missing = new LinkedHashMap<>();
         for (String key : keys) {
             ProcessStageOutput output = findStageOutput(existingOutputs, key);
+            FinishRoll finish = null;
             if (output == null) {
-                FinishRoll finish = findFinish(context, key);
+                finish = finishesByKey.get(key);
                 output = finish == null ? null : findStageOutputByFinish(existingOutputs, finish.getUuid());
-                if (output == null) {
-                    output = sourceFromFinish(context, key, finish, persistMissing);
-                }
             }
-            validateUsable(output, key);
+            requireResolvable(output, finish, key);
+            if (output == null) {
+                missing.put(key, finish);
+            } else {
+                validateUsable(output, key, finishesByKey);
+            }
             result.put(key, output);
         }
+        populateMissingSources(context, missing, result, persistMissing);
         return result;
     }
     private List<String> firstStageInputKeys(ProcessRoutePreviewDTO dto) {
@@ -81,10 +81,18 @@ public class ProcessRouteExistingOutputResolver {
         }
         return keys;
     }
-    private List<ProcessStageOutput> stageOutputs(ProcessRouteContext context) {
-        return stageOutputMapper.selectList(new LambdaQueryWrapper<ProcessStageOutput>()
-                .eq(ProcessStageOutput::getOrderUuid, context.order().getUuid())
-                .eq(ProcessStageOutput::getOriginalUuid, context.roll().getUuid()));
+    private Map<String, FinishRoll> indexFinishes(List<FinishRoll> finishes) {
+        Map<String, FinishRoll> result = new LinkedHashMap<>();
+        for (FinishRoll finish : finishes) {
+            if (StringUtils.hasText(finish.getUuid())) {
+                result.putIfAbsent(finish.getUuid(), finish);
+                result.putIfAbsent("F:" + finish.getUuid(), finish);
+            }
+            if (StringUtils.hasText(finish.getFinishRollNo())) {
+                result.putIfAbsent(finish.getFinishRollNo(), finish);
+            }
+        }
+        return result;
     }
     private ProcessStageOutput findStageOutput(List<ProcessStageOutput> outputs, String key) {
         for (ProcessStageOutput output : outputs) {
@@ -108,44 +116,35 @@ public class ProcessRouteExistingOutputResolver {
         }
         return null;
     }
-    private ProcessStageOutput sourceFromFinish(ProcessRouteContext context, String key, FinishRoll finish,
-                                                boolean persistMissing) {
-        if (finish == null) {
+    private void requireResolvable(ProcessStageOutput output, FinishRoll finish, String key) {
+        if (output == null && finish == null) {
             throw new BusinessException("未找到可继续加工的阶段产物：" + key);
         }
-        requireFinishBelongsToRoll(context, finish);
-        ProcessStageOutput output = buildSourceOutput(context, key, finish);
-        if (persistMissing) {
-            stageOutputMapper.insert(output);
-        }
-        return output;
     }
-    private FinishRoll findFinish(ProcessRouteContext context, String key) {
-        String normalized = normalizeFinishKey(key);
-        List<FinishRoll> finishes = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
-                .eq(FinishRoll::getOrderUuid, context.order().getUuid()));
-        for (FinishRoll finish : finishes) {
-            if (normalized.equals(finish.getUuid()) || key.equals(finish.getFinishRollNo())) {
-                return finish;
+    private void populateMissingSources(ProcessRouteContext context, Map<String, FinishRoll> missing,
+                                        Map<String, ProcessStageOutput> result, boolean persistMissing) {
+        if (missing.isEmpty()) {
+            return;
+        }
+        Set<String> relatedFinishUuids = loader.relatedFinishUuids(context, missing.values());
+        missing.values().forEach(finish -> requireFinishBelongsToRoll(relatedFinishUuids, finish));
+        missing.forEach(this::validateFinishUsable);
+        ProcessStep step = loader.latestStep(context);
+        for (Map.Entry<String, FinishRoll> entry : missing.entrySet()) {
+            ProcessStageOutput output = buildSourceOutput(context, entry.getKey(), entry.getValue(), step);
+            if (persistMissing) {
+                stageOutputMapper.insert(output);
             }
+            result.put(entry.getKey(), output);
         }
-        return null;
     }
-    private String normalizeFinishKey(String key) {
-        return key != null && key.startsWith("F:") ? key.substring(2) : key;
-    }
-    private void requireFinishBelongsToRoll(ProcessRouteContext context, FinishRoll finish) {
-        FinishOriginalRel rel = finishOriginalRelMapper.selectOne(new LambdaQueryWrapper<FinishOriginalRel>()
-                .eq(FinishOriginalRel::getOrderUuid, context.order().getUuid())
-                .eq(FinishOriginalRel::getOriginalUuid, context.roll().getUuid())
-                .eq(FinishOriginalRel::getFinishUuid, finish.getUuid())
-                .last("LIMIT 1"));
-        if (rel == null) {
+    private void requireFinishBelongsToRoll(Set<String> relatedFinishUuids, FinishRoll finish) {
+        if (!relatedFinishUuids.contains(finish.getUuid())) {
             throw new BusinessException("成品卷不属于当前来源母卷，不能作为后续工艺来源");
         }
     }
-    private ProcessStageOutput buildSourceOutput(ProcessRouteContext context, String key, FinishRoll finish) {
-        ProcessStep step = latestStep(context);
+    private ProcessStageOutput buildSourceOutput(ProcessRouteContext context, String key, FinishRoll finish,
+                                                 ProcessStep step) {
         ProcessStageOutput output = new ProcessStageOutput();
         output.setOrderUuid(context.order().getUuid());
         output.setOriginalUuid(context.roll().getUuid());
@@ -168,14 +167,7 @@ public class ProcessRouteExistingOutputResolver {
         output.setRemark(finish.getFinishRollNo());
         return output;
     }
-    private ProcessStep latestStep(ProcessRouteContext context) {
-        return processStepMapper.selectOne(new LambdaQueryWrapper<ProcessStep>()
-                .eq(ProcessStep::getOrderUuid, context.order().getUuid())
-                .eq(ProcessStep::getOriginalUuid, context.roll().getUuid())
-                .orderByDesc(ProcessStep::getStepSort)
-                .last("LIMIT 1"));
-    }
-    private void validateUsable(ProcessStageOutput output, String key) {
+    private void validateUsable(ProcessStageOutput output, String key, Map<String, FinishRoll> finishesByKey) {
         if (output.getOutputStatus() != null && output.getOutputStatus() == OUTPUT_CONSUMED) {
             throw new BusinessException("该产物已经进入下道工艺，不能重复加工：" + key);
         }
@@ -185,7 +177,10 @@ public class ProcessRouteExistingOutputResolver {
         if (!StringUtils.hasText(output.getFinishRollUuid())) {
             return;
         }
-        FinishRoll finish = finishRollMapper.selectById(output.getFinishRollUuid());
+        FinishRoll finish = finishesByKey.get(output.getFinishRollUuid());
+        validateFinishUsable(key, finish);
+    }
+    private void validateFinishUsable(String key, FinishRoll finish) {
         if (finish != null && finish.getActualWeight() != null) {
             throw new BusinessException("已有回录实重的成品不能再追加后续工艺：" + key);
         }

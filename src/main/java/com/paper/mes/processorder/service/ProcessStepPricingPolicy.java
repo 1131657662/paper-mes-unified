@@ -20,7 +20,7 @@ public final class ProcessStepPricingPolicy {
     public static Result calculate(ProcessStep step, BigDecimal standardQuantity,
                                    BigDecimal standardAmount, BigDecimal unitPrice) {
         int mode = step.getBillingMode() == null ? STANDARD : step.getBillingMode();
-        BigDecimal finalQuantity = standardQuantity;
+        BigDecimal finalQuantity = billableStandardQuantity(standardQuantity);
         BigDecimal finalAmount = standardAmount;
         if (mode == QUANTITY_OVERRIDE) {
             finalQuantity = requireQuantity(step.getBillingQuantity());
@@ -30,7 +30,7 @@ public final class ProcessStepPricingPolicy {
             finalAmount = money(step.getBillingAmount());
         } else if (mode == FREE) {
             finalQuantity = null;
-            finalAmount = BigDecimal.ZERO.setScale(0);
+            finalAmount = BigDecimal.ZERO.setScale(2);
         } else if (mode != STANDARD) {
             throw new IllegalStateException("Unsupported process step billing mode: " + mode);
         } else {
@@ -38,6 +38,14 @@ public final class ProcessStepPricingPolicy {
         }
         BigDecimal adjustment = finalAmount.subtract(standardAmount).setScale(2, RoundingMode.HALF_UP);
         return new Result(mode, standardQuantity, finalQuantity, standardAmount, finalAmount, adjustment);
+    }
+
+    private static BigDecimal billableStandardQuantity(BigDecimal quantity) {
+        if (quantity == null || quantity.signum() == 0) return null;
+        if (quantity.signum() < 0) {
+            throw new IllegalArgumentException("标准计费数量不能为负数");
+        }
+        return quantity;
     }
 
     private static BigDecimal quantityAmount(ProcessStep step, BigDecimal quantity, BigDecimal unitPrice) {
@@ -60,7 +68,7 @@ public final class ProcessStepPricingPolicy {
     }
 
     private static BigDecimal money(BigDecimal amount) {
-        return (amount == null ? BigDecimal.ZERO : amount).setScale(0, RoundingMode.HALF_UP);
+        return (amount == null ? BigDecimal.ZERO : amount).setScale(2, RoundingMode.HALF_UP);
     }
 
     public record Result(int mode, BigDecimal standardQuantity, BigDecimal billingQuantity,

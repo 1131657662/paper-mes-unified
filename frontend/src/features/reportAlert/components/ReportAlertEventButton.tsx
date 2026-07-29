@@ -1,7 +1,7 @@
 import { AlertOutlined } from '@ant-design/icons'
 import { Badge, Button, Tooltip } from 'antd'
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { useReportAlertEvents } from '../hooks/useReportAlertEvents'
 import ReportAlertEventDrawer from './ReportAlertEventDrawer'
 

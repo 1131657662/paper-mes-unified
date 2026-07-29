@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -81,6 +82,23 @@ class BackRecordFinishRecorderTest {
     }
 
     @Test
+    void record_standardFinishMarkedNotProduced_voidsPlannedRollWithoutWeight() {
+        FinishRoll finish = finish(false, 1000);
+        BackRecordFinishDTO dto = dto(null, null);
+        dto.setProductionAction("NOT_PRODUCED");
+        dto.setProductionAdjustmentReason("现场实际未产出");
+        when(finishRollMapper.update(isNull(), any())).thenReturn(1);
+
+        recorder.record(List.of(dto), context(finish, source(1, 1200), true));
+
+        assertThat(finish.getRollNoStatus()).isEqualTo(3);
+        assertThat(finish.getFinishStatus()).isEqualTo(4);
+        assertThat(finish.getProductionResult()).isEqualTo(3);
+        assertThat(finish.getActualWeight()).isNull();
+        verify(finishRollMapper).update(isNull(), any());
+    }
+
+    @Test
     void record_unusedSpareWithoutSpecification_leavesItUnchanged() {
         FinishRoll spare = finish(true, 0);
 
@@ -97,6 +115,46 @@ class BackRecordFinishRecorderTest {
                 List.of(dto(800, "50.000")), context(spare, source(2, 1200), false)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("缺少来源母卷");
+    }
+
+    @Test
+    void record_usedSpare_marksItAsActualAddedOutput() {
+        FinishRoll spare = finish(true, 0);
+        when(finishRollMapper.updateById(spare)).thenReturn(1);
+
+        recorder.record(List.of(dto(800, "50.000")), context(spare, source(2, 1200), true));
+
+        assertThat(spare.getProductionResult()).isEqualTo(4);
+        assertThat(spare.getProductionAdjustmentReason()).isEqualTo("备用卷号实际启用");
+    }
+
+    @Test
+    void record_existingAddedFinish_preservesAdjustmentClassification() {
+        FinishRoll added = finish(false, 800);
+        added.setProductionResult(4);
+        added.setProductionAdjustmentReason("现场实际多产出");
+        when(finishRollMapper.updateById(added)).thenReturn(1);
+
+        recorder.record(List.of(dto(800, "55.000")), context(added, source(1, 1200), true));
+
+        assertThat(added.getProductionResult()).isEqualTo(4);
+        assertThat(added.getProductionAdjustmentReason()).isEqualTo("现场实际多产出");
+    }
+
+    @Test
+    void record_existingAddedFinishMarkedNotProduced_keepsAddedClassification() {
+        FinishRoll added = finish(false, 800);
+        added.setProductionResult(4);
+        BackRecordFinishDTO dto = dto(null, null);
+        dto.setProductionAction("NOT_PRODUCED");
+        dto.setProductionAdjustmentReason("复核后删除临时新增产出");
+        when(finishRollMapper.update(isNull(), any())).thenReturn(1);
+
+        recorder.record(List.of(dto), context(added, source(1, 1200), true));
+
+        assertThat(added.getProductionResult()).isEqualTo(4);
+        assertThat(added.getRollNoStatus()).isEqualTo(3);
+        assertThat(added.getActualWeight()).isNull();
     }
 
     @Test

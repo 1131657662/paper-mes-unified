@@ -92,6 +92,8 @@ class ProcessPlanDraftStore {
     private void updateMachine(ProcessPlanSaveCandidate candidate) {
         OriginalRoll roll = candidate.roll();
         roll.setMachineUuid(candidate.plan().getMachineUuid());
+        roll.setUpdateBy(null);
+        roll.setUpdateTime(null);
         ConcurrencyGuard.requireRowUpdated(rollMapper.updateById(roll));
     }
 
@@ -109,6 +111,8 @@ class ProcessPlanDraftStore {
         if (draft.getUuid() == null) {
             ConcurrencyGuard.requireRowUpdated(draftMapper.insert(draft));
         } else {
+            draft.setUpdateBy(null);
+            draft.setUpdateTime(null);
             ConcurrencyGuard.requireRowUpdated(draftMapper.updateById(draft));
         }
     }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isConfiguredPlanReady, reconcileConfiguredPlanIds } from './configuredPlanStatus'
+import { configKeysForRoll, isConfiguredPlanReady, reconcileConfiguredPlanIds } from './configuredPlanStatus'
 import type { RollDraft } from './types'
 
 describe('configured plan status', () => {
@@ -16,6 +16,13 @@ describe('configured plan status', () => {
     expect(isConfiguredPlanReady(roll, ['roll-1'], { 'roll-1': { ready: false } })).toBe(false)
     expect(isConfiguredPlanReady(roll, [], { 'roll-1': { ready: true } })).toBe(false)
     expect(isConfiguredPlanReady(roll, ['roll-1'], { 'roll-1': { ready: true } })).toBe(true)
+  })
+
+  it('treats the local id and backend uuid as aliases for one roll', () => {
+    const roll = { ...sampleRoll(), uuid: 'uuid-1' }
+
+    expect(configKeysForRoll(roll)).toEqual(['roll-1', 'uuid-1'])
+    expect(isConfiguredPlanReady(roll, ['uuid-1'], { 'uuid-1': { ready: true } })).toBe(true)
   })
 })
 

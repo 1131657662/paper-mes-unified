@@ -45,9 +45,10 @@ class DeliveryInventoryWarehouseRepairServiceTest {
     }
 
     @Test
-    void assign_withHistoricalUnassignedRoll_updatesOrderRollAndAudit() {
+    void assign_withPartiallyRecordedOrder_updatesOrderRollAndAudit() {
         Warehouse warehouse = warehouse("warehouse-1");
         ProcessOrder order = order("order-1", null);
+        order.setOrderStatus(3);
         FinishRoll finish = finish("finish-1", "order-1", null);
         when(warehouseMapper.selectById("warehouse-1")).thenReturn(warehouse);
         when(mapper.selectOrdersForRepair(List.of("order-1"))).thenReturn(List.of(order));

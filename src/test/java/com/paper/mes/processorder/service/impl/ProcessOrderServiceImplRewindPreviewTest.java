@@ -41,17 +41,89 @@ import static org.mockito.Mockito.mock;
 class ProcessOrderServiceImplRewindPreviewTest {
 
     @Test
-    void buildRewindPreview_mode1_infersRemainingWidthAsTrim() {
+    void buildRewindPreview_lossLeavesUnassignedWidthOutOfInventory() {
         FinishPreviewVO preview = preview(1, segment(
                 item("FINISH", 500, 2),
                 item("FINISH", 480, 1)
         ));
 
         assertEquals(3, preview.getFinishCount());
-        assertEquals(1, preview.getTrimCount());
-        assertEquals(20, preview.getSegments().getFirst().getTrimWidth());
-        assertEquals(new BigDecimal("10.667"), preview.getTotalTrimWeight());
+        assertEquals(0, preview.getTrimCount());
+        assertEquals(20, preview.getWidthDifference());
+        assertEquals(new BigDecimal("10.667"), preview.getCalculatedLossWeight());
+        assertEquals(BigDecimal.ZERO.setScale(3), preview.getTotalTrimWeight());
         assertEquals(new BigDecimal("789.333"), preview.getTotalEstimateWeight());
+    }
+
+    @Test
+    void buildRewindPreview_allocateClosesWeightWithoutCreatingImplicitTrim() {
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setRewindMode(1);
+        dto.setWidthDifferencePolicy("ALLOCATE");
+        dto.setSegments(List.of(segment(
+                item("FINISH", 500, 2), item("FINISH", 480, 1))));
+
+        FinishPreviewVO preview = ReflectionTestUtils.invokeMethod(
+                service(), "buildRewindPreview", "order-1", roll(), dto);
+
+        assertEquals(20, preview.getWidthDifference());
+        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight());
+        assertEquals(BigDecimal.ZERO.setScale(3), preview.getTotalTrimWeight());
+        assertEquals(BigDecimal.ZERO.setScale(3), preview.getCalculatedLossWeight());
+    }
+
+    @Test
+    void buildRewindPreview_allocateSharesGapAcrossFinishAndExplicitTrim() {
+        FinishPreviewVO preview = previewWithPolicy("ALLOCATE", segment(
+                item("FINISH", 1400, 1), item("TRIM", 80, 1)));
+
+        assertEquals(20, preview.getWidthDifference());
+        assertEquals(new BigDecimal("751.999"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("48.001"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight()
+                .add(preview.getTotalTrimWeight()));
+    }
+
+    @Test
+    void buildRewindPreview_lossPreservesExplicitTrimAndLosesOnlyGap() {
+        FinishPreviewVO preview = previewWithPolicy("LOSS", segment(
+                item("FINISH", 1400, 1), item("TRIM", 80, 1)));
+
+        assertEquals(new BigDecimal("746.666"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("42.667"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("10.667"), preview.getCalculatedLossWeight());
+        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight()
+                .add(preview.getTotalTrimWeight()).add(preview.getCalculatedLossWeight()));
+    }
+
+    @Test
+    void buildRewindPreview_remainderRequiresEachSegmentToCloseWidth() {
+        assertThrows(BusinessException.class, () -> previewWithPolicy("REMAINDER", segment(
+                item("FINISH", 1400, 1), item("TRIM", 80, 1))));
+
+        FinishPreviewVO preview = previewWithPolicy("REMAINDER", segment(
+                item("FINISH", 1400, 1), item("TRIM", 100, 1)));
+        assertEquals(0, preview.getWidthDifference());
+        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight()
+                .add(preview.getTotalTrimWeight()));
+    }
+
+    @Test
+    void buildRewindPreview_multipleSegmentsClosesPerSegmentTrimRounding() {
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setRewindMode(1);
+        dto.setWidthDifferencePolicy("REMAINDER");
+        dto.setSegments(List.of(
+                segment(item("FINISH", 1499, 1), item("TRIM", 1, 1)),
+                segment(item("FINISH", 1499, 1), item("TRIM", 1, 1))));
+
+        FinishPreviewVO preview = ReflectionTestUtils.invokeMethod(
+                service(), "buildRewindPreview", "order-1", roll(), dto);
+
+        assertEquals(new BigDecimal("799.466"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("0.534"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight()
+                .add(preview.getTotalTrimWeight()).add(preview.getCalculatedLossWeight()));
     }
 
     @Test
@@ -83,14 +155,47 @@ class ProcessOrderServiceImplRewindPreviewTest {
     }
 
     @Test
+    void buildRewindPreview_mode4_uses_layer_spec_instead_of_stale_segment_values() {
+        RewindPlanPreviewDTO.RewindLayoutItemDTO item = item("FINISH", 1500, 1);
+        FinishConfigSpecDTO.FinishLayerDTO layer = new FinishConfigSpecDTO.FinishLayerDTO();
+        layer.setOutDiameter(900);
+        layer.setCoreDiameter(6);
+        item.setLayers(List.of(layer));
+        RewindPlanPreviewDTO.RewindSegmentDTO segment = segment(item);
+        segment.setTargetDiameter(1000);
+        segment.setFinishCoreDiameter(3);
+
+        FinishPreviewVO preview = preview(4, segment);
+
+        assertEquals(900, preview.getFinishes().getFirst().getFinishDiameter());
+        assertEquals(6, preview.getFinishes().getFirst().getFinishCoreDiameter());
+    }
+
+    @Test
+    void validateCustomerSpecifications_rejects_override_without_reason() {
+        RewindPlanPreviewDTO.RewindLayoutItemDTO item = item("FINISH", 1500, 1);
+        item.setCustomerGramWeight(90);
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setSegments(List.of(segment(item)));
+        OriginalRoll roll = roll();
+        roll.setPaperName("白卡纸");
+        roll.setGramWeight(80);
+
+        assertThrows(BusinessException.class, () -> ReflectionTestUtils.invokeMethod(
+                service(), "validateCustomerSpecifications", dto, roll));
+    }
+
+    @Test
     void buildRewindSaveSpecs_usesSegmentTrimWeightForSavedTrimRow() {
         ProcessOrderServiceImpl service = service();
         OriginalRoll roll = roll();
         FinishConfigSaveDTO dto = new FinishConfigSaveDTO();
         dto.setRewindMode(1);
+        dto.setWidthDifferencePolicy("REMAINDER");
         dto.setRewindSegments(List.of(segment(
                 item("FINISH", 500, 2),
-                item("FINISH", 480, 1)
+                item("FINISH", 480, 1),
+                item("TRIM", 20, 1)
         )));
 
         List<FinishConfigSpecDTO> specs = ReflectionTestUtils.invokeMethod(
@@ -101,6 +206,51 @@ class ProcessOrderServiceImplRewindPreviewTest {
         assertEquals("TRIM", trim.getItemType());
         assertEquals(20, trim.getFinishWidth());
         assertEquals(new BigDecimal("10.667"), trim.getEstimateWeight());
+    }
+
+    @Test
+    void buildRewindSaveSpecs_repeatedSegmentPreservesTrimRollCount() {
+        FinishConfigSaveDTO dto = new FinishConfigSaveDTO();
+        dto.setRewindMode(1);
+        dto.setWidthDifferencePolicy("REMAINDER");
+        RewindPlanPreviewDTO.RewindSegmentDTO segment = segment(
+                item("FINISH", 1480, 1), item("TRIM", 20, 1));
+        segment.setRepeatCount(2);
+        dto.setRewindSegments(List.of(segment));
+
+        List<FinishConfigSpecDTO> specs = ReflectionTestUtils.invokeMethod(
+                service(), "buildRewindSaveSpecs", "order-1", roll(), dto);
+
+        List<FinishConfigSpecDTO> trims = specs.stream()
+                .filter(spec -> "TRIM".equals(spec.getItemType())).toList();
+        assertEquals(2, trims.size());
+        assertEquals(new BigDecimal("10.667"), trims.stream()
+                .map(FinishConfigSpecDTO::getEstimateWeight).reduce(BigDecimal.ZERO, BigDecimal::add));
+    }
+
+    @Test
+    void validateRewindPreviewPlan_normalizesDuplicateSegmentSorts() {
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setRewindMode(1);
+        dto.setSegments(List.of(segment(item("FINISH", 1500, 1)),
+                segment(item("FINISH", 1500, 1))));
+
+        ReflectionTestUtils.invokeMethod(service(), "validateRewindPreviewPlan", dto);
+
+        assertEquals(List.of(1, 2), dto.getSegments().stream()
+                .map(RewindPlanPreviewDTO.RewindSegmentDTO::getSegmentSort).toList());
+    }
+
+    @Test
+    void validateRewindPreviewPlan_whenSegmentContainsOnlyTrim_rejectsPlan() {
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setRewindMode(1);
+        dto.setSegments(List.of(segment(item("TRIM", 1500, 1))));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> ReflectionTestUtils.invokeMethod(service(), "validateRewindPreviewPlan", dto));
+
+        assertEquals("每个直径分段至少需要一个正式成品", exception.getMessage());
     }
 
     @Test
@@ -146,6 +296,16 @@ class ProcessOrderServiceImplRewindPreviewTest {
     private FinishPreviewVO preview(int rewindMode, RewindPlanPreviewDTO.RewindSegmentDTO segment) {
         RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
         dto.setRewindMode(rewindMode);
+        dto.setWidthDifferencePolicy("LOSS");
+        dto.setSegments(List.of(segment));
+        return ReflectionTestUtils.invokeMethod(service(), "buildRewindPreview", "order-1", roll(), dto);
+    }
+
+    private FinishPreviewVO previewWithPolicy(String policy,
+                                               RewindPlanPreviewDTO.RewindSegmentDTO segment) {
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setRewindMode(1);
+        dto.setWidthDifferencePolicy(policy);
         dto.setSegments(List.of(segment));
         return ReflectionTestUtils.invokeMethod(service(), "buildRewindPreview", "order-1", roll(), dto);
     }
@@ -208,6 +368,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 mock(BusinessLockService.class),
                 mock(MachineMapper.class),
                 mock(WeightCheckThresholdService.class),
+                null,
                 null,
                 null,
                 null,

@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -25,7 +26,9 @@ public class RewindLayoutItemPlanDTO {
 
     @Size(max = 100, message = "客户品名不能超过100个字符")
     private String customerPaperName;
+    @Positive(message = "客户克重必须大于0")
     private Integer customerGramWeight;
+    @Positive(message = "客户门幅必须大于0")
     private Integer customerFinishWidth;
     @Size(max = 255, message = "客户规格改写原因不能超过255个字符")
     private String customerSpecOverrideReason;

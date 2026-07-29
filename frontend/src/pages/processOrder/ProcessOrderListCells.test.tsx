@@ -40,8 +40,17 @@ describe('加工单列表单号单元格', () => {
       uuid: 'order-4', processNames: ['锯纸', '复卷', '剥损整理', '重新包装'],
     })
 
-    expect(summary.compact).toBe('锯纸 + 复卷 +2')
+    expect(summary.compact).toBe('锯纸 + 复卷 +2项工艺')
     expect(summary.full).toBe('锯纸 + 复卷 + 剥损整理 + 重新包装')
+  })
+
+  it('第三种工艺存在时明确显示剩余工艺项数', () => {
+    const summary = processSummaryText({
+      uuid: 'order-7', processNames: ['锯纸', '复卷', '剥损整理'],
+    })
+
+    expect(summary.compact).toBe('锯纸 + 复卷 +1项工艺')
+    expect(summary.full).toBe('锯纸 + 复卷 + 剥损整理')
   })
 
   it('同类型多道工序保留多段标识', () => {

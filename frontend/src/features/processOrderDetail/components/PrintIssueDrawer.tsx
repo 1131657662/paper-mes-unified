@@ -5,11 +5,11 @@ import QueryLoadErrorAlert from '../../../components/feedback/QueryLoadErrorAler
 import type { PrintResultVO, ProcessOrderDetailVO, ProcessOrderPrintViewVO, PrintViewVersion } from '../../../types/processOrder'
 import { useIssueProcessOrder, usePhysicalReprintProcessOrder, usePrintProcessOrder } from '../hooks/usePrintProcessOrder'
 import { useProcessOrderPrintView } from '../hooks/useProcessOrderPrintView'
-import { resolvePrintIssueMode, type PrintIssueMode } from '../printIssueMode'
+import { printIssueDrawerTitle, resolvePrintIssueMode, type PrintIssueMode } from '../printIssueMode'
 import { printVersionProps } from '../printVersionModel'
 import PrintOnlySheet from './PrintOnlySheet'
 import PrintPreviewSheet from './PrintPreviewSheet'
-import { drawerTitle, IssueNotice, PrintActions, type PendingPrintConfirmation } from './PrintIssueActions'
+import { IssueNotice, PrintActions, type PendingPrintConfirmation } from './PrintIssueActions'
 import PrintVersionControl from './PrintVersionControl'
 import './PrintIssueDrawer.css'
 
@@ -46,7 +46,7 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: P
   const handleIssue = async () => {
     const issueResult = await issueOrder()
     setResult(issueResult)
-    setPendingConfirmation({})
+    setPendingConfirmation({ version })
     message.success('加工单已下发，请完成物理打印')
     await onPrinted()
     await refetchPrintView()
@@ -55,13 +55,13 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: P
 
   const handleOpenPrint = async () => {
     if (mode === 'preview' || mode === 'unprinted') {
-      if (mode === 'unprinted') setPendingConfirmation({})
+      if (mode === 'unprinted') setPendingConfirmation({ version })
       openBrowserPrint()
       return
     }
     if (mode !== 'reprint' && mode !== 'audited-reprint') return
     const values = await form.validateFields()
-    setPendingConfirmation({ reason: values.reason?.trim() })
+    setPendingConfirmation({ reason: values.reason?.trim(), version })
     openBrowserPrint()
   }
 
@@ -69,7 +69,7 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: P
     if (!pendingConfirmation) return
     const dto = pendingConfirmation.reason ? { reason: pendingConfirmation.reason } : undefined
     const printResult = mode === 'audited-reprint'
-      ? await physicalReprint({ reason: pendingConfirmation.reason ?? '', version })
+      ? await physicalReprint({ reason: pendingConfirmation.reason ?? '', version: pendingConfirmation.version })
       : await printOrder(dto)
     setResult(printResult)
     setPendingConfirmation(null)
@@ -80,7 +80,7 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: P
   return (
     <>
       <Drawer
-        title={drawerTitle(mode, version)}
+      title={printIssueDrawerTitle(mode, version)}
         rootClassName="print-issue-drawer-root"
         className="print-issue-drawer"
         width="min(1180px, calc(100vw - 32px))"
@@ -114,7 +114,7 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: P
 export function PrintDrawerContent({ copies, detail, form, loading, mode, pendingConfirmation, result, version, view, onCopiesChange, onVersionChange }: ContentProps) {
   return (
     <div className="print-issue__content">
-      <PrintVersionControl value={version} view={view} onChange={onVersionChange} />
+      <PrintVersionControl disabled={Boolean(pendingConfirmation)} value={version} view={view} onChange={onVersionChange} />
       <div className="print-issue__screen-only">
         <IssueNotice mode={mode} pendingConfirmation={pendingConfirmation} result={result} />
       </div>

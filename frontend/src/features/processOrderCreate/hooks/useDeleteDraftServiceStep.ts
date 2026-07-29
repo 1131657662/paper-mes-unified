@@ -1,8 +1,10 @@
 import { message } from 'antd'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { deleteProcessStep } from '../../../api/processOrder'
+import { deleteDraftProcessStep } from '../../../api/processOrder'
 import { runVersionSynchronizedMutation } from '../serviceMutationCommit'
+import { serviceStepIsAbsent } from '../serviceStepWriteModel'
 import {
+  currentProcessOrderSteps,
   draftServiceMutationLifecycle,
   requiredDraftOrderUuid,
   type DraftServiceMutationOptions,
@@ -14,10 +16,20 @@ export function useDeleteDraftServiceStep(options: DraftServiceMutationOptions) 
   return useMutation({
     mutationFn: async (stepUuid: string) => {
       const orderUuid = requiredDraftOrderUuid(options.orderUuid)
+      let expectedVersion = options.draftVersion
       await runVersionSynchronizedMutation({
-        ensureVersionReady: () => lifecycle.ensureVersionReady(queryClient, orderUuid),
+        clearVersionSyncRequired: lifecycle.clearVersionSyncRequired,
+        ensureVersionReady: async () => {
+          expectedVersion = await lifecycle.ensureVersionReady(queryClient, orderUuid)
+        },
+        isAppliedAfterSync: () => serviceStepIsAbsent(
+          currentProcessOrderSteps(queryClient, orderUuid),
+          stepUuid,
+        ),
         markVersionSyncRequired: lifecycle.markVersionSyncRequired,
-        mutate: () => deleteProcessStep(stepUuid),
+        mutate: () => serviceStepIsAbsent(currentProcessOrderSteps(queryClient, orderUuid), stepUuid)
+          ? Promise.resolve()
+          : deleteDraftProcessStep(stepUuid, expectedVersion),
         synchronizeVersion: () => lifecycle.synchronizeLatest(queryClient, orderUuid),
       })
       message.success('附加工艺已删除')

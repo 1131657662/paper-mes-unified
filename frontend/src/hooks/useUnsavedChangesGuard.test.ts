@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { preventUnsavedUnload, shouldBlockUnsavedNavigation } from './useUnsavedChangesGuard'
+import {
+  preventUnsavedUnload,
+  shouldBlockUnsavedNavigation,
+  shouldBlockWorkflowNavigation,
+} from './useUnsavedChangesGuard'
 
 const formLocation = { hash: '', pathname: '/papers/create', search: '' }
 
@@ -22,5 +26,15 @@ describe('未保存表单离开保护', () => {
 
     expect(prevented).toBe(true)
     expect(event.returnValue).toBe('')
+  })
+
+  it('blocks route changes while a write is pending even without dirty edits', () => {
+    expect(shouldBlockWorkflowNavigation(
+      false,
+      true,
+      formLocation,
+      { ...formLocation, pathname: '/papers' },
+    )).toBe(true)
+    expect(shouldBlockWorkflowNavigation(false, true, formLocation, formLocation)).toBe(false)
   })
 })

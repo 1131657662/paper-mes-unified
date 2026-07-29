@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
-class DeliveryCustomerRevisionBusinessFlowIT {
+class DeliveryCustomerRevisionBusinessFlowIT extends AuthenticatedBusinessFlowIT {
 
     @Autowired private BusinessFlowFixtureFactory fixtures;
     @Autowired private DeliveryService deliveryService;
@@ -60,10 +60,10 @@ class DeliveryCustomerRevisionBusinessFlowIT {
 
     private void assertPublishedOnce(String deliveryUuid, DeliveryCustomerRevisionSummaryVO published,
                                      DeliveryCustomerRevisionSummaryVO replay) {
-        assertThat(published.getRevisionNo()).isEqualTo(1);
+        assertThat(published.getRevisionNo()).isEqualTo(2);
         assertThat(replay.getUuid()).isEqualTo(published.getUuid());
         assertThat(revisionMapper.selectCount(new LambdaQueryWrapper<DeliveryCustomerRevision>()
-                .eq(DeliveryCustomerRevision::getDeliveryUuid, deliveryUuid))).isEqualTo(1);
+                .eq(DeliveryCustomerRevision::getDeliveryUuid, deliveryUuid))).isEqualTo(2);
     }
 
     private void assertPhysicalFactsUntouched(DeliveryOrder after, FinishRoll finishAfter,

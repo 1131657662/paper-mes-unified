@@ -1,7 +1,7 @@
 import { Alert, Button, Drawer, Empty, Modal, Space, message } from 'antd'
 import { SyncOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
-import { useState, type Dispatch, type SetStateAction } from 'react'
+import { useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import type {
   ProcessOrderDetailVO,
   ProcessRoutePreviewVO,
@@ -30,8 +30,7 @@ import {
   initialDetailRouteFormForOrder,
   type DetailRouteFormState,
 } from '../routeConfigDetail'
-import { routeRequestFingerprint, isRoutePreviewCurrent } from '../routePreviewGuard'
-
+import { createRoutePreviewRequestGate, routeRequestFingerprint, isRoutePreviewCurrent } from '../routePreviewGuard'
 interface Props {
   open: boolean
   detail?: ProcessOrderDetailVO
@@ -70,11 +69,16 @@ export default function ProcessRouteConfigDrawer({
   ))
   const [preview, setPreview] = useState<ProcessRoutePreviewVO>()
   const [previewFingerprint, setPreviewFingerprint] = useState<string>()
+  const previewRequestGate = useRef(createRoutePreviewRequestGate())
   const { mutateAsync: previewRoute, isPending: isPreviewing } = usePreviewPendingRoute()
   const { mutateAsync: saveRoute, isPending: isSaving } = useSavePendingRoute()
   const { mutateAsync: previewAppendRoute, isPending: isPreviewingAppend } = usePreviewAppendRoute()
   const { mutateAsync: saveAppendRoute, isPending: isSavingAppend } = useSaveAppendRoute()
-  const clearPreview = () => { setPreview(undefined); setPreviewFingerprint(undefined) }
+  const clearPreview = () => {
+    previewRequestGate.current.invalidate()
+    setPreview(undefined)
+    setPreviewFingerprint(undefined)
+  }
   const setRouteForm: Dispatch<SetStateAction<DetailRouteFormState | undefined>> = (next) => {
     setForm(next)
     clearPreview()
@@ -98,7 +102,6 @@ export default function ProcessRouteConfigDrawer({
     ))
     clearPreview()
   }
-
   const addStage = (stepType: number) => {
     if (!form) return
     setRouteForm(withLastStageMachine(addDetailRouteStage(form, stepType, prices), machines))
@@ -107,11 +110,15 @@ export default function ProcessRouteConfigDrawer({
   const handlePreview = async () => {
     if (!detail?.order.uuid || !roll || !form) return
     if (!requireRouteReady(form, appendMode)) return
+    clearPreview()
     const request = appendMode
       ? buildAppendRouteDto(roll, form, expectedVersion)
       : buildDetailRouteDto(roll, form, expectedVersion)
     const action = appendMode ? previewAppendRoute : previewRoute
-    setPreview(await action({ orderUuid: detail.order.uuid, request }))
+    const requestId = previewRequestGate.current.begin()
+    const result = await action({ orderUuid: detail.order.uuid, request })
+    if (!previewRequestGate.current.isCurrent(requestId)) return
+    setPreview(result)
     setPreviewFingerprint(routeRequestFingerprint(request))
   }
 

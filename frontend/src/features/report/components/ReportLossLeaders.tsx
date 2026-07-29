@@ -1,6 +1,6 @@
 import { Button } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import DocumentDetailTable from '../../../components/biz/DocumentDetailTable'
 import type { ReportDetailVO } from '../../../types/report'
 import { formatPercent, formatTonFromKg } from '../utils/reportFormatters'

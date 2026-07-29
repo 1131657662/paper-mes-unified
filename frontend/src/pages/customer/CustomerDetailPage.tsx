@@ -1,7 +1,7 @@
 import { Button, Card, Descriptions, Empty, Skeleton, Space, Tag } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { getCustomer } from '../../api/customer'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import { PERMISSIONS } from '../../constants/permissions'

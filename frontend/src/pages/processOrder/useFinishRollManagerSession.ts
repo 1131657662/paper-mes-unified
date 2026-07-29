@@ -14,6 +14,10 @@ export function useFinishRollManagerSession(options: Options) {
   const [filters, setFilters] = useState<FinishRollFilters>({})
   const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
   const [dialog, setDialog] = useState<'generate' | 'spare'>()
+  const changeFilters = (nextFilters: FinishRollFilters) => {
+    setFilters(nextFilters)
+    setSelectedKeys([])
+  }
   const reload = async () => {
     setSelectedKeys([])
     await options.refetch()
@@ -26,7 +30,7 @@ export function useFinishRollManagerSession(options: Options) {
     generate: (values: FinishRollBatchDTO) => generateRolls(options.orderUuid, values, reload, setDialog),
     selectedKeys,
     setDialog,
-    setFilters,
+    setFilters: changeFilters,
     setSelectedKeys,
     voidSelected: () => confirmSelectedVoid(selectedKeys, reload),
     voidSingle: (uuid: string) => voidRoll(uuid, reload),

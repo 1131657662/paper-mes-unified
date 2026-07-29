@@ -9,7 +9,6 @@ import RouteDraftStagePanel, { type RouteQuickAction } from '../../features/proc
 import RouteDraftSummaryBar from '../../features/processOrderRouteDraft/RouteDraftSummaryBar'
 import { ORIGINAL_OUTPUT_KEY, allRouteOutputs, finalRouteOutputs } from '../../features/processOrderRouteDraft/routeDraftModel'
 import type { RouteDraftStage } from '../../features/processOrderRouteDraft/routeDraftModel'
-import type { DefaultPlanOptions } from '../../features/processOrderCreate/draftMappers'
 import type { DetailRouteOutputRow, DetailRoutePriceDefaults } from '../../features/processOrderDetail/routeConfigDetail'
 import type { Machine } from '../../types/machine'
 import type { OriginalRoll, ProcessRoutePreviewVO } from '../../types/processOrder'
@@ -40,7 +39,6 @@ interface Props {
   actionState: RouteDesignerActionState
   busy: boolean
   commands: RouteDesignerCommands
-  defaultPlanOptions: DefaultPlanOptions
   feedback?: { description: string; title: string }
   machines: Machine[]
   orderLabel: string
@@ -72,7 +70,7 @@ export default function RouteDesignerWorkspace(props: Props) {
               onDeleteFrom={props.commands.onDeleteFrom} onQuickAppend={props.commands.onQuickAppend} onSelect={props.commands.onSelect} />
           </Card>
           <Card className="route-draft-editor-card" title="工艺参数">
-            <RouteDraftStagePanel defaultPlanOptions={props.defaultPlanOptions} machines={props.machines}
+            <RouteDraftStagePanel machines={props.machines}
               prices={props.prices} quickAction={props.quickAction} roll={props.roll}
               selectedKey={props.selectedOutputKey} stages={props.stages} onChange={props.commands.onStagesChange} />
           </Card>

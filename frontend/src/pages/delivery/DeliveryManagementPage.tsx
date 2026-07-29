@@ -1,5 +1,5 @@
 import { Tabs } from 'antd'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import DeliveryInventoryPage from './DeliveryInventoryPage'
 import DeliveryOrderList from './DeliveryOrderList'
 import './DeliveryManagementPage.css'

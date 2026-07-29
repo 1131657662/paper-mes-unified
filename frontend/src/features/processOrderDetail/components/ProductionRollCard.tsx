@@ -10,6 +10,7 @@ import {
   isDeliverableProductionFinish,
   rewindModeLabel,
   trimWeightFromFinishes,
+  widthDifferenceDetail,
 } from '../../../components/processOrder/shared/detailHelpers'
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import type { RollProductionVO } from '../../../types/processOrder'
@@ -115,6 +116,7 @@ function RollToggle({ expanded, label, onToggle }: { expanded: boolean; label: s
 function PlanColumn({ row, trimWidth, trimWeight }: Props & { trimWidth: number; trimWeight: number }) {
   const production = row.mainProduction
   const isRewind = production.mainStepType === 2
+  const widthDifference = widthDifferenceDetail(production.steps?.find((step) => step.isMain === 1))
 
   if (row.isDirectShip) {
     return (
@@ -142,6 +144,7 @@ function PlanColumn({ row, trimWidth, trimWeight }: Props & { trimWidth: number;
       <div className="production-roll__line">加工方式：{PROCESS_MODE[production.processMode ?? 1]}</div>
       <div className="production-roll__line">方案条件：{buildConditionText(production)}</div>
       <div className="production-roll__line">门幅排布：{buildLayoutText(production)}</div>
+      {widthDifference && <div className="production-roll__line">{widthDifference}</div>}
       {(trimWidth > 0 || trimWeight > 0) && (
         <div className="production-roll__line">
           修边 {trimWidth > 0 ? formatMm(trimWidth) : '-'}

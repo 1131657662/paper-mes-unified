@@ -17,7 +17,7 @@
 
     <sql id="UnassignedOrderWhere">
         o.is_deleted = 0
-        AND o.order_status IN (4, 5)
+        AND o.order_status IN (3, 4, 5)
         <if test="q.keyword != null and q.keyword.trim() != ''">
             AND (o.order_no LIKE CONCAT('%', #{q.keyword}, '%')
               OR o.customer_name LIKE CONCAT('%', #{q.keyword}, '%'))
@@ -48,7 +48,13 @@
                     THEN NULL
                     ELSE COALESCE(o.warehouse_uuid, k.finish_warehouse_uuid)
                END AS knownWarehouseUuid,
-               w.warehouse_name AS knownWarehouseName,
+               CASE WHEN COALESCE(k.finish_warehouse_count, 0) &gt; 1
+                          OR (o.warehouse_uuid IS NOT NULL
+                              AND k.finish_warehouse_uuid IS NOT NULL
+                              AND o.warehouse_uuid != k.finish_warehouse_uuid)
+                    THEN NULL
+                    ELSE w.warehouse_name
+               END AS knownWarehouseName,
                CASE WHEN COALESCE(k.finish_warehouse_count, 0) &gt; 1
                           OR (o.warehouse_uuid IS NOT NULL
                               AND k.finish_warehouse_uuid IS NOT NULL
@@ -144,7 +150,7 @@
             version = version + 1
         WHERE uuid = #{orderUuid}
           AND is_deleted = 0
-          AND order_status IN (4, 5)
+          AND order_status IN (3, 4, 5)
           AND (warehouse_uuid IS NULL OR warehouse_uuid = #{warehouseUuid})
     </update>
 </mapper>

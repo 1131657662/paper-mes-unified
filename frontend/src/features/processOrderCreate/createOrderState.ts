@@ -6,6 +6,7 @@ import type {
   ProcessRoutePreviewDTO,
   ProcessRoutePreviewVO,
 } from '../../types/processOrder'
+import type { Machine } from '../../types/machine'
 import {
   applyLegacyPlanPriceDefaults,
   baseInfoFromOrder,
@@ -13,9 +14,10 @@ import {
   newRollDraft,
   rollDraftFromOriginal,
 } from './draftMappers'
-import { normalizeLayeredRewindPlan } from './rewindLayerPlanUtils'
+import { normalizeRewindPlan } from './rewindLayerPlanUtils'
 import type { RollDraft } from './types'
 import { processModeRequiresMain } from '../../constants/processOrder'
+import { applyDefaultMachineToPlan } from './machineDefaults'
 
 export interface HydratedCreateOrderState {
   orderUuid?: string
@@ -53,7 +55,7 @@ export function hydrateDraftState(draft: DraftOrderVO): HydratedCreateOrderState
 
   for (const roll of safeRolls) {
     const plan = plans[roll.localId] ?? defaultPlanForRoll(roll)
-    plans[roll.localId] = normalizeLayeredRewindPlan(plan, roll)
+    plans[roll.localId] = normalizeRewindPlan(plan, roll)
   }
 
   return {
@@ -74,12 +76,14 @@ export function plansForRolls(
   rolls: RollDraft[],
   currentPlans: Record<string, ProcessPlanDTO>,
   options: PlansForRollsOptions = {},
+  machines?: Machine[],
 ) {
   return rolls.reduce<Record<string, ProcessPlanDTO>>((next, roll) => {
     const existing = currentPlans[roll.localId]
-    next[roll.localId] = existing && planMatchesRoll(existing, roll)
+    const plan = existing && planMatchesRoll(existing, roll)
       ? rebasePlanForRoll(applyLegacyPlanPriceDefaults(existing, options), roll)
       : defaultPlanForRoll(roll, options)
+    next[roll.localId] = machines ? applyDefaultMachineToPlan(plan, machines, roll) : plan
     return next
   }, {})
 }
@@ -117,7 +121,18 @@ export function rebasePlanForRoll(plan: ProcessPlanDTO, roll: RollDraft): Proces
 }
 
 export function isRollReadyForSave(roll: RollDraft) {
-  return Boolean(roll.paperName && Number(roll.rollWeight ?? 0) > 0)
+  if (!roll.paperName.trim()) return false
+  if (!positiveInteger(roll.gramWeight) || !positiveInteger(roll.originalWidth)) return false
+  if (!positiveInteger(roll.pieceNum ?? 1) || !positiveNumber(roll.rollWeight)) return false
+  return roll.processMode !== 3 || Boolean(roll.rollNo?.trim())
+}
+
+function positiveInteger(value?: number) {
+  return Number.isInteger(value) && positiveNumber(value)
+}
+
+function positiveNumber(value?: number) {
+  return value != null && Number.isFinite(value) && value > 0
 }
 
 export function plansFromBatch(rolls: RollDraft[], plan: ProcessPlanDTO) {
@@ -134,11 +149,12 @@ export function previewsFromBatch(rolls: RollDraft[], previews: PlanPreviewVO[])
   }))
 }
 
-function planMatchesRoll(plan: ProcessPlanDTO | undefined, roll: RollDraft) {
+export function planMatchesRoll(plan: ProcessPlanDTO | undefined, roll: RollDraft) {
   if (!plan) return false
   if (plan.processMode !== roll.processMode) return false
   if (!processModeRequiresMain(roll.processMode)) return true
   return plan.mainStepType === roll.mainStepType
+    && plan.machineUuid === roll.machineUuid
 }
 
 interface PlansForRollsOptions {

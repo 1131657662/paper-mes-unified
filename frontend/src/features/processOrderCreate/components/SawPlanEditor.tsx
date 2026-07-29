@@ -1,4 +1,4 @@
-import { Button, Progress, Segmented, Space, Tag, Typography } from 'antd'
+import { Alert, Button, Progress, Segmented, Space, Tag, Typography } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { DEFAULT_WIDTH_DIFFERENCE_POLICY, WIDTH_DIFFERENCE_POLICY_OPTIONS } from '../../../constants/processOrder'
 import type { FinishConfigSpecDTO, ProcessPlanDTO, WidthDifferencePolicy } from '../../../types/processOrder'
@@ -20,16 +20,13 @@ export default function SawPlanEditor({ plan, roll, onChange }: Props) {
   const stats = calcSawPlanStats(specs, roll.originalWidth ?? 0)
 
   const updateSpecs = (next: FinishConfigSpecDTO[]) => {
-    const compatible = policy === 'REMAINDER' ? next : withoutTrim(next)
-    const nextStats = calcSawPlanStats(compatible, roll.originalWidth ?? 0)
-    onChange({ ...plan, finishSpecs: compatible, knifeCount: nextStats.knifeCount })
+    const nextStats = calcSawPlanStats(next, roll.originalWidth ?? 0)
+    onChange({ ...plan, finishSpecs: next, knifeCount: nextStats.knifeCount })
   }
 
   const changePolicy = (value: string | number) => {
     if (!isWidthDifferencePolicy(value)) return
-    const nextPolicy = value
-    const nextSpecs = nextPolicy === 'REMAINDER' ? specs : withoutTrim(specs)
-    onChange({ ...plan, widthDifferencePolicy: nextPolicy, finishSpecs: nextSpecs })
+    onChange({ ...plan, widthDifferencePolicy: value, finishSpecs: specs })
   }
 
   return (
@@ -45,6 +42,11 @@ export default function SawPlanEditor({ plan, roll, onChange }: Props) {
           </Button>
         )}
       </Space>
+      {policy === 'REMAINDER' && stats.remainingWidth > 0 && (
+        <Alert showIcon type="warning"
+          message={`还有 ${formatMm(stats.remainingWidth)} 未分配`}
+          description="留余料要求门幅完整闭合。可点击“剩余转余料”自动补齐，也可以手工调整余料门幅。" />
+      )}
       <SawSpecificationTable specs={specs} onChange={updateSpecs} />
     </Space>
   )
@@ -62,8 +64,9 @@ function SawSummary({ originalWidth, stats, policy }: {
         <Tag color="blue">刀数 {stats.knifeCount}</Tag>
         <Tag color="green">成品 {stats.finishCount} 件</Tag>
         <Tag color={stats.remainingWidth > 0 ? 'orange' : 'default'}>
-          门幅差额 {formatMm(Math.max(stats.trimWidth, stats.implicitTrimWidth))} · {policyLabel(policy)}
+          未分配 {formatMm(Math.max(0, stats.remainingWidth))} · {policyLabel(policy)}
         </Tag>
+        {stats.trimWidth > 0 && <Tag color="gold">切边 {formatMm(stats.trimWidth)}</Tag>}
         <Typography.Text type={overflow ? 'danger' : 'secondary'}>
           已排 {stats.usedWidth}/{originalWidth || '-'} mm
           {overflow ? `，超出 ${formatMm(Math.abs(stats.remainingWidth))}` : ''}
@@ -84,7 +87,7 @@ function withoutTrim(specs: FinishConfigSpecDTO[]) {
 
 function policyLabel(policy: WidthDifferencePolicy) {
   if (policy === 'LOSS') return '非库存损耗'
-  if (policy === 'ALLOCATE') return '分摊到成品'
+  if (policy === 'ALLOCATE') return '均匀分摊'
   return '实体余料'
 }
 

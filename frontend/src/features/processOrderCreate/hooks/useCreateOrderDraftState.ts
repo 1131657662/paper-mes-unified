@@ -17,6 +17,7 @@ import {
   saveCreateOrderLocalDraft,
 } from '../localDraftStorage'
 import type { RollDraft } from '../types'
+import { useVersionedRollState } from './useVersionedRollState'
 
 interface UseCreateOrderDraftStateOptions {
   draft?: DraftOrderVO
@@ -41,7 +42,7 @@ export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOption
   const [localDraft] = useState(() => (
     draftUuid || resetLocalDraft ? undefined : loadCreateOrderLocalDraft()
   ))
-  const hydratedDraftUuid = useRef<string>()
+  const hydratedDraftUuid = useRef<string | undefined>(undefined)
   const [current, setCurrent] = useState(() => localDraft?.current ?? 0)
   const [orderUuid, setOrderUuid] = useState<string | undefined>(() => localDraft?.orderUuid)
   const [draftVersion, setDraftVersionState] = useState(() => localDraft?.orderVersion ?? 1)
@@ -53,7 +54,9 @@ export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOption
   }, [])
   const getDraftVersion = useCallback(() => draftVersionRef.current, [])
   const [baseInfo, setBaseInfo] = useState<DraftOrderBaseDTO | undefined>(() => localDraft?.baseInfo)
-  const [rolls, setRolls] = useState<RollDraft[]>(() => localDraft?.rolls ?? [newRollDraft()])
+  const { getRollsRevision, rolls, setRolls } = useVersionedRollState(
+    localDraft?.rolls ?? [newRollDraft()],
+  )
   const [selectedId, setSelectedId] = useState<string | undefined>(() => localDraft?.selectedId)
   const [plans, setPlans] = useState<Record<string, ProcessPlanDTO>>(() => localDraft?.plans ?? {})
   const [configuredPlanIds, setConfiguredPlanIds] = useState<string[]>(() => localDraft?.configuredPlanIds ?? [])
@@ -116,7 +119,7 @@ export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOption
     setCurrent(state.current)
     setDraftVersion(draft.order?.version ?? 1)
     hydratedDraftUuid.current = draftUuid
-  }, [draft, draftUuid, setDraftVersion])
+  }, [draft, draftUuid, setDraftVersion, setRolls])
 
   useEffect(() => {
     if (!draftUuid || !draft || hydratedDraftUuid.current !== draftUuid) return
@@ -130,6 +133,7 @@ export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOption
     current,
     draftVersion,
     getDraftVersion,
+    getRollsRevision,
     orderUuid,
     plans,
     configuredPlanIds,

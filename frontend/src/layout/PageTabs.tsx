@@ -11,7 +11,7 @@ import {
   RightOutlined,
   ReloadOutlined,
 } from '@ant-design/icons'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router'
 import { DEFAULT_PAGE_TAB_PATH, getNextActivePath, type PageTabItem } from './pageTabModel'
 import { usePageTabs } from './usePageTabs'
 

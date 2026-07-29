@@ -9,28 +9,37 @@ import type { BackRecordWorkItem, WorkbenchFinish } from './backRecordWorkbenchT
 import { autoTrimWeights } from './backRecordAutoTrim'
 import BackRecordBatchSpecModal, { type BatchSpecValues } from './BackRecordBatchSpecModal'
 import BackRecordFinishFields, { type BackRecordSourceOption } from './BackRecordFinishFields'
+import BackRecordFinishAdjustmentPanel from './BackRecordFinishAdjustmentPanel'
+import { addedFinishEntity, normalizeFinishAdjustment, visibleFinishEntries } from './backRecordFinishAdjustment'
+import { workItemRollUuids } from './backRecordWorkbenchUtils'
 
 interface Props {
   item: BackRecordWorkItem
   onFieldExhausted: () => void
+  onDirty?: () => void
   sourceOptions: BackRecordSourceOption[]
 }
 
-export default function BackRecordFinishEntryList({ item, onFieldExhausted, sourceOptions }: Props) {
+export default function BackRecordFinishEntryList({ item, onDirty, onFieldExhausted, sourceOptions }: Props) {
   const form = Form.useFormInstance<BackRecordFormValues>()
   const finishes = Form.useWatch('finishes', form)
   const rolls = Form.useWatch('rolls', form)
   const steps = Form.useWatch('steps', form)
+  const adjustmentValue = Form.useWatch(['finishAdjustments', item.key], { form, preserve: true })
+  const adjustment = normalizeFinishAdjustment(item, adjustmentValue)
+  const adjustmentSourceOptions = sourceOptions.filter((option) => option.processMode === 1 && workItemRollUuids(item).includes(option.value))
   const autoTrimUuids = useRef(new Set<string>())
   const manualTrimUuids = useRef(new Set<string>())
   const [batchOpen, setBatchOpen] = useState(false)
   const { options: abnormalTypeOptions } = useDictOptions(DICT_TYPES.abnormalType, abnormalFallbackOptions)
   const onSite = item.roll?.processMode === 2
+  const visibleFinishes = visibleFinishEntries(item, adjustment)
 
   useEffect(() => {
     const patches = autoTrimWeights(item, { finishes, rolls, steps }, {
       autoTrimUuids: autoTrimUuids.current,
       manualTrimUuids: manualTrimUuids.current,
+      adjustment: adjustmentValue,
     })
     for (const patch of patches) {
       const path: ['finishes', string, 'actualWeight'] = ['finishes', patch.uuid, 'actualWeight']
@@ -41,8 +50,9 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted, sour
       }
       form.setFieldValue(path, patch.actualWeight)
       autoTrimUuids.current.add(patch.uuid)
+      onDirty?.()
     }
-  }, [finishes, form, item, rolls, steps])
+  }, [adjustmentValue, finishes, form, item, onDirty, rolls, steps])
 
   const applyBatchSpecs = (values: BatchSpecValues) => {
     const targets = item.finishes.filter(({ finish }) => finish.isSpare !== 1 && finish.isRemain !== 1 && finish.rollNoStatus !== 3)
@@ -55,6 +65,7 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted, sour
       applied += 1
     }
     setBatchOpen(false)
+    if (applied > 0) onDirty?.()
     message.success(`已填写 ${applied} 件正式成品的现场规格`)
   }
 
@@ -66,11 +77,18 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted, sour
           {onSite && <Button size="small" icon={<EditOutlined />} onClick={() => setBatchOpen(true)}>批量填写门幅</Button>}
         </Space>
       </div>
+      <BackRecordFinishAdjustmentPanel item={item} onDirty={onDirty} />
       {item.finishes.length === 0 ? (
-        <Alert showIcon type="info" message="当前母卷没有已绑定成品。直发卷会在提交回录时由后端生成出库用记录。" />
+        <Alert
+          showIcon
+          type="info"
+          message={item.roll?.processMode === 1
+            ? '当前母卷没有计划成品，可通过“调整实际产出”补录现场成品。'
+            : '当前母卷没有已绑定成品。直发卷会在提交回录时由后端生成出库用记录。'}
+        />
       ) : (
         <div className="back-record-finish-list">
-          {item.finishes.map((entry) => (
+          {visibleFinishes.map((entry) => (
             <FinishEntryRow
               key={entry.finish.uuid}
               abnormalTypeOptions={abnormalTypeOptions}
@@ -91,6 +109,20 @@ export default function BackRecordFinishEntryList({ item, onFieldExhausted, sour
               onFieldExhausted={onFieldExhausted}
             />
           ))}
+          {adjustment.added.map((added) => (
+            <FinishEntryRow
+              key={added.uuid}
+              abnormalTypeOptions={abnormalTypeOptions}
+              entry={{ finish: addedFinishEntity(added, item.finishes[0]?.finish), bindMode: 'linked' }}
+              maxWidth={item.roll?.actualWidth ?? item.roll?.originalWidth}
+              onSite={onSite}
+              sourceOptions={adjustmentSourceOptions}
+              allowWidth
+              added
+              onActualWeightChange={() => undefined}
+              onFieldExhausted={onFieldExhausted}
+            />
+          ))}
         </div>
       )}
       <BackRecordBatchSpecModal maxWidth={item.roll?.actualWidth ?? item.roll?.originalWidth} open={batchOpen} onCancel={() => setBatchOpen(false)} onApply={applyBatchSpecs} />
@@ -103,6 +135,8 @@ function FinishEntryRow({
   entry,
   maxWidth,
   onSite,
+  allowWidth,
+  added,
   sourceOptions,
   onActualWeightChange,
   onFieldExhausted,
@@ -111,6 +145,8 @@ function FinishEntryRow({
   entry: WorkbenchFinish
   maxWidth?: number
   onSite: boolean
+  allowWidth?: boolean
+  added?: boolean
   sourceOptions: BackRecordSourceOption[]
   onActualWeightChange: (value: number | null) => void
   onFieldExhausted: () => void
@@ -128,11 +164,12 @@ function FinishEntryRow({
           </Tag>
           {entry.bindMode === 'inferred' && <Tag color="warning">辅助匹配</Tag>}
           {entry.bindMode === 'pool' && <Tag color="warning">待核对</Tag>}
+          {added && <Tag color="blue">实际新增</Tag>}
         </div>
       </div>
       <BackRecordFinishFields
         abnormalTypeOptions={abnormalTypeOptions}
-        context={{ maxWidth, needsSource: entry.bindMode === 'pool', onSite, sourceOptions }}
+        context={{ maxWidth, needsSource: added || entry.bindMode === 'pool', onSite, sourceOptions, allowFinishWidth: allowWidth }}
         finish={finish}
         onActualWeightChange={onActualWeightChange}
         onFieldExhausted={onFieldExhausted}

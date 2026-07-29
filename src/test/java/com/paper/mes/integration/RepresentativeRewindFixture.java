@@ -9,6 +9,8 @@ import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.RewindPlanPreviewDTO;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.warehouse.entity.Warehouse;
+import com.paper.mes.warehouse.mapper.WarehouseMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +25,7 @@ class RepresentativeRewindFixture {
 
     private final CustomerMapper customerMapper;
     private final ProcessOrderService processOrderService;
+    private final WarehouseMapper warehouseMapper;
 
     RepresentativeOrderFixture.Scenario create(int rewindMode) {
         Customer customer = createCustomer();
@@ -75,12 +78,25 @@ class RepresentativeRewindFixture {
     private ProcessOrderCreateDTO order(Customer customer) {
         ProcessOrderCreateDTO dto = new ProcessOrderCreateDTO();
         dto.setCustomerUuid(customer.getUuid());
+        dto.setWarehouseUuid(createWarehouse().getUuid());
         dto.setOrderDate(LocalDate.now());
         dto.setPriority(1);
         dto.setIsInvoice(2);
         dto.setSettleType(2);
         dto.setOriginalRolls(List.of(rewindRoll()));
         return dto;
+    }
+
+    private Warehouse createWarehouse() {
+        String token = token();
+        Warehouse warehouse = new Warehouse();
+        warehouse.setUuid(token);
+        warehouse.setWarehouseCode("IT-WH-" + token.substring(0, 8));
+        warehouse.setWarehouseName("复卷业务流测试仓");
+        warehouse.setStatus(1);
+        warehouse.setIsDefault(0);
+        warehouseMapper.insert(warehouse);
+        return warehouse;
     }
 
     private OriginalRollDTO rewindRoll() {
@@ -130,7 +146,7 @@ class RepresentativeRewindFixture {
 
     private List<RewindPlanPreviewDTO.RewindLayoutItemDTO> layout(int rewindMode) {
         return switch (rewindMode) {
-            case 1 -> List.of(item(500, 2), item(480, 1));
+            case 1 -> List.of(item(500, 2), item(480, 1), trim(20));
             case 2 -> List.of(item(1500, 1));
             case 3 -> List.of(item(750, 2));
             case 4 -> List.of(layeredItem());
@@ -151,6 +167,12 @@ class RepresentativeRewindFixture {
         dto.setItemType("FINISH");
         dto.setWidth(width);
         dto.setQuantity(quantity);
+        return dto;
+    }
+
+    private RewindPlanPreviewDTO.RewindLayoutItemDTO trim(int width) {
+        RewindPlanPreviewDTO.RewindLayoutItemDTO dto = item(width, 1);
+        dto.setItemType("TRIM");
         return dto;
     }
 

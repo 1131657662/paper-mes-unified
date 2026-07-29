@@ -3,7 +3,7 @@ import { Button } from 'antd'
 import { EyeOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { getOperationLogs } from '../../api/operationLog'
 import { mesTablePagination } from '../../components/biz/mesPaginationUtils'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
@@ -27,7 +27,7 @@ const BIZ_ROUTE_PREFIX: Record<string, string> = {
 }
 
 export default function OperationLogPage() {
-  const actionRef = useRef<ActionType>()
+  const actionRef = useRef<ActionType | undefined>(undefined)
   const columnsState = useTableColumnsState('table-columns-operation-log')
   const navigate = useNavigate()
   const [selectedLog, setSelectedLog] = useState<OperationLog>()

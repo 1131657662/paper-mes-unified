@@ -2,6 +2,7 @@ package com.paper.mes.processorder.service;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ErrorCode;
@@ -66,6 +67,16 @@ class DraftOrderVersionGuardTest {
         when(orderMapper.update(isNull(), any(LambdaUpdateWrapper.class))).thenReturn(0);
 
         assertThatThrownBy(() -> guard.advance("order-1", 4))
+                .isInstanceOf(BusinessException.class)
+                .extracting(error -> ((BusinessException) error).getErrorCode())
+                .isEqualTo(ErrorCode.E006.getCode());
+    }
+
+    @Test
+    void lockedVersionChangedAfterInitialRead_isConcurrencyConflict() {
+        when(orderMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(order(5));
+
+        assertThatThrownBy(() -> guard.assertLockedExpected("order-1", 4))
                 .isInstanceOf(BusinessException.class)
                 .extracting(error -> ((BusinessException) error).getErrorCode())
                 .isEqualTo(ErrorCode.E006.getCode());

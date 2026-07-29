@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -22,5 +23,6 @@ public class BackRecordTrimDTO {
     @DecimalMin(value = "0.001", message = "切边实际重量必须大于0")
     private BigDecimal actualWeight;
 
+    @Size(max = 255, message = "切边备注不能超过255个字符")
     private String actualRemark;
 }

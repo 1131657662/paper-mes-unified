@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { PlusOutlined } from '@ant-design/icons'
 import { Button, Empty, Form, message, Space, Typography } from 'antd'
 import type { OnSiteOutputRecordValues } from './backRecordUtils'
+import { nextOnSiteFinishOutput } from './backRecordOnSiteOutputModel'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 import type { BackRecordSourceOption } from './BackRecordFinishFields'
 import BackRecordOnSiteOutputRow from './BackRecordOnSiteOutputRow'
@@ -9,11 +10,12 @@ import BackRecordBatchSpecModal, { type BatchSpecValues } from './BackRecordBatc
 
 interface Props {
   item: BackRecordWorkItem
+  onDirty?: () => void
   onFieldExhausted: () => void
   sourceOptions: BackRecordSourceOption[]
 }
 
-export default function BackRecordOnSiteOutputList({ item, onFieldExhausted, sourceOptions }: Props) {
+export default function BackRecordOnSiteOutputList({ item, onDirty, onFieldExhausted, sourceOptions }: Props) {
   const form = Form.useFormInstance()
   const [batchOpen, setBatchOpen] = useState(false)
   const options = itemSourceOptions(item, sourceOptions)
@@ -24,6 +26,7 @@ export default function BackRecordOnSiteOutputList({ item, onFieldExhausted, sou
       ? { ...row, finishWidth: values.finishWidth, finishDiameter: values.finishDiameter ?? row.finishDiameter, finishCoreDiameter: values.finishCoreDiameter ?? row.finishCoreDiameter }
       : row)
     form.setFieldValue(path, next)
+    onDirty?.()
     setBatchOpen(false)
     message.success(`已填写 ${next.filter((row) => row.outputType === 'FINISH').length} 件成品规格`)
   }
@@ -34,8 +37,16 @@ export default function BackRecordOnSiteOutputList({ item, onFieldExhausted, sou
           {(fields, { add, remove }) => (
             <>
               <OutputHeader
-                addFinish={() => add(defaultOutput('FINISH', options))}
-                addTrim={() => add(defaultOutput('TRIM', options))}
+                addFinish={() => {
+                  const path = ['onSiteOutputs', item.key] as const
+                  const rows = (form.getFieldValue(path) ?? []) as OnSiteOutputRecordValues[]
+                  const defaultSource = options.length === 1 ? options[0]?.value : undefined
+                  const output = nextOnSiteFinishOutput(item, rows, defaultSource)
+                  add(output)
+                  onDirty?.()
+                  if (output.isSpare === 1) message.success(`已启用备用卷号 ${output.finishRollNo}`)
+                }}
+                addTrim={() => { add(defaultOutput('TRIM', options)); onDirty?.() }}
                 openBatch={() => setBatchOpen(true)}
               />
               {fields.length === 0 ? (
@@ -44,12 +55,12 @@ export default function BackRecordOnSiteOutputList({ item, onFieldExhausted, sou
                 <div className="back-record-output-list">
                   {fields.map((field, index) => (
                     <BackRecordOnSiteOutputRow
-                      key={field.key}
+                      key={`${item.key}:${field.key}:${field.name}`}
                       fieldName={field.name}
                       index={index}
                       itemKey={item.key}
                       onFieldExhausted={onFieldExhausted}
-                      onRemove={() => remove(field.name)}
+                      onRemove={() => { remove(field.name); onDirty?.() }}
                       options={options}
                     />
                   ))}

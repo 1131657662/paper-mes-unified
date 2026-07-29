@@ -44,6 +44,7 @@ public class DraftRollProcessManager {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireDraft(orderUuid);
         versionGuard.assertExpected(order, dto.getExpectedVersion());
+        versionGuard.assertLockedExpected(orderUuid, dto.getExpectedVersion());
         Map<String, OriginalRoll> rolls = requireRolls(orderUuid, dto.getRolls());
         versionGuard.advance(orderUuid, dto.getExpectedVersion());
         for (DraftRollProcessDTO item : dto.getRolls()) {
@@ -98,6 +99,8 @@ public class DraftRollProcessManager {
         roll.setProcessMode(item.getProcessMode());
         roll.setMainStepType(item.getMainStepType());
         roll.setMachineUuid(item.getMachineUuid());
+        roll.setUpdateBy(null);
+        roll.setUpdateTime(null);
         ConcurrencyGuard.requireRowUpdated(rollMapper.updateById(roll));
     }
 

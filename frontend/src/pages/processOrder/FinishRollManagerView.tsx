@@ -29,17 +29,18 @@ interface Props {
 export default function FinishRollManagerView({ actions, detail, state }: Props) {
   const rolls = detail?.finishRolls ?? []
   const filteredRolls = filterFinishRolls(rolls, state.filters)
-  const settled = detail?.order.orderStatus === 5
+  const orderStatus = detail?.order.orderStatus ?? 0
+  const readOnly = orderStatus !== 1
   const allDirectShip = detail?.originalRolls.every((roll) => roll.processMode === 3) ?? false
   return (
     <div className="finish-roll-manager">
-      {settled && <Alert showIcon type="warning" message="已结算订单费用已锁定，不可修改成品卷号" />}
+      {readOnly && <Alert showIcon type="info" message="加工单下发后，成品号在此处只读；现场数量差异请在回录工作台调整实际产出。" />}
       <FinishRollSummary stats={finishRollStats(rolls)} />
       <FinishRollManagerToolbar
         actions={{ onAppendSpare: actions.onAppendSpare, onBatchVoid: actions.onBatchVoid, onChangeFilters: actions.onChangeFilters, onGenerate: actions.onGenerate }}
-        state={{ allDirectShip, filteredCount: filteredRolls.length, filters: state.filters, selectedCount: state.selectedKeys.length, settled, totalCount: rolls.length }}
+        state={{ allDirectShip, filteredCount: filteredRolls.length, filters: state.filters, readOnly, selectedCount: state.selectedKeys.length, totalCount: rolls.length }}
       />
-      <FinishRollManagerTable rows={filteredRolls} selectedKeys={state.selectedKeys} settled={settled} onSelectionChange={actions.onSelectionChange} onVoid={actions.onVoid} />
+      <FinishRollManagerTable rows={filteredRolls} selectedKeys={state.selectedKeys} readOnly={readOnly} onSelectionChange={actions.onSelectionChange} onVoid={actions.onVoid} />
     </div>
   )
 }

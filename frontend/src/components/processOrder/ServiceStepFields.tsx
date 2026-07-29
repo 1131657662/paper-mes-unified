@@ -33,22 +33,25 @@ export default function ServiceStepFields({ catalog, billingMode, billingBasis, 
         rules={[{ required: true }]}>
         <Radio.Group options={billingOptions} optionType="button" buttonStyle="solid" />
       </Form.Item>
-      {activeBillingMode === 0 && <PendingPricingFields catalog={catalog} compact={compact} />}
+      {activeBillingMode === 0 && <PendingPricingFields
+        catalog={catalog} defaultBillingBasis={defaultUnit?.code} compact={compact} />}
       {activeBillingMode === 1 && <StandardServiceFields catalog={catalog} unitName={unitName}
-        compact={compact} />}
+        defaultBillingBasis={defaultUnit?.code} compact={compact} />}
       {activeBillingMode === 3 && <FixedAmountFields batchMode={batchMode} compact={compact} />}
     </>
   )
 }
 
-function StandardServiceFields({ catalog, unitName, compact }: {
+function StandardServiceFields({ catalog, unitName, defaultBillingBasis, compact }: {
   catalog: ProcessCatalog
   unitName: string
+  defaultBillingBasis?: string
   compact?: boolean
 }) {
   return (
     <>
       <Form.Item className="service-step-fields__unit" label="计费单位" name="billingBasis"
+        initialValue={defaultBillingBasis} preserve
         rules={[{ required: true, message: '请选择计费单位' }]}>
         <Select options={catalog.units.map((unit) => ({ label: unit.name, value: unit.code }))} />
       </Form.Item>
@@ -60,13 +63,15 @@ function StandardServiceFields({ catalog, unitName, compact }: {
   )
 }
 
-function PendingPricingFields({ catalog, compact }: {
+function PendingPricingFields({ catalog, defaultBillingBasis, compact }: {
   catalog: ProcessCatalog
+  defaultBillingBasis?: string
   compact?: boolean
 }) {
   return (
     <>
       <Form.Item className="service-step-fields__unit" label="预计计费单位" name="billingBasis"
+        initialValue={defaultBillingBasis} preserve
         rules={[{ required: true, message: '请选择后续计费单位' }]}>
         <Select options={catalog.units.map((unit) => ({ label: unit.name, value: unit.code }))} />
       </Form.Item>
@@ -106,6 +111,7 @@ function FixedAmountFields({ batchMode, compact }: { batchMode?: boolean; compac
       <Form.Item className="service-step-fields__amount"
         label={batchMode ? '固定金额（元）' : compact ? '金额（元）' : '本卷固定金额（元）'}
         name="billingAmount"
+        preserve
         extra={batchMode || compact
           ? '保存当前卷时始终作为本卷金额；批量应用时按上方口径分摊或逐卷复制。'
           : undefined}

@@ -90,7 +90,7 @@ final class DeliveryRollbackSnapshotReader {
             return null;
         }
         try {
-            return node.isNumber() ? node.asInt() : Integer.valueOf(node.asText());
+            return node.isNumber() ? node.asInt() : Integer.parseInt(node.asText());
         } catch (NumberFormatException ignored) {
             return null;
         }

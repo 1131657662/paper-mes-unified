@@ -1,5 +1,5 @@
 import { Alert, Card, Spin } from 'antd'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import ReportFilterSummary from '../../features/report/components/ReportFilterSummary'
 import ReportMetricContextBar from '../../features/report/components/ReportMetricContextBar'

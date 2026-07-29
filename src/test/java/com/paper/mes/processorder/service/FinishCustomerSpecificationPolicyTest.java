@@ -32,6 +32,19 @@ class FinishCustomerSpecificationPolicyTest {
                 () -> FinishCustomerSpecificationPolicy.apply(physicalFinish(), customerSpec(null), "planner"));
     }
 
+    @Test
+    void preview_validation_rejects_customer_override_without_reason() {
+        assertThrows(BusinessException.class, () ->
+                FinishCustomerSpecificationPolicy.requireOverrideReason(
+                        "白卡纸", 265, 1000, "白卡纸", 275, 1000, " "));
+    }
+
+    @Test
+    void preview_validation_allows_identical_customer_spec_without_reason() {
+        FinishCustomerSpecificationPolicy.requireOverrideReason(
+                "白卡纸", 265, 1000, "白卡纸", 265, 1000, null);
+    }
+
     private FinishRoll physicalFinish() {
         FinishRoll finish = new FinishRoll();
         finish.setPaperName("白卡纸");

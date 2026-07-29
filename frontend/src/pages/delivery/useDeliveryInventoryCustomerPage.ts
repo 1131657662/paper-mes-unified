@@ -1,6 +1,6 @@
 import { message } from 'antd'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { PERMISSIONS } from '../../constants/permissions'
 import { useDeliveryInventoryCustomers } from '../../features/delivery/hooks/useDeliveryInventoryCustomers'
 import { useDeliveryInventoryFinishes } from '../../features/delivery/hooks/useDeliveryInventoryFinishes'

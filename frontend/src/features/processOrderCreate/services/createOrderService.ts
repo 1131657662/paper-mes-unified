@@ -38,6 +38,7 @@ export const createOrderService = {
   machines: () => pageMachines({ current: 1, size: 500, status: 1 }),
   drafts: () => listProcessOrderDrafts(),
   draft: (uuid: string) => getProcessOrderDraft(uuid),
+  draftForRecovery: (uuid: string) => getProcessOrderDraft(uuid, { silentError: true }),
   createDraft: (dto: DraftOrderBaseDTO) => createProcessOrderDraft(dto),
   saveBaseInfo: (params: { uuid: string; dto: DraftOrderBaseDTO }) =>
     saveDraftBaseInfo(params.uuid, params.dto),
@@ -57,8 +58,11 @@ export const createOrderService = {
   }) => saveProcessConfigDraft(params.orderUuid, params.rollUuid, {
     config: params.config, expectedVersion: params.expectedVersion,
   }),
-  previewPlan: (params: { orderUuid: string; request: ProcessPlanPreviewRequestDTO }) =>
-    previewProcessPlan(params.orderUuid, params.request),
+  previewPlan: (params: {
+    orderUuid: string
+    request: ProcessPlanPreviewRequestDTO
+    signal?: AbortSignal
+  }) => previewProcessPlan(params.orderUuid, params.request, params.signal),
   previewRoute: (params: { orderUuid: string; request: ProcessRoutePreviewDTO }) =>
     previewProcessRoute(params.orderUuid, params.request),
   saveRoute: (params: { orderUuid: string; request: ProcessRoutePreviewDTO }) =>

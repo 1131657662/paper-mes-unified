@@ -37,6 +37,7 @@ class OnSiteRewindBusinessFlowIT {
     @Test
     void onSiteRewind_withoutPreGeneratedFinish_recordsActualSpecificationAtCompletion() {
         scenario = fixture.createOnSite();
+        processOrderService.issue(scenario.orderUuid());
         processOrderService.print(scenario.orderUuid(), new PrintDTO());
         processOrderService.changeStatus(scenario.orderUuid(), 3, null);
         var before = processOrderService.getDetail(scenario.orderUuid());
@@ -56,6 +57,7 @@ class OnSiteRewindBusinessFlowIT {
     @Test
     void onSiteRewind_withInvalidInventoryWidth_isReportedAsCriticalHealthIssue() {
         scenario = fixture.createOnSite();
+        processOrderService.issue(scenario.orderUuid());
         processOrderService.print(scenario.orderUuid(), new PrintDTO());
         processOrderService.changeStatus(scenario.orderUuid(), 3, null);
         var before = processOrderService.getDetail(scenario.orderUuid());
@@ -76,6 +78,7 @@ class OnSiteRewindBusinessFlowIT {
         BackRecordDTO dto = new BackRecordDTO();
         dto.setExpectedVersion(detail.getOrder().getVersion());
         dto.setCompleteOrder(true);
+        dto.setWarehouseUuid(detail.getOrder().getWarehouseUuid());
         dto.setRolls(List.of(rollRecord(roll.getUuid())));
         dto.setFinishes(List.of(finishRecord(roll.getUuid())));
         BackRecordStepDTO step = new BackRecordStepDTO();

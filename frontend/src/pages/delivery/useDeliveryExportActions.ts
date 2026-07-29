@@ -1,5 +1,5 @@
 import { message } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useExportDeliveryList } from '../../features/delivery/hooks/useExportDeliveryList'
 import { useCreateDeliveryOrderExportTask } from '../../features/exportTask/hooks/useCreateDeliveryOrderExportTask'
 import type { DeliveryOrder, DeliveryQuery } from '../../types/delivery'

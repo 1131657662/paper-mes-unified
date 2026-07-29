@@ -176,9 +176,17 @@ function layoutWidth(segment: RewindSegmentPlanDTO, type: 'FINISH' | 'TRIM') {
 
 function layerArea(targetDiameter?: number, coreDiameter?: number) {
   if (!targetDiameter || !coreDiameter) return 0
-  const outRadius = targetDiameter * 25.4 / 2
-  const coreRadius = coreDiameter * 25.4 / 2
+  const outRadius = storedOuterDiameterMm(targetDiameter) / 2
+  const coreRadius = storedCoreDiameterMm(coreDiameter) / 2
   return Math.PI * (outRadius * outRadius - coreRadius * coreRadius)
+}
+
+function storedOuterDiameterMm(value: number) {
+  return value > 0 && value < 100 ? value * 25.4 : value
+}
+
+function storedCoreDiameterMm(value: number) {
+  return value > 0 && value < 10 ? value * 25.4 : value
 }
 
 function layoutLayerArea(layers?: { outDiameter?: number; coreDiameter?: number }[]) {

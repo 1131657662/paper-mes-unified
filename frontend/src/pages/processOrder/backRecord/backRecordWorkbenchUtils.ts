@@ -1,14 +1,12 @@
 import { buildDisplayRows } from '../../../components/processOrder/shared/displayRowBuilder'
 import { buildProcessingFlow } from '../../../components/processOrder/shared/detailHelpers'
-import {
-  compareFinishProductions,
-  compareOriginalRolls,
-} from '../../../components/processOrder/shared/productionSpecificationOrder'
+import { compareFinishProductions } from '../../../components/processOrder/shared/productionSpecificationOrder'
 import type { DisplayRow } from '../../../components/processOrder/shared/types'
-import type { FinishRoll, OriginalRoll, ProcessOrderDetailVO } from '../../../types/processOrder'
+import type { OriginalRoll, ProcessOrderDetailVO } from '../../../types/processOrder'
 import { formatGram, formatMm } from '../../../utils/numberFormatters'
 import { activeFinishRolls, type BackRecordFormValues } from './backRecordUtils'
 import type { BackRecordWorkItem, BackRecordWorkbenchData, WorkbenchFinish } from './backRecordWorkbenchTypes'
+import { addedFinishEntities, isFinishProduced, normalizeFinishAdjustment } from './backRecordFinishAdjustment'
 
 export interface WorkItemMetrics {
   rollActual?: number
@@ -26,7 +24,10 @@ export interface WorkItemMetrics {
 
 export function buildBackRecordWorkbench(detail: ProcessOrderDetailVO): BackRecordWorkbenchData {
   const rows = buildDisplayRows(detail.rollProductions ?? [])
-  const items = rows.length > 0 ? rows.map((row) => fromDisplayRow(row, detail)) : fromOriginalRolls(detail)
+  const rollSequence = buildRollSequence(detail.originalRolls)
+  const items = rows.length > 0
+    ? rows.map((row) => fromDisplayRow(row, detail, rollSequence))
+    : fromOriginalRolls(detail)
   attachFinishes(items, detail)
   return { items: appendPool(items, detail) }
 }
@@ -37,17 +38,22 @@ export function buildWorkItemMetrics(
 ): WorkItemMetrics {
   if (item.roll?.processMode === 2) return buildOnSiteMetrics(item, values)
   const rollActual = item.roll ? values.rolls?.[item.roll.uuid]?.actualWeight ?? item.roll.actualWeight : undefined
-  const official = item.finishes.filter(({ finish }) => finish.isSpare !== 1)
+  const adjustment = normalizeFinishAdjustment(item, values.finishAdjustments?.[item.key])
+  const official = item.finishes.filter(({ finish }) => finish.isSpare !== 1 && isFinishProduced(finish.uuid, adjustment))
   const products = official.filter(({ finish }) => finish.isRemain !== 1)
+  const added = addedFinishEntities(item, adjustment)
   const remains = official.filter(({ finish }) => finish.isRemain === 1)
   const trims = values.trims?.[item.key] ?? []
   const productActual = sum(products.map(({ finish }) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight))
+    + sum(added.map((finish) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight))
   const trimActual = sum(remains.map(({ finish }) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight))
     + sum(trims.map((trim) => trim.actualWeight))
   const finishActual = productActual + trimActual
   const loss = sum(processSteps(item).map((step) => values.steps?.[step.uuid]?.lossWeight ?? step.lossWeight))
   const scrap = sum(item.finishes.map(({ finish }) => values.finishes?.[finish.uuid]?.scrapWeight ?? finish.scrapWeight))
-  const missingFinishes = official.filter(({ finish }) => !positive(values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight)).length
+    + sum(added.map((finish) => values.finishes?.[finish.uuid]?.scrapWeight ?? finish.scrapWeight))
+  const missingFinishes = products.filter(({ finish }) => !positive(values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight)).length
+    + added.filter((finish) => !positive(values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight)).length
     + trims.filter((trim) => !positive(trim.actualWeight)).length
   const missingFinishWidths = item.roll?.processMode === 2
     ? official.filter(({ finish }) => !positive(values.finishes?.[finish.uuid]?.finishWidth ?? validWidth(finish.finishWidth))).length
@@ -131,12 +137,17 @@ export function processLines(item: BackRecordWorkItem): Array<{ header: string; 
   return buildProcessingFlow(item.production)
 }
 
-function fromDisplayRow(row: DisplayRow, detail: ProcessOrderDetailVO): BackRecordWorkItem {
+function fromDisplayRow(
+  row: DisplayRow,
+  detail: ProcessOrderDetailVO,
+  rollSequence: Map<string, number>,
+): BackRecordWorkItem {
   const roll = detail.originalRolls.find((item) => item.uuid === row.mainProduction.originalUuid)
+  const sequence = roll ? rollSequence.get(roll.uuid) ?? row.seq : row.seq
   return {
     key: row.key,
     kind: 'roll',
-    title: row.isMergeGroup ? `合并复卷 ${row.rollProductions.length} 卷` : rollName(roll, row.seq),
+    title: row.isMergeGroup ? `合并复卷 ${row.rollProductions.length} 卷` : rollName(roll, sequence),
     subtitle: row.rollProductions.map(sourceText).join(' / '),
     roll,
     production: row.mainProduction,
@@ -148,7 +159,7 @@ function fromDisplayRow(row: DisplayRow, detail: ProcessOrderDetailVO): BackReco
 }
 
 function fromOriginalRolls(detail: ProcessOrderDetailVO): BackRecordWorkItem[] {
-  return [...detail.originalRolls].sort(compareOriginalRolls).map((roll, index) => ({
+  return detail.originalRolls.map((roll, index) => ({
     key: `roll-${roll.uuid}`,
     kind: 'roll',
     title: rollName(roll, index + 1),
@@ -164,7 +175,6 @@ function fromOriginalRolls(detail: ProcessOrderDetailVO): BackRecordWorkItem[] {
 function attachFinishes(items: BackRecordWorkItem[], detail: ProcessOrderDetailVO) {
   const active = activeFinishRolls(detail)
   const byUuid = new Map(active.map((finish) => [finish.uuid, finish]))
-  const assigned = new Set<string>()
 
   for (const item of items) {
     const finishes = [...(item.production?.finishes ?? [])].sort(compareFinishProductions)
@@ -173,27 +183,14 @@ function attachFinishes(items: BackRecordWorkItem[], detail: ProcessOrderDetailV
       if (!matched) continue
       item.finishes.push({ finish: matched, bindMode: 'linked' })
       item.sourceMode = 'linked'
-      assigned.add(matched.uuid)
     }
   }
-
-  inferOneToOne(items, active.filter((finish) => !assigned.has(finish.uuid)))
 }
 
-function inferOneToOne(items: BackRecordWorkItem[], unassigned: FinishRoll[]) {
-  const targets = items.filter((item) => item.kind === 'roll' && item.roll?.processMode !== 3 && item.finishes.length === 0)
-  const official = unassigned.filter((finish) => finish.isSpare !== 1)
-  const hasLinked = items.some((item) => item.sourceMode === 'linked')
-  if (hasLinked || targets.length === 0 || targets.length !== official.length) return
-
-  official
-    .sort((a, b) => (a.rowSort ?? 0) - (b.rowSort ?? 0))
-    .forEach((finish, index) => {
-      const target = targets[index]
-      if (!target) return
-      target.finishes.push({ finish, bindMode: 'inferred' })
-      target.sourceMode = 'inferred'
-    })
+function buildRollSequence(rolls: OriginalRoll[]): Map<string, number> {
+  return new Map(
+    rolls.map((roll, index) => [roll.uuid, index + 1]),
+  )
 }
 
 function appendPool(items: BackRecordWorkItem[], detail: ProcessOrderDetailVO): BackRecordWorkItem[] {

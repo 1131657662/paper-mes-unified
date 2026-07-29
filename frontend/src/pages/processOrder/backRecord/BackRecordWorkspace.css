@@ -154,10 +154,22 @@
 
 .back-record-nav__head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 6px;
   padding: 12px;
   border-bottom: 1px solid var(--mes-color-border-light);
+}
+
+.back-record-nav__title-row,
+.back-record-nav__selection-actions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.back-record-nav__selection-actions .ant-btn {
+  padding-inline: 2px;
 }
 
 .back-record-nav__list {
@@ -168,6 +180,13 @@
 
 .back-record-nav-item-shell {
   position: relative;
+}
+
+.back-record-nav-item__reopen {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+  padding: 0 8px 4px;
 }
 
 .back-record-nav-item__selector {
@@ -440,6 +459,43 @@
   gap: 10px;
   overflow-x: auto;
   padding-bottom: 2px;
+}
+
+.back-record-finish-adjustment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  background: #fffaf0;
+  border: 1px solid #ffe7ba;
+  border-radius: var(--mes-radius-sm);
+}
+
+.back-record-finish-adjustment > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.back-record-finish-adjustment__added-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0 6px;
+}
+
+.back-record-finish-row__not-produced {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #fff1f0;
+  border: 1px dashed #ffa39e;
+  border-radius: var(--mes-radius-sm);
 }
 
 .back-record-finish-row {

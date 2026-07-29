@@ -92,6 +92,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private static final int DELIVERY_STATUS_VOID = 3;
     private static final int STOCK_LOCK_RELEASED = 0;
     private static final int STOCK_LOCK_ACTIVE = 1;
+    private static final int ORDER_STATUS_TO_RECORD = 3;
     private static final int ORDER_STATUS_FINISHED = 4;
     private static final int ORDER_STATUS_SETTLED = 5;
 
@@ -139,7 +140,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         List<ProcessOrder> orders = processOrderMapper.selectList(
                 new LambdaQueryWrapper<ProcessOrder>()
                         .eq(ProcessOrder::getCustomerUuid, customerUuid)
-                        .in(ProcessOrder::getOrderStatus, List.of(ORDER_STATUS_FINISHED, ORDER_STATUS_SETTLED)));
+                        .in(ProcessOrder::getOrderStatus,
+                                List.of(ORDER_STATUS_TO_RECORD, ORDER_STATUS_FINISHED, ORDER_STATUS_SETTLED)));
         if (orders.isEmpty()) {
             return new ArrayList<>();
         }
@@ -406,10 +408,12 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         List<DeliveryDetail> details = deliveryDetails(uuid);
         businessLockService.lockProcessOrders(details.stream().map(DeliveryDetail::getOrderUuid).toList());
-        businessLockService.lockFinishRolls(details.stream().map(DeliveryDetail::getFinishUuid).toList());
+        List<String> finishUuids = details.stream().map(DeliveryDetail::getFinishUuid).distinct().toList();
+        businessLockService.lockFinishRolls(finishUuids);
         ensureOrdersNotSettled(details);
+        Map<String, FinishRoll> finishByUuid = loadFinishRollsByUuid(finishUuids);
         for (DeliveryDetail detail : details) {
-            FinishRoll finish = finishRollMapper.selectById(detail.getFinishUuid());
+            FinishRoll finish = finishByUuid.get(detail.getFinishUuid());
             if (!isReturnableFinish(finish)) {
                 throw new BusinessException("成品状态已变更，不可回退：" + detail.getFinishRollNo());
             }
@@ -1188,7 +1192,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
     private boolean canDeliveryProcessOrder(ProcessOrder order) {
         Integer status = order.getOrderStatus();
-        return status != null && (status == ORDER_STATUS_FINISHED || status == ORDER_STATUS_SETTLED);
+        return status != null && (status == ORDER_STATUS_TO_RECORD
+                || status == ORDER_STATUS_FINISHED || status == ORDER_STATUS_SETTLED);
     }
 
     private void requireConfirmableOrders(List<DeliveryDetail> details,

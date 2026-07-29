@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { Spin } from 'antd'
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router'
 import AuthGuard from './AuthGuard'
 import PermissionGuard from '../components/PermissionGuard'
 import RouteErrorBoundary from './RouteErrorBoundary'
@@ -10,7 +10,6 @@ import { PERMISSIONS } from '../constants/permissions'
 import {
   AuthenticatedLayout,
   BackRecordPage,
-  ConfigFinishPage,
   CreateOrderPage,
   CustomerDetailPage,
   CustomerFormPage,
@@ -111,7 +110,7 @@ export const router = createBrowserRouter([
           { path: 'process-orders/create/:uuid/routes/:rollUuid', element: guardedPage(<RouteDesignerPage />, [PERMISSIONS.orderCreate]) },
           { path: 'process-orders/:uuid', element: guardedPage(<OrderDetailPage />, [PERMISSIONS.orderView]) },
           { path: 'process-orders/:uuid/back-record', element: guardedPage(<BackRecordPage />, [PERMISSIONS.orderBackRecord]) },
-          { path: 'process-orders/:uuid/config-finish', element: guardedPage(<ConfigFinishPage />, [PERMISSIONS.orderManage]) },
+          { path: 'process-orders/:uuid/config-finish', element: guardedPage(<Navigate to=".." relative="path" replace />, [PERMISSIONS.orderView]) },
           { path: 'delivery-orders', element: guardedPage(<DeliveryOrderEntryPage />, [PERMISSIONS.deliveryView]) },
           { path: 'delivery-orders/inventory', element: guardedPage(<DeliveryInventoryPage />, [PERMISSIONS.deliveryView]) },
           { path: 'delivery-orders/inventory/finishes', element: guardedPage(<DeliveryInventoryPage />, [PERMISSIONS.deliveryView]) },

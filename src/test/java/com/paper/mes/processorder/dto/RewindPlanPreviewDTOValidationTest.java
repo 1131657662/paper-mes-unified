@@ -30,6 +30,16 @@ class RewindPlanPreviewDTOValidationTest {
                 violation.getPropertyPath().toString().equals("segments[0].layoutItems[0].quantity"));
     }
 
+    @Test
+    void validate_whenCustomerGramWeightIsNotPositive_rejectsRequest() {
+        RewindPlanPreviewDTO dto = validDto();
+        dto.getSegments().getFirst().getLayoutItems().getFirst().setCustomerGramWeight(0);
+
+        assertThat(validator.validate(dto)).anyMatch(violation ->
+                violation.getPropertyPath().toString().equals(
+                        "segments[0].layoutItems[0].customerGramWeight"));
+    }
+
     private RewindPlanPreviewDTO validDto() {
         RewindPlanPreviewDTO.RewindLayoutItemDTO item = new RewindPlanPreviewDTO.RewindLayoutItemDTO();
         item.setWidth(1000);

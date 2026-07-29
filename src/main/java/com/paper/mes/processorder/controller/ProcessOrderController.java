@@ -5,6 +5,7 @@ import com.paper.mes.common.R;
 import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.processorder.dto.BackRecordDTO;
+import com.paper.mes.processorder.dto.BackRecordReopenDTO;
 import com.paper.mes.processorder.dto.BackRecordResultVO;
 import com.paper.mes.processorder.dto.FeeResultVO;
 import com.paper.mes.processorder.dto.FinishConfigSaveDTO;
@@ -133,17 +134,21 @@ public class ProcessOrderController {
     @PostMapping("/{orderUuid}/rolls/{rollUuid}/finish-config")
     @RequirePermission(Permissions.ORDER_CREATE)
     public R<FinishConfigSaveVO> saveFinishConfig(@PathVariable String orderUuid,
-                                                  @PathVariable String rollUuid,
-                                                  @Valid @RequestBody FinishConfigSaveDTO dto) {
-        return R.success(processOrderService.saveFinishConfig(orderUuid, rollUuid, dto));
+                                                   @PathVariable String rollUuid,
+                                                   @RequestParam Integer expectedVersion,
+                                                   @Valid @RequestBody FinishConfigSaveDTO dto) {
+        return R.success(processOrderService.saveFinishConfig(
+                orderUuid, rollUuid, dto, expectedVersion));
     }
 
     @PostMapping("/{orderUuid}/finish-config/batch")
     @RequirePermission(Permissions.ORDER_CREATE)
     public R<FinishConfigBatchSaveVO> saveFinishConfigBatch(
             @PathVariable String orderUuid,
+            @RequestParam Integer expectedVersion,
             @Valid @RequestBody FinishConfigBatchSaveDTO dto) {
-        return R.success(processOrderService.saveFinishConfigBatch(orderUuid, dto));
+        return R.success(processOrderService.saveFinishConfigBatch(
+                orderUuid, dto, expectedVersion));
     }
 
     @PostMapping("/{orderUuid}/rolls/{rollUuid}/rewind-plan/preview")
@@ -219,6 +224,14 @@ public class ProcessOrderController {
     public R<BackRecordResultVO> backRecord(@PathVariable String uuid,
                                             @Valid @RequestBody BackRecordDTO dto) {
         return R.success(processOrderService.backRecord(uuid, dto));
+    }
+
+    @PostMapping("/{uuid}/back-record/reopen")
+    @RequirePermission(Permissions.ORDER_BACK_RECORD)
+    public R<Void> reopenBackRecordBatch(@PathVariable String uuid,
+                                         @Valid @RequestBody BackRecordReopenDTO dto) {
+        processOrderService.reopenBackRecordBatch(uuid, dto);
+        return R.success();
     }
 
     @PostMapping("/{uuid}/calc-fee")

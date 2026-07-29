@@ -5,6 +5,8 @@ import type {
   BackRecordRollDTO,
   BackRecordStepDTO,
   FinishRoll,
+  BackRecordFinishAction,
+  BackRecordFinishAdjustmentValues,
   OriginalRoll,
   ProcessStep,
   ProcessOrderDetailVO,
@@ -48,6 +50,7 @@ export interface BackRecordFormValues {
   warehouseUuid?: string
   rolls?: Record<string, RollRecordValues>
   finishes?: Record<string, FinishRecordValues>
+  finishAdjustments?: Record<string, BackRecordFinishAdjustmentValues>
   trims?: Record<string, TrimRecordValues[]>
   onSiteOutputs?: Record<string, Array<OnSiteOutputRecordValues | undefined>>
   steps?: Record<string, StepRecordValues>
@@ -82,6 +85,7 @@ export function initialBackRecordValues(detail: ProcessOrderDetailVO): BackRecor
   return {
     rolls: Object.fromEntries(detail.originalRolls.map((roll) => [roll.uuid, rollValues(roll)])),
     finishes: Object.fromEntries(activeFinishRolls(detail).map((finish) => [finish.uuid, finishValues(finish)])),
+    finishAdjustments: {},
     trims: {},
     onSiteOutputs: {},
     steps: Object.fromEntries(detail.steps.map((step) => [step.uuid, stepValues(step)])),
@@ -109,8 +113,14 @@ export function buildBackRecordDTO(
       options?.selectedFinishUuids,
     ))
     .filter((finish) => !onSite.configuredUuids.has(finish.uuid) && !onSite.managedUuids.has(finish.uuid))
-    .map((finish) => toFinishDTO(finish, values.finishes?.[finish.uuid]))
+    .map((finish) => toFinishDTO(
+      finish,
+      values.finishes?.[finish.uuid],
+      finishAction(finish.uuid, values, options?.selectedItemKeys),
+      finishReason(finish.uuid, values, options?.selectedItemKeys),
+    ))
   finishes.push(...onSite.finishes)
+  finishes.push(...addedFinishDTOs(values, options?.selectedItemKeys, options?.selectedRollUuids))
   const trims = [...toLegacyTrimDTOs(values.trims), ...onSite.trims]
     .filter((trim) => selectedRolls.has(trim.originalUuid))
   return {
@@ -255,10 +265,17 @@ function toRollDTO(roll: OriginalRoll, values?: RollRecordValues): BackRecordRol
   }
 }
 
-function toFinishDTO(finish: FinishRoll, values?: FinishRecordValues): BackRecordFinishDTO {
+function toFinishDTO(
+  finish: FinishRoll,
+  values?: FinishRecordValues,
+  productionAction?: BackRecordFinishAction,
+  productionAdjustmentReason?: string,
+): BackRecordFinishDTO {
   return {
     uuid: finish.uuid,
     originalUuid: values?.originalUuid,
+    productionAction,
+    productionAdjustmentReason,
     finishWidth: values?.finishWidth,
     finishDiameter: values?.finishDiameter,
     finishCoreDiameter: values?.finishCoreDiameter,
@@ -269,6 +286,74 @@ function toFinishDTO(finish: FinishRoll, values?: FinishRecordValues): BackRecor
     ...(values?.abnormalType ? { abnormalType: values.abnormalType } : {}),
     ...(values?.actualRemark ? { actualRemark: values.actualRemark } : {}),
   }
+}
+
+function finishAction(
+  finishUuid: string,
+  values: BackRecordFormValues,
+  selectedItemKeys?: Set<string>,
+): BackRecordFinishAction | undefined {
+  const adjustment = findAdjustmentForFinish(finishUuid, values.finishAdjustments, selectedItemKeys)
+  if (!adjustment) return undefined
+  return adjustment.producedFinishUuids.includes(finishUuid) ? 'PRODUCED' : 'NOT_PRODUCED'
+}
+
+function finishReason(
+  finishUuid: string,
+  values: BackRecordFormValues,
+  selectedItemKeys?: Set<string>,
+): string | undefined {
+  return findAdjustmentForFinish(finishUuid, values.finishAdjustments, selectedItemKeys)?.reason
+}
+
+function findAdjustmentForFinish(
+  finishUuid: string,
+  adjustments?: Record<string, BackRecordFinishAdjustmentValues>,
+  selectedItemKeys?: Set<string>,
+) {
+  return Object.entries(adjustments ?? {})
+    .filter(([key]) => !selectedItemKeys || selectedItemKeys.has(key))
+    .map(([, adjustment]) => adjustment)
+    .find((adjustment) => adjustment.plannedFinishUuids.includes(finishUuid))
+}
+
+function addedFinishDTOs(
+  values: BackRecordFormValues,
+  selectedItemKeys?: Set<string>,
+  selectedRollUuids?: Set<string>,
+): BackRecordFinishDTO[] {
+  return Object.entries(values.finishAdjustments ?? {})
+    .filter(([key]) => !selectedItemKeys || selectedItemKeys.has(key))
+    .flatMap(([, adjustment]) => adjustment.added)
+    .filter((added) => !selectedRollUuids || selectedRollUuids.has(added.originalUuid))
+    .map((added) => ({
+      ...valuesToFinishDTO(values.finishes?.[added.uuid]),
+      uuid: undefined,
+      originalUuid: values.finishes?.[added.uuid]?.originalUuid ?? added.originalUuid,
+      productionAction: 'ADDED' as const,
+      productionAdjustmentReason: findAdjustmentReason(values.finishAdjustments, added.uuid),
+    }))
+}
+
+function valuesToFinishDTO(values?: FinishRecordValues): Omit<BackRecordFinishDTO, 'uuid' | 'originalUuid'> {
+  return {
+    finishWidth: values?.finishWidth,
+    finishDiameter: values?.finishDiameter,
+    finishCoreDiameter: values?.finishCoreDiameter,
+    actualWeight: values?.actualWeight,
+    scrapWeight: values?.scrapWeight,
+    isRemain: values?.isRemain ?? 0,
+    isAbnormal: values?.isAbnormal,
+    abnormalType: values?.abnormalType,
+    actualRemark: values?.actualRemark,
+  }
+}
+
+function findAdjustmentReason(
+  adjustments?: Record<string, BackRecordFinishAdjustmentValues>,
+  addedUuid?: string,
+): string | undefined {
+  return Object.values(adjustments ?? {}).find((adjustment) => adjustment.added.some((added) => added.uuid === addedUuid))?.reason
 }
 
 function toStepDTO(step: ProcessStep, values?: StepRecordValues): BackRecordStepDTO {

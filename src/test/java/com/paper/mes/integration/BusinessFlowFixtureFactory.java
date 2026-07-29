@@ -8,6 +8,8 @@ import com.paper.mes.processorder.entity.ProcessStep;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
+import com.paper.mes.warehouse.entity.Warehouse;
+import com.paper.mes.warehouse.mapper.WarehouseMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +25,7 @@ class BusinessFlowFixtureFactory {
     private final ProcessOrderMapper processOrderMapper;
     private final FinishRollMapper finishRollMapper;
     private final ProcessStepMapper processStepMapper;
+    private final WarehouseMapper warehouseMapper;
 
     Scenario createCompletedOrderWithTwoFinishes() {
         String token = id();
@@ -34,6 +37,9 @@ class BusinessFlowFixtureFactory {
     Scenario createCompletedOrderForCustomer(Customer customer) {
         String token = id();
         ProcessOrder order = completedOrder(token, customer);
+        Warehouse warehouse = warehouse(token);
+        warehouseMapper.insert(warehouse);
+        order.setWarehouseUuid(warehouse.getUuid());
         FinishRoll first = finish(order, 1, token.substring(0, 6));
         FinishRoll second = finish(order, 2, token.substring(6, 12));
 
@@ -42,6 +48,16 @@ class BusinessFlowFixtureFactory {
         finishRollMapper.insert(first);
         finishRollMapper.insert(second);
         return new Scenario(customer, order, first, second);
+    }
+
+    private Warehouse warehouse(String token) {
+        Warehouse warehouse = new Warehouse();
+        warehouse.setUuid(id());
+        warehouse.setWarehouseCode("IT-WH-" + token.substring(0, 8));
+        warehouse.setWarehouseName("业务流集成测试仓");
+        warehouse.setStatus(1);
+        warehouse.setIsDefault(0);
+        return warehouse;
     }
 
     private Customer customer(String token) {
@@ -122,6 +138,7 @@ class BusinessFlowFixtureFactory {
         finish.setScrapWeight(BigDecimal.ZERO);
         finish.setQualityStatus(2);
         finish.setFinishStatus(2);
+        finish.setWarehouseUuid(order.getWarehouseUuid());
         return finish;
     }
 

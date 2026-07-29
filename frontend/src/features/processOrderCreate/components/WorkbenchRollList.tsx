@@ -1,4 +1,5 @@
 import { List } from 'antd'
+import { useEffect, useRef } from 'react'
 import type { Machine } from '../../../types/machine'
 import type { PlanPreviewVO, ProcessRoutePreviewVO } from '../../../types/processOrder'
 import '../../../components/processOrder/ProcessOrderShared.css'
@@ -7,6 +8,7 @@ import { rollPreviewStatus } from '../previewStatusUtils'
 import { isConfiguredPlanReady, previewForRoll } from '../configuredPlanStatus'
 import type { MergedSourceLock } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
+import type { ConfigOperation } from './configStepTypes'
 import WorkbenchRollItem, { type WorkbenchRollItemActions } from './WorkbenchRollItem'
 import WorkbenchRollToolbar from './WorkbenchRollToolbar'
 
@@ -14,10 +16,14 @@ export interface WorkbenchRollListData {
   configuredPlanIds?: string[]
   lockedRolls?: Record<string, MergedSourceLock>
   machines: Machine[]
+  selectionDisabled?: boolean
+  operation?: ConfigOperation
   previews: Record<string, PlanPreviewVO>
   rolls: RollDraft[]
   routePreviews?: Record<string, ProcessRoutePreviewVO>
+  selectionDisabledReasons?: Record<string, string>
   serviceConfigured?: Record<string, boolean>
+  serviceLoading?: boolean
 }
 
 export interface WorkbenchRollListSelection {
@@ -38,14 +44,22 @@ interface Props {
 }
 
 export default function WorkbenchRollList({ actions, data, selection }: Props) {
+  const listRef = useRef<HTMLDivElement>(null)
   const { preference, sortedRolls, setPreference } = useWorkbenchRollSort(data.rolls)
   const configured = new Set(data.configuredPlanIds ?? [])
   const lockedRolls = data.lockedRolls ?? {}
   const routePreviews = data.routePreviews ?? {}
+  useEffect(() => {
+    const selected = [...(listRef.current?.querySelectorAll<HTMLElement>('[data-roll-id]') ?? [])]
+      .find((item) => item.dataset.rollId === selection.selectedId)
+    selected?.scrollIntoView({ block: 'nearest' })
+  }, [selection.selectedId])
+
   return (
-    <div className="workbench-roll-list">
+    <div ref={listRef} className="workbench-roll-list">
       <WorkbenchRollToolbar
         checkedCount={selection.checkedIds.length}
+        selectionDisabled={data.selectionDisabled}
         preference={preference}
         onClearSelection={actions.onClearSelection}
         onSelectSameSpec={actions.onSelectSameSpec}
@@ -63,15 +77,19 @@ export default function WorkbenchRollList({ actions, data, selection }: Props) {
               actions={actions}
               state={{
                 checked: selection.checkedIds.includes(roll.localId),
+                batchDisabledReason: data.selectionDisabledReasons?.[roll.localId],
+                interactionDisabled: Boolean(data.selectionDisabled),
                 index: originalIndex,
                 lock,
                 machines: data.machines,
                 previewStatus: rollPreviewStatus({
                   configured: isConfiguredPlanReady(roll, configured, data.previews),
+                  operation: selection.selectedId === roll.localId ? data.operation : undefined,
                   roll,
                   preview: previewForRoll(roll, data.previews),
                   lock,
-                  serviceConfigured: Boolean(roll.uuid && data.serviceConfigured?.[roll.uuid]),
+                  serviceConfigured: serviceConfiguredForRoll(data.serviceConfigured, roll.uuid),
+                  serviceLoading: data.serviceLoading,
                 }),
                 roll,
                 routePreview: roll.uuid ? routePreviews[roll.uuid] : undefined,
@@ -83,4 +101,12 @@ export default function WorkbenchRollList({ actions, data, selection }: Props) {
       />
     </div>
   )
+}
+
+function serviceConfiguredForRoll(
+  configured: Record<string, boolean> | undefined,
+  rollUuid: string | undefined,
+): boolean | undefined {
+  if (!configured || !rollUuid || !Object.hasOwn(configured, rollUuid)) return undefined
+  return configured[rollUuid]
 }

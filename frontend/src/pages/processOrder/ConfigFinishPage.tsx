@@ -1,18 +1,16 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { Button, Empty, Space, Spin, message } from 'antd'
-import {
-  SaveOutlined,
-} from '@ant-design/icons'
+import { useNavigate, useParams } from 'react-router'
+import { Empty, Spin, message } from 'antd'
 import { saveFinishConfig, saveFinishConfigBatch } from '../../api/processOrder'
 import { notifyErrorOnce } from '../../api/request'
-import MesTooltip from '../../components/biz/MesTooltip'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import { useProcessOrderDetail } from '../../features/processOrderDetail/hooks/useProcessOrderDetail'
 import ConfigFinishEditor from './ConfigFinishEditor'
+import ConfigFinishHeaderActions from './ConfigFinishHeaderActions'
 import ConfigFinishRollList from './ConfigFinishRollList'
+import { reloadConfigFinishAfterSaveFailure } from './reloadConfigFinishAfterSaveFailure'
 import {
   buildDefaultConfig,
   buildSavePlan,
@@ -39,25 +37,35 @@ export default function ConfigFinishPage() {
   const selection = useConfigFinishSelection(rolls)
   const finishCounts = configuredFinishCounts(detail?.rollProductions ?? [])
   const sourceOnlyUuids = mergedSourceRollUuids(detail?.rollProductions ?? [])
+  const handleSaveError = async (error: unknown) => {
+    const reload = await reloadConfigFinishAfterSaveFailure(refetchDetail)
+    if (!reload.reloaded) {
+      notifyErrorOnce(reload.error ?? error, '保存失败，且服务端最新数据加载失败，请保留当前页面并重试')
+      return
+    }
+    notifyErrorOnce(error, '保存失败，已重新同步最新结果，请核对后重试')
+  }
 
   const saveCurrent = async () => {
-    if (!uuid || !selection.currentRoll) return
+    if (!uuid || !selection.currentRoll || detail?.order.version == null) return
     const savedUuid = selection.currentRoll.uuid
     const savedConfig = configForRoll(selection.currentRoll, selection.configs)
     setSaving(true)
     try {
-      const result = await saveFinishConfig(uuid, savedUuid, savedConfig)
+      const result = await saveFinishConfig(uuid, savedUuid, savedConfig, detail.order.version)
       message.success(`保存成功，已生成 ${result.finishRollNos?.length ?? 0} 个正式成品号`)
       selection.clearDirty([savedUuid])
       if (!selection.dirtyUuids.some((item) => item !== savedUuid)) clearDirty()
       await refetchDetail()
+    } catch (error) {
+      await handleSaveError(error)
     } finally {
       setSaving(false)
     }
   }
 
   const saveAll = async () => {
-    if (!uuid) return
+    if (!uuid || detail?.order.version == null) return
     const plan = buildSavePlan(rolls, finishCounts, sourceOnlyUuids)
     if (plan.toSave.length === 0) return void message.info(emptyPlanMessage(plan))
     setSaving(true)
@@ -67,7 +75,7 @@ export default function ConfigFinishPage() {
           rollUuid: roll.uuid,
           config: configForRoll(roll, selection.configs),
         })),
-      })
+      }, detail.order.version)
       const finishCount = (result.results ?? []).reduce(
         (count, item) => count + (item.finishRollNos?.length ?? 0),
         0,
@@ -77,8 +85,7 @@ export default function ConfigFinishPage() {
       clearDirty()
       navigate('/process-orders')
     } catch (error) {
-      await refetchDetail()
-      notifyErrorOnce(error, '保存未全部完成，已重新同步最新结果，请核对未配置母卷后重试')
+      await handleSaveError(error)
     } finally {
       setSaving(false)
     }
@@ -103,7 +110,7 @@ export default function ConfigFinishPage() {
     <div className="config-finish-page">
       <MesPageHeader
         actions={(
-          <HeaderActions
+          <ConfigFinishHeaderActions
             disabledReason={saveAllDisabledReason({ detailLoaded: Boolean(detail), isDetailError, isLoadingDetail, rollCount: rolls.length })}
             saving={saving}
             onCancel={() => runIfClean(() => navigate('/process-orders'))}
@@ -155,46 +162,6 @@ export default function ConfigFinishPage() {
   )
 }
 
-interface HeaderActionProps {
-  disabledReason?: string
-  onCancel: () => void
-  onSaveAll: () => void
-  saving: boolean
-}
-
-export function HeaderActions(props: HeaderActionProps) {
-  return (
-    <Space>
-      <Button onClick={props.onCancel}>取消</Button>
-      <MesTooltip title={props.disabledReason}>
-        <span className="config-finish-action-slot">
-          <Button
-            aria-label={props.disabledReason ? `保存全部并完成：${props.disabledReason}` : '保存全部并完成'}
-            disabled={Boolean(props.disabledReason)}
-            icon={<SaveOutlined />}
-            loading={props.saving}
-            type="primary"
-            onClick={props.onSaveAll}
-          >保存全部并完成</Button>
-        </span>
-      </MesTooltip>
-    </Space>
-  )
-}
-
-function saveAllDisabledReason(options: {
-  detailLoaded: boolean
-  isDetailError: boolean
-  isLoadingDetail: boolean
-  rollCount: number
-}) {
-  if (options.isLoadingDetail) return '加工单与母卷信息加载中'
-  if (options.isDetailError) return '加工单信息加载失败，请重新加载'
-  if (!options.detailLoaded) return '未取得加工单信息'
-  if (options.rollCount === 0) return '该加工单暂无可配置母卷'
-  return undefined
-}
-
 function emptyPlanMessage(plan: ConfigFinishSavePlan) {
   const parts = skipParts(plan)
   return parts.length ? `无需保存：${parts.join('；')}` : '没有需要保存的母卷'
@@ -210,4 +177,19 @@ function skipParts(plan: ConfigFinishSavePlan) {
   if (plan.skippedConfigured.length) parts.push(`${plan.skippedConfigured.join('、')} 已配置（跳过）`)
   if (plan.skippedSources.length) parts.push(`${plan.skippedSources.join('、')} 为合并来源（跳过）`)
   return parts
+}
+
+interface DisabledReasonOptions {
+  detailLoaded: boolean
+  isDetailError: boolean
+  isLoadingDetail: boolean
+  rollCount: number
+}
+
+function saveAllDisabledReason(options: DisabledReasonOptions) {
+  if (options.isLoadingDetail) return '加工单与母卷信息加载中'
+  if (options.isDetailError) return '加工单信息加载失败，请重新加载'
+  if (!options.detailLoaded) return '未取得加工单信息'
+  if (options.rollCount === 0) return '该加工单暂无可配置母卷'
+  return undefined
 }

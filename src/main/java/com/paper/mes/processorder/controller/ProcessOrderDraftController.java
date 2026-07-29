@@ -20,11 +20,16 @@ import com.paper.mes.processorder.dto.ProcessOrderSubmitVO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.dto.ProcessRouteBatchSaveDTO;
+import com.paper.mes.processorder.dto.ProcessStepBatchDTO;
+import com.paper.mes.processorder.dto.ProcessStepBatchResultVO;
+import com.paper.mes.processorder.dto.ProcessStepDTO;
+import com.paper.mes.processorder.service.DraftServiceStepService;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
 import com.paper.mes.processorder.service.ProcessRouteDraftManager;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -44,6 +49,7 @@ public class ProcessOrderDraftController {
 
     private final ProcessOrderDraftService draftService;
     private final ProcessRouteDraftManager routeDraftManager;
+    private final DraftServiceStepService draftServiceStepService;
 
     @GetMapping("/drafts")
     @RequirePermission(Permissions.ORDER_VIEW)
@@ -153,6 +159,34 @@ public class ProcessOrderDraftController {
                                      @PathVariable String rollUuid,
                                      @Valid @RequestBody ProcessConfigDraftSaveDTO dto) {
         draftService.saveProcessConfig(orderUuid, rollUuid, dto.getConfig(), dto.getExpectedVersion());
+        return R.success();
+    }
+
+    @PostMapping("/{orderUuid}/draft-steps")
+    public R<Void> addDraftServiceStep(@PathVariable String orderUuid,
+                                       @Valid @RequestBody ProcessStepDTO dto) {
+        draftServiceStepService.add(orderUuid, dto);
+        return R.success();
+    }
+
+    @PostMapping("/{orderUuid}/draft-steps/batch")
+    public R<ProcessStepBatchResultVO> addDraftServiceSteps(
+            @PathVariable String orderUuid,
+            @Valid @RequestBody ProcessStepBatchDTO dto) {
+        return R.success(draftServiceStepService.addBatch(orderUuid, dto));
+    }
+
+    @PutMapping("/draft-steps/{stepUuid}")
+    public R<Void> updateDraftServiceStep(@PathVariable String stepUuid,
+                                          @Valid @RequestBody ProcessStepDTO dto) {
+        draftServiceStepService.update(stepUuid, dto);
+        return R.success();
+    }
+
+    @DeleteMapping("/draft-steps/{stepUuid}")
+    public R<Void> deleteDraftServiceStep(@PathVariable String stepUuid,
+                                          @RequestParam Integer expectedVersion) {
+        draftServiceStepService.delete(stepUuid, expectedVersion);
         return R.success();
     }
 

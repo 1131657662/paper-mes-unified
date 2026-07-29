@@ -71,8 +71,9 @@ public class ReportQueryCoordinator {
         ReportMetricReleaseDetailVO cached = releaseCache.get(releaseUuid);
         if (cached != null) return cached;
         ReportMetricReleaseDetailVO loaded = catalogService.releaseDetail(releaseUuid);
-        if (loaded.release().releaseStatus() != 1) releaseCache.putIfAbsent(releaseUuid, loaded);
-        return loaded;
+        if (loaded.release().releaseStatus() == 1) return loaded;
+        ReportMetricReleaseDetailVO existing = releaseCache.putIfAbsent(releaseUuid, loaded);
+        return existing == null ? loaded : existing;
     }
 
     private void validateRelease(ReportMetricReleaseDetailVO release, Set<String> requiredMetrics) {

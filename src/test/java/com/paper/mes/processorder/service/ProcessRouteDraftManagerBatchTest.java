@@ -6,6 +6,7 @@ import com.paper.mes.processorder.dto.ProcessRouteBatchSaveDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.OriginalRoll;
+import com.paper.mes.processorder.entity.ProcessConfigDraft;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessConfigDraftMapper;
@@ -57,6 +58,7 @@ class ProcessRouteDraftManagerBatchTest {
         when(rollMapper.selectBatchIds(anyCollection())).thenReturn(List.of(
                 roll("roll-1"), roll("roll-2")));
         when(rollMapper.updateById(any(OriginalRoll.class))).thenReturn(1);
+        when(draftMapper.insert(any(ProcessConfigDraft.class))).thenReturn(1);
         when(previewer.preview(any(OriginalRoll.class), any(ProcessRoutePreviewDTO.class)))
                 .thenAnswer(invocation -> preview(invocation.<OriginalRoll>getArgument(0).getUuid()));
 

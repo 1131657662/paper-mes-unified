@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -73,6 +74,40 @@ class ProcessOrderRollbackEditBusinessFlowIT {
 
         assertThat(processOrderService.getDetail(scenario.orderUuid()).getOrder().getOrderStatus()).isEqualTo(6);
         assertThat(criticalIssueTypes(scenario.orderUuid())).isEmpty();
+    }
+
+    @Test
+    void pendingOrder_whenVoided_archivesAllUnusedFinishNumbers() {
+        var scenario = fixture.createStandardSaw();
+        var before = processOrderService.getDetail(scenario.orderUuid());
+        String stageOutputUuid = insertGeneratedStageOutput(before);
+
+        processOrderService.voidOrder(scenario.orderUuid(), voidRequest());
+
+        var detail = processOrderService.getDetail(scenario.orderUuid());
+        assertThat(detail.getOrder().getOrderStatus()).isEqualTo(6);
+        assertThat(detail.getFinishRolls()).isNotEmpty().allSatisfy(finish -> {
+            assertThat(finish.getRollNoStatus()).isEqualTo(3);
+            assertThat(finish.getFinishStatus()).isEqualTo(4);
+        });
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT output_status FROM biz_process_stage_output WHERE uuid = ?",
+                Integer.class, stageOutputUuid)).isEqualTo(4);
+    }
+
+    private String insertGeneratedStageOutput(ProcessOrderDetailVO detail) {
+        String uuid = UUID.randomUUID().toString();
+        jdbcTemplate.update("""
+                INSERT INTO biz_process_stage_output
+                    (uuid, order_uuid, original_uuid, step_uuid, output_status, finish_roll_uuid)
+                VALUES (?, ?, ?, ?, 3, ?)
+                """,
+                uuid,
+                detail.getOrder().getUuid(),
+                detail.getOriginalRolls().getFirst().getUuid(),
+                detail.getSteps().getFirst().getUuid(),
+                detail.getFinishRolls().getFirst().getUuid());
+        return uuid;
     }
 
     private List<FinishRoll> activeFinishes(ProcessOrderDetailVO detail) {

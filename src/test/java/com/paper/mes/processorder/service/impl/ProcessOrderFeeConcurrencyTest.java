@@ -30,12 +30,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ProcessOrderFeeConcurrencyTest {
@@ -75,6 +80,32 @@ class ProcessOrderFeeConcurrencyTest {
         service.orderUpdated = false;
 
         assertConcurrency(() -> service.calcFee("order-1"));
+    }
+
+    @Test
+    void calcFee_clearsLoadedAuditFieldsSoUpdateFillCanRefreshThem() {
+        when(stepMapper.updateById(any(ProcessStep.class))).thenReturn(1);
+        when(rollMapper.updateById(any(OriginalRoll.class))).thenReturn(1);
+        service.order.setUpdateBy("old-user");
+        service.order.setUpdateTime(LocalDateTime.of(2026, 7, 1, 8, 0));
+
+        service.calcFee("order-1");
+
+        assertNull(service.order.getUpdateBy());
+        assertNull(service.order.getUpdateTime());
+    }
+
+    @Test
+    void calcFee_whenDetailFeesAreUnchanged_skipsDetailUpdates() {
+        when(stepMapper.updateById(any(ProcessStep.class))).thenReturn(1);
+        when(rollMapper.updateById(any(OriginalRoll.class))).thenReturn(1);
+        service.calcFee("order-1");
+        clearInvocations(stepMapper, rollMapper);
+
+        service.calcFee("order-1");
+
+        verify(stepMapper, never()).updateById(any(ProcessStep.class));
+        verify(rollMapper, never()).updateById(any(OriginalRoll.class));
     }
 
     private void assertConcurrency(Runnable action) {
@@ -121,7 +152,7 @@ class ProcessOrderFeeConcurrencyTest {
                     mock(OperationLogService.class), new ObjectMapper(), mock(DamageImageService.class),
                     mock(RollNoSequenceService.class), new SawPlanPreviewer(), mock(DocumentNoService.class),
                     mock(BusinessLockService.class), mock(MachineMapper.class), mock(WeightCheckThresholdService.class),
-                    null, null, null, new BackRecordScopeResolver(), null, mock(BackRecordWarehousePolicy.class),
+                    null, null, null, null, new BackRecordScopeResolver(), null, mock(BackRecordWarehousePolicy.class),
                     null, null, null, null, null, null, null, null,
                     new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy());
             this.order = order;

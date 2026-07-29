@@ -1,4 +1,5 @@
-import { Button, Checkbox, Tag, Typography } from 'antd'
+import { Button, Checkbox, Popconfirm, Space, Tag, Typography } from 'antd'
+import { UndoOutlined } from '@ant-design/icons'
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import { formatKg } from '../../../features/processOrderDetail/orderDetailUtils'
 import { formatGram, formatMm, formatOptionalKg } from '../../../utils/numberFormatters'
@@ -11,18 +12,42 @@ interface Props {
   items: BackRecordWorkItem[]
   activeKey: string
   values: BackRecordFormValues
+  onClear: () => void
   onSelect: (key: string) => void
+  onSelectAll: () => void
+  onSelectOnly: () => void
+  onReopen: (item: BackRecordWorkItem) => void
   onToggle: (key: string, checked: boolean) => void
   selectedKeys: Set<string>
+  reopening: boolean
 }
 
-export default function BackRecordRollNavigator({ items, activeKey, values, onSelect, onToggle, selectedKeys }: Props) {
+export default function BackRecordRollNavigator({
+  activeKey,
+  items,
+  onClear,
+  onSelect,
+  onSelectAll,
+  onSelectOnly,
+  onReopen,
+  onToggle,
+  selectedKeys,
+  reopening,
+  values,
+}: Props) {
   const selectable = items.filter((item) => item.kind === 'roll' && !workItemRecorded(item))
   return (
     <aside className="back-record-nav">
       <div className="back-record-nav__head">
-        <Typography.Text strong>母卷回录</Typography.Text>
-        <Tag>{selectedKeys.size} / {selectable.length} 已选</Tag>
+        <div className="back-record-nav__title-row">
+          <Typography.Text strong>母卷回录</Typography.Text>
+          <Tag>{selectedKeys.size} / {selectable.length} 已选</Tag>
+        </div>
+        <Space className="back-record-nav__selection-actions" size={2}>
+          <Button type="link" size="small" onClick={onSelectAll}>全选</Button>
+          <Button type="link" size="small" onClick={onSelectOnly}>仅当前</Button>
+          <Button type="link" size="small" onClick={onClear}>清空</Button>
+        </Space>
       </div>
       <div className="back-record-nav__list">
         {items.map((item) => (
@@ -32,8 +57,10 @@ export default function BackRecordRollNavigator({ items, activeKey, values, onSe
             active={item.key === activeKey}
             values={values}
             onSelect={onSelect}
+            onReopen={onReopen}
             onToggle={onToggle}
             selected={selectedKeys.has(item.key)}
+            reopening={reopening}
           />
         ))}
       </div>
@@ -46,15 +73,19 @@ function RollNavItem({
   active,
   values,
   onSelect,
+  onReopen,
   onToggle,
   selected,
+  reopening,
 }: {
   item: BackRecordWorkItem
   active: boolean
   values: BackRecordFormValues
   onSelect: (key: string) => void
+  onReopen: (item: BackRecordWorkItem) => void
   onToggle: (key: string, checked: boolean) => void
   selected: boolean
+  reopening: boolean
 }) {
   const status = workItemStatus(item, values)
   const metrics = buildWorkItemMetrics(item, values)
@@ -99,6 +130,21 @@ function RollNavItem({
         {shouldShowDiff && metrics.diff != null && <span>差 {formatOptionalKg(metrics.diff)}</span>}
       </span>
       </Button>
+      {recorded && item.kind === 'roll' && (
+        <div className="back-record-nav-item__reopen">
+          <Popconfirm
+            title="撤回本批回录？"
+            description="相关成品会先撤出库存，已录实重会保留；当前未保存输入将被刷新。"
+            okText="撤回并修改"
+            cancelText="取消"
+            onConfirm={() => onReopen(item)}
+          >
+            <Button danger type="link" size="small" icon={<UndoOutlined />} loading={reopening}>
+              撤回修改
+            </Button>
+          </Popconfirm>
+        </div>
+      )}
     </div>
   )
 }

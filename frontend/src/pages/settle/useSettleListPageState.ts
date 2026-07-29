@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { useConfiguredPageSize } from '../../features/systemConfig/hooks/useConfiguredPageSize'
 import type { SettleQuery } from '../../types/settle'
 import type { SettleListViewMode } from './SettleListModeActions'

@@ -1,6 +1,6 @@
 import { Button, Popconfirm, Tag } from 'antd'
 import type { ProColumns } from '@ant-design/pro-components'
-import type { NavigateFunction } from 'react-router-dom'
+import type { NavigateFunction } from 'react-router'
 import TooltipText from '../../components/biz/TooltipText'
 import type { Machine } from '../../types/machine'
 import { MACHINE_STATUS_LABEL, RESOURCE_KIND_LABEL } from './machineArchiveLabels'

@@ -144,7 +144,7 @@ class ProcessOrderServiceImplRollDerivedDataTest {
                     mock(CustomerService.class), mock(OperationLogService.class), new ObjectMapper(),
                     mock(DamageImageService.class), mock(RollNoSequenceService.class), new SawPlanPreviewer(),
                     mock(DocumentNoService.class), mock(BusinessLockService.class), mock(MachineMapper.class),
-                    mock(WeightCheckThresholdService.class), null, null, null, new BackRecordScopeResolver(),
+                    mock(WeightCheckThresholdService.class), null, null, null, null, new BackRecordScopeResolver(),
                     null, mock(BackRecordWarehousePolicy.class), null, null, null, null, null, null, null,
                     cleanupService, new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy());
             this.order = order;

@@ -5,7 +5,7 @@ import {
   LogoutOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router'
 import { logout } from '../api/auth'
 import AppBreadcrumb from './AppBreadcrumb'
 import PageTabs from './PageTabs'

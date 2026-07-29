@@ -14,6 +14,7 @@ import { useCustomers, useMachines, useWarehouses } from './useReferenceData'
 import { useProcessOrderCreateSettings } from './useProcessOrderCreateSettings'
 import { useProcessOrderDetail } from '../../processOrderDetail/hooks/useProcessOrderDetail'
 import { serviceStepsForRoll } from '../serviceStepBatchModel'
+import { nonDraftOrderUuid } from '../draftAccess'
 
 interface UseCreateOrderPageOptions {
   resetLocalDraft?: boolean
@@ -61,7 +62,7 @@ export function useCreateOrderPage(
     refetch: refetchSettings,
   } = useProcessOrderCreateSettings()
   const defaultPlanOptions = createDefaultPlanOptions(selectedCustomer, defaultSpareCount)
-  const { moveToStep } = useCreateOrderStepNavigation(state)
+  const { moveToStep, savingProgress } = useCreateOrderStepNavigation(state)
   const setupActions = useCreateOrderSetupActions({
     defaultPlanOptions,
     machines,
@@ -121,6 +122,7 @@ export function useCreateOrderPage(
     loadingPage: isLoadingDraft || isLoadingCustomers || isLoadingWarehouses
       || isLoadingMachines || isLoadingSettings,
     orderUuid: state.orderUuid,
+    nonDraftOrderUuid: nonDraftOrderUuid(draftUuid, draft),
     plans: state.plans,
     previews: state.previews,
     routePreviews: state.routePreviews,
@@ -136,11 +138,16 @@ export function useCreateOrderPage(
     warehouseOptions: toReferenceOptions(warehousePage?.records ?? [], 'warehouseName'),
     machines,
     creatingDraft: setupActions.creatingDraft,
-    savingBase: setupActions.savingBase,
-    savingRolls: setupActions.savingRolls,
-    updatingRolls: setupActions.updatingRolls,
-    savingWorkbench: planActions.savingWorkbench || configAdvance.savingAutoPlans,
+    savingBase: setupActions.savingBase || savingProgress,
+    savingRolls: setupActions.savingRolls || savingProgress,
+    updatingRolls: setupActions.updatingRolls || savingProgress,
+    savingWorkbench: planActions.savingWorkbench || configAdvance.savingAutoPlans || savingProgress,
+    workbenchOperation: configAdvance.savingAutoPlans || savingProgress
+      ? 'saving' as const : planActions.operation,
     submitting: submission.submitting,
+    workflowPending: setupActions.creatingDraft || setupActions.savingBase
+      || setupActions.savingRolls || setupActions.updatingRolls || savingProgress
+      || planActions.savingWorkbench || configAdvance.savingAutoPlans || submission.submitting,
     retryLoad,
     setCurrent: state.setCurrent,
     setDraftVersion: state.setDraftVersion,

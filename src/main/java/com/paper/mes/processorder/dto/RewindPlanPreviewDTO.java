@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -12,6 +13,9 @@ import java.util.List;
 
 @Data
 public class RewindPlanPreviewDTO {
+
+    @Size(max = 20, message = "门幅差额处理值不能超过20个字符")
+    private String widthDifferencePolicy;
 
     @NotNull(message = "复卷模式不能为空")
     private Integer rewindMode;
@@ -57,7 +61,9 @@ public class RewindPlanPreviewDTO {
 
         @Size(max = 100, message = "客户品名不能超过100个字符")
         private String customerPaperName;
+        @Positive(message = "客户克重必须大于0")
         private Integer customerGramWeight;
+        @Positive(message = "客户门幅必须大于0")
         private Integer customerFinishWidth;
         @Size(max = 255, message = "客户规格改写原因不能超过255个字符")
         private String customerSpecOverrideReason;

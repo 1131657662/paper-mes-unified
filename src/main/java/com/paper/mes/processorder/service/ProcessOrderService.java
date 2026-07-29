@@ -3,6 +3,7 @@ package com.paper.mes.processorder.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.processorder.dto.BackRecordDTO;
+import com.paper.mes.processorder.dto.BackRecordReopenDTO;
 import com.paper.mes.processorder.dto.BackRecordResultVO;
 import com.paper.mes.processorder.dto.FeeResultVO;
 import com.paper.mes.processorder.dto.FinishConfigSaveDTO;
@@ -63,8 +64,16 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
     /** 保存单卷成品配置，生成正式成品号与备用号。 */
     FinishConfigSaveVO saveFinishConfig(String orderUuid, String rollUuid, FinishConfigSaveDTO dto);
 
+    /** 外部兼容接口保存单卷配置；写入前校验调用方读取的加工单版本。 */
+    FinishConfigSaveVO saveFinishConfig(String orderUuid, String rollUuid, FinishConfigSaveDTO dto,
+                                        Integer expectedVersion);
+
     /** Persist multiple mother-roll configurations in one transaction. */
     FinishConfigBatchSaveVO saveFinishConfigBatch(String orderUuid, FinishConfigBatchSaveDTO dto);
+
+    /** 外部兼容接口批量保存配置；整批写入前校验加工单版本。 */
+    FinishConfigBatchSaveVO saveFinishConfigBatch(String orderUuid, FinishConfigBatchSaveDTO dto,
+                                                  Integer expectedVersion);
 
     /** 根据复卷方案生成成品预览，不分配正式卷号。 */
     FinishPreviewVO previewRewindPlan(String orderUuid, String rollUuid, RewindPlanPreviewDTO dto);
@@ -108,6 +117,9 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
      * 状态 待回录(3) → 已完成(4)。>5% 超差需授权放行并写操作日志。
      */
     BackRecordResultVO backRecord(String uuid, BackRecordDTO dto);
+
+    /** 撤回尚未进入出库流程的一批回录，使该母卷组重新可编辑。 */
+    void reopenBackRecordBatch(String uuid, BackRecordReopenDTO dto);
 
     /**
      * 整单基础计费重算（P1-5）：逐工序算 step_amount（锯纸=刀数×单价/复卷=吨位×单价，取整），

@@ -16,6 +16,10 @@ public class FinishPreviewVO {
     private Integer spareCount;
     private BigDecimal totalEstimateWeight;
     private BigDecimal totalTrimWeight;
+    private String widthDifferencePolicy;
+    private Integer widthDifference;
+    private BigDecimal widthDifferenceWeight;
+    private BigDecimal calculatedLossWeight;
     private List<SegmentPreview> segments;
     private List<FinishItemPreview> finishes;
 
@@ -28,6 +32,8 @@ public class FinishPreviewVO {
         private Integer layoutWidth;
         private Integer trimWidth;
         private BigDecimal trimWeight;
+        private Integer widthDifference;
+        private BigDecimal lossWeight;
         private String summary;
     }
 

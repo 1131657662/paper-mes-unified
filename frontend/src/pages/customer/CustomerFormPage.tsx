@@ -1,6 +1,6 @@
 import { Button, Card, Form, Skeleton, Space, message } from 'antd'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { createCustomer, getCustomer, updateCustomer } from '../../api/customer'
 import MesPageHeader from '../../components/layout/MesPageHeader'

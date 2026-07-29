@@ -61,19 +61,22 @@ function PrimaryAction({ actions, capabilities, hasPrinted, loading, status }: P
   if (status === 2 && !capabilities.canManageOrder) return null
   if (status === 3 && !capabilities.canBackRecord) return null
   if (status === 4 && !capabilities.canManageDelivery && !capabilities.canManageSettlement) return null
+  if (status === 5 && !capabilities.canManageDelivery) return null
   if (status === 0) return <Button type="primary" onClick={actions.onEditDraft}>继续编辑草稿</Button>
   if (status === 1) return <Button type="primary" icon={<PrinterOutlined />} onClick={actions.onPrint}>{hasPrinted ? '打印预览' : '下发并打印'}</Button>
   if (status === 2) return <Button type="primary" icon={<SendOutlined />} loading={loading.changingStatus} onClick={() => actions.onChangeStatus(3, '确认车间已完成加工，转入待回录？')}>转待回录</Button>
   if (status === 3) return <Button type="primary" icon={<FileDoneOutlined />} onClick={actions.onBackRecord}>进入回录工作台</Button>
-  if (status === 4) return <CompletedActions actions={actions} capabilities={capabilities} />
+  if (status === 4 || status === 5) {
+    return <CompletedActions actions={actions} capabilities={capabilities} status={status} />
+  }
   return <Button disabled>暂无可执行动作</Button>
 }
 
-function CompletedActions({ actions, capabilities }: Pick<Props, 'actions' | 'capabilities'>) {
+function CompletedActions({ actions, capabilities, status }: Pick<Props, 'actions' | 'capabilities' | 'status'>) {
   return (
     <Space wrap>
       {capabilities.canManageDelivery && <Button type="primary" onClick={actions.onGoDelivery}>创建出库</Button>}
-      {capabilities.canManageSettlement && <Button icon={<FileDoneOutlined />} onClick={actions.onGoSettle}>生成结算</Button>}
+      {status === 4 && capabilities.canManageSettlement && <Button icon={<FileDoneOutlined />} onClick={actions.onGoSettle}>生成结算</Button>}
     </Space>
   )
 }

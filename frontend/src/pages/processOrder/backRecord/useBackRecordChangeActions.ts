@@ -1,20 +1,27 @@
 import { useEffect, useState } from 'react'
 import { message } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
+import { notifyErrorOnce } from '../../../api/request'
 import type { ProcessStepDTO } from '../../../api/processOrder'
 import { confirmOrderStatusChange } from '../../../features/processOrderDetail/confirmOrderStatusChange'
 import { useAddProcessStep } from '../../../features/processOrderDetail/hooks/useAddProcessStep'
 import { useChangeOrderStatus } from '../../../features/processOrderDetail/hooks/useChangeOrderStatus'
 import { useRollbackProcessOrderToDraft } from '../../../features/processOrderDetail/hooks/useRollbackProcessOrderToDraft'
+import { useReopenBackRecordBatch } from '../../../features/processOrderDetail/hooks/useReopenBackRecordBatch'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
+import { workItemRollUuids } from './backRecordWorkbenchUtils'
+import { reloadBackRecordConflict } from './reloadBackRecordConflict'
 
 interface UseBackRecordChangeActionsOptions {
   detail?: ProcessOrderDetailVO
   enabled: boolean
   onClose: () => void
-  onRefetch: () => Promise<unknown>
+  onPersisted?: () => void
+  onRefetch: () => Promise<{ data?: ProcessOrderDetailVO; error?: unknown; isSuccess: boolean }>
+  onReloaded: (detail: ProcessOrderDetailVO) => void
   onResetInitialization: () => void
+  onSelectAfterRefresh: (keys: string[]) => void
   onSuccess: () => void
   uuid?: string | null
 }
@@ -27,6 +34,7 @@ export function useBackRecordChangeActions(options: UseBackRecordChangeActionsOp
   const addStepMutation = useAddProcessStep()
   const changeStatusMutation = useChangeOrderStatus()
   const rollbackDraftMutation = useRollbackProcessOrderToDraft()
+  const reopenBatchMutation = useReopenBackRecordBatch()
 
   useEffect(() => {
     if (options.enabled) return
@@ -93,6 +101,25 @@ export function useBackRecordChangeActions(options: UseBackRecordChangeActionsOp
     })
   }
 
+  const reopenBatch = async (item: BackRecordWorkItem) => {
+    if (!options.uuid || !options.detail) return
+    const rollUuids = workItemRollUuids(item)
+    await reopenBatchMutation.mutateAsync({
+      orderUuid: options.uuid,
+      values: {
+        expectedVersion: options.detail.order.version ?? 0,
+        rollUuids,
+      },
+    })
+    options.onSelectAfterRefresh([item.key])
+    const reload = await reloadBackRecordConflict(options)
+    if (!reload.reloaded) {
+      notifyErrorOnce(reload.error, '回录已撤回，但服务器最新数据加载失败，请保留当前页面并重试')
+      return
+    }
+    message.success('本批回录已撤回，可继续修改后重新保存')
+  }
+
   return {
     addingStep: addStepMutation.isPending,
     changeItem,
@@ -103,6 +130,8 @@ export function useBackRecordChangeActions(options: UseBackRecordChangeActionsOp
     },
     rollbackToConfig,
     rollbackToDraft,
+    reopenBatch,
+    reopening: reopenBatchMutation.isPending,
     rollingBack: changeStatusMutation.isPending || rollbackDraftMutation.isPending,
     setChangeOpen,
     setStepFormOpen,

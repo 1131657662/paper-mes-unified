@@ -11,13 +11,10 @@ interface ProcessModeRollSelection {
 
 export function useProcessModeRollSelection(
   rolls: RollDraft[],
-  initialLocalId?: string,
+  currentId?: string,
 ): ProcessModeRollSelection {
-  const eligibleRolls = rolls.filter((roll) => Boolean(roll.uuid))
-  const initialCheckedIds = initialLocalId && eligibleRolls.some((roll) => roll.localId === initialLocalId)
-    ? [initialLocalId]
-    : []
-  const [checkedIds, setCheckedIds] = useState<string[]>(initialCheckedIds)
+  const eligibleRolls = rolls.filter((roll) => Boolean(roll.uuid) && roll.localId !== currentId)
+  const [checkedIds, setCheckedIds] = useState<string[]>([])
   const checkedRolls = eligibleRolls.filter((roll) => checkedIds.includes(roll.localId))
 
   const toggle = (localId: string, checked: boolean) => {

@@ -29,6 +29,7 @@ public class BackRecordOnSiteTrimRecorder {
     private static final int REMAIN = 1;
     private static final int SOURCE_PROCESS = 1;
     private static final int FINISH_PENDING = 1;
+    private static final int RESULT_ADDED = 4;
 
     private final FinishRollMapper finishRollMapper;
     private final FinishOriginalRelMapper relationMapper;
@@ -110,6 +111,8 @@ public class BackRecordOnSiteTrimRecorder {
         finish.setOriginalRollNos(sourceKey(source));
         finish.setActualRemark(dto.getActualRemark());
         finish.setRemark("现场定尺切边/余料");
+        finish.setProductionResult(RESULT_ADDED);
+        finish.setProductionAdjustmentReason("现场定尺实际余料");
         return finish;
     }
 

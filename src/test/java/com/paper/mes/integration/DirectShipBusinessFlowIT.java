@@ -34,7 +34,10 @@ class DirectShipBusinessFlowIT {
         assertThat(detail.getOrder().getOrderStatus()).isEqualTo(4);
         assertThat(detail.getFinishRolls()).hasSize(1);
         assertThat(finish.getSourceType()).isEqualTo(2);
-        assertThat(finish.getFinishRollNo()).isEqualTo(original.getRollNo());
+        assertThat(finish.getFinishRollNo()).isNotBlank().isNotEqualTo(original.getRollNo());
         assertThat(finish.getActualWeight()).isEqualByComparingTo("800.000");
+        assertThat(detail.getRollProductions().getFirst().getFinishes()).hasSize(1);
+        assertThat(detail.getRollProductions().getFirst().getFinishes().getFirst()
+                .getSources().getFirst().getOriginalUuid()).isEqualTo(original.getUuid());
     }
 }

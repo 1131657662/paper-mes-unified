@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
-class DocumentSummaryBusinessFlowIT {
+class DocumentSummaryBusinessFlowIT extends AuthenticatedBusinessFlowIT {
 
     @Autowired private BusinessFlowFixtureFactory fixtures;
     @Autowired private DeliveryService deliveryService;
@@ -61,6 +61,7 @@ class DocumentSummaryBusinessFlowIT {
         item.setOutWeight(new BigDecimal("100.000"));
         DeliveryCreateDTO request = new DeliveryCreateDTO();
         request.setCustomerUuid(scenario.customer().getUuid());
+        request.setWarehouseUuid(scenario.order().getWarehouseUuid());
         request.setDeliveryDate(LocalDate.now());
         request.setItems(List.of(item));
         return request;

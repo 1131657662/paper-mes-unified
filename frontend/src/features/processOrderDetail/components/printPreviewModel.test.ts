@@ -49,6 +49,35 @@ describe('完工打印模型', () => {
     expect(blocks[0]?.routeStages[0]?.outputs).toEqual([])
     expect(blocks[0]?.routeStages[1]?.outputs).toHaveLength(1)
   })
+
+  it('阶段产出打印要求展示已保存的门幅差额策略', () => {
+    const rewind = production()
+    rewind.steps = [{
+      uuid: 'step-1',
+      stageLevel: 1,
+      stepType: 2,
+      isMain: 1,
+      widthDifferencePolicy: 'REMAINDER',
+    }]
+    rewind.stageOutputs = [{
+      uuid: 'output-1',
+      outputNo: 'A001',
+      stageLevel: 1,
+      outputType: 2,
+      sourceStepType: 2,
+      finishWidth: 590,
+      estimateWeight: 490,
+    }]
+
+    const blocks = buildPrintRollBlocks({
+      ...detail(),
+      steps: rewind.steps,
+      rollProductions: [rewind],
+    })
+
+    expect(blocks[0]?.routeStages[0]?.requirement)
+      .toBe('加工门幅 590 mm，产出 1 件；门幅差额：留余料。')
+  })
 })
 
 function detail(): ProcessOrderDetailVO {

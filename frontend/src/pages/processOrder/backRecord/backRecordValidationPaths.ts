@@ -13,6 +13,7 @@ interface ValidationScope {
   selectedFinishUuids: Set<string>
   selectedItemKeys: Set<string>
   selectedRollUuids: Set<string>
+  addedFinishUuids?: Set<string>
 }
 
 export function buildBackRecordValidationPaths(scope: ValidationScope): NamePath[] {
@@ -31,6 +32,7 @@ export function buildBackRecordValidationPaths(scope: ValidationScope): NamePath
     ? activeFinishRolls(scope.detail).map((finish) => finish.uuid)
     : scope.selectedFinishUuids
   for (const finishUuid of finishUuids) paths.push(['finishes', finishUuid])
+  for (const finishUuid of scope.addedFinishUuids ?? []) paths.push(['finishes', finishUuid])
   return paths
 }
 

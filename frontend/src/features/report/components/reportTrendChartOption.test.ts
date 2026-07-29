@@ -7,12 +7,14 @@ describe('报表月度加工应收曲线', () => {
     const option = buildReportTrendChartOption([reportPoint()])
 
     expect(option).toMatchObject({
+      grid: { left: 10, right: 10, top: 12, bottom: 12 },
       series: [{
         type: 'line',
         smooth: 0.35,
         smoothMonotone: 'x',
       }],
     })
+    expect(option.grid).not.toHaveProperty('containLabel')
   })
 
   it('悬浮提示包含月份、应收和原纸重量', () => {

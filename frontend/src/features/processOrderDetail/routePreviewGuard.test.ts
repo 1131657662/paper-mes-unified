@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { ProcessRoutePreviewDTO } from '../../types/processOrder'
-import { isRoutePreviewCurrent, routeRequestFingerprint } from './routePreviewGuard'
+import {
+  createRoutePreviewRequestGate,
+  isRoutePreviewCurrent,
+  routeRequestFingerprint,
+} from './routePreviewGuard'
 
 const request = (unitPrice: number): ProcessRoutePreviewDTO => ({
   originalUuid: 'roll-1',
@@ -8,6 +12,24 @@ const request = (unitPrice: number): ProcessRoutePreviewDTO => ({
 })
 
 describe('route preview guard', () => {
+  it('accepts only the latest response when requests resolve out of order', () => {
+    const gate = createRoutePreviewRequestGate()
+    const firstRequest = gate.begin()
+    const secondRequest = gate.begin()
+
+    expect(gate.isCurrent(firstRequest)).toBe(false)
+    expect(gate.isCurrent(secondRequest)).toBe(true)
+  })
+
+  it('rejects a pending response after the route form changes', () => {
+    const gate = createRoutePreviewRequestGate()
+    const requestId = gate.begin()
+
+    gate.invalidate()
+
+    expect(gate.isCurrent(requestId)).toBe(false)
+  })
+
   it('allows saving when the preview matches the current route request', () => {
     const current = request(12)
 

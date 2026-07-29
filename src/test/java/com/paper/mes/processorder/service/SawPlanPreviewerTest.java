@@ -1,5 +1,6 @@
 package com.paper.mes.processorder.service;
 
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.dto.FinishConfigSpecDTO;
 import com.paper.mes.processorder.dto.PlanPreviewVO;
 import com.paper.mes.processorder.dto.ProcessPlanDTO;
@@ -11,6 +12,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SawPlanPreviewerTest {
@@ -72,18 +74,14 @@ class SawPlanPreviewerTest {
     }
 
     @Test
-    void preview_withoutTrimRows_usesRemainingWidthAsTrim() {
+    void preview_remainderWithoutTrimRows_requiresExplicitRemainder() {
         PlanPreviewVO preview = previewer.preview(planWithPolicy(List.of(
                 spec("FINISH", 950, 2)
         ), "REMAINDER"), roll(2000, "1000"));
 
-        assertTrue(preview.isReady());
-        assertEquals(2, preview.getFinishCount());
-        assertEquals(1, preview.getTrimCount());
-        assertEquals(new BigDecimal("50.000"), preview.getTotalTrimWeight());
-        assertEquals(new BigDecimal("950.000"), preview.getTotalEstimateWeight());
-        assertEquals(new BigDecimal("475.000"), preview.getFinishes().getFirst().getEstimateWeight());
-        assertTrue(preview.getSummary().contains("100mm"));
+        assertFalse(preview.isReady());
+        assertEquals(1, preview.getErrors().size());
+        assertTrue(preview.getErrors().getFirst().contains("100mm"));
     }
 
     @Test
@@ -95,7 +93,7 @@ class SawPlanPreviewerTest {
         assertEquals(new BigDecimal("2285.000"), preview.getTotalEstimateWeight());
         assertEquals(new BigDecimal("0.000"), preview.getTotalTrimWeight());
         assertEquals(new BigDecimal("2.913"), preview.getWidthDifferenceWeight());
-        assertEquals(new BigDecimal("0"), preview.getCalculatedLossWeight());
+        assertEquals(new BigDecimal("0.000"), preview.getCalculatedLossWeight());
         assertTrue(preview.getSummary().contains("分摊入成品"));
     }
 
@@ -106,32 +104,28 @@ class SawPlanPreviewerTest {
         ), "LOSS"), roll(2353, "2285"));
 
         assertEquals(new BigDecimal("2282.087"), preview.getTotalEstimateWeight());
-        assertEquals(new BigDecimal("2.913"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("0.000"), preview.getTotalTrimWeight());
         assertEquals(new BigDecimal("2.913"), preview.getCalculatedLossWeight());
     }
 
     @Test
-    void preview_remainder_keeps_difference_as_inventory_remainder() {
+    void preview_remainder_keepsExplicitTrimAsInventoryRemainder() {
         PlanPreviewVO preview = previewer.preview(planWithPolicy(List.of(
-                spec("FINISH", 1175, 2)
+                spec("FINISH", 1175, 2),
+                spec("TRIM", 3, 1)
         ), "REMAINDER"), roll(2353, "2285"));
 
         assertEquals(1, preview.getTrimCount());
         assertEquals(new BigDecimal("2282.087"), preview.getTotalEstimateWeight());
         assertEquals(new BigDecimal("2.913"), preview.getTotalTrimWeight());
-        assertEquals(new BigDecimal("2.913"), preview.getWidthDifferenceWeight());
+        assertEquals(new BigDecimal("0.000"), preview.getWidthDifferenceWeight());
     }
 
     @Test
-    void saveSpecs_withoutTrimRows_appendsImplicitTrimSpec() {
-        List<FinishConfigSpecDTO> finishes = previewer.saveSpecs(List.of(
+    void saveSpecs_remainderWithoutTrimRows_rejectsIncompleteWidth() {
+        assertThrows(BusinessException.class, () -> previewer.saveSpecs(List.of(
                 spec("FINISH", 950, 2)
-        ), roll(2000, "1000"));
-
-        assertEquals(3, finishes.size());
-        assertEquals("TRIM", finishes.get(2).getItemType());
-        assertEquals(100, finishes.get(2).getFinishWidth());
-        assertEquals(new BigDecimal("50.000"), finishes.get(2).getEstimateWeight());
+        ), roll(2000, "1000")));
     }
 
     @Test

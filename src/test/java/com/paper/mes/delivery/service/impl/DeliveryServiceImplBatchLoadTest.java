@@ -163,13 +163,13 @@ class DeliveryServiceImplBatchLoadTest {
     }
 
     @Test
-    void appendDetails_withNonDeliverableProcessOrder_rejectsFinish() {
+    void appendDetails_withPendingProcessOrder_rejectsFinish() {
         DeliveryOrder delivery = new DeliveryOrder();
         delivery.setUuid("delivery-1");
         delivery.setCustomerUuid("customer-1");
         delivery.setDeliveryStatus(1);
         ProcessOrder processing = order("order-2", "customer-1");
-        processing.setOrderStatus(3);
+        processing.setOrderStatus(2);
         when(deliveryOrderMapper.selectById("delivery-1")).thenReturn(delivery);
         when(deliveryDetailMapper.selectList(any())).thenReturn(List.of());
         FinishRoll finish = finish("finish-2", "order-2", "P000002");

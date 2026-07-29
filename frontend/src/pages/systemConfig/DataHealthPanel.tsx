@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { Alert, Button, Statistic } from 'antd'
 import { CheckCircleOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons'
 import { useDataHealthSummary } from '../../features/dataHealth/hooks/useDataHealthSummary'

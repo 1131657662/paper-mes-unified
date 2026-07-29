@@ -10,9 +10,11 @@ describe('附加工艺操作栏', () => {
         state={{
           analysis: { createCount: 1, excludedCount: 0, targetUuids: ['roll-1'], updateCount: 0 },
           batchSaving: false,
+          catalogError: false,
+          catalogLoading: false,
+          catalogUnavailable: false,
           currentRollUuid: 'roll-1',
           dirty: true,
-          disabled: false,
           saving: false,
           selectedRollCount: 1,
           writePending: false,

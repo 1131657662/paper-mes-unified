@@ -4,6 +4,7 @@ import type { WorkbenchRollSortMode, WorkbenchRollSortPreference } from '../work
 
 interface Props {
   checkedCount: number
+  selectionDisabled?: boolean
   preference: WorkbenchRollSortPreference
   onClearSelection: () => void
   onSelectSameSpec: () => void
@@ -28,8 +29,10 @@ export default function WorkbenchRollToolbar(props: Props) {
   return (
     <div className="workbench-roll-toolbar">
       <Space size="small">
-        <Button size="small" onClick={props.onSelectSameSpec}>{props.selectAllLabel ?? '全选同规格'}</Button>
-        <Button size="small" disabled={!props.checkedCount} onClick={props.onClearSelection}>全不选</Button>
+        <Button size="small" disabled={props.selectionDisabled}
+          onClick={props.onSelectSameSpec}>{props.selectAllLabel ?? '全选同规格'}</Button>
+        <Button size="small" disabled={props.selectionDisabled || !props.checkedCount}
+          onClick={props.onClearSelection}>全不选</Button>
       </Space>
       <Space.Compact className="workbench-roll-toolbar__sort">
         <Select

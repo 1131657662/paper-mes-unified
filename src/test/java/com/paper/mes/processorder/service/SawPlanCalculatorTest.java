@@ -7,6 +7,7 @@ import com.paper.mes.processorder.model.WidthDifferencePolicy;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,38 +18,70 @@ class SawPlanCalculatorTest {
     private final SawPlanCalculator calculator = new SawPlanCalculator();
 
     @Test
-    void calculate_loss_keeps_customer_widths_without_physical_remainder() {
-        SawPlanCalculation result = calculator.calculate(specs(1000, 700), roll(1703, "1703"), "LOSS");
+    void loss_countsOnlyUnassignedWidthAsLoss() {
+        SawPlanCalculation result = calculator.calculate(
+                List.of(spec("FINISH", 2200)), roll(2300, "2300"), "LOSS");
 
         assertEquals(WidthDifferencePolicy.LOSS, result.policy());
-        assertEquals(3, result.differenceWidth());
-        assertEquals(new BigDecimal("3.000"), result.differenceWeight());
-        assertEquals(new BigDecimal("1700.000"), finishWeight(result));
+        assertEquals(100, result.differenceWidth());
+        assertEquals(new BigDecimal("100.000"), result.differenceWeight());
+        assertEquals(new BigDecimal("2200.000"), finishWeight(result));
+        assertEquals(BigDecimal.ZERO, trimWeight(result));
     }
 
     @Test
-    void calculate_allocate_assigns_all_input_weight_to_formal_outputs() {
-        SawPlanCalculation result = calculator.calculate(specs(1000, 700), roll(1703, "1703"), "ALLOCATE");
+    void loss_preservesExplicitTrimAndLosesOnlyTheRemainingGap() {
+        SawPlanCalculation result = calculator.calculate(List.of(
+                spec("FINISH", 2000), spec("TRIM", 290)), roll(2300, "2300"), "LOSS");
 
-        assertEquals(3, result.differenceWidth());
-        assertEquals(new BigDecimal("1703.000"), finishWeight(result));
+        assertEquals(10, result.differenceWidth());
+        assertEquals(new BigDecimal("10.000"), result.differenceWeight());
+        assertEquals(new BigDecimal("2000.000"), finishWeight(result));
+        assertEquals(new BigDecimal("290.000"), trimWeight(result));
     }
 
     @Test
-    void calculate_remainder_requires_explicit_trim_to_match_difference() {
-        List<FinishConfigSpecDTO> specs = specs(1000, 700);
-        specs.add(spec("TRIM", 2));
+    void allocate_splitsTheGapEvenlyAcrossConfiguredPieces() {
+        SawPlanCalculation result = calculator.calculate(
+                List.of(spec("FINISH", 1000), spec("FINISH", 1200)),
+                roll(2400, "2400"), "ALLOCATE");
+
+        assertEquals(200, result.differenceWidth());
+        assertEquals(List.of(new BigDecimal("1100.000"), new BigDecimal("1300.000")),
+                result.finishes().stream().map(SawPlanCalculation.CalculatedFinish::estimateWeight).toList());
+        assertEquals(new BigDecimal("2400.000"), finishWeight(result));
+    }
+
+    @Test
+    void remainder_requiresAllSourceWidthToBeRepresented() {
+        List<FinishConfigSpecDTO> incomplete = new ArrayList<>(List.of(
+                spec("FINISH", 2300), spec("TRIM", 10)));
 
         assertThrows(BusinessException.class,
-                () -> calculator.calculate(specs, roll(1703, "1703"), "REMAINDER"));
+                () -> calculator.calculate(incomplete, roll(2400, "2400"), "REMAINDER"));
+
+        incomplete.set(1, spec("TRIM", 100));
+        SawPlanCalculation complete = calculator.calculate(
+                incomplete, roll(2400, "2400"), "REMAINDER");
+        assertEquals(0, complete.differenceWidth());
+        assertEquals(new BigDecimal("2300.000"), finishWeight(complete));
+        assertEquals(new BigDecimal("100.000"), trimWeight(complete));
     }
 
     @Test
-    void calculate_missing_policy_defaults_to_allocate() {
-        SawPlanCalculation result = calculator.calculate(specs(1000, 700), roll(1703, "1703"), null);
+    void missingPolicyDefaultsToRemainder() {
+        assertThrows(BusinessException.class, () -> calculator.calculate(
+                List.of(spec("FINISH", 2300)), roll(2400, "2400"), null));
+    }
 
-        assertEquals(WidthDifferencePolicy.ALLOCATE, result.policy());
-        assertEquals(new BigDecimal("1703.000"), finishWeight(result));
+    @Test
+    void roundingRemainderIsAppliedToLastFinishInsteadOfTrim() {
+        SawPlanCalculation result = calculator.calculate(List.of(
+                spec("FINISH", 1175), spec("FINISH", 1175), spec("TRIM", 3)),
+                roll(2353, "2285"), "REMAINDER");
+
+        assertEquals(new BigDecimal("2282.087"), finishWeight(result));
+        assertEquals(new BigDecimal("2.913"), trimWeight(result));
     }
 
     private BigDecimal finishWeight(SawPlanCalculation result) {
@@ -56,8 +89,9 @@ class SawPlanCalculatorTest {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private List<FinishConfigSpecDTO> specs(int first, int second) {
-        return new java.util.ArrayList<>(List.of(spec("FINISH", first), spec("FINISH", second)));
+    private BigDecimal trimWeight(SawPlanCalculation result) {
+        return result.trims().stream().map(SawPlanCalculation.CalculatedFinish::estimateWeight)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private FinishConfigSpecDTO spec(String type, int width) {

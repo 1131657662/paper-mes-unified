@@ -63,6 +63,9 @@ public class FinishRoll extends BaseEntity {
     private Integer qualityStatus;
     /** 1待入库 2已入库 3已出库 4报废 */
     private Integer finishStatus;
+    /** 1计划产出 2正常产出 3计划未产出 4实际新增产出；历史数据为空时按正常计划成品兼容。 */
+    private Integer productionResult;
+    private String productionAdjustmentReason;
     /** 首次正式入库时间；历史数据无法可靠推断时允许为空。 */
     private LocalDateTime stockInTime;
     private String warehouseUuid;

@@ -48,6 +48,18 @@ class ProcessStepPricingPolicyTest {
     }
 
     @Test
+    void standardMode_whenQuantityIsZero_keepsBillingQuantityNull() {
+        ProcessStep step = step(1, ProcessStepPricingPolicy.STANDARD);
+
+        ProcessStepPricingPolicy.Result result = ProcessStepPricingPolicy.calculate(
+                step, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("12.00"));
+
+        assertThat(result.standardQuantity()).isZero();
+        assertThat(result.billingQuantity()).isNull();
+        assertThat(result.finalAmount()).isZero();
+    }
+
+    @Test
     void quantityOverride_whenAmountHasFractionalYuan_keepsEngineRoundingToWholeYuan() {
         ProcessStep step = step(2, 2);
         step.setBillingQuantity(new BigDecimal("3.700"));
@@ -68,6 +80,18 @@ class ProcessStepPricingPolicyTest {
                 step, new BigDecimal("3"), new BigDecimal("300"), new BigDecimal("100")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("整数刀数");
+    }
+
+    @Test
+    void fixedAmount_whenAmountHasCents_preservesTwoDecimalPlaces() {
+        ProcessStep step = step(3, ProcessStepPricingPolicy.FIXED_AMOUNT);
+        step.setBillingAmount(new BigDecimal("88.88"));
+
+        ProcessStepPricingPolicy.Result result = ProcessStepPricingPolicy.calculate(
+                step, BigDecimal.ONE, new BigDecimal("100.00"), BigDecimal.TEN);
+
+        assertThat(result.finalAmount()).isEqualByComparingTo("88.88");
+        assertThat(result.adjustmentAmount()).isEqualByComparingTo("-11.12");
     }
 
     private ProcessStep step(int type, int mode) {

@@ -3,7 +3,6 @@ import { Button, Card, Empty, Select, Space, Tag, Typography, message } from 'an
 import type { Machine } from '../../types/machine'
 import type { OriginalRoll } from '../../types/processOrder'
 import ProcessPlanEditor from '../processOrderCreate/components/ProcessPlanEditor'
-import type { DefaultPlanOptions } from '../processOrderCreate/draftMappers'
 import { STEP_TYPE_REWIND, STEP_TYPE_SAW, sourceRollFromOutput } from '../processOrderDetail/routeConfigDetail'
 import type { DetailRoutePriceDefaults } from '../processOrderDetail/routeConfigDetail'
 import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
@@ -19,7 +18,6 @@ import type { RouteDraftStage } from './routeDraftModel'
 import '../processOrderCreate/components/CreateOrderEditors.css'
 
 interface Props {
-  defaultPlanOptions: DefaultPlanOptions
   machines: Machine[]
   onChange: (stages: RouteDraftStage[]) => void
   prices: DetailRoutePriceDefaults
@@ -41,7 +39,6 @@ const stepOptions = [
 ]
 
 export default function RouteDraftStagePanel({
-  defaultPlanOptions,
   machines,
   onChange,
   prices,
@@ -108,7 +105,6 @@ export default function RouteDraftStagePanel({
               <Select aria-label="工艺类型" value={draftStage.stepType} options={stepOptions} style={{ width: 120 }} onChange={changeType} />
             </Space>
             <ProcessPlanEditor
-              defaultPlanOptions={defaultPlanOptions}
               machines={machines}
               plan={draftStage.plan}
               roll={sourceRollFromOutput(source)}

@@ -1,9 +1,15 @@
 import { message } from 'antd'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { addProcessStep, updateProcessStep, type ProcessStepDTO } from '../../../api/processOrder'
+import {
+  addDraftProcessStep,
+  updateDraftProcessStep,
+  type ProcessStepDTO,
+} from '../../../api/processOrder'
 import type { ProcessStep } from '../../../types/processOrder'
 import { runVersionSynchronizedMutation } from '../serviceMutationCommit'
+import { resolveServiceStepWriteTarget, serviceStepsMatchRequests } from '../serviceStepWriteModel'
 import {
+  currentProcessOrderSteps,
   draftServiceMutationLifecycle,
   requiredDraftOrderUuid,
   type DraftServiceMutationOptions,
@@ -24,20 +30,44 @@ export function useSaveDraftServiceStep(options: Options) {
   return useMutation({
     mutationFn: async ({ stepUuid, values }: Variables) => {
       const orderUuid = requiredDraftOrderUuid(options.orderUuid)
-      const matchingSteps = options.steps.filter((step) => step.stepType === values.stepType)
-      if (matchingSteps.length > 1) throw duplicateStepError()
-      const savedStepUuid = stepUuid ?? matchingSteps[0]?.uuid
+      let expectedVersion = options.draftVersion
       await runVersionSynchronizedMutation({
-        ensureVersionReady: () => lifecycle.ensureVersionReady(queryClient, orderUuid),
+        clearVersionSyncRequired: lifecycle.clearVersionSyncRequired,
+        ensureVersionReady: async () => {
+          expectedVersion = await lifecycle.ensureVersionReady(queryClient, orderUuid)
+        },
+        isAppliedAfterSync: () => serviceStepsMatchRequests(
+          currentProcessOrderSteps(queryClient, orderUuid),
+          [values],
+        ),
         markVersionSyncRequired: lifecycle.markVersionSyncRequired,
-        mutate: () => savedStepUuid
-          ? updateProcessStep(savedStepUuid, values)
-          : addProcessStep(orderUuid, values),
+        mutate: () => persistStep(
+          { orderUuid, queryClient, stepUuid, values, expectedVersion },
+          options.steps,
+        ),
         synchronizeVersion: () => lifecycle.synchronizeLatest(queryClient, orderUuid),
       })
-      message.success(savedStepUuid ? '当前卷附加工艺已更新' : '当前卷附加工艺已添加')
+      message.success(stepUuid ? '当前卷附加工艺已更新' : '当前卷附加工艺已保存')
     },
   })
+}
+
+async function persistStep(
+  variables: Variables & {
+    expectedVersion: number
+    orderUuid: string
+    queryClient: ReturnType<typeof useQueryClient>
+  },
+  fallbackSteps: ProcessStep[],
+) {
+  const steps = (currentProcessOrderSteps(variables.queryClient, variables.orderUuid, fallbackSteps) ?? [])
+    .filter((step) => step.originalUuid === variables.values.originalUuid && step.isMain !== 1)
+  const target = resolveServiceStepWriteTarget(steps, variables.values.stepType, variables.stepUuid)
+  if (target.kind === 'duplicate') throw duplicateStepError()
+  if (target.kind === 'update') {
+    return updateDraftProcessStep(target.stepUuid, variables.values, variables.expectedVersion)
+  }
+  return addDraftProcessStep(variables.orderUuid, variables.values, variables.expectedVersion)
 }
 
 function duplicateStepError(): Error {

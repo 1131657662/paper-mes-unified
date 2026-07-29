@@ -1,7 +1,8 @@
-import request from './request'
+import request, { type MesRequestConfig } from './request'
 import type { PageResult } from '../types/common'
 import type {
   BackRecordDTO,
+  BackRecordReopenDTO,
   BackRecordResultVO,
   DraftOrderVO,
   DraftOrderBaseDTO,
@@ -83,8 +84,12 @@ export function listProcessOrderDrafts() {
   return request<DraftSummaryVO[]>({ url: '/api/process-orders/drafts', method: 'get' })
 }
 
-export function getProcessOrderDraft(uuid: string) {
-  return request<DraftOrderVO>({ url: `/api/process-orders/${uuid}/draft`, method: 'get' })
+export function getProcessOrderDraft(uuid: string, config?: Pick<MesRequestConfig, 'silentError'>) {
+  return request<DraftOrderVO>({
+    url: `/api/process-orders/${uuid}/draft`,
+    method: 'get',
+    ...config,
+  })
 }
 
 export function saveDraftBaseInfo(uuid: string, dto: DraftOrderBaseDTO) {
@@ -96,6 +101,7 @@ export function saveDraftProgress(uuid: string, dto: DraftProgressDTO) {
     url: `/api/process-orders/${uuid}/draft-progress`,
     method: 'put',
     data: dto,
+    deferUncertainErrorNotification: true,
   })
 }
 
@@ -126,6 +132,7 @@ export function saveDraftRollProcesses(orderUuid: string, dto: DraftRollProcessB
     url: `/api/process-orders/${orderUuid}/original-rolls/process-settings`,
     method: 'put',
     data: dto,
+    deferUncertainErrorNotification: true,
   })
 }
 
@@ -146,14 +153,21 @@ export function saveProcessConfigDraft(
     url: `/api/process-orders/${orderUuid}/rolls/${rollUuid}/process-config`,
     method: 'put',
     data: dto,
+    deferUncertainErrorNotification: true,
   })
 }
 
-export function previewProcessPlan(orderUuid: string, dto: ProcessPlanPreviewRequestDTO) {
+export function previewProcessPlan(
+  orderUuid: string,
+  dto: ProcessPlanPreviewRequestDTO,
+  signal?: AbortSignal,
+) {
   return request<PlanPreviewVO>({
     url: `/api/process-orders/${orderUuid}/rolls/plan-preview`,
     method: 'post',
     data: dto,
+    signal,
+    silentError: true,
   })
 }
 
@@ -173,6 +187,7 @@ export function saveDraftProcessRoute(orderUuid: string, dto: ProcessRoutePrevie
     url: `/api/process-orders/${orderUuid}/rolls/${dto.originalUuid}/route-plan`,
     method: 'put',
     data: dto,
+    deferUncertainErrorNotification: true,
   })
 }
 
@@ -181,6 +196,7 @@ export function saveDraftProcessRouteBatch(orderUuid: string, dto: ProcessRouteB
     url: `/api/process-orders/${orderUuid}/rolls/route-plan/batch`,
     method: 'put',
     data: dto,
+    deferUncertainErrorNotification: true,
   })
 }
 
@@ -221,6 +237,7 @@ export function saveProcessPlan(orderUuid: string, rollUuid: string, dto: Proces
     url: `/api/process-orders/${orderUuid}/rolls/${rollUuid}/process-plan`,
     method: 'put',
     data: dto,
+    deferUncertainErrorNotification: true,
   })
 }
 
@@ -229,6 +246,7 @@ export function saveProcessPlanBatch(orderUuid: string, dto: ProcessPlanBatchSav
     url: `/api/process-orders/${orderUuid}/rolls/process-plan/batch`,
     method: 'put',
     data: dto,
+    deferUncertainErrorNotification: true,
   })
 }
 
@@ -237,6 +255,7 @@ export function saveProcessPlanItemsBatch(orderUuid: string, dto: ProcessPlanIte
     url: `/api/process-orders/${orderUuid}/rolls/process-plan/items-batch`,
     method: 'put',
     data: dto,
+    deferUncertainErrorNotification: true,
   })
 }
 
@@ -325,18 +344,37 @@ export function backRecordProcessOrder(uuid: string, dto: BackRecordDTO) {
   })
 }
 
-export function saveFinishConfig(orderUuid: string, rollUuid: string, dto: FinishConfigSaveDTO) {
-  return request<FinishConfigSaveVO>({
-    url: `/api/process-orders/${orderUuid}/rolls/${rollUuid}/finish-config`,
+export function reopenBackRecordBatch(uuid: string, dto: BackRecordReopenDTO) {
+  return request<void>({
+    url: `/api/process-orders/${uuid}/back-record/reopen`,
     method: 'post',
     data: dto,
   })
 }
 
-export function saveFinishConfigBatch(orderUuid: string, dto: FinishConfigBatchSaveDTO) {
+export function saveFinishConfig(
+  orderUuid: string,
+  rollUuid: string,
+  dto: FinishConfigSaveDTO,
+  expectedVersion: number,
+) {
+  return request<FinishConfigSaveVO>({
+    url: `/api/process-orders/${orderUuid}/rolls/${rollUuid}/finish-config`,
+    method: 'post',
+    params: { expectedVersion },
+    data: dto,
+  })
+}
+
+export function saveFinishConfigBatch(
+  orderUuid: string,
+  dto: FinishConfigBatchSaveDTO,
+  expectedVersion: number,
+) {
   return request<FinishConfigBatchSaveVO>({
     url: `/api/process-orders/${orderUuid}/finish-config/batch`,
     method: 'post',
+    params: { expectedVersion },
     data: dto,
   })
 }
@@ -391,6 +429,7 @@ export function checkRollNoAvailable(rollNo: string, excludeUuid?: string) {
 // ==================== Phase 5.1：追加工序功能 ====================
 
 export interface ProcessStepDTO {
+  expectedVersion?: number
   originalUuid: string
   stepType: number
   stepName?: string
@@ -407,6 +446,7 @@ export interface ProcessStepDTO {
 }
 
 export interface ProcessStepBatchDTO {
+  expectedVersion?: number
   steps: ProcessStepDTO[]
 }
 
@@ -414,6 +454,7 @@ export interface ProcessStepBatchResult {
   selectedCount: number
   createdCount: number
   updatedCount: number
+  recovered?: boolean
 }
 
 export interface ProcessStepPricingAdjustmentDTO {
@@ -486,6 +527,46 @@ export function addProcessStepsBatch(orderUuid: string, data: ProcessStepBatchDT
     url: `/api/process-orders/${orderUuid}/steps/batch`,
     method: 'post',
     data,
+  })
+}
+
+export function addDraftProcessStep(orderUuid: string, data: ProcessStepDTO, expectedVersion: number) {
+  return request<void>({
+    url: `/api/process-orders/${orderUuid}/draft-steps`,
+    method: 'post',
+    data: { ...data, expectedVersion },
+    deferUncertainErrorNotification: true,
+  })
+}
+
+export function addDraftProcessStepsBatch(
+  orderUuid: string,
+  data: ProcessStepBatchDTO,
+  expectedVersion: number,
+) {
+  return request<ProcessStepBatchResult>({
+    url: `/api/process-orders/${orderUuid}/draft-steps/batch`,
+    method: 'post',
+    data: { ...data, expectedVersion },
+    deferUncertainErrorNotification: true,
+  })
+}
+
+export function updateDraftProcessStep(stepUuid: string, data: ProcessStepDTO, expectedVersion: number) {
+  return request<void>({
+    url: `/api/process-orders/draft-steps/${stepUuid}`,
+    method: 'put',
+    data: { ...data, expectedVersion },
+    deferUncertainErrorNotification: true,
+  })
+}
+
+export function deleteDraftProcessStep(stepUuid: string, expectedVersion: number) {
+  return request<void>({
+    url: `/api/process-orders/draft-steps/${stepUuid}`,
+    method: 'delete',
+    params: { expectedVersion },
+    deferUncertainErrorNotification: true,
   })
 }
 

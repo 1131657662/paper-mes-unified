@@ -18,7 +18,14 @@ export function buildTrendChartOption(model: DashboardTrendModel): EChartsOption
     animationDuration: 460,
     animationDurationUpdate: 320,
     aria: { enabled: true, label: { description: '近12个月加工应收趋势' } },
-    grid: { containLabel: true, left: 8, right: 14, top: 18, bottom: 8 },
+    grid: {
+      outerBoundsMode: 'same',
+      outerBoundsContain: 'axisLabel',
+      left: 8,
+      right: 14,
+      top: 18,
+      bottom: 8,
+    },
     tooltip: {
       trigger: 'axis',
       triggerOn: 'mousemove',

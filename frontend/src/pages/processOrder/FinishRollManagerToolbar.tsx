@@ -8,7 +8,7 @@ export interface FinishRollToolbarState {
   filteredCount: number
   filters: FinishRollFilters
   selectedCount: number
-  settled: boolean
+  readOnly: boolean
   totalCount: number
 }
 
@@ -30,7 +30,7 @@ export default function FinishRollManagerToolbar({ actions, state }: Props) {
   }
   const moreItems = [{
     danger: true,
-    disabled: state.selectedCount === 0 || state.settled,
+    disabled: state.selectedCount === 0 || state.readOnly,
     icon: <DeleteOutlined />,
     key: 'void-selected',
     label: `作废已选卷号 (${state.selectedCount})`,
@@ -40,9 +40,9 @@ export default function FinishRollManagerToolbar({ actions, state }: Props) {
     <div className="finish-roll-toolbar">
       <div className="finish-roll-toolbar__actions">
         <MesTooltip title={state.allDirectShip ? '直发卷在回录时自动产出，无需预生成' : undefined}>
-          <span><Button icon={<PlusOutlined />} type="primary" disabled={state.allDirectShip || state.settled} onClick={actions.onGenerate}>生成正式号</Button></span>
+          <span><Button icon={<PlusOutlined />} type="primary" disabled={state.allDirectShip || state.readOnly} onClick={actions.onGenerate}>生成正式号</Button></span>
         </MesTooltip>
-        <Button icon={<PlusOutlined />} disabled={state.settled} onClick={actions.onAppendSpare}>追加备用号</Button>
+        <Button icon={<PlusOutlined />} disabled={state.readOnly} onClick={actions.onAppendSpare}>追加备用号</Button>
         <Dropdown menu={{ items: moreItems }} placement="bottomRight" trigger={['click']}>
           <Button icon={<MoreOutlined />}>更多操作</Button>
         </Dropdown>

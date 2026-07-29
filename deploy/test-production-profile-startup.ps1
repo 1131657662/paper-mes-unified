@@ -1,6 +1,7 @@
 param(
     [string]$Database = "paper_processing_prod_smoke_test",
-    [int]$Port = 18081
+    [int]$Port = 18081,
+    [string]$JarPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,7 +14,11 @@ if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyCon
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$jar = Join-Path $repoRoot "target\paper-mes-0.0.1-SNAPSHOT.jar"
+$jar = if ($JarPath) {
+    (Resolve-Path -LiteralPath $JarPath).Path
+} else {
+    Join-Path $repoRoot "target\paper-mes-0.0.1-SNAPSHOT.jar"
+}
 $schema = Join-Path $repoRoot "sql\01_schema_v4.1.sql"
 $migrationDirectory = Join-Path $repoRoot "sql"
 $prodConfig = Join-Path $repoRoot "src\main\resources\application-prod.example.yml"
@@ -174,7 +179,8 @@ finally {
     if ($listener) {
         $smokePid = $listener.OwningProcess
         $smokeProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$smokePid"
-        if ($smokeProcess.CommandLine -like "*paper-mes-0.0.1-SNAPSHOT.jar*") {
+        $smokeJarName = [IO.Path]::GetFileName($jar)
+        if ($smokeProcess.CommandLine -like "*$smokeJarName*") {
             Stop-Process -Id $smokePid -Force -ErrorAction SilentlyContinue
             Wait-Process -Id $smokePid -Timeout 5 -ErrorAction SilentlyContinue
         }

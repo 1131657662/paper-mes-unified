@@ -111,6 +111,8 @@ public class ProcessOrderDetailVO {
         private BigDecimal trimWeightShare;
         private String actualRemark;
         private Integer finishStatus;
+        private Integer productionResult;
+        private String productionAdjustmentReason;
         private List<FinishSourceVO> sources;
     }
 

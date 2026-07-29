@@ -30,8 +30,11 @@ class BusinessFlowConcurrencyContractTest {
                 "businessLockService.lockProcessOrders",
                 "businessLockService.lockFinishRolls",
                 "ensureOrdersNotSettled(details)",
+                "Map<String, FinishRoll> finishByUuid = loadFinishRollsByUuid(finishUuids)",
+                "FinishRoll finish = finishByUuid.get(detail.getFinishUuid())",
                 "rollbackFinishStock(finish, detail)",
                 "updateDetailStockLocks(details, STOCK_LOCK_RELEASED, STOCK_LOCK_ACTIVE)");
+        assertFalse(rollback.contains("finishRollMapper.selectById"));
         assertBefore(rollback,
                 "ensureOrdersNotSettled(details)",
                 "rollbackFinishStock(finish, detail)");
@@ -190,11 +193,12 @@ class BusinessFlowConcurrencyContractTest {
     }
 
     @Test
-    void deliveryAvailable_whenListingFinishes_acceptsOnlyCompletedProcessOrders() throws IOException {
+    void deliveryAvailable_whenListingFinishes_acceptsRecordedInventory() throws IOException {
         String source = source(DELIVERY_SERVICE);
 
         assertContainsAll(slice(source, "public List<AvailableFinishVO> listAvailable", "public String create"),
-                ".in(ProcessOrder::getOrderStatus, List.of(ORDER_STATUS_FINISHED, ORDER_STATUS_SETTLED))");
+                ".in(ProcessOrder::getOrderStatus,",
+                "List.of(ORDER_STATUS_TO_RECORD, ORDER_STATUS_FINISHED, ORDER_STATUS_SETTLED))");
         assertContainsAll(slice(source, "public String create", "public DeliveryDetailVO getDetail"),
                 "if (!canDeliveryProcessOrder(order))",
                 "throw new BusinessException(\"加工单非可出库状态：\" + order.getOrderNo())");

@@ -143,7 +143,7 @@ final class SettleSnapshotPrintLineReader {
             return null;
         }
         try {
-            return value.isNumber() ? value.asInt() : Integer.valueOf(value.asText());
+            return value.isNumber() ? value.asInt() : Integer.parseInt(value.asText());
         } catch (NumberFormatException ignored) {
             return null;
         }

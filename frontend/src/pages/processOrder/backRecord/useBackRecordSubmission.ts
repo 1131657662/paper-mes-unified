@@ -175,6 +175,9 @@ async function preparePayload(options: PreparePayloadOptions) {
     selectedFinishUuids,
     selectedItemKeys: options.selection.selectedItemKeys,
     selectedRollUuids: options.selection.selectedRollUuids,
+    addedFinishUuids: new Set(Object.entries(formValues.finishAdjustments ?? {})
+      .filter(([key]) => options.selection.selectedItemKeys.has(key))
+      .flatMap(([, adjustment]) => adjustment.added.map((added) => added.uuid))),
   }), { recursive: true })
   return buildBackRecordDTO(options.detail, formValues, options.authorization, options.variance, {
     completeOrder: options.completeOrder,

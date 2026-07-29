@@ -65,5 +65,5 @@ Test-DatabasePort $target
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $maven = Join-Path $repoRoot 'mvnw.cmd'
 Write-Host "Integration preflight passed for $($target.Host):$($target.Port)/$($target.Database)"
-& $maven verify -Pbusiness-flow-it
+& $maven verify -Pbusiness-flow-it '-Dspring-boot.repackage.skip=true'
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

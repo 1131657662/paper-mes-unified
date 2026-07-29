@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
-class SnapshotIntegrityBusinessFlowIT {
+class SnapshotIntegrityBusinessFlowIT extends AuthenticatedBusinessFlowIT {
 
     @Autowired private BusinessFlowFixtureFactory fixtures;
     @Autowired private DeliveryService deliveryService;
@@ -105,6 +105,7 @@ class SnapshotIntegrityBusinessFlowIT {
         item.setOutWeight(new BigDecimal("100.000"));
         DeliveryCreateDTO request = new DeliveryCreateDTO();
         request.setCustomerUuid(scenario.customer().getUuid());
+        request.setWarehouseUuid(scenario.order().getWarehouseUuid());
         request.setDeliveryDate(LocalDate.now());
         request.setItems(List.of(item));
         String uuid = deliveryService.create(request);

@@ -15,8 +15,10 @@ interface Props {
 
 export default function BackRecordOnSiteOutputRow(props: Props) {
   const form = Form.useFormInstance<BackRecordFormValues>()
-  const path = ['onSiteOutputs', props.itemKey, props.fieldName] as const
-  const output = Form.useWatch(path, form) as OnSiteOutputRecordValues | undefined
+  const output = Form.useWatch(
+    (values: BackRecordFormValues) => values.onSiteOutputs?.[props.itemKey]?.[props.fieldName],
+    { form, preserve: true },
+  ) as OnSiteOutputRecordValues | undefined
   const source = props.options.find((option) => option.value === output?.originalUuid)
   const isTrim = output?.outputType === 'TRIM'
   return (
@@ -79,6 +81,7 @@ function HiddenFields({ fieldName }: { fieldName: number }) {
     <>
       <Form.Item name={[fieldName, 'uuid']} hidden><Input /></Form.Item>
       <Form.Item name={[fieldName, 'finishRollNo']} hidden><Input /></Form.Item>
+      <Form.Item name={[fieldName, 'isSpare']} hidden><Input /></Form.Item>
       <Form.Item name={[fieldName, 'outputType']} hidden><Input /></Form.Item>
     </>
   )
@@ -90,7 +93,7 @@ function OutputIdentity({ index, output }: { index: number; output?: OnSiteOutpu
     <div className="back-record-output-row__identity">
       <Tag color={isTrim ? 'orange' : 'blue'}>{isTrim ? '切边/余料' : '成品'}</Tag>
       <strong>{output?.finishRollNo || `${isTrim ? '余料' : '新成品'} ${index + 1}`}</strong>
-      {output?.uuid && <span>原预占号</span>}
+      {output?.isSpare === 1 ? <span>启用备用号</span> : output?.uuid && <span>原预占号</span>}
     </div>
   )
 }

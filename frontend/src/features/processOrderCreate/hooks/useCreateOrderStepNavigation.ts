@@ -2,22 +2,24 @@ import { useSaveProgress } from './useSaveProgress'
 import type { CreateOrderDraftState } from './useCreateOrderDraftState'
 
 export function useCreateOrderStepNavigation(state: CreateOrderDraftState) {
-  const { mutateAsync: saveProgress } = useSaveProgress()
+  const { isPending: savingProgress, mutateAsync: saveProgress } = useSaveProgress()
 
   const moveToStep = async (
     nextStep: number,
     uuid = state.orderUuid,
     expectedVersion = state.getDraftVersion(),
   ) => {
+    let version = expectedVersion
     if (uuid) {
-      await saveProgress({ uuid, currentStep: nextStep, expectedVersion })
-      state.setDraftVersion(expectedVersion + 1)
+      const result = await saveProgress({ uuid, currentStep: nextStep, expectedVersion })
+      version = result.version
+      state.setDraftVersion(version)
     }
     state.setCurrent(nextStep)
-    return expectedVersion + 1
+    return version
   }
 
-  return { moveToStep }
+  return { moveToStep, savingProgress }
 }
 
 export type MoveToCreateOrderStep = ReturnType<typeof useCreateOrderStepNavigation>['moveToStep']

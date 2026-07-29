@@ -62,7 +62,7 @@ function buildMoreItems(record: ProcessOrder | undefined, actions: BatchActions,
   const items: MenuItems = []
   if (capabilities.canManageOrder && status === 2) items.push(item('to-record', '转待回录', () => confirmStatus(record, 3, '确认车间已完成加工，转入待回录？', actions)))
   if (status === 4 || status === 5) items.push(item('snapshot', '查看快照差异', () => actions.onSnapshotDiff(record.uuid), <DiffOutlined />))
-  if (capabilities.canManageDelivery && status === 4) items.push(item('delivery', '创建出库', () => actions.onGoDelivery(record), <InboxOutlined />))
+  if (capabilities.canManageDelivery && (status === 4 || status === 5)) items.push(item('delivery', '创建出库', () => actions.onGoDelivery(record), <InboxOutlined />))
   if (capabilities.canManageSettlement && status === 4) items.push(item('settle', '生成结算', () => actions.onGoSettle(record)))
   if (capabilities.canManageOrder) addManageItems(items, record, actions)
   return items

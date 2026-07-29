@@ -49,7 +49,7 @@ public final class ProcessStepPricingBatchCalculator {
                                              BigDecimal standardAmount) {
         int mode = requestedMode == null ? ProcessStepPricingPolicy.STANDARD : requestedMode;
         if (mode == ProcessStepPricingPolicy.FIXED_AMOUNT) return money(billingAmount);
-        if (mode == ProcessStepPricingPolicy.FREE) return BigDecimal.ZERO.setScale(0);
+        if (mode == ProcessStepPricingPolicy.FREE) return BigDecimal.ZERO.setScale(2);
         return amount(step, price, quantity == null ? standardQuantity(step) : quantity);
     }
 
@@ -85,6 +85,6 @@ public final class ProcessStepPricingBatchCalculator {
     }
 
     private static BigDecimal money(BigDecimal value) {
-        return (value == null ? BigDecimal.ZERO : value).setScale(0, java.math.RoundingMode.HALF_UP);
+        return (value == null ? BigDecimal.ZERO : value).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 }

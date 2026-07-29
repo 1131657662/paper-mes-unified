@@ -1,4 +1,4 @@
-import { Alert, Descriptions, Empty, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Descriptions, Empty, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { ReactNode } from 'react'
 import TooltipText from '../../../components/biz/TooltipText'
@@ -7,7 +7,13 @@ import type {
   RewindFinishItemPreview,
   RewindSegmentPreview,
 } from '../../../types/processOrder'
-import { formatKgWithMaxDecimals, formatMm } from '../../../utils/numberFormatters'
+import {
+  formatFractionAsPercent,
+  formatKgWithMaxDecimals,
+  formatMm,
+  formatStoredCoreDiameter,
+  formatStoredDiameter,
+} from '../../../utils/numberFormatters'
 import { createStableObjectRowKey } from '../../../utils/createStableObjectRowKey'
 import type { RollWeightBalance } from '../weightBalanceModel'
 import PlanPreviewToolbar from './PlanPreviewToolbar'
@@ -17,16 +23,19 @@ import './WeightBalanceStrip.css'
 
 interface Props {
   preview?: PlanPreviewVO
+  disabled?: boolean
   loading?: boolean
   onPreview?: () => void
   balance?: RollWeightBalance
   configured: boolean
+  error?: string
+  onRetry?: () => void
 }
 
 const segmentColumns: ColumnsType<RewindSegmentPreview> = [
   { title: '段', dataIndex: 'segmentSort', width: 52, render: (value) => `#${value ?? '-'}` },
-  { title: '比例', dataIndex: 'segmentRatio', width: 72, render: (value) => `${value ?? '-'}%` },
-  { title: '目标直径', dataIndex: 'targetDiameter', width: 88, render: (value) => value ? formatMm(value) : '-' },
+  { title: '比例', dataIndex: 'segmentRatio', width: 72, render: formatFractionAsPercent },
+  { title: '目标直径', dataIndex: 'targetDiameter', width: 106, render: formatStoredDiameter },
   { title: '重复', dataIndex: 'repeatCount', width: 58 },
   { title: '排布', dataIndex: 'layoutWidth', width: 84, render: (value) => value ? formatMm(value) : '-' },
   { title: '修边', dataIndex: 'trimWidth', width: 72, render: (value) => value ? formatMm(value) : '-' },
@@ -36,8 +45,8 @@ const segmentColumns: ColumnsType<RewindSegmentPreview> = [
 const finishColumns: ColumnsType<RewindFinishItemPreview> = [
   { title: '段', dataIndex: 'segmentSort', width: 52, render: (value) => value ? `#${value}` : '-' },
   { title: '门幅', dataIndex: 'finishWidth', width: 72, render: (value) => formatMm(value ?? 0) },
-  { title: '直径', dataIndex: 'finishDiameter', width: 76, render: (value) => value ? formatMm(value) : '-' },
-  { title: '纸芯', dataIndex: 'finishCoreDiameter', width: 72, render: (value) => value ? formatMm(value) : '-' },
+  { title: '直径', dataIndex: 'finishDiameter', width: 102, render: formatStoredDiameter },
+  { title: '纸芯', dataIndex: 'finishCoreDiameter', width: 102, render: formatStoredCoreDiameter },
   { title: '预估重', dataIndex: 'estimateWeight', width: 92, render: (value) => formatKgWithMaxDecimals(Number(value ?? 0), 2) },
   { title: '修边重', dataIndex: 'trimWeight', width: 92, render: (value) => formatKgWithMaxDecimals(Number(value ?? 0), 2) },
   { title: '来源', dataIndex: 'sourceSummary', width: 160, render: textCell },
@@ -47,10 +56,18 @@ const sawFinishColumns = finishColumns.filter((column) => !('dataIndex' in colum
 const segmentRowKey = createStableObjectRowKey('preview-segment')
 const finishRowKey = createStableObjectRowKey('preview-finish')
 
-export default function PlanPreviewPanel({ preview, loading, onPreview, balance, configured }: Props) {
+export default function PlanPreviewPanel({ preview, disabled, loading, onPreview, balance, configured, error, onRetry }: Props) {
   return (
     <div className="plan-preview-panel">
-      <PlanPreviewToolbar preview={preview} loading={loading} onPreview={onPreview} configured={configured} />
+      <PlanPreviewToolbar preview={preview} disabled={disabled} loading={loading}
+        onPreview={onPreview} configured={configured} />
+      {error && <Alert
+        action={onRetry ? <Button size="small" disabled={disabled} onClick={onRetry}>重试</Button> : undefined}
+        description={error}
+        message="预览失败"
+        showIcon
+        type="error"
+      />}
       {!preview ? <EmptyPreview /> : <PreviewContent preview={preview} balance={balance} />}
     </div>
   )
@@ -108,7 +125,10 @@ function SawPreviewStats({ preview }: { preview: PlanPreviewVO }) {
       <Descriptions.Item label="成品">
         {preview.finishCount ?? 0} 件 / {formatKgWithMaxDecimals(preview.totalEstimateWeight, 2)}
       </Descriptions.Item>
-      <Descriptions.Item label="门幅差额">
+      <Descriptions.Item label="余料">
+        {preview.trimCount ?? 0} 件 / {formatKgWithMaxDecimals(preview.totalTrimWeight, 2)}
+      </Descriptions.Item>
+      <Descriptions.Item label="未分配">
         {formatMm(preview.widthDifference ?? 0)} / {formatKgWithMaxDecimals(sawDifferenceWeight(preview), 2)}
       </Descriptions.Item>
       <Descriptions.Item label="处理结果">
@@ -165,9 +185,13 @@ function sawPolicyOutcome(preview: PlanPreviewVO) {
     return { color: 'orange', label: '计入损耗', detail: `${weight} 不生成库存` }
   }
   if (preview.widthDifferencePolicy === 'ALLOCATE') {
-    return { color: 'blue', label: '分摊入成品', detail: `${weight} 已包含在成品重量内` }
+    return { color: 'blue', label: '均匀分摊', detail: `${weight} 已分摊到所有实际产出件重量` }
   }
-  return { color: 'cyan', label: '留作余料', detail: `${weight}，回录为 1 件独立余料` }
+  return {
+    color: 'cyan',
+    label: '留余料',
+    detail: `门幅已闭合，${preview.trimCount ?? 0} 件余料共 ${formatKgWithMaxDecimals(preview.totalTrimWeight, 2)}`,
+  }
 }
 
 function sawDifferenceWeight(preview: PlanPreviewVO) {

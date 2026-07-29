@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { previewsFromBatch } from './createOrderState'
+import { isRollReadyForSave, previewsFromBatch } from './createOrderState'
 import type { RollDraft } from './types'
 
 describe('batch preview mapping', () => {
@@ -16,6 +16,16 @@ describe('batch preview mapping', () => {
       'local-1': { originalUuid: 'roll-1', ready: true },
       'local-2': { originalUuid: 'roll-2', ready: false },
     })
+  })
+})
+
+describe('isRollReadyForSave', () => {
+  it('rejects a required numeric field that was cleared', () => {
+    expect(isRollReadyForSave({ ...roll('local-1', 'roll-1'), originalWidth: 0 })).toBe(false)
+  })
+
+  it('requires a physical roll number for direct shipment', () => {
+    expect(isRollReadyForSave({ ...roll('local-1', 'roll-1'), processMode: 3, rollNo: '' })).toBe(false)
   })
 })
 

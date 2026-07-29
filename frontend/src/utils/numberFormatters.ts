@@ -75,6 +75,11 @@ export function formatPercent(value?: number | null): string {
   return `${formatNumber(value, 2)}%`
 }
 
+export function formatFractionAsPercent(value?: number | null): string {
+  if (value == null) return '-'
+  return `${formatTrimmedNumber(Number(value) * 100, 1)}%`
+}
+
 export function formatUnit(value: number | null | undefined, unit: string): string {
   if (value == null) return '-'
   return `${value} ${unit}`
@@ -82,6 +87,26 @@ export function formatUnit(value: number | null | undefined, unit: string): stri
 
 export function formatMm(value?: number | null): string {
   return formatUnit(value, 'mm')
+}
+
+export function storedDiameterUnit(value?: number | null): '英寸' | 'mm' {
+  return Number(value ?? 0) > 0 && Number(value) < 100 ? '英寸' : 'mm'
+}
+
+export function storedCoreDiameterUnit(value?: number | null): '英寸' | 'mm' {
+  return Number(value ?? 0) > 0 && Number(value) < 10 ? '英寸' : 'mm'
+}
+
+export function formatStoredDiameter(value?: number | null): string {
+  if (value == null) return '-'
+  if (storedDiameterUnit(value) === 'mm') return formatMm(value)
+  return `${value}" (${Math.round(value * 25.4)} mm)`
+}
+
+export function formatStoredCoreDiameter(value?: number | null): string {
+  if (value == null) return '-'
+  if (storedCoreDiameterUnit(value) === 'mm') return formatMm(value)
+  return `${value}" (${Math.round(value * 25.4)} mm)`
 }
 
 export function formatGram(value?: number | null): string {

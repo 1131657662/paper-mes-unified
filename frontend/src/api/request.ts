@@ -19,6 +19,7 @@ const ERROR_CODE_TEXT: Record<string, string> = {
 const ERROR_NOTIFIED_KEY = '__paperMesErrorNotified'
 
 export interface MesRequestConfig extends AxiosRequestConfig {
+  deferUncertainErrorNotification?: boolean
   silentBusinessErrorCodes?: readonly string[]
   silentError?: boolean
 }
@@ -27,13 +28,15 @@ export interface MesRequestConfig extends AxiosRequestConfig {
 export class BizError extends Error {
   code: number
   errorCode?: string
+  httpStatus?: number
   notified = false
 
-  constructor(msg: string, code: number, errorCode?: string) {
+  constructor(msg: string, code: number, errorCode?: string, httpStatus?: number) {
     super(msg)
     this.name = 'BizError'
     this.code = code
     this.errorCode = errorCode
+    this.httpStatus = httpStatus
   }
 }
 
@@ -63,8 +66,13 @@ instance.interceptors.response.use(
     return rejectBusinessError(body, resp.config)
   },
   (error) => {
-    const bizError = businessErrorFromResponse(error?.response?.data)
+    if (axios.isCancel(error)) {
+      markErrorNotified(error)
+      return Promise.reject(error)
+    }
+    const bizError = businessErrorFromResponse(error?.response?.data, error?.response?.status)
     if (bizError) {
+      if (shouldDeferUncertainNotification(bizError, error?.config)) return Promise.reject(bizError)
       notifyAndHandleUnauthorized(
         bizError,
         error?.config?.url,
@@ -76,6 +84,7 @@ instance.interceptors.response.use(
     const text = error?.message?.includes('timeout')
       ? '请求超时，请重试'
       : '网络异常，请检查连接'
+    if (shouldDeferUncertainNotification(error, error?.config)) return Promise.reject(error)
     if (error?.config?.silentError) markErrorNotified(error)
     else notifyErrorOnce(error, text)
     return Promise.reject(error)
@@ -91,16 +100,29 @@ export const rawRequest = instance
 
 export default request
 
-export function businessErrorFromResponse(value: unknown): BizError | null {
+export function businessErrorFromResponse(value: unknown, httpStatus?: number): BizError | null {
   if (!isBusinessErrorBody(value)) return null
   const text = value.message || (value.errorCode && ERROR_CODE_TEXT[value.errorCode]) || '请求失败'
-  return new BizError(text, value.code, value.errorCode)
+  return new BizError(text, value.code, value.errorCode, httpStatus)
 }
 
 function rejectBusinessError(body: unknown, config?: MesRequestConfig) {
   const bizError = businessErrorFromResponse(body) ?? new BizError('请求失败', -1)
+  if (shouldDeferUncertainNotification(bizError, config)) return Promise.reject(bizError)
   notifyAndHandleUnauthorized(bizError, config?.url, shouldNotifyBusinessError(bizError, config))
   return Promise.reject(bizError)
+}
+
+export function isUncertainRequestError(error: unknown): boolean {
+  if (error instanceof BizError) {
+    return (error.httpStatus ?? error.code) >= 500
+  }
+  if (!axios.isAxiosError(error) || axios.isCancel(error)) return false
+  return !error.response || Number(error.response.status) >= 500
+}
+
+function shouldDeferUncertainNotification(error: unknown, config?: MesRequestConfig): boolean {
+  return config?.deferUncertainErrorNotification === true && isUncertainRequestError(error)
 }
 
 function notifyAndHandleUnauthorized(error: BizError, url?: string, shouldNotify = true) {

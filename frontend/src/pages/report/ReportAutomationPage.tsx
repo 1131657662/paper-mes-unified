@@ -1,6 +1,6 @@
 import { AlertOutlined, ClockCircleOutlined, SlidersOutlined } from '@ant-design/icons'
 import { Statistic, Tabs } from 'antd'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { useReportAlertEvents } from '../../features/reportAlert/hooks/useReportAlertEvents'
 import { useReportAlertRules } from '../../features/reportAlert/hooks/useReportAlertRules'
 import { useReportSubscriptions } from '../../features/reportSubscription/hooks/useReportSubscriptions'

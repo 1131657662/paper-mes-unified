@@ -24,6 +24,7 @@ class ProductionDeploymentSecurityContractTest {
             "src/main/java/com/paper/mes/system/config/config/ProcessOrderVoidIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/ProcessParamIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/ProcessRouteIntegrityBootstrap.java",
+            "src/main/java/com/paper/mes/processorder/config/BackRecordProductionSchemaBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/ReportIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/SettleIntegrityBootstrap.java"
     );

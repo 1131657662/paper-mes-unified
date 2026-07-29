@@ -32,7 +32,7 @@ export function RewindSourceUsageSummary({ segments, sourceOptions }: UsageSumma
   if (!rows.length) return null
 
   return (
-    <div style={{ padding: 10, border: '1px solid #e5e7eb', borderRadius: 6, background: '#fafafa' }}>
+    <div className="rewind-source-summary">
       <Typography.Text strong>来源母卷消耗汇总</Typography.Text>
       <Space wrap style={{ marginTop: 8, display: 'flex' }}>
         {rows.map((row) => (
@@ -72,20 +72,17 @@ export function RewindSourceEditor({ segment, roll, rolls, sourceOptions, onChan
         <Button size="small" disabled={!sameSpecIds.length} onClick={() => updateSources(fullConsumptionSources(sameSpecIds))}>使用同规格母卷</Button>
       </Space>
       {sources.map((source, index) => (
-        <Space key={source.originalUuid ?? index} wrap>
+        <div className="rewind-source-row" key={source.originalUuid ?? index}>
           <Tag>{index + 1}</Tag>
           <TooltipText className="rewind-source-editor__source-label" value={labelForSource(source, sourceOptions)} />
-          <InputNumber
-            aria-label={`来源母卷 ${index + 1} 消耗比例`}
-            addonBefore="消耗"
-            suffix="%"
-            min={0.01}
-            max={100}
-            value={sourceConsumptionValue(source)}
-            onChange={(value) => updateSources(patchSource(sources, index, { consumeRatio: value ?? 0 }))}
-          />
+          <label className="rewind-field rewind-source-row__consume">
+            <span className="rewind-field__label">消耗比例</span>
+            <InputNumber aria-label={`来源母卷 ${index + 1} 消耗比例`} suffix="%"
+              min={0.01} max={100} value={sourceConsumptionValue(source)}
+              onChange={(value) => updateSources(patchSource(sources, index, { consumeRatio: value ?? 0 }))} />
+          </label>
           <Tag color="geekblue">本段组成 {sourceCompositionRatio(source, sources, sourceOptions)}%</Tag>
-        </Space>
+        </div>
       ))}
     </Space>
   )

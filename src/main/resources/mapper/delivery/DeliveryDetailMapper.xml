@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.paper.mes.delivery.mapper.DeliveryDetailMapper">
+
+    <select id="countBlockingDeliveryActivity" resultType="long">
+        SELECT COUNT(DISTINCT dd.uuid)
+        FROM biz_delivery_detail dd
+        INNER JOIN biz_delivery_order d
+          ON d.uuid = dd.delivery_uuid
+         AND d.is_deleted = 0
+        WHERE dd.is_deleted = 0
+          AND dd.finish_uuid IN
+          <foreach collection="finishUuids" item="uuid" open="(" separator="," close=")">
+              #{uuid}
+          </foreach>
+          AND (dd.stock_lock_status = 1 OR d.delivery_status = 2)
+    </select>
+</mapper>

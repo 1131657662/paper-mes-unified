@@ -1,7 +1,7 @@
 import { Card, Spin } from 'antd'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { useState } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router'
 import ReportFilterBar, {
   type ReportFilterValues,
 } from '../../features/report/components/ReportFilterBar'

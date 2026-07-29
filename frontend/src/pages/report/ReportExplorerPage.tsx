@@ -1,7 +1,7 @@
 import { SaveOutlined } from '@ant-design/icons'
 import { Button, Card, Skeleton } from 'antd'
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import ReportFilterBar, { type ReportFilterValues } from '../../features/report/components/ReportFilterBar'
 import ReportFilterSummary from '../../features/report/components/ReportFilterSummary'

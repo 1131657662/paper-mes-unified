@@ -9,6 +9,7 @@ import {
   type DefaultPlanOptions,
 } from '../draftMappers'
 import { applyDefaultMachinesToRolls } from '../machineDefaults'
+import { reconcileProcessConfigAfterModeChange } from '../processConfigReconciliation'
 import { useCreateDraft } from './useCreateDraft'
 import type { CreateOrderDraftState } from './useCreateOrderDraftState'
 import { useImportPreview } from './useImportPreview'
@@ -51,7 +52,7 @@ export function useCreateOrderSetupActions(options: UseCreateOrderSetupActionsOp
     if (!state.orderUuid) return false
     const expectedVersion = state.getDraftVersion()
     if (state.rolls.some((roll) => !isRollReadyForSave(roll))) {
-      message.warning('请补全品名和单重')
+      message.warning('请补全品名、克重、门幅、件数和单重；直发卷还必须填写母卷号')
       return false
     }
     const rollsWithMachines = applyDefaultMachinesToRolls(state.rolls, machines)
@@ -62,7 +63,12 @@ export function useCreateOrderSetupActions(options: UseCreateOrderSetupActionsOp
     })
     const nextVersion = expectedVersion + 1
     state.setDraftVersion(nextVersion)
-    resetPlanStateAfterRollSave(state, attachSavedUuids(rollsWithMachines, uuids), defaultPlanOptions)
+    resetPlanStateAfterRollSave(
+      state,
+      attachSavedUuids(rollsWithMachines, uuids),
+      defaultPlanOptions,
+      machines,
+    )
     await moveToStep(2, state.orderUuid, nextVersion)
     return true
   }
@@ -70,9 +76,19 @@ export function useCreateOrderSetupActions(options: UseCreateOrderSetupActionsOp
   const handleProcessNext = async () => {
     if (!state.orderUuid) return false
     const expectedVersion = state.getDraftVersion()
+    const expectedRollsRevision = state.getRollsRevision()
     const rollsWithMachines = applyDefaultMachinesToRolls(state.rolls, machines)
-    state.setRolls(rollsWithMachines)
-    await saveRollProcesses({
+    const nextConfig = reconcileProcessConfigAfterModeChange({
+      configuredPlanIds: state.configuredPlanIds,
+      defaultPlanOptions,
+      machines,
+      plans: state.plans,
+      previews: state.previews,
+      routePreviews: state.routePreviews,
+      routes: state.routes,
+      rolls: rollsWithMachines,
+    })
+    const saveResult = await saveRollProcesses({
       orderUuid: state.orderUuid,
       dto: {
         expectedVersion,
@@ -84,13 +100,18 @@ export function useCreateOrderSetupActions(options: UseCreateOrderSetupActionsOp
         })),
       },
     })
-    const nextVersion = expectedVersion + 1
+    const nextVersion = saveResult.version
     state.setDraftVersion(nextVersion)
-    state.setPlans(plansForRolls(rollsWithMachines, state.plans, defaultPlanOptions))
-    state.setConfiguredPlanIds([])
-    state.setPreviews({})
-    state.setRoutes({})
-    state.setRoutePreviews({})
+    if (state.getRollsRevision() !== expectedRollsRevision) {
+      message.warning('保存期间检测到新的加工方式修改，已保留当前内容，请再次点击下一步保存')
+      return false
+    }
+    state.setRolls(rollsWithMachines)
+    state.setPlans(nextConfig.plans)
+    state.setConfiguredPlanIds(nextConfig.configuredPlanIds)
+    state.setPreviews(nextConfig.previews)
+    state.setRoutes(nextConfig.routes)
+    state.setRoutePreviews(nextConfig.routePreviews)
     state.setSelectedId(rollsWithMachines.find((roll) => roll.processMode !== 3)?.localId
       ?? rollsWithMachines[0]?.localId)
     await moveToStep(3, state.orderUuid, nextVersion)
@@ -120,9 +141,10 @@ function resetPlanStateAfterRollSave(
   state: CreateOrderDraftState,
   savedRolls: CreateOrderDraftState['rolls'],
   defaultPlanOptions: DefaultPlanOptions,
+  machines: Machine[],
 ) {
   state.setRolls(savedRolls)
-  state.setPlans(plansForRolls(savedRolls, {}, defaultPlanOptions))
+  state.setPlans(plansForRolls(savedRolls, {}, defaultPlanOptions, machines))
   state.setConfiguredPlanIds([])
   state.setPreviews({})
   state.setRoutes({})

@@ -11,6 +11,7 @@ import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.mapper.FinishOriginalRelMapper;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
+import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessParamMapper;
 import com.paper.mes.processorder.mapper.ProcessStageInputRelMapper;
 import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
@@ -39,6 +40,7 @@ class ProcessRouteCleanupServiceTest {
 
     @Mock private FinishRollMapper finishRollMapper;
     @Mock private FinishOriginalRelMapper finishOriginalRelMapper;
+    @Mock private OriginalRollMapper originalRollMapper;
     @Mock private ProcessStageInputRelMapper stageInputRelMapper;
     @Mock private ProcessStageOutputMapper stageOutputMapper;
     @Mock private ProcessParamMapper processParamMapper;
@@ -53,8 +55,11 @@ class ProcessRouteCleanupServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ProcessRouteCleanupService(finishRollMapper, finishOriginalRelMapper,
-                stageInputRelMapper, stageOutputMapper, processParamMapper, processStepMapper);
+        org.mockito.Mockito.lenient().when(originalRollMapper.selectCount(any())).thenReturn(1L);
+        ProcessRouteFinishCleanup finishCleanup = new ProcessRouteFinishCleanup(
+                finishRollMapper, finishOriginalRelMapper, originalRollMapper);
+        service = new ProcessRouteCleanupService(finishCleanup, stageInputRelMapper,
+                stageOutputMapper, processParamMapper, processStepMapper);
     }
 
     @Test
@@ -126,6 +131,33 @@ class ProcessRouteCleanupServiceTest {
         verify(finishOriginalRelMapper, times(1)).delete(any());
         verify(finishRollMapper, never()).update(isNull(), anyWrapper());
         verify(processStepMapper).delete(any());
+    }
+
+    @Test
+    void clearExistingRoute_withUuidRelation_doesNotUseDuplicateRollNumberFallback() {
+        FinishOriginalRel target = relation("finish-target");
+        when(finishOriginalRelMapper.selectList(any())).thenReturn(List.of(target), List.of(target));
+        when(finishRollMapper.selectList(any())).thenReturn(List.of(finish("finish-target")));
+        when(finishRollMapper.update(isNull(), anyWrapper())).thenReturn(1);
+
+        service.clearExistingRoute(context());
+
+        verify(originalRollMapper, never()).selectCount(any());
+        verify(finishRollMapper).update(isNull(), anyWrapper());
+    }
+
+    @Test
+    void clearExistingRoute_withAmbiguousLegacyRollNumber_rejectsTextOwnership() {
+        when(finishOriginalRelMapper.selectList(any())).thenReturn(List.of());
+        when(finishRollMapper.selectList(any())).thenReturn(List.of(finish("finish-legacy")));
+        when(originalRollMapper.selectCount(any())).thenReturn(2L);
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.clearExistingRoute(context()));
+
+        assertEquals(ErrorCode.E003.getCode(), error.getErrorCode());
+        verify(finishRollMapper, never()).update(isNull(), anyWrapper());
+        verify(processStepMapper, never()).delete(any());
     }
 
     private ProcessRouteContext context() {

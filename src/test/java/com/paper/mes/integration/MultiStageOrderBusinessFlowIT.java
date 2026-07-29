@@ -43,7 +43,9 @@ class MultiStageOrderBusinessFlowIT {
         String orderUuid = draftService.createDraft(base(customer));
         scenario = new RepresentativeOrderFixture.Scenario(orderUuid, customer.getUuid());
         String rollUuid = draftService.replaceOriginalRolls(orderUuid, List.of(roll())).getFirst();
-        routeDraftManager.save(orderUuid, rollUuid, route(rollUuid));
+        ProcessRoutePreviewDTO route = route(rollUuid);
+        route.setExpectedVersion(processOrderService.getDetail(orderUuid).getOrder().getVersion());
+        routeDraftManager.save(orderUuid, rollUuid, route);
 
         var submitted = draftService.submit(orderUuid);
         orderFixture.issueAndComplete(scenario);

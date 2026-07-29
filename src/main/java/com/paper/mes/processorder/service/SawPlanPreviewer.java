@@ -18,6 +18,7 @@ public class SawPlanPreviewer {
 
     private static final String ITEM_FINISH = "FINISH";
     private static final String ITEM_TRIM = "TRIM";
+    private static final int WEIGHT_SCALE = 3;
 
     private final SawPlanCalculator calculator = new SawPlanCalculator();
 
@@ -41,9 +42,7 @@ public class SawPlanPreviewer {
         SawPlanCalculation calculation = calculator.calculate(specs, roll, policyValue);
         List<FinishConfigSpecDTO> result = new ArrayList<>();
         calculation.finishes().forEach(item -> result.add(toSaveSpec(item)));
-        if (calculation.policy() == WidthDifferencePolicy.REMAINDER && calculation.differenceWidth() > 0) {
-            result.add(toRemainderSpec(calculation));
-        }
+        calculation.trims().forEach(item -> result.add(toSaveSpec(item)));
         return result;
     }
 
@@ -72,14 +71,13 @@ public class SawPlanPreviewer {
         result.setMainStepType(plan.getMainStepType());
         result.setSpareCount(plan.getSpareCount() == null ? 0 : plan.getSpareCount());
         result.setFinishCount(calculation.finishes().size());
-        result.setTrimCount(calculation.policy() == WidthDifferencePolicy.REMAINDER
-                && calculation.differenceWidth() > 0 ? 1 : 0);
-        result.setTotalTrimWeight(balanceAdjustmentWeight(calculation));
+        result.setTrimCount(calculation.trims().size());
+        result.setTotalTrimWeight(totalTrimWeight(calculation));
         result.setWidthDifferencePolicy(calculation.policy().name());
         result.setWidthDifference(calculation.differenceWidth());
         result.setWidthDifferenceWeight(calculation.differenceWeight());
         result.setCalculatedLossWeight(calculation.policy() == WidthDifferencePolicy.LOSS
-                ? calculation.differenceWeight() : BigDecimal.ZERO);
+                ? calculation.differenceWeight() : BigDecimal.ZERO.setScale(WEIGHT_SCALE));
         return result;
     }
 
@@ -122,8 +120,8 @@ public class SawPlanPreviewer {
             row.setCustomerFinishWidth(spec.getCustomerFinishWidth());
             row.setCustomerSpecOverrideReason(spec.getCustomerSpecOverrideReason());
             row.setEstimateWeight(item.estimateWeight());
-            row.setTrimWidth(calculation.differenceWidth());
-            row.setTrimWeight(calculation.differenceWeight());
+            row.setTrimWidth(calculation.trimWidth());
+            row.setTrimWeight(totalTrimWeight(calculation));
             row.setSourceSummary("当前母卷");
             result.add(row);
         }
@@ -133,7 +131,7 @@ public class SawPlanPreviewer {
     private FinishConfigSpecDTO toSaveSpec(SawPlanCalculation.CalculatedFinish item) {
         FinishConfigSpecDTO source = item.specification();
         FinishConfigSpecDTO result = new FinishConfigSpecDTO();
-        result.setItemType(ITEM_FINISH);
+        result.setItemType(ITEM_TRIM.equalsIgnoreCase(source.getItemType()) ? ITEM_TRIM : ITEM_FINISH);
         result.setCount(1);
         result.setFinishWidth(source.getFinishWidth());
         result.setFinishDiameter(source.getFinishDiameter());
@@ -146,31 +144,25 @@ public class SawPlanPreviewer {
         return result;
     }
 
-    private FinishConfigSpecDTO toRemainderSpec(SawPlanCalculation calculation) {
-        FinishConfigSpecDTO result = new FinishConfigSpecDTO();
-        result.setItemType(ITEM_TRIM);
-        result.setCount(1);
-        result.setFinishWidth(calculation.differenceWidth());
-        result.setEstimateWeight(calculation.differenceWeight());
-        return result;
-    }
-
     private BigDecimal totalEstimateWeight(SawPlanCalculation calculation) {
         return calculation.finishes().stream()
                 .map(SawPlanCalculation.CalculatedFinish::estimateWeight)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(WEIGHT_SCALE);
     }
 
-    private BigDecimal balanceAdjustmentWeight(SawPlanCalculation calculation) {
-        return calculation.policy() == WidthDifferencePolicy.ALLOCATE
-                ? BigDecimal.ZERO.setScale(3)
-                : calculation.differenceWeight();
+    private BigDecimal totalTrimWeight(SawPlanCalculation calculation) {
+        return calculation.trims().stream()
+                .map(SawPlanCalculation.CalculatedFinish::estimateWeight)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(WEIGHT_SCALE);
     }
 
     private String summary(SawPlanCalculation calculation) {
         return "锯纸预计生成 " + calculation.finishes().size() + " 个成品，刀数 "
                 + calculation.knifeCount() + "，成品门幅 " + calculation.finishWidth()
-                + "mm，门幅差额 " + calculation.differenceWidth() + "mm（"
+                + "mm，切边 " + calculation.trimWidth() + "mm，未分配 "
+                + calculation.differenceWidth() + "mm（"
                 + policyLabel(calculation.policy()) + "）";
     }
 

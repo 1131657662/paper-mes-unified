@@ -5,6 +5,8 @@ import type {
   RewindSegmentPlanDTO,
 } from '../../types/processOrder'
 import type { RollDraft } from './types'
+import { DEFAULT_WIDTH_DIFFERENCE_POLICY } from '../../constants/processOrder'
+import { rewindWidthPolicy } from './rewindWidthUsage'
 
 export function defaultRewindSegment(roll: RollDraft, sort = 1): RewindSegmentPlanDTO {
   return {
@@ -22,13 +24,49 @@ export function sameSpecRewindPlan(plan: ProcessPlanDTO, roll: RollDraft): Proce
   return {
     ...plan,
     rewindMode: 6,
+    widthDifferencePolicy: undefined,
     segments: [defaultRewindSegment(roll)],
   }
 }
 
+export function normalizeRewindPlan(plan: ProcessPlanDTO, roll: RollDraft): ProcessPlanDTO {
+  const mode = plan.rewindMode
+  if (!mode) return plan
+  if (mode === 6) return sameSpecRewindPlan(plan, roll)
+  const source = plan.segments?.length ? plan.segments : [defaultRewindSegment(roll)]
+  const segments = source.map((segment, index) => ({
+    ...normalizeSegmentForMode(segment, roll, mode),
+    segmentSort: index + 1,
+  }))
+  return {
+    ...plan,
+    rewindMode: mode,
+    widthDifferencePolicy: rewindWidthPolicy(mode).enabled
+      ? plan.widthDifferencePolicy ?? DEFAULT_WIDTH_DIFFERENCE_POLICY
+      : undefined,
+    segments: normalizeSegmentRatios(segments),
+  }
+}
+
+export function planWithRewindMode(
+  plan: ProcessPlanDTO,
+  roll: RollDraft,
+  rewindMode: number,
+): ProcessPlanDTO {
+  return normalizeRewindPlan({ ...plan, rewindMode }, roll)
+}
+
+export function segmentRatioPercent(
+  segment: RewindSegmentPlanDTO,
+  segments: RewindSegmentPlanDTO[],
+): number {
+  const total = segments.reduce((sum, item) => sum + positiveRatio(item), 0)
+  return total > 0 ? Math.round((positiveRatio(segment) / total) * 1000) / 10 : 0
+}
+
 export function normalizeLayeredRewindPlan(plan: ProcessPlanDTO, roll: RollDraft): ProcessPlanDTO {
   if (plan.rewindMode !== 4) return plan
-  return { ...plan, segments: normalizeLayeredRewindSegments(plan.segments, roll) }
+  return normalizeRewindPlan(plan, roll)
 }
 
 export function normalizeLayeredRewindSegments(
@@ -49,6 +87,8 @@ function normalizeLayeredRewindSegment(
 
   return {
     ...segment,
+    targetDiameter: undefined,
+    finishCoreDiameter: undefined,
     layoutItems: layoutItems?.map((item) => normalizeLayeredRewindItem(item, segment, roll)),
   }
 }
@@ -67,4 +107,71 @@ function defaultLayerForSegment(segment: RewindSegmentPlanDTO, roll: RollDraft):
     outDiameter: segment.targetDiameter ?? roll.originalDiameter,
     coreDiameter: segment.finishCoreDiameter ?? roll.coreDiameter ?? 3,
   }
+}
+
+function normalizeSegmentForMode(
+  segment: RewindSegmentPlanDTO,
+  roll: RollDraft,
+  mode: number,
+): RewindSegmentPlanDTO {
+  if (mode === 4) return normalizeLayeredRewindSegment(segment, roll)
+  const layoutItems = stripLayers(segment.layoutItems ?? defaultRewindSegment(roll).layoutItems)
+  if (mode === 2 || mode === 3) {
+    const layers = segment.layoutItems
+      ?.filter((item) => item.itemType !== 'TRIM')
+      .flatMap((item) => item.layers ?? []) ?? []
+    const outDiameters = layers.map((layer) => layer.outDiameter)
+      .filter((value): value is number => Number(value) > 0)
+    const diameterSegment = {
+      ...segment,
+      targetDiameter: segment.targetDiameter
+        ?? (outDiameters.length ? Math.max(...outDiameters) : undefined),
+      finishCoreDiameter: segment.finishCoreDiameter
+        ?? layers.find((layer) => Number(layer.coreDiameter) > 0)?.coreDiameter,
+    }
+    if (mode === 2) return normalizeDiameterSegment(diameterSegment, roll)
+    return { ...diameterSegment, layoutItems }
+  }
+  return {
+    ...segment,
+    targetDiameter: undefined,
+    finishCoreDiameter: undefined,
+    layoutItems,
+  }
+}
+
+function normalizeDiameterSegment(
+  segment: RewindSegmentPlanDTO,
+  roll: RollDraft,
+): RewindSegmentPlanDTO {
+  const source = segment.layoutItems?.find((item) => item.itemType !== 'TRIM')
+  return {
+    ...segment,
+    layoutItems: [{
+      width: roll.originalWidth ?? 1,
+      quantity: 1,
+      itemType: 'FINISH',
+      customerPaperName: source?.customerPaperName,
+      customerGramWeight: source?.customerGramWeight,
+      customerFinishWidth: source?.customerFinishWidth,
+      customerSpecOverrideReason: source?.customerSpecOverrideReason,
+    }],
+  }
+}
+
+function stripLayers(items: RewindLayoutItemPlanDTO[] | undefined) {
+  return items?.map(({ layers: _layers, ...item }) => item)
+}
+
+function normalizeSegmentRatios(segments: RewindSegmentPlanDTO[]) {
+  if (segments.length === 1) return [{ ...segments[0], segmentRatio: 1 }]
+  return segments.map((segment) => ({
+    ...segment,
+    segmentRatio: positiveRatio(segment),
+  }))
+}
+
+function positiveRatio(segment: RewindSegmentPlanDTO) {
+  const ratio = Number(segment.segmentRatio ?? 1)
+  return Number.isFinite(ratio) && ratio > 0 ? ratio : 1
 }

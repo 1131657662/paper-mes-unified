@@ -46,6 +46,7 @@ public class ProcessRouteSaveService {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessRouteContext context = loadContext(orderUuid, dto.getOriginalUuid());
         versionGuard.assertExpected(context.order(), dto.getExpectedVersion());
+        versionGuard.assertLockedExpected(orderUuid, dto.getExpectedVersion());
         routeModePolicy.requireCompatible(context.roll(), dto);
         priceResolver.applyDefaultPrices(context.order(), dto);
         ProcessRoutePreviewVO preview = routePreviewer.preview(context.roll(), dto);

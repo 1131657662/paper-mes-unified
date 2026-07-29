@@ -177,6 +177,7 @@ export function defaultPlanForRoll(roll: RollDraft, options: DefaultPlanOptions 
     mainStepType: 2,
     machineUuid: roll.machineUuid,
     rewindMode: 2,
+    widthDifferencePolicy: DEFAULT_WIDTH_DIFFERENCE_POLICY,
     unitPrice: defaultUnitPrice(2, options),
     spareCount,
     finishSpecs: [],

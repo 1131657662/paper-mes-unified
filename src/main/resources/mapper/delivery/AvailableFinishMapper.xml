@@ -5,7 +5,7 @@
     <sql id="AvailableWhere">
         o.customer_uuid = #{q.customerUuid}
         AND o.is_deleted = 0
-        AND o.order_status IN (4, 5)
+        AND o.order_status IN (3, 4, 5)
         AND f.is_deleted = 0
         AND f.finish_status = 2
         AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
@@ -143,7 +143,7 @@
         INNER JOIN biz_process_order o ON o.uuid = f.order_uuid
         WHERE o.customer_uuid = #{q.customerUuid}
           AND o.is_deleted = 0
-          AND o.order_status IN (4, 5)
+          AND o.order_status IN (3, 4, 5)
           AND f.is_deleted = 0
           <include refid="SearchAndSourceWhere"/>
     </select>

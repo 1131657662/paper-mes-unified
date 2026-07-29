@@ -21,7 +21,9 @@ export interface WorkbenchRollItemActions {
 
 export interface WorkbenchRollItemState {
   checked: boolean
+  batchDisabledReason?: string
   index: number
+  interactionDisabled: boolean
   lock?: MergedSourceLock
   machines: Machine[]
   previewStatus: { color: string; label: string }
@@ -31,33 +33,46 @@ export interface WorkbenchRollItemState {
 }
 
 export default function WorkbenchRollItem({ actions, state }: Props) {
-  const disabled = Boolean(state.lock)
+  const disabled = Boolean(state.lock) || state.interactionDisabled
   const className = rollItemClassName(state.selected, disabled)
-  const select = () => state.lock
-    ? actions.onLockedSelect?.(state.roll, state.lock)
-    : actions.onSelect(state.roll.localId)
+  const select = () => {
+    if (state.interactionDisabled) return
+    if (state.lock) actions.onLockedSelect?.(state.roll, state.lock)
+    else actions.onSelect(state.roll.localId)
+  }
 
   return (
-    <List.Item className={className} onClick={select}>
+    <List.Item
+      aria-current={state.selected ? 'true' : undefined}
+      aria-disabled={disabled}
+      className={className}
+      data-roll-id={state.roll.localId}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      onClick={select}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        select()
+      }}
+    >
       <div className="process-roll-option__content">
         <RollHeading actions={actions} disabled={disabled} state={state} />
-        <RollTags state={state} />
-        {supportsRouteDesigner(state.roll.processMode) && <RouteButton actions={actions} state={state} />}
+        <div className="process-roll-option__footer">
+          <RollTags state={state} />
+          {supportsRouteDesigner(state.roll.processMode) && <RouteButton actions={actions} state={state} />}
+        </div>
       </div>
     </List.Item>
   )
 }
 
 function RollHeading({ actions, disabled, state }: { actions: WorkbenchRollItemActions; disabled: boolean; state: WorkbenchRollItemState }) {
+  const checkboxDisabled = disabled || Boolean(state.batchDisabledReason)
   return (
     <Space align="start">
-      <Checkbox
-        aria-label={`选择母卷 ${state.index + 1}`}
-        checked={!disabled && state.checked}
-        disabled={disabled}
-        onClick={(event) => event.stopPropagation()}
-        onChange={(event) => actions.onToggle(state.roll.localId, event.target.checked)}
-      />
+      {state.selected ? <Tag color="processing">当前</Tag> : <BatchCheckbox actions={actions}
+        disabled={checkboxDisabled} reason={state.batchDisabledReason} state={state} />}
       <div>
         <Typography.Text strong>母卷 {state.index + 1}</Typography.Text>
         <div className="process-roll-option__identity">
@@ -77,6 +92,16 @@ function RollHeading({ actions, disabled, state }: { actions: WorkbenchRollItemA
   )
 }
 
+function BatchCheckbox({ actions, disabled, reason, state }: BatchCheckboxProps) {
+  const checkbox = <Checkbox aria-label={`选择母卷 ${state.index + 1}`}
+    checked={!state.lock && state.checked} disabled={disabled}
+    onClick={(event) => event.stopPropagation()}
+    onKeyDown={(event) => event.stopPropagation()}
+    onChange={(event) => actions.onToggle(state.roll.localId, event.target.checked)} />
+  if (!reason) return checkbox
+  return <span title={reason} onClick={(event) => event.stopPropagation()}>{checkbox}</span>
+}
+
 function RollTags({ state }: { state: WorkbenchRollItemState }) {
   const roll = state.roll
   return (
@@ -93,6 +118,7 @@ function RouteButton({ actions, state }: { actions: WorkbenchRollItemActions; st
   return (
     <Button
       className="process-roll-option__route"
+      disabled={state.interactionDisabled}
       size="small"
       type={state.routePreview ? 'primary' : 'default'}
       onClick={(event) => {
@@ -120,4 +146,11 @@ function machineName(machineUuid: string | undefined, machines: Machine[]) {
 
 function rollWeight(roll: RollDraft) {
   return Number(roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)
+}
+
+interface BatchCheckboxProps {
+  actions: WorkbenchRollItemActions
+  disabled: boolean
+  reason?: string
+  state: WorkbenchRollItemState
 }

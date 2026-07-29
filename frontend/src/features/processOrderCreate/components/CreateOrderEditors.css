@@ -39,6 +39,188 @@
   width: 88px;
 }
 
+.rewind-editor,
+.rewind-layout-list,
+.rewind-layer-list {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+}
+
+.rewind-mode-field {
+  display: grid;
+  width: min(100%, 280px);
+  gap: 6px;
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.rewind-mode-field > .ant-select {
+  width: 100%;
+}
+
+.rewind-segment {
+  display: grid;
+  gap: 12px;
+  padding: 12px 0 16px;
+  border-bottom: 1px solid var(--mes-color-border-light);
+}
+
+.rewind-segment__header,
+.rewind-customer-spec__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rewind-field-grid,
+.rewind-layout-grid,
+.rewind-customer-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  align-items: end;
+  gap: 10px;
+}
+
+.rewind-layout-grid {
+  grid-template-columns: repeat(3, minmax(120px, 1fr)) auto;
+}
+
+.rewind-field {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.rewind-field__label {
+  color: var(--mes-color-text-muted);
+  font-size: 12px;
+}
+
+.rewind-field > .ant-input,
+.rewind-field > .ant-input-number,
+.rewind-field > .ant-input-number-affix-wrapper,
+.rewind-field > .ant-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.rewind-field__readonly {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius-sm);
+  background: var(--mes-color-soft);
+}
+
+.rewind-same-spec {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--mes-color-primary);
+  background: var(--mes-color-soft);
+}
+
+.rewind-layout-item {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius);
+}
+
+.rewind-layout-item__delete {
+  align-self: end;
+  margin-bottom: 1px;
+}
+
+.rewind-customer-spec {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--mes-color-border-light);
+}
+
+.rewind-customer-spec__header > div {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.rewind-customer-grid {
+  grid-template-columns: minmax(160px, 1.4fr) minmax(120px, 1fr) minmax(120px, 1fr);
+}
+
+.rewind-field--reason {
+  grid-column: 1 / -1;
+}
+
+.rewind-layer-row,
+.rewind-source-row {
+  display: grid;
+  grid-template-columns: auto repeat(2, minmax(140px, 1fr)) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.rewind-source-summary {
+  padding: 10px;
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius);
+  background: var(--mes-color-soft);
+}
+
+.rewind-source-row {
+  grid-template-columns: auto minmax(130px, 1fr) minmax(140px, 180px) auto;
+}
+
+.rewind-source-row__consume {
+  min-width: 140px;
+}
+
+@container process-main (max-width: 760px) {
+  .rewind-field-grid,
+  .rewind-layout-grid,
+  .rewind-customer-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .rewind-field--reason {
+    grid-column: 1 / -1;
+  }
+
+  .rewind-layer-row,
+  .rewind-source-row {
+    grid-template-columns: auto minmax(120px, 1fr) minmax(120px, 1fr);
+  }
+
+  .rewind-layer-row > :last-child,
+  .rewind-source-row > :last-child {
+    grid-column: 2 / -1;
+  }
+}
+
+@container process-main (max-width: 520px) {
+  .rewind-field-grid,
+  .rewind-layout-grid,
+  .rewind-customer-grid,
+  .rewind-layer-row,
+  .rewind-source-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rewind-layer-row > :last-child,
+  .rewind-source-row > :last-child,
+  .rewind-field--reason {
+    grid-column: auto;
+  }
+}
+
 @media (max-width: 760px) {
   .roll-width-input.ant-input-number {
     width: 124px;

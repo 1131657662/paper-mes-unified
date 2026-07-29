@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
 import { Input, Modal, message } from 'antd'
-import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom'
+import { useLocation, useNavigate, type NavigateFunction } from 'react-router'
 import type { ActionType } from '@ant-design/pro-components'
 import {
   calcProcessOrderFee,

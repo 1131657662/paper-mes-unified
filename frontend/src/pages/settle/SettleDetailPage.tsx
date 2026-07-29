@@ -1,7 +1,7 @@
 import { Button, Form, Space, Spin, message } from 'antd'
 import { DeleteOutlined, DownloadOutlined, PrinterOutlined, WalletOutlined } from '@ant-design/icons'
 import { useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { PERMISSIONS } from '../../constants/permissions'

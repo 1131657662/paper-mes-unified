@@ -49,16 +49,19 @@ class BackRecordOnSiteFixture {
         prepareFinish(base.second(), roll);
         FinishRoll spare = spare(base.order());
         finishRollMapper.insert(spare);
+        prepareFinish(spare, roll);
         base.order().setOrderStatus(3);
         base.order().setSnapFinish(null);
         processOrderMapper.updateById(base.order());
-        return new Scenario(base.order(), roll, step, base.first(), base.second(), spare);
+        return new Scenario(base.order(), roll, step, base.first(), base.second(), spare,
+                base.order().getWarehouseUuid());
     }
 
     BackRecordDTO request(Scenario scenario, Integer firstWidth, Integer secondWidth) {
         BackRecordDTO dto = new BackRecordDTO();
         dto.setExpectedVersion(scenario.order().getVersion());
         dto.setCompleteOrder(true);
+        dto.setWarehouseUuid(scenario.warehouseUuid());
         dto.setRolls(List.of(rollDto(scenario.roll())));
         dto.setFinishes(List.of(finishDto(scenario.first(), firstWidth),
                 finishDto(scenario.second(), secondWidth), finishDto(scenario.spare(), null)));
@@ -116,7 +119,7 @@ class BackRecordOnSiteFixture {
         roll.setRollNo("IT-ONSITE");
         roll.setPaperName("integration-paper");
         roll.setGramWeight(80);
-        roll.setOriginalWidth(1200);
+        roll.setOriginalWidth(2000);
         roll.setRollWeight(new BigDecimal("200.000"));
         roll.setPieceNum(1);
         roll.setTotalWeight(new BigDecimal("200.000"));
@@ -146,7 +149,7 @@ class BackRecordOnSiteFixture {
         BackRecordRollDTO dto = new BackRecordRollDTO();
         dto.setUuid(roll.getUuid());
         dto.setActualGramWeight(80);
-        dto.setActualWidth(1200);
+        dto.setActualWidth(roll.getOriginalWidth());
         dto.setActualWeight(new BigDecimal("200.000"));
         return dto;
     }
@@ -166,6 +169,6 @@ class BackRecordOnSiteFixture {
     }
 
     record Scenario(ProcessOrder order, OriginalRoll roll, ProcessStep step,
-                    FinishRoll first, FinishRoll second, FinishRoll spare) {
+                    FinishRoll first, FinishRoll second, FinishRoll spare, String warehouseUuid) {
     }
 }

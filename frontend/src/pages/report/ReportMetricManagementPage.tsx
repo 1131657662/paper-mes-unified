@@ -1,5 +1,5 @@
 import { Alert, Button, Skeleton, Statistic } from 'antd'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import ReportMetricReleaseList from '../../features/report/components/ReportMetricReleaseList'
 import ReportMetricReleasePanel from '../../features/report/components/ReportMetricReleasePanel'
 import { useReportMetricContext } from '../../features/report/hooks/useReportMetricContext'

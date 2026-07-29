@@ -8,6 +8,8 @@ import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessConfigDraftMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
+import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ErrorCode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,19 +46,27 @@ class ProcessDraftConcurrencyBusinessFlowIT {
     void processPlan_whenSavedConcurrently_keepsOneCompleteDraft() throws Exception {
         String orderUuid = scenario.order().getUuid();
         String rollUuid = scenario.roll().getUuid();
+        int expectedVersion = processOrderMapper.selectById(orderUuid).getVersion();
 
         var outcomes = ConcurrentBusinessActions.<PlanPreviewVO>runPair(
-                () -> draftService.saveProcessPlan(orderUuid, rollUuid, plan(1, "并发方案A")),
-                () -> draftService.saveProcessPlan(orderUuid, rollUuid, plan(2, "并发方案B")));
+                () -> draftService.saveProcessPlan(orderUuid, rollUuid, plan(1, "并发方案A"), expectedVersion),
+                () -> draftService.saveProcessPlan(orderUuid, rollUuid, plan(1, "并发方案B"), expectedVersion));
 
-        assertThat(outcomes).allMatch(ConcurrentBusinessActions.Outcome::succeeded);
+        assertThat(outcomes).filteredOn(ConcurrentBusinessActions.Outcome::succeeded).hasSize(1);
+        assertThat(outcomes).filteredOn(outcome -> !outcome.succeeded()).singleElement()
+                .satisfies(outcome -> {
+                    assertThat(outcome.error()).isInstanceOf(BusinessException.class);
+                    assertThat(((BusinessException) outcome.error()).getErrorCode())
+                            .isEqualTo(ErrorCode.E006.getCode());
+                });
         var drafts = draftMapper.selectList(new LambdaQueryWrapper<ProcessConfigDraft>()
                 .eq(ProcessConfigDraft::getOrderUuid, orderUuid)
                 .eq(ProcessConfigDraft::getOriginalUuid, rollUuid));
         assertThat(drafts).hasSize(1);
         assertThat(drafts.getFirst().getConfigJson())
                 .containsAnyOf("并发方案A", "并发方案B");
-        assertThat(originalRollMapper.selectById(rollUuid).getMainStepType()).isIn(1, 2);
+        assertThat(originalRollMapper.selectById(rollUuid).getMainStepType()).isEqualTo(1);
+        assertThat(processOrderMapper.selectById(orderUuid).getVersion()).isEqualTo(expectedVersion + 1);
     }
 
     private ProcessPlanDTO plan(int mainStepType, String remark) {

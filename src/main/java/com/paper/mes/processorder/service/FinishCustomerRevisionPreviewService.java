@@ -129,12 +129,14 @@ public class FinishCustomerRevisionPreviewService {
         preview.setOrderNo(order.getOrderNo());
         preview.setOrderVersion(order.getVersion());
         preview.setNextRevisionNo(nextRevisionNo);
-        preview.setItemCount(items.size());
-        preview.setValidItemCount((int) items.stream().filter(FinishCustomerSpecVO::isValid).count());
+        int itemCount = items.size();
+        int validItemCount = (int) items.stream().filter(FinishCustomerSpecVO::isValid).count();
+        preview.setItemCount(itemCount);
+        preview.setValidItemCount(validItemCount);
         preview.setPhysicalTotalWeight(physicalTotal);
         preview.setCustomerTotalWeight(customerTotal);
         preview.setDifferenceWeight(customerTotal.subtract(physicalTotal).setScale(3));
-        preview.setHasErrors(preview.getValidItemCount() != preview.getItemCount());
+        preview.setHasErrors(validItemCount != itemCount);
         preview.setItems(items);
         return preview;
     }

@@ -1,10 +1,13 @@
 import { decimalPlaces } from '../../../utils/numberFormatters'
+import type { BackRecordFinishAdjustmentValues } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import type { BackRecordWorkItem, WorkbenchFinish } from './backRecordWorkbenchTypes'
+import { isFinishProduced } from './backRecordFinishAdjustment'
 
 interface AutoTrimOptions {
   autoTrimUuids: Set<string>
   manualTrimUuids: Set<string>
+  adjustment?: BackRecordFinishAdjustmentValues
 }
 
 export interface AutoTrimWeight {
@@ -21,7 +24,10 @@ export function autoTrimWeights(
   const trimFinishes = item.finishes.filter((entry) => isTrimFinish(entry, values))
   if (trimFinishes.length === 0) return []
 
-  const officialFinishes = item.finishes.filter((entry) => isOfficialFinish(entry, values))
+  const officialFinishes = item.finishes.filter((entry) => (
+    isOfficialFinish(entry, values)
+    && isFinishProduced(entry.finish.uuid, options.adjustment)
+  ))
   if (officialFinishes.length === 0 || !allOfficialWeightsFilled(officialFinishes, values)) return []
 
   const sourceWeight = values.rolls?.[item.roll.uuid]?.actualWeight ?? item.roll.actualWeight

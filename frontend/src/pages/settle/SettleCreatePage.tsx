@@ -1,7 +1,7 @@
 import { Card, Form, Input, Space, message } from 'antd'
 import dayjs from 'dayjs'
 import { useEffect, useRef } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import MesPageHeader from '../../components/layout/MesPageHeader'

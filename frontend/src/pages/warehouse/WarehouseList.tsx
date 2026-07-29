@@ -4,7 +4,7 @@ import { Button, Popconfirm, Tag, message } from 'antd'
 import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import {
   pageWarehouses,
   deleteWarehouse,

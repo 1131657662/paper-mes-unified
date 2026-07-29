@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
-class FullLifecycleBusinessFlowIT {
+class FullLifecycleBusinessFlowIT extends AuthenticatedBusinessFlowIT {
 
     @Autowired private RepresentativeOrderFixture fixture;
     @Autowired private ProcessOrderService processOrderService;
@@ -109,6 +109,7 @@ class FullLifecycleBusinessFlowIT {
                                               com.paper.mes.processorder.dto.ProcessOrderDetailVO detail) {
         DeliveryCreateDTO dto = new DeliveryCreateDTO();
         dto.setCustomerUuid(customerUuid);
+        dto.setWarehouseUuid(detail.getOrder().getWarehouseUuid());
         dto.setDeliveryDate(LocalDate.now());
         dto.setPickerName("业务流测试");
         dto.setItems(detail.getFinishRolls().stream().map(this::deliveryItem).toList());

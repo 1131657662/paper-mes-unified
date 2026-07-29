@@ -31,9 +31,9 @@ function rowActions(record: ProcessOrder, actions: Omit<Props, 'record'>) {
   if (status === 1 && actions.capabilities.canManageOrder) return [{ label: '打印下发', onClick: () => actions.onPrint(record) }]
   if (status === 2 && actions.capabilities.canManageOrder) return [{ label: '转待回录', onClick: () => actions.onChangeStatus(record, 3, '确认车间已完成加工，转入待回录？') }]
   if (status === 3 && actions.capabilities.canBackRecord) return [{ label: '进入回录', onClick: () => actions.onBackRecord(record.uuid) }]
-  if (status !== 4) return []
+  if (status !== 4 && status !== 5) return []
   const completedActions = []
   if (actions.capabilities.canManageDelivery) completedActions.push({ label: '创建出库', onClick: () => actions.onGoDelivery(record) })
-  if (actions.capabilities.canManageSettlement) completedActions.push({ label: '生成结算', onClick: () => actions.onGoSettle(record) })
+  if (status === 4 && actions.capabilities.canManageSettlement) completedActions.push({ label: '生成结算', onClick: () => actions.onGoSettle(record) })
   return completedActions
 }

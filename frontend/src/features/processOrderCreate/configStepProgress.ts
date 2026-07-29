@@ -10,7 +10,7 @@ export interface ConfigStepProgress {
   totalCount: number
 }
 
-interface ProgressOptions {
+export interface ConfigStepProgressOptions {
   configuredPlanIds: string[]
   lockedRolls: Record<string, MergedSourceLock>
   previews: Record<string, PlanPreviewVO>
@@ -19,11 +19,28 @@ interface ProgressOptions {
   serviceConfigured: Record<string, boolean>
 }
 
-export function configStepProgress(options: ProgressOptions): ConfigStepProgress {
+export function configStepProgress(options: ConfigStepProgressOptions): ConfigStepProgress {
   const configured = new Set(options.configuredPlanIds)
   const progress = { noConfigCount: 0, pendingCount: 0, savedCount: 0, totalCount: options.rolls.length }
   for (const roll of options.rolls) incrementProgress(progress, roll, options, configured)
   return progress
+}
+
+export function nextPendingConfigRoll(
+  options: ConfigStepProgressOptions,
+  currentLocalId: string,
+  assumedSavedIds: Iterable<string> = [],
+): RollDraft | undefined {
+  const configured = new Set(options.configuredPlanIds)
+  const assumedSaved = new Set(assumedSavedIds)
+  const currentIndex = options.rolls.findIndex((roll) => roll.localId === currentLocalId)
+  const ordered = currentIndex < 0
+    ? options.rolls
+    : [...options.rolls.slice(currentIndex + 1), ...options.rolls.slice(0, currentIndex + 1)]
+  return ordered.find((roll) => !assumedSaved.has(roll.localId)
+    && !isNoConfigRequired(roll, options)
+    && !hasSavedRoute(roll, options)
+    && !isSaved(roll, options, configured))
 }
 
 export function configStepProgressText(progress: ConfigStepProgress): string {
@@ -38,14 +55,14 @@ export function configStepProgressText(progress: ConfigStepProgress): string {
 function incrementProgress(
   progress: ConfigStepProgress,
   roll: RollDraft,
-  options: ProgressOptions,
+  options: ConfigStepProgressOptions,
   configured: Set<string>,
 ) {
-  if (options.lockedRolls[roll.localId] || roll.processMode === 3) {
+  if (isNoConfigRequired(roll, options)) {
     progress.noConfigCount += 1
     return
   }
-  if (roll.uuid && options.routePreviews[roll.uuid]) {
+  if (hasSavedRoute(roll, options)) {
     progress.savedCount += 1
     return
   }
@@ -55,9 +72,17 @@ function incrementProgress(
 
 function isSaved(
   roll: RollDraft,
-  options: ProgressOptions,
+  options: ConfigStepProgressOptions,
   configured: Set<string>,
 ) {
   if (roll.processMode === 4) return Boolean(roll.uuid && options.serviceConfigured[roll.uuid])
   return isConfiguredPlanReady(roll, configured, options.previews)
+}
+
+function isNoConfigRequired(roll: RollDraft, options: ConfigStepProgressOptions) {
+  return Boolean(options.lockedRolls[roll.localId]) || roll.processMode === 3
+}
+
+function hasSavedRoute(roll: RollDraft, options: ConfigStepProgressOptions) {
+  return Boolean(roll.uuid && options.routePreviews[roll.uuid])
 }

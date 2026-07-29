@@ -26,4 +26,11 @@ class BusinessFlowTestRunnerContractTest {
                 "Missing $name", "verify -Pbusiness-flow-it");
         assertThat(script).doesNotContain("123123", "--password=");
     }
+
+    @Test
+    void runner_skipsExecutableJarRepackage() throws Exception {
+        String script = Files.readString(Path.of("deploy/run-business-flow-it.ps1"));
+
+        assertThat(script).contains("'-Dspring-boot.repackage.skip=true'");
+    }
 }

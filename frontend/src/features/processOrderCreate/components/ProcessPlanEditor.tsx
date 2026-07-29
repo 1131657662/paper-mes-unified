@@ -1,35 +1,27 @@
-import { Input, InputNumber, Radio, Space, Tag, Typography } from 'antd'
+import { EditOutlined } from '@ant-design/icons'
+import { Button, Input, InputNumber, Space, Tag, Typography } from 'antd'
 import { PROCESS_MODE, STEP_TYPE, processModeRequiresMain } from '../../../constants/processOrder'
 import type { Machine } from '../../../types/machine'
 import type { ProcessPlanDTO } from '../../../types/processOrder'
 import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
-import { applyDefaultMachineToPlan } from '../machineDefaults'
-import { applyLegacyPlanPriceDefaults, defaultPlanForRoll, type DefaultPlanOptions } from '../draftMappers'
-import { toOnSitePlan } from '../onSitePlanUtils'
 import OnSiteCountEditor from './OnSiteCountEditor'
 import ProcessMachineSelect from './ProcessMachineSelect'
 import RewindPlanEditor from './RewindPlanEditor'
 import SawPlanEditor from './SawPlanEditor'
 
 interface Props {
-  defaultSpareCount?: number
-  defaultPlanOptions?: DefaultPlanOptions
   machines: Machine[]
+  onEditMode?: () => void
   plan: ProcessPlanDTO
   roll: RollDraft
   rolls: RollDraft[]
   onChange: (plan: ProcessPlanDTO) => void
 }
 
-const stepOptions = Object.entries(STEP_TYPE)
-  .filter(([value]) => value === '1' || value === '2')
-  .map(([value, label]) => ({ value: Number(value), label }))
-
 export default function ProcessPlanEditor({
-  defaultSpareCount = 0,
-  defaultPlanOptions,
   machines,
+  onEditMode,
   plan,
   roll,
   rolls,
@@ -39,11 +31,7 @@ export default function ProcessPlanEditor({
   const mainStepType = processModeRequiresMain(processMode)
     ? plan.mainStepType ?? roll.mainStepType ?? 2
     : undefined
-  const planDefaults = defaultPlanOptions ?? { spareCount: defaultSpareCount }
   const patch = (partial: Partial<ProcessPlanDTO>) => onChange({ ...plan, ...partial })
-  const patchMainStep = (nextStepType: number) => {
-    onChange(planForMode({ defaultPlanOptions: planDefaults, machines, plan, roll, processMode, mainStepType: nextStepType }))
-  }
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -51,20 +39,12 @@ export default function ProcessPlanEditor({
       <div className="process-plan-mode-context">
         <Typography.Text strong>加工方式</Typography.Text>
         <Tag color="blue">{PROCESS_MODE[processMode] ?? '标准加工'}</Tag>
+        {mainStepType && <><Typography.Text strong>主工艺</Typography.Text>
+          <Tag color="green">{STEP_TYPE[mainStepType]}</Tag></>}
+        {onEditMode && (
+          <Button type="link" icon={<EditOutlined />} onClick={onEditMode}>返回加工方式修改</Button>
+        )}
       </div>
-      {processModeRequiresMain(processMode) && (
-        <Space wrap>
-          <Typography.Text strong>主工艺</Typography.Text>
-          <Radio.Group
-            aria-label="主工艺"
-            value={mainStepType}
-            options={stepOptions}
-            optionType="button"
-            buttonStyle="solid"
-            onChange={(event) => patchMainStep(event.target.value)}
-          />
-        </Space>
-      )}
       {processModeRequiresMain(processMode) && (
         <ProcessMachineSelect
           machines={machines}
@@ -115,31 +95,4 @@ function RollContextHeader({ roll }: { roll: RollDraft }) {
       </Typography.Text>
     </div>
   )
-}
-
-function planForMode({ defaultPlanOptions = {}, machines, plan, roll, processMode, mainStepType }: PlanModeOptions): ProcessPlanDTO {
-  if (processMode === 3) return { processMode: 3, spareCount: 0, finishSpecs: [] }
-  if (processMode === 4) return { processMode: 4, spareCount: 0, finishSpecs: [] }
-  const stepChanged = plan.mainStepType !== mainStepType || plan.processMode !== processMode
-  if (processMode === 2) {
-    const standardRoll = { ...roll, processMode, mainStepType }
-    const fallback = defaultPlanForRoll(standardRoll, { ...defaultPlanOptions, spareCount: plan.spareCount ?? defaultPlanOptions.spareCount })
-    const nextPlan = stepChanged
-      ? fallback
-      : applyLegacyPlanPriceDefaults({ ...plan, processMode, mainStepType }, defaultPlanOptions)
-    return applyDefaultMachineToPlan(toOnSitePlan(nextPlan), machines, roll)
-  }
-  const standardRoll = { ...roll, processMode, mainStepType }
-  const fallback = defaultPlanForRoll(standardRoll, { ...defaultPlanOptions, spareCount: plan.spareCount ?? defaultPlanOptions.spareCount })
-  const hasOnSiteWidth = plan.finishSpecs?.some((spec) => Number(spec.finishWidth ?? 0) <= 0)
-  return applyDefaultMachineToPlan(hasOnSiteWidth || stepChanged ? fallback : { ...plan, processMode, mainStepType }, machines, roll)
-}
-
-interface PlanModeOptions {
-  defaultPlanOptions?: DefaultPlanOptions
-  machines: Machine[]
-  plan: ProcessPlanDTO
-  roll: RollDraft
-  processMode: number
-  mainStepType?: number
 }

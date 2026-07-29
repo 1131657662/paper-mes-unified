@@ -24,16 +24,23 @@ class BusinessFlowOrderCleanup {
     private final JdbcTemplate jdbcTemplate;
 
     void delete(String orderUuid) {
-        String customerUuid = jdbcTemplate.query(
-                "SELECT customer_uuid FROM biz_process_order WHERE uuid = ?",
-                result -> result.next() ? result.getString(1) : null,
+        OrderOwners owners = jdbcTemplate.query(
+                "SELECT customer_uuid, warehouse_uuid FROM biz_process_order WHERE uuid = ?",
+                result -> result.next() ? new OrderOwners(result.getString(1), result.getString(2)) : null,
                 orderUuid);
         for (String table : CHILD_TABLES) {
             jdbcTemplate.update("DELETE FROM " + table + " WHERE order_uuid = ?", orderUuid);
         }
         jdbcTemplate.update("DELETE FROM biz_process_order WHERE uuid = ?", orderUuid);
-        if (customerUuid != null) {
-            jdbcTemplate.update("DELETE FROM sys_customer WHERE uuid = ?", customerUuid);
+        if (owners != null && owners.customerUuid() != null) {
+            jdbcTemplate.update("DELETE FROM sys_customer WHERE uuid = ?", owners.customerUuid());
         }
+        if (owners != null && owners.warehouseUuid() != null) {
+            jdbcTemplate.update("DELETE FROM sys_warehouse WHERE uuid = ? AND warehouse_code LIKE 'IT-WH-%'",
+                    owners.warehouseUuid());
+        }
+    }
+
+    private record OrderOwners(String customerUuid, String warehouseUuid) {
     }
 }

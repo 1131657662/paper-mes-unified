@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Card, Form, message } from 'antd'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'

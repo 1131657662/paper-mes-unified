@@ -33,6 +33,7 @@ class ProcessOrderPrintViewBusinessFlowIT {
         scenario.order().setPrintStatus(0);
         scenario.order().setPrintCount(0);
         processOrderMapper.updateById(scenario.order());
+        processOrderService.issue(scenario.order().getUuid());
         processOrderService.print(scenario.order().getUuid(), new PrintDTO());
     }
 
@@ -78,8 +79,9 @@ class ProcessOrderPrintViewBusinessFlowIT {
 
     @Test
     void physicalReprint_forSettledOrder_keepsStatusAndRecordsReason() {
-        scenario.order().setOrderStatus(5);
-        processOrderMapper.updateById(scenario.order());
+        var settled = processOrderMapper.selectById(scenario.order().getUuid());
+        settled.setOrderStatus(5);
+        assertThat(processOrderMapper.updateById(settled)).isEqualTo(1);
         PhysicalReprintDTO dto = new PhysicalReprintDTO();
         dto.setVersion(PrintViewVersion.ISSUED);
         dto.setReason("客户要求补留一份");

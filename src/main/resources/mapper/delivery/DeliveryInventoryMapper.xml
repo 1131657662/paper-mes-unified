@@ -14,7 +14,7 @@
         AND f.finish_status = 2
         AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
         AND o.is_deleted = 0
-        AND o.order_status IN (4, 5)
+        AND o.order_status IN (3, 4, 5)
     </sql>
 
     <sql id="InventoryFilterWhere">
@@ -35,11 +35,15 @@
         </if>
         <if test="q.stockState != null and q.stockState == 1">AND dd.uuid IS NULL</if>
         <if test="q.stockState != null and q.stockState == 2">AND dd.uuid IS NOT NULL</if>
-        <if test="q.inventoryType != null and q.inventoryType == 1">
+        <if test="q.inventoryScope != null and q.inventoryScope == 'product'">
+            AND COALESCE(f.is_remain, 0) != 1
+        </if>
+        <if test="q.inventoryScope != null and q.inventoryScope == 'remain'">AND f.is_remain = 1</if>
+        <if test="q.inventoryScope == null and q.inventoryType != null and q.inventoryType == 1">
             AND COALESCE(f.is_remain, 0) != 1 AND COALESCE(f.source_type, 1) != 2
         </if>
-        <if test="q.inventoryType != null and q.inventoryType == 2">AND f.is_remain = 1</if>
-        <if test="q.inventoryType != null and q.inventoryType == 3">
+        <if test="q.inventoryScope == null and q.inventoryType != null and q.inventoryType == 2">AND f.is_remain = 1</if>
+        <if test="q.inventoryScope == null and q.inventoryType != null and q.inventoryType == 3">
             AND COALESCE(f.is_remain, 0) != 1 AND f.source_type = 2
         </if>
         <if test="q.stockAgeMinDays != null">
@@ -52,9 +56,18 @@
                COUNT(*) AS totalRollCount,
                SUM(CASE WHEN dd.uuid IS NULL THEN 1 ELSE 0 END) AS availableRollCount,
                SUM(CASE WHEN dd.uuid IS NOT NULL THEN 1 ELSE 0 END) AS lockedRollCount,
-               SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND COALESCE(f.source_type, 1) != 2 THEN 1 ELSE 0 END) AS productRollCount,
+               SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 THEN 1 ELSE 0 END) AS productRollCount,
                SUM(CASE WHEN f.is_remain = 1 THEN 1 ELSE 0 END) AS remainRollCount,
                SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND f.source_type = 2 THEN 1 ELSE 0 END) AS directRollCount,
+               COALESCE(SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS productWeight,
+               COALESCE(SUM(CASE WHEN f.is_remain = 1 THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS remainWeight,
+               COALESCE(SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND f.source_type = 2 THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS directWeight,
+               SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND dd.uuid IS NULL THEN 1 ELSE 0 END) AS productAvailableRollCount,
+               SUM(CASE WHEN f.is_remain = 1 AND dd.uuid IS NULL THEN 1 ELSE 0 END) AS remainAvailableRollCount,
+               SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND f.source_type = 2 AND dd.uuid IS NULL THEN 1 ELSE 0 END) AS directAvailableRollCount,
+               COALESCE(SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND dd.uuid IS NULL THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS productAvailableWeight,
+               COALESCE(SUM(CASE WHEN f.is_remain = 1 AND dd.uuid IS NULL THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS remainAvailableWeight,
+               COALESCE(SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND f.source_type = 2 AND dd.uuid IS NULL THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS directAvailableWeight,
                COALESCE(SUM(COALESCE(f.remaining_weight, f.actual_weight, 0)), 0) AS totalWeight,
                COALESCE(SUM(CASE WHEN dd.uuid IS NULL THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS availableWeight,
                COALESCE(SUM(CASE WHEN dd.uuid IS NOT NULL THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS lockedWeight,
@@ -82,6 +95,18 @@
                COUNT(*) AS totalRollCount,
                SUM(CASE WHEN dd.uuid IS NULL THEN 1 ELSE 0 END) AS availableRollCount,
                SUM(CASE WHEN dd.uuid IS NOT NULL THEN 1 ELSE 0 END) AS lockedRollCount,
+               SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 THEN 1 ELSE 0 END) AS productRollCount,
+               SUM(CASE WHEN f.is_remain = 1 THEN 1 ELSE 0 END) AS remainRollCount,
+               SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND f.source_type = 2 THEN 1 ELSE 0 END) AS directRollCount,
+               COALESCE(SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS productWeight,
+               COALESCE(SUM(CASE WHEN f.is_remain = 1 THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS remainWeight,
+               COALESCE(SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND f.source_type = 2 THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS directWeight,
+               SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND dd.uuid IS NULL THEN 1 ELSE 0 END) AS productAvailableRollCount,
+               SUM(CASE WHEN f.is_remain = 1 AND dd.uuid IS NULL THEN 1 ELSE 0 END) AS remainAvailableRollCount,
+               SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND f.source_type = 2 AND dd.uuid IS NULL THEN 1 ELSE 0 END) AS directAvailableRollCount,
+               COALESCE(SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND dd.uuid IS NULL THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS productAvailableWeight,
+               COALESCE(SUM(CASE WHEN f.is_remain = 1 AND dd.uuid IS NULL THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS remainAvailableWeight,
+               COALESCE(SUM(CASE WHEN COALESCE(f.is_remain, 0) != 1 AND f.source_type = 2 AND dd.uuid IS NULL THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0) AS directAvailableWeight,
                SUM(COALESCE(f.remaining_weight, f.actual_weight, 0)) AS totalWeight,
                SUM(CASE WHEN dd.uuid IS NULL THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END) AS availableWeight,
                SUM(CASE WHEN dd.uuid IS NOT NULL THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END) AS lockedWeight,

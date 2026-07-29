@@ -15,7 +15,7 @@ import { useProcessOrderListCapabilities } from './useProcessOrderListCapabiliti
 import './ProcessOrderList.css'
 
 export default function ProcessOrderList() {
-  const actionRef = useRef<ActionType>()
+  const actionRef = useRef<ActionType | undefined>(undefined)
   const rowSelection = useProcessOrderRowSelection()
   const dialogs = useProcessOrderListDialogs()
   const customerEnum = useProcessOrderCustomerEnum()

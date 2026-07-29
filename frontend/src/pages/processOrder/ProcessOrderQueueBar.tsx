@@ -13,7 +13,7 @@ interface Props {
 export type QueueStatus = 'all' | '0' | '1' | '2' | '3' | '4' | '5' | '6'
 
 const queueOptions: QueueOption[] = [
-  { label: '全部', value: 'all' },
+  { label: '有效单据', value: 'all' },
   { label: '草稿', value: '0' },
   { label: '待下发', value: '1' },
   { label: '加工中', value: '2' },

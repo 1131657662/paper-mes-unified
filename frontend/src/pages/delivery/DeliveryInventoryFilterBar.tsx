@@ -1,7 +1,13 @@
 import { Input, InputNumber, Segmented, Select } from 'antd'
 import type { DeliveryInventoryFilter } from '../../types/deliveryInventory'
 import type { Warehouse } from '../../types/warehouse'
-import { inventoryTypeFrom, stockStateFrom } from './deliveryInventoryModel'
+import {
+  filtersForInventoryQuickFilter,
+  inventoryProductLabel,
+  inventoryQuickFilterFrom,
+  inventoryQuickFilterValue,
+  stockStateFrom,
+} from './deliveryInventoryModel'
 
 interface Props {
   filters: DeliveryInventoryFilter
@@ -29,12 +35,15 @@ export default function DeliveryInventoryFilterBar({ filters, onChange, onSearch
         optionFilterProp="label"
         onChange={(value) => onChange({ ...filters, warehouseUuid: value })}
       />
-      <Segmented
-        aria-label="库存状态"
-        value={filters.stockState ?? 0}
-        options={[{ label: '全部', value: 0 }, { label: '可出库', value: 1 }, { label: '已占用', value: 2 }]}
-        onChange={(value) => onChange({ ...filters, stockState: stockStateFrom(value) })}
-      />
+      <div className="delivery-inventory-filter-group">
+        <span className="delivery-inventory-filter-group__label">库存状态</span>
+        <Segmented
+          aria-label="库存状态"
+          value={filters.stockState ?? 0}
+          options={[{ label: '全部', value: 0 }, { label: '可出库', value: 1 }, { label: '已占用', value: 2 }]}
+          onChange={(value) => onChange({ ...filters, stockState: stockStateFrom(value) })}
+        />
+      </div>
       <InputNumber
         aria-label="最小库龄（天）"
         min={0}
@@ -44,17 +53,21 @@ export default function DeliveryInventoryFilterBar({ filters, onChange, onSearch
         value={filters.stockAgeMinDays}
         onChange={(value) => onChange({ ...filters, stockAgeMinDays: value ?? undefined })}
       />
-      <Select
-        allowClear
-        placeholder="全部类型"
-        value={filters.inventoryType}
-        options={[
-          { label: '普通成品', value: 1 },
-          { label: '余料', value: 2 },
-          { label: '原纸直发', value: 3 },
-        ]}
-        onChange={(value) => onChange({ ...filters, inventoryType: inventoryTypeFrom(value) })}
-      />
+      <div className="delivery-inventory-filter-group delivery-inventory-scope-group">
+        <span className="delivery-inventory-filter-group__label">库存类型</span>
+        <Segmented
+          className="delivery-inventory-scope-segmented"
+          aria-label="库存类型"
+          value={inventoryQuickFilterValue(filters)}
+          options={[
+            { label: '全部', value: 'all' },
+            { label: inventoryProductLabel(filters), value: 'product' },
+            { label: '余料', value: 'remain' },
+            { label: '原纸直发', value: 'direct' },
+          ]}
+          onChange={(value) => onChange(filtersForInventoryQuickFilter(filters, inventoryQuickFilterFrom(value)))}
+        />
+      </div>
     </div>
   )
 }

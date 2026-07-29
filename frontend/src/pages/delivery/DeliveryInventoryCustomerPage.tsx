@@ -6,6 +6,7 @@ import DeliveryInventoryFilterBar from './DeliveryInventoryFilterBar'
 import DeliveryInventoryFinishTable from './DeliveryInventoryFinishTable'
 import DeliveryInventoryOrderGroupTable from './DeliveryInventoryOrderGroupTable'
 import DeliveryInventorySummary from './DeliveryInventorySummary'
+import { inventoryProductLabel, inventoryQuickFilterValue } from './deliveryInventoryModel'
 import { useDeliveryInventoryCustomerPage } from './useDeliveryInventoryCustomerPage'
 import './DeliveryInventoryPage.css'
 import './DeliveryInventoryTable.css'
@@ -32,7 +33,7 @@ export default function DeliveryInventoryCustomerPage() {
           {model.canManage && <Button type="primary" loading={model.validation.isPending} disabled={!model.selected.length} onClick={() => void model.createDelivery()}>新建出库 {model.selected.length || ''}</Button>}
         </Space>
       </header>
-      <DeliveryInventorySummary summary={model.summaryQuery.data} />
+      <DeliveryInventorySummary inventoryProductLabel={inventoryProductLabel(model.filters)} inventoryScope={inventoryQuickFilterValue(model.filters)} summary={model.summaryQuery.data} />
       <div className="delivery-inventory-customer-controls">
         <DeliveryInventoryFilterBar filters={model.filters} warehouses={model.warehouses}
           onChange={model.updateFilters} onSearch={(keyword) => model.updateFilters({ ...model.filters, keyword })} />

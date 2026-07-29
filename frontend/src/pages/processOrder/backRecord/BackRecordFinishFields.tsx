@@ -25,6 +25,7 @@ interface FinishFieldContext {
   maxWidth?: number
   onSite: boolean
   sourceOptions: BackRecordSourceOption[]
+  allowFinishWidth?: boolean
 }
 
 export default function BackRecordFinishFields(props: Props) {
@@ -36,7 +37,7 @@ export default function BackRecordFinishFields(props: Props) {
   return (
     <div className="back-record-finish-row__fields">
       {props.context.needsSource && <SourceField finish={props.finish} options={props.context.sourceOptions} />}
-      {onSite && <FinishWidthField finish={props.finish} maxWidth={selectedWidth ?? props.context.maxWidth} onFieldExhausted={props.onFieldExhausted} />}
+      {(onSite || props.context.allowFinishWidth) && <FinishWidthField finish={props.finish} maxWidth={selectedWidth ?? props.context.maxWidth} onFieldExhausted={props.onFieldExhausted} />}
       <ActualWeightField {...props} />
       <Form.Item name={['finishes', props.finish.uuid, 'scrapWeight']} label="报废/损耗">
         <InputNumber data-back-record-field="true" min={0} placeholder="kg" suffix="kg" onPressEnter={(event) => focusNextBackRecordField(event, props.onFieldExhausted)} />
@@ -50,7 +51,7 @@ export default function BackRecordFinishFields(props: Props) {
       <Form.Item name={['finishes', props.finish.uuid, 'abnormalType']} label="异常类型">
         <Select allowClear options={props.abnormalTypeOptions} placeholder="请选择" />
       </Form.Item>
-      {onSite && props.finish.isRemain !== 1 && <OptionalSpecField finish={props.finish} />}
+      {(onSite || props.context.allowFinishWidth) && props.finish.isRemain !== 1 && <OptionalSpecField finish={props.finish} />}
       <Form.Item name={['finishes', props.finish.uuid, 'actualRemark']} label="备注">
         <Input data-back-record-field="true" placeholder="车间说明" onPressEnter={(event) => focusNextBackRecordField(event, props.onFieldExhausted)} />
       </Form.Item>

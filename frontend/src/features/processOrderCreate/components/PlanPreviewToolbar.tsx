@@ -5,12 +5,13 @@ import { planPreviewSaveStatus } from '../planPreviewPresentation'
 
 interface Props {
   configured: boolean
+  disabled?: boolean
   loading?: boolean
   onPreview?: () => void
   preview?: PlanPreviewVO
 }
 
-export default function PlanPreviewToolbar({ configured, loading, onPreview, preview }: Props) {
+export default function PlanPreviewToolbar({ configured, disabled, loading, onPreview, preview }: Props) {
   const status = planPreviewSaveStatus(preview, configured)
   return (
     <div className="plan-preview-panel__toolbar">
@@ -19,7 +20,7 @@ export default function PlanPreviewToolbar({ configured, loading, onPreview, pre
         {loading && <Tag color="processing">预览中</Tag>}
       </Space>
       {onPreview && (
-        <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={onPreview}>
+        <Button size="small" disabled={disabled} icon={<ReloadOutlined />} loading={loading} onClick={onPreview}>
           刷新预览
         </Button>
       )}

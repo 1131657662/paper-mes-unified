@@ -25,9 +25,14 @@ public class BackRecordOnSiteFinishRecorder {
     private static final int ROLL_NO_PRE = 1;
     private static final int ROLL_NO_VOID = 3;
     private static final int FORMAL = 0;
+    private static final int SPARE = 1;
     private static final int PRODUCT = 0;
     private static final int SOURCE_PROCESS = 1;
     private static final int FINISH_PENDING = 1;
+    private static final int FINISH_SCRAPPED = 4;
+    private static final int RESULT_PRODUCED = 2;
+    private static final int RESULT_NOT_PRODUCED = 3;
+    private static final int RESULT_ADDED = 4;
 
     private final FinishRollMapper finishRollMapper;
     private final BackRecordOnSiteFinishRelationWriter relationWriter;
@@ -50,6 +55,11 @@ public class BackRecordOnSiteFinishRecorder {
             }
             OriginalRoll source = index.requireSource(dto);
             FinishRoll finish = resolveFinish(dto, context.order(), source, index, rowSort++);
+            BackRecordFinishRules.requireValidActualMetadata(dto);
+            if (BackRecordFinishRules.unusedSpare(finish, dto)) {
+                BackRecordFinishRules.requireUnusedSpareBlank(finish, dto);
+                continue;
+            }
             BackRecordFinishRules.validateWidth(finish, dto, List.of(source), true);
             BackRecordFinishRules.requireActualWeight(finish, dto);
             applyActuals(finish, dto);
@@ -74,9 +84,8 @@ public class BackRecordOnSiteFinishRecorder {
                                     BackRecordOnSiteFinishIndex index,
         Set<String> submitted) {
         for (BackRecordFinishDTO dto : dtos) {
-            if (!StringUtils.hasText(dto.getUuid())) {
-                index.requireSource(dto);
-                continue;
+            if (!StringUtils.hasText(dto.getUuid()) && !StringUtils.hasText(dto.getOriginalUuid())) {
+                throw new BusinessException("新增成品必须选择来源母卷");
             }
             if (!index.accepts(dto)) {
                 continue;
@@ -116,6 +125,8 @@ public class BackRecordOnSiteFinishRecorder {
         finish.setWarehouseUuid(order.getWarehouseUuid());
         finish.setOriginalRollNos(sourceKey(source));
         finish.setRemark("现场定尺回录新增成品");
+        finish.setProductionResult(RESULT_ADDED);
+        finish.setProductionAdjustmentReason("现场定尺实际产出");
         return finish;
     }
 
@@ -127,9 +138,18 @@ public class BackRecordOnSiteFinishRecorder {
         finish.setRemainingWeight(dto.getActualWeight());
         finish.setScrapWeight(dto.getScrapWeight());
         finish.setIsRemain(PRODUCT);
-        finish.setIsAbnormal(dto.getIsAbnormal());
-        finish.setAbnormalType(dto.getAbnormalType());
+        finish.setIsAbnormal(dto.getIsAbnormal() == null ? 0 : dto.getIsAbnormal());
+        finish.setAbnormalType(BackRecordFinishRules.normalizedAbnormalType(dto));
         finish.setActualRemark(dto.getActualRemark());
+        finish.setRollNoStatus(ROLL_NO_PRE);
+        finish.setFinishStatus(FINISH_PENDING);
+        if (Integer.valueOf(SPARE).equals(finish.getIsSpare())) {
+            finish.setProductionResult(RESULT_ADDED);
+            finish.setProductionAdjustmentReason("备用卷号实际启用");
+        } else if (!Integer.valueOf(RESULT_ADDED).equals(finish.getProductionResult())) {
+            finish.setProductionResult(RESULT_PRODUCED);
+            finish.setProductionAdjustmentReason(null);
+        }
     }
 
     private FinishOriginalRel persist(BackRecordFinishDTO dto, ProcessOrder order,
@@ -150,12 +170,24 @@ public class BackRecordOnSiteFinishRecorder {
         for (String uuid : managed) {
             FinishRoll finish = index.finish(uuid);
             if (finish == null || submitted.contains(uuid)
+                    || Integer.valueOf(SPARE).equals(finish.getIsSpare())
                     || Integer.valueOf(ROLL_NO_VOID).equals(finish.getRollNoStatus())) {
                 continue;
             }
             finish.setRollNoStatus(ROLL_NO_VOID);
+            finish.setFinishStatus(FINISH_SCRAPPED);
+            finish.setActualWeight(null);
+            finish.setRemainingWeight(null);
+            finish.setScrapWeight(null);
+            finish.setIsAbnormal(0);
+            finish.setAbnormalType(null);
+            finish.setStockInTime(null);
+            if (!Integer.valueOf(RESULT_ADDED).equals(finish.getProductionResult())) {
+                finish.setProductionResult(RESULT_NOT_PRODUCED);
+                finish.setProductionAdjustmentReason("现场定尺本次未产出");
+            }
             finish.setActualRemark("现场定尺回录未使用，自动作废");
-            ConcurrencyGuard.requireRowUpdated(finishRollMapper.updateById(finish));
+            BackRecordVoidedFinishWriter.write(finishRollMapper, finish);
         }
     }
 

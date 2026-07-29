@@ -26,9 +26,12 @@ export function isConfiguredPlanReady(
   const configured = configuredPlanIds instanceof Set
     ? configuredPlanIds
     : new Set(configuredPlanIds)
-  const hasSavedId = configured.has(roll.localId)
-    || Boolean(roll.uuid && configured.has(roll.uuid))
+  const hasSavedId = configKeysForRoll(roll).some((key) => configured.has(key))
   return hasSavedId && previewForRoll(roll, previews)?.ready === true
+}
+
+export function configKeysForRoll(roll: RollDraft): string[] {
+  return [...new Set([roll.localId, roll.uuid].filter((key): key is string => Boolean(key)))]
 }
 
 export function previewForRoll(

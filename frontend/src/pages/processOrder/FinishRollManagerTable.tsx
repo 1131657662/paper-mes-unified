@@ -13,19 +13,19 @@ interface Props {
   onVoid: (uuid: string) => void
   rows: FinishRoll[]
   selectedKeys: Key[]
-  settled: boolean
+  readOnly: boolean
 }
 
 export default function FinishRollManagerTable(props: Props) {
   const rowSelection = {
     selectedRowKeys: props.selectedKeys,
     onChange: props.onSelectionChange,
-    getCheckboxProps: (record: FinishRoll) => ({ disabled: props.settled || record.rollNoStatus !== 1 }),
+    getCheckboxProps: (record: FinishRoll) => ({ disabled: props.readOnly || record.rollNoStatus !== 1 }),
   }
   return (
     <div className="finish-roll-manager__table mes-drawer-table">
       <Table
-        columns={buildColumns(props.onVoid, props.settled)}
+        columns={buildColumns(props.onVoid, props.readOnly)}
         dataSource={props.rows}
         locale={{ emptyText: '没有符合条件的成品卷号' }}
         pagination={false}
@@ -38,17 +38,18 @@ export default function FinishRollManagerTable(props: Props) {
   )
 }
 
-function buildColumns(onVoid: (uuid: string) => void, settled: boolean): ColumnsType<FinishRoll> {
+function buildColumns(onVoid: (uuid: string) => void, readOnly: boolean): ColumnsType<FinishRoll> {
   return [
     { title: '成品卷号', dataIndex: 'finishRollNo', fixed: 'left', width: 140, render: (_, roll) => <RollIdentity roll={roll} /> },
     { title: '类型/来源', key: 'type', width: 116, render: (_, roll) => <RollType roll={roll} /> },
     { title: '成品规格', key: 'spec', width: 210, render: (_, roll) => <RollSpec roll={roll} /> },
     { title: '重量', key: 'weight', align: 'right', width: 160, render: (_, roll) => <RollWeight roll={roll} /> },
-    { title: '成品状态', dataIndex: 'finishStatus', width: 100, render: (value) => {
+    { title: '成品状态', dataIndex: 'finishStatus', width: 100, render: (value, roll) => {
+      if (roll.rollNoStatus === 3) return <Tag>不入库</Tag>
       const status = FINISH_STATUS[value]
       return status ? <Tag color={status.color}>{status.text}</Tag> : '-'
     } },
-    { title: '操作', key: 'action', fixed: 'right', width: 64, render: (_, roll) => <VoidAction onVoid={onVoid} roll={roll} settled={settled} /> },
+    { title: '操作', key: 'action', fixed: 'right', width: 64, render: (_, roll) => <VoidAction onVoid={onVoid} roll={roll} readOnly={readOnly} /> },
   ]
 }
 
@@ -90,8 +91,8 @@ function RollWeight({ roll }: { roll: FinishRoll }) {
   )
 }
 
-function VoidAction({ onVoid, roll, settled }: { onVoid: (uuid: string) => void; roll: FinishRoll; settled: boolean }) {
-  if (settled || roll.rollNoStatus !== 1 || roll.sourceType === 2) return null
+function VoidAction({ onVoid, roll, readOnly }: { onVoid: (uuid: string) => void; roll: FinishRoll; readOnly: boolean }) {
+  if (readOnly || roll.rollNoStatus !== 1 || roll.sourceType === 2) return null
   return (
     <Popconfirm title="作废后不可恢复，是否继续？" okButtonProps={{ danger: true }} onConfirm={() => onVoid(roll.uuid)}>
       <MesTooltip title="作废卷号">

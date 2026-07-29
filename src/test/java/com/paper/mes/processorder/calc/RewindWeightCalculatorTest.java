@@ -7,12 +7,23 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * RewindWeightCalculator 基准单测，用例取自 P0-0《复卷重量分摊计算规格书》§F。
  * 断言：每件重量 ±0.5kg 容差；整卷 Σ各件 + 总损耗 严格等于 W_actual。
  */
 class RewindWeightCalculatorTest {
+
+    @Test
+    void storedDiameterToMm_supports_legacy_inches_and_current_millimeters() {
+        assertEquals(new BigDecimal("76.2"),
+                RewindWeightCalculator.storedDiameterToMm(new BigDecimal("3")));
+        assertEquals(new BigDecimal("1200"),
+                RewindWeightCalculator.storedDiameterToMm(new BigDecimal("1200")));
+        assertEquals(new BigDecimal("76"),
+                RewindWeightCalculator.storedCoreDiameterToMm(new BigDecimal("76")));
+    }
 
     private static final BigDecimal TOL = new BigDecimal("0.5");
 
@@ -80,6 +91,27 @@ class RewindWeightCalculatorTest {
         assertClose(new BigDecimal("350.000"), r.get(2).weight);
         BigDecimal sum = r.get(0).weight.add(r.get(1).weight).add(r.get(2).weight);
         assertEquals(0, sum.compareTo(new BigDecimal("1000.000")), "整卷闭合");
+    }
+
+    @Test
+    void measuredLastPiece_keepsMeasuredValueAndSqueezesLastUnmeasuredPiece() {
+        List<RewindWeightCalculator.PieceResult> result = RewindWeightCalculator.allocate(
+                new BigDecimal("1000.000"),
+                List.of(new RewindWeightCalculator.PieceInput(BigDecimal.ONE, null),
+                        new RewindWeightCalculator.PieceInput(BigDecimal.ONE, new BigDecimal("300.000"))),
+                BigDecimal.ZERO, new BigDecimal("1000"), BigDecimal.ZERO);
+
+        assertEquals(new BigDecimal("700.000"), result.get(0).weight);
+        assertEquals(new BigDecimal("300.000"), result.get(1).weight);
+    }
+
+    @Test
+    void allMeasuredPieces_whenWeightsDoNotClose_rejectsAllocation() {
+        assertThrows(IllegalArgumentException.class, () -> RewindWeightCalculator.allocate(
+                new BigDecimal("1000.000"),
+                List.of(new RewindWeightCalculator.PieceInput(BigDecimal.ONE, new BigDecimal("400.000")),
+                        new RewindWeightCalculator.PieceInput(BigDecimal.ONE, new BigDecimal("300.000"))),
+                BigDecimal.ZERO, new BigDecimal("1000"), BigDecimal.ZERO));
     }
 
     @Test

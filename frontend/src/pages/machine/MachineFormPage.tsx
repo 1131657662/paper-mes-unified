@@ -1,6 +1,6 @@
 import { Button, Card, Form, Skeleton, Space, message } from 'antd'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { createMachine, getMachine, updateMachine } from '../../api/machine'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'

@@ -1,7 +1,7 @@
 import { Segmented, Tabs } from 'antd'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import DocumentDetailTable from '../../../components/biz/DocumentDetailTable'
 import { mesTablePagination } from '../../../components/biz/mesPaginationUtils'
 import type { PageResult } from '../../../types/common'

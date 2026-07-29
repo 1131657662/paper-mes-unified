@@ -33,8 +33,11 @@ class ReportOperationalSqlContractTest {
         String inventoryWhere = section("<sql id=\"InventoryWhere\"", "</sql>");
         assertTrue(mapper.contains("f.finish_status = 2"));
         assertTrue(mapper.contains("lockRow.stock_lock_status = 1"));
+        assertTrue(inventoryWhere.contains("COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0"));
+        assertTrue(inventoryWhere.contains("o.order_status IN (3, 4, 5)"));
         assertTrue(inventoryWhere.contains("f.stock_in_time &gt;= #{q.dateFrom}"));
         assertFalse(inventoryWhere.contains("f.stock_in_time IS NULL OR"));
+        assertFalse(mapper.contains("f.remaining_weight, f.actual_weight, f.estimate_weight"));
         assertFalse(mapper.contains("CURRENT_STOCK_BY_STOCK_IN_MONTH"));
     }
 

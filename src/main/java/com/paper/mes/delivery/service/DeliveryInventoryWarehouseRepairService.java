@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 public class DeliveryInventoryWarehouseRepairService {
 
     private static final int ENABLED = 1;
-    private static final Set<Integer> REPAIRABLE_ORDER_STATUS = Set.of(4, 5);
+    private static final Set<Integer> REPAIRABLE_ORDER_STATUS = Set.of(3, 4, 5);
     private static final Set<Integer> REPAIRABLE_FINISH_STATUS = Set.of(2, 3);
 
     private final DeliveryInventoryWarehouseRepairMapper mapper;
@@ -93,7 +93,7 @@ public class DeliveryInventoryWarehouseRepairService {
 
     private void requireRepairableOrder(ProcessOrder order) {
         if (!REPAIRABLE_ORDER_STATUS.contains(order.getOrderStatus())) {
-            throw new BusinessException(ErrorCode.E001, "仅已完成或已结算加工单允许历史补仓：" + order.getOrderNo());
+            throw new BusinessException(ErrorCode.E001, "仅待回录、已完成或已结算加工单允许历史补仓：" + order.getOrderNo());
         }
     }
 

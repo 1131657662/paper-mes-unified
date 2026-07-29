@@ -8,9 +8,11 @@ import java.util.List;
 
 public record SawPlanCalculation(
         List<CalculatedFinish> finishes,
+        List<CalculatedFinish> trims,
         WidthDifferencePolicy policy,
         int sourceWidth,
         int finishWidth,
+        int trimWidth,
         int differenceWidth,
         BigDecimal differenceWeight,
         int knifeCount

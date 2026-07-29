@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { configStepProgress, configStepProgressText } from './configStepProgress'
+import { configStepProgress, configStepProgressText, nextPendingConfigRoll } from './configStepProgress'
 import type { RollDraft } from './types'
 
 describe('工艺配置进度', () => {
@@ -52,6 +52,34 @@ describe('工艺配置进度', () => {
     })
 
     expect(progress).toMatchObject({ pendingCount: 0, savedCount: 1 })
+  })
+
+  it('after saving the current roll, selects the next pending roll and wraps once', () => {
+    const rolls = [roll('current', 1), roll('saved', 1), roll('pending', 4)]
+    const next = nextPendingConfigRoll({
+      configuredPlanIds: ['saved'],
+      lockedRolls: {},
+      previews: { saved: { originalUuid: 'saved', ready: true } },
+      routePreviews: {},
+      rolls,
+      serviceConfigured: {},
+    }, 'current', ['current'])
+
+    expect(next?.localId).toBe('pending')
+  })
+
+  it('does not advance when every remaining roll is saved or needs no configuration', () => {
+    const rolls = [roll('current', 1), roll('direct', 3)]
+    const next = nextPendingConfigRoll({
+      configuredPlanIds: [],
+      lockedRolls: {},
+      previews: {},
+      routePreviews: {},
+      rolls,
+      serviceConfigured: {},
+    }, 'current', ['current'])
+
+    expect(next).toBeUndefined()
   })
 })
 

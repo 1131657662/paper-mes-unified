@@ -1,5 +1,6 @@
 package com.paper.mes.processorder.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
@@ -19,7 +20,18 @@ public class DraftOrderVersionGuard {
 
     public void assertExpected(ProcessOrder order, Integer expectedVersion) {
         if (expectedVersion == null || !Objects.equals(order.getVersion(), expectedVersion)) {
-            throw new BusinessException(ErrorCode.E006, "加工单草稿已被其他页面修改，请刷新后重试");
+            throw new BusinessException(ErrorCode.E006, "加工单已被其他页面修改，请刷新后重试");
+        }
+    }
+
+    public void assertLockedExpected(String orderUuid, Integer expectedVersion) {
+        ProcessOrder locked = orderMapper.selectOne(new LambdaQueryWrapper<ProcessOrder>()
+                .select(ProcessOrder::getUuid, ProcessOrder::getVersion)
+                .eq(ProcessOrder::getUuid, orderUuid)
+                .last("FOR UPDATE"));
+        if (locked == null || expectedVersion == null
+                || !Objects.equals(locked.getVersion(), expectedVersion)) {
+            throw conflict();
         }
     }
 
@@ -29,5 +41,9 @@ public class DraftOrderVersionGuard {
                 .eq(ProcessOrder::getVersion, expectedVersion)
                 .setSql("version = version + 1"));
         ConcurrencyGuard.requireRowUpdated(updated);
+    }
+
+    private BusinessException conflict() {
+        return new BusinessException(ErrorCode.E006, "加工单已被其他页面修改，请刷新后重试");
     }
 }

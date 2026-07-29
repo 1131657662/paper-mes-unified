@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useDeliveryInventoryCustomers } from '../../features/delivery/hooks/useDeliveryInventoryCustomers'
 import { useDeliveryInventoryFinishes } from '../../features/delivery/hooks/useDeliveryInventoryFinishes'
 import { useDeliveryInventorySummary } from '../../features/delivery/hooks/useDeliveryInventorySummary'
 import { useExportDeliveryInventory } from '../../features/delivery/hooks/useExportDeliveryInventory'
 import { useConfiguredPageSize } from '../../features/systemConfig/hooks/useConfiguredPageSize'
-import type { DeliveryInventoryFilter } from '../../types/deliveryInventory'
+import type { DeliveryInventoryFilter, DeliveryInventoryScope } from '../../types/deliveryInventory'
 import type { DeliveryInventoryView } from './deliveryInventoryModel'
 
 export function useDeliveryInventoryPage() {
@@ -52,11 +52,14 @@ function filtersFromSearch(params: URLSearchParams): DeliveryInventoryFilter {
   const stockState = Number(params.get('stockState'))
   const inventoryType = Number(params.get('inventoryType'))
   const stockAgeMinDays = Number(params.get('stockAgeMinDays'))
+  const inventoryScope = params.get('inventoryScope')
   return {
     keyword: params.get('keyword') || undefined,
     warehouseUuid: params.get('warehouseUuid') || undefined,
     stockState: stockState === 1 || stockState === 2 ? stockState : undefined,
     inventoryType: inventoryType >= 1 && inventoryType <= 3 ? inventoryType as 1 | 2 | 3 : undefined,
+    inventoryScope: inventoryScope === 'product' || inventoryScope === 'remain'
+      ? inventoryScope as DeliveryInventoryScope : undefined,
     stockAgeMinDays: stockAgeMinDays > 0 ? stockAgeMinDays : undefined,
   }
 }

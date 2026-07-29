@@ -44,7 +44,7 @@ class RolePermissionMatrixContractTest {
     @Test
     void orderClerk_canPerformProcessWritesExceptBackRecord() {
         writeMethods(PROCESS_CONTROLLERS).forEach(method -> {
-            boolean expected = !method.getName().equals("backRecord");
+            boolean expected = !isBackRecordWrite(method);
             assertThat(canAccess(RoleCodes.ORDER_CLERK, method))
                     .as("制单员访问 %s", method)
                     .isEqualTo(expected);
@@ -54,11 +54,28 @@ class RolePermissionMatrixContractTest {
     @Test
     void recorder_canOnlyPerformBackRecordAmongProcessWrites() {
         writeMethods(PROCESS_CONTROLLERS).forEach(method -> {
-            boolean expected = method.getName().equals("backRecord");
+            boolean expected = isBackRecordWrite(method);
             assertThat(canAccess(RoleCodes.RECORDER, method))
                     .as("回录员访问 %s", method)
                     .isEqualTo(expected);
         });
+    }
+
+    private boolean isBackRecordWrite(Method method) {
+        return method.getName().equals("backRecord")
+                || method.getName().equals("reopenBackRecordBatch");
+    }
+
+    @Test
+    void operator_canMaintainDraftAdditionalStepsButNotGeneralOrderSteps() {
+        assertThat(canAccess(RoleCodes.OPERATOR,
+                method(ProcessOrderDraftController.class, "addDraftServiceStep"))).isTrue();
+        assertThat(canAccess(RoleCodes.OPERATOR,
+                method(ProcessOrderDraftController.class, "updateDraftServiceStep"))).isTrue();
+        assertThat(canAccess(RoleCodes.OPERATOR,
+                method(ProcessOrderDraftController.class, "deleteDraftServiceStep"))).isTrue();
+        assertThat(canAccess(RoleCodes.OPERATOR,
+                method(ProcessOrderController.class, "addProcessStep"))).isFalse();
     }
 
     @Test

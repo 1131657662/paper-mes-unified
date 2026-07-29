@@ -1,4 +1,7 @@
-import { isDeliverableProductionFinish } from '../../../components/processOrder/shared/detailHelpers'
+import {
+  isDeliverableProductionFinish,
+  widthDifferenceDetail,
+} from '../../../components/processOrder/shared/detailHelpers'
 import type {
   FinishProductionVO,
   ProcessStep,
@@ -16,9 +19,9 @@ export function stageRequirement(
   allOutputs: StageOutputVO[],
 ) {
   const stepType = step?.stepType ?? outputs[0]?.sourceStepType ?? production.mainStepType
-  if (stepType === 1) return sawRequirement(production, step, outputs, allOutputs)
-  if (stepType === 2) return rewindRequirement(outputs)
-  return '按本阶段产物规格加工，完成后填写实际重量和异常说明。'
+  if (stepType === 1) return withWidthDifference(sawRequirement(production, step, outputs, allOutputs), step)
+  if (stepType === 2) return withWidthDifference(rewindRequirement(outputs), step)
+  return withWidthDifference('按本阶段产物规格加工，完成后填写实际重量和异常说明。', step)
 }
 
 export function singleStageRequirement(
@@ -33,7 +36,7 @@ export function singleStageRequirement(
     return `${action}；不改变品名、克重和门幅；完工后逐件填写实际重量及损耗。`
   }
   if (stepType === 1) {
-    return sawText({
+    return withWidthDifference(sawText({
       production,
       sourceWidth: production.originalWidth,
       sourceWeight: (production.rollWeight ?? 0) * (production.pieceNum ?? 1),
@@ -42,11 +45,17 @@ export function singleStageRequirement(
         width: item.finishWidth,
         status: 'final',
       })),
-    })
+    }), step)
   }
-  return rewindText({
+  return withWidthDifference(rewindText({
     outputs: deliverableOutputs.map((item) => ({ width: item.finishWidth })),
-  })
+  }), step)
+}
+
+function withWidthDifference(requirement: string, step?: ProcessStep) {
+  const detail = widthDifferenceDetail(step)
+  if (!detail) return requirement
+  return `${requirement.replace(/。$/, '')}；${detail}。`
 }
 
 function sawRequirement(

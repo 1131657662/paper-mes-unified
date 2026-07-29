@@ -99,9 +99,11 @@ export default function DraftServiceStepEditor(props: Props) {
         state={{
           analysis,
           batchSaving: props.batchSaving,
+          catalogError: state.isError,
+          catalogLoading: state.isLoading,
+          catalogUnavailable: !state.isLoading && !state.isError && !state.selectedCatalog,
           currentRollUuid: props.roll.uuid,
           dirty: status?.dirty === true,
-          disabled: state.isLoading || !state.selectedCatalog,
           saving: props.saving,
           selectedRollCount: props.selectedRollCount,
           writePending: props.writePending,

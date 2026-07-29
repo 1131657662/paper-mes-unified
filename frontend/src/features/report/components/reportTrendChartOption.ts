@@ -17,7 +17,7 @@ export function buildReportTrendChartOption(monthly: ReportDimensionVO[]): EChar
   return {
     animationDuration: 460,
     aria: { enabled: true, label: { description: '月度加工应收曲线' } },
-    grid: { containLabel: false, left: 10, right: 10, top: 12, bottom: 12 },
+    grid: { left: 10, right: 10, top: 12, bottom: 12 },
     tooltip: {
       trigger: 'axis',
       confine: true,

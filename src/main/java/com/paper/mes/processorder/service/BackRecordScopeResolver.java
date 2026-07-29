@@ -48,13 +48,17 @@ public class BackRecordScopeResolver {
 
     private void requireValidCompletionIntent(List<OriginalRoll> rolls, Set<String> selectedIds,
                                               BackRecordDTO dto) {
-        boolean hasUnselected = rolls.stream()
+        List<OriginalRoll> unselected = rolls.stream()
                 .filter(roll -> !Integer.valueOf(1).equals(roll.getIsChecked()))
-                .anyMatch(roll -> !selectedIds.contains(roll.getUuid()));
-        if (Boolean.TRUE.equals(dto.getCompleteOrder()) && hasUnselected) {
-            throw new BusinessException(ErrorCode.E003, "完成整单必须包含全部未回录母卷");
+                .filter(roll -> !selectedIds.contains(roll.getUuid()))
+                .toList();
+        if (Boolean.TRUE.equals(dto.getCompleteOrder()) && !unselected.isEmpty()) {
+            String missing = unselected.stream().map(this::rollLabel)
+                    .collect(java.util.stream.Collectors.joining("、"));
+            throw new BusinessException(ErrorCode.E003,
+                    "完成整单必须包含全部未回录母卷：" + missing);
         }
-        if (!Boolean.TRUE.equals(dto.getCompleteOrder()) && !hasUnselected) {
+        if (!Boolean.TRUE.equals(dto.getCompleteOrder()) && unselected.isEmpty()) {
             throw new BusinessException(ErrorCode.E003,
                     "本批已包含全部未回录母卷，请使用“完成整单”生成完成快照并计费");
         }

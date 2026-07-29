@@ -73,7 +73,8 @@ function previewBalance(options: RollBalanceOptions): RollWeightBalance {
   return resolvedBalance({
     inputWeight,
     finishWeight: Number(preview?.totalEstimateWeight ?? 0),
-    trimWeight: preview?.widthDifferencePolicy === 'ALLOCATE' ? 0 : Number(preview?.totalTrimWeight ?? 0),
+    trimWeight: Number(preview?.totalTrimWeight ?? 0)
+      + Number(preview?.calculatedLossWeight ?? 0),
     outputWeightLabel: policyOutputLabel(preview?.widthDifferencePolicy),
     balancedDetail: policyBalanceDetail(preview),
   })
@@ -104,7 +105,7 @@ function resolvedBalance(weights: BalanceInput): RollWeightBalance {
 
 function policyOutputLabel(policy?: PlanPreviewVO['widthDifferencePolicy']): string {
   if (policy === 'LOSS') return '计划损耗'
-  if (policy === 'ALLOCATE') return '另计重量'
+  if (policy === 'ALLOCATE') return '余料'
   if (policy === 'REMAINDER') return '余料'
   return '修边/余料'
 }
@@ -114,7 +115,7 @@ function policyBalanceDetail(preview?: PlanPreviewVO): string | undefined {
   const fallback = preview?.widthDifferencePolicy === 'LOSS' ? preview.calculatedLossWeight ?? preview.totalTrimWeight : preview?.totalTrimWeight
   const weight = Number(preview?.widthDifferenceWeight ?? fallback ?? 0)
   if (preview?.widthDifferencePolicy === 'LOSS') return `${width}mm 差额按计划损耗计入，共 ${roundKg(weight)}kg`
-  if (preview?.widthDifferencePolicy === 'ALLOCATE') return `${width}mm 差额对应 ${roundKg(weight)}kg，已并入成品重量`
+  if (preview?.widthDifferencePolicy === 'ALLOCATE') return `${width}mm 差额对应 ${roundKg(weight)}kg，已分摊到所有实际产出件重量`
   if (preview?.widthDifferencePolicy === 'REMAINDER') return `${width}mm 差额生成余料，共 ${roundKg(weight)}kg`
   return undefined
 }

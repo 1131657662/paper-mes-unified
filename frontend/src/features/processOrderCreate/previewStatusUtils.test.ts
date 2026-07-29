@@ -4,6 +4,12 @@ import { rollPreviewStatus } from './previewStatusUtils'
 import type { RollDraft } from './types'
 
 describe('仅附加工艺预览状态', () => {
+  it('keeps the status neutral while saved additional processes are loading', () => {
+    const status = rollPreviewStatus({ roll: serviceOnlyRoll(), serviceLoading: true })
+
+    expect(status).toMatchObject({ kind: 'validating', label: '读取中', blocking: true })
+  })
+
   it('预览确认使用后端已就绪结果', () => {
     const status = rollPreviewStatus({
       roll: serviceOnlyRoll(),
@@ -38,6 +44,17 @@ describe('仅附加工艺预览状态', () => {
 })
 
 describe('主加工方案保存状态', () => {
+  it('校验和保存期间显示明确的进行中状态', () => {
+    expect(rollPreviewStatus({
+      operation: 'validating',
+      roll: standardRoll(),
+    })).toMatchObject({ kind: 'validating', label: '校验中', blocking: true })
+    expect(rollPreviewStatus({
+      operation: 'saving',
+      roll: standardRoll(),
+    })).toMatchObject({ kind: 'saving', label: '保存中', blocking: true })
+  })
+
   it('预览通过但未持久化时明确显示未保存并阻断继续', () => {
     const status = rollPreviewStatus({
       configured: false,

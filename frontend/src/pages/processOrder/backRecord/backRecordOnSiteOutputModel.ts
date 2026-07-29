@@ -11,6 +11,7 @@ import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 export interface OnSiteOutputRecordValues {
   uuid?: string
   finishRollNo?: string
+  isSpare?: number
   outputType: 'FINISH' | 'TRIM'
   originalUuid?: string
   finishWidth?: number
@@ -72,6 +73,23 @@ export function buildInitialOnSiteOutputGroups(
     .map((item) => [item.key, initialOnSiteOutputRows(item, detail.originalRolls)]))
 }
 
+export function nextOnSiteFinishOutput(
+  item: BackRecordWorkItem,
+  current: Array<OnSiteOutputRecordValues | undefined>,
+  defaultOriginalUuid?: string,
+): OnSiteOutputRecordValues {
+  const usedUuids = new Set(current.flatMap((output) => output?.uuid ? [output.uuid] : []))
+  const spare = item.finishes
+    .map(({ finish }) => finish)
+    .find((finish) => finish.isSpare === 1
+      && finish.rollNoStatus !== 3
+      && finish.finishStatus !== 4
+      && !usedUuids.has(finish.uuid))
+  if (!spare) return { outputType: 'FINISH', originalUuid: defaultOriginalUuid }
+  const output = outputFromFinish(spare, item.rollProductions, [])
+  return { ...output, originalUuid: output.originalUuid ?? defaultOriginalUuid }
+}
+
 function initialOnSiteOutputRows(
   item: BackRecordWorkItem,
   rolls: OriginalRoll[],
@@ -91,6 +109,7 @@ function outputFromFinish(
   return {
     uuid: finish.uuid,
     finishRollNo: finish.finishRollNo,
+    isSpare: finish.isSpare,
     outputType: 'FINISH',
     originalUuid: existingFinishSourceUuid(productions, finish.uuid)
       ?? (sources.length === 1 ? sources[0]?.uuid : undefined),

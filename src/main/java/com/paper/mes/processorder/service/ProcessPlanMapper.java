@@ -53,6 +53,7 @@ public class ProcessPlanMapper {
         RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
         dto.setRewindMode(plan.getRewindMode());
         dto.setSpareCount(plan.getSpareCount());
+        dto.setWidthDifferencePolicy(plan.getWidthDifferencePolicy());
         dto.setSegments(toPreviewSegments(plan.getSegments()));
         return dto;
     }
@@ -63,6 +64,10 @@ public class ProcessPlanMapper {
         vo.setTrimCount(preview.getTrimCount());
         vo.setTotalEstimateWeight(preview.getTotalEstimateWeight());
         vo.setTotalTrimWeight(preview.getTotalTrimWeight());
+        vo.setWidthDifferencePolicy(preview.getWidthDifferencePolicy());
+        vo.setWidthDifference(preview.getWidthDifference());
+        vo.setWidthDifferenceWeight(preview.getWidthDifferenceWeight());
+        vo.setCalculatedLossWeight(preview.getCalculatedLossWeight());
         vo.setSegments(nullToEmpty(preview.getSegments()));
         vo.setFinishes(nullToEmpty(preview.getFinishes()));
         vo.setReady(true);

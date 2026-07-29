@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router'
 import { login } from '../../api/auth'
 import { useAuthActions, useAuthUser } from '../../stores/authStore'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'

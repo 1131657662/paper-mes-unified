@@ -55,6 +55,9 @@ export function rewindWidthPolicy(mode: number): RewindWidthPolicy {
   if (mode === 5) {
     return { enabled: true, note: '合并复卷按目标排布校验门幅，来源母卷负责重量与接纸关系。' }
   }
+  if (mode === 6) {
+    return { enabled: false, note: '同规格复卷保持母卷门幅，不产生横向门幅差额。' }
+  }
   return { enabled: true, note: '改门幅按本段成品和修边的横向宽度合计校验。' }
 }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Form } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import DocumentListShell from '../../components/biz/DocumentListShell'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'

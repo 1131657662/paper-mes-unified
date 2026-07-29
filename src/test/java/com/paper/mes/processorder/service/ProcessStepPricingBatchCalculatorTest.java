@@ -43,6 +43,16 @@ class ProcessStepPricingBatchCalculatorTest {
         assertThat(row.getFinalAmount()).isEqualByComparingTo("370");
     }
 
+    @Test
+    void preview_fixedAmountWithCents_preservesTwoDecimalPlaces() {
+        ProcessStep step = step(3, "1", "100");
+
+        ProcessStepPricingBatchPreviewVO.Row row = ProcessStepPricingBatchCalculator.preview(
+                step, null, ProcessStepPricingPolicy.FIXED_AMOUNT, null, new BigDecimal("88.88"));
+
+        assertThat(row.getFinalAmount()).isEqualByComparingTo("88.88");
+    }
+
     private ProcessStep step(int type, String quantity, String price) {
         ProcessStep step = new ProcessStep();
         step.setUuid("step-" + type);

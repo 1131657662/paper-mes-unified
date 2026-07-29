@@ -4,6 +4,7 @@ import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.dto.BackRecordFinishDTO;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -38,6 +39,46 @@ final class BackRecordFinishRules {
         if (dto.getActualWeight() == null || dto.getActualWeight().signum() <= 0) {
             throw new BusinessException("成品实际重量必须大于0：" + finish.getFinishRollNo());
         }
+    }
+
+    static void requireActualWeight(BackRecordFinishDTO dto) {
+        if (dto.getActualWeight() == null || dto.getActualWeight().signum() <= 0) {
+            throw new BusinessException("新增成品实际重量必须大于0");
+        }
+    }
+
+    static void requireAdjustmentReason(BackRecordFinishDTO dto) {
+        if (dto.getProductionAdjustmentReason() == null
+                || dto.getProductionAdjustmentReason().isBlank()) {
+            throw new BusinessException("成品产出调整原因不能为空");
+        }
+    }
+
+    static void requireAddedSpec(BackRecordFinishDTO dto, OriginalRoll source) {
+        if (dto.getFinishWidth() == null || dto.getFinishWidth() <= 0) {
+            throw new BusinessException("新增成品门幅必须大于0");
+        }
+        int sourceWidth = effectiveWidth(source);
+        if (sourceWidth <= 0 || dto.getFinishWidth() > sourceWidth) {
+            throw new BusinessException("新增成品门幅不能超过来源母卷有效门幅");
+        }
+    }
+
+    static void requireValidActualMetadata(BackRecordFinishDTO dto) {
+        if (dto.getScrapWeight() != null && dto.getScrapWeight().signum() < 0) {
+            throw new BusinessException("报废重量不能为负数");
+        }
+        requireBinaryFlag(dto.getIsRemain(), "余料标记");
+        requireBinaryFlag(dto.getIsAbnormal(), "异常标记");
+        if (Integer.valueOf(1).equals(dto.getIsAbnormal())
+                && !StringUtils.hasText(dto.getAbnormalType())) {
+            throw new BusinessException("异常成品必须填写异常类型");
+        }
+    }
+
+    static String normalizedAbnormalType(BackRecordFinishDTO dto) {
+        return Integer.valueOf(1).equals(dto.getIsAbnormal())
+                && StringUtils.hasText(dto.getAbnormalType()) ? dto.getAbnormalType().trim() : null;
     }
 
     static void requireSources(FinishRoll finish, List<OriginalRoll> sources) {
@@ -97,6 +138,12 @@ final class BackRecordFinishRules {
             return roll.getActualWidth();
         }
         return roll.getOriginalWidth() == null ? 0 : roll.getOriginalWidth();
+    }
+
+    private static void requireBinaryFlag(Integer value, String label) {
+        if (value != null && value != 0 && value != 1) {
+            throw new BusinessException(label + "只能为0或1");
+        }
     }
 
     private static boolean isOnSite(OriginalRoll roll) {

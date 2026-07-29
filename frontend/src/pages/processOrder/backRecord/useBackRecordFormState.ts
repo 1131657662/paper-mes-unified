@@ -51,14 +51,6 @@ export function useBackRecordFormState(options: UseBackRecordFormStateOptions) {
 function buildInitialValues(detail: ProcessOrderDetailVO): BackRecordFormValues {
   const initialValues = initialBackRecordValues(detail)
   const workbench = buildBackRecordWorkbench(detail)
-  for (const item of workbench.items) {
-    if (!item.roll) continue
-    for (const entry of item.finishes) {
-      if (entry.bindMode !== 'inferred') continue
-      const current = initialValues.finishes?.[entry.finish.uuid]
-      if (current) current.originalUuid = item.roll.uuid
-    }
-  }
   initialValues.onSiteOutputs = buildInitialOnSiteOutputGroups(detail, workbench.items)
   return initialValues
 }

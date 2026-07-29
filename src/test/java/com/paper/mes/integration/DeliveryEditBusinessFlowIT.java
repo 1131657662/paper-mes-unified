@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
-class DeliveryEditBusinessFlowIT {
+class DeliveryEditBusinessFlowIT extends AuthenticatedBusinessFlowIT {
 
     @Autowired
     private BusinessFlowFixtureFactory fixtures;
@@ -63,7 +63,7 @@ class DeliveryEditBusinessFlowIT {
         assertThat(voidedOrder).isNotNull();
         assertThat(voidedOrder.getDeliveryStatus()).isEqualTo(3);
         assertThat(voidedOrder.getVoidReason()).isEqualTo("integration test cancellation");
-        assertThat(voidedOrder.getVoidBy()).isEqualTo("system");
+        assertThat(voidedOrder.getVoidBy()).isEqualTo("业务流集成测试");
         assertThat(voidedOrder.getVoidTime()).isNotNull();
         assertThat(activeLockCount(scenario)).isZero();
         assertThat(availableFinishIds(scenario.customer().getUuid()))
@@ -73,6 +73,7 @@ class DeliveryEditBusinessFlowIT {
     private DeliveryCreateDTO createRequest(BusinessFlowFixtureFactory.Scenario scenario) {
         DeliveryCreateDTO request = new DeliveryCreateDTO();
         request.setCustomerUuid(scenario.customer().getUuid());
+        request.setWarehouseUuid(scenario.order().getWarehouseUuid());
         request.setDeliveryDate(LocalDate.now());
         request.setItems(List.of(createItem(scenario.first().getUuid())));
         return request;

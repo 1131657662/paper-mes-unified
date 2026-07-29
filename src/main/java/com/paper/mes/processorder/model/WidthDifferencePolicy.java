@@ -13,7 +13,7 @@ public enum WidthDifferencePolicy {
 
     public static WidthDifferencePolicy resolve(String value) {
         if (!StringUtils.hasText(value)) {
-            return ALLOCATE;
+            return REMAINDER;
         }
         try {
             return valueOf(value.trim().toUpperCase(Locale.ROOT));

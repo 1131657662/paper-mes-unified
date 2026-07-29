@@ -8,11 +8,7 @@ import com.paper.mes.delivery.entity.DeliveryDetail;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.delivery.service.DeliveryService;
 import com.paper.mes.processorder.entity.FinishRoll;
-import com.paper.mes.processorder.entity.ProcessStep;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
-import com.paper.mes.processorder.mapper.ProcessOrderMapper;
-import com.paper.mes.processorder.mapper.ProcessStepMapper;
-import com.paper.mes.customer.mapper.CustomerMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,15 +23,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-class DeliveryBatchConfirmBusinessFlowIT {
+class DeliveryBatchConfirmBusinessFlowIT extends AuthenticatedBusinessFlowIT {
 
     @Autowired private BusinessFlowFixtureFactory fixtures;
     @Autowired private DeliveryService deliveryService;
     @Autowired private DeliveryDetailMapper deliveryDetailMapper;
     @Autowired private FinishRollMapper finishRollMapper;
-    @Autowired private ProcessOrderMapper processOrderMapper;
-    @Autowired private ProcessStepMapper processStepMapper;
-    @Autowired private CustomerMapper customerMapper;
+    @Autowired private BusinessFlowOrderCleanup cleanup;
     private final List<BusinessFlowFixtureFactory.Scenario> scenarios = new ArrayList<>();
     private final List<String> deliveryUuids = new ArrayList<>();
 
@@ -66,6 +60,7 @@ class DeliveryBatchConfirmBusinessFlowIT {
         item.setOutWeight(new BigDecimal("100.000"));
         DeliveryCreateDTO request = new DeliveryCreateDTO();
         request.setCustomerUuid(scenario.customer().getUuid());
+        request.setWarehouseUuid(scenario.order().getWarehouseUuid());
         request.setDeliveryDate(LocalDate.now());
         request.setItems(List.of(item));
         String deliveryUuid = deliveryService.create(request);
@@ -92,12 +87,7 @@ class DeliveryBatchConfirmBusinessFlowIT {
             deliveryService.removeById(deliveryUuid);
         }
         for (BusinessFlowFixtureFactory.Scenario scenario : scenarios) {
-            finishRollMapper.deleteById(scenario.first().getUuid());
-            finishRollMapper.deleteById(scenario.second().getUuid());
-            processStepMapper.delete(new LambdaQueryWrapper<ProcessStep>()
-                    .eq(ProcessStep::getOrderUuid, scenario.order().getUuid()));
-            processOrderMapper.deleteById(scenario.order().getUuid());
-            customerMapper.deleteById(scenario.customer().getUuid());
+            cleanup.delete(scenario.order().getUuid());
         }
     }
 }

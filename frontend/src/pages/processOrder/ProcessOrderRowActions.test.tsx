@@ -57,6 +57,17 @@ describe('加工单列表行内主操作权限', () => {
 
     expect(markup).toContain('进入回录')
   })
+
+  it('allows delivery from a settled order without offering settlement again', () => {
+    const markup = renderAction({ orderStatus: 5 }, {
+      ...noCapabilities,
+      canManageDelivery: true,
+      canManageSettlement: true,
+    })
+
+    expect(markup).toContain('创建出库')
+    expect(markup).not.toContain('生成结算')
+  })
 })
 
 function renderAction(order: Partial<ProcessOrder>, capabilities: ProcessOrderListCapabilities) {

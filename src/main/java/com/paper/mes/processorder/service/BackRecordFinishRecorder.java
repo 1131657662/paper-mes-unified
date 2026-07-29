@@ -17,6 +17,12 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 public class BackRecordFinishRecorder {
+    private static final int ROLL_NO_VOID = 3;
+    private static final int FINISH_STATUS_SCRAPPED = 4;
+    private static final int RESULT_PRODUCED = 2;
+    private static final int RESULT_NOT_PRODUCED = 3;
+    private static final int RESULT_ADDED = 4;
+
     private final FinishRollMapper finishRollMapper;
     private final FinishRollSourceBinder sourceBinder;
 
@@ -44,16 +50,44 @@ public class BackRecordFinishRecorder {
     }
 
     private void recordOne(FinishRoll finish, BackRecordFinishDTO dto, List<OriginalRoll> sources) {
+        BackRecordFinishAction action = BackRecordFinishAction.from(dto.getProductionAction());
+        BackRecordFinishRules.requireValidActualMetadata(dto);
+        if (action == BackRecordFinishAction.ADDED
+                && !Integer.valueOf(RESULT_ADDED).equals(finish.getProductionResult())) {
+            throw new BusinessException("新增成品不能复用已有成品编号");
+        }
         if (BackRecordFinishRules.unusedSpare(finish, dto)) {
             BackRecordFinishRules.requireUnusedSpareBlank(finish, dto);
             return;
         }
-        BackRecordFinishRules.requireActualWeight(finish, dto);
         BackRecordFinishRules.requireSources(finish, sources);
+        if (action == BackRecordFinishAction.NOT_PRODUCED) {
+            markNotProduced(finish, dto);
+            return;
+        }
+        BackRecordFinishRules.requireActualWeight(finish, dto);
         boolean onSite = BackRecordFinishRules.onSiteSources(finish, sources);
         BackRecordFinishRules.validateWidth(finish, dto, sources, onSite);
         applyActuals(finish, dto, onSite);
         ConcurrencyGuard.requireRowUpdated(finishRollMapper.updateById(finish));
+    }
+
+    private void markNotProduced(FinishRoll finish, BackRecordFinishDTO dto) {
+        BackRecordFinishRules.requireAdjustmentReason(dto);
+        String reason = dto.getProductionAdjustmentReason().trim();
+        boolean actualAddition = Integer.valueOf(RESULT_ADDED).equals(finish.getProductionResult());
+        finish.setRollNoStatus(ROLL_NO_VOID);
+        finish.setFinishStatus(FINISH_STATUS_SCRAPPED);
+        finish.setProductionResult(actualAddition ? RESULT_ADDED : RESULT_NOT_PRODUCED);
+        finish.setProductionAdjustmentReason(reason);
+        finish.setActualWeight(null);
+        finish.setRemainingWeight(null);
+        finish.setScrapWeight(null);
+        finish.setIsAbnormal(0);
+        finish.setAbnormalType(null);
+        finish.setStockInTime(null);
+        finish.setActualRemark(reason);
+        BackRecordVoidedFinishWriter.write(finishRollMapper, finish);
     }
 
     private List<OriginalRoll> bindSelectedSource(FinishRoll finish, BackRecordFinishDTO dto,
@@ -79,9 +113,16 @@ public class BackRecordFinishRecorder {
         finish.setRemainingWeight(dto.getActualWeight());
         finish.setScrapWeight(dto.getScrapWeight());
         finish.setIsRemain(dto.getIsRemain());
-        finish.setIsAbnormal(dto.getIsAbnormal());
-        finish.setAbnormalType(dto.getAbnormalType());
+        finish.setIsAbnormal(dto.getIsAbnormal() == null ? 0 : dto.getIsAbnormal());
+        finish.setAbnormalType(BackRecordFinishRules.normalizedAbnormalType(dto));
         finish.setActualRemark(dto.getActualRemark());
+        if (Integer.valueOf(1).equals(finish.getIsSpare())) {
+            finish.setProductionResult(RESULT_ADDED);
+            finish.setProductionAdjustmentReason("备用卷号实际启用");
+        } else if (!Integer.valueOf(RESULT_ADDED).equals(finish.getProductionResult())) {
+            finish.setProductionResult(RESULT_PRODUCED);
+            finish.setProductionAdjustmentReason(null);
+        }
     }
 
     private Map<String, BackRecordFinishDTO> indexDtos(List<BackRecordFinishDTO> dtos) {

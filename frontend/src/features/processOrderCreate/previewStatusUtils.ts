@@ -2,7 +2,7 @@ import type { PlanPreviewVO } from '../../types/processOrder'
 import type { MergedSourceLock } from './rewindConsumptionUtils'
 import type { RollDraft } from './types'
 
-export type RollPreviewStatusKind = 'ready' | 'blocked' | 'direct' | 'merged' | 'pending'
+export type RollPreviewStatusKind = 'ready' | 'blocked' | 'direct' | 'merged' | 'pending' | 'saving' | 'validating'
 
 export interface RollPreviewStatus {
   kind: RollPreviewStatusKind
@@ -13,7 +13,7 @@ export interface RollPreviewStatus {
 }
 
 export function rollPreviewStatus(options: RollPreviewStatusOptions): RollPreviewStatus {
-  const { configured, roll, preview, lock, serviceConfigured } = options
+  const { configured, operation, roll, preview, lock, serviceConfigured } = options
   if (lock) {
     return {
       kind: 'merged',
@@ -30,6 +30,24 @@ export function rollPreviewStatus(options: RollPreviewStatusOptions): RollPrevie
       label: '直发无需配置',
       detail: '直发卷不生成加工成品号，回录阶段沿用母卷信息',
       blocking: false,
+    }
+  }
+  if (operation) {
+    return {
+      kind: operation,
+      color: 'processing',
+      label: operation === 'saving' ? '保存中' : '校验中',
+      detail: operation === 'saving' ? '正在保存当前加工方案' : '正在校验当前加工方案',
+      blocking: true,
+    }
+  }
+  if (roll.processMode === 4 && options.serviceLoading) {
+    return {
+      kind: 'validating',
+      color: 'processing',
+      label: '读取中',
+      detail: '正在读取已保存的附加工艺配置',
+      blocking: true,
     }
   }
   if (roll.processMode === 4) {
@@ -90,8 +108,10 @@ export function rollPreviewStatus(options: RollPreviewStatusOptions): RollPrevie
 
 interface RollPreviewStatusOptions {
   configured?: boolean
+  operation?: 'saving' | 'validating'
   roll: RollDraft
   preview?: PlanPreviewVO
   lock?: MergedSourceLock
   serviceConfigured?: boolean
+  serviceLoading?: boolean
 }

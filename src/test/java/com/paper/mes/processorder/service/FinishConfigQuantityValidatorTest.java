@@ -63,6 +63,31 @@ class FinishConfigQuantityValidatorTest {
     }
 
     @Test
+    void requireWithinLimit_whenRepeatedTrimRowsExceedLimit_rejectsSaveConfig() {
+        FinishConfigSaveDTO config = config(spec(1), 0);
+        config.setMainStepType(2);
+        RewindPlanPreviewDTO preview = preview(251, 1, 0);
+        RewindPlanPreviewDTO.RewindLayoutItemDTO trim = new RewindPlanPreviewDTO.RewindLayoutItemDTO();
+        trim.setItemType("TRIM");
+        trim.setQuantity(1);
+        preview.getSegments().getFirst().setLayoutItems(List.of(
+                preview.getSegments().getFirst().getLayoutItems().getFirst(), trim));
+        config.setRewindSegments(preview.getSegments());
+
+        assertThrows(BusinessException.class,
+                () -> FinishConfigQuantityValidator.requireWithinLimit(config));
+    }
+
+    @Test
+    void requireWithinLimit_whenSawConfigRetainsStaleSegments_usesSavedSpecifications() {
+        FinishConfigSaveDTO config = config(spec(1), 0);
+        config.setMainStepType(1);
+        config.setRewindSegments(preview(500, 2, 0).getSegments());
+
+        assertDoesNotThrow(() -> FinishConfigQuantityValidator.requireWithinLimit(config));
+    }
+
+    @Test
     void requireWithinLimit_whenDraftPlanUsesExtremeCounts_rejectsWithoutExpanding() {
         RewindLayoutItemPlanDTO item = new RewindLayoutItemPlanDTO();
         item.setQuantity(Integer.MAX_VALUE);

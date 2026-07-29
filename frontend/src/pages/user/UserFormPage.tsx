@@ -1,6 +1,6 @@
 import { Button, Card, Form, Skeleton, Space, message } from 'antd'
 import { useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import { useCreateUser, useUpdateUser } from '../../features/user/hooks/useUserMutations'
 import { useUserDetail } from '../../features/user/hooks/useUserDetail'

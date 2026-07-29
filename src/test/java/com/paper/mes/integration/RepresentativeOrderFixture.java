@@ -16,6 +16,8 @@ import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessStep;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.warehouse.entity.Warehouse;
+import com.paper.mes.warehouse.mapper.WarehouseMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +31,7 @@ import java.util.UUID;
 class RepresentativeOrderFixture {
 
     private final CustomerMapper customerMapper;
+    private final WarehouseMapper warehouseMapper;
     private final ProcessOrderService processOrderService;
 
     Scenario createStandardSaw() {
@@ -46,10 +49,16 @@ class RepresentativeOrderFixture {
     }
 
     void issueAndComplete(Scenario scenario) {
+        processOrderService.issue(scenario.orderUuid());
         processOrderService.print(scenario.orderUuid(), new PrintDTO());
-        processOrderService.changeStatus(scenario.orderUuid(), 3, null);
+        processOrderService.completeProcessing(scenario.orderUuid(), "集成测试模拟车间加工完成");
         ProcessOrderDetailVO detail = processOrderService.getDetail(scenario.orderUuid());
-        processOrderService.backRecord(scenario.orderUuid(), backRecord(detail));
+        String warehouseUuid = detail.getOrder().getWarehouseUuid();
+        if (warehouseUuid == null || warehouseUuid.isBlank()) {
+            warehouseUuid = createWarehouse().getUuid();
+        }
+        processOrderService.backRecord(
+                scenario.orderUuid(), backRecord(detail, warehouseUuid));
     }
 
     private Customer createCustomer() {
@@ -66,6 +75,18 @@ class RepresentativeOrderFixture {
         customer.setRewindPrice(new BigDecimal("150.00"));
         customerMapper.insert(customer);
         return customer;
+    }
+
+    private Warehouse createWarehouse() {
+        String token = token();
+        Warehouse warehouse = new Warehouse();
+        warehouse.setUuid(token);
+        warehouse.setWarehouseCode("IT-WH-" + token.substring(0, 8));
+        warehouse.setWarehouseName("代表性业务流测试仓");
+        warehouse.setStatus(1);
+        warehouse.setIsDefault(0);
+        warehouseMapper.insert(warehouse);
+        return warehouse;
     }
 
     private ProcessOrderCreateDTO order(Customer customer, OriginalRollDTO roll) {
@@ -127,10 +148,11 @@ class RepresentativeOrderFixture {
         return dto;
     }
 
-    private BackRecordDTO backRecord(ProcessOrderDetailVO detail) {
+    private BackRecordDTO backRecord(ProcessOrderDetailVO detail, String warehouseUuid) {
         BackRecordDTO dto = new BackRecordDTO();
         dto.setExpectedVersion(detail.getOrder().getVersion());
         dto.setCompleteOrder(true);
+        dto.setWarehouseUuid(warehouseUuid);
         dto.setRolls(detail.getOriginalRolls().stream().map(this::rollRecord).toList());
         dto.setFinishes(detail.getFinishRolls().stream()
                 .filter(finish -> finish.getRollNoStatus() == null || finish.getRollNoStatus() != 3)
