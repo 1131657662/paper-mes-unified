@@ -23,6 +23,14 @@ BACKUP_ROOT="${BACKUP_ROOT:-/opt/backups/paper-mes}"
 MAX_BACKUP_AGE_HOURS="${MAX_BACKUP_AGE_HOURS:-48}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8081/actuator/health}"
 HTTP_TIMEOUT_SECONDS="${HTTP_TIMEOUT_SECONDS:-10}"
+APP_USER="${APP_USER:-paper-mes}"
+APP_GROUP="${APP_GROUP:-paper-mes}"
+APP_SERVICE="${APP_SERVICE:-paper-mes}"
+APP_TMP_DIR="${APP_TMP_DIR:-/run/paper-mes}"
+APP_TMP_MODE="${APP_TMP_MODE:-750}"
+APP_RUNTIME_DIRECTORY="${APP_RUNTIME_DIRECTORY:-paper-mes}"
+PROC_ROOT="${PROC_ROOT:-/proc}"
+SOURCE_PROVENANCE_SCRIPT="${SOURCE_PROVENANCE_SCRIPT:-/opt/paper-mes/source/deploy/verify-paper-mes-source.example.sh}"
 
 mysql_cnf="$(mktemp)"
 cleanup() { rm -f "${mysql_cnf}"; }
@@ -58,6 +66,45 @@ check_health() {
     || fail "backend health is not UP"
 }
 
+check_app_temp() {
+  [ -d "${APP_TMP_DIR}" ] || fail "application temp directory not found: ${APP_TMP_DIR}"
+  local actual_metadata
+  actual_metadata="$(stat -c '%U:%G:%a' "${APP_TMP_DIR}")"
+  [ "${actual_metadata}" = "${APP_USER}:${APP_GROUP}:${APP_TMP_MODE}" ] \
+    || fail "application temp directory metadata is ${actual_metadata}, expected ${APP_USER}:${APP_GROUP}:${APP_TMP_MODE}"
+  runuser -u "${APP_USER}" -- test -w "${APP_TMP_DIR}" \
+    || fail "application temp directory is not writable by ${APP_USER}: ${APP_TMP_DIR}"
+}
+
+check_service_temp_runtime() {
+  local private_tmp runtime_directory exec_start main_pid cmdline_file
+  private_tmp="$(systemctl show "${APP_SERVICE}" --property=PrivateTmp --value)" \
+    || fail "cannot read PrivateTmp for ${APP_SERVICE}"
+  [ "${private_tmp}" = "yes" ] || fail "${APP_SERVICE} must use PrivateTmp=yes"
+  runtime_directory="$(systemctl show "${APP_SERVICE}" --property=RuntimeDirectory --value)" \
+    || fail "cannot read RuntimeDirectory for ${APP_SERVICE}"
+  [ "${runtime_directory}" = "${APP_RUNTIME_DIRECTORY}" ] \
+    || fail "${APP_SERVICE} must use RuntimeDirectory=${APP_RUNTIME_DIRECTORY}"
+  exec_start="$(systemctl show "${APP_SERVICE}" --property=ExecStart --value)" \
+    || fail "cannot read ExecStart for ${APP_SERVICE}"
+  [[ "${exec_start}" == *"-Djava.io.tmpdir=${APP_TMP_DIR}"* ]] \
+    || fail "${APP_SERVICE} ExecStart does not use ${APP_TMP_DIR}"
+  main_pid="$(systemctl show "${APP_SERVICE}" --property=MainPID --value)" \
+    || fail "cannot read MainPID for ${APP_SERVICE}"
+  [[ "${main_pid}" =~ ^[1-9][0-9]*$ ]] || fail "${APP_SERVICE} has no running main process"
+  cmdline_file="${PROC_ROOT}/${main_pid}/cmdline"
+  [ -r "${cmdline_file}" ] || fail "cannot read running command line for ${APP_SERVICE}"
+  tr '\0' '\n' < "${cmdline_file}" | grep -Fxq -- "-Djava.io.tmpdir=${APP_TMP_DIR}" \
+    || fail "running ${APP_SERVICE} process does not use ${APP_TMP_DIR}; restart it after daemon-reload"
+}
+
+check_source_provenance() {
+  [ -f "${SOURCE_PROVENANCE_SCRIPT}" ] \
+    || fail "source provenance verifier not found: ${SOURCE_PROVENANCE_SCRIPT}"
+  bash "${SOURCE_PROVENANCE_SCRIPT}" \
+    || fail "cloud source or installed runtime files do not match GitHub"
+}
+
 check_backup() {
   [ -d "${BACKUP_ROOT}" ] || fail "backup root not found"
   local latest age_hours
@@ -91,7 +138,7 @@ check_database() {
   fi
 }
 
-for command_name in mysql curl sha256sum find sort stat grep; do
+for command_name in mysql curl sha256sum find sort stat grep runuser systemctl tr bash; do
   command -v "${command_name}" >/dev/null 2>&1 || fail "required command not found: ${command_name}"
 done
 [[ "${DB_NAME}" =~ ^[A-Za-z0-9_]+$ ]] || fail "invalid DB_NAME"
@@ -109,7 +156,10 @@ default-character-set=utf8mb4
 EOF
 chmod 600 "${mysql_cnf}"
 
+check_source_provenance
 check_health
+check_app_temp
+check_service_temp_runtime
 check_backup
 check_database
 echo "paper-mes release preflight passed"

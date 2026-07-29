@@ -39,6 +39,7 @@ export function routeOutput(output: StageOutputVO, production: RollProductionVO)
   const trim = isTrimOutput(output)
   return {
     key: output.uuid,
+    finishRollUuid: output.finishRollUuid,
     name: trim ? printTrimTitle(output.outputNo) : output.outputNo || '-',
     spec: printOutputSpec(output),
     weight: formatProductionKg(output.estimateWeight, production),
@@ -107,6 +108,7 @@ function finishRouteOutput(
   const remain = isRemainProductionFinish(finish)
   return {
     key: finish.uuid,
+    finishRollUuid: finish.uuid,
     name: remain ? printTrimTitle(finish.finishRollNo) : finish.finishRollNo || '预生成成品',
     spec: printFinishSpec(finish),
     weight: formatProductionKg(finish.estimateWeight, production),
@@ -125,7 +127,7 @@ function fallbackSingleStageTrim(
   step?: ProcessStep,
 ): PrintRouteOutput | null {
   if (outputs.some(isRemainProductionFinish)) return null
-  if ((step?.stepType ?? production.mainStepType) == null) return null
+  if ((step?.stepType ?? production.mainStepType) !== 1) return null
   const trimWidth = calcTrimWidth(production)
   const trimWeight = trimWeightFromFinishes(production.finishes)
   if (trimWidth <= 0 && trimWeight <= 0) return null

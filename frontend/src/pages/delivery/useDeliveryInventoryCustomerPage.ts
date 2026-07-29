@@ -11,12 +11,14 @@ import { useValidateDeliveryInventory } from '../../features/delivery/hooks/useV
 import { useWarehouses } from '../../features/processOrderCreate/hooks/useReferenceData'
 import { useHasPermission } from '../../stores/authStore'
 import type { DeliveryInventoryFilter } from '../../types/deliveryInventory'
+import { filtersForInventoryQuickFilter } from './deliveryInventoryModel'
 import { useDeliveryInventorySelection } from './useDeliveryInventorySelection'
 
 export function useDeliveryInventoryCustomerPage() {
   const navigate = useNavigate()
   const { customerUuid = '' } = useParams()
-  const [filters, setFilters] = useState<DeliveryInventoryFilter>({ customerUuid })
+  const [filters, setFilters] = useState<DeliveryInventoryFilter>(() =>
+    filtersForInventoryQuickFilter({ customerUuid }, 'product'))
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [view, setView] = useState<'rolls' | 'orders'>('rolls')

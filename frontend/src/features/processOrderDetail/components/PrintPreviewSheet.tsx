@@ -4,14 +4,17 @@ import { PRIORITY } from '../../../constants/processOrder'
 import { CONFIG_KEYS } from '../../systemConfig/configFallbacks'
 import { useSystemConfigValue } from '../../systemConfig/hooks/useSystemConfigValue'
 import {
-  buildPrintRollBlocks,
+  buildPrintSheetModel,
   buildPrintSummary,
   type PrintRollBlock,
   type PrintRouteOutput,
   type PrintRouteStage,
-  type PrintSummaryItem,
 } from './printPreviewModel'
 import PrintDenseTable from './PrintDenseTable'
+import { PrintAnnotationTags, PrintSpecification } from './PrintAnnotationText'
+import { OrderRemarkBlock, SummaryStrip } from './PrintPreviewRemarks'
+import { orderRemark } from './printPreviewRemarkModel'
+import { PrintFooter } from './PrintPreviewFooter'
 import './PrintPreviewSheet.css'
 import './PrintPreviewSheet.print.css'
 
@@ -24,14 +27,15 @@ interface Props {
 }
 
 export default function PrintPreviewSheet({ detail, snapshotTime, snapshotUser, version, versionLabel }: Props) {
-  const blocks = buildPrintRollBlocks(detail)
+  const { blocks, orderAnnotations } = buildPrintSheetModel(detail)
   const summary = buildPrintSummary(detail)
   const { value: printTitle } = useSystemConfigValue(CONFIG_KEYS.processOrderTitle, '车间加工单')
+  const remark = orderRemark(detail)
 
   return (
     <div className="print-preview-sheet">
       <PrintHeader detail={detail} title={printTitle} snapshotTime={snapshotTime} snapshotUser={snapshotUser} versionLabel={versionLabel} />
-      {orderRemark(detail) && <OrderRemarkBlock remark={orderRemark(detail)} />}
+      <OrderRemarkBlock remark={remark} annotations={orderAnnotations} />
       <SummaryStrip items={summary} />
       <section className="print-preview-sheet__routes">
         {blocks.map((block) => <RollBlock block={block} key={block.key} showActuals={version === 'FINISHED'} />)}
@@ -56,34 +60,11 @@ function PrintHeader({ detail, snapshotTime, snapshotUser, title, versionLabel }
         <span>单号：{order.orderNo ?? '-'}</span>
         <span>客户：{order.customerName ?? '-'}</span>
         <span>日期：{order.orderDate ?? '-'}</span>
-        <span>打印：{order.printStatus === 1 ? `${order.printCount ?? 1} 次` : '未打印'}</span>
         {versionLabel && <span>版本：{versionLabel}</span>}
         {snapshotTime && <span>版本时间：{snapshotTime}</span>}
         {snapshotUser && <span>版本操作人：{snapshotUser}</span>}
       </div>
     </header>
-  )
-}
-
-function OrderRemarkBlock({ remark }: { remark: string }) {
-  return (
-    <section className="print-preview-sheet__remark-block">
-      <strong>重要备注</strong>
-      <span>{remark}</span>
-    </section>
-  )
-}
-
-function SummaryStrip({ items }: { items: PrintSummaryItem[] }) {
-  return (
-    <section className="print-preview-sheet__summary">
-      {items.map((item) => (
-        <span key={item.label}>
-          <em>{item.label}</em>
-          <strong>{item.value}</strong>
-        </span>
-      ))}
-    </section>
   )
 }
 
@@ -93,7 +74,6 @@ function RollBlock({ block, showActuals }: { block: PrintRollBlock; showActuals:
       <aside className="print-roll-block__source">
         <h2>{block.title}</h2>
         <SourceList block={block} />
-        <WriteGrid />
       </aside>
       <div className="print-roll-block__main">
         <RouteStages stages={block.routeStages} showActuals={showActuals} />
@@ -111,6 +91,7 @@ function SourceList({ block }: { block: PrintRollBlock }) {
           <dd>{item.value}</dd>
         </div>
       ))}
+      {block.annotations?.length ? <PrintAnnotationTags annotations={block.annotations} /> : null}
       {block.remark && (
         <div className="print-roll-source-list__remark">
           <dt>明细备注</dt>
@@ -173,7 +154,7 @@ function OutputRow({ output, showActuals }: { output: PrintRouteOutput; showActu
   return (
     <tr className={`print-route-output-row print-route-output-row--${output.status}`}>
       <td><OutputName output={output} /></td>
-      <td>{output.spec}</td>
+      <td><PrintSpecification spec={output.spec} annotations={output.annotations} /></td>
       <td>{output.weight}</td>
       <td><strong>{outputStatusText(output.status)}</strong></td>
       <td className={fillable ? 'print-write-cell' : 'print-muted-cell'}>{showActuals ? output.actualWeight ?? '-' : fillable ? '' : '-'}</td>
@@ -195,37 +176,4 @@ function outputStatusText(status: PrintRouteOutput['status']) {
   if (status === 'next') return '进入下道'
   if (status === 'trim') return '修边'
   return '最终交付'
-}
-
-function WriteGrid() {
-  return (
-    <div className="print-write-grid">
-      <span>实克</span>
-      <i />
-      <span>实幅</span>
-      <i />
-      <span>复重</span>
-      <i />
-      <span>异常</span>
-      <i />
-    </div>
-  )
-}
-
-function PrintFooter() {
-  return (
-    <footer className="print-preview-sheet__footer">
-      <span>操作工：</span>
-      <span>复核人：</span>
-      <span>班组长：</span>
-      <span>完工日期：</span>
-    </footer>
-  )
-}
-
-function orderRemark(detail: ProcessOrderDetailVO): string {
-  return [detail.order.remark, detail.order.remarkLong]
-    .map((item) => item?.trim())
-    .filter(Boolean)
-    .join('；')
 }

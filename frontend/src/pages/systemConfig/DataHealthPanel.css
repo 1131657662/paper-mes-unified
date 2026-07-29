@@ -6,6 +6,11 @@
   gap: 14px;
 }
 
+.data-health-panel > .ant-table-wrapper {
+  min-height: 0;
+  flex: 1;
+}
+
 .data-health-header {
   display: flex;
   align-items: center;

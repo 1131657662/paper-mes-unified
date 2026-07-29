@@ -31,6 +31,14 @@ describe('deliveryInventoryModel', () => {
     expect(filtersForInventoryQuickFilter(filters, 'all')).toEqual({ keyword: '弘丰拓', inventoryScope: undefined, inventoryType: undefined })
   })
 
+  it('defaults a customer inventory detail to the product scope', () => {
+    expect(filtersForInventoryQuickFilter({ customerUuid: 'customer-1' }, 'product')).toEqual({
+      customerUuid: 'customer-1',
+      inventoryScope: 'product',
+      inventoryType: undefined,
+    })
+  })
+
   it('兼容历史类型参数并映射到新的快捷筛选', () => {
     expect(inventoryQuickFilterValue({ inventoryScope: 'product' })).toBe('product')
     expect(inventoryQuickFilterValue({ inventoryType: 2 })).toBe('remain')

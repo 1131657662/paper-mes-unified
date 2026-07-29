@@ -146,7 +146,10 @@ class ProductionDeploymentSecurityContractTest {
                 "ssl_protocols TLSv1.2 TLSv1.3", "Strict-Transport-Security",
                 "limit_req zone=paper_mes_login");
         assertContainsAll(source("deploy/paper-mes.service.example"),
-                "EnvironmentFile=/etc/paper-mes/paper-mes.env");
+                "EnvironmentFile=/etc/paper-mes/paper-mes.env",
+                "PrivateTmp=true", "RuntimeDirectory=paper-mes",
+                "ExecStartPre=+/usr/bin/bash /opt/paper-mes/source/deploy/verify-paper-mes-source.example.sh",
+                "-Djava.io.tmpdir=/run/paper-mes");
     }
 
     private String source(String path) throws Exception {

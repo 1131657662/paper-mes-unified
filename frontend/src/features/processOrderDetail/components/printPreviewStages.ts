@@ -1,7 +1,12 @@
 import { STEP_TYPE } from '../../../constants/processOrder'
 import { isVisibleProductionOutput } from '../../../components/processOrder/shared/detailHelpers'
 import { sortFinishOutputs } from '../../../components/processOrder/shared/outputOrder'
-import type { ProcessStep, RollProductionVO, StageOutputVO } from '../../../types/processOrder'
+import type {
+  FinishRoll,
+  ProcessStep,
+  RollProductionVO,
+  StageOutputVO,
+} from '../../../types/processOrder'
 import { formatOptionalTon as formatRawTon } from '../../../utils/numberFormatters'
 import { formatTon } from '../orderDetailUtils'
 import { layeredRouteOutputs } from './printPreviewLayeredOutputs'
@@ -12,11 +17,14 @@ import {
 } from './printPreviewOutputs'
 import { singleStageRequirement, stageRequirement } from './printPreviewRequirements'
 import type { PrintRouteStage } from './printPreviewTypes'
+import { directShipStage } from './printPreviewDirectShip'
 
 export function buildPrintRouteStages(
   production: RollProductionVO,
   detailSteps: ProcessStep[],
+  finishRolls: FinishRoll[] = [],
 ): PrintRouteStage[] {
+  if (production.processMode === 3) return [directShipStage(production, finishRolls)]
   const steps = mergedSteps(production, detailSteps)
   const outputs = activeStageOutputs(production.stageOutputs)
   return outputs.length

@@ -38,7 +38,7 @@ export default function DataHealthIssueTable({ issues, loading, onRepair }: Prop
       dataSource={issues}
       loading={loading}
       pagination={{ pageSize: 20, showSizeChanger: true }}
-      scroll={{ x: 1050, y: 'calc(100vh - 390px)' }}
+      scroll={{ x: 1050, y: 'max(96px, calc(100vh - 520px))' }}
       size="small"
     />
   )

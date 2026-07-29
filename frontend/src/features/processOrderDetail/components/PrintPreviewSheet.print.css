@@ -109,8 +109,21 @@
     line-height: 1.18;
   }
 
+  .print-preview-sheet__remark-content {
+    line-height: 1.18;
+  }
+
+  .print-order-annotation {
+    margin-bottom: 0.8mm;
+    padding: 0.55mm 1mm;
+    border-width: 1pt;
+    font-size: 9.2pt;
+    font-weight: 900;
+    line-height: 1.08;
+  }
+
   .print-preview-sheet__summary {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(28mm, 1fr));
     gap: 0;
     margin: 1.5mm 0;
     border-top: 0.7pt solid #000;
@@ -166,6 +179,16 @@
 
   .print-dense-table tbody {
     display: table-row-group;
+  }
+
+  .print-dense-table__process-body {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .print-dense-table__roll-body {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .print-dense-table tr {
@@ -236,6 +259,21 @@
 
   .print-dense-table__source {
     white-space: pre-line;
+  }
+
+  .print-annotation-tags {
+    margin-left: 1.2mm;
+    padding: 0.2mm 0.7mm;
+    border-width: 0.9pt;
+    font-weight: 900;
+    line-height: 1.08;
+    white-space: nowrap;
+  }
+
+  .print-roll-source-list > .print-annotation-tags,
+  .print-dense-table__source > .print-annotation-tags {
+    margin-top: 0.6mm;
+    margin-left: 0;
   }
 
   .print-dense-table__item-row {
@@ -329,25 +367,9 @@
     line-height: 1.08;
   }
 
-  .print-write-grid {
-    grid-template-columns: 7mm 1fr 7mm 1fr;
-    gap: 0.5mm 1mm;
-    margin-top: 0.8mm;
-    padding-top: 0.7mm;
-    border-top-width: 0.6pt;
-    font-size: 8pt;
-    line-height: 1;
-  }
-
   .print-write-cell {
     min-height: 5.5mm;
     background: #fff !important;
-  }
-
-  .print-write-grid i {
-    min-height: 3.5mm;
-    background: #fff !important;
-    border-bottom: 0.7pt solid #000;
   }
 
   .print-roll-block__main {

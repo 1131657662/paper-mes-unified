@@ -23,7 +23,7 @@ export default function BackupRecordTable(props: BackupRecordTableProps) {
       columns={columns}
       dataSource={props.records}
       pagination={{ pageSize: 10, showSizeChanger: false }}
-      scroll={{ x: 980 }}
+      scroll={{ x: 1020 }}
     />
   )
 }

@@ -26,7 +26,7 @@ export default function BackupTaskTable({ tasks, loading, focusedTaskId, busy, o
         dataSource={rows}
         pagination={{ pageSize: 10, showSizeChanger: false }}
         rowClassName={(task) => task.uuid === focusedTaskId ? 'backup-task-row--focused' : ''}
-        scroll={{ x: 900 }}
+        scroll={{ x: 1145 }}
       />
       <BackupTaskDetail task={detailTask} onClose={() => setDetailTask(undefined)} />
     </>
@@ -56,7 +56,7 @@ function createColumns(actions: TaskActionProps): ColumnsType<BackupTask> {
     { title: '操作者', dataIndex: 'operator', width: 110 },
     { title: '结果', dataIndex: 'message', width: 260, ellipsis: true },
     {
-      title: '操作', key: 'actions', width: 160,
+      title: '操作', key: 'actions', fixed: 'right', width: 160,
       render: (_, task) => <TaskActions task={task} {...actions} />,
     },
   ]

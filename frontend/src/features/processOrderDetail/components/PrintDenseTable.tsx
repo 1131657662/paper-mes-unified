@@ -2,7 +2,13 @@ import type {
   PrintRollBlock,
   PrintRouteOutput,
 } from './printPreviewModel'
-import { buildDenseRows, type DenseItemRow, type DenseRow } from './printDenseTableModel'
+import {
+  buildDenseBodies,
+  type DenseBody,
+  type DenseItemRow,
+  type DenseRow,
+} from './printDenseTableModel'
+import { PrintAnnotationTags, PrintSpecification } from './PrintAnnotationText'
 
 interface Props {
   blocks: PrintRollBlock[]
@@ -10,8 +16,8 @@ interface Props {
 }
 
 export default function PrintDenseTable({ blocks, showActuals = false }: Props) {
-  const rows = buildDenseRows(blocks)
-  if (!rows.length) return null
+  const bodies = buildDenseBodies(blocks)
+  if (!bodies.length) return null
   return (
     <section className="print-dense-section" aria-label="打印紧凑表格">
       <table className="print-dense-table">
@@ -27,11 +33,28 @@ export default function PrintDenseTable({ blocks, showActuals = false }: Props) 
             <th>异常</th>
           </tr>
         </thead>
-        <tbody>
-          {rows.map((row) => <DenseTableRow key={row.key} row={row} showActuals={showActuals} />)}
-        </tbody>
+        {bodies.map((body) => (
+          <DenseTableBody body={body} key={body.key} showActuals={showActuals} />
+        ))}
       </table>
     </section>
+  )
+}
+
+function DenseTableBody({ body, showActuals }: { body: DenseBody; showActuals: boolean }) {
+  if (body.kind === 'process') {
+    return (
+      <tbody className="print-dense-table__process-body">
+        <DenseTableRow row={body.row} showActuals={showActuals} />
+      </tbody>
+    )
+  }
+  return (
+    <tbody className="print-dense-table__roll-body">
+      {body.rows.map((row) => (
+        <DenseTableRow key={row.key} row={row} showActuals={showActuals} />
+      ))}
+    </tbody>
   )
 }
 
@@ -63,10 +86,11 @@ function DenseItemTableRow({ row, showActuals }: { row: DenseItemRow; showActual
       {row.blockRowSpan && (
         <td className="print-dense-table__source" rowSpan={row.blockRowSpan}>
           {sourceInfo(row.block)}
+          {row.block.annotations?.length ? <PrintAnnotationTags annotations={row.block.annotations} /> : null}
         </td>
       )}
       <td>{row.output ? <DenseOutputName output={row.output} /> : '-'}</td>
-      <td>{row.output?.spec ?? '-'}</td>
+      <td>{row.output ? <PrintSpecification spec={row.output.spec} annotations={row.output.annotations} /> : '-'}</td>
       <td>{row.output?.weight ?? '-'}</td>
       <td>{row.output ? outputStatusText(row.output.status) : '-'}</td>
       <td className={fillable ? 'print-dense-table__write' : 'print-dense-table__muted'}>

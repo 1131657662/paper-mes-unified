@@ -6,6 +6,19 @@ import type {
 import { buildRewindGroupDetail } from './printRewindSummaryModel'
 
 export type DenseRow = DenseGroupRow | DenseItemRow
+export type DenseBody = DenseProcessBody | DenseRollBody
+
+export interface DenseProcessBody {
+  kind: 'process'
+  key: string
+  row: DenseGroupRow
+}
+
+export interface DenseRollBody {
+  kind: 'roll'
+  key: string
+  rows: DenseItemRow[]
+}
 
 export interface DenseGroupRow {
   kind: 'group'
@@ -35,9 +48,9 @@ interface DenseEntry {
   sourceIndex: number
 }
 
-export function buildDenseRows(blocks: PrintRollBlock[]): DenseRow[] {
+export function buildDenseBodies(blocks: PrintRollBlock[]): DenseBody[] {
   const entries = sortedEntries(blocks)
-  return groupedRows(entries)
+  return groupedBodies(entries)
 }
 
 function sortedEntries(blocks: PrintRollBlock[]): DenseEntry[] {
@@ -68,17 +81,20 @@ function buildEntries(blocks: PrintRollBlock[]): DenseEntry[] {
   })
 }
 
-function groupedRows(entries: DenseEntry[]): DenseRow[] {
-  const rows: DenseRow[] = []
+function groupedBodies(entries: DenseEntry[]): DenseBody[] {
+  const bodies: DenseBody[] = []
   for (let index = 0; index < entries.length;) {
     const groupEntries = entriesForProcess(entries, index)
     const firstEntry = groupEntries[0]
     if (!firstEntry) break
-    rows.push(groupRow(firstEntry, groupEntries))
-    for (const entry of groupEntries) rows.push(...entryRows(entry))
+    const process = groupRow(firstEntry, groupEntries)
+    bodies.push({ kind: 'process', key: process.key, row: process })
+    for (const entry of groupEntries) {
+      bodies.push({ kind: 'roll', key: entry.key, rows: entryRows(entry) })
+    }
     index += groupEntries.length
   }
-  return rows
+  return bodies
 }
 
 function entriesForProcess(entries: DenseEntry[], start: number): DenseEntry[] {

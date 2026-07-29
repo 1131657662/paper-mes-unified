@@ -50,7 +50,7 @@ class HealthMonitoringContractTest {
 
         assertThat(guide).contains("/actuator/health", "paper-mes-monitor.timer");
         assertThat(guide).contains("FAILED", "RECOVERED", "发布顺序与回滚");
-        assertThat(guide).contains("只有 `/actuator/health` 返回 `UP` 后才发布前端");
+        assertThat(guide).contains("只有 `/usr/local/bin/preflight-paper-mes-release` 通过后才发布前端");
     }
 
     private void assertHealthConfiguration(String source) {
