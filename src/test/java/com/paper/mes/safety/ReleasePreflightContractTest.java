@@ -55,6 +55,7 @@ class ReleasePreflightContractTest {
         assertThat(guide).contains("每次从 GitHub 拉取新代码后");
         assertThat(guide).contains("git pull --ff-only origin main");
         assertThat(guide).contains("禁止在 `/opt/paper-mes/source` 中直接编辑");
+        assertThat(guide).contains("bash /opt/paper-mes/source/deploy/backup-paper-mes.example.sh");
         assertThat(guide).contains("deploy/paper-mes.service.example /etc/systemd/system/paper-mes.service");
         assertThat(guide).contains("deploy/preflight-paper-mes-release.example.sh /usr/local/bin/preflight-paper-mes-release");
         assertThat(guide).contains("systemctl daemon-reload", "systemctl restart paper-mes");
