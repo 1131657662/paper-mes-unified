@@ -13,6 +13,7 @@ import { useConfiguredPageSize } from '../../features/systemConfig/hooks/useConf
 import type { DeliveryOrder, DeliveryQuery } from '../../types/delivery'
 import DeliveryListSummary from './DeliveryListSummary'
 import DeliveryListToolbar from './DeliveryListToolbar'
+import DeliveryPendingEditModal from './DeliveryPendingEditModal'
 import DeliverySearchBar from './DeliverySearchBar'
 import { deliveryStatus, tableDensityMode, type DeliveryQueueFilter, type DeliverySearchFormValues } from './deliveryListModel'
 import { useDeliveryListActions } from './useDeliveryListActions'
@@ -26,6 +27,7 @@ export default function DeliveryOrderList() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useConfiguredPageSize(20)
   const [filters, setFilters] = useState<DeliveryQuery>({})
+  const [editingOrder, setEditingOrder] = useState<DeliveryOrder>()
   const selection = useDocumentRowSelection<DeliveryOrder>()
   const ordersQuery = useDeliveryOrders({ ...filters, current: page, deliveryStatus: deliveryStatus(queue), size: pageSize })
   const summaryQuery = useDeliveryListSummary(filters)
@@ -69,13 +71,16 @@ export default function DeliveryOrderList() {
       onCreate={() => navigate('/delivery-orders/create')} onQueueChange={handleQueueChange}>
       <ListErrors ordersQuery={ordersQuery} customersQuery={customersQuery} summaryQuery={summaryQuery} />
       <div className="document-page-table" data-table-density={tableDensity}>
-        <DeliveryOrderTable canConfirmDelivery={actions.canConfirm} data={orders}
+        <DeliveryOrderTable canConfirmDelivery={actions.canConfirm} canManageDelivery={actions.canManage} data={orders}
           loading={ordersQuery.isLoading || ordersQuery.isFetching} onReload={() => ordersQuery.refetch()}
           rowClassName={selection.rowClassName} rowSelection={selection.rowSelection} onConfirm={actions.confirm}
+          onEdit={setEditingOrder}
           onDetail={(record) => navigate(`/delivery-orders/${record.uuid}`)}
           fixedHeader={tableDensity !== 'empty'} onRow={selection.onRow} />
       </div>
       <DocumentPaginationBar current={page} pageSize={pageSize} total={ordersQuery.data?.total ?? 0} onChange={handlePageChange} />
+      {editingOrder && <DeliveryPendingEditModal open order={editingOrder}
+        onCancel={() => setEditingOrder(undefined)} onSaved={() => setEditingOrder(undefined)} />}
     </DocumentListShell>
   )
 }

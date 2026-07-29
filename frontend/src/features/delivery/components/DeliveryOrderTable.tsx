@@ -1,3 +1,4 @@
+import { EditOutlined } from '@ant-design/icons'
 import { Button, Space, Tag, Typography } from 'antd'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
@@ -14,6 +15,7 @@ import { formatTon } from '../utils/deliveryFormatters'
 
 interface Props {
   canConfirmDelivery?: boolean
+  canManageDelivery?: boolean
   data: DeliveryOrder[]
   fixedHeader?: boolean
   loading: boolean
@@ -22,22 +24,25 @@ interface Props {
   rowSelection?: TableRowSelection<DeliveryOrder>
   onConfirm: (record: DeliveryOrder) => void
   onDetail: (record: DeliveryOrder) => void
+  onEdit: (record: DeliveryOrder) => void
   onRow?: (record: DeliveryOrder) => React.HTMLAttributes<HTMLElement>
 }
 
 export default function DeliveryOrderTable({
   canConfirmDelivery = false,
+  canManageDelivery = false,
   data,
   fixedHeader = false,
   loading,
   onConfirm,
   onDetail,
+  onEdit,
   onReload,
   onRow,
   rowClassName,
   rowSelection,
 }: Props) {
-  const columns = buildColumns({ canConfirmDelivery, onConfirm, onDetail })
+  const columns = buildColumns({ canConfirmDelivery, canManageDelivery, onConfirm, onDetail, onEdit })
   const columnsState = useTableColumnsState('table-columns-delivery-orders')
   const resizable = useResizableTableColumns<DeliveryOrder, ProColumns<DeliveryOrder>>(columns, 'delivery-orders')
 
@@ -72,8 +77,10 @@ export default function DeliveryOrderTable({
 
 function buildColumns(actions: {
   canConfirmDelivery: boolean
+  canManageDelivery: boolean
   onConfirm: (record: DeliveryOrder) => void
   onDetail: (record: DeliveryOrder) => void
+  onEdit: (record: DeliveryOrder) => void
 }): ProColumns<DeliveryOrder>[] {
   return [
     {
@@ -85,7 +92,7 @@ function buildColumns(actions: {
       render: (value) => <Typography.Text strong>{value}</Typography.Text>,
     },
     { title: '货主', dataIndex: 'customerName', width: 180, minWidth: 160, render: (_, record) => textCell(record.customerName) },
-    { title: '客户', dataIndex: 'receiverCustomerName', width: 180, minWidth: 160, render: (_, record) => textCell(record.receiverCustomerName || '') },
+    { title: '收货客户', dataIndex: 'receiverCustomerName', width: 180, minWidth: 160, render: (_, record) => textCell(record.receiverCustomerName || '') },
     { title: '日期', dataIndex: 'deliveryDate', width: 124 },
     {
       title: '出库统计',
@@ -124,13 +131,19 @@ function buildColumns(actions: {
       key: 'actions',
       className: 'delivery-order-table__actions-cell',
       fixed: 'right',
-      width: 168,
-      minWidth: 168,
+      width: 208,
+      minWidth: 208,
       render: (_, record) => (
         <Space className="mes-action-buttons">
           <Button type="link" size="small" onClick={() => actions.onDetail(record)}>
             详情
           </Button>
+          {actions.canManageDelivery && record.deliveryStatus === 1 && (
+            <Button type="link" size="small" icon={<EditOutlined />}
+              onClick={() => actions.onEdit(record)}>
+              编辑
+            </Button>
+          )}
           {actions.canConfirmDelivery && record.deliveryStatus === 1 && (
             <Button type="link" size="small" onClick={() => actions.onConfirm(record)}>
               签收

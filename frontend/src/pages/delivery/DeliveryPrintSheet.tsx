@@ -46,7 +46,7 @@ function DeliveryPrintHeader({ order, title }: { order: DeliveryOrder; title: st
         <PrintInfo label="出库日期" value={order.deliveryDate} />
         <PrintInfo label="出库仓库" value={order.warehouseName || '-'} />
         <PrintInfo className="delivery-print-info__wide" label="货主" value={order.customerName} />
-        <PrintInfo className="delivery-print-info__wide" label="客户" value={order.receiverCustomerName || ''} />
+        <PrintInfo className="delivery-print-info__wide" label="收货客户" value={order.receiverCustomerName || ''} />
         <PrintInfo className="delivery-print-info__wide" label="车牌号" value={order.carNo || ''} />
         <PrintInfo className="delivery-print-info__wide" label="柜号" value={order.containerNo || ''} />
       </dl>

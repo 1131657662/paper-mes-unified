@@ -1,10 +1,8 @@
 import { useState } from 'react'
-import { Button, Card, Space, Spin, message } from 'antd'
-import { CheckOutlined, DownloadOutlined, PlusOutlined, PrinterOutlined, RollbackOutlined, StopOutlined } from '@ant-design/icons'
+import { Card, Spin, message } from 'antd'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { PERMISSIONS } from '../../constants/permissions'
 import DocumentAuditTimeline from '../../components/biz/DocumentAuditTimeline'
-import MesPageHeader from '../../components/layout/MesPageHeader'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { useDeliveryDetail } from '../../features/delivery/hooks/useDeliveryDetail'
 import { useConfirmDelivery } from '../../features/delivery/hooks/useConfirmDelivery'
@@ -19,7 +17,9 @@ import DeliveryAppendItemsModal from './DeliveryAppendItemsModal'
 import DeliveryPrintSheet from './DeliveryPrintSheet'
 import DeliveryRollbackSnapshotCard from './DeliveryRollbackSnapshotCard'
 import DeliveryCustomerDocumentSection from './DeliveryCustomerDocumentSection'
-import { DeliveryOverview, DeliveryPickupInfo, DeliveryStatusTag } from './DeliveryDetailSummary'
+import DeliveryDetailHeader, { type DeliveryDetailHeaderActions } from './DeliveryDetailHeader'
+import DeliveryPendingEditModal from './DeliveryPendingEditModal'
+import { DeliveryOverview, DeliveryPickupInfo } from './DeliveryDetailSummary'
 import { useDeliveryPrintActions } from './useDeliveryPrintActions'
 import { authorizeDeliveryConfirmation } from './deliveryConfirmAuthorization'
 import {
@@ -36,6 +36,7 @@ export default function DeliveryDetailPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const [appendOpen, setAppendOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [documentView, setDocumentView] = useState<DeliveryDocumentView>('customer')
   const canManageDelivery = useHasPermission(PERMISSIONS.deliveryManage)
   const canReleaseDelivery = useHasPermission(PERMISSIONS.deliveryRelease)
@@ -107,42 +108,26 @@ export default function DeliveryDetailPage() {
     detailQuery.refetch()
   }
 
+  const headerActions = {
+    canConfirm: canConfirmDelivery,
+    canManage: canManageDelivery,
+    cancelling: cancelMutation.isPending,
+    confirming: confirmMutation.isPending,
+    exporting: exportMutation.isPending,
+    rollingBack: rollbackMutation.isPending,
+    onAppend: () => setAppendOpen(true),
+    onCancel: () => void handleCancel(),
+    onConfirm: () => void handleConfirm(),
+    onEdit: () => setEditOpen(true),
+    onExport: () => void handleExport(),
+    onPrint: requestPrint,
+    onRollback: () => void handleRollback(),
+  } satisfies DeliveryDetailHeaderActions
+
   return (
     <div className="document-module-page">
-      <MesPageHeader
-        title={order?.deliveryNo ?? '出库单详情'}
-        description={order ? `${order.customerName || '-'} · ${order.deliveryDate || '-'}` : undefined}
-        onBack={() => navigate('/delivery-orders')}
-        tags={order && <DeliveryStatusTag status={order.deliveryStatus} />}
-        actions={order && (
-          <Space wrap>
-            {canConfirmDelivery && order.deliveryStatus === 1 && (
-              <Button type="primary" icon={<CheckOutlined />} loading={confirmMutation.isPending} onClick={handleConfirm}>
-                确认签收
-              </Button>
-            )}
-            {canManageDelivery && order.deliveryStatus === 1 && (
-              <Button icon={<PlusOutlined />} onClick={() => setAppendOpen(true)}>
-                添加出库卷
-              </Button>
-            )}
-            <Button icon={<PrinterOutlined />} onClick={requestPrint}>打印预览</Button>
-            <Button icon={<DownloadOutlined />} loading={exportMutation.isPending} onClick={handleExport}>
-              后台导出
-            </Button>
-            {canManageDelivery && order.deliveryStatus === 1 && (
-              <Button danger icon={<StopOutlined />} loading={cancelMutation.isPending} onClick={handleCancel}>
-                作废待出库单
-              </Button>
-            )}
-            {canManageDelivery && order.deliveryStatus === 2 && (
-              <Button danger icon={<RollbackOutlined />} loading={rollbackMutation.isPending} onClick={handleRollback}>
-                回退出库
-              </Button>
-            )}
-          </Space>
-        )}
-      />
+      <DeliveryDetailHeader actions={headerActions} order={order}
+        onBack={() => navigate('/delivery-orders')} />
 
       {detailQuery.isError && (
         <QueryLoadErrorAlert
@@ -197,6 +182,15 @@ export default function DeliveryDetailPage() {
               onClose={() => setAppendOpen(false)}
               onSuccess={() => detailQuery.refetch()}
             />
+
+            {editOpen && (
+              <DeliveryPendingEditModal
+                open
+                order={detail.order}
+                onCancel={() => setEditOpen(false)}
+                onSaved={() => setEditOpen(false)}
+              />
+            )}
           </>
         )}
       </Spin>

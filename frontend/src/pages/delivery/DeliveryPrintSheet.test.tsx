@@ -9,7 +9,7 @@ describe('司机单据预览', () => {
     const markup = renderToStaticMarkup(<DeliveryPrintSheet detail={detail()} />)
 
     expect(markup).toContain('<dt>货主</dt><dd>测试客户</dd>')
-    expect(markup).toContain('<dt>客户</dt><dd>永丰包装</dd>')
+    expect(markup).toContain('<dt>收货客户</dt><dd>永丰包装</dd>')
   })
 
   it('未填写客户时保持空白且不以货主兜底', () => {
@@ -18,7 +18,7 @@ describe('司机单据预览', () => {
 
     const markup = renderToStaticMarkup(<DeliveryPrintSheet detail={value} />)
 
-    expect(markup).toContain('<dt>客户</dt><dd></dd>')
+    expect(markup).toContain('<dt>收货客户</dt><dd></dd>')
     expect(markup.match(/测试客户/g)).toHaveLength(1)
   })
 

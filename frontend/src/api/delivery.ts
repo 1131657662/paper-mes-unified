@@ -14,6 +14,7 @@ import type {
   DeliveryListSummary,
   DeliveryRollbackDTO,
 } from '../types/delivery'
+import type { DeliveryPendingUpdateDTO } from '../types/deliveryPendingUpdate'
 
 export function getDeliveryOrderList(query: DeliveryQuery) {
   return request<PageResult<DeliveryOrder>>({
@@ -52,6 +53,17 @@ export function getDeliveryOrderDetail(uuid: string) {
   return request<DeliveryDetailVO>({
     url: `/api/delivery-orders/${uuid}`,
     method: 'get',
+  })
+}
+
+export function updatePendingDeliveryOrder(
+  uuid: string,
+  data: DeliveryPendingUpdateDTO,
+): Promise<void> {
+  return request<void>({
+    url: `/api/delivery-orders/${uuid}`,
+    method: 'put',
+    data,
   })
 }
 

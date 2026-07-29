@@ -45,8 +45,8 @@ export default function DeliveryPickupInfoCard(props: Props) {
           </Form.Item>
           <Form.Item
             name="receiverCustomerName"
-            label="客户（选填）"
-            rules={[{ max: 100, message: '客户名称不能超过100个字符' }]}
+            label="收货客户（选填）"
+            rules={[{ max: 100, message: '收货客户名称不能超过100个字符' }]}
           >
             <Input maxLength={100} placeholder="货主告知的收货客户，不填则留空" />
           </Form.Item>
