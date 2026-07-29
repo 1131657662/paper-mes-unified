@@ -70,7 +70,7 @@ run_preflight() {
   APP_TMP_DIR="${temp_dir}/app-tmp" \
   PROC_ROOT="${temp_dir}/proc" \
   SOURCE_PROVENANCE_SCRIPT="${temp_dir}/bin/verify-source" \
-  "${preflight_script}"
+  bash "${preflight_script}"
 }
 
 run_preflight 0 0 >/dev/null
