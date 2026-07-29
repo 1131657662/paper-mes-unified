@@ -14,11 +14,11 @@ export default function DeliverySearchBar(props: Props) {
   return (
     <Form form={props.form} layout="vertical" className="document-searchbar" onFinish={props.onSearch}>
       <div className="document-searchbar__grid">
-        <Form.Item name="keyword" label="出库单号/客户">
-          <Input allowClear placeholder="输入单号、客户或备注" />
+        <Form.Item name="keyword" label="出库单号/货主/客户">
+          <Input allowClear placeholder="输入单号、货主或客户" />
         </Form.Item>
-        <Form.Item name="customerUuid" label="客户">
-          <Select allowClear showSearch loading={props.loadingCustomers} placeholder="全部客户"
+        <Form.Item name="customerUuid" label="货主">
+          <Select allowClear showSearch loading={props.loadingCustomers} placeholder="全部货主"
             options={props.customers.map(customerOption)} optionFilterProp="label" />
         </Form.Item>
         <Form.Item name="dateRange" label="出库日期">

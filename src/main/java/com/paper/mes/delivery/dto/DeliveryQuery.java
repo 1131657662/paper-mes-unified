@@ -13,10 +13,10 @@ import java.time.LocalDate;
 @Data
 public class DeliveryQuery {
 
-    /** 关键字：命中出库单号或客户名 */
+    /** 关键字：命中出库单号、货主名或收货客户名 */
     @Size(max = 100, message = "查询关键字不能超过100个字符")
     private String keyword;
-    @Size(max = 64, message = "客户标识不能超过64个字符")
+    @Size(max = 64, message = "货主标识不能超过64个字符")
     private String customerUuid;
     /** 1待出库 2已出库签收 3已作废 */
     @Min(value = 1, message = "出库状态无效")

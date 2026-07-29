@@ -17,7 +17,7 @@ export function useDeliveryPrintActions(options: Options) {
       return
     }
     scrollToPrint(printPreviewRef.current)
-    window.setTimeout(() => window.print(), 220)
+    window.setTimeout(() => printFromIsolatedRoot(printPreviewRef.current), 220)
   }
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function useDeliveryPrintActions(options: Options) {
       || !options.shouldAutoPrint || autoPrintDoneRef.current) return
     autoPrintDoneRef.current = true
     scrollToPrint(printPreviewRef.current)
-    const timer = window.setTimeout(() => window.print(), 220)
+    const timer = window.setTimeout(() => printFromIsolatedRoot(printPreviewRef.current), 220)
     return () => window.clearTimeout(timer)
   }, [options.detailReady, options.documentReady, options.shouldAutoPrint])
 
@@ -34,4 +34,24 @@ export function useDeliveryPrintActions(options: Options) {
 
 function scrollToPrint(target: HTMLDivElement | null) {
   target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function printFromIsolatedRoot(target: HTMLDivElement | null) {
+  const source = target?.querySelector('.document-print-area--delivery')
+  if (!source) return void window.print()
+  const printRoot = document.createElement('div')
+  printRoot.className = 'delivery-print-root'
+  printRoot.append(source.cloneNode(true))
+  const deliveryNo = printRoot.querySelector('.delivery-print-page-footer span:first-child')?.textContent || ''
+  const printedAt = printRoot.querySelector('.delivery-print-page-footer span:last-child')?.textContent || ''
+  document.documentElement.style.setProperty('--delivery-print-number', JSON.stringify(deliveryNo))
+  document.documentElement.style.setProperty('--delivery-print-time', JSON.stringify(printedAt))
+  document.body.append(printRoot)
+  try {
+    window.print()
+  } finally {
+    document.documentElement.style.removeProperty('--delivery-print-number')
+    document.documentElement.style.removeProperty('--delivery-print-time')
+    printRoot.remove()
+  }
 }

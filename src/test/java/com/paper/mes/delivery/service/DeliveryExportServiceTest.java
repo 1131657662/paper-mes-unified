@@ -22,6 +22,10 @@ class DeliveryExportServiceTest {
 
         try (Workbook workbook = service.buildWorkbook(detail())) {
             var sheet = workbook.getSheetAt(0);
+            assertEquals("货主", text(sheet.getRow(1).getCell(3)));
+            assertEquals("测试客户", text(sheet.getRow(1).getCell(4)));
+            assertEquals("客户", text(sheet.getRow(2).getCell(0)));
+            assertEquals("永丰包装", text(sheet.getRow(2).getCell(1)));
             assertEquals("卷号", text(sheet.getRow(8).getCell(2)));
             assertEquals("实物品名", text(sheet.getRow(8).getCell(3)));
             assertEquals("实物克重", text(sheet.getRow(8).getCell(4)));
@@ -60,6 +64,7 @@ class DeliveryExportServiceTest {
         DeliveryOrder order = new DeliveryOrder();
         order.setDeliveryNo("CK202607010001");
         order.setCustomerName("测试客户");
+        order.setReceiverCustomerName("永丰包装");
         order.setDeliveryDate(LocalDate.of(2026, 7, 1));
         order.setDeliveryStatus(2);
         order.setTotalCount(1);

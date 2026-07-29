@@ -36,7 +36,7 @@ class DocumentDtoValidationTest {
 
         Set<String> messages = validateMessages(dto);
 
-        assertTrue(messages.contains("客户不能为空"));
+        assertTrue(messages.contains("货主不能为空"));
         assertTrue(messages.contains("出库重量必须大于0"));
     }
 
@@ -49,6 +49,22 @@ class DocumentDtoValidationTest {
         dto.setItems(List.of(item));
 
         assertTrue(validateMessages(dto).contains("出库重量必须大于0"));
+    }
+
+    @Test
+    void deliveryCreate_whenReceiverCustomerExceedsLimit_reportsValidationError() {
+        DeliveryCreateDTO dto = new DeliveryCreateDTO();
+        dto.setReceiverCustomerName("客".repeat(101));
+
+        assertTrue(validateMessages(dto).contains("客户名称不能超过100个字符"));
+    }
+
+    @Test
+    void deliveryCreate_whenReceiverCustomerBlank_acceptsOptionalValue() {
+        DeliveryCreateDTO dto = new DeliveryCreateDTO();
+        dto.setReceiverCustomerName(" ");
+
+        assertTrue(validator.validateProperty(dto, "receiverCustomerName").isEmpty());
     }
 
     @Test

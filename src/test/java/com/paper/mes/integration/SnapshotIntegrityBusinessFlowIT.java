@@ -83,6 +83,18 @@ class SnapshotIntegrityBusinessFlowIT extends AuthenticatedBusinessFlowIT {
     }
 
     @Test
+    void confirmedDelivery_whenReceiverCustomerLiveValueChanges_keepsFrozenName() {
+        BusinessFlowFixtureFactory.Scenario scenario = fixtures.createCompletedOrderWithTwoFinishes();
+        String deliveryUuid = createConfirmedDelivery(scenario);
+        jdbcTemplate.update("UPDATE biz_delivery_order SET receiver_customer_name = 'changed' WHERE uuid = ?",
+                deliveryUuid);
+
+        DeliveryDetailVO detail = deliveryService.getDetail(deliveryUuid);
+
+        assertThat(detail.getOrder().getReceiverCustomerName()).isEqualTo("永丰包装");
+    }
+
+    @Test
     void settlement_whenLiveRowsChange_keepsFrozenDetailAndPrintValues() {
         BusinessFlowFixtureFactory.Scenario scenario = fixtures.createCompletedOrderWithTwoFinishes();
         addOriginalRoll(scenario.order().getUuid());
@@ -105,6 +117,7 @@ class SnapshotIntegrityBusinessFlowIT extends AuthenticatedBusinessFlowIT {
         item.setOutWeight(new BigDecimal("100.000"));
         DeliveryCreateDTO request = new DeliveryCreateDTO();
         request.setCustomerUuid(scenario.customer().getUuid());
+        request.setReceiverCustomerName("永丰包装");
         request.setWarehouseUuid(scenario.order().getWarehouseUuid());
         request.setDeliveryDate(LocalDate.now());
         request.setItems(List.of(item));

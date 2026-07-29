@@ -34,7 +34,7 @@ final class DeliveryCustomerExportWriter {
         title.createCell(0).setCellValue("出库客户单据口径");
         title.getCell(0).setCellStyle(titleStyle(sheet));
         summaryRow(sheet, 1, new Object[]{"出库单号", detail.getOrder().getDeliveryNo(),
-                "客户", detail.getOrder().getCustomerName()});
+                "货主", detail.getOrder().getCustomerName()});
         summaryRow(sheet, 2, new Object[]{"客户版本", "V" + customerSpecs.getCurrentRevisionNo(),
                 "状态", revisionStatus(customerSpecs)});
         summaryRow(sheet, 3, new Object[]{"实物出库重量kg", customerSpecs.getPhysicalTotalWeight(),

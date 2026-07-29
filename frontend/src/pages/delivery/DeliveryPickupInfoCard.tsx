@@ -27,14 +27,14 @@ export default function DeliveryPickupInfoCard(props: Props) {
         <div className="document-module-grid delivery-create-page__form">
           <Form.Item
             name="customerUuid"
-            label="客户"
-            rules={[{ required: true, message: '请选择客户' }]}
+            label="货主"
+            rules={[{ required: true, message: '请选择货主' }]}
           >
             <Select
               allowClear
               showSearch
               loading={props.loading}
-              placeholder="选择客户"
+              placeholder="选择货主后显示其可出库库存"
               options={props.customers.map((item) => ({
                 label: item.customerName,
                 value: item.uuid,
@@ -42,6 +42,13 @@ export default function DeliveryPickupInfoCard(props: Props) {
               optionFilterProp="label"
               onChange={props.onCustomerChange}
             />
+          </Form.Item>
+          <Form.Item
+            name="receiverCustomerName"
+            label="客户（选填）"
+            rules={[{ max: 100, message: '客户名称不能超过100个字符' }]}
+          >
+            <Input maxLength={100} placeholder="货主告知的收货客户，不填则留空" />
           </Form.Item>
           <Form.Item name="warehouseUuid" label="出库仓库" rules={[{ required: true, message: '请选择出库仓库' }]}>
             <Select

@@ -39,7 +39,9 @@ public class DeliveryListSummaryService {
     private void applyFilters(QueryWrapper<DeliveryOrder> wrapper, DeliveryQuery query) {
         if (StringUtils.hasText(query.getKeyword())) {
             String keyword = query.getKeyword().trim();
-            wrapper.and(item -> item.like("delivery_no", keyword).or().like("customer_name", keyword));
+            wrapper.and(item -> item.like("delivery_no", keyword)
+                    .or().like("customer_name", keyword)
+                    .or().like("receiver_customer_name", keyword));
         }
         wrapper.eq(StringUtils.hasText(query.getCustomerUuid()), "customer_uuid", query.getCustomerUuid());
         wrapper.ge(query.getDateFrom() != null, "delivery_date", query.getDateFrom());

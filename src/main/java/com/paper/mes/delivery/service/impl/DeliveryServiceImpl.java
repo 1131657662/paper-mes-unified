@@ -134,7 +134,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     @Override
     public List<AvailableFinishVO> listAvailable(String customerUuid, String warehouseUuid) {
         if (!StringUtils.hasText(customerUuid)) {
-            throw new BusinessException("客户不能为空");
+            throw new BusinessException("货主不能为空");
         }
         // 该客户全部加工单 → uuid→单号映射。
         List<ProcessOrder> orders = processOrderMapper.selectList(
@@ -210,7 +210,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     public String create(DeliveryCreateDTO dto) {
         Customer customer = customerService.getById(dto.getCustomerUuid());
         if (customer == null) {
-            throw new BusinessException(ErrorCode.E002, "客户不存在");
+            throw new BusinessException(ErrorCode.E002, "货主不存在");
         }
 
         // 逐件校验成品：存在、已入库(2)、归属当前客户。
@@ -234,7 +234,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             }
             ProcessOrder order = orderByUuid.get(f.getOrderUuid());
             if (order == null || !dto.getCustomerUuid().equals(order.getCustomerUuid())) {
-                throw new BusinessException("成品不属于该客户：" + f.getFinishRollNo());
+                throw new BusinessException("成品不属于该货主：" + f.getFinishRollNo());
             }
             if (!canDeliveryProcessOrder(order)) {
                 throw new BusinessException("加工单非可出库状态：" + order.getOrderNo());
@@ -256,6 +256,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         deliveryOrder.setDeliveryNo(nextDeliveryNo(date));
         deliveryOrder.setCustomerUuid(dto.getCustomerUuid());
         deliveryOrder.setCustomerName(customer.getCustomerName());
+        deliveryOrder.setReceiverCustomerName(StringUtils.hasText(dto.getReceiverCustomerName())
+                ? dto.getReceiverCustomerName().trim() : null);
         deliveryOrder.setWarehouseUuid(warehouse.uuid());
         deliveryOrder.setWarehouseName(warehouse.name());
         deliveryOrder.setDeliveryDate(date);
@@ -472,7 +474,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             }
             ProcessOrder processOrder = orderByUuid.get(finish.getOrderUuid());
             if (processOrder == null || !order.getCustomerUuid().equals(processOrder.getCustomerUuid())) {
-                throw new BusinessException("成品不属于该出库单客户：" + finish.getFinishRollNo());
+                throw new BusinessException("成品不属于该出库单货主：" + finish.getFinishRollNo());
             }
             if (!canDeliveryProcessOrder(processOrder)) {
                 throw new BusinessException("加工单非可出库状态：" + processOrder.getOrderNo());
@@ -567,12 +569,13 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private String buildDeliverySnapshot(DeliveryOrder order, List<DeliveryDetail> details) {
         List<DeliveryDetailItemVO> detailItems = buildDetailItems(details);
         Map<String, Object> snap = new LinkedHashMap<>();
-        snap.put("schema_version", "1.1");
+        snap.put("schema_version", "1.2");
         snap.put("snapshot_type", "delivery_confirm");
         snap.put("delivery_uuid", order.getUuid());
         snap.put("delivery_no", order.getDeliveryNo());
         snap.put("customer_uuid", order.getCustomerUuid());
         snap.put("customer_name", order.getCustomerName());
+        snap.put("receiver_customer_name", order.getReceiverCustomerName());
         snap.put("warehouse_uuid", order.getWarehouseUuid());
         snap.put("warehouse_name", order.getWarehouseName());
         snap.put("delivery_date", order.getDeliveryDate());
@@ -593,12 +596,13 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
     private String buildRollbackSnapshot(DeliveryOrder order, String reason, String operator, LocalDateTime rollbackTime) {
         Map<String, Object> snap = new LinkedHashMap<>();
-        snap.put("schema_version", "1.1");
+        snap.put("schema_version", "1.2");
         snap.put("snapshot_type", "delivery_rollback");
         snap.put("delivery_uuid", order.getUuid());
         snap.put("delivery_no", order.getDeliveryNo());
         snap.put("customer_uuid", order.getCustomerUuid());
         snap.put("customer_name", order.getCustomerName());
+        snap.put("receiver_customer_name", order.getReceiverCustomerName());
         snap.put("warehouse_uuid", order.getWarehouseUuid());
         snap.put("warehouse_name", order.getWarehouseName());
         snap.put("delivery_status_before", order.getDeliveryStatus());
@@ -673,6 +677,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         view.setDeliveryNo(textValue(root, "delivery_no", "deliveryNo", order.getDeliveryNo()));
         view.setCustomerUuid(textValue(root, "customer_uuid", "customerUuid", order.getCustomerUuid()));
         view.setCustomerName(textValue(root, "customer_name", "customerName", order.getCustomerName()));
+        view.setReceiverCustomerName(textValue(root, "receiver_customer_name", "receiverCustomerName",
+                order.getReceiverCustomerName()));
         view.setWarehouseUuid(textValue(root, "warehouse_uuid", "warehouseUuid", order.getWarehouseUuid()));
         view.setWarehouseName(textValue(root, "warehouse_name", "warehouseName", order.getWarehouseName()));
         view.setDeliveryDate(dateValue(root, "delivery_date", "deliveryDate", order.getDeliveryDate()));
@@ -695,6 +701,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         view.setDeliveryNo(order.getDeliveryNo());
         view.setCustomerUuid(order.getCustomerUuid());
         view.setCustomerName(order.getCustomerName());
+        view.setReceiverCustomerName(order.getReceiverCustomerName());
         view.setWarehouseUuid(order.getWarehouseUuid());
         view.setWarehouseName(order.getWarehouseName());
         view.setDeliveryDate(order.getDeliveryDate());

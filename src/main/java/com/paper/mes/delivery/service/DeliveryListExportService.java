@@ -29,8 +29,8 @@ public class DeliveryListExportService {
 
     private static final int BATCH_SIZE = 100;
     private static final List<String> HEADERS = List.of(
-            "出库单号", "客户", "出库日期", "卷数", "出库重量kg", "提货人", "车牌",
-            "柜号", "状态", "结算拦截", "签收人", "签收时间", "备注", "创建时间");
+            "出库单号", "货主", "客户", "出库日期", "卷数", "出库重量kg", "提货人",
+            "车牌", "柜号", "状态", "结算拦截", "签收人", "签收时间", "备注", "创建时间");
 
     private final DeliveryOrderMapper deliveryOrderMapper;
     private final DeliveryExportSnapshotReader snapshotReader;
@@ -112,11 +112,12 @@ public class DeliveryListExportService {
 
     private void writeRow(Row row, DeliveryListExportRow order) {
         List<String> values = List.of(
-                text(order.deliveryNo()), text(order.customerName()), date(order.deliveryDate()),
-                text(order.totalCount()), text(order.totalWeight()), text(order.pickerName()),
-                text(order.carNo()), text(order.containerNo()), statusText(order.deliveryStatus()),
-                blockText(order.settleBlockAction()), text(order.signUser()), dateTime(order.signTime()),
-                text(order.remark()), dateTime(order.createTime()));
+                text(order.deliveryNo()), text(order.customerName()), text(order.receiverCustomerName()),
+                date(order.deliveryDate()), text(order.totalCount()), text(order.totalWeight()),
+                text(order.pickerName()), text(order.carNo()), text(order.containerNo()),
+                statusText(order.deliveryStatus()), blockText(order.settleBlockAction()),
+                text(order.signUser()), dateTime(order.signTime()), text(order.remark()),
+                dateTime(order.createTime()));
         for (int index = 0; index < values.size(); index++) {
             row.createCell(index).setCellValue(values.get(index));
         }

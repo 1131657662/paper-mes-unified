@@ -30,6 +30,8 @@ export function DeliveryPickupInfo({ order }: { order: DeliveryOrder }) {
   return (
     <Card className="document-module-card" title="提货与签收">
       <Descriptions bordered size="small" column={3}>
+        <Descriptions.Item label="货主">{order.customerName}</Descriptions.Item>
+        <Descriptions.Item label="客户">{order.receiverCustomerName || ''}</Descriptions.Item>
         <Descriptions.Item label="提货人">{order.pickerName || '-'}</Descriptions.Item>
         <Descriptions.Item label="车牌号">{order.carNo || '-'}</Descriptions.Item>
         <Descriptions.Item label="柜号">{order.containerNo || '-'}</Descriptions.Item>

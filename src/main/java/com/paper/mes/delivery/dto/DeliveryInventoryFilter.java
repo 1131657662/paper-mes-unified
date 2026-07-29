@@ -9,7 +9,7 @@ import lombok.Data;
 @Data
 public class DeliveryInventoryFilter {
 
-    @Size(max = 64, message = "客户标识不能超过64个字符")
+    @Size(max = 64, message = "货主标识不能超过64个字符")
     private String customerUuid;
 
     @Size(max = 64, message = "仓库标识不能超过64个字符")

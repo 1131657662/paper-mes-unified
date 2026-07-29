@@ -6,6 +6,7 @@ export interface DeliveryOrder {
   deliveryNo: string
   customerUuid: string
   customerName: string
+  receiverCustomerName?: string
   warehouseUuid?: string
   warehouseName?: string
   deliveryDate: string
@@ -178,6 +179,7 @@ export interface DeliveryRollbackSnapshotVO {
 
 export interface DeliveryCreateDTO {
   customerUuid: string
+  receiverCustomerName?: string
   warehouseUuid: string
   deliveryDate: string
   pickerName?: string

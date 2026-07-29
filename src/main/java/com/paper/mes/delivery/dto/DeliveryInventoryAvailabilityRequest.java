@@ -10,8 +10,8 @@ import java.util.List;
 @Data
 public class DeliveryInventoryAvailabilityRequest {
 
-    @NotBlank(message = "客户不能为空")
-    @Size(max = 64, message = "客户标识不能超过64个字符")
+    @NotBlank(message = "货主不能为空")
+    @Size(max = 64, message = "货主标识不能超过64个字符")
     private String customerUuid;
 
     @NotBlank(message = "出库仓库不能为空")

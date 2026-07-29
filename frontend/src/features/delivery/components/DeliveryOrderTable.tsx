@@ -84,7 +84,8 @@ function buildColumns(actions: {
       minWidth: 170,
       render: (value) => <Typography.Text strong>{value}</Typography.Text>,
     },
-    { title: '客户', dataIndex: 'customerName', width: 180, minWidth: 160, render: (_, record) => textCell(record.customerName) },
+    { title: '货主', dataIndex: 'customerName', width: 180, minWidth: 160, render: (_, record) => textCell(record.customerName) },
+    { title: '客户', dataIndex: 'receiverCustomerName', width: 180, minWidth: 160, render: (_, record) => textCell(record.receiverCustomerName || '') },
     { title: '日期', dataIndex: 'deliveryDate', width: 124 },
     {
       title: '出库统计',

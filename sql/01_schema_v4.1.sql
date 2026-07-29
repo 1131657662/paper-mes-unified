@@ -784,6 +784,7 @@ CREATE TABLE `biz_delivery_order` (
   `delivery_no`         VARCHAR(50)   NOT NULL                COMMENT '出库单号',
   `customer_uuid`       VARCHAR(36)   NOT NULL                COMMENT '关联客户',
   `customer_name`       VARCHAR(100)  NOT NULL                COMMENT '快照冗余客户名',
+  `receiver_customer_name` VARCHAR(100) DEFAULT NULL          COMMENT '收货客户名称（货主告知后手工填写）',
   `warehouse_uuid`      VARCHAR(36)   DEFAULT NULL            COMMENT '出库仓库',
   `warehouse_name`      VARCHAR(100)  DEFAULT NULL            COMMENT '出库仓库名称快照',
   `delivery_date`       DATE          NOT NULL                COMMENT '出库日期',

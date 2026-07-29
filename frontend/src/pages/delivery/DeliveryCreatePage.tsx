@@ -140,8 +140,8 @@ export default function DeliveryCreatePage() {
       />
       {customersQuery.isError && (
         <QueryLoadErrorAlert
-          description="客户列表未成功加载，当前下拉选项可能不完整。"
-          message="客户资料加载失败"
+          description="货主列表未成功加载，当前下拉选项可能不完整。"
+          message="货主资料加载失败"
           onRetry={() => void customersQuery.refetch()}
         />
       )}
@@ -171,7 +171,7 @@ export default function DeliveryCreatePage() {
       >
         {customerUuid && inventory.query.isError && (
           <QueryLoadErrorAlert
-            description="本次未取得库存数据，不能据此判断该客户没有库存。"
+            description="本次未取得库存数据，不能据此判断该货主没有库存。"
             message="可出库库存加载失败"
             onRetry={() => void inventory.query.refetch()}
           />

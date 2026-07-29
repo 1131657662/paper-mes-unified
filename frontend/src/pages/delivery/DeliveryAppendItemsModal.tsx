@@ -45,7 +45,7 @@ export default function DeliveryAppendItemsModal({
   const selectionError = deliverySelectionError(selectedFinishes, lineEdits)
   const scopeName = finishScopeName(inventory.scope)
   const emptyText = (inventory.query.data?.total ?? 0) === 0
-    ? `该客户暂无可出库${scopeName}`
+    ? `该货主暂无可出库${scopeName}`
     : `没有符合筛选条件的${scopeName}`
 
   const handleScopeChange = (value: DeliveryFinishScope) => {
@@ -109,7 +109,7 @@ export default function DeliveryAppendItemsModal({
           />
         )}
         <Space className="document-module-summary" size={12} wrap>
-          <span>客户 <strong>{customerName || '-'}</strong></span>
+          <span>货主 <strong>{customerName || '-'}</strong></span>
           <DeliveryFinishScopeControl
             finishes={inventory.selectionPool}
             selectedRowKeys={inventory.selectedKeys}

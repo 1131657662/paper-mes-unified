@@ -1,0 +1,175 @@
+@page delivery-order {
+  size: A4 portrait;
+  margin: 8mm 8mm 12mm;
+
+  @bottom-center {
+    content: "第 " counter(page) " 页 / 共 " counter(pages) " 页";
+    color: #000;
+    font-size: 8pt;
+  }
+
+  @bottom-left {
+    content: var(--delivery-print-number, "");
+    color: #000;
+    font-size: 8pt;
+  }
+
+  @bottom-right {
+    content: var(--delivery-print-time, "");
+    color: #000;
+    font-size: 8pt;
+  }
+}
+
+@media print {
+  body:has(> .delivery-print-root) > *:not(.delivery-print-root) {
+    display: none !important;
+  }
+
+  .delivery-print-root,
+  .delivery-print-root * {
+    visibility: visible !important;
+  }
+
+  .delivery-print-root {
+    display: block !important;
+    width: 194mm !important;
+    margin: 0 !important;
+  }
+
+  .document-print-area--delivery {
+    position: static !important;
+    inset: auto !important;
+    width: 194mm !important;
+    min-width: 194mm !important;
+    max-width: 194mm !important;
+    overflow: visible !important;
+    page: delivery-order;
+    transform: none !important;
+  }
+
+  .document-print-area--delivery .delivery-print-sheet {
+    width: 194mm !important;
+    min-width: 194mm !important;
+    max-width: 194mm !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    color: #000 !important;
+    font-size: 10pt;
+  }
+
+  .delivery-print-sheet * {
+    color: #000 !important;
+    print-color-adjust: economy;
+    -webkit-print-color-adjust: economy;
+  }
+
+  .delivery-print-header h1 {
+    font-size: 18pt;
+    line-height: 1.1;
+  }
+
+  .delivery-print-info {
+    margin-top: 4mm;
+    border-top: .7pt solid #000;
+    border-left: .7pt solid #000;
+  }
+
+  .delivery-print-info__item {
+    min-height: 12mm;
+    padding: 1.7mm 2mm;
+    border-right: .7pt solid #000;
+    border-bottom: .7pt solid #000;
+    gap: .7mm;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .delivery-print-info__item dt {
+    font-size: 8.5pt;
+  }
+
+  .delivery-print-info__item dd {
+    font-size: 10pt;
+  }
+
+  .delivery-print-details h2 {
+    margin: 4mm 0 2mm;
+    font-size: 11pt;
+  }
+
+  .document-print-table.delivery-print-table {
+    font-size: 10pt;
+  }
+
+  .delivery-print-table thead {
+    display: table-header-group;
+  }
+
+  .delivery-print-table tbody {
+    display: table-row-group;
+  }
+
+  .delivery-print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .delivery-print-table th:nth-child(2),
+  .delivery-print-table td:nth-child(2),
+  .delivery-print-table th:nth-child(3),
+  .delivery-print-table td:nth-child(3) {
+    white-space: nowrap;
+  }
+
+  .document-print-table.delivery-print-table th,
+  .document-print-table.delivery-print-table td {
+    height: 8mm;
+    padding: 1.5mm 1.7mm;
+    border-color: #000;
+    border-width: .7pt;
+    line-height: 1.25;
+  }
+
+  .delivery-print-table__total {
+    break-inside: avoid;
+  }
+
+  .delivery-print-table__total td {
+    height: 9mm !important;
+    border-top-width: 1.4pt !important;
+    background: #f2f2f2 !important;
+    font-size: 11pt;
+  }
+
+  .delivery-print-remark {
+    margin-top: 3mm;
+    padding: 2.2mm 2.5mm;
+    border-color: #000;
+    gap: 3mm;
+    font-size: 10pt;
+    break-inside: avoid;
+  }
+
+  .delivery-print-signatures {
+    margin-top: 4mm;
+    column-gap: 4mm;
+    break-inside: avoid;
+  }
+
+  .delivery-print-signatures > div {
+    min-height: 10mm;
+    padding: 1.5mm 0;
+    font-size: 9.5pt;
+  }
+
+  .delivery-print-signatures strong {
+    min-height: 0;
+    margin: 0;
+    border: 0;
+  }
+
+  .delivery-print-page-footer {
+    display: none !important;
+  }
+}

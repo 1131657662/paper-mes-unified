@@ -25,6 +25,7 @@ public class DeliveryOrder extends BaseEntity {
     private String deliveryNo;
     private String customerUuid;
     private String customerName;
+    private String receiverCustomerName;
     private String warehouseUuid;
     private String warehouseName;
     private LocalDate deliveryDate;

@@ -102,7 +102,7 @@ function ListErrors({ customersQuery, ordersQuery, summaryQuery }: {
 }) {
   return <>
     {ordersQuery.isError && <QueryLoadErrorAlert message="出库单加载失败" description="出库单未成功加载，当前空表不代表没有出库记录。" onRetry={() => void ordersQuery.refetch()} />}
-    {customersQuery.isError && <QueryLoadErrorAlert message="客户资料加载失败" description="客户筛选项未成功加载，当前客户选项可能不完整。" onRetry={() => void customersQuery.refetch()} />}
+    {customersQuery.isError && <QueryLoadErrorAlert message="货主资料加载失败" description="货主筛选项未成功加载，当前货主选项可能不完整。" onRetry={() => void customersQuery.refetch()} />}
     {summaryQuery.isError && <QueryLoadErrorAlert message="出库汇总加载失败" description="出库汇总未成功加载，表格数据仍可继续查看。" onRetry={() => void summaryQuery.refetch()} />}
   </>
 }

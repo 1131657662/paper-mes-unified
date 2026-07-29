@@ -13,13 +13,16 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 出库单创建入参。勾选客户已入库成品合并出库；forceRelease 保留给前端风险确认留痕。
+ * 出库单创建入参。勾选货主的已入库成品合并出库；forceRelease 保留给前端风险确认留痕。
  */
 @Data
 public class DeliveryCreateDTO {
 
-    @NotBlank(message = "客户不能为空")
+    @NotBlank(message = "货主不能为空")
     private String customerUuid;
+
+    @Size(max = 100, message = "客户名称不能超过100个字符")
+    private String receiverCustomerName;
 
     @NotBlank(message = "出库仓库不能为空")
     private String warehouseUuid;

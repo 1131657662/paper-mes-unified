@@ -15,7 +15,8 @@ public final class DeliveryOrderQueryBuilder {
         if (StringUtils.hasText(query.getKeyword())) {
             String keyword = query.getKeyword().trim();
             wrapper.and(item -> item.like(DeliveryOrder::getDeliveryNo, keyword)
-                    .or().like(DeliveryOrder::getCustomerName, keyword));
+                    .or().like(DeliveryOrder::getCustomerName, keyword)
+                    .or().like(DeliveryOrder::getReceiverCustomerName, keyword));
         }
         if (StringUtils.hasText(query.getCustomerUuid())) {
             wrapper.eq(DeliveryOrder::getCustomerUuid, query.getCustomerUuid());

@@ -44,12 +44,13 @@ public class DeliveryExportService {
         Row title = sheet.createRow(0);
         title.createCell(0).setCellValue("出库单明细");
         title.getCell(0).setCellStyle(titleStyle);
-        row(sheet, 1, "出库单号", order.getDeliveryNo(), "客户", order.getCustomerName());
-        row(sheet, 2, "出库日期", text(order.getDeliveryDate()), "状态", statusText(order.getDeliveryStatus()));
-        row(sheet, 3, "提货人", order.getPickerName(), "车牌/柜号", join(order.getCarNo(), order.getContainerNo()));
-        row(sheet, 4, "签收人", order.getSignUser(), "签收时间", text(order.getSignTime()));
-        row(sheet, 5, "总件数", text(order.getTotalCount()), "实物出库总重量kg", text(order.getTotalWeight()));
-        row(sheet, 6, "备注", order.getRemark(), "", "");
+        row(sheet, 1, "出库单号", order.getDeliveryNo(), "货主", order.getCustomerName());
+        row(sheet, 2, "客户", order.getReceiverCustomerName(), "状态", statusText(order.getDeliveryStatus()));
+        row(sheet, 3, "出库日期", text(order.getDeliveryDate()), "出库仓库", order.getWarehouseName());
+        row(sheet, 4, "提货人", order.getPickerName(), "车牌/柜号", join(order.getCarNo(), order.getContainerNo()));
+        row(sheet, 5, "签收人", order.getSignUser(), "签收时间", text(order.getSignTime()));
+        row(sheet, 6, "总件数", text(order.getTotalCount()), "实物出库总重量kg", text(order.getTotalWeight()));
+        row(sheet, 7, "备注", order.getRemark(), "", "");
     }
 
     private void writeHeader(Sheet sheet, CellStyle style) {
