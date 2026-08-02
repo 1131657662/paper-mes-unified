@@ -6,7 +6,6 @@ import com.paper.mes.processorder.dto.PhysicalReprintDTO;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.oplog.service.OperationLogService;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +18,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ProcessOrderPrintViewBusinessFlowIT {
 
     @Autowired private BackRecordOnSiteFixture fixture;
-    @Autowired private BusinessFlowOrderCleanup cleanup;
     @Autowired private ProcessOrderService processOrderService;
     @Autowired private ProcessOrderMapper processOrderMapper;
     @Autowired private JdbcTemplate jdbcTemplate;
@@ -35,12 +33,6 @@ class ProcessOrderPrintViewBusinessFlowIT {
         processOrderMapper.updateById(scenario.order());
         processOrderService.issue(scenario.order().getUuid());
         processOrderService.print(scenario.order().getUuid(), new PrintDTO());
-    }
-
-    @AfterEach
-    void tearDown() {
-        jdbcTemplate.update("DELETE FROM sys_operation_log WHERE biz_uuid = ?", scenario.order().getUuid());
-        cleanup.delete(scenario.order().getUuid());
     }
 
     @Test

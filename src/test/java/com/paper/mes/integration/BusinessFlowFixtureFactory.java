@@ -2,6 +2,7 @@ package com.paper.mes.integration;
 
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.mapper.CustomerMapper;
+import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.entity.ProcessStep;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Component
@@ -26,6 +28,7 @@ class BusinessFlowFixtureFactory {
     private final FinishRollMapper finishRollMapper;
     private final ProcessStepMapper processStepMapper;
     private final WarehouseMapper warehouseMapper;
+    private final InventoryLedgerBusinessRecorder inventoryLedgerRecorder;
 
     Scenario createCompletedOrderWithTwoFinishes() {
         String token = id();
@@ -47,6 +50,9 @@ class BusinessFlowFixtureFactory {
         processStepMapper.insert(sawStep(order));
         finishRollMapper.insert(first);
         finishRollMapper.insert(second);
+        LocalDateTime receiptTime = LocalDateTime.now().minusSeconds(1);
+        inventoryLedgerRecorder.receipt(first, order.getUuid(), "fixture", receiptTime);
+        inventoryLedgerRecorder.receipt(second, order.getUuid(), "fixture", receiptTime);
         return new Scenario(customer, order, first, second);
     }
 

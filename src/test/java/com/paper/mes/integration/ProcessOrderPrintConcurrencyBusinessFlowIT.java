@@ -5,7 +5,6 @@ import com.paper.mes.processorder.dto.PrintDTO;
 import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.service.ProcessOrderService;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +16,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ProcessOrderPrintConcurrencyBusinessFlowIT {
 
     @Autowired private BackRecordOnSiteFixture fixture;
-    @Autowired private BusinessFlowOrderCleanup cleanup;
     @Autowired private ProcessOrderService processOrderService;
     @Autowired private ProcessOrderMapper processOrderMapper;
 
@@ -30,11 +28,6 @@ class ProcessOrderPrintConcurrencyBusinessFlowIT {
         scenario.order().setPrintStatus(0);
         scenario.order().setPrintCount(0);
         processOrderMapper.updateById(scenario.order());
-    }
-
-    @AfterEach
-    void tearDown() {
-        cleanup.delete(scenario.order().getUuid());
     }
 
     @Test

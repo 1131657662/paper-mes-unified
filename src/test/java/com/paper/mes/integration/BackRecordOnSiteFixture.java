@@ -3,6 +3,7 @@ package com.paper.mes.integration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.mapper.CustomerMapper;
+import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.processorder.dto.BackRecordDTO;
 import com.paper.mes.processorder.dto.BackRecordFinishDTO;
 import com.paper.mes.processorder.dto.BackRecordRollDTO;
@@ -23,6 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,6 +40,7 @@ class BackRecordOnSiteFixture {
     private final FinishOriginalRelMapper relationMapper;
     private final ProcessStepMapper processStepMapper;
     private final JdbcTemplate jdbcTemplate;
+    private final InventoryLedgerBusinessRecorder inventoryLedgerRecorder;
 
     Scenario arrange() {
         BusinessFlowFixtureFactory.Scenario base = fixtures.createCompletedOrderWithTwoFinishes();
@@ -45,6 +48,7 @@ class BackRecordOnSiteFixture {
         OriginalRoll roll = originalRoll(base.order());
         originalRollMapper.insert(roll);
         ProcessStep step = prepareStep(base.order(), roll);
+        reverseFixtureReceipts(base);
         prepareFinish(base.first(), roll);
         prepareFinish(base.second(), roll);
         FinishRoll spare = spare(base.order());
@@ -55,6 +59,14 @@ class BackRecordOnSiteFixture {
         processOrderMapper.updateById(base.order());
         return new Scenario(base.order(), roll, step, base.first(), base.second(), spare,
                 base.order().getWarehouseUuid());
+    }
+
+    private void reverseFixtureReceipts(BusinessFlowFixtureFactory.Scenario base) {
+        LocalDateTime reversalTime = LocalDateTime.now();
+        inventoryLedgerRecorder.reverseReceipt(
+                base.first(), base.order().getUuid(), "fixture-reset", reversalTime);
+        inventoryLedgerRecorder.reverseReceipt(
+                base.second(), base.order().getUuid(), "fixture-reset", reversalTime);
     }
 
     BackRecordDTO request(Scenario scenario, Integer firstWidth, Integer secondWidth) {
@@ -134,7 +146,7 @@ class BackRecordOnSiteFixture {
         finish.setUuid(id());
         finish.setOrderUuid(order.getUuid());
         finish.setRowSort(3);
-        finish.setFinishRollNo("Z-SPARE");
+        finish.setFinishRollNo("Z-SPARE-" + id().substring(0, 8).toUpperCase());
         finish.setRollNoStatus(1);
         finish.setIsSpare(1);
         finish.setPaperName("integration-paper");

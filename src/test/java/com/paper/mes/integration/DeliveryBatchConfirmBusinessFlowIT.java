@@ -9,14 +9,12 @@ import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.delivery.service.DeliveryService;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,9 +27,6 @@ class DeliveryBatchConfirmBusinessFlowIT extends AuthenticatedBusinessFlowIT {
     @Autowired private DeliveryService deliveryService;
     @Autowired private DeliveryDetailMapper deliveryDetailMapper;
     @Autowired private FinishRollMapper finishRollMapper;
-    @Autowired private BusinessFlowOrderCleanup cleanup;
-    private final List<BusinessFlowFixtureFactory.Scenario> scenarios = new ArrayList<>();
-    private final List<String> deliveryUuids = new ArrayList<>();
 
     @Test
     void confirmBatch_whenLaterOrderFails_rollsBackEarlierConfirmation() {
@@ -54,7 +49,6 @@ class DeliveryBatchConfirmBusinessFlowIT extends AuthenticatedBusinessFlowIT {
     }
 
     private String createDelivery(BusinessFlowFixtureFactory.Scenario scenario) {
-        scenarios.add(scenario);
         DeliveryCreateDTO.Item item = new DeliveryCreateDTO.Item();
         item.setFinishUuid(scenario.first().getUuid());
         item.setOutWeight(new BigDecimal("100.000"));
@@ -63,9 +57,7 @@ class DeliveryBatchConfirmBusinessFlowIT extends AuthenticatedBusinessFlowIT {
         request.setWarehouseUuid(scenario.order().getWarehouseUuid());
         request.setDeliveryDate(LocalDate.now());
         request.setItems(List.of(item));
-        String deliveryUuid = deliveryService.create(request);
-        deliveryUuids.add(deliveryUuid);
-        return deliveryUuid;
+        return deliveryService.create(request);
     }
 
     private DeliveryDetail onlyDetail(String deliveryUuid) {
@@ -77,17 +69,5 @@ class DeliveryBatchConfirmBusinessFlowIT extends AuthenticatedBusinessFlowIT {
         FinishRoll finish = finishRollMapper.selectById(finishUuid);
         finish.setFinishStatus(3);
         finishRollMapper.updateById(finish);
-    }
-
-    @AfterEach
-    void cleanCommittedFixtures() {
-        for (String deliveryUuid : deliveryUuids) {
-            deliveryDetailMapper.delete(new LambdaQueryWrapper<DeliveryDetail>()
-                    .eq(DeliveryDetail::getDeliveryUuid, deliveryUuid));
-            deliveryService.removeById(deliveryUuid);
-        }
-        for (BusinessFlowFixtureFactory.Scenario scenario : scenarios) {
-            cleanup.delete(scenario.order().getUuid());
-        }
     }
 }

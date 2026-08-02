@@ -10,7 +10,6 @@ import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ErrorCode;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +21,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ProcessDraftConcurrencyBusinessFlowIT {
 
     @Autowired private BackRecordOnSiteFixture fixture;
-    @Autowired private BusinessFlowOrderCleanup cleanup;
     @Autowired private ProcessOrderDraftService draftService;
     @Autowired private ProcessOrderMapper processOrderMapper;
     @Autowired private OriginalRollMapper originalRollMapper;
@@ -35,11 +33,6 @@ class ProcessDraftConcurrencyBusinessFlowIT {
         scenario = fixture.arrange();
         scenario.order().setOrderStatus(0);
         processOrderMapper.updateById(scenario.order());
-    }
-
-    @AfterEach
-    void tearDown() {
-        cleanup.delete(scenario.order().getUuid());
     }
 
     @Test

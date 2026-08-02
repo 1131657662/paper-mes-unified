@@ -3,6 +3,7 @@ package com.paper.mes.integration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -24,6 +25,9 @@ class BusinessFlowOrderCleanup {
     private final JdbcTemplate jdbcTemplate;
 
     void delete(String orderUuid) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            return;
+        }
         OrderOwners owners = jdbcTemplate.query(
                 "SELECT customer_uuid, warehouse_uuid FROM biz_process_order WHERE uuid = ?",
                 result -> result.next() ? new OrderOwners(result.getString(1), result.getString(2)) : null,
