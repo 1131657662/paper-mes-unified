@@ -2,6 +2,8 @@ package com.paper.mes.processorder.controller;
 
 import com.paper.mes.common.PageResult;
 import com.paper.mes.common.R;
+import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ResultCode;
 import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.processorder.dto.BackRecordDTO;
@@ -163,7 +165,15 @@ public class ProcessOrderController {
     @RequirePermission(Permissions.ORDER_MANAGE)
     public R<Void> changeStatus(@PathVariable String uuid,
                                 @Valid @RequestBody StatusChangeDTO dto) {
-        processOrderService.changeStatus(uuid, dto.getTargetStatus(), dto.getReason());
+        throw new BusinessException(ResultCode.METHOD_NOT_ALLOWED,
+                "通用状态修改已关闭，请使用下发、回录完成或回退命令");
+    }
+
+    @PutMapping("/{uuid}/rollback")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<Void> rollbackStatus(@PathVariable String uuid,
+                                  @Valid @RequestBody StatusChangeDTO dto) {
+        processOrderService.rollbackStatus(uuid, dto.getTargetStatus(), dto.getReason());
         return R.success();
     }
 
@@ -195,8 +205,8 @@ public class ProcessOrderController {
     @RequirePermission(Permissions.ORDER_MANAGE)
     public R<Void> changeRollStatus(@PathVariable String rollUuid,
                                     @Valid @RequestBody StatusChangeDTO dto) {
-        processOrderService.changeRollStatus(rollUuid, dto.getTargetStatus());
-        return R.success();
+        throw new BusinessException(ResultCode.METHOD_NOT_ALLOWED,
+                "通用原纸状态修改已关闭，请使用回录等业务命令");
     }
 
     @PostMapping("/{uuid}/print")

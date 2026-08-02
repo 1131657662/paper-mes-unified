@@ -100,7 +100,7 @@ class ProcessOrderControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"customerUuid\":\"customer-1\",\"orderDate\":\"2026-07-07\",\"originalRolls\":[]}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("originalRolls: 原纸明细不能为空"));
 
@@ -139,6 +139,48 @@ class ProcessOrderControllerContractTest {
                 .andExpect(jsonPath("$.code").value(403));
 
         verify(processOrderService, never()).changeStatus(any(), any(), any());
+    }
+
+    @Test
+    void changeStatus_withAdminRole_isDisabledInFavorOfBusinessCommands() throws Exception {
+        authorizeAs("admin");
+
+        mvc.perform(put("/api/process-orders/order-uuid/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetStatus\":1,\"reason\":\"legacy\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value(405));
+
+        verify(processOrderService, never()).changeStatus(any(), any(), any());
+    }
+
+    @Test
+    void changeRollStatus_withAdminRole_isDisabledInFavorOfBusinessCommands() throws Exception {
+        authorizeAs("admin");
+
+        mvc.perform(put("/api/process-orders/rolls/roll-uuid/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetStatus\":5}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value(405));
+
+        verify(processOrderService, never()).changeRollStatus(any(), any());
+    }
+
+    @Test
+    void rollback_withAdminRole_usesDedicatedCommand() throws Exception {
+        authorizeAs("admin");
+
+        mvc.perform(put("/api/process-orders/order-uuid/rollback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetStatus\":1,\"reason\":\"客户改单\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(processOrderService).rollbackStatus("order-uuid", 1, "客户改单");
     }
 
     @Test

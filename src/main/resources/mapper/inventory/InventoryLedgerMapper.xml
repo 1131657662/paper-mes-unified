@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.paper.mes.inventory.mapper.InventoryLedgerMapper">
+
+    <resultMap id="InventoryLedgerEntryMap" type="com.paper.mes.inventory.entity.InventoryLedgerEntry">
+        <id property="uuid" column="uuid"/>
+        <result property="sequenceNo" column="sequence_no"/>
+        <result property="finishRollUuid" column="finish_roll_uuid"/>
+        <result property="eventType" column="event_type"/>
+        <result property="sourceBusinessType" column="source_business_type"/>
+        <result property="sourceBusinessUuid" column="source_business_uuid"/>
+        <result property="quantityDelta" column="quantity_delta"/>
+        <result property="weightDelta" column="weight_delta"/>
+        <result property="reservedQuantityDelta" column="reserved_quantity_delta"/>
+        <result property="reservedWeightDelta" column="reserved_weight_delta"/>
+        <result property="quantityBefore" column="quantity_before"/>
+        <result property="quantityAfter" column="quantity_after"/>
+        <result property="weightBefore" column="weight_before"/>
+        <result property="weightAfter" column="weight_after"/>
+        <result property="reservedQuantityBefore" column="reserved_quantity_before"/>
+        <result property="reservedQuantityAfter" column="reserved_quantity_after"/>
+        <result property="reservedWeightBefore" column="reserved_weight_before"/>
+        <result property="reservedWeightAfter" column="reserved_weight_after"/>
+        <result property="availableQuantityBefore" column="available_quantity_before"/>
+        <result property="availableQuantityAfter" column="available_quantity_after"/>
+        <result property="availableWeightBefore" column="available_weight_before"/>
+        <result property="availableWeightAfter" column="available_weight_after"/>
+        <result property="reason" column="reason"/>
+        <result property="operatorUuid" column="operator_uuid"/>
+        <result property="operatorName" column="operator_name"/>
+        <result property="occurredAt" column="occurred_at"/>
+        <result property="idempotencyKey" column="idempotency_key"/>
+        <result property="payloadHash" column="payload_hash"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <sql id="Columns">
+        uuid, sequence_no, finish_roll_uuid, event_type, source_business_type, source_business_uuid,
+        quantity_delta, weight_delta, reserved_quantity_delta, reserved_weight_delta,
+        quantity_before, quantity_after, weight_before, weight_after,
+        reserved_quantity_before, reserved_quantity_after,
+        reserved_weight_before, reserved_weight_after,
+        available_quantity_before, available_quantity_after,
+        available_weight_before, available_weight_after,
+        reason, operator_uuid, operator_name, occurred_at, idempotency_key, payload_hash, created_at
+    </sql>
+
+    <insert id="insert" parameterType="com.paper.mes.inventory.entity.InventoryLedgerEntry">
+        INSERT INTO biz_inventory_transaction (
+            uuid, finish_roll_uuid, event_type, source_business_type, source_business_uuid,
+            quantity_delta, weight_delta, reserved_quantity_delta, reserved_weight_delta,
+            quantity_before, quantity_after, weight_before, weight_after,
+            reserved_quantity_before, reserved_quantity_after,
+            reserved_weight_before, reserved_weight_after,
+            available_quantity_before, available_quantity_after,
+            available_weight_before, available_weight_after,
+            reason, operator_uuid, operator_name, occurred_at, idempotency_key, payload_hash, created_at
+        ) VALUES (
+            #{uuid}, #{finishRollUuid}, #{eventType}, #{sourceBusinessType}, #{sourceBusinessUuid},
+            #{quantityDelta}, #{weightDelta}, #{reservedQuantityDelta}, #{reservedWeightDelta},
+            #{quantityBefore}, #{quantityAfter}, #{weightBefore}, #{weightAfter},
+            #{reservedQuantityBefore}, #{reservedQuantityAfter},
+            #{reservedWeightBefore}, #{reservedWeightAfter},
+            #{availableQuantityBefore}, #{availableQuantityAfter},
+            #{availableWeightBefore}, #{availableWeightAfter},
+            #{reason}, #{operatorUuid}, #{operatorName}, #{occurredAt}, #{idempotencyKey}, #{payloadHash}, #{createdAt}
+        )
+    </insert>
+
+    <select id="selectByIdempotencyKey" resultMap="InventoryLedgerEntryMap">
+        SELECT <include refid="Columns"/>
+        FROM biz_inventory_transaction
+        WHERE idempotency_key = #{idempotencyKey}
+        LIMIT 1
+    </select>
+
+    <select id="selectLatestForUpdate" resultMap="InventoryLedgerEntryMap">
+        SELECT <include refid="Columns"/>
+        FROM biz_inventory_transaction
+        WHERE finish_roll_uuid = #{finishRollUuid}
+        ORDER BY sequence_no DESC
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <select id="selectByFinishUuid" resultMap="InventoryLedgerEntryMap">
+        SELECT <include refid="Columns"/>
+        FROM biz_inventory_transaction
+        WHERE finish_roll_uuid = #{finishRollUuid}
+        ORDER BY sequence_no ASC
+    </select>
+</mapper>

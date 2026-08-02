@@ -1,5 +1,6 @@
 import { Tag } from 'antd'
 import dayjs from 'dayjs'
+import { ACTION_TYPES } from '../../constants/operationLog'
 
 const ACTION_TONE: Record<string, string> = {
   回退: 'warning',
@@ -30,7 +31,7 @@ const ACTION_TONE: Record<string, string> = {
 }
 
 export function actionTag(value: string) {
-  return <Tag className="mes-data-tag" color={ACTION_TONE[value] || 'default'}>{value || '-'}</Tag>
+  return <Tag className="mes-data-tag" color={ACTION_TONE[value] || 'default'}>{(ACTION_TYPES[value] ?? value) || '-'}</Tag>
 }
 
 export function dateText(value?: string) {

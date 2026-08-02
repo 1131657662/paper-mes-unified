@@ -68,8 +68,8 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
         if (to == FinishStatus.OUT_STOCK) {
             throw new BusinessException("成品出库必须通过出库单确认完成：" + rollNo);
         }
-        if (to == FinishStatus.SCRAP && from != FinishStatus.PENDING_IN) {
-            throw new BusinessException("仅待入库成品允许报废：" + rollNo);
+        if (to == FinishStatus.SCRAP) {
+            throw new BusinessException("成品报废必须通过受控库存报废命令：" + rollNo);
         }
 
         finishRoll.setFinishStatus(to.getCode());

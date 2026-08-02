@@ -1,8 +1,13 @@
 package com.paper.mes.common.db;
 
+import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ErrorCode;
+import com.paper.mes.common.ResultCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -11,6 +16,8 @@ import java.time.LocalDate;
 @Service
 @RequiredArgsConstructor
 public class BusinessLockService {
+
+    private static final String INVENTORY_SWITCH_LOCK = "paper_mes_inventory_switch";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -53,6 +60,42 @@ public class BusinessLockService {
 
     public void lockFinishRolls(Collection<String> uuids) {
         lockMany("biz_finish_roll", uuids);
+    }
+
+    public void lockInventorySwitch() {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            throw new BusinessException(ResultCode.CONFLICT, ErrorCode.E004.getCode(),
+                    "inventory switch lock requires an active transaction");
+        }
+        if (TransactionSynchronizationManager.hasResource(INVENTORY_SWITCH_LOCK)) {
+            return;
+        }
+        Integer acquired = jdbcTemplate.queryForObject(
+                "SELECT GET_LOCK(?, 30)", Integer.class, INVENTORY_SWITCH_LOCK);
+        if (!Integer.valueOf(1).equals(acquired)) {
+            throw new BusinessException(ResultCode.CONFLICT, ErrorCode.E004.getCode(),
+                    "inventory switch lock could not be acquired");
+        }
+        TransactionSynchronizationManager.bindResource(INVENTORY_SWITCH_LOCK, Boolean.TRUE);
+        try {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    releaseInventorySwitchLock();
+                }
+            });
+        } catch (RuntimeException exception) {
+            TransactionSynchronizationManager.unbindResourceIfPossible(INVENTORY_SWITCH_LOCK);
+            releaseInventorySwitchLock();
+            throw exception;
+        }
+    }
+
+    private void releaseInventorySwitchLock() {
+        if (TransactionSynchronizationManager.hasResource(INVENTORY_SWITCH_LOCK)) {
+            TransactionSynchronizationManager.unbindResourceIfPossible(INVENTORY_SWITCH_LOCK);
+        }
+        jdbcTemplate.queryForObject("SELECT RELEASE_LOCK(?)", Integer.class, INVENTORY_SWITCH_LOCK);
     }
 
     private void lockOne(String tableName, String uuid) {

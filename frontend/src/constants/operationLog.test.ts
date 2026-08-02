@@ -18,4 +18,8 @@ describe('operationLog action options', () => {
       '数据修复',
     ]))
   })
+
+  it('maps the historical restore action key to the current display term', () => {
+    expect(ACTION_TYPES['恢复演练']).toBe('隔离恢复验证')
+  })
 })

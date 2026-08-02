@@ -10,6 +10,7 @@ public final class Permissions {
     public static final String DELIVERY_MANAGE = "delivery:manage";
     public static final String DELIVERY_RELEASE = "delivery:release";
     public static final String DELIVERY_VIEW = "delivery:view";
+    public static final String INVENTORY_SCRAP = "inventory:scrap";
     public static final String ORDER_BACK_RECORD = "order:back-record";
     public static final String ORDER_CREATE = "order:create";
     public static final String ORDER_MANAGE = "order:manage";
@@ -52,7 +53,8 @@ public final class Permissions {
                     EXPORT_TASK_VIEW);
         }
         if (RoleCodes.WAREHOUSE.equals(roleCode)) {
-            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, DELIVERY_MANAGE, REPORT_VIEW, EXPORT_TASK_VIEW);
+            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, DELIVERY_MANAGE, INVENTORY_SCRAP,
+                    REPORT_VIEW, EXPORT_TASK_VIEW);
         }
         if (RoleCodes.VIEWER.equals(roleCode)) {
             return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, SETTLE_VIEW, REPORT_VIEW, EXPORT_TASK_VIEW);

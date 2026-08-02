@@ -38,6 +38,7 @@ import com.paper.mes.delivery.service.DeliverySourceLockService;
 import com.paper.mes.delivery.service.DeliveryService;
 import com.paper.mes.delivery.service.DeliveryWarehousePolicy;
 import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
+import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.machine.entity.Machine;
 import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.entity.OperationLog;
@@ -118,6 +119,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     private final DeliverySourceLockService deliverySourceLockService;
     private final ObjectMapper objectMapper;
     private final DeliveryCustomerRevisionSnapshotWriter customerRevisionSnapshotWriter;
+
+    private final InventoryLedgerBusinessRecorder inventoryLedgerRecorder;
 
     @Override
     public PageResult<DeliveryOrder> page(DeliveryQuery query) {
@@ -291,9 +294,11 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         deliveryOrder.setTotalWeight(totalWeight);
         ConcurrencyGuard.requireUpdated(save(deliveryOrder));
 
-        for (DeliveryDetail d : details) {
+        for (int i = 0; i < details.size(); i++) {
+            DeliveryDetail d = details.get(i);
             d.setDeliveryUuid(deliveryOrder.getUuid());
             insertDeliveryDetail(d);
+            reserveInventory(picked.get(i), deliveryOrder, d);
         }
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
                 deliveryOrder.getUuid(), deliveryOrder.getDeliveryNo(),
@@ -359,7 +364,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                     || f.getFinishStatus() != FINISH_STATUS_IN_STOCK) {
                 throw new BusinessException("成品状态已变更，不可出库：" + d.getFinishRollNo());
             }
+            BigDecimal remaining = DeliveryStockPolicy.remainingAfterConfirm(f, d.getOutWeight());
             confirmFinishStock(f, d);
+            issueInventory(f, order, d, remaining);
         }
         updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED);
 
@@ -419,7 +426,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             if (!isReturnableFinish(finish)) {
                 throw new BusinessException("成品状态已变更，不可回退：" + detail.getFinishRollNo());
             }
+            boolean wholeRoll = finish.getFinishStatus() == FINISH_STATUS_OUT;
             rollbackFinishStock(finish, detail);
+            returnInventory(finish, order, detail, wholeRoll);
         }
         updateDetailStockLocks(details, STOCK_LOCK_RELEASED, STOCK_LOCK_ACTIVE);
         String rollbackReason = dto.getReason().trim();
@@ -503,6 +512,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         for (DeliveryDetail detail : appendDetails) {
             detail.setDeliveryUuid(order.getUuid());
             insertDeliveryDetail(detail);
+            reserveInventory(finishByUuid.get(detail.getFinishUuid()), order, detail);
         }
         refreshTotals(order);
         operationLogService.record(OperationLogService.BIZ_TYPE_DELIVERY,
@@ -523,6 +533,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         if (detail == null || !uuid.equals(detail.getDeliveryUuid())) {
             throw new BusinessException(ErrorCode.E002, "出库明细不存在");
         }
+        FinishRoll finish = finishRollMapper.selectById(detail.getFinishUuid());
+        releaseInventory(finish, order, detail);
         ConcurrencyGuard.requireRowUpdated(deliveryDetailMapper.delete(new LambdaQueryWrapper<DeliveryDetail>()
                 .eq(DeliveryDetail::getUuid, detailUuid)
                 .eq(DeliveryDetail::getDeliveryUuid, uuid)));
@@ -544,6 +556,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         List<DeliveryDetail> details = deliveryDetails(uuid);
         updateDetailStockLocks(details, STOCK_LOCK_ACTIVE, STOCK_LOCK_RELEASED);
+        for (DeliveryDetail detail : details) {
+            releaseInventory(finishRollMapper.selectById(detail.getFinishUuid()), order, detail);
+        }
         String reason = dto.getReason().trim();
         order.setVoidReason(reason);
         order.setVoidBy(currentOperator());
@@ -893,6 +908,29 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         } catch (DuplicateKeyException e) {
             throw new BusinessException(ErrorCode.E004, "成品已被出库单占用，不可重复出库：" + detail.getFinishRollNo());
         }
+    }
+
+    private void reserveInventory(FinishRoll finish, DeliveryOrder order, DeliveryDetail detail) {
+        inventoryLedgerRecorder.reserve(finish, order.getUuid(), detail.getUuid(),
+                detail.getOutWeight(), LocalDateTime.now());
+    }
+
+    private void releaseInventory(FinishRoll finish, DeliveryOrder order, DeliveryDetail detail) {
+        inventoryLedgerRecorder.release(finish, order.getUuid(), detail.getUuid(),
+                detail.getOutWeight(), LocalDateTime.now());
+    }
+
+    private void issueInventory(FinishRoll finish, DeliveryOrder order, DeliveryDetail detail,
+                                BigDecimal remaining) {
+        inventoryLedgerRecorder.issue(finish, order.getUuid(), detail.getUuid(),
+                detail.getOutWeight(), remaining.signum() == 0, detail.getVersion(),
+                LocalDateTime.now());
+    }
+
+    private void returnInventory(FinishRoll finish, DeliveryOrder order, DeliveryDetail detail,
+                                 boolean wholeRoll) {
+        inventoryLedgerRecorder.returned(finish, order.getUuid(), detail.getUuid(),
+                detail.getOutWeight(), wholeRoll, detail.getVersion(), LocalDateTime.now());
     }
 
     private void validateOutWeight(FinishRoll finish, BigDecimal outWeight) {

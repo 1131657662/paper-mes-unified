@@ -43,7 +43,7 @@ export const PERMISSION_ITEMS: PermissionItem[] = [
   { code: PERMISSIONS.reportView, label: '经营报表', description: '查看仪表盘和统计报表' },
   { code: PERMISSIONS.exportTaskView, label: '导出任务中心', description: '查看本人导出任务和下载结果文件' },
   { code: PERMISSIONS.systemConfig, label: '系统配置', description: '维护字典、系统参数和单号规则' },
-  { code: PERMISSIONS.dataBackup, label: '数据备份', description: '执行备份、恢复演练和保留策略' },
+  { code: PERMISSIONS.dataBackup, label: '数据备份', description: '执行备份、隔离恢复验证和保留策略' },
   { code: PERMISSIONS.dataHealth, label: '数据巡检', description: '查看并处理业务数据一致性异常' },
   { code: PERMISSIONS.systemAudit, label: '操作日志', description: '查看系统操作留痕和审计记录' },
   { code: PERMISSIONS.userManage, label: '用户权限维护', description: '维护系统账号、角色、状态和密码' },

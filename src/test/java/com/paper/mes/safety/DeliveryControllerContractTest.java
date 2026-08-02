@@ -93,7 +93,7 @@ class DeliveryControllerContractTest {
                                 {"customerUuid":"customer-1","deliveryDate":"2026-07-07","items":[]}
                                 """)
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(deliveryService, never()).create(any());
@@ -159,7 +159,7 @@ class DeliveryControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(deliveryService, never()).rollback(any(), any());
@@ -189,7 +189,7 @@ class DeliveryControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(deliveryService, never()).cancelPending(any(), any());

@@ -1,6 +1,8 @@
 package com.paper.mes.processorder.controller;
 
 import com.paper.mes.common.R;
+import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ResultCode;
 import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.processorder.dto.FinishRollBatchDTO;
@@ -33,8 +35,8 @@ public class FinishRollController {
     @PutMapping("/{uuid}/status")
     public R<Void> changeStatus(@PathVariable String uuid,
                                 @Valid @RequestBody StatusChangeDTO dto) {
-        finishRollService.changeFinishStatus(uuid, dto.getTargetStatus());
-        return R.success();
+        throw new BusinessException(ResultCode.METHOD_NOT_ALLOWED,
+                "通用成品状态修改已关闭，请使用回录、出库或受控报废命令");
     }
 
     /** 批量生成正式成品卷号。 */

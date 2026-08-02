@@ -7,6 +7,7 @@ import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
+import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
@@ -15,6 +16,7 @@ import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -31,6 +33,7 @@ public class BackRecordReopenService {
     private static final int CHECKED = 1;
     private static final int ROLL_PROCESSING = 2;
     private static final int FINISH_PENDING = 1;
+    private static final int FINISH_IN_STOCK = 2;
     private static final int FINISH_OUT = 3;
     private static final int ROLL_NO_PRE = 1;
     private static final int ROLL_NO_VOID = 3;
@@ -43,8 +46,19 @@ public class BackRecordReopenService {
     private final FinishOriginalRelMapper relationMapper;
     private final DeliveryDetailMapper deliveryDetailMapper;
     private final BusinessLockService businessLockService;
+    private final InventoryLedgerBusinessRecorder inventoryLedgerRecorder;
 
-    public int reopen(String orderUuid, Collection<String> requestedRollUuids, String operator) {
+    @Transactional(rollbackFor = Exception.class)
+    public int reopen(String orderUuid, Collection<String> requestedRollUuids,
+                      String operator, Integer orderVersion) {
+        if (orderVersion == null) {
+            throw new BusinessException(ErrorCode.E006, "加工单版本缺失，无法安全撤回库存流水");
+        }
+        return reopen(orderUuid, requestedRollUuids, operator, String.valueOf(orderVersion));
+    }
+
+    private int reopen(String orderUuid, Collection<String> requestedRollUuids,
+                       String operator, String batchKey) {
         List<OriginalRoll> allRolls = rolls(orderUuid);
         List<OriginalRoll> checkedRolls = allRolls.stream()
                 .filter(roll -> Integer.valueOf(CHECKED).equals(roll.getIsChecked())).toList();
@@ -57,13 +71,43 @@ public class BackRecordReopenService {
         businessLockService.lockFinishRolls(finishUuids);
         List<FinishRoll> finishes = lockedFinishes(orderUuid, finishUuids);
         requireNoDeliveryActivity(finishes);
-        reopenFinishes(finishes, operator);
+        reopenFinishes(finishes, orderUuid, batchKey, operator);
         reopenRolls(selected, operator);
         return selected.size();
     }
 
-    public int reopen(String orderUuid, String operator) {
-        return reopen(orderUuid, null, operator);
+    public int reopen(String orderUuid, String operator, Integer orderVersion) {
+        return reopen(orderUuid, null, operator, orderVersion);
+    }
+
+    /**
+     * Reverses every receipt still represented as in-stock for an order without
+     * changing production status. Rollback cleanup calls this before clearing
+     * actual weights, so the ledger remains the source of inventory truth.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int reverseStockInReceipts(String orderUuid, Integer orderVersion) {
+        if (orderVersion == null) {
+            throw new BusinessException(ErrorCode.E006, "加工单版本缺失，无法安全撤回库存流水");
+        }
+        List<FinishRoll> allFinishes = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
+                .eq(FinishRoll::getOrderUuid, orderUuid));
+        Set<String> finishUuids = allFinishes.stream()
+                .map(FinishRoll::getUuid)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        businessLockService.lockFinishRolls(finishUuids.stream().toList());
+        List<FinishRoll> finishes = lockedFinishes(orderUuid, finishUuids);
+        requireNoDeliveryActivity(finishes);
+        int reversed = 0;
+        for (FinishRoll finish : finishes) {
+            if (!Integer.valueOf(FINISH_IN_STOCK).equals(finish.getFinishStatus())) {
+                continue;
+            }
+            inventoryLedgerRecorder.reverseReceipt(finish, orderUuid,
+                    String.valueOf(orderVersion), LocalDateTime.now());
+            reversed++;
+        }
+        return reversed;
     }
 
     private List<OriginalRoll> rolls(String orderUuid) {
@@ -145,9 +189,13 @@ public class BackRecordReopenService {
         }
     }
 
-    private void reopenFinishes(List<FinishRoll> finishes, String operator) {
+    private void reopenFinishes(List<FinishRoll> finishes, String orderUuid,
+                                String batchKey, String operator) {
         for (FinishRoll finish : finishes) {
             if (isVoidedActualAddition(finish)) continue;
+            if (Integer.valueOf(FINISH_IN_STOCK).equals(finish.getFinishStatus())) {
+                inventoryLedgerRecorder.reverseReceipt(finish, orderUuid, batchKey, LocalDateTime.now());
+            }
             boolean restorePlanned = Integer.valueOf(RESULT_NOT_PRODUCED).equals(finish.getProductionResult())
                     || (Integer.valueOf(1).equals(finish.getIsSpare())
                     && Integer.valueOf(ROLL_NO_VOID).equals(finish.getRollNoStatus()));

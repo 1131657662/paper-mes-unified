@@ -89,7 +89,7 @@ class DataHealthControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"\",\"confirmation\":\"JS202607010001\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
         verify(repairService, never()).reconcileSettlement(any(), any());
     }

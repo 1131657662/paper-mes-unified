@@ -84,6 +84,9 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
     /** 加工单状态流转（状态机校验合法性，乐观锁更新）。 */
     void changeStatus(String uuid, Integer targetStatus, String reason);
 
+    /** 受控回退命令；旧通用状态接口不再允许写入。 */
+    void rollbackStatus(String uuid, Integer targetStatus, String reason);
+
     /** Internal settlement command; never exposed through the public status endpoint. */
     void markSettled(String uuid);
 

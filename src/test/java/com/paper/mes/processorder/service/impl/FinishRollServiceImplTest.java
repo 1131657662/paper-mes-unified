@@ -13,13 +13,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FinishRollServiceImplTest {
 
     @Test
-    void changeFinishStatus_whenPendingInToScrap_updatesStatus() {
+    void changeFinishStatus_whenPendingInToScrap_rejectsGenericStatusCommand() {
         FinishRoll roll = roll(1);
         FinishRollServiceImpl service = serviceReturning(roll);
 
-        service.changeFinishStatus("finish-1", 4);
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.changeFinishStatus("finish-1", 4));
 
-        assertEquals(4, roll.getFinishStatus());
+        assertTrue(error.getMessage().contains("受控库存报废命令"));
+        assertEquals(1, roll.getFinishStatus());
     }
 
     @Test

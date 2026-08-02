@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
+import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
@@ -24,6 +25,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -44,9 +46,11 @@ class BackRecordReopenServiceTest {
     void reopenWithdrawsInventoryAndPreservesRecordedValues() {
         Fixture fixture = fixture(0L, producedFinish());
 
-        int reopened = fixture.service.reopen("order-1", List.of("roll-1"), "tester");
+        int reopened = fixture.service.reopen("order-1", List.of("roll-1"), "tester", 7);
 
         assertThat(reopened).isEqualTo(1);
+        verify(fixture.inventoryLedgerRecorder).reverseReceipt(
+                eq(fixture.finish), eq("order-1"), eq("7"), any());
         ArgumentCaptor<LambdaUpdateWrapper<FinishRoll>> finishUpdate = finishUpdateCaptor();
         verify(fixture.finishMapper).update(isNull(), finishUpdate.capture());
         assertThat(finishUpdate.getValue().getSqlSet())
@@ -64,7 +68,7 @@ class BackRecordReopenServiceTest {
         Fixture fixture = fixture(1L, producedFinish());
 
         assertThrows(BusinessException.class,
-                () -> fixture.service.reopen("order-1", List.of("roll-1"), "tester"));
+                () -> fixture.service.reopen("order-1", List.of("roll-1"), "tester", 7));
 
         verify(fixture.finishMapper, never()).update(isNull(), any());
         verify(fixture.rollMapper, never()).update(isNull(), any());
@@ -74,8 +78,20 @@ class BackRecordReopenServiceTest {
     void reopenChecksBlockingDeliveryActivityInOneBatch() {
         Fixture fixture = fixture(0L, producedFinish());
 
-        fixture.service.reopen("order-1", List.of("roll-1"), "tester");
+        fixture.service.reopen("order-1", List.of("roll-1"), "tester", 7);
 
+        verify(fixture.deliveryMapper).countBlockingDeliveryActivity(List.of("finish-1"));
+    }
+
+    @Test
+    void rollbackCleanupReversesInStockReceiptsBeforeClearingFinishFacts() {
+        Fixture fixture = fixture(0L, producedFinish());
+
+        int reversed = fixture.service.reverseStockInReceipts("order-1", 7);
+
+        assertThat(reversed).isEqualTo(1);
+        verify(fixture.inventoryLedgerRecorder).reverseReceipt(
+                eq(fixture.finish), eq("order-1"), eq("7"), any());
         verify(fixture.deliveryMapper).countBlockingDeliveryActivity(List.of("finish-1"));
     }
 
@@ -87,7 +103,7 @@ class BackRecordReopenServiceTest {
         finish.setProductionResult(3);
         Fixture fixture = fixture(0L, finish);
 
-        fixture.service.reopen("order-1", List.of("roll-1"), "tester");
+        fixture.service.reopen("order-1", List.of("roll-1"), "tester", 7);
 
         ArgumentCaptor<LambdaUpdateWrapper<FinishRoll>> update = finishUpdateCaptor();
         verify(fixture.finishMapper).update(isNull(), update.capture());
@@ -105,7 +121,7 @@ class BackRecordReopenServiceTest {
         finish.setActualWeight(null);
         Fixture fixture = fixture(0L, finish);
 
-        fixture.service.reopen("order-1", List.of("roll-1"), "tester");
+        fixture.service.reopen("order-1", List.of("roll-1"), "tester", 7);
 
         verify(fixture.finishMapper, never()).update(isNull(), any());
         verify(fixture.rollMapper).update(isNull(), any());
@@ -117,6 +133,7 @@ class BackRecordReopenServiceTest {
         FinishOriginalRelMapper relationMapper = mock(FinishOriginalRelMapper.class);
         DeliveryDetailMapper deliveryMapper = mock(DeliveryDetailMapper.class);
         BusinessLockService lockService = mock(BusinessLockService.class);
+        InventoryLedgerBusinessRecorder inventoryLedgerRecorder = mock(InventoryLedgerBusinessRecorder.class);
         OriginalRoll roll = new OriginalRoll();
         roll.setUuid("roll-1");
         roll.setOrderUuid("order-1");
@@ -132,8 +149,8 @@ class BackRecordReopenServiceTest {
         when(finishMapper.update(isNull(), any(LambdaUpdateWrapper.class))).thenReturn(1);
         when(rollMapper.update(isNull(), any(LambdaUpdateWrapper.class))).thenReturn(1);
         return new Fixture(new BackRecordReopenService(
-                rollMapper, finishMapper, relationMapper, deliveryMapper, lockService),
-                rollMapper, finishMapper, deliveryMapper);
+                rollMapper, finishMapper, relationMapper, deliveryMapper, lockService, inventoryLedgerRecorder),
+                rollMapper, finishMapper, deliveryMapper, inventoryLedgerRecorder, finish);
     }
 
     private FinishRoll producedFinish() {
@@ -163,6 +180,7 @@ class BackRecordReopenServiceTest {
     }
 
     private record Fixture(BackRecordReopenService service, OriginalRollMapper rollMapper,
-                           FinishRollMapper finishMapper, DeliveryDetailMapper deliveryMapper) {
+                           FinishRollMapper finishMapper, DeliveryDetailMapper deliveryMapper,
+                           InventoryLedgerBusinessRecorder inventoryLedgerRecorder, FinishRoll finish) {
     }
 }

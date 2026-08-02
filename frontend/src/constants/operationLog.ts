@@ -1,3 +1,5 @@
+import { DISPLAY_TERMS } from './displayTerms'
+
 export const ACTION_TYPES: Record<string, string> = {
   补打: '补打',
   回录: '回录',
@@ -20,7 +22,7 @@ export const ACTION_TYPES: Record<string, string> = {
   重置密码: '重置密码',
   修改密码: '修改密码',
   数据备份: '数据备份',
-  恢复演练: '恢复演练',
+  恢复演练: DISPLAY_TERMS.isolatedRestoreVerification,
   删除备份: '删除备份',
   清理备份: '清理备份',
   数据修复: '数据修复',

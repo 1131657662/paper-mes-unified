@@ -25,6 +25,7 @@ public class OperationLogService {
     public static final String ACTION_DELIVERY_RISK_CONFIRM = "出库风险确认";
     public static final String ACTION_DELIVERY_RELEASE = "出库放行";
     public static final String ACTION_DELIVERY_CANCEL = "取消出库";
+    public static final String ACTION_INVENTORY_SCRAP = "成品库存报废";
     public static final String ACTION_SETTLE = "结算";
     public static final String ACTION_SETTLE_VOID = "作废结算";
     public static final String ACTION_RECEIVE = "收款";

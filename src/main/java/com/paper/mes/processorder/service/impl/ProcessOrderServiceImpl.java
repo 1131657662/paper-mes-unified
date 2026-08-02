@@ -25,6 +25,7 @@ import com.paper.mes.delivery.entity.DeliveryDetail;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.machine.entity.Machine;
 import com.paper.mes.machine.mapper.MachineMapper;
+import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.processorder.calc.FeeCalculator;
 import com.paper.mes.processorder.calc.RewindWeightCalculator;
@@ -227,6 +228,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private final ServiceOnlyProcessPolicy serviceOnlyProcessPolicy;
     private final ProcessRouteCleanupService processRouteCleanupService;
     private final ProcessOrderSettlementPolicy settlementPolicy;
+    private final InventoryLedgerBusinessRecorder inventoryLedgerRecorder;
 
     @Override
     public PageResult<ProcessOrder> pageOrders(ProcessOrderQuery query) {
@@ -990,6 +992,18 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         changeStatus(uuid, OrderStatus.TO_RECORD.getCode(), reason);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void rollbackStatus(String uuid, Integer targetStatus, String reason) {
+        ProcessOrder order = requireOrder(uuid);
+        OrderStatus from = OrderStatus.of(order.getOrderStatus());
+        OrderStatus to = OrderStatus.of(targetStatus);
+        if (!isRollback(from, to)) {
+            throw new BusinessException(ErrorCode.E001, "仅允许通过回退命令执行合法的逆向状态流转");
+        }
+        changeStatus(uuid, to.getCode(), reason);
+    }
+
     /**
      * /status is retained for rollback compatibility and the single operational
      * completion transition. All other forward transitions have their own
@@ -1017,6 +1031,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         OrderStatus from = OrderStatus.of(order.getOrderStatus());
         String rollbackReason = requireRollbackReason(reason);
         validateDeepRollbackToDraft(order, from);
+        backRecordReopenService.reverseStockInReceipts(order.getUuid(), order.getVersion());
         cleanupBackRecordActuals(order);
         clearGeneratedProductionData(order);
         resetIssueAndBackRecordFields(order);
@@ -1209,7 +1224,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             order.setSnapFinish(null);
             order.setBackRecordTime(null);
             order.setBackRecordUser(null);
-            backRecordReopenService.reopen(order.getUuid(), currentOperator());
+            backRecordReopenService.reopen(order.getUuid(), currentOperator(), order.getVersion());
             // 计费数据保留，以便重新回录时对比
             // 撤回期间成品退出库存，重新回录后再恢复可发货状态。
         }
@@ -1217,6 +1232,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (from == OrderStatus.TO_RECORD && to == OrderStatus.PENDING) {
             // 3→1：清理完成快照、回录信息
             resetIssueAndBackRecordFields(order);
+            backRecordReopenService.reverseStockInReceipts(order.getUuid(), order.getVersion());
             cleanupBackRecordActuals(order);
 
             // 成品回退到待入库状态（已入库→待入库）
@@ -1423,14 +1439,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void changeRollStatus(String rollUuid, Integer targetStatus) {
-        LockedRoll locked = lockRollAndOrder(rollUuid);
-        validateRollProductionEditable(locked.order());
-        OriginalRoll roll = locked.roll();
-        RollStatus from = RollStatus.of(roll.getRollStatus());
-        RollStatus to = RollStatus.of(targetStatus);
-        StateMachine.assertTransition(from, to);
-        roll.setRollStatus(to.getCode());
-        ConcurrencyGuard.requireRowUpdated(originalRollMapper.updateById(roll));
+        throw new BusinessException("通用原纸状态修改已关闭，状态阶段必须通过业务命令");
     }
 
     @Override
@@ -1849,7 +1858,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         assignBackRecordWarehouse(scope.finishes(), warehouse.uuid());
         LocalDateTime now = LocalDateTime.now();
         String backRecordUser = currentOperator();
+        Set<String> newlyStockedFinishUuids = newlyStockedFinishUuids(scope.finishes());
         markFirstStockInTime(scope.finishes(), now);
+        recordInventoryReceipts(scope.finishes(), newlyStockedFinishUuids, order.getUuid(), order.getVersion());
         markRollsRecorded(scope.rolls(), backRecordUser, now);
         boolean completeOrder = Boolean.TRUE.equals(dto.getCompleteOrder());
         if (completeOrder) {
@@ -1882,7 +1893,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             throw new BusinessException(ErrorCode.E006, "加工单已被其他页面修改，请刷新后重试");
         }
         String operator = currentOperator();
-        int reopened = backRecordReopenService.reopen(order.getUuid(), dto.getRollUuids(), operator);
+        int reopened = backRecordReopenService.reopen(
+                order.getUuid(), dto.getRollUuids(), operator, order.getVersion());
         order.setUpdateBy(operator);
         order.setUpdateTime(LocalDateTime.now());
         ConcurrencyGuard.requireUpdated(updateById(order));
@@ -2000,6 +2012,29 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 .eq(FinishRoll::getFinishStatus, FINISH_STATUS_IN_STOCK)
                 .isNull(FinishRoll::getStockInTime)
                 .set(FinishRoll::getStockInTime, stockInTime));
+    }
+
+    private Set<String> newlyStockedFinishUuids(List<FinishRoll> finishes) {
+        return finishes.stream()
+                .filter(finish -> Integer.valueOf(FINISH_STATUS_IN_STOCK).equals(finish.getFinishStatus()))
+                .filter(finish -> finish.getActualWeight() != null && finish.getActualWeight().signum() > 0)
+                .filter(finish -> finish.getStockInTime() == null)
+                .map(FinishRoll::getUuid)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    private void recordInventoryReceipts(List<FinishRoll> finishes, Set<String> newlyStocked,
+                                         String orderUuid, Integer orderVersion) {
+        if (orderVersion == null) {
+            throw new BusinessException("process order version is required for inventory receipt");
+        }
+        for (FinishRoll finish : finishes) {
+            if (!newlyStocked.contains(finish.getUuid())) {
+                continue;
+            }
+            inventoryLedgerRecorder.receipt(finish, orderUuid, String.valueOf(orderVersion),
+                    finish.getStockInTime());
+        }
     }
 
     private void authorizeBlockRelease(BackRecordDTO dto, ProcessOrder order,
