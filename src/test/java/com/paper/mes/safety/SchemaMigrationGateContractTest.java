@@ -26,12 +26,14 @@ class SchemaMigrationGateContractTest {
     @Test
     void migrationRunnerRejectsUnboundedBaselineRegistrationAndTracksFailureState() throws IOException {
         String runner = read("deploy/apply-paper-mes-migrations.example.sh");
+        String lockSupport = read("deploy/migration-lock-support.sh");
+        String stateSupport = read("deploy/migration-state-support.sh");
 
         assertThat(runner).contains("MIGRATION_BASELINE_VERSION is required");
         assertThat(runner).contains("MIGRATION_RETRY_FAILED");
-        assertThat(runner).contains("GET_LOCK");
-        assertThat(runner).contains("status = 'failed'");
-        assertThat(runner).contains("status = 'running'");
+        assertThat(lockSupport).contains("GET_LOCK");
+        assertThat(stateSupport).contains("status = 'failed'");
+        assertThat(stateSupport).contains("status = 'running'");
         assertThat(runner).doesNotContain("record_migration()");
     }
 

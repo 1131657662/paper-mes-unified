@@ -13,9 +13,15 @@ mkdir -p "${temp_dir}/bin" "${source_root}/.git" "${source_root}/deploy"
 printf 'service-unit\n' > "${source_root}/deploy/paper-mes.service.example"
 printf 'release-preflight\n' > "${source_root}/deploy/preflight-paper-mes-release.example.sh"
 printf 'migration-state-guard\n' > "${source_root}/deploy/verify-paper-mes-migration-state.example.sh"
+printf 'migration-runner\n' > "${source_root}/deploy/apply-paper-mes-migrations.example.sh"
+printf 'migration-lock\n' > "${source_root}/deploy/migration-lock-support.sh"
+printf 'migration-state\n' > "${source_root}/deploy/migration-state-support.sh"
 cp "${source_root}/deploy/paper-mes.service.example" "${temp_dir}/installed.service"
 cp "${source_root}/deploy/preflight-paper-mes-release.example.sh" "${temp_dir}/installed-preflight"
 cp "${source_root}/deploy/verify-paper-mes-migration-state.example.sh" "${temp_dir}/installed-migration-guard"
+cp "${source_root}/deploy/apply-paper-mes-migrations.example.sh" "${temp_dir}/installed-migration-runner"
+cp "${source_root}/deploy/migration-lock-support.sh" "${temp_dir}/installed-migration-lock"
+cp "${source_root}/deploy/migration-state-support.sh" "${temp_dir}/installed-migration-state"
 
 cat > "${temp_dir}/bin/git" <<'EOF'
 #!/usr/bin/env bash
@@ -37,6 +43,9 @@ run_verify() {
   SERVICE_UNIT_PATH="${temp_dir}/installed.service" \
   INSTALLED_PREFLIGHT_PATH="${temp_dir}/installed-preflight" \
   INSTALLED_MIGRATION_GUARD_PATH="${temp_dir}/installed-migration-guard" \
+  INSTALLED_MIGRATION_RUNNER_PATH="${temp_dir}/installed-migration-runner" \
+  INSTALLED_MIGRATION_LOCK_PATH="${temp_dir}/installed-migration-lock" \
+  INSTALLED_MIGRATION_STATE_PATH="${temp_dir}/installed-migration-state" \
   bash "${verify_script}"
 }
 
@@ -66,6 +75,12 @@ if run_verify >/dev/null 2>&1; then
   exit 1
 fi
 cp "${source_root}/deploy/preflight-paper-mes-release.example.sh" "${temp_dir}/installed-preflight"
+printf 'direct-cloud-edit\n' > "${temp_dir}/installed-migration-runner"
+if run_verify >/dev/null 2>&1; then
+  echo "source verification unexpectedly accepted a directly edited migration runner" >&2
+  exit 1
+fi
+cp "${source_root}/deploy/apply-paper-mes-migrations.example.sh" "${temp_dir}/installed-migration-runner"
 printf 'direct-cloud-edit\n' > "${temp_dir}/installed-migration-guard"
 if run_verify >/dev/null 2>&1; then
   echo "source verification unexpectedly accepted a directly edited migration guard" >&2

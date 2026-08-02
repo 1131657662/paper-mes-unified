@@ -10,14 +10,37 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MigrationGateContractTest {
 
     @Test
-    void migrationExecutor_serializesRunsAndRecordsFailureWithoutFakingApplied() throws Exception {
-        String script = source("deploy/apply-paper-mes-migrations.example.sh");
+    void migrationExecutor_keepsNamedLockOnPersistentSession() throws Exception {
+        String runner = source("deploy/apply-paper-mes-migrations.example.sh");
+        String script = source("deploy/migration-lock-support.sh");
+
+        assertThat(runner).contains("migration-lock-support.sh");
+        assertThat(script).contains(
+                "paper_mes_migration_owner_", "GET_LOCK", "IS_USED_LOCK",
+                "lock_owner_check", "SELECT SLEEP(31536000)", "assert_lock_owned");
+        assertThat(script).doesNotContain("result=\"$(mysql_query --batch --skip-column-names -e");
+    }
+
+    @Test
+    void migrationExecutor_recordsFailureWithoutFakingApplied() throws Exception {
+        String runner = source("deploy/apply-paper-mes-migrations.example.sh");
+        String script = source("deploy/migration-state-support.sh");
+
+        assertThat(runner).contains("migration-state-support.sh");
+        assertThat(script).contains(
+                "status", "running", "failed", "MIGRATION_RETRY_FAILED",
+                "checksum mismatch", "MIGRATION_BASELINE_VERSION");
+        assertThat(script).doesNotContain("record_migration");
+    }
+
+    @Test
+    void migrationConcurrencyHarness_runsTwoProcessesAgainstOneNamedLock() throws Exception {
+        String script = source("deploy/test-migration-concurrency.ps1");
 
         assertThat(script).contains(
-                "GET_LOCK", "RELEASE_LOCK", "status", "running", "failed",
-                "MIGRATION_RETRY_FAILED", "checksum mismatch",
-                "MIGRATION_BASELINE_VERSION");
-        assertThat(script).doesNotContain("record_migration");
+                "Start-MigrationRunner", "Wait-ForLockOwner", "IS_USED_LOCK",
+                "MIGRATION_LOCK_TIMEOUT_SECONDS='1'", "could not acquire migration lock",
+                "migration concurrency guard passed");
     }
 
     @Test

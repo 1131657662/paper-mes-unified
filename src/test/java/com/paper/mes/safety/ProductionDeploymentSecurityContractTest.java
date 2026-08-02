@@ -165,7 +165,9 @@ class ProductionDeploymentSecurityContractTest {
                 "MIGRATION_ENV_FILE");
         assertContainsAll(verifier,
                 "verify-paper-mes-migration-state.example.sh",
-                "installed migration state guard does not match the pulled source");
+                "installed migration state guard does not match the pulled source",
+                "installed migration runner does not match the pulled source",
+                "installed migration lock support does not match the pulled source");
     }
 
     private String source(String path) throws Exception {

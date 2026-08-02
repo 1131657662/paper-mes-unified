@@ -45,8 +45,13 @@ class ReleasePreflightContractTest {
         assertThat(verifier).contains("installed service unit does not match the pulled source");
         assertThat(verifier).contains("installed release preflight does not match the pulled source");
         assertThat(verifier).contains("installed migration state guard does not match the pulled source");
+        assertThat(verifier).contains("installed migration runner does not match the pulled source");
+        assertThat(verifier).contains("installed migration lock support does not match the pulled source");
+        assertThat(verifier).contains("installed migration state support does not match the pulled source");
         assertThat(behaviorTest).contains("dirty cloud working tree", "commit not pulled from GitHub");
-        assertThat(behaviorTest).contains("directly edited service unit", "directly edited preflight");
+        assertThat(behaviorTest).contains(
+                "directly edited service unit", "directly edited preflight",
+                "directly edited migration runner");
     }
 
     @Test
