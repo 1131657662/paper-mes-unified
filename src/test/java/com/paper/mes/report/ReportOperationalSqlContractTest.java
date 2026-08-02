@@ -48,6 +48,19 @@ class ReportOperationalSqlContractTest {
         assertFalse(detailTotals.contains("biz_delivery_order"));
     }
 
+    @Test
+    void topicOverviews_returnZeroCountsForEmptyDatasets() {
+        String settlement = section("<select id=\"settlementOverview\"", "</select>");
+        String collection = section("<select id=\"collectionOverview\"", "</select>");
+        String inventory = section("<select id=\"inventoryOverview\"", "</select>");
+        String delivery = section("<select id=\"deliveryOverview\"", "</select>");
+
+        assertTrue(settlement.contains("COALESCE(SUM(s.settle_status = 1), 0)"));
+        assertTrue(collection.contains("COALESCE(SUM(r.cash_amount &gt; 0), 0)"));
+        assertTrue(inventory.contains("COALESCE(SUM(lockRow.finish_uuid IS NULL), 0)"));
+        assertTrue(delivery.contains("COALESCE(SUM(d.delivery_status = 1), 0)"));
+    }
+
     private String section(String startToken, String endToken) {
         int start = mapper.indexOf(startToken);
         int end = mapper.indexOf(endToken, start);

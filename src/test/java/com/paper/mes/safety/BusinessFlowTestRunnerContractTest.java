@@ -33,4 +33,14 @@ class BusinessFlowTestRunnerContractTest {
 
         assertThat(script).contains("'-Dspring-boot.repackage.skip=true'");
     }
+
+    @Test
+    void desktopAcceptanceRunner_ownsOnlyDisposableResources() throws Exception {
+        String script = Files.readString(Path.of("deploy/test-desktop-acceptance.ps1"));
+
+        assertThat(script).contains("^paper_mes_desktop_test(?:_[0-9]+)?$",
+                "database already exists; refusing overwrite", "DROP DATABASE",
+                "1366, 1440 and 1920");
+        assertThat(script).doesNotContain("123123", "--password=");
+    }
 }

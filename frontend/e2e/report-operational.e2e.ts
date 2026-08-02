@@ -19,21 +19,23 @@ test.describe('运营专题报表', () => {
   test.skip(!hasE2eCredentials(), '设置 PAPER_MES_E2E_USERNAME 和 PAPER_MES_E2E_PASSWORD 后运行')
 
   test.beforeEach(async ({ page }) => {
-    await page.setViewportSize({ width: 1366, height: 768 })
     await signIn(page)
   })
 
   for (const topic of TOPICS) {
-    test(`${topic.label}完成数据与布局验收`, async ({ page }) => {
+    test(`${topic.label}空数据状态与布局验收`, async ({ page }) => {
       const errors = capturePageErrors(page)
 
       await page.goto(topic.path)
       await expect(page.locator('.report-filter-card .ant-card-head-title')).toHaveText(topic.label)
       await expect(page.locator('.report-topic-metric')).toHaveCount(5)
-      await expect(page.locator('.report-topic-trend')).toBeVisible()
+      await expect(page.getByRole('heading', { name: '时间趋势' })).toBeVisible()
+      await expect(page.getByText('当前筛选范围暂无可展示数据', { exact: true })).toBeVisible()
       await expect(page.locator('.report-topic-breakdown')).toBeVisible()
+      await expect(page.locator('.report-topic-breakdown .ant-empty-description')).toHaveText('暂无数据')
       await expect(page.getByText(/数据截至/)).toBeVisible()
       await expect(page.locator('.ant-spin-spinning')).toHaveCount(0)
+      await expect(page.locator('body')).not.toContainText('undefined')
       await assertInventoryScope(page, topic)
       await expectNoHorizontalOverflow(page)
       expect(errors).toEqual([])

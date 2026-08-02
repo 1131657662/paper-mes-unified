@@ -10,6 +10,20 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   reporter: 'list',
+  projects: [
+    {
+      name: 'desktop-1366',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 } },
+    },
+    {
+      name: 'desktop-1440',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    {
+      name: 'desktop-1920',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1920, height: 1080 } },
+    },
+  ],
   webServer: managesLocalServer ? {
     command: 'npm run dev -- --host 127.0.0.1 --port 5176 --strictPort',
     reuseExistingServer: true,
@@ -17,7 +31,6 @@ export default defineConfig({
     url: baseURL,
   } : undefined,
   use: {
-    ...devices['Desktop Chrome'],
     baseURL,
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',

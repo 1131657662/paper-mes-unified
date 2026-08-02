@@ -1,12 +1,22 @@
 import type { Page } from '@playwright/test'
 
+interface SignInCredentials {
+  password?: string
+  username?: string
+}
+
 export function hasE2eCredentials(): boolean {
   return Boolean(process.env.PAPER_MES_E2E_USERNAME && process.env.PAPER_MES_E2E_PASSWORD)
 }
 
-export async function signIn(page: Page): Promise<void> {
-  const username = process.env.PAPER_MES_E2E_USERNAME
-  const password = process.env.PAPER_MES_E2E_PASSWORD
+export function hasLimitedE2eCredentials(): boolean {
+  return Boolean(process.env.PAPER_MES_E2E_LIMITED_USERNAME
+    && process.env.PAPER_MES_E2E_LIMITED_PASSWORD)
+}
+
+export async function signIn(page: Page, credentials: SignInCredentials = {}): Promise<void> {
+  const username = credentials.username ?? process.env.PAPER_MES_E2E_USERNAME
+  const password = credentials.password ?? process.env.PAPER_MES_E2E_PASSWORD
   if (!username || !password) throw new Error('E2E credentials are not configured')
   await page.goto('/login')
   await page.getByPlaceholder('请输入用户名').fill(username)

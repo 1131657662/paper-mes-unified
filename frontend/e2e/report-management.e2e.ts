@@ -5,7 +5,6 @@ test.describe('报表管理工作台', () => {
   test.skip(!hasE2eCredentials(), '设置报表 E2E 账号后运行')
 
   test.beforeEach(async ({ page }) => {
-    await page.setViewportSize({ width: 1366, height: 768 })
     await signIn(page)
   })
 
@@ -28,7 +27,9 @@ test.describe('报表管理工作台', () => {
     await page.goto('/reports/management/metrics')
 
     await expect(page.getByRole('heading', { name: '指标版本审计' })).toBeVisible()
-    await expect(page.locator('.report-metric-release-item')).toHaveCount(2)
+    await expect(page.locator('.report-metric-release-item').first()).toBeVisible()
+    await expect(page.getByText('发布校验', { exact: true })).toBeVisible()
+    await expect(page.getByText('发布人', { exact: true })).toBeVisible()
     await expect(page.locator('.report-metric-version-table')).toBeVisible()
     await expectNoHorizontalOverflow(page)
     expect(errors).toEqual([])

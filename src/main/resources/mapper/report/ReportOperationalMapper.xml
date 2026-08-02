@@ -42,10 +42,10 @@
 
     <select id="settlementOverview" resultType="com.paper.mes.report.dto.ReportSettlementAnalysisVO$Overview">
         SELECT COUNT(*) totalDocuments,
-               SUM(s.settle_status = 1) pendingDocuments,
-               SUM(s.settle_status = 2) partialDocuments,
-               SUM(s.settle_status IN (1, 2) AND s.unreceived_amount &gt; 0
-                   AND s.due_date &lt; CURRENT_DATE()) overdueDocuments,
+               COALESCE(SUM(s.settle_status = 1), 0) pendingDocuments,
+               COALESCE(SUM(s.settle_status = 2), 0) partialDocuments,
+               COALESCE(SUM(s.settle_status IN (1, 2) AND s.unreceived_amount &gt; 0
+                   AND s.due_date &lt; CURRENT_DATE()), 0) overdueDocuments,
                COALESCE(SUM(s.total_amount), 0) totalAmount,
                COALESCE(SUM(s.received_amount), 0) receivedAmount,
                COALESCE(SUM(s.unreceived_amount), 0) unreceivedAmount,
@@ -83,9 +83,9 @@
 
     <select id="collectionOverview" resultType="com.paper.mes.report.dto.ReportCollectionAnalysisVO$Overview">
         SELECT COUNT(*) recordCount,
-               SUM(r.cash_amount &gt; 0) cashRecordCount,
-               SUM(r.scrap_offset_amount &gt; 0) scrapRecordCount,
-               SUM(r.discount_amount &gt; 0) discountRecordCount,
+               COALESCE(SUM(r.cash_amount &gt; 0), 0) cashRecordCount,
+               COALESCE(SUM(r.scrap_offset_amount &gt; 0), 0) scrapRecordCount,
+               COALESCE(SUM(r.discount_amount &gt; 0), 0) discountRecordCount,
                COALESCE(SUM(r.receive_amount), 0) settledAmount,
                COALESCE(SUM(r.cash_amount), 0) cashAmount,
                COALESCE(SUM(r.scrap_offset_amount), 0) scrapOffsetAmount,
@@ -126,9 +126,10 @@
 
     <select id="inventoryOverview" resultType="com.paper.mes.report.dto.ReportInventoryAnalysisVO$Overview">
         SELECT COUNT(*) rollCount,
-               SUM(lockRow.finish_uuid IS NULL) availableRollCount,
-               SUM(lockRow.finish_uuid IS NOT NULL) lockedRollCount,
-               SUM(f.warehouse_uuid IS NULL OR f.stock_in_time IS NULL OR f.is_abnormal = 1) exceptionRollCount,
+               COALESCE(SUM(lockRow.finish_uuid IS NULL), 0) availableRollCount,
+               COALESCE(SUM(lockRow.finish_uuid IS NOT NULL), 0) lockedRollCount,
+               COALESCE(SUM(f.warehouse_uuid IS NULL OR f.stock_in_time IS NULL OR f.is_abnormal = 1), 0)
+                   exceptionRollCount,
                COALESCE(SUM(COALESCE(f.remaining_weight, f.actual_weight, 0)), 0) totalWeight,
                COALESCE(SUM(CASE WHEN lockRow.finish_uuid IS NOT NULL
                                  THEN COALESCE(f.remaining_weight, f.actual_weight, 0) ELSE 0 END), 0)
@@ -185,8 +186,8 @@
     </sql>
 
     <select id="deliveryOverview" resultType="com.paper.mes.report.dto.ReportDeliveryAnalysisVO$Overview">
-        SELECT COUNT(*) documentCount, SUM(d.delivery_status = 1) pendingDocuments,
-               SUM(d.delivery_status = 2) completedDocuments,
+        SELECT COUNT(*) documentCount, COALESCE(SUM(d.delivery_status = 1), 0) pendingDocuments,
+               COALESCE(SUM(d.delivery_status = 2), 0) completedDocuments,
                COALESCE(SUM(totals.rollCount), 0) rollCount,
                COALESCE(SUM(totals.outWeight), 0) totalWeight,
                COALESCE(SUM(CASE WHEN d.delivery_status = 1 THEN totals.outWeight ELSE 0 END), 0) pendingWeight,
