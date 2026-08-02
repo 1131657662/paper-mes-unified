@@ -56,6 +56,7 @@ CREATE TABLE `sys_customer` (
   KEY `idx_customer_code` (`customer_code`),
   KEY `idx_customer_name` (`customer_name`),
   UNIQUE KEY `uk_sys_customer_active_code` (`customer_code_active`),
+  KEY `idx_create_time` (`create_time`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户档案表';
 
@@ -86,6 +87,7 @@ CREATE TABLE `sys_paper` (
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `uk_sys_paper_active_code` (`paper_code_active`),
   KEY `idx_paper_name` (`paper_name`),
+  KEY `idx_create_time` (`create_time`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='纸张档案表';
 
@@ -117,6 +119,7 @@ CREATE TABLE `sys_machine` (
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `uk_sys_machine_active_code` (`machine_code_active`),
   KEY `idx_machine_name` (`machine_name`),
+  KEY `idx_create_time` (`create_time`),
   KEY `idx_status` (`status`),
   KEY `idx_is_deleted` (`is_deleted`),
   CONSTRAINT `chk_machine_resource_kind` CHECK (`resource_kind` IN ('MACHINE','WORKSTATION'))
@@ -154,6 +157,7 @@ CREATE TABLE `sys_warehouse` (
   UNIQUE KEY `uk_sys_warehouse_active_code` (`warehouse_code_active`),
   UNIQUE KEY `uk_warehouse_active_default` (`active_default_key`),
   KEY `idx_warehouse_name` (`warehouse_name`),
+  KEY `idx_create_time` (`create_time`),
   KEY `idx_status` (`status`),
   KEY `idx_warehouse_default_status` (`is_default`, `status`, `is_deleted`),
   KEY `idx_is_deleted` (`is_deleted`)
@@ -235,9 +239,12 @@ CREATE TABLE `biz_process_order` (
   UNIQUE KEY `uk_order_no` (`order_no`),
   KEY `idx_customer_uuid` (`customer_uuid`),
   KEY `idx_customer_deleted_ctime` (`customer_uuid`, `is_deleted`, `create_time`),
+  KEY `idx_create_time` (`create_time`),
+  KEY `idx_cust_status_ctime` (`customer_uuid`, `order_status`, `create_time`),
   KEY `idx_order_status` (`order_status`),
   KEY `idx_order_customer_status_accounting` (`customer_uuid`, `order_status`, `accounting_date`, `uuid`),
   KEY `idx_order_report_scope` (`is_deleted`, `order_status`, `accounting_date`, `uuid`),
+  KEY `idx_settle_candidate_query` (`is_deleted`, `order_status`, `accounting_date`, `order_no`, `uuid`),
   KEY `idx_order_date` (`order_date`),
   KEY `idx_is_deleted` (`is_deleted`),
   CONSTRAINT `chk_order_settle_source`
@@ -531,6 +538,7 @@ CREATE TABLE `biz_process_step` (
   `ext_num2`       DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
   KEY `idx_order_uuid` (`order_uuid`),
+  KEY `idx_order_step_sort` (`order_uuid`, `step_sort`),
   KEY `idx_original_uuid` (`original_uuid`),
   KEY `idx_input_output_uuid` (`input_output_uuid`),
   KEY `idx_parent_step_uuid` (`parent_step_uuid`),
@@ -694,8 +702,10 @@ CREATE TABLE `biz_finish_roll` (
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `uk_finish_roll_no` (`finish_roll_no`),
   KEY `idx_order_uuid` (`order_uuid`),
+  KEY `idx_order_row_sort` (`order_uuid`, `row_sort`),
   KEY `idx_finish_status` (`finish_status`),
   KEY `idx_finish_inventory_filter` (`finish_status`, `is_deleted`, `warehouse_uuid`, `stock_in_time`),
+  KEY `idx_finish_unassigned_order` (`is_deleted`, `finish_status`, `warehouse_uuid`, `order_uuid`),
   KEY `idx_report_inventory_scope` (`finish_status`, `is_deleted`, `stock_in_time`, `order_uuid`),
   KEY `idx_roll_no_status` (`roll_no_status`),
   KEY `idx_source_type` (`source_type`),
@@ -814,6 +824,7 @@ CREATE TABLE `biz_delivery_order` (
   `ext_num1`            DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值1',
   `ext_num2`            DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
+  KEY `idx_create_time` (`create_time`),
   UNIQUE KEY `uk_delivery_no` (`delivery_no`),
   KEY `idx_customer_uuid` (`customer_uuid`),
   KEY `idx_delivery_status` (`delivery_status`),
@@ -918,6 +929,7 @@ CREATE TABLE `biz_settle_order` (
   `ext_num1`          DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值1',
   `ext_num2`          DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
+  KEY `idx_create_time` (`create_time`),
   UNIQUE KEY `uk_settle_no` (`settle_no`),
   UNIQUE KEY `uk_settle_request_id` (`request_id`),
   KEY `idx_customer_uuid` (`customer_uuid`),
@@ -994,7 +1006,9 @@ CREATE TABLE `biz_settle_detail` (
   `ext_str2`      VARCHAR(255)  DEFAULT NULL            COMMENT '扩展文本2',
   `ext_num1`      DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值1',
   `ext_num2`      DECIMAL(12,3) DEFAULT NULL            COMMENT '扩展数值2',
+  `active_order_uuid` VARCHAR(36) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `order_uuid` ELSE NULL END) STORED COMMENT '有效结算加工单唯一键',
   PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_settle_detail_order_active` (`active_order_uuid`),
   KEY `idx_settle_uuid` (`settle_uuid`),
   KEY `idx_order_uuid` (`order_uuid`),
   KEY `idx_is_deleted` (`is_deleted`)
@@ -1157,7 +1171,7 @@ CREATE TABLE `sys_user` (
 DROP TABLE IF EXISTS `sys_user_session`;
 CREATE TABLE `sys_user_session` (
   `uuid`         VARCHAR(36)  NOT NULL                COMMENT '会话主键',
-  `token`        VARCHAR(64)  NOT NULL                COMMENT '访问令牌',
+  `token`        VARCHAR(64)  NOT NULL                COMMENT 'SHA-256 session token digest',
   `user_uuid`    VARCHAR(36)  NOT NULL                COMMENT '用户主键',
   `expire_time`  DATETIME     NOT NULL                COMMENT '过期时间',
   `revoked_time` DATETIME     DEFAULT NULL            COMMENT '退出/作废时间',
@@ -1449,6 +1463,7 @@ CREATE TABLE `sys_export_snapshot_row` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异步导出快照明细';
 
 DROP TABLE IF EXISTS `rpt_report_saved_view`;
+DROP TABLE IF EXISTS `rpt_report_query_snapshot`;
 DROP TABLE IF EXISTS `rpt_report_snapshot_reference`;
 DROP TABLE IF EXISTS `rpt_report_snapshot`;
 DROP TABLE IF EXISTS `rpt_metric_value`;
@@ -1564,6 +1579,33 @@ CREATE TABLE `rpt_metric_release_item` (
   CONSTRAINT `fk_metric_release_item_version` FOREIGN KEY (`metric_version_uuid`, `metric_uuid`)
     REFERENCES `rpt_metric_version` (`uuid`, `metric_uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布包内逐指标版本绑定';
+
+CREATE TABLE `rpt_report_query_snapshot` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `owner_uuid` VARCHAR(36) NOT NULL,
+  `owner_role_code` VARCHAR(40) NOT NULL,
+  `permission_hash` CHAR(64) NOT NULL,
+  `scope_hash` CHAR(64) NOT NULL,
+  `metric_release_uuid` VARCHAR(36) NOT NULL,
+  `query_hash` CHAR(64) NOT NULL,
+  `idempotency_bucket` BIGINT NOT NULL,
+  `query_json` JSON NOT NULL,
+  `metric_version_json` JSON NOT NULL,
+  `data_as_of` DATETIME(3) NOT NULL,
+  `source_watermark` DATETIME(3) NOT NULL,
+  `expires_at` DATETIME(3) NOT NULL,
+  `snapshot_status` TINYINT NOT NULL DEFAULT 1,
+  `create_time` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`uuid`),
+  KEY `idx_report_query_snapshot_owner` (`owner_uuid`, `snapshot_status`, `expires_at`, `uuid`),
+  KEY `idx_report_query_snapshot_cleanup` (`snapshot_status`, `expires_at`, `uuid`),
+  KEY `idx_report_query_snapshot_query` (`owner_uuid`, `permission_hash`, `query_hash`, `metric_release_uuid`, `snapshot_status`, `create_time`),
+  UNIQUE KEY `uk_report_query_snapshot_idempotency` (`owner_uuid`, `permission_hash`, `query_hash`, `metric_release_uuid`, `idempotency_bucket`),
+  CONSTRAINT `fk_report_query_snapshot_owner` FOREIGN KEY (`owner_uuid`) REFERENCES `sys_user` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_report_query_snapshot_release` FOREIGN KEY (`metric_release_uuid`) REFERENCES `rpt_metric_release` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_report_query_snapshot_status` CHECK (`snapshot_status` IN (1, 2)),
+  CONSTRAINT `chk_report_query_snapshot_expiry` CHECK (`expires_at` > `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='report query snapshot';
 
 DROP TABLE IF EXISTS `rpt_report_subscription_run`;
 DROP TABLE IF EXISTS `rpt_report_subscription_recipient`;
@@ -2200,6 +2242,105 @@ CREATE TABLE `biz_delivery_customer_revision_item` (
   CONSTRAINT `chk_delivery_customer_item_zero` CHECK (`zero_policy` IN ('SKIP','ERROR','USE_ZERO')),
   CONSTRAINT `chk_delivery_customer_item_deleted` CHECK (`is_deleted` IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='出库单客户更正版逐卷明细';
+
+-- V3.52 canonical baseline: immutable finished-goods inventory ledger.
+CREATE TABLE `biz_inventory_transaction` (
+  `uuid`                         VARCHAR(36)   NOT NULL,
+  `sequence_no`                 BIGINT        NOT NULL AUTO_INCREMENT,
+  `finish_roll_uuid`             VARCHAR(36)   NOT NULL,
+  `event_type`                   VARCHAR(32)   NOT NULL,
+  `source_business_type`         VARCHAR(64)   NOT NULL,
+  `source_business_uuid`         VARCHAR(36)   NOT NULL,
+  `quantity_delta`               DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `weight_delta`                 DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `reserved_quantity_delta`      DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `reserved_weight_delta`        DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `quantity_before`              DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `quantity_after`               DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `weight_before`                DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `weight_after`                 DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `reserved_quantity_before`     DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `reserved_quantity_after`      DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `reserved_weight_before`       DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `reserved_weight_after`        DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `available_quantity_before`    DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `available_quantity_after`     DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `available_weight_before`      DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `available_weight_after`       DECIMAL(14,3) NOT NULL DEFAULT 0.000,
+  `reason`                       VARCHAR(500)  DEFAULT NULL,
+  `operator_uuid`                VARCHAR(36)   DEFAULT NULL,
+  `operator_name`                VARCHAR(100)  NOT NULL,
+  `occurred_at`                  DATETIME(6)   NOT NULL,
+  `idempotency_key`              VARCHAR(191)  NOT NULL,
+  `payload_hash`                 CHAR(64)      NOT NULL,
+  `created_at`                   DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_inventory_transaction_sequence` (`sequence_no`),
+  UNIQUE KEY `uk_inventory_transaction_idempotency` (`idempotency_key`),
+  KEY `idx_inventory_transaction_finish_time` (`finish_roll_uuid`, `occurred_at`, `created_at`, `uuid`),
+  KEY `idx_inventory_transaction_source` (`source_business_type`, `source_business_uuid`),
+  CONSTRAINT `fk_inventory_transaction_finish`
+    FOREIGN KEY (`finish_roll_uuid`) REFERENCES `biz_finish_roll` (`uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_inventory_transaction_event` CHECK (`event_type` IN
+    ('OPENING_BALANCE','RECEIPT','RESERVE','RELEASE','ISSUE','RETURN','SCRAP','ADJUSTMENT')),
+  CONSTRAINT `chk_inventory_transaction_non_negative` CHECK (
+    `quantity_before` >= 0 AND `quantity_after` >= 0 AND
+    `weight_before` >= 0 AND `weight_after` >= 0 AND
+    `reserved_quantity_before` >= 0 AND `reserved_quantity_after` >= 0 AND
+    `reserved_weight_before` >= 0 AND `reserved_weight_after` >= 0 AND
+    `available_quantity_before` >= 0 AND `available_quantity_after` >= 0 AND
+    `available_weight_before` >= 0 AND `available_weight_after` >= 0),
+  CONSTRAINT `chk_inventory_transaction_balance_equation` CHECK (
+    `quantity_after` = `quantity_before` + `quantity_delta` AND
+    `weight_after` = `weight_before` + `weight_delta` AND
+    `reserved_quantity_after` = `reserved_quantity_before` + `reserved_quantity_delta` AND
+    `reserved_weight_after` = `reserved_weight_before` + `reserved_weight_delta` AND
+    `available_quantity_before` = `quantity_before` - `reserved_quantity_before` AND
+    `available_quantity_after` = `quantity_after` - `reserved_quantity_after`),
+  CONSTRAINT `chk_inventory_transaction_event_delta` CHECK (
+    (`event_type` = 'OPENING_BALANCE' AND `quantity_delta` >= 0 AND `weight_delta` >= 0
+      AND `reserved_quantity_delta` >= 0 AND `reserved_weight_delta` >= 0
+      AND `reserved_quantity_delta` <= `quantity_delta` AND `reserved_weight_delta` <= `weight_delta`)
+    OR (`event_type` = 'RECEIPT' AND `quantity_delta` >= 0 AND `weight_delta` > 0
+      AND `reserved_quantity_delta` = 0 AND `reserved_weight_delta` = 0)
+    OR (`event_type` = 'RETURN' AND `quantity_delta` >= 0 AND `weight_delta` > 0
+      AND `reserved_quantity_delta` >= 0 AND `reserved_weight_delta` >= 0
+      AND (`reserved_weight_delta` = 0 OR `reserved_weight_delta` = `weight_delta`))
+    OR (`event_type` = 'RESERVE' AND `quantity_delta` = 0 AND `weight_delta` = 0
+      AND `reserved_weight_delta` > 0 AND `reserved_quantity_delta` >= 0)
+    OR (`event_type` = 'RELEASE' AND `quantity_delta` = 0 AND `weight_delta` = 0
+      AND `reserved_weight_delta` < 0 AND `reserved_quantity_delta` <= 0)
+    OR (`event_type` = 'ISSUE' AND `weight_delta` < 0 AND `quantity_delta` <= 0
+      AND `reserved_weight_delta` < 0 AND `reserved_quantity_delta` <= 0
+      AND `reserved_weight_delta` = `weight_delta`)
+    OR (`event_type` = 'SCRAP' AND `weight_delta` < 0 AND `quantity_delta` <= 0
+      AND `reserved_weight_delta` = 0 AND `reserved_quantity_delta` = 0)
+    OR (`event_type` = 'ADJUSTMENT' AND (`quantity_delta` <> 0 OR `weight_delta` <> 0
+      OR `reserved_quantity_delta` <> 0 OR `reserved_weight_delta` <> 0))),
+  CONSTRAINT `chk_inventory_transaction_reason` CHECK (
+    `event_type` NOT IN ('SCRAP','ADJUSTMENT')
+    OR (`reason` IS NOT NULL AND CHAR_LENGTH(TRIM(`reason`)) > 0)),
+  CONSTRAINT `chk_inventory_transaction_available_weight` CHECK (
+    `available_weight_before` = `weight_before` - `reserved_weight_before` AND
+    `available_weight_after` = `weight_after` - `reserved_weight_after`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DELIMITER $$
+CREATE TRIGGER `trg_inventory_transaction_no_update`
+BEFORE UPDATE ON `biz_inventory_transaction`
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'inventory transaction is append-only';
+END$$
+
+CREATE TRIGGER `trg_inventory_transaction_no_delete`
+BEFORE DELETE ON `biz_inventory_transaction`
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'inventory transaction is append-only';
+END$$
+DELIMITER ;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

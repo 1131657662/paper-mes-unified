@@ -114,7 +114,7 @@ public class SystemConfigBootstrap implements ApplicationRunner {
         seedConfig("cfg-settle-discount-auto-limit", "settle", "settle.discountAutoApproveLimit", "优惠免审上限", "1.00", "number", "元", 10, "不超过该金额的尾差可由有权限财务直接核销");
         seedConfig("cfg-settle-discount-max-amount", "settle", "settle.discountMaxAmount", "单次优惠金额上限", "500.00", "number", "元", 20, "超过该金额禁止通过收款核销");
         seedConfig("cfg-settle-discount-max-percent", "settle", "settle.discountMaxPercent", "单次优惠比例上限", "10.00", "number", "%", 30, "优惠金额占当前未收金额的最大比例");
-        seedConfig("cfg-backup-management-enabled", "backup", "backup.managementEnabled", "管理端备份功能", "true", "boolean", null, 10, "控制管理员手动备份和恢复演练入口，默认开启");
+        seedConfig("cfg-backup-management-enabled", "backup", "backup.managementEnabled", "管理端备份功能", "true", "boolean", null, 10, "控制管理员手动备份和隔离恢复验证入口，默认开启");
         seedConfig("cfg-backup-retention-days", "backup", "backup.retentionDays", "本地备份保留天数", "30", "number", "天", 20, "每天自动清理超过保留期的备份，至少保留一份");
         seedConfig("cfg-backup-auto-enabled", "backup", "backup.autoEnabled", "自动备份", "true", "boolean", null, 30, "后端统一调度自动备份，默认开启");
         seedConfig("cfg-backup-auto-time", "backup", "backup.autoTime", "自动备份时间", "02:35", "string", null, 40, "每天自动备份执行时间，格式HH:mm");

@@ -169,6 +169,16 @@
   background: #fff7cc !important;
 }
 
+.backup-record__issue {
+  display: inline-block;
+  max-width: 230px;
+  overflow: hidden;
+  color: var(--mes-color-warning);
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
 @media (max-width: 760px) {
   .data-backup-toolbar {
     align-items: flex-start;

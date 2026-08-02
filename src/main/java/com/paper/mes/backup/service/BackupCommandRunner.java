@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -17,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 public class BackupCommandRunner {
 
     private static final int MAX_LOG_LENGTH = 8000;
+    private static final Pattern BACKUP_ID = Pattern.compile("\\d{8}-\\d{6}");
     private final BackupProperties properties;
     private final BackupRuntimeResolver runtimeResolver;
     private final BackupProcessEnvironment processEnvironment;
@@ -28,8 +30,9 @@ public class BackupCommandRunner {
         this.processEnvironment = processEnvironment;
     }
 
-    public void backup(Path root) {
-        run(runtimeResolver.resolve().backupScript(), Map.of("BACKUP_ROOT", root.toString()));
+    public String backup(Path root) {
+        String output = run(runtimeResolver.resolve().backupScript(), Map.of("BACKUP_ROOT", root.toString()));
+        return parseBackupId(output);
     }
 
     public void verify(Path root, Path backupDirectory) {
@@ -38,7 +41,7 @@ public class BackupCommandRunner {
                 "BACKUP_DIR", backupDirectory.toString()));
     }
 
-    private void run(Path script, Map<String, String> variables) {
+    private String run(Path script, Map<String, String> variables) {
         BackupRuntime runtime = runtimeResolver.resolve();
         Path outputFile = createOutputFile();
         try {
@@ -54,9 +57,20 @@ public class BackupCommandRunner {
             if (process.exitValue() != 0) {
                 throw new IllegalStateException("备份任务执行失败，退出码: " + process.exitValue());
             }
+            return output;
         } finally {
             deleteOutputFile(outputFile);
         }
+    }
+
+    private String parseBackupId(String output) {
+        return output.lines()
+                .map(String::trim)
+                .filter(line -> line.startsWith("backup_id="))
+                .map(line -> line.substring("backup_id=".length()))
+                .filter(value -> BACKUP_ID.matcher(value).matches())
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("备份脚本未返回有效备份编号"));
     }
 
     private String readOutput(Path outputFile, BackupRuntime runtime) {

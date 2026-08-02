@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 
 import type { BackupRecord } from '../../types/dataBackup'
 import { isDeleteProtected } from './backupRecordProtection'
@@ -25,6 +26,13 @@ describe('backup delete protection', () => {
 
     expect(isDeleteProtected(complete, [complete, damaged])).toBe(true)
   })
+
+  it('disables the restore verification confirmation for incomplete backups', () => {
+    const component = readFileSync(new URL('./BackupRecordTable.tsx', import.meta.url), 'utf8')
+
+    expect(component).toContain('const verifyDisabled = busy || record.integrityStatus !== \'COMPLETE\'')
+    expect(component).toContain('disabled={verifyDisabled}')
+  })
 })
 
 function backup(id: string, verificationStatus: BackupRecord['verificationStatus']): BackupRecord {
@@ -35,6 +43,8 @@ function backup(id: string, verificationStatus: BackupRecord['verificationStatus
     databaseArchive: true,
     uploadIncluded: false,
     checksumAvailable: true,
+    integrityStatus: 'COMPLETE',
+    missingItems: [],
     verificationStatus,
   }
 }

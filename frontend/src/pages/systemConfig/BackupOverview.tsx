@@ -1,5 +1,6 @@
 import { DatabaseOutlined, ReloadOutlined } from '@ant-design/icons'
 import { Alert, Button, Descriptions, Popconfirm, Space, Switch, Tag, Typography } from 'antd'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import type { BackupStatus } from '../../types/dataBackup'
 import BackupAutomaticControl from './BackupAutomaticControl'
 import BackupRetentionControl from './BackupRetentionControl'
@@ -51,7 +52,7 @@ export default function BackupOverview(props: BackupOverviewProps) {
         <Descriptions.Item label="运行环境">{formatRuntime(status)}</Descriptions.Item>
         <Descriptions.Item label="备份数量">{status?.backupCount ?? 0} 份</Descriptions.Item>
         <Descriptions.Item label="最近备份">{formatDate(status?.latestBackupAt)}</Descriptions.Item>
-        <Descriptions.Item label="最近演练">{formatDate(status?.latestVerifiedAt)}</Descriptions.Item>
+        <Descriptions.Item label="最近验证">{formatDate(status?.latestVerifiedAt)}</Descriptions.Item>
         <Descriptions.Item label="磁盘空间">{formatDisk(status)}</Descriptions.Item>
         <Descriptions.Item label="异地同步">{formatOffsiteStatus(status)}</Descriptions.Item>
         <Descriptions.Item label="最近同步">{formatDate(status?.offsiteLastSyncAt)}</Descriptions.Item>
@@ -98,7 +99,7 @@ function formatOffsiteStatus(status?: BackupStatus) {
 
 function formatRunning(status?: BackupStatus) {
   if (!status?.running) return '空闲'
-  return status.runningOperation === 'VERIFY' ? '恢复演练中' : '备份中'
+  return status.runningOperation === 'VERIFY' ? `${DISPLAY_TERMS.isolatedRestoreVerification}中` : '备份中'
 }
 
 function formatRuntime(status?: BackupStatus) {

@@ -149,7 +149,23 @@ class ProductionDeploymentSecurityContractTest {
                 "EnvironmentFile=/etc/paper-mes/paper-mes.env",
                 "PrivateTmp=true", "RuntimeDirectory=paper-mes",
                 "ExecStartPre=+/usr/bin/bash /opt/paper-mes/source/deploy/verify-paper-mes-source.example.sh",
+                "ExecStartPre=+/usr/bin/bash /usr/local/bin/verify-paper-mes-migration-state",
                 "-Djava.io.tmpdir=/run/paper-mes");
+    }
+
+    @Test
+    void migrationStateGuard_blocksStartupWhenAnyScriptIsMissingOrNotApplied() throws Exception {
+        String guard = source("deploy/verify-paper-mes-migration-state.example.sh");
+        String verifier = source("deploy/verify-paper-mes-source.example.sh");
+
+        assertContainsAll(guard,
+                "status IS NULL OR status <> 'applied'",
+                "checksum does not match the deployed source",
+                "is not recorded",
+                "MIGRATION_ENV_FILE");
+        assertContainsAll(verifier,
+                "verify-paper-mes-migration-state.example.sh",
+                "installed migration state guard does not match the pulled source");
     }
 
     private String source(String path) throws Exception {

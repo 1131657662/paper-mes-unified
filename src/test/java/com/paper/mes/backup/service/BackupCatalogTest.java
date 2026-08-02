@@ -33,6 +33,7 @@ class BackupCatalogTest {
         assertEquals(1, records.size());
         assertEquals("20260713-023000", records.getFirst().getId());
         assertEquals("VERIFIED", records.getFirst().getVerificationStatus());
+        assertEquals("COMPLETE", records.getFirst().getIntegrityStatus());
         assertTrue(records.getFirst().isDatabaseArchive());
         assertTrue(records.getFirst().isUploadIncluded());
     }
@@ -53,6 +54,50 @@ class BackupCatalogTest {
         Files.createDirectory(tempDir.resolve("manual-copy"));
 
         assertTrue(catalog.list().isEmpty());
+    }
+
+    @Test
+    void list_withEmptyBackupDirectory_marksMissingRequiredFiles() throws Exception {
+        BackupCatalog catalog = catalog();
+        Files.createDirectory(tempDir.resolve("20260713-023000"));
+
+        BackupRecordVO record = catalog.list().getFirst();
+
+        assertEquals("INCOMPLETE", record.getIntegrityStatus());
+        assertEquals(List.of("数据库文件", "校验文件"), record.getMissingItems());
+        assertEquals(0L, record.getSizeBytes());
+    }
+
+    @Test
+    void list_withEmptyRequiredFiles_marksBackupIncomplete() throws Exception {
+        BackupCatalog catalog = catalog();
+        Path backup = Files.createDirectory(tempDir.resolve("20260713-023000"));
+        Files.createFile(backup.resolve("paper_processing.sql.gz"));
+        Files.createFile(backup.resolve("SHA256SUMS"));
+
+        BackupRecordVO record = catalog.list().getFirst();
+
+        assertEquals("INCOMPLETE", record.getIntegrityStatus());
+        assertEquals(List.of("数据库文件", "校验文件"), record.getMissingItems());
+    }
+
+    @Test
+    void list_withTemporaryDirectory_ignoresDirectory() throws Exception {
+        BackupCatalog catalog = catalog();
+        Files.createDirectory(tempDir.resolve(".tmp-20260713-023000-123"));
+
+        assertTrue(catalog.list().isEmpty());
+    }
+
+    @Test
+    void requireVerifiableBackup_withIncompleteDirectory_rejectsRequest() throws Exception {
+        BackupCatalog catalog = catalog();
+        Files.createDirectory(tempDir.resolve("20260713-023000"));
+
+        RuntimeException error = assertThrows(RuntimeException.class,
+                () -> catalog.requireVerifiableBackup("20260713-023000"));
+
+        assertEquals("备份不完整，无法进行隔离恢复验证", error.getMessage());
     }
 
     private BackupCatalog catalog() {

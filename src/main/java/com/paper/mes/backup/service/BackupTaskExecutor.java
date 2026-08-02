@@ -1,6 +1,5 @@
 package com.paper.mes.backup.service;
 
-import com.paper.mes.backup.dto.BackupRecordVO;
 import com.paper.mes.backup.dto.BackupTaskVO;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ResultCode;
@@ -13,6 +12,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 @Slf4j
 @Component
@@ -51,9 +51,12 @@ public class BackupTaskExecutor {
     }
 
     public void startVerification(String backupId, Path backupDirectory, String operator) {
-        submit("VERIFY", backupId, operator, () -> runner.verify(catalog.root(), backupDirectory));
+        submit("VERIFY", backupId, operator, () -> {
+            runner.verify(catalog.root(), backupDirectory);
+            return backupId;
+        });
         operationLogService.record(OperationLogService.BIZ_TYPE_BACKUP, backupId, backupId,
-                OperationLogService.ACTION_BACKUP_VERIFY, operator, "发起隔离恢复演练");
+                OperationLogService.ACTION_BACKUP_VERIFY, operator, "发起隔离恢复验证");
     }
 
     public boolean isRunning() {
@@ -76,7 +79,7 @@ public class BackupTaskExecutor {
         latestMessage = message;
     }
 
-    private void submit(String operation, String backupId, String operator, Runnable task) {
+    private void submit(String operation, String backupId, String operator, Supplier<String> task) {
         if (!operationGuard.acquire(operation)) {
             throw new BusinessException(ResultCode.CONFLICT, "已有备份任务正在执行");
         }
@@ -94,8 +97,7 @@ public class BackupTaskExecutor {
 
     private void runTask(TaskContext context) {
         try {
-            context.task().run();
-            String resolvedBackupId = resolveBackupId(context);
+            String resolvedBackupId = context.task().get();
             latestMessage = successMessage(context.operation());
             historyService.finish(context.taskUuid(), resolvedBackupId, true, latestMessage);
         } catch (RuntimeException ex) {
@@ -108,13 +110,8 @@ public class BackupTaskExecutor {
         }
     }
 
-    private String resolveBackupId(TaskContext context) {
-        if (context.backupId() != null) return context.backupId();
-        return catalog.list().stream().findFirst().map(BackupRecordVO::getId).orElse(null);
-    }
-
     private String successMessage(String operation) {
-        if ("VERIFY".equals(operation)) return "恢复演练通过";
+        if ("VERIFY".equals(operation)) return "隔离恢复验证通过";
         return "AUTO_BACKUP".equals(operation) ? "自动备份完成" : "备份完成";
     }
 
@@ -137,6 +134,6 @@ public class BackupTaskExecutor {
         executor.shutdownNow();
     }
 
-    private record TaskContext(String taskUuid, String operation, String backupId, Runnable task) {
+    private record TaskContext(String taskUuid, String operation, String backupId, Supplier<String> task) {
     }
 }

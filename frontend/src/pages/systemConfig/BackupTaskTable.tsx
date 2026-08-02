@@ -1,5 +1,6 @@
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons'
 import { Alert, Button, Descriptions, Modal, Popconfirm, Table, Tag } from 'antd'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import { formatDateTime } from '../../utils/dateTime'
 import type { ColumnsType } from 'antd/es/table'
 import { useState } from 'react'
@@ -81,7 +82,9 @@ function TaskActions({ busy, onDetail, onRetry, task }: TaskActionProps & { task
 }
 
 function retryDescription(task: BackupTask) {
-  return task.taskType === 'VERIFY' ? '将对原备份重新进行隔离恢复演练，不会恢复生产库。' : '将重新创建一份手动备份。'
+  return task.taskType === 'VERIFY'
+    ? `将对原备份重新进行${DISPLAY_TERMS.isolatedRestoreVerification}，不会覆盖生产库。`
+    : '将重新创建一份手动备份。'
 }
 
 function BackupTaskDetail({ task, onClose }: { task?: BackupTask; onClose: () => void }) {
@@ -110,7 +113,7 @@ function BackupTaskDetail({ task, onClose }: { task?: BackupTask; onClose: () =>
 function renderTaskType(value: BackupTask['taskType']) {
   if (value === 'BACKUP') return '手动备份'
   if (value === 'AUTO_BACKUP') return '自动备份'
-  return '恢复演练'
+  return DISPLAY_TERMS.isolatedRestoreVerification
 }
 
 function renderStatus(value: BackupTask['taskStatus']) {

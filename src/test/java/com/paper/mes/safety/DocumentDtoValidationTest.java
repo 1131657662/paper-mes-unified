@@ -2,6 +2,8 @@ package com.paper.mes.safety;
 
 import com.paper.mes.delivery.dto.DeliveryAppendItemsDTO;
 import com.paper.mes.delivery.dto.DeliveryCreateDTO;
+import com.paper.mes.inventory.dto.InventoryOpeningRequest;
+import com.paper.mes.inventory.dto.InventoryScrapDTO;
 import com.paper.mes.processorder.dto.BackRecordDTO;
 import com.paper.mes.processorder.dto.BackRecordRollDTO;
 import com.paper.mes.processorder.dto.BackRecordStepDTO;
@@ -105,6 +107,20 @@ class DocumentDtoValidationTest {
         dto.setReason(" ");
 
         assertTrue(validateMessages(dto).contains("作废原因不能为空"));
+    }
+
+    @Test
+    void inventoryCommands_rejectSourceIdentifiersLongerThanLedgerColumn() {
+        InventoryScrapDTO scrap = new InventoryScrapDTO();
+        scrap.setReason("破损");
+        scrap.setRequestUuid("x".repeat(37));
+        InventoryOpeningRequest opening = new InventoryOpeningRequest();
+        opening.setSwitchUuid("x".repeat(37));
+
+        Set<String> messages = validateMessages(scrap);
+        messages.addAll(validateMessages(opening));
+
+        assertTrue(messages.stream().anyMatch(message -> message.contains("36")));
     }
 
     @Test

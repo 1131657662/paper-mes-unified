@@ -8,7 +8,8 @@ export function isDeleteProtected(record: BackupRecord, records: BackupRecord[])
 }
 
 function isCompleteBackup(record: BackupRecord) {
-  return record.databaseArchive && record.checksumAvailable
+  return record.integrityStatus === 'COMPLETE'
+    && record.databaseArchive && record.checksumAvailable
 }
 
 function isVerifiedBackup(record: BackupRecord) {

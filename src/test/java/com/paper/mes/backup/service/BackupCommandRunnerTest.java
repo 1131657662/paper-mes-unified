@@ -50,6 +50,16 @@ class BackupCommandRunnerTest {
         assertEquals("备份任务执行超时", error.getMessage());
     }
 
+    @Test
+    void backup_whenScriptReturnsStructuredId_usesThatId() throws Exception {
+        Path script = writeScript("success.ps1", "Write-Output 'backup_id=20260713-024500'\nexit 0\n");
+        BackupCommandRunner runner = runner(script, Duration.ofSeconds(5));
+
+        String backupId = runner.backup(tempDir);
+
+        assertEquals("20260713-024500", backupId);
+    }
+
     private BackupCommandRunner runner(Path script, Duration timeout) {
         BackupProperties properties = new BackupProperties();
         properties.setCommandTimeout(timeout);

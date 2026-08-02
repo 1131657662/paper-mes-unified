@@ -14,8 +14,9 @@ class ProductionProfileStartupContractTest {
         String script = source("deploy/test-production-profile-startup.ps1");
 
         assertThat(script).contains("paper_processing_prod_smoke_test", "refusing to overwrite it");
-        assertThat(script).contains("Apply-Schema", "Register-MigrationBaseline", "V*.sql");
-        assertThat(script).contains("execution_type", "baseline", "Get-FileHash");
+        assertThat(script).contains("Apply-Schema", "Apply-PendingMigrations", "V*.sql");
+        assertThat(script).contains("execution_type", "status='running'", "Get-FileHash");
+        assertThat(script).doesNotContain("Register-MigrationBaseline", "'baseline'");
         assertThat(script).contains("SPRING_PROFILES_ACTIVE = \"prod\"");
         assertThat(script).contains("actuator/env", "api/auth/me", "Set-Cookie");
         assertThat(script).contains("Secure", "HttpOnly", "SameSite=Strict", "DROP DATABASE");

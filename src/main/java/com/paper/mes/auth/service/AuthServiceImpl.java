@@ -23,6 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.UUID;
 
 @Service
@@ -111,11 +115,12 @@ public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
 
     private String createSession(String userUuid) {
         SysUserSession session = new SysUserSession();
-        session.setToken(UUID.randomUUID().toString().replace("-", ""));
+        String rawToken = UUID.randomUUID().toString().replace("-", "");
+        session.setToken(digestToken(rawToken));
         session.setUserUuid(userUuid);
         session.setExpireTime(LocalDateTime.now().plusHours(authProperties.getSessionHours()));
         sessionMapper.insert(session);
-        return session.getToken();
+        return rawToken;
     }
 
     private SysUser validUserByToken(String token) {
@@ -142,7 +147,7 @@ public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
             return null;
         }
         return sessionMapper.selectOne(new LambdaQueryWrapper<SysUserSession>()
-                .eq(SysUserSession::getToken, token)
+                .eq(SysUserSession::getToken, digestToken(token))
                 .last("limit 1"));
     }
 
@@ -150,8 +155,21 @@ public class AuthServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         sessionMapper.update(null, new LambdaUpdateWrapper<SysUserSession>()
                 .eq(SysUserSession::getUserUuid, userUuid)
                 .isNull(SysUserSession::getRevokedTime)
-                .ne(SysUserSession::getToken, currentToken)
+                .ne(SysUserSession::getToken, digestToken(currentToken))
                 .set(SysUserSession::getRevokedTime, LocalDateTime.now()));
+    }
+
+    private String digestToken(String rawToken) {
+        if (!StringUtils.hasText(rawToken)) {
+            return null;
+        }
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(rawToken.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is unavailable", ex);
+        }
     }
 
     private AuthUserVO toVO(SysUser user, String token) {

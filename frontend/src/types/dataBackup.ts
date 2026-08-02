@@ -1,4 +1,5 @@
 export type BackupVerificationStatus = 'VERIFIED' | 'UNVERIFIED'
+export type BackupIntegrityStatus = 'COMPLETE' | 'REVIEW' | 'INCOMPLETE'
 
 export interface BackupRecord {
   id: string
@@ -7,6 +8,8 @@ export interface BackupRecord {
   databaseArchive: boolean
   uploadIncluded: boolean
   checksumAvailable: boolean
+  integrityStatus: BackupIntegrityStatus
+  missingItems: string[]
   verificationStatus: BackupVerificationStatus
   verifiedAt?: string
 }

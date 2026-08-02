@@ -1,6 +1,7 @@
 package com.paper.mes.backup.service;
 
 import com.paper.mes.backup.config.BackupProperties;
+import com.paper.mes.backup.dto.BackupRecordVO;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.oplog.service.OperationLogService;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +10,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -81,15 +84,37 @@ class BackupMaintenanceServiceTest {
     }
 
     @Test
-    void cleanupExpired_withNewerDamagedBackup_protectsOlderValidBackup() throws Exception {
+    void cleanupExpired_withIncompleteBackup_keepsItForManualReview() throws Exception {
         Path valid = createBackup("20000101-000000", true);
         Path damaged = createBackup("20000102-000000", false);
 
         int deleted = service.cleanupExpired("system");
 
-        assertEquals(1, deleted);
+        assertEquals(0, deleted);
         assertTrue(Files.exists(valid));
-        assertFalse(Files.exists(damaged));
+        assertTrue(Files.exists(damaged));
+    }
+
+    @Test
+    void cleanupExpired_withReviewBackup_keepsItForManualReview() {
+        BackupCatalog catalog = mock(BackupCatalog.class);
+        BackupRetentionSettingService retentionSetting = mock(BackupRetentionSettingService.class);
+        when(retentionSetting.retentionDays()).thenReturn(30);
+        when(catalog.list()).thenReturn(List.of(BackupRecordVO.builder()
+                .id("20000101-000000")
+                .createdAt(LocalDateTime.of(2000, 1, 1, 0, 0))
+                .databaseArchive(true)
+                .checksumAvailable(true)
+                .integrityStatus("REVIEW")
+                .verificationStatus("UNVERIFIED")
+                .build()));
+        BackupMaintenanceService reviewService = new BackupMaintenanceService(catalog, retentionSetting,
+                mock(OperationLogService.class), new BackupOperationGuard(),
+                mock(OffsiteBackupStatusReader.class));
+
+        int deleted = reviewService.cleanupExpired("system");
+
+        assertEquals(0, deleted);
     }
 
     @Test

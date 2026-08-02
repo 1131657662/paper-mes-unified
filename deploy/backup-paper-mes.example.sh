@@ -116,3 +116,4 @@ mv "${temp_dir}" "${target_dir}"
 temp_dir=""
 
 echo "backup completed: ${target_dir}"
+echo "backup_id=${timestamp}"

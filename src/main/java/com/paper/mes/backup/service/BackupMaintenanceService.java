@@ -96,6 +96,7 @@ public class BackupMaintenanceService {
         String protectedId = protectedBackupId(records);
         List<BackupRecordVO> expired = records.stream()
                 .filter(record -> !record.getId().equals(protectedId))
+                .filter(this::isComplete)
                 .filter(record -> record.getCreatedAt().isBefore(cutoff)).toList();
         expired.forEach(record -> deleteDirectory(catalog.requireBackup(record.getId())));
         if (!expired.isEmpty()) {
@@ -121,7 +122,8 @@ public class BackupMaintenanceService {
     }
 
     private boolean isComplete(BackupRecordVO record) {
-        return record.isDatabaseArchive() && record.isChecksumAvailable();
+        return "COMPLETE".equals(record.getIntegrityStatus())
+                && record.isDatabaseArchive() && record.isChecksumAvailable();
     }
 
     private boolean isVerified(BackupRecordVO record) {

@@ -80,16 +80,30 @@ function Apply-Schema {
     if ($exitCode -ne 0) { throw ($output -join "`n") }
 }
 
-function Register-MigrationBaseline {
+function Apply-PendingMigrations {
+    # The current baseline is 3.52.  The smoke database replays the last
+    # upgrade window (3.49 -> current) so migrations are executed instead of
+    # being registered as a fabricated baseline.  Update this fixture when a
+    # release introduces a new canonical baseline.
+    $baselineVersion = if ($env:PAPER_MES_SMOKE_BASELINE_VERSION) { $env:PAPER_MES_SMOKE_BASELINE_VERSION } else { "3.49" }
+    if ($baselineVersion -notmatch '^[0-9]+(?:\.[0-9]+)*$') { throw "Unsafe smoke baseline version: $baselineVersion" }
     $migrationFiles = Get-ChildItem -LiteralPath $migrationDirectory -Filter "V*.sql" -File |
-        Sort-Object { [version]([regex]::Match($_.Name, '^V([0-9]+(?:\.[0-9]+)*)__').Groups[1].Value) }
-    if (-not $migrationFiles) { throw "No migration files found" }
+        Sort-Object { [version]([regex]::Match($_.Name, '^V([0-9]+(?:\.[0-9]+)*)__').Groups[1].Value) } |
+        Where-Object {
+            $version = [version]([regex]::Match($_.Name, '^V([0-9]+(?:\.[0-9]+)*)__').Groups[1].Value)
+            $version -gt [version]$baselineVersion
+        }
+    if (-not $migrationFiles) { throw "No pending migration files found after baseline $baselineVersion" }
     Invoke-MySql @'
 CREATE TABLE IF NOT EXISTS sys_schema_migration (
   version VARCHAR(50) NOT NULL,
   script_name VARCHAR(255) NOT NULL,
   checksum CHAR(64) NOT NULL,
   execution_type VARCHAR(20) NOT NULL DEFAULT 'applied',
+  status VARCHAR(20) NOT NULL DEFAULT 'applied',
+  failure_message TEXT NULL,
+  started_at DATETIME NULL,
+  finished_at DATETIME NULL,
   executed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (version)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -98,7 +112,17 @@ CREATE TABLE IF NOT EXISTS sys_schema_migration (
         $match = [regex]::Match($migration.Name, '^V([0-9]+(?:\.[0-9]+)*)__')
         $version = $match.Groups[1].Value
         $checksum = (Get-FileHash -LiteralPath $migration.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-        Invoke-MySql "INSERT INTO sys_schema_migration (version,script_name,checksum,execution_type) VALUES ('$version','$($migration.Name)','$checksum','baseline');" $Database | Out-Null
+        $escapedName = $migration.Name.Replace("'", "''")
+        Invoke-MySql "INSERT INTO sys_schema_migration (version,script_name,checksum,execution_type,status,started_at) VALUES ('$version','$escapedName','$checksum','applied','running',NOW()) ON DUPLICATE KEY UPDATE checksum=VALUES(checksum),status='running',started_at=NOW(),failure_message=NULL;" $Database | Out-Null
+        try {
+            $sql = Get-Content -Raw -Encoding UTF8 $migration.FullName
+            Invoke-MySql $sql $Database | Out-Null
+            Invoke-MySql "UPDATE sys_schema_migration SET status='applied',finished_at=NOW(),executed_at=NOW() WHERE version='$version';" $Database | Out-Null
+        } catch {
+            $message = $_.Exception.Message.Replace("'", "''")
+            Invoke-MySql "UPDATE sys_schema_migration SET status='failed',failure_message='$message',finished_at=NOW() WHERE version='$version';" $Database | Out-Null
+            throw
+        }
     }
 }
 
@@ -132,7 +156,11 @@ try {
     Invoke-MySql "CREATE DATABASE ``$Database`` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
     $databaseCreated = $true
     Apply-Schema
-    Register-MigrationBaseline
+    Apply-PendingMigrations
+    $migrationCount = Invoke-MySql "SELECT COUNT(*) FROM sys_schema_migration WHERE status='applied';" $Database
+    if ([int]$migrationCount -lt 1) { throw "Production smoke did not execute a pending migration" }
+    $pendingSchema = Invoke-MySql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$Database' AND table_name='rpt_report_query_snapshot';"
+    if ([int]$pendingSchema -ne 1) { throw "Production smoke migration did not create rpt_report_query_snapshot" }
 
     $configUri = ([Uri]$prodConfig).AbsoluteUri
     $env:SPRING_PROFILES_ACTIVE = "prod"

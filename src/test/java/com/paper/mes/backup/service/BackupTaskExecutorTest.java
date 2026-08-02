@@ -1,13 +1,10 @@
 package com.paper.mes.backup.service;
 
 import com.paper.mes.oplog.service.OperationLogService;
-import com.paper.mes.backup.dto.BackupRecordVO;
 import com.paper.mes.common.BusinessException;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -150,8 +147,7 @@ class BackupTaskExecutorTest {
         BackupCatalog catalog = mock(BackupCatalog.class);
         BackupTaskHistoryService history = mock(BackupTaskHistoryService.class);
         when(catalog.root()).thenReturn(Path.of("backup"));
-        when(catalog.list()).thenReturn(List.of(BackupRecordVO.builder()
-                .id("20260713-023500").createdAt(LocalDateTime.now()).build()));
+        when(runner.backup(any(Path.class))).thenReturn("20260713-023500");
         when(history.start("AUTO_BACKUP", null, "system")).thenReturn("task-uuid");
         BackupTaskExecutor executor = new BackupTaskExecutor(runner, catalog, history,
                 mock(OperationLogService.class), new BackupOperationGuard());
@@ -161,6 +157,27 @@ class BackupTaskExecutorTest {
 
             verify(history, timeout(2000)).finish("task-uuid", "20260713-023500",
                     true, "自动备份完成");
+        } finally {
+            executor.shutdown();
+        }
+    }
+
+    @Test
+    void startBackup_recordsIdReturnedByTheExecutedScript() {
+        BackupCommandRunner runner = mock(BackupCommandRunner.class);
+        BackupCatalog catalog = mock(BackupCatalog.class);
+        BackupTaskHistoryService history = mock(BackupTaskHistoryService.class);
+        when(catalog.root()).thenReturn(Path.of("backup"));
+        when(history.start("BACKUP", null, "admin")).thenReturn("task-uuid");
+        when(runner.backup(any(Path.class))).thenReturn("20260713-024500");
+        BackupTaskExecutor executor = new BackupTaskExecutor(runner, catalog, history,
+                mock(OperationLogService.class), new BackupOperationGuard());
+
+        try {
+            executor.startBackup("admin");
+
+            verify(history, timeout(2000)).finish("task-uuid", "20260713-024500",
+                    true, "备份完成");
         } finally {
             executor.shutdown();
         }

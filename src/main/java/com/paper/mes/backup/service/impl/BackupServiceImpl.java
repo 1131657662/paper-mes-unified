@@ -59,12 +59,15 @@ public class BackupServiceImpl implements BackupService {
     public BackupStatusVO status() {
         List<BackupRecordVO> records = catalog.list();
         LocalDateTime latestVerified = records.stream()
+                .filter(record -> "COMPLETE".equals(record.getIntegrityStatus()))
                 .map(BackupRecordVO::getVerifiedAt).filter(value -> value != null)
                 .max(LocalDateTime::compareTo).orElse(null);
         BackupRuntime runtime = runtimeResolver.resolve();
         BackupHealth health = maintenanceService.health();
         BackupAutomaticStatus automatic = automaticCoordinator.status();
-        LocalDateTime latestBackup = records.isEmpty() ? null : records.getFirst().getCreatedAt();
+        LocalDateTime latestBackup = records.stream()
+                .filter(record -> "COMPLETE".equals(record.getIntegrityStatus()))
+                .map(BackupRecordVO::getCreatedAt).findFirst().orElse(null);
         return BackupStatusVO.builder()
                 .enabled(featureSettingService.isEnabled())
                 .configured(runtime.configured())
@@ -122,10 +125,10 @@ public class BackupServiceImpl implements BackupService {
     @Override
     public BackupOperationVO startVerification(String backupId) {
         requireAvailable();
-        Path backupDirectory = catalog.requireBackup(backupId);
+        Path backupDirectory = catalog.requireVerifiableBackup(backupId);
         String operator = AuthContextHolder.currentDisplayName();
         taskExecutor.startVerification(backupId, backupDirectory, operator);
-        return new BackupOperationVO(true, "恢复演练已开始");
+        return new BackupOperationVO(true, "隔离恢复验证已开始");
     }
 
     @Override

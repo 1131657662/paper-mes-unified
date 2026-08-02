@@ -6,6 +6,7 @@ SOURCE_REMOTE="${SOURCE_REMOTE:-origin}"
 SOURCE_BRANCH="${SOURCE_BRANCH:-main}"
 SERVICE_UNIT_PATH="${SERVICE_UNIT_PATH:-/etc/systemd/system/paper-mes.service}"
 INSTALLED_PREFLIGHT_PATH="${INSTALLED_PREFLIGHT_PATH:-/usr/local/bin/preflight-paper-mes-release}"
+INSTALLED_MIGRATION_GUARD_PATH="${INSTALLED_MIGRATION_GUARD_PATH:-/usr/local/bin/verify-paper-mes-migration-state}"
 
 fail() {
   echo "source provenance verification failed: $1" >&2
@@ -35,11 +36,15 @@ working_tree_status="$(git -C "${SOURCE_ROOT}" status --porcelain --untracked-fi
 
 source_service_unit="${SOURCE_ROOT}/deploy/paper-mes.service.example"
 source_preflight="${SOURCE_ROOT}/deploy/preflight-paper-mes-release.example.sh"
+source_migration_guard="${SOURCE_ROOT}/deploy/verify-paper-mes-migration-state.example.sh"
 [ -f "${source_service_unit}" ] || fail "service unit template is missing from source"
 [ -f "${source_preflight}" ] || fail "release preflight is missing from source"
+[ -f "${source_migration_guard}" ] || fail "migration state guard is missing from source"
 cmp -s "${source_service_unit}" "${SERVICE_UNIT_PATH}" \
   || fail "installed service unit does not match the pulled source"
 cmp -s "${source_preflight}" "${INSTALLED_PREFLIGHT_PATH}" \
   || fail "installed release preflight does not match the pulled source"
+cmp -s "${source_migration_guard}" "${INSTALLED_MIGRATION_GUARD_PATH}" \
+  || fail "installed migration state guard does not match the pulled source"
 
 echo "source provenance verification passed: ${head_commit}"

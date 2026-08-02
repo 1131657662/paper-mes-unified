@@ -117,6 +117,7 @@ default-character-set=utf8mb4
     Move-Item -LiteralPath $tempDir -Destination $targetDir
 
     Write-Output "backup completed: $targetDir"
+    Write-Output "backup_id=$timestamp"
 } finally {
     if ($lock) { $lock.Dispose() }
     Remove-Item -LiteralPath $mysqlCnf -Force -ErrorAction SilentlyContinue

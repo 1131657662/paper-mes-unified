@@ -60,4 +60,43 @@ class GlobalExceptionHandlerTest {
         assertThat(status.value()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getCode()).isEqualTo(ResultCode.NOT_FOUND);
     }
+
+    @Test
+    void uncaughtErrorsUseHttp500WithoutExposingInternals() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+        var response = handler.handleOther(new IllegalStateException("secret path"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getMessage()).isEqualTo("服务器内部错误");
+        assertThat(response.getBody().getMessage()).doesNotContain("secret path");
+    }
+
+    @Test
+    void validationAndDatabaseHandlersDeclareNonSuccessHttpStatuses() throws Exception {
+        assertResponseStatus("handleValidation",
+                org.springframework.web.bind.MethodArgumentNotValidException.class, HttpStatus.BAD_REQUEST);
+        assertResponseStatus("handleDuplicateKey", Exception.class, HttpStatus.CONFLICT);
+        assertResponseStatus("handleBadSqlGrammar",
+                org.springframework.jdbc.BadSqlGrammarException.class, HttpStatus.INTERNAL_SERVER_ERROR);
+        assertResponseStatus("handleDataIntegrity",
+                org.springframework.dao.DataIntegrityViolationException.class, HttpStatus.CONFLICT);
+        assertResponseStatus("handleMissingParam",
+                org.springframework.web.bind.MissingServletRequestParameterException.class, HttpStatus.BAD_REQUEST);
+        assertResponseStatus("handleTypeMismatch",
+                org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class, HttpStatus.BAD_REQUEST);
+        assertResponseStatus("handleNotReadable",
+                org.springframework.http.converter.HttpMessageNotReadableException.class, HttpStatus.BAD_REQUEST);
+        assertResponseStatus("handleMethodNotSupported",
+                org.springframework.web.HttpRequestMethodNotSupportedException.class, HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
+    private void assertResponseStatus(String methodName, Class<?> parameterType, HttpStatus expected) throws Exception {
+        Method method = GlobalExceptionHandler.class.getMethod(methodName, parameterType);
+        ResponseStatus status = method.getAnnotation(ResponseStatus.class);
+
+        assertThat(status).isNotNull();
+        assertThat(status.value()).isEqualTo(expected);
+    }
 }

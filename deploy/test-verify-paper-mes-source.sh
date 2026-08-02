@@ -12,8 +12,10 @@ source_root="${temp_dir}/source"
 mkdir -p "${temp_dir}/bin" "${source_root}/.git" "${source_root}/deploy"
 printf 'service-unit\n' > "${source_root}/deploy/paper-mes.service.example"
 printf 'release-preflight\n' > "${source_root}/deploy/preflight-paper-mes-release.example.sh"
+printf 'migration-state-guard\n' > "${source_root}/deploy/verify-paper-mes-migration-state.example.sh"
 cp "${source_root}/deploy/paper-mes.service.example" "${temp_dir}/installed.service"
 cp "${source_root}/deploy/preflight-paper-mes-release.example.sh" "${temp_dir}/installed-preflight"
+cp "${source_root}/deploy/verify-paper-mes-migration-state.example.sh" "${temp_dir}/installed-migration-guard"
 
 cat > "${temp_dir}/bin/git" <<'EOF'
 #!/usr/bin/env bash
@@ -34,6 +36,7 @@ run_verify() {
   SOURCE_ROOT="${source_root}" \
   SERVICE_UNIT_PATH="${temp_dir}/installed.service" \
   INSTALLED_PREFLIGHT_PATH="${temp_dir}/installed-preflight" \
+  INSTALLED_MIGRATION_GUARD_PATH="${temp_dir}/installed-migration-guard" \
   bash "${verify_script}"
 }
 
@@ -60,6 +63,12 @@ cp "${source_root}/deploy/paper-mes.service.example" "${temp_dir}/installed.serv
 printf 'direct-cloud-edit\n' > "${temp_dir}/installed-preflight"
 if run_verify >/dev/null 2>&1; then
   echo "source verification unexpectedly accepted a directly edited preflight" >&2
+  exit 1
+fi
+cp "${source_root}/deploy/preflight-paper-mes-release.example.sh" "${temp_dir}/installed-preflight"
+printf 'direct-cloud-edit\n' > "${temp_dir}/installed-migration-guard"
+if run_verify >/dev/null 2>&1; then
+  echo "source verification unexpectedly accepted a directly edited migration guard" >&2
   exit 1
 fi
 

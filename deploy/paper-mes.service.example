@@ -14,6 +14,7 @@ Environment=SPRING_PROFILES_ACTIVE=prod
 Environment=SPRING_CONFIG_ADDITIONAL_LOCATION=file:/etc/paper-mes/
 EnvironmentFile=/etc/paper-mes/paper-mes.env
 ExecStartPre=+/usr/bin/bash /opt/paper-mes/source/deploy/verify-paper-mes-source.example.sh
+ExecStartPre=+/usr/bin/bash /usr/local/bin/verify-paper-mes-migration-state
 ExecStart=/usr/bin/java -Djava.io.tmpdir=/run/paper-mes -Xms256m -Xmx768m -jar /opt/paper-mes/app/paper-mes.jar
 SuccessExitStatus=143
 Restart=on-failure

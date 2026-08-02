@@ -61,7 +61,7 @@ class BackupControllerContractTest {
     void verifyBackup_withAdminRole_startsVerification() throws Exception {
         authorizeAs("admin");
         when(backupService.startVerification("20260713-023000"))
-                .thenReturn(new BackupOperationVO(true, "恢复演练已开始"));
+                .thenReturn(new BackupOperationVO(true, "隔离恢复验证已开始"));
 
         mvc.perform(post("/api/system/backups/20260713-023000/verify")
                         .header("Authorization", "Bearer " + TOKEN))
@@ -94,7 +94,7 @@ class BackupControllerContractTest {
                         .contentType("application/json")
                         .content("{}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(backupService, never()).updateEnabled(anyBoolean());
@@ -122,7 +122,7 @@ class BackupControllerContractTest {
                         .contentType("application/json")
                         .content("{\"retentionDays\":6}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(backupService, never()).updateRetention(anyInt());
@@ -174,7 +174,7 @@ class BackupControllerContractTest {
                         .contentType("application/json")
                         .content("{\"enabled\":true,\"executionTime\":\"24:00\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(backupService, never()).updateAutomatic(anyBoolean(), any());

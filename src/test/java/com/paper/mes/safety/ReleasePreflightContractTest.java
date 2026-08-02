@@ -44,6 +44,7 @@ class ReleasePreflightContractTest {
         assertThat(verifier).contains("status --porcelain", "refs/remotes/${SOURCE_REMOTE}/${SOURCE_BRANCH}");
         assertThat(verifier).contains("installed service unit does not match the pulled source");
         assertThat(verifier).contains("installed release preflight does not match the pulled source");
+        assertThat(verifier).contains("installed migration state guard does not match the pulled source");
         assertThat(behaviorTest).contains("dirty cloud working tree", "commit not pulled from GitHub");
         assertThat(behaviorTest).contains("directly edited service unit", "directly edited preflight");
     }
