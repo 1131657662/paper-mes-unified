@@ -92,7 +92,7 @@ class SettleCreateControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createContract() + ",\"orderUuid\":\"\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(settleService, never()).createByOrder(any());
@@ -146,7 +146,7 @@ class SettleCreateControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createContract() + ",\"customerUuid\":\"customer-1\",\"periodEnd\":\"2026-07-31\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(settleService, never()).createByMonth(any());

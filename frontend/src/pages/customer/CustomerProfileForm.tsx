@@ -1,5 +1,6 @@
 import { Alert, Button, Form, Input, InputNumber, Select, Spin } from 'antd'
 import type { FormInstance } from 'antd'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import AutoCodeInput from '../../components/biz/AutoCodeInput'
 import { DICT_TYPES, invoiceFallbackOptions, settleFallbackOptions } from '../../features/systemConfig/configFallbacks'
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
@@ -112,7 +113,7 @@ export default function CustomerProfileForm({ editing, form, onFinish, onValuesC
           <Form.Item name="defaultInvoice" label="默认开票">
             <Select placeholder="请选择" options={invoiceOptions} />
           </Form.Item>
-          <Form.Item name="priceIncludeTax" label="价格口径">
+          <Form.Item name="priceIncludeTax" label={DISPLAY_TERMS.priceTaxMode}>
             <Select placeholder="请选择" options={priceTaxOptions} />
           </Form.Item>
           <Form.Item name="taxRate" label="税率(%)">

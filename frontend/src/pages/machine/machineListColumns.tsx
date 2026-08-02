@@ -55,7 +55,7 @@ function renderMachineActions(machine: Machine, options: Options) {
   return (
     <div className="mes-table-actions">
       <Button type="link" size="small" onClick={() => options.navigate(`/machines/${machine.uuid}`)}>详情</Button>
-      {options.canManage && <Button type="link" size="small"
+      {options.canManage && machine.resourceKind !== 'WORKSTATION' && <Button type="link" size="small"
         onClick={() => options.navigate(`/machines/${machine.uuid}/edit`)}>编辑</Button>}
       {options.canManage && (
         <Popconfirm title="确认删除该生产资源？"

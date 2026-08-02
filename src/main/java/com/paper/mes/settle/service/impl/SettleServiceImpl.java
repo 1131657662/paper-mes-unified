@@ -33,6 +33,7 @@ import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
+import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.ServicePricingFinalizationPolicy;
 import com.paper.mes.settle.dto.ReceiveDTO;
@@ -41,6 +42,7 @@ import com.paper.mes.settle.dto.SettleByMonthDTO;
 import com.paper.mes.settle.dto.SettleByOrderDTO;
 import com.paper.mes.settle.dto.SettleByOrdersDTO;
 import com.paper.mes.settle.dto.SettleCandidateQuery;
+import com.paper.mes.settle.dto.SettleCandidateOrder;
 import com.paper.mes.settle.dto.SettleCandidateVO;
 import com.paper.mes.settle.dto.SettleDetailVO;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
@@ -58,7 +60,6 @@ import com.paper.mes.settle.mapper.SettleOrderMapper;
 import com.paper.mes.settle.service.SettleCandidateStatsLoader;
 import com.paper.mes.settle.service.SettleCandidateAmountLoader;
 import com.paper.mes.settle.service.SettleAccountingPeriodPolicy;
-import com.paper.mes.settle.service.SettleCandidateQueryPolicy;
 import com.paper.mes.settle.service.SettleCollectionQueryPolicy;
 import com.paper.mes.settle.service.SettleReceiveRequestFingerprint;
 import com.paper.mes.settle.service.SettleReceiveStatusResolver;
@@ -124,6 +125,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private final ProcessStepMapper processStepMapper;
     private final ProcessStageOutputMapper processStageOutputMapper;
     private final ProcessOrderService processOrderService;
+    private final ProcessOrderMapper processOrderMapper;
     private final CustomerService customerService;
     private final MachineMapper machineMapper;
     private final OperationLogMapper operationLogMapper;
@@ -182,16 +184,15 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     @Override
     public PageResult<SettleCandidateVO> listCandidates(SettleCandidateQuery query) {
-        LambdaQueryWrapper<ProcessOrder> wrapper = SettleCandidateQueryPolicy.create(query);
-        Page<ProcessOrder> page = processOrderService.page(
-                PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
-        List<ProcessOrder> orders = page.getRecords();
+        Page<SettleCandidateOrder> page = PageRequestBounds.of(query.getCurrent(), query.getSize());
+        processOrderMapper.selectSettleCandidates(page, query);
+        List<SettleCandidateOrder> orders = page.getRecords();
         Map<String, SettleCandidateStatsLoader.CandidateStats> statsByOrder =
-                statsLoader.load(orders.stream().map(ProcessOrder::getUuid).toList());
+                statsLoader.load(orders.stream().map(SettleCandidateOrder::getUuid).toList());
         Map<String, SettleCandidateAmountLoader.CandidateAmount> amountsByOrder =
-                candidateAmountLoader.load(orders);
+                candidateAmountLoader.loadProjected(orders);
         List<SettleCandidateVO> result = new ArrayList<>(orders.size());
-        for (ProcessOrder order : orders) {
+        for (SettleCandidateOrder order : orders) {
             SettleCandidateAmountLoader.CandidateAmount amount = amountsByOrder.get(order.getUuid());
             SettleCandidateStatsLoader.CandidateStats stats = statsByOrder.get(order.getUuid());
             SettleCandidateVO vo = new SettleCandidateVO();
@@ -200,7 +201,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             vo.setCustomerUuid(order.getCustomerUuid());
             vo.setCustomerName(order.getCustomerName());
             vo.setOrderDate(order.getOrderDate());
-            vo.setAccountingDate(SettleAccountingPeriodPolicy.accountingDate(order));
+            vo.setAccountingDate(order.getAccountingDate());
             vo.setSettleType(order.getSettleType() == null ? SETTLE_TYPE_BY_MONTH : order.getSettleType());
             vo.setSettleDay(order.getSettleDay());
             vo.setIsInvoice(order.getIsInvoice() == null ? 2 : order.getIsInvoice());

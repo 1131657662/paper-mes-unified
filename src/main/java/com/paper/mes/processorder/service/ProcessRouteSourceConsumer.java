@@ -1,9 +1,7 @@
 package com.paper.mes.processorder.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
-import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.ProcessStageOutput;
 import com.paper.mes.processorder.mapper.FinishOriginalRelMapper;
@@ -27,6 +25,8 @@ public class ProcessRouteSourceConsumer {
 
     private final ProcessStageOutputMapper stageOutputMapper;
     private final FinishRollMapper finishRollMapper;
+    /** Constructor compatibility only; lineage relations are deliberately immutable here. */
+    @SuppressWarnings("unused")
     private final FinishOriginalRelMapper finishOriginalRelMapper;
 
     public void consume(Collection<ProcessStageOutput> outputs) {
@@ -53,8 +53,9 @@ public class ProcessRouteSourceConsumer {
         if (finish.getActualWeight() != null) {
             throw new BusinessException("已有回录实重的成品不能再进入下道工艺：" + finish.getFinishRollNo());
         }
-        finishOriginalRelMapper.delete(new LambdaQueryWrapper<FinishOriginalRel>()
-                .eq(FinishOriginalRel::getFinishUuid, finish.getUuid()));
+        // Keep every source relation immutable for traceability. Consuming an
+        // intermediate output changes its lifecycle only; it must not erase
+        // multi-mother-roll lineage.
         finish.setRollNoStatus(ROLL_NO_VOID);
         ConcurrencyGuard.requireRowUpdated(finishRollMapper.updateById(finish));
     }

@@ -1,4 +1,5 @@
 import dayjs from 'dayjs'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import type { DeliveryCustomerRevisionPreview, DeliveryCustomerSpec, DeliveryDocumentView } from '../../features/deliveryCustomerSpec/deliveryCustomerSpecTypes'
 import { deliveryOriginalSnapshotText, formatKg, formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryDetail, DeliveryDetailVO, DeliveryOrder } from '../../types/delivery'
@@ -106,7 +107,9 @@ function printTitle(variant: DeliveryDocumentView, specs?: DeliveryCustomerRevis
   if (variant === 'physical') return '出库单（仓库实物）'
   if (variant === 'trace') return '出库单（追溯对照）'
   if (specs?.currentRevisionKind === 'USER_REVISION') return `出库单（客户更正版 V${specs.currentRevisionNo}）`
-  if (specs?.currentRevisionKind === 'SYSTEM_BASELINE') return `出库单（客户口径 V${specs.currentRevisionNo}）`
+  if (specs?.currentRevisionKind === 'SYSTEM_BASELINE') {
+    return `出库单（${DISPLAY_TERMS.customerSpecification} V${specs.currentRevisionNo}）`
+  }
   if (specs?.currentRevisionKind === 'HISTORICAL_BASELINE') return '出库单（历史实物基线）'
   return '出库单'
 }

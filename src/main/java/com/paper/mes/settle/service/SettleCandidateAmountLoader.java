@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.entity.ProcessStep;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
+import com.paper.mes.settle.dto.SettleCandidateOrder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -27,8 +28,23 @@ public class SettleCandidateAmountLoader {
 
     public Map<String, CandidateAmount> load(List<ProcessOrder> orders) {
         if (orders.isEmpty()) return Map.of();
-        Map<String, CandidateAmount> amounts = initialize(orders);
-        List<String> orderUuids = orders.stream().map(ProcessOrder::getUuid).toList();
+        Map<String, CandidateAmount> amounts = new LinkedHashMap<>();
+        for (ProcessOrder order : orders) {
+            amounts.put(order.getUuid(), createAmount(order.getTotalExtraAmount(), order.getTotalAmount()));
+        }
+        return loadSteps(amounts, orders.stream().map(ProcessOrder::getUuid).toList());
+    }
+
+    public Map<String, CandidateAmount> loadProjected(List<SettleCandidateOrder> orders) {
+        if (orders.isEmpty()) return Map.of();
+        Map<String, CandidateAmount> amounts = new LinkedHashMap<>();
+        for (SettleCandidateOrder order : orders) {
+            amounts.put(order.getUuid(), createAmount(order.getTotalExtraAmount(), order.getTotalAmount()));
+        }
+        return loadSteps(amounts, orders.stream().map(SettleCandidateOrder::getUuid).toList());
+    }
+
+    private Map<String, CandidateAmount> loadSteps(Map<String, CandidateAmount> amounts, List<String> orderUuids) {
         List<ProcessStep> steps = processStepMapper.selectList(new LambdaQueryWrapper<ProcessStep>()
                 .in(ProcessStep::getOrderUuid, orderUuids));
         for (ProcessStep step : steps) {
@@ -37,13 +53,9 @@ public class SettleCandidateAmountLoader {
         return amounts;
     }
 
-    private Map<String, CandidateAmount> initialize(List<ProcessOrder> orders) {
-        Map<String, CandidateAmount> amounts = new LinkedHashMap<>();
-        for (ProcessOrder order : orders) {
-            amounts.put(order.getUuid(), new CandidateAmount(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                    money(order.getTotalExtraAmount()), money(order.getTotalAmount())));
-        }
-        return amounts;
+    private CandidateAmount createAmount(BigDecimal totalExtraAmount, BigDecimal totalAmount) {
+        return new CandidateAmount(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                money(totalExtraAmount), money(totalAmount));
     }
 
     private static BigDecimal money(BigDecimal value) {

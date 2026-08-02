@@ -1,5 +1,6 @@
 import { Button, Drawer, Form, Input, Space, message } from 'antd'
 import { useState } from 'react'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import {
   applyBulkSpecification,
@@ -71,7 +72,7 @@ export default function CustomerSpecEditorDrawer({ data, open, orderUuid, onClos
   const publish = async () => {
     if (!bundle || bundle.result.hasErrors) return
     const result = await publishMutation.mutateAsync({ orderUuid, values: bundle.request })
-    message.success(`客户口径 V${result.revisionNo} 已发布`)
+    message.success(`${DISPLAY_TERMS.customerSpecification} V${result.revisionNo} 已发布`)
     clearDirty()
     onClose()
   }
@@ -82,7 +83,7 @@ export default function CustomerSpecEditorDrawer({ data, open, orderUuid, onClos
     <>
       <Drawer
         className="customer-spec-editor" destroyOnClose footer={<Footer bundle={bundle} previewing={previewMutation.isPending} publishing={publishMutation.isPending} onCancel={guardedClose} onPreview={preview} onPublish={publish} />}
-        open={open} placement="right" title={`批量维护客户口径 · ${data.orderNo ?? ''}`} width="min(1280px, calc(100vw - 24px))" onClose={guardedClose}
+        open={open} placement="right" title={`批量维护${DISPLAY_TERMS.customerSpecification} · ${data.orderNo ?? ''}`} width="min(1280px, calc(100vw - 24px))" onClose={guardedClose}
       >
         <div className="customer-spec-editor__body">
           <CustomerSpecBatchToolbar disabled={!selected.length} values={bulk} onChange={setBulk} onApply={() => changeRows(applyBulkSpecification(rows, selected, bulk))} onFillDown={() => changeRows(fillSelectedFromFirst(rows, selected))} onSameSpec={() => changeRows(applyToSamePhysicalSpec(rows, selected))} onPaste={() => setPasteOpen(true)} />

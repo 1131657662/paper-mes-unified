@@ -85,7 +85,7 @@ public class DeliveryCustomerRevisionSnapshotWriter {
                 ? finishWidth : finish.getCustomerFinishWidth();
         BigDecimal customerWeight = resolveCustomerWeight(finish, physicalWeight);
         if (customerGramWeight <= 0 || customerFinishWidth <= 0) {
-            throw new BusinessException("出库确认关联的客户口径不完整：" + detail.getFinishRollNo());
+            throw new BusinessException("出库确认关联的客户规格不完整：" + detail.getFinishRollNo());
         }
         return new Snapshot(paperName, gramWeight, finishWidth, physicalWeight,
                 customerPaperName, customerGramWeight, customerFinishWidth, customerWeight);

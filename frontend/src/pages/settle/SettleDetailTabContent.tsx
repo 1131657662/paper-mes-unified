@@ -6,6 +6,7 @@ import DocumentAuditTimeline from '../../components/biz/DocumentAuditTimeline'
 import DocumentDetailTable from '../../components/biz/DocumentDetailTable'
 import { PERMISSIONS } from '../../constants/permissions'
 import { useSettleCollectionReminders } from '../../features/settle/hooks/useSettleCollectionReminders'
+import { resolveSettleCollectionDisplay } from '../../features/settle/utils/settleCollectionStatus'
 import { useHasPermission } from '../../stores/authStore'
 import type { ReceiveRecord, SettleDetailVO } from '../../types/settle'
 import CollectionReminderModal from './CollectionReminderModal'
@@ -53,7 +54,7 @@ function AuditContent({ detail }: { detail: SettleDetailVO }) {
   const [reminderOpen, setReminderOpen] = useState(false)
   const canReceive = useHasPermission(PERMISSIONS.settleReceive)
   const remindersQuery = useSettleCollectionReminders(detail.order.uuid)
-  const canRecord = canReceive && [1, 2].includes(detail.order.settleStatus)
+  const canRecord = canReceive && resolveSettleCollectionDisplay(detail.order).active
 
   return <>
     <Card className="document-module-card" title="催收跟进"

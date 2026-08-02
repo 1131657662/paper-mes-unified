@@ -81,7 +81,7 @@ final class DeliveryCustomerExportWriter {
     private static String sourceText(String value) {
         if ("DELIVERY_REVISION".equals(value)) return "出库客户更正版";
         if ("HISTORICAL_BASELINE".equals(value)) return "历史出库实物基线";
-        if ("FINISH_DEFAULT".equals(value)) return "加工成品客户口径";
+        if ("FINISH_DEFAULT".equals(value)) return "加工成品客户规格";
         if ("PHYSICAL".equals(value)) return "实物口径";
         return value;
     }

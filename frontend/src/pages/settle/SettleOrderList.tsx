@@ -11,6 +11,7 @@ import { useSettleOrders } from '../../features/settle/hooks/useSettleOrders'
 import { useSettleListSummary } from '../../features/settle/hooks/useSettleListSummary'
 import { useSettleCollectionSummary } from '../../features/settle/hooks/useSettleCollectionSummary'
 import SettleCollectionQueueBar from '../../features/settle/components/SettleCollectionQueueBar'
+import { resolveSettleCollectionDisplay } from '../../features/settle/utils/settleCollectionStatus'
 import { useHasPermission } from '../../stores/authStore'
 import type { SettleCollectionQueue, SettleOrder } from '../../types/settle'
 import ReceiveModal from './ReceiveModal'
@@ -55,7 +56,7 @@ export default function SettleOrderList() {
     ? summary.pendingDocumentCount + summary.partialDocumentCount + summary.paidDocumentCount
     : '-'
   const tableDensity = tableDensityMode(orders.length, pageSize, ordersQuery.isLoading)
-  const selectedReceivable = rowSelection.selectedRows.filter((record) => [1, 2].includes(record.settleStatus))
+  const selectedReceivable = rowSelection.selectedRows.filter((record) => resolveSettleCollectionDisplay(record).active)
 
   const handleSearch = (values: SettleSearchFormValues) => {
     pageState.setFilters({
@@ -113,6 +114,7 @@ export default function SettleOrderList() {
           rowSelection.clear()
         }} />}
       loading={ordersQuery.isLoading}
+      summary={viewMode === 'documents' ? <SettleListSummary summary={summary} /> : undefined}
       onCreate={() => navigate('/settle-orders/create', {
         state: { from: settleListLocation(location.pathname, location.search) },
       })}
@@ -132,7 +134,7 @@ export default function SettleOrderList() {
             pageState.setCollectionQueue(value)
             rowSelection.clear()
           }} />
-      ) : <SettleListSummary summary={summary} />}
+      ) : null}
       <div className="document-page-table" data-table-density={tableDensity}>
         <SettleOrderTable
           canReceiveSettle={canReceiveSettle}
@@ -143,13 +145,13 @@ export default function SettleOrderList() {
           rowClassName={rowSelection.rowClassName}
           rowSelection={{
             ...rowSelection.rowSelection,
-            getCheckboxProps: (record) => ({ disabled: ![1, 2].includes(record.settleStatus) }),
+            getCheckboxProps: (record) => ({ disabled: !resolveSettleCollectionDisplay(record).active }),
           }}
           onDetail={(record) => navigate(`/settle-orders/${record.uuid}`, {
             state: { from: settleListLocation(location.pathname, location.search) },
           })}
-          fixedHeader={tableDensity === 'fill'}
-          onRow={(record) => [1, 2].includes(record.settleStatus) ? rowSelection.onRow(record) : {}}
+          fixedHeader={tableDensity !== 'empty'}
+          onRow={(record) => resolveSettleCollectionDisplay(record).active ? rowSelection.onRow(record) : {}}
           onReceive={(record) => setReceiveRecord(record)}
           onRemind={canReceiveSettle ? (record) => setReminderRecord(record) : undefined}
         />

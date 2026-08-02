@@ -138,7 +138,9 @@ class ProcessRoutePreviewerTest {
     void previewFromExistingOutputs_whenAppendingRewind_usesSelectedOutputWeight() {
         ProcessRoutePreviewDTO dto = new ProcessRoutePreviewDTO();
         dto.setOriginalUuid("roll-1");
-        dto.setStages(List.of(rewindStage(List.of("A0001"), "stage-output-next")));
+        ProcessRoutePreviewDTO.RouteStageDTO stage = rewindStage(List.of("A0001"), "stage-output-next");
+        stage.setStageLevel(3);
+        dto.setStages(List.of(stage));
 
         ProcessRoutePreviewVO preview = previewer.previewFromExistingOutputs(
                 roll(), Map.of("A0001", existingOutput()), dto);

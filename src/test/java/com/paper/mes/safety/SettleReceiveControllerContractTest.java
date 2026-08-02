@@ -97,7 +97,7 @@ class SettleReceiveControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(settleService, never()).cancelReceive(any(), any(), any());

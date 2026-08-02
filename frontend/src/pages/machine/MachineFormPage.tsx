@@ -49,7 +49,7 @@ export default function MachineFormPage({ mode }: Props) {
   return (
     <div className="document-module-page machine-profile-page">
       <MesPageHeader
-        title={isEdit ? '编辑机台 / 工位' : '新增机台 / 工位'}
+        title={isEdit ? '编辑机台' : '新增机台'}
         onBack={() => navigate(backPath)}
         actions={(
           <Space>

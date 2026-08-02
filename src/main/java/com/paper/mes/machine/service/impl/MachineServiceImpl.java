@@ -71,13 +71,14 @@ public class MachineServiceImpl extends ServiceImpl<MachineMapper, Machine> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String create(MachineSaveDTO dto) {
+        String resourceKind = editableResourceKind(dto.getResourceKind());
         List<MachineCapabilitySaveDTO> capabilities = capabilityWriter.normalize(
                 dto.getCapabilities(), dto.getMachineType());
         Machine machine = new Machine();
         BeanUtils.copyProperties(dto, machine);
         machine.setMachineCode(documentNoService.next(NoRuleBizType.MACHINE, LocalDate.now()));
         machine.setStatus(machine.getStatus() == null ? STATUS_ENABLED : machine.getStatus());
-        machine.setResourceKind(resourceKind(machine.getResourceKind()));
+        machine.setResourceKind(resourceKind);
         machine.setMachineType(capabilityWriter.legacyType(capabilities));
         save(machine);
         capabilityWriter.replace(machine.getUuid(), machine.getStatus(), capabilities);
@@ -88,6 +89,7 @@ public class MachineServiceImpl extends ServiceImpl<MachineMapper, Machine> impl
     @Transactional(rollbackFor = Exception.class)
     public void update(String uuid, MachineSaveDTO dto) {
         Machine existing = getByUuid(uuid);
+        ensureEditable(existing);
         List<MachineCapabilitySaveDTO> capabilities = capabilityWriter.normalizeForUpdate(
                 uuid, dto.getCapabilities(), dto.getMachineType() == null
                         ? existing.getMachineType() : dto.getMachineType());
@@ -102,7 +104,7 @@ public class MachineServiceImpl extends ServiceImpl<MachineMapper, Machine> impl
         if (existing.getStatus() == null) {
             existing.setStatus(keepStatus);
         }
-        existing.setResourceKind(resourceKind(existing.getResourceKind() == null
+        existing.setResourceKind(editableResourceKind(existing.getResourceKind() == null
                 ? keepResourceKind : existing.getResourceKind()));
         existing.setMachineType(capabilityWriter.legacyType(capabilities));
         ConcurrencyGuard.requireUpdated(updateById(existing));
@@ -121,7 +123,16 @@ public class MachineServiceImpl extends ServiceImpl<MachineMapper, Machine> impl
         return StringUtils.hasText(code) ? code : documentNoService.next(NoRuleBizType.MACHINE, LocalDate.now());
     }
 
-    private String resourceKind(String value) {
-        return StringUtils.hasText(value) ? value : RESOURCE_MACHINE;
+    private String editableResourceKind(String value) {
+        if (!StringUtils.hasText(value) || RESOURCE_MACHINE.equals(value.trim())) {
+            return RESOURCE_MACHINE;
+        }
+        throw new BusinessException("历史工位资源仅可查看，当前仅支持机台资源");
+    }
+
+    private void ensureEditable(Machine machine) {
+        if ("WORKSTATION".equals(machine.getResourceKind())) {
+            throw new BusinessException("历史工位资源仅可查看，不能修改");
+        }
     }
 }

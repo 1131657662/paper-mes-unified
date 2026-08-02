@@ -24,6 +24,7 @@ import com.paper.mes.warehouse.entity.Warehouse;
 import com.paper.mes.warehouse.mapper.WarehouseMapper;
 import com.paper.mes.warehouse.service.impl.WarehouseServiceImpl;
 import com.paper.mes.warehouse.service.WarehouseInventoryGuard;
+import com.paper.mes.common.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -32,6 +33,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -92,6 +94,31 @@ class ArchiveAutoCodeServiceTest {
         ArgumentCaptor<Machine> captor = ArgumentCaptor.forClass(Machine.class);
         verify(mapper).insert(captor.capture());
         assertEquals("JT000123", captor.getValue().getMachineCode());
+    }
+
+    @Test
+    void createMachine_rejectsOutOfScopeWorkstationResource() {
+        MachineServiceImpl service = machineService(mock(DocumentNoService.class));
+        MachineSaveDTO dto = new MachineSaveDTO();
+        dto.setMachineName("历史工位");
+        dto.setResourceKind("WORKSTATION");
+
+        assertThrows(BusinessException.class, () -> service.create(dto));
+    }
+
+    @Test
+    void updateMachine_rejectsHistoricalWorkstationRecord() {
+        MachineMapper mapper = mock(MachineMapper.class);
+        Machine historical = machine("machine-1", "JT000123");
+        historical.setResourceKind("WORKSTATION");
+        when(mapper.selectById("machine-1")).thenReturn(historical);
+        MachineServiceImpl service = machineService(mock(DocumentNoService.class));
+        ReflectionTestUtils.setField(service, "baseMapper", mapper);
+
+        MachineSaveDTO dto = new MachineSaveDTO();
+        dto.setMachineName("历史工位");
+
+        assertThrows(BusinessException.class, () -> service.update("machine-1", dto));
     }
 
     @Test

@@ -163,7 +163,7 @@ class DeliveryInventoryControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"orderUuids\":[\"order-1\"],\"warehouseUuid\":\"warehouse-1\",\"reason\":\"bad\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(warehouseRepairService, never()).assign(any());

@@ -1,5 +1,6 @@
 import type { SettleCandidateVO, SettleOrder } from '../../../types/settle'
 import { formatMoney } from '../utils/settleFormatters'
+import { resolveSettleCollectionDisplay } from '../utils/settleCollectionStatus'
 
 interface Props {
   orders: SettleOrder[]
@@ -8,16 +9,17 @@ interface Props {
 
 export default function SettleMetricStrip({ orders, selectedCandidates }: Props) {
   const totalReceivable = orders.reduce((sum, item) => sum + (item.totalAmount ?? 0), 0)
-  const totalUnreceived = orders.reduce((sum, item) => sum + (item.unreceivedAmount ?? 0), 0)
   const selectedAmount = selectedCandidates.reduce((sum, item) => sum + (item.totalAmount ?? 0), 0)
-  const pendingReceives = orders.filter((item) => item.settleStatus !== 3)
+  const pendingReceives = orders.filter((item) => resolveSettleCollectionDisplay(item).active)
+  const totalUnreceived = pendingReceives.reduce((sum, item) => sum + (item.unreceivedAmount ?? 0), 0)
+  const settledCount = orders.filter((item) => !resolveSettleCollectionDisplay(item).active && item.settleStatus !== 4).length
 
   return (
     <div className="settle-metrics mes-metrics">
       <Metric title="本次选择" main={`${selectedCandidates.length} 单`} sub={formatMoney(selectedAmount)} />
       <Metric title="结算单" main={`${orders.length} 张`} sub={formatMoney(totalReceivable)} />
       <Metric title="待收款" main={`${pendingReceives.length} 张`} sub={formatMoney(totalUnreceived)} />
-      <Metric title="已结清" main={`${orders.length - pendingReceives.length} 张`} sub="收款完成" />
+      <Metric title="已结清" main={`${settledCount} 张`} sub="收款完成" />
     </div>
   )
 }

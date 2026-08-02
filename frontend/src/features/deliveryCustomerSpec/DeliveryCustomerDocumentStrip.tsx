@@ -1,5 +1,6 @@
 import { EditOutlined, FileSyncOutlined, HistoryOutlined } from '@ant-design/icons'
 import { Button, Skeleton, Tag, Typography } from 'antd'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import { formatKg } from '../../utils/numberFormatters'
 import type { DeliveryCustomerRevisionPreview } from './deliveryCustomerSpecTypes'
 import './DeliveryCustomerSpec.css'
@@ -31,7 +32,9 @@ export default function DeliveryCustomerDocumentStrip({ canEdit, data, deliveryS
       </div>
       <div className="delivery-customer-strip__actions">
         <Button icon={<HistoryOutlined />} onClick={onHistory}>版本记录</Button>
-        {canEdit && <Button type="primary" icon={<EditOutlined />} onClick={onEdit}>{completed ? '创建客户更正版' : '维护客户口径'}</Button>}
+        {canEdit && <Button type="primary" icon={<EditOutlined />} onClick={onEdit}>
+          {completed ? '创建客户更正版' : `维护${DISPLAY_TERMS.customerSpecification}`}
+        </Button>}
       </div>
     </div>
   )
@@ -39,7 +42,7 @@ export default function DeliveryCustomerDocumentStrip({ canEdit, data, deliveryS
 
 function revisionTitle(kind: DeliveryCustomerRevisionPreview['currentRevisionKind'] | undefined, completed: boolean) {
   if (kind === 'USER_REVISION') return '客户更正版'
-  if (kind === 'SYSTEM_BASELINE') return '客户口径冻结基线'
+  if (kind === 'SYSTEM_BASELINE') return DISPLAY_TERMS.customerSpecificationBaseline
   if (kind === 'HISTORICAL_BASELINE') return '历史出库实物基线'
-  return completed ? '客户单据口径' : '待出库客户口径'
+  return completed ? '客户单据规格' : '待出库客户规格'
 }

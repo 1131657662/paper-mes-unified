@@ -37,7 +37,7 @@ export default function MachineList() {
       const res = await pageMachines({ ...latestQueryRef.current, current: 1, size: 10000 })
       const result = exportRowsToCsv({
         columns: machineExportColumns(),
-        filename: datedCsvFilename('机台与工位档案'),
+        filename: datedCsvFilename('机台档案'),
         rows: res.records ?? [],
       })
       message.success(`已导出 ${result.filename}`)
@@ -57,7 +57,7 @@ export default function MachineList() {
       columns={resizable.columns}
       columnsState={columnsState}
       components={resizable.components}
-      headerTitle="机台与工位档案"
+      headerTitle="机台档案"
       toolBarRender={() => [
         <Button key="export" icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
           导出

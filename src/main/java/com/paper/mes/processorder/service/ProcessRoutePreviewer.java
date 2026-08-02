@@ -41,6 +41,7 @@ public class ProcessRoutePreviewer {
     private ProcessRoutePreviewVO preview(OriginalRoll roll, ProcessRoutePreviewDTO dto,
                                           Map<String, ProcessRoutePreviewVO.RouteOutputVO> initialOutputs) {
         ProcessRouteQuantityValidator.requireWithinLimit(dto);
+        validateStageSequence(dto.getStages(), initialOutputs);
         routeCatalogPolicy.validate(dto.getStages());
         Map<String, ProcessRoutePreviewVO.RouteOutputVO> outputsByKey = new HashMap<>(initialOutputs);
         Set<String> consumedKeys = consumedOutputKeys(dto.getStages());
@@ -49,7 +50,7 @@ public class ProcessRoutePreviewer {
         List<ProcessRoutePreviewVO.RouteOutputVO> outputLines = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (ProcessRoutePreviewDTO.RouteStageDTO stage : dto.getStages()) {
-            validateStageInputs(stage, outputsByKey, usedInputKeys);
+            validateStageInputs(stage, outputsByKey, usedInputKeys, initialOutputs.keySet());
             ProcessRoutePreviewValidator.validateStageWeight(roll, stage, outputsByKey);
             BigDecimal processWeight = resolveProcessWeight(roll, stage, outputsByKey);
             BigDecimal amount = FeeCalculator.stepAmount(stage.getStepType(), stage.getKnifeCount(), processWeight, stage.getUnitPrice());
@@ -83,8 +84,12 @@ public class ProcessRoutePreviewer {
     }
     private void validateStageInputs(ProcessRoutePreviewDTO.RouteStageDTO stage,
                                      Map<String, ProcessRoutePreviewVO.RouteOutputVO> outputsByKey,
-                                     Set<String> usedInputKeys) {
+                                     Set<String> usedInputKeys,
+                                     Set<String> initialOutputKeys) {
         if (stage.getStageLevel() == null || stage.getStageLevel() <= 1) {
+            if (stage.getInputOutputKeys() != null && !stage.getInputOutputKeys().isEmpty()) {
+                throw new BusinessException("首段工艺不能引用前置阶段产出");
+            }
             return;
         }
         if (stage.getInputOutputKeys() == null || stage.getInputOutputKeys().isEmpty()) {
@@ -101,11 +106,74 @@ public class ProcessRoutePreviewer {
             if (!outputsByKey.containsKey(key)) {
                 throw new BusinessException("后续工艺引用了不存在的阶段产出：" + key);
             }
+            Integer sourceLevel = outputsByKey.get(key).getStageLevel();
+            if (sourceLevel == null && !initialOutputKeys.contains(key)) {
+                throw new BusinessException("阶段产出缺少阶段编号：" + key);
+            }
+            if (sourceLevel != null && sourceLevel != stage.getStageLevel() - 1) {
+                throw new BusinessException("后续工艺只能引用紧邻上一阶段产出：" + key);
+            }
             if (isRemainOutput(outputsByKey.get(key))) {
                 throw new BusinessException("修边/余料不能作为后续工艺来源：" + key);
             }
             if (!usedInputKeys.add(key)) {
                 throw new BusinessException("阶段产出不能重复作为后续工艺来源：" + key);
+            }
+        }
+    }
+
+    private void validateStageSequence(List<ProcessRoutePreviewDTO.RouteStageDTO> stages,
+                                       Map<String, ProcessRoutePreviewVO.RouteOutputVO> initialOutputs) {
+        if (stages == null || stages.isEmpty()) {
+            throw new BusinessException("工艺阶段不能为空");
+        }
+        int previous = 0;
+        for (int i = 0; i < stages.size(); i++) {
+            ProcessRoutePreviewDTO.RouteStageDTO stage = stages.get(i);
+            Integer level = stage.getStageLevel();
+            if (level == null || level <= 0) {
+                throw new BusinessException("阶段编号必须为正数");
+            }
+            if (i > 0 && level != previous + 1) {
+                throw new BusinessException("工艺阶段必须按连续编号顺序提交");
+            }
+            validateStageNumbers(stage);
+            previous = level;
+        }
+        Integer firstLevel = stages.get(0).getStageLevel();
+        if (firstLevel > 1 && initialOutputs.isEmpty()) {
+            throw new BusinessException("非首段工艺缺少上一阶段产出");
+        }
+    }
+
+    private void validateStageNumbers(ProcessRoutePreviewDTO.RouteStageDTO stage) {
+        if (stage.getKnifeCount() != null && stage.getKnifeCount() <= 0) {
+            throw new BusinessException("刀数必须大于0");
+        }
+        if (stage.getProcessWeight() != null && stage.getProcessWeight().signum() <= 0) {
+            throw new BusinessException("加工重量必须大于0");
+        }
+        if (stage.getUnitPrice() != null && stage.getUnitPrice().signum() < 0) {
+            throw new BusinessException("工序单价不能为负数");
+        }
+        if (stage.getOutputs() == null || stage.getOutputs().isEmpty()) {
+            throw new BusinessException("每道工序至少需要一个阶段产出");
+        }
+        for (ProcessRoutePreviewDTO.RouteOutputDTO output : stage.getOutputs()) {
+            if (output.getCount() != null && output.getCount() <= 0) {
+                throw new BusinessException("阶段产出数量必须大于0");
+            }
+            if (output.getEstimateWeight() != null && output.getEstimateWeight().signum() < 0) {
+                throw new BusinessException("阶段产出重量不能为负数");
+            }
+            if (output.getFinishWidth() != null && output.getFinishWidth() <= 0) {
+                throw new BusinessException("成品门幅必须大于0");
+            }
+            if (output.getFinishDiameter() != null && output.getFinishDiameter() <= 0) {
+                throw new BusinessException("成品直径必须大于0");
+            }
+            if (output.getFinishCoreDiameter() != null && output.getFinishCoreDiameter() <= 0) {
+                throw new BusinessException("纸芯直径必须大于0");
             }
         }
     }

@@ -1,5 +1,8 @@
-import { DatePicker, Form, Input, Radio, Select } from 'antd'
+import { CalendarOutlined } from '@ant-design/icons'
+import { Button, DatePicker, Dropdown, Form, Input, Radio, Select, Space, Tooltip } from 'antd'
+import type { MenuProps } from 'antd'
 import type { Dayjs } from 'dayjs'
+import { periodFor } from '../../features/report/utils/reportPeriod'
 
 export interface SettleCreateForm {
   customerUuid?: string
@@ -34,7 +37,7 @@ export default function SettleConditionFields({ customers, invoiceOptions, isMon
           options={customers.map((item) => ({ label: item.customerName, value: item.uuid }))} optionFilterProp="label" />
       </Form.Item>
       <Form.Item name="period" label="归属日期范围" required={isMonthMode} rules={requiredPeriodRules}>
-        <DatePicker.RangePicker />
+        <PeriodRangeField />
       </Form.Item>
       <Form.Item name="settleDate" label="结算日期" rules={[{ required: true, message: '请选择结算日期' }]}>
         <DatePicker />
@@ -47,5 +50,30 @@ export default function SettleConditionFields({ customers, invoiceOptions, isMon
       </Form.Item>
       <Form.Item name="remark" label="备注"><Input maxLength={255} placeholder="结算备注" /></Form.Item>
     </div>
+  )
+}
+
+const periodPresetItems: MenuProps['items'] = [
+  { key: 'previousMonth', label: '上月' },
+]
+
+interface PeriodRangeFieldProps {
+  value?: [Dayjs, Dayjs] | null
+  onChange?: (value: [Dayjs, Dayjs] | null) => void
+}
+
+function PeriodRangeField({ value, onChange }: PeriodRangeFieldProps) {
+  const applyPreviousMonth = () => onChange?.(periodFor('previousMonth'))
+  return (
+    <Space.Compact block>
+      <Tooltip title="快捷选择归属日期范围">
+        <Dropdown menu={{ items: periodPresetItems, onClick: applyPreviousMonth }}
+          trigger={['click']} placement="bottomLeft">
+          <Button aria-label="快捷选择归属日期范围" icon={<CalendarOutlined />} />
+        </Dropdown>
+      </Tooltip>
+      <DatePicker.RangePicker value={value}
+        onChange={(next) => onChange?.(next?.[0] && next[1] ? [next[0], next[1]] : null)} />
+    </Space.Compact>
   )
 }

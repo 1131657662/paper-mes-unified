@@ -33,7 +33,7 @@ public class DeliveryOrderExportRevisionSnapshot {
                 ? null : previewService.current(orderUuid);
         int revisionNo = preview == null ? currentRevisionNo(orderUuid) : revisionNo(preview);
         if (expectedRevisionNo != null && expectedRevisionNo != revisionNo) {
-            throw new BusinessException("出库客户口径版本已变化，请刷新后重新导出");
+            throw new BusinessException("出库客户规格版本已变化，请刷新后重新导出");
         }
         return serialize(new DeliveryOrderExportTaskPayload(
                 DeliveryOrderExportTaskPayload.CURRENT_SCHEMA_VERSION, revisionNo,
@@ -71,11 +71,11 @@ public class DeliveryOrderExportRevisionSnapshot {
                     value, DeliveryOrderExportTaskPayload.class);
             if (payload.schemaVersion() != DeliveryOrderExportTaskPayload.CURRENT_SCHEMA_VERSION
                     && payload.schemaVersion() != DeliveryOrderExportTaskPayload.LEGACY_SCHEMA_VERSION) {
-                throw new BusinessException("出库导出任务的客户口径版本格式不受支持");
+                throw new BusinessException("出库导出任务的客户规格版本格式不受支持");
             }
             return payload;
         } catch (JsonProcessingException exception) {
-            throw new BusinessException("出库导出任务的客户口径版本快照损坏");
+            throw new BusinessException("出库导出任务的客户规格版本快照损坏");
         }
     }
 
@@ -90,7 +90,7 @@ public class DeliveryOrderExportRevisionSnapshot {
 
     private void verifyRevision(int currentRevisionNo, int expectedRevisionNo) {
         if (currentRevisionNo != expectedRevisionNo) {
-            throw new BusinessException("出库客户口径版本已变化，请重新创建导出任务");
+            throw new BusinessException("出库客户规格版本已变化，请重新创建导出任务");
         }
     }
 
@@ -98,7 +98,7 @@ public class DeliveryOrderExportRevisionSnapshot {
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException exception) {
-            throw new BusinessException("出库客户口径版本无法保存");
+            throw new BusinessException("出库客户规格版本无法保存");
         }
     }
 

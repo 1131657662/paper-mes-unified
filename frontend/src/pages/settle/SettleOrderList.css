@@ -199,6 +199,36 @@
   font-size: 12px;
 }
 
+.document-page-table .settle-order-table {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+}
+
+.document-page-table .settle-order-table .ant-pro-table,
+.document-page-table .settle-order-table .ant-spin-nested-loading,
+.document-page-table .settle-order-table .ant-spin-container,
+.document-page-table .settle-order-table .ant-table,
+.document-page-table .settle-order-table .ant-table-container {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+}
+
+.document-page-table .settle-order-table .ant-table-header {
+  flex: 0 0 auto;
+  background: var(--mes-color-soft);
+  border-bottom: 1px solid var(--mes-color-border-light);
+}
+
+.document-page-table .settle-order-table .ant-table-body {
+  min-height: 0;
+  flex: 1 1 0;
+  scrollbar-gutter: stable;
+}
+
 .settle-panel .ant-table-wrapper {
   display: flex;
   min-height: 0;

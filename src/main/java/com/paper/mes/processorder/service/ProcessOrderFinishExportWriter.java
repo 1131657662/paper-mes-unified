@@ -92,7 +92,7 @@ final class ProcessOrderFinishExportWriter {
     private static void writeHeader(Sheet sheet, CellStyle style) {
         String[] labels = {"序号", "成品卷号", "内部号", "品名", "克重", "门幅", "外径", "纸芯", "来源",
                 "预估重量kg", "实际重量kg", "切边kg", "状态", "备用号", "来源原卷", "回录备注", "备注",
-                "客户品名", "客户克重", "客户门幅", "客户重量kg", "客户口径状态", "调整原因", "调整人", "调整时间"};
+                "客户品名", "客户克重", "客户门幅", "客户重量kg", "客户规格状态", "调整原因", "调整人", "调整时间"};
         Row row = sheet.createRow(0);
         writeValues(row, labels);
         for (int index = 0; index < labels.length; index++) row.getCell(index).setCellStyle(style);

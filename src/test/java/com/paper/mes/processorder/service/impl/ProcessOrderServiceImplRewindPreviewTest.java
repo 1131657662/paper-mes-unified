@@ -5,6 +5,7 @@ import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.customer.service.CustomerService;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
+import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.processorder.dto.FinishConfigSaveDTO;
@@ -383,6 +384,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 null,
                 null,
                 null,
-                new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy());
+                new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy(),
+                mock(InventoryLedgerBusinessRecorder.class));
     }
 }

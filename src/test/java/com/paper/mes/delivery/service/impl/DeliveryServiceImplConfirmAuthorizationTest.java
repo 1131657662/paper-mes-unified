@@ -18,6 +18,7 @@ import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
 import com.paper.mes.delivery.service.DeliverySourceLockService;
 import com.paper.mes.delivery.service.DeliveryWarehousePolicy;
 import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
+import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.oplog.mapper.OperationLogMapper;
 import com.paper.mes.processorder.entity.FinishRoll;
@@ -77,6 +78,7 @@ class DeliveryServiceImplConfirmAuthorizationTest {
     @Mock private BusinessLockService businessLockService;
     @Mock private DeliverySourceLockService deliverySourceLockService;
     @Mock private DeliveryCustomerRevisionSnapshotWriter customerRevisionSnapshotWriter;
+    @Mock private InventoryLedgerBusinessRecorder inventoryLedgerRecorder;
     @Spy private ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     @InjectMocks private DeliveryServiceImpl service;
 
@@ -163,6 +165,7 @@ class DeliveryServiceImplConfirmAuthorizationTest {
         detail.setPaperName("测试纸");
         detail.setOutWeight(new BigDecimal("10.000"));
         detail.setStockLockStatus(1);
+        detail.setVersion(1);
         return detail;
     }
 

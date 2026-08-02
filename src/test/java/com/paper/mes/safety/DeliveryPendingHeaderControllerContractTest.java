@@ -77,7 +77,7 @@ class DeliveryPendingHeaderControllerContractTest {
         authorizeAs("warehouse");
 
         performUpdate("{\"carNo\":\"浙A12345\"}")
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(pendingHeaderService, never()).update(any(), any());

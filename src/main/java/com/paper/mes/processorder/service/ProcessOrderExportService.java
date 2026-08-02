@@ -31,7 +31,7 @@ public class ProcessOrderExportService {
         ProcessOrderStageOutputExportWriter.write(workbook.createSheet("阶段产物"), detail.getRollProductions());
         writeRewindParams(workbook.createSheet("复卷参数"), detail.getRollProductions(), styles);
         ProcessOrderFinishExportWriter.write(workbook.createSheet("成品明细"), detail, styles.header);
-        ProcessOrderCustomerExportWriter.write(workbook.createSheet("客户口径"), detail, styles.header);
+        ProcessOrderCustomerExportWriter.write(workbook.createSheet("客户规格"), detail, styles.header);
         writeSources(workbook.createSheet("成品来源"), detail.getRollProductions(), styles);
         return workbook;
     }

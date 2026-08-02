@@ -1,5 +1,6 @@
 import { Segmented, Space, Switch, Typography } from 'antd'
 import { useState } from 'react'
+import { DISPLAY_TERMS } from '../../../constants/displayTerms'
 import CustomerSpecificationDetailView from '../../processOrderCustomerSpec/CustomerSpecificationDetailView'
 import type { FinishCustomerSpec } from '../../processOrderCustomerSpec/customerSpecTypes'
 import type { FinishedProductRow } from './finishedProductRows'
@@ -25,7 +26,7 @@ export default function FinishedProductsTable({ customerSpecsError = false, rows
         <Segmented<ProductView>
           aria-label="成品数据视图"
           options={[
-            { disabled: customerSpecsError, label: '客户口径', value: 'customer' },
+            { disabled: customerSpecsError, label: DISPLAY_TERMS.customerSpecification, value: 'customer' },
             { label: '实物明细', value: 'physical' },
           ]}
           value={activeView}

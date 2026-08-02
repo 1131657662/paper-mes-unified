@@ -75,7 +75,7 @@ public class FinishCustomerRevisionReader {
         FinishCustomerRevision revision = revisionMapper.selectOne(new LambdaQueryWrapper<FinishCustomerRevision>()
                 .eq(FinishCustomerRevision::getUuid, revisionUuid)
                 .eq(FinishCustomerRevision::getOrderUuid, orderUuid));
-        if (revision == null) throw new BusinessException("客户口径版本不存在");
+        if (revision == null) throw new BusinessException("客户规格版本不存在");
         FinishCustomerRevisionDetailVO result = new FinishCustomerRevisionDetailVO();
         result.setUuid(revision.getUuid());
         result.setOrderUuid(revision.getOrderUuid());

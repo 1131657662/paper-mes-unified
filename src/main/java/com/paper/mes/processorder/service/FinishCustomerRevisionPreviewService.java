@@ -68,7 +68,7 @@ public class FinishCustomerRevisionPreviewService {
         ProcessOrder order = orderMapper.selectById(orderUuid);
         if (order == null) throw new BusinessException(ErrorCode.E002, "加工单不存在");
         if (order.getOrderStatus() != null && order.getOrderStatus() == 6) {
-            throw new BusinessException(ErrorCode.E001, "已作废加工单不能维护客户口径");
+            throw new BusinessException(ErrorCode.E001, "已作废加工单不能维护客户规格");
         }
         return order;
     }

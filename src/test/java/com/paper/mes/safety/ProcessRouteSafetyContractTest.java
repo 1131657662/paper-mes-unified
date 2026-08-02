@@ -91,16 +91,15 @@ class ProcessRouteSafetyContractTest {
     }
 
     @Test
-    void processRouteAppend_allowsOnlyPendingOrToRecordOrders() throws IOException {
+    void processRouteAppend_allowsOnlyPendingOrders() throws IOException {
         String source = source(APPEND_SERVICE);
         String canAppend = slice(source, "private boolean canAppend", "private void requireAppendStages");
 
         assertContainsAll(source,
                 "private static final int STATUS_PENDING = 1",
-                "private static final int STATUS_TO_RECORD = 3",
                 "仅待下发或待回录加工单可追加后续链式工艺");
         assertContainsAll(canAppend,
-                "status == STATUS_PENDING || status == STATUS_TO_RECORD");
+                "status == STATUS_PENDING");
     }
 
     @Test

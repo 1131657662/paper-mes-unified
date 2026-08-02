@@ -83,7 +83,7 @@ class ProcessRouteAppendServiceVersionTest {
     private ProcessOrder appendableOrder(int version) {
         ProcessOrder order = new ProcessOrder();
         order.setUuid("order-1");
-        order.setOrderStatus(3);
+        order.setOrderStatus(1);
         order.setVersion(version);
         return order;
     }

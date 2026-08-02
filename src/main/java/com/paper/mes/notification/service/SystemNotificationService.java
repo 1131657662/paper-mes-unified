@@ -131,7 +131,7 @@ public class SystemNotificationService {
     private String failureTitle(String taskType) {
         return switch (taskType) {
             case "AUTO_BACKUP" -> "自动备份失败";
-            case "VERIFY" -> "恢复演练失败";
+            case "VERIFY" -> "隔离恢复验证失败";
             default -> "手动备份失败";
         };
     }

@@ -39,7 +39,7 @@ export default function MachineDetailPage() {
   if (!machine) {
     return (
       <div className="document-module-page machine-profile-page">
-        <Empty description="机台或工位档案不存在" />
+        <Empty description="机台档案不存在" />
       </div>
     )
   }
@@ -48,11 +48,11 @@ export default function MachineDetailPage() {
     <div className="document-module-page machine-profile-page">
       <MesPageHeader
         title={machine.machineName}
-        eyebrow="机台与工位档案"
+        eyebrow="机台档案"
         description={`资源编码：${text(machine.machineCode)} · 类型：${resourceKindText(machine)} · 状态：${statusText(machine.status)}`}
         onBack={() => navigate('/machines')}
         tags={<Tag color={machine.status === 1 ? 'green' : 'default'}>{statusText(machine.status)}</Tag>}
-        actions={canManageBase ? (
+        actions={canManageBase && machine.resourceKind !== 'WORKSTATION' ? (
           <Space>
             <Button icon={<EditOutlined />} type="primary" onClick={() => navigate(`/machines/${machine.uuid}/edit`)}>
               编辑资源
@@ -62,7 +62,7 @@ export default function MachineDetailPage() {
       />
 
       <section className="machine-detail-overview">
-        <MetricCard label="资源类型" value={resourceKindText(machine)} helper="设备或生产工位" />
+        <MetricCard label="资源类型" value={resourceKindText(machine)} helper="历史工位记录仅保留查看" />
         <MetricCard label="工艺能力" value={`${machine.capabilities?.length ?? 0} 项`} helper={capabilityNames(machine)} />
         <MetricCard label="默认工艺" value={`${defaultCount(machine)} 项`} helper="自动推荐的加工资源" />
         <MetricCard label="当前状态" value={statusText(machine.status)} helper="停用机台不建议排产" />

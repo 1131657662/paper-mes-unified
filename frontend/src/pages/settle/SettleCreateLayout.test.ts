@@ -20,4 +20,8 @@ describe('settlement create layout', () => {
     expect(css).toContain('height: max(600px, calc(100dvh - 126px))')
     expect(narrowPageRule?.[1]).not.toContain('height:')
   })
+
+  it('keeps the date preset and picker aligned as one control', () => {
+    expect(css).toMatch(/\.settle-create-page__form \.ant-space-compact\s*\{[^}]*width:\s*100%/s)
+  })
 })

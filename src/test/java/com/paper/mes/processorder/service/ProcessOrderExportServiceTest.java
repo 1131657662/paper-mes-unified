@@ -52,7 +52,7 @@ class ProcessOrderExportServiceTest {
         finish.setCustomerSpecOverrideAt(LocalDateTime.of(2026, 7, 22, 10, 30));
 
         try (Workbook workbook = service.buildWorkbook(detail)) {
-            var sheet = workbook.getSheet("客户口径");
+            var sheet = workbook.getSheet("客户规格");
 
             assertEquals("蒙迪半化学浆", sheet.getRow(1).getCell(2).getStringCellValue());
             assertEquals("1176", sheet.getRow(1).getCell(5).getStringCellValue());

@@ -4,25 +4,25 @@ import type { FinishCustomerSpec } from '../../processOrderCustomerSpec/customer
 import FinishedProductsTable from './FinishedProductsTable'
 import type { FinishedProductRow } from './finishedProductRows'
 
-describe('加工成品客户口径', () => {
+describe('加工成品客户规格', () => {
   it('默认同时展示规格汇总和逐件明细', () => {
     const markup = renderToStaticMarkup(<FinishedProductsTable rows={[row()]} specs={[spec()]} />)
 
     expect(markup).toContain('规格汇总')
     expect(markup).toContain('逐件明细')
-    expect(markup).toContain('客户口径合计')
+    expect(markup).toContain('客户规格合计')
     expect(markup).toContain('A000568')
     expect(markup).not.toContain('规格对照')
   })
 
-  it('客户口径加载失败时只展示实物数据', () => {
+  it('客户规格加载失败时只展示实物数据', () => {
     const markup = renderToStaticMarkup(
       <FinishedProductsTable customerSpecsError rows={[row()]} />,
     )
 
     expect(markup).toContain('实物合计')
-    expect(markup).not.toContain('客户口径合计')
-    expect(markup).toMatch(/ant-segmented-item-disabled[\s\S]*客户口径/)
+    expect(markup).not.toContain('客户规格合计')
+    expect(markup).toMatch(/ant-segmented-item-disabled[\s\S]*客户规格/)
   })
 })
 

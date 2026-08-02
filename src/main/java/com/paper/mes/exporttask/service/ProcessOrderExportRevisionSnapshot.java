@@ -18,7 +18,7 @@ public class ProcessOrderExportRevisionSnapshot {
     public String capture(String orderUuid, Integer expectedRevisionNo) {
         int currentRevisionNo = currentRevisionNo(orderUuid);
         if (expectedRevisionNo != null && expectedRevisionNo != currentRevisionNo) {
-            throw new BusinessException("加工单客户口径版本已变化，请刷新后重新导出");
+            throw new BusinessException("加工单客户规格版本已变化，请刷新后重新导出");
         }
         return serialize(new ProcessOrderExportTaskPayload(
                 ProcessOrderExportTaskPayload.CURRENT_SCHEMA_VERSION, currentRevisionNo));
@@ -28,7 +28,7 @@ public class ProcessOrderExportRevisionSnapshot {
         if (value == null || value.isBlank()) return;
         ProcessOrderExportTaskPayload payload = parse(value);
         if (currentRevisionNo(orderUuid) != payload.customerRevisionNo()) {
-            throw new BusinessException("加工单客户口径版本已变化，请重新创建导出任务");
+            throw new BusinessException("加工单客户规格版本已变化，请重新创建导出任务");
         }
     }
 
@@ -41,7 +41,7 @@ public class ProcessOrderExportRevisionSnapshot {
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException exception) {
-            throw new BusinessException("加工单客户口径版本无法保存");
+            throw new BusinessException("加工单客户规格版本无法保存");
         }
     }
 
@@ -50,11 +50,11 @@ public class ProcessOrderExportRevisionSnapshot {
             ProcessOrderExportTaskPayload payload = objectMapper.readValue(
                     value, ProcessOrderExportTaskPayload.class);
             if (payload.schemaVersion() != ProcessOrderExportTaskPayload.CURRENT_SCHEMA_VERSION) {
-                throw new BusinessException("加工单导出任务的客户口径版本格式不受支持");
+                throw new BusinessException("加工单导出任务的客户规格版本格式不受支持");
             }
             return payload;
         } catch (JsonProcessingException exception) {
-            throw new BusinessException("加工单导出任务的客户口径版本快照损坏");
+            throw new BusinessException("加工单导出任务的客户规格版本快照损坏");
         }
     }
 }

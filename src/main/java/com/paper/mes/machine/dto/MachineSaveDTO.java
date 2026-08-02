@@ -27,7 +27,7 @@ public class MachineSaveDTO {
     @Min(value = 1, message = "历史机台类型无效")
     @Max(value = 3, message = "历史机台类型无效")
     private Integer machineType;
-    @Pattern(regexp = "MACHINE|WORKSTATION", message = "生产资源类型无效")
+    @Pattern(regexp = "MACHINE", message = "当前范围仅支持机台资源")
     private String resourceKind;
     /** 1启用 2停用，不传默认启用 */
     @Min(value = 1, message = "机台状态无效")

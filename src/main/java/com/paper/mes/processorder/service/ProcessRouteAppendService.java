@@ -25,7 +25,6 @@ import java.util.List;
 public class ProcessRouteAppendService {
 
     private static final int STATUS_PENDING = 1;
-    private static final int STATUS_TO_RECORD = 3;
     private static final int IS_REMAIN_YES = 1;
 
     private final ProcessOrderMapper orderMapper;
@@ -88,7 +87,9 @@ public class ProcessRouteAppendService {
     }
 
     private boolean canAppend(Integer status) {
-        return status != null && (status == STATUS_PENDING || status == STATUS_TO_RECORD);
+        // Once the order is issued, its plan/print snapshot is the execution baseline.
+        // Changes must go through an explicit versioned reissue command.
+        return status != null && status == STATUS_PENDING;
     }
 
     private void requireAppendStages(ProcessRoutePreviewDTO dto) {

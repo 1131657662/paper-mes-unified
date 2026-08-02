@@ -13,6 +13,7 @@ import { useSettleOrderHeader } from '../../features/settle/hooks/useSettleOrder
 import { useSettlePrintLines } from '../../features/settle/hooks/useSettlePrintLines'
 import { useSettleReceives } from '../../features/settle/hooks/useSettleReceives'
 import { useVoidSettle } from '../../features/settle/hooks/useVoidSettle'
+import { resolveSettleCollectionDisplay } from '../../features/settle/utils/settleCollectionStatus'
 import { useHasPermission } from '../../stores/authStore'
 import type { ReceiveRecord, SettleDetailVO } from '../../types/settle'
 import ReceiveModal from './ReceiveModal'
@@ -132,7 +133,7 @@ export default function SettleDetailPage() {
         tags={order && <SettleDetailHeader order={order} />}
         actions={order && (
           <Space wrap>
-            {canReceiveSettle && [1, 2].includes(order.settleStatus) && (
+            {canReceiveSettle && resolveSettleCollectionDisplay(order).active && (
               <Button type="primary" icon={<WalletOutlined />} onClick={() => setReceiveOpen(true)}>
                 登记收款
               </Button>

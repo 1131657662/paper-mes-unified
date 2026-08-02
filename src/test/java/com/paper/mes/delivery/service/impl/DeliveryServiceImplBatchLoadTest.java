@@ -18,6 +18,7 @@ import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
 import com.paper.mes.delivery.service.DeliverySourceLockService;
 import com.paper.mes.delivery.service.DeliveryWarehousePolicy;
 import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
+import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.mapper.OperationLogMapper;
 import com.paper.mes.oplog.service.OperationLogService;
@@ -77,6 +78,7 @@ class DeliveryServiceImplBatchLoadTest {
     @Mock private BusinessLockService businessLockService;
     @Mock private DeliveryCustomerRevisionSnapshotWriter customerRevisionSnapshotWriter;
     @Mock private DeliverySourceLockService deliverySourceLockService;
+    @Mock private InventoryLedgerBusinessRecorder inventoryLedgerRecorder;
 
     private DeliveryServiceImpl service;
 
@@ -88,7 +90,7 @@ class DeliveryServiceImplBatchLoadTest {
                 settlementBlockPolicy, warehousePolicy,
                 operationLogMapper, operationLogService,
                 documentNoService, businessLockService, deliverySourceLockService,
-                new ObjectMapper(), customerRevisionSnapshotWriter);
+                new ObjectMapper(), customerRevisionSnapshotWriter, inventoryLedgerRecorder);
         ReflectionTestUtils.setField(service, "baseMapper", deliveryOrderMapper);
     }
 

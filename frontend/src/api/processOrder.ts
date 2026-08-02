@@ -269,7 +269,9 @@ export function submitProcessOrderDraft(uuid: string, dto: DraftSubmitDTO) {
 
 export function changeOrderStatus(uuid: string, dto: StatusChangeDTO) {
   return request<void>({
-    url: `/api/process-orders/${uuid}/status`,
+    // Kept as a compatibility name for callers; the server accepts only the
+    // explicit rollback command for reverse transitions.
+    url: `/api/process-orders/${uuid}/rollback`,
     method: 'put',
     data: dto,
   })

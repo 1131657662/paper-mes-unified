@@ -1,5 +1,6 @@
 import { Empty, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import { formatGram, formatKg, formatMm, formatTonFromKg } from '../../utils/numberFormatters'
 import type { FinishedProductRow } from '../processOrderDetail/components/finishedProductRows'
 import { buildCustomerSpecificationGroups, type CustomerSpecificationGroup } from './customerSpecModel'
@@ -35,5 +36,5 @@ function renderPhysical(values: string[]) {
 }
 
 function summary(count: number, weight: number) {
-  return <Table.Summary.Row className="finished-products-summary"><Table.Summary.Cell index={0}>客户口径合计</Table.Summary.Cell><Table.Summary.Cell index={1} colSpan={2} /><Table.Summary.Cell index={3} align="right">{count} 件</Table.Summary.Cell><Table.Summary.Cell index={4} align="right">{formatTonFromKg(weight)}</Table.Summary.Cell><Table.Summary.Cell index={5} /></Table.Summary.Row>
+  return <Table.Summary.Row className="finished-products-summary"><Table.Summary.Cell index={0}>{DISPLAY_TERMS.customerSpecification}合计</Table.Summary.Cell><Table.Summary.Cell index={1} colSpan={2} /><Table.Summary.Cell index={3} align="right">{count} 件</Table.Summary.Cell><Table.Summary.Cell index={4} align="right">{formatTonFromKg(weight)}</Table.Summary.Cell><Table.Summary.Cell index={5} /></Table.Summary.Row>
 }

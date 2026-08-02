@@ -100,7 +100,7 @@ class BaseArchiveControllerContractTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"customerName\":\"\"}")
                         .header("Authorization", "Bearer " + TOKEN))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("customerName: 客户名称不能为空"));
 

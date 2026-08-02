@@ -91,7 +91,8 @@ class SettleServiceImplVoidSettleBatchLoadTest {
     void setUp() {
         service = new SettleServiceImpl(settleDetailMapper, receiveRecordMapper, originalRollMapper,
                 finishRollMapper, finishOriginalRelMapper, processStepMapper, processStageOutputMapper,
-                processOrderService, customerService, machineMapper, operationLogMapper, operationLogService,
+                processOrderService, processOrderMapper, customerService, machineMapper,
+                operationLogMapper, operationLogService,
                 statsLoader, candidateAmountLoader, settlementAmountCalculator, settlementQuoteFactory,
                 settlementQuoteGuard, settlementDiscountPolicy, pageDataLoader,
                 documentNoService, businessLockService,

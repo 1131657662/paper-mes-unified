@@ -27,6 +27,14 @@
   gap: 10px;
 }
 
+.settle-create-page__form .ant-space-compact {
+  width: 100%;
+}
+
+.settle-create-page__form .ant-space-compact .ant-picker {
+  flex: 1 1 auto;
+}
+
 .settle-create-page__selection {
   display: flex;
   min-height: 0;

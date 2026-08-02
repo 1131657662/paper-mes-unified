@@ -1,4 +1,5 @@
 import { Alert, Form, InputNumber, Radio, Select, Typography } from 'antd'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import type { ProcessCatalog } from '../../types/processCatalog'
 
 interface Props {
@@ -100,7 +101,7 @@ function FixedAmountFields({ batchMode, compact }: { batchMode?: boolean; compac
   return (
     <>
       {(batchMode || compact) && (
-        <Form.Item className="service-step-fields__scope" label="批量金额口径"
+        <Form.Item className="service-step-fields__scope" label={DISPLAY_TERMS.batchAmountApplication}
           name="fixedAmountScope">
           <Radio.Group optionType="button" buttonStyle="solid" options={[
             { label: '所选合计', value: 'TOTAL' },
@@ -113,7 +114,7 @@ function FixedAmountFields({ batchMode, compact }: { batchMode?: boolean; compac
         name="billingAmount"
         preserve
         extra={batchMode || compact
-          ? '保存当前卷时始终作为本卷金额；批量应用时按上方口径分摊或逐卷复制。'
+          ? `保存当前卷时始终作为本卷金额；批量应用时按上方${DISPLAY_TERMS.batchAmountApplication}分摊或逐卷复制。`
           : undefined}
         rules={[{ required: true, message: '请填写固定金额' }]}>
         <InputNumber min={0} precision={2} style={{ width: '100%' }} />

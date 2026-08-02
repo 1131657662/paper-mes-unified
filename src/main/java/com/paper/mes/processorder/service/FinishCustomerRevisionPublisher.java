@@ -31,7 +31,7 @@ public class FinishCustomerRevisionPublisher {
         FinishCustomerRevision replay = reader.findByRequest(orderUuid, request.getRequestId());
         if (replay != null) return verifyReplay(replay, requestHash);
         FinishCustomerRevisionPreviewVO preview = previewService.preview(orderUuid, request);
-        if (preview.isHasErrors()) throw new BusinessException("客户口径预览存在错误，不能发布");
+        if (preview.isHasErrors()) throw new BusinessException("客户规格预览存在错误，不能发布");
         FinishCustomerRevision revision = writer.write(
                 new FinishCustomerRevisionWriteCommand(orderUuid, requestHash, preview, request));
         recordOperation(preview, revision, request);
@@ -41,7 +41,7 @@ public class FinishCustomerRevisionPublisher {
     private FinishCustomerRevisionSummaryVO verifyReplay(
             FinishCustomerRevision replay, String requestHash) {
         if (!requestHash.equals(replay.getRequestHash())) {
-            throw new BusinessException("同一请求号不能用于不同的客户口径内容");
+            throw new BusinessException("同一请求号不能用于不同的客户规格内容");
         }
         return reader.summary(replay);
     }
@@ -52,7 +52,7 @@ public class FinishCustomerRevisionPublisher {
         operationLogService.record(OperationLogService.BIZ_TYPE_ORDER,
                 preview.getOrderUuid(), preview.getOrderNo(),
                 OperationLogService.ACTION_CUSTOMER_SPEC_REVISION, null,
-                "客户口径V" + revision.getRevisionNo() + "，影响" + revision.getItemCount()
+                "客户规格V" + revision.getRevisionNo() + "，影响" + revision.getItemCount()
                         + "件：" + request.getReason().trim());
     }
 }

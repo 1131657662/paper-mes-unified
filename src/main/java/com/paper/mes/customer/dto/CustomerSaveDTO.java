@@ -43,8 +43,8 @@ public class CustomerSaveDTO {
     @Min(value = 1, message = "开票状态不正确")
     @Max(value = 2, message = "开票状态不正确")
     private Integer defaultInvoice;
-    @Min(value = 1, message = "价格口径不正确")
-    @Max(value = 2, message = "价格口径不正确")
+    @Min(value = 1, message = "价格含税方式不正确")
+    @Max(value = 2, message = "价格含税方式不正确")
     private Integer priceIncludeTax;
     @DecimalMin(value = "0.00", message = "税率不能为负")
     @DecimalMax(value = "100.00", message = "税率不能超过100%")

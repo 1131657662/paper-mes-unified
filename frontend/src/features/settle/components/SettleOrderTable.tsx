@@ -1,5 +1,4 @@
 import { Button, Progress, Space, Tag, Typography } from 'antd'
-import dayjs from 'dayjs'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 import type { ReactNode } from 'react'
@@ -12,6 +11,7 @@ import { useTableColumnsState } from '../../../hooks/useTableColumnsState'
 import { SETTLE_STATUS, SETTLE_TYPE } from '../../../constants/settle'
 import type { SettleOrder } from '../../../types/settle'
 import { formatMoney, formatPercent } from '../utils/settleFormatters'
+import { resolveSettleCollectionDisplay } from '../utils/settleCollectionStatus'
 
 interface Props {
   canReceiveSettle?: boolean
@@ -75,13 +75,15 @@ export default function SettleOrderTable({
   )
 }
 
-function buildColumns(actions: {
+interface SettleTableActions {
   canReceiveSettle: boolean
   collectionMode: boolean
   onDetail: (record: SettleOrder) => void
   onReceive: (record: SettleOrder) => void
   onRemind?: (record: SettleOrder) => void
-}): ProColumns<SettleOrder>[] {
+}
+
+function buildColumns(actions: SettleTableActions): ProColumns<SettleOrder>[] {
   return [
     {
       title: '结算单',
@@ -141,37 +143,38 @@ function buildColumns(actions: {
       fixed: 'right',
       width: actions.collectionMode ? 190 : 210,
       minWidth: actions.collectionMode ? 190 : 210,
-      render: (_, record) => (
-        <Space className="mes-action-buttons">
-          <Button type="link" size="small" onClick={() => actions.onDetail(record)}>详情</Button>
-          {actions.canReceiveSettle && [1, 2].includes(record.settleStatus) && (
-            <Button type="link" size="small" onClick={() => actions.onReceive(record)}>收款</Button>
-          )}
-          {actions.canReceiveSettle && actions.onRemind && [1, 2].includes(record.settleStatus) && (
-            <Button type="link" size="small" onClick={() => actions.onRemind?.(record)}>提醒</Button>
-          )}
-        </Space>
-      ),
+      render: (_, record) => <SettlementActions actions={actions} record={record} />,
     },
   ]
 }
 
+function SettlementActions({ actions, record }: { actions: SettleTableActions; record: SettleOrder }) {
+  const collectible = resolveSettleCollectionDisplay(record).active
+  return (
+    <Space className="mes-action-buttons">
+      <Button type="link" size="small" onClick={() => actions.onDetail(record)}>详情</Button>
+      {actions.canReceiveSettle && collectible && (
+        <Button type="link" size="small" onClick={() => actions.onReceive(record)}>收款</Button>
+      )}
+      {actions.canReceiveSettle && actions.onRemind && collectible && (
+        <Button type="link" size="small" onClick={() => actions.onRemind?.(record)}>提醒</Button>
+      )}
+    </Space>
+  )
+}
+
 function CollectionDueCell({ record }: { record: SettleOrder }) {
-  const due = dueText(record.dueDate)
+  const due = resolveSettleCollectionDisplay(record)
   return (
     <div className="settle-cell-stack mes-cell-stack">
       <Typography.Text type={due.tone}>{due.text}</Typography.Text>
-      <span>{record.reminderCount ? `已提醒 ${record.reminderCount} 次 · ${record.lastReminderBy || '-'}` : '尚未提醒'}</span>
+      <span>{due.active ? reminderText(record) : due.detail}</span>
     </div>
   )
 }
 
-function dueText(value?: string): { text: string; tone?: 'danger' | 'warning' | 'secondary' } {
-  if (!value) return { text: '未设置到期日', tone: 'secondary' }
-  const days = dayjs(value).startOf('day').diff(dayjs().startOf('day'), 'day')
-  if (days < 0) return { text: `${value} · 逾期 ${Math.abs(days)} 天`, tone: 'danger' }
-  if (days === 0) return { text: `${value} · 今日到期`, tone: 'warning' }
-  return { text: `${value} · ${days} 天后` }
+function reminderText(record: SettleOrder) {
+  return record.reminderCount ? `已提醒 ${record.reminderCount} 次 · ${record.lastReminderBy || '-'}` : '尚未提醒'
 }
 
 function ReceiveProgress({ record }: { record: SettleOrder }) {
@@ -190,8 +193,5 @@ function textCell(value?: ReactNode) {
 }
 
 function isOverdue(record: SettleOrder) {
-  return [1, 2].includes(record.settleStatus)
-    && Number(record.unreceivedAmount ?? 0) > 0
-    && Boolean(record.dueDate)
-    && dayjs(record.dueDate).isBefore(dayjs(), 'day')
+  return resolveSettleCollectionDisplay(record).overdue
 }

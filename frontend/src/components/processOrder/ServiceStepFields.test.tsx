@@ -44,7 +44,7 @@ describe('服务工序计费字段', () => {
       <Form><ServiceStepFields catalog={catalog} billingMode={3} compact /></Form>,
     )
 
-    expect(markup).toContain('批量金额口径')
+    expect(markup).toContain('批量金额应用方式')
     expect(markup).toContain('所选合计')
     expect(markup).toContain('每卷金额')
   })

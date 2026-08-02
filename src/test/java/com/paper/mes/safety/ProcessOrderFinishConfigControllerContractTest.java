@@ -61,7 +61,7 @@ class ProcessOrderFinishConfigControllerContractTest {
                         .header("Authorization", "Bearer " + TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"processMode\":3}"))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(processOrderService, never()).saveFinishConfig(
@@ -88,7 +88,7 @@ class ProcessOrderFinishConfigControllerContractTest {
                         .header("Authorization", "Bearer " + TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(batchPayload()))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(processOrderService, never()).saveFinishConfigBatch(

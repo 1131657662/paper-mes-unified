@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Input, Segmented, Select, Spin } from 'antd'
+import { Alert, Button, Form, Input, Select, Spin } from 'antd'
 import type { FormInstance } from 'antd'
 import AutoCodeInput from '../../components/biz/AutoCodeInput'
 import { useProcessCatalog } from '../../features/processCatalog/hooks/useProcessCatalog'
@@ -52,9 +52,6 @@ export default function MachineProfileForm({ editing, form, onFinish, onValuesCh
           >
             <Input placeholder="请输入机台名称" />
           </Form.Item>
-          <Form.Item name="resourceKind" label="资源类型" rules={[{ required: true }]}>
-            <Segmented block options={resourceKindOptions} />
-          </Form.Item>
           <Form.Item name="status" label="状态">
             <Select options={statusOptions} />
           </Form.Item>
@@ -83,11 +80,6 @@ export default function MachineProfileForm({ editing, form, onFinish, onValuesCh
     </Form>
   )
 }
-
-const resourceKindOptions = [
-  { value: 'MACHINE', label: '设备' },
-  { value: 'WORKSTATION', label: '工位' },
-]
 
 const statusOptions = [
   { value: 1, label: '启用' },

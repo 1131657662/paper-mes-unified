@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.paper.mes.processorder.mapper.ProcessOrderMapper">
+
+    <resultMap id="settleCandidateOrderMap"
+               type="com.paper.mes.settle.dto.SettleCandidateOrder">
+        <id property="uuid" column="uuid"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="customerUuid" column="customer_uuid"/>
+        <result property="customerName" column="customer_name"/>
+        <result property="orderDate" column="order_date"/>
+        <result property="accountingDate" column="accounting_date"/>
+        <result property="settleType" column="settle_type"/>
+        <result property="settleDay" column="settle_day"/>
+        <result property="isInvoice" column="is_invoice"/>
+        <result property="totalExtraAmount" column="total_extra_amount"/>
+        <result property="totalAmount" column="total_amount"/>
+    </resultMap>
+
+    <select id="selectSettleCandidates" resultMap="settleCandidateOrderMap">
+        <bind name="keyword" value="query.keyword == null ? null : query.keyword.trim()"/>
+        SELECT uuid, order_no, customer_uuid, customer_name, order_date, accounting_date,
+               settle_type, settle_day, is_invoice, total_extra_amount, total_amount
+        FROM biz_process_order
+        WHERE is_deleted = 0
+          AND order_status = 4
+        <if test="query.orderUuids != null and query.orderUuids.size() > 0">
+            AND uuid IN
+            <foreach collection="query.orderUuids" item="orderUuid" open="(" separator="," close=")">
+                #{orderUuid}
+            </foreach>
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (order_no LIKE CONCAT('%', #{keyword}, '%')
+                 OR customer_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="query.customerUuid != null and query.customerUuid.trim() != ''">
+            AND customer_uuid = #{query.customerUuid}
+        </if>
+        <if test="query.periodStart != null">
+            AND accounting_date &gt;= #{query.periodStart}
+        </if>
+        <if test="query.periodEnd != null">
+            AND accounting_date &lt;= #{query.periodEnd}
+        </if>
+        ORDER BY accounting_date ASC, order_no ASC, uuid ASC
+    </select>
+</mapper>

@@ -1,5 +1,6 @@
 import { EditOutlined, HistoryOutlined, TagsOutlined } from '@ant-design/icons'
 import { Button, Skeleton, Tag, Typography } from 'antd'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import { formatKg } from '../../utils/numberFormatters'
 import { customerSpecificationLabel } from './customerSpecModel'
 import type { FinishCustomerRevisionPreview } from './customerSpecTypes'
@@ -22,12 +23,12 @@ export default function CustomerRequirementStrip({ canEdit, data, loading, onEdi
       <div className="customer-requirement-strip__icon"><TagsOutlined /></div>
       <div className="customer-requirement-strip__content">
         <div className="customer-requirement-strip__title">
-          <Typography.Text strong>客户标签口径</Typography.Text>
+          <Typography.Text strong>{DISPLAY_TERMS.customerRequirements}</Typography.Text>
           <Tag color={changed.length ? 'blue' : 'default'}>V{Math.max(0, (data?.nextRevisionNo ?? 1) - 1)}</Tag>
           {changed.length > 0 && <Tag color="gold">{changed.length} 件已转换</Tag>}
         </div>
         <div className="customer-requirement-strip__specs">
-          {labels.length ? labels.map((label) => <span key={label}>{label}</span>) : <span>暂无成品口径</span>}
+          {labels.length ? labels.map((label) => <span key={label}>{label}</span>) : <span>暂无成品规格</span>}
         </div>
       </div>
       <div className="customer-requirement-strip__totals">

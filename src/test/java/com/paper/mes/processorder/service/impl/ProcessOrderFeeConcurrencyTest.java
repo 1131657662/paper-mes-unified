@@ -6,6 +6,7 @@ import com.paper.mes.common.ErrorCode;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.customer.service.CustomerService;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
+import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.processorder.entity.OriginalRoll;
@@ -154,7 +155,8 @@ class ProcessOrderFeeConcurrencyTest {
                     mock(BusinessLockService.class), mock(MachineMapper.class), mock(WeightCheckThresholdService.class),
                     null, null, null, null, new BackRecordScopeResolver(), null, mock(BackRecordWarehousePolicy.class),
                     null, null, null, null, null, null, null, null,
-                    new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy());
+                    new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy(),
+                    mock(InventoryLedgerBusinessRecorder.class));
             this.order = order;
         }
 

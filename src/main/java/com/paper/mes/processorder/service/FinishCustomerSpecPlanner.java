@@ -63,13 +63,13 @@ public class FinishCustomerSpecPlanner {
             throw new BusinessException("成品已被其他人修改，请刷新后重试：" + finish.getFinishRollNo());
         }
         if (finish.getIsSpare() != null && finish.getIsSpare() == 1) {
-            throw new BusinessException("备用卷号不能维护客户口径：" + finish.getFinishRollNo());
+            throw new BusinessException("备用卷号不能维护客户规格：" + finish.getFinishRollNo());
         }
         if (finish.getIsRemain() != null && finish.getIsRemain() == 1) {
-            throw new BusinessException("切边或余料不能维护客户口径：" + finish.getFinishRollNo());
+            throw new BusinessException("切边或余料不能维护客户规格：" + finish.getFinishRollNo());
         }
         if (finish.getRollNoStatus() != null && finish.getRollNoStatus() == 3) {
-            throw new BusinessException("已作废成品不能维护客户口径：" + finish.getFinishRollNo());
+            throw new BusinessException("已作废成品不能维护客户规格：" + finish.getFinishRollNo());
         }
     }
 

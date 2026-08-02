@@ -1,5 +1,6 @@
 import { Button, Card, Descriptions, Empty, Skeleton, Space, Tag } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { getCustomer } from '../../api/customer'
@@ -91,7 +92,7 @@ export default function CustomerDetailPage() {
         <Card className="document-module-card" title="结算与计费">
           <Descriptions column={2} size="small">
             <Descriptions.Item label="结算方式">{settleText(customer, settleOptions)}</Descriptions.Item>
-            <Descriptions.Item label="价格口径">{priceTaxText(customer.priceIncludeTax)}</Descriptions.Item>
+            <Descriptions.Item label={DISPLAY_TERMS.priceTaxMode}>{priceTaxText(customer.priceIncludeTax)}</Descriptions.Item>
             <Descriptions.Item label="锯纸单价">{moneyText(customer.sawPrice, '元/刀')}</Descriptions.Item>
             <Descriptions.Item label="复卷单价">{moneyText(customer.rewindPrice, '元/吨')}</Descriptions.Item>
             <Descriptions.Item label="默认开票">{invoiceText(customer.defaultInvoice, invoiceOptions)}</Descriptions.Item>
