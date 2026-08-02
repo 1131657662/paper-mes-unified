@@ -10,10 +10,12 @@ import com.paper.mes.report.dto.ReportQueryExecutionMetaVO;
 import com.paper.mes.report.mapper.ReportMapper;
 import com.paper.mes.report.service.ReportExportService;
 import com.paper.mes.report.service.ReportExportConsistencyGuard;
+import com.paper.mes.report.service.ReportAmountVisibility;
 import com.paper.mes.report.service.ReportOperationalWorkbookExporter;
 import com.paper.mes.report.service.ReportQueryCoordinator;
 import com.paper.mes.report.service.ReportTopicWorkbookExporter;
 import com.paper.mes.report.service.ReportWorkbookExportCoordinator;
+import com.paper.mes.auth.permission.PermissionChecker;
 import com.paper.mes.report.service.impl.ReportServiceImpl;
 import org.apache.ibatis.cursor.Cursor;
 import org.junit.jupiter.api.Test;
@@ -155,7 +157,7 @@ class ReportServiceImplTest {
         var workbookCoordinator = new ReportWorkbookExportCoordinator(mapper, new ReportExportService(),
                 mock(ReportTopicWorkbookExporter.class), mock(ReportOperationalWorkbookExporter.class));
         return new ReportServiceImpl(mapper, coordinator, mock(ReportExportConsistencyGuard.class),
-                workbookCoordinator);
+                workbookCoordinator, new ReportAmountVisibility(new PermissionChecker()));
     }
 
     private ReportQueryCoordinator coordinator() {

@@ -1,6 +1,6 @@
 export {
   formatKg,
-  formatMoney,
+  formatOptionalMoney as formatMoney,
   formatNumber,
   formatPercent,
   formatTon,

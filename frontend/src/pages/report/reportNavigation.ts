@@ -1,3 +1,5 @@
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
+
 export const REPORT_TOPIC_CODES = [
   'overview',
   'production',
@@ -39,7 +41,7 @@ export const reportTopicNavigation = [
 export const reportManagementNavigation = [
   managementItem('views', '保存视图', '管理个人和组织共享的查询视图'),
   managementItem('subscriptions', '订阅与预警', '管理定时报表、阈值规则与预警事件'),
-  managementItem('metrics', '指标口径', '管理指标版本、发布包与物化状态'),
+  managementItem('metrics', DISPLAY_TERMS.metricVersion, '管理指标版本、发布包与预计算结果'),
 ] satisfies ReportNavigationItem[]
 
 const reportSourcePaths: readonly ReportSourcePath[] = reportTopicNavigation.map((entry) => entry.path)

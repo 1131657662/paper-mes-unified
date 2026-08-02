@@ -9,6 +9,7 @@ interface Props {
 
 export default function ReportDimensionSummaryRow({ rows }: Props) {
   const totals = sumDimensions(rows)
+  const amountsVisible = rows.some((row) => row.totalAmount != null || row.processAmount != null)
 
   return (
     <Table.Summary fixed>
@@ -27,20 +28,24 @@ export default function ReportDimensionSummaryRow({ rows }: Props) {
         <Table.Summary.Cell index={7} align="right">{formatTonFromKg(totals.lossWeight)}</Table.Summary.Cell>
         <Table.Summary.Cell index={8} align="right">{formatPercent(totals.lossRatio)}</Table.Summary.Cell>
         <Table.Summary.Cell index={9} align="right">{formatNumber(totals.knifeCount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={10} align="right">{formatMoney(totals.sawAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={11} align="right">{formatMoney(totals.rewindAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={12} align="right">{formatMoney(totals.processAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={13} align="right">{formatMoney(totals.extraAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={14} align="right">{formatMoney(totals.totalAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={15} align="right">{formatMoney(totals.settledAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={16} align="right">{formatMoney(totals.pendingSettleAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={17} align="right">{formatMoney(totals.receivedAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={18} align="right">{formatMoney(totals.cashReceivedAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={19} align="right">{formatMoney(totals.scrapOffsetAmount)}</Table.Summary.Cell>
-        <Table.Summary.Cell index={20} align="right">{formatMoney(totals.unreceivedAmount)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={10} align="right">{amount(totals.sawAmount, amountsVisible)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={11} align="right">{amount(totals.rewindAmount, amountsVisible)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={12} align="right">{amount(totals.processAmount, amountsVisible)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={13} align="right">{amount(totals.extraAmount, amountsVisible)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={14} align="right">{amount(totals.totalAmount, amountsVisible)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={15} align="right">{amount(totals.settledAmount, amountsVisible)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={16} align="right">{amount(totals.pendingSettleAmount, amountsVisible)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={17} align="right">{amount(totals.receivedAmount, amountsVisible)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={18} align="right">{amount(totals.cashReceivedAmount, amountsVisible)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={19} align="right">{amount(totals.scrapOffsetAmount, amountsVisible)}</Table.Summary.Cell>
+        <Table.Summary.Cell index={20} align="right">{amount(totals.unreceivedAmount, amountsVisible)}</Table.Summary.Cell>
       </Table.Summary.Row>
     </Table.Summary>
   )
+}
+
+function amount(value: number, visible: boolean) {
+  return formatMoney(visible ? value : null)
 }
 
 function sumDimensions(rows: ReportDimensionVO[]) {

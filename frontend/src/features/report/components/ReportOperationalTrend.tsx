@@ -41,22 +41,23 @@ type TrendRow = ReportSettlementDimensionVO | ReportCollectionDimensionVO
   | ReportInventoryDimensionVO | ReportDeliveryDimensionVO
 
 function trendValue(row: TrendRow): number {
-  if ('totalAmount' in row) return Number(row.totalAmount || 0)
-  if ('settledAmount' in row) return Number(row.settledAmount || 0)
-  return Number(row.totalWeight || 0)
+  if ('rollCount' in row) return Number(row.totalWeight || 0)
+  if ('recordCount' in row) return Number(row.settledAmount || 0)
+  return Number(row.totalAmount || 0)
 }
 
 function secondaryValue(row: TrendRow): number {
-  if ('receivedAmount' in row) return Number(row.receivedAmount || 0)
-  if ('cashAmount' in row) return Number(row.cashAmount || 0)
-  if ('completedWeight' in row) return Number(row.completedWeight || 0)
-  return Number(row.lockedWeight || 0)
+  if ('rollCount' in row) {
+    return 'completedWeight' in row ? Number(row.completedWeight || 0) : Number(row.lockedWeight || 0)
+  }
+  if ('recordCount' in row) return Number(row.cashAmount || 0)
+  return Number(row.receivedAmount || 0)
 }
 
 function displayValue(topic: ReportOperationalAnalysisVO['topicCode'], row: TrendRow) {
-  if (topic === 'settlement') return formatMoney('totalAmount' in row ? row.totalAmount : 0)
-  if (topic === 'collection') return formatMoney('settledAmount' in row ? row.settledAmount : 0)
-  return formatTonFromKg('totalWeight' in row ? row.totalWeight : 0)
+  if (topic === 'settlement') return formatMoney((row as ReportSettlementDimensionVO).totalAmount)
+  if (topic === 'collection') return formatMoney((row as ReportCollectionDimensionVO).settledAmount)
+  return formatTonFromKg('rollCount' in row ? row.totalWeight : 0)
 }
 
 function rowCount(row: TrendRow) {
@@ -67,8 +68,18 @@ function rowCount(row: TrendRow) {
 
 function trendRowLabel(topic: ReportOperationalAnalysisVO['topicCode'], row: TrendRow,
   legend: { primary: string; secondary: string }) {
-  const format = topic === 'settlement' || topic === 'collection' ? formatMoney : formatTonFromKg
-  return `${legend.primary} ${format(trendValue(row))}，${legend.secondary} ${format(secondaryValue(row))}`
+  if (topic === 'settlement') {
+    const settlement = row as ReportSettlementDimensionVO
+    return `${legend.primary} ${formatMoney(settlement.totalAmount)}，` +
+      `${legend.secondary} ${formatMoney(settlement.receivedAmount)}`
+  }
+  if (topic === 'collection') {
+    const collection = row as ReportCollectionDimensionVO
+    return `${legend.primary} ${formatMoney(collection.settledAmount)}，` +
+      `${legend.secondary} ${formatMoney(collection.cashAmount)}`
+  }
+  return `${legend.primary} ${formatTonFromKg(trendValue(row))}，` +
+    `${legend.secondary} ${formatTonFromKg(secondaryValue(row))}`
 }
 
 function barWidth(value: number, maximum: number) { return Math.max((value / maximum) * 100, value > 0 ? 1 : 0) }

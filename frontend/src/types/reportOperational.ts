@@ -5,19 +5,19 @@ export interface ReportSettlementOverviewVO {
   pendingDocuments: number
   partialDocuments: number
   overdueDocuments: number
-  totalAmount: number
-  receivedAmount: number
-  unreceivedAmount: number
-  overdueAmount: number
+  totalAmount?: number | null
+  receivedAmount?: number | null
+  unreceivedAmount?: number | null
+  overdueAmount?: number | null
 }
 
 export interface ReportSettlementDimensionVO {
   dimensionKey: string
   dimensionName: string
   documentCount: number
-  totalAmount: number
-  receivedAmount: number
-  unreceivedAmount: number
+  totalAmount?: number | null
+  receivedAmount?: number | null
+  unreceivedAmount?: number | null
 }
 
 export interface ReportSettlementAnalysisVO {
@@ -33,9 +33,9 @@ export interface ReportCollectionDimensionVO {
   dimensionKey: string
   dimensionName: string
   recordCount: number
-  settledAmount: number
-  cashAmount: number
-  nonCashAmount: number
+  settledAmount?: number | null
+  cashAmount?: number | null
+  nonCashAmount?: number | null
   scrapWeight: number
 }
 
@@ -46,10 +46,10 @@ export interface ReportCollectionAnalysisVO {
     cashRecordCount: number
     scrapRecordCount: number
     discountRecordCount: number
-    settledAmount: number
-    cashAmount: number
-    scrapOffsetAmount: number
-    discountAmount: number
+    settledAmount?: number | null
+    cashAmount?: number | null
+    scrapOffsetAmount?: number | null
+    discountAmount?: number | null
     scrapWeight: number
   }
   monthlyTrend: ReportCollectionDimensionVO[]

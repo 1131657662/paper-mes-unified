@@ -14,6 +14,8 @@ import { useReportTopicAnalysis } from '../../features/report/hooks/useReportTop
 import type { ReportTopicCode } from '../../features/report/services/reportService'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import ReportSubscriptionButton from '../../features/reportSubscription/components/ReportSubscriptionButton'
+import { PERMISSIONS } from '../../constants/permissions'
+import { useHasPermission } from '../../stores/authStore'
 import type { ReportQuery, ReportTopicAnalysisVO } from '../../types/report'
 import { useSearchParams } from 'react-router'
 import { reportFiltersFromQuery, reportQueryFromFilters } from './reportFilterState'
@@ -40,6 +42,7 @@ export default function ReportTopicPage({ topic }: { topic: ReportTopicCode }) {
   const machinesQuery = useReportMachines()
   const papersQuery = useReportPapers()
   const exportMutation = useExportReport()
+  const canExport = useHasPermission(PERMISSIONS.settleView)
   const navigation = findReportNavigation(`/reports/${topic}`)
   const reportPath = resolveReportSourcePath(navigation?.path)
   const referenceError = customersQuery.isError || machinesQuery.isError || papersQuery.isError
@@ -64,6 +67,7 @@ export default function ReportTopicPage({ topic }: { topic: ReportTopicCode }) {
           data={{ customers: customersQuery.data?.records ?? [], machines: machinesQuery.data?.records ?? [],
             papers: papersQuery.data?.records ?? [] }}
           initialValues={initialFilters}
+          canExport={canExport}
           mode={topic}
           status={{ exporting: exportMutation.isPending, loading: customersQuery.isLoading }}
           headerActions={<ReportSubscriptionButton query={executable} reportPath={reportPath} />}

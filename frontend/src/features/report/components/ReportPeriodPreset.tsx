@@ -1,10 +1,8 @@
 import { CalendarOutlined } from '@ant-design/icons'
 import { Button, Dropdown, Tooltip } from 'antd'
 import type { MenuProps } from 'antd'
-import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
-
-type PeriodPresetKey = 'month' | 'previousMonth' | 'quarter' | 'year'
+import { periodFor, type PeriodPresetKey } from '../utils/reportPeriod'
 
 interface Props {
   onApply: (period: [Dayjs, Dayjs]) => void
@@ -30,18 +28,4 @@ export default function ReportPeriodPreset({ onApply }: Props) {
       </Dropdown>
     </Tooltip>
   )
-}
-
-function periodFor(key: PeriodPresetKey): [Dayjs, Dayjs] {
-  const today = dayjs()
-  if (key === 'previousMonth') {
-    const previousMonth = today.subtract(1, 'month')
-    return [previousMonth.startOf('month'), previousMonth.endOf('month')]
-  }
-  if (key === 'quarter') {
-    const quarterStartMonth = Math.floor(today.month() / 3) * 3
-    return [today.month(quarterStartMonth).startOf('month'), today]
-  }
-  if (key === 'year') return [today.startOf('year'), today]
-  return [today.startOf('month'), today]
 }

@@ -13,6 +13,8 @@ import { useReportPapers } from '../../features/report/hooks/useReportReferenceD
 import { useExportReport } from '../../features/report/hooks/useExportReport'
 import { useCustomers } from '../../features/processOrderCreate/hooks/useReferenceData'
 import ReportSubscriptionButton from '../../features/reportSubscription/components/ReportSubscriptionButton'
+import { PERMISSIONS } from '../../constants/permissions'
+import { useHasPermission } from '../../stores/authStore'
 import type { ReportOperationalAnalysisVO, ReportOperationalTopicCode } from '../../types/reportOperational'
 import { reportFiltersFromQuery, reportQueryFromFilters } from './reportFilterState'
 import { findReportNavigation } from './reportNavigation'
@@ -42,6 +44,7 @@ export default function ReportOperationalPage({ topic }: { topic: ReportOperatio
   const navigation = findReportNavigation('/reports/' + topic)
   const reportPath = resolveReportSourcePath(navigation?.path)
   const exportMutation = useExportReport()
+  const canExport = useHasPermission(PERMISSIONS.settleView)
   const refresh = () => {
     void context.refetch(); void analysis.refetch(); void customers.refetch()
     if (needsPapers) void papers.refetch()
@@ -57,6 +60,7 @@ export default function ReportOperationalPage({ topic }: { topic: ReportOperatio
         data={{ customers: customers.data?.records ?? [], papers: papers.data?.records ?? [] }}
         headerActions={<ReportSubscriptionButton query={executable} reportPath={reportPath} />}
         initialValues={initialFilters}
+        canExport={canExport}
         status={{ exporting: exportMutation.isPending, loading: customers.isLoading }} topic={topic} />
     </Card>
     <section className="report-topic-result report-operational-result" aria-label="分析结果">

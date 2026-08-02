@@ -140,17 +140,17 @@ export interface ReportOverviewVO {
   lossWeight: number
   lossRatio: number
   knifeCount: number
-  sawAmount: number
-  rewindAmount: number
-  processAmount: number
-  extraAmount: number
-  totalAmount: number
-  settledAmount: number
-  pendingSettleAmount: number
-  receivedAmount: number
-  cashReceivedAmount: number
-  scrapOffsetAmount: number
-  unreceivedAmount: number
+  sawAmount?: number | null
+  rewindAmount?: number | null
+  processAmount?: number | null
+  extraAmount?: number | null
+  totalAmount?: number | null
+  settledAmount?: number | null
+  pendingSettleAmount?: number | null
+  receivedAmount?: number | null
+  cashReceivedAmount?: number | null
+  scrapOffsetAmount?: number | null
+  unreceivedAmount?: number | null
 }
 
 export interface ReportDimensionVO {
@@ -164,17 +164,17 @@ export interface ReportDimensionVO {
   lossWeight: number
   lossRatio: number
   knifeCount: number
-  sawAmount: number
-  rewindAmount: number
-  processAmount: number
-  extraAmount: number
-  totalAmount: number
-  settledAmount: number
-  pendingSettleAmount: number
-  receivedAmount: number
-  cashReceivedAmount: number
-  scrapOffsetAmount: number
-  unreceivedAmount: number
+  sawAmount?: number | null
+  rewindAmount?: number | null
+  processAmount?: number | null
+  extraAmount?: number | null
+  totalAmount?: number | null
+  settledAmount?: number | null
+  pendingSettleAmount?: number | null
+  receivedAmount?: number | null
+  cashReceivedAmount?: number | null
+  scrapOffsetAmount?: number | null
+  unreceivedAmount?: number | null
 }
 
 export interface ReportDetailVO {
@@ -195,15 +195,15 @@ export interface ReportDetailVO {
   lossWeight: number
   lossRatio: number
   knifeCount: number
-  sawAmount: number
-  rewindAmount: number
-  processAmount: number
-  extraAmount: number
-  totalAmount: number
-  settledAmount: number
-  pendingSettleAmount: number
-  receivedAmount: number
-  cashReceivedAmount: number
-  scrapOffsetAmount: number
-  unreceivedAmount: number
+  sawAmount?: number | null
+  rewindAmount?: number | null
+  processAmount?: number | null
+  extraAmount?: number | null
+  totalAmount?: number | null
+  settledAmount?: number | null
+  pendingSettleAmount?: number | null
+  receivedAmount?: number | null
+  cashReceivedAmount?: number | null
+  scrapOffsetAmount?: number | null
+  unreceivedAmount?: number | null
 }

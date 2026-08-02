@@ -1,5 +1,6 @@
 import { Alert, Form, Input, Modal, Select, Switch, TimePicker } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
+import { DISPLAY_TERMS } from '../../../constants/displayTerms'
 import type { ReportMetricReleaseSummaryVO, ReportQuery, ReportSourcePath } from '../../../types/report'
 import { useCreateReportSubscription } from '../hooks/useCreateReportSubscription'
 import { useUpdateReportSubscription } from '../hooks/useUpdateReportSubscription'
@@ -77,7 +78,7 @@ export default function ReportSubscriptionModal(props: Props) {
           <Form.Item label="数据周期" name="periodPolicy" rules={[{ required: true }]}>
             <Select options={periodOptions} />
           </Form.Item>
-          <Form.Item label="指标口径" name="releasePolicy" rules={[{ required: true }]}>
+          <Form.Item label={DISPLAY_TERMS.metricVersion} name="releasePolicy" rules={[{ required: true }]}>
             <Select options={releasePolicyOptions} />
           </Form.Item>
           <PinnedReleaseField policy={releasePolicy} releases={props.releases} />

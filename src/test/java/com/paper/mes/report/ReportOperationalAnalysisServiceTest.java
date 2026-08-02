@@ -5,7 +5,9 @@ import com.paper.mes.report.dto.ReportQuery;
 import com.paper.mes.report.mapper.ReportOperationalMapper;
 import com.paper.mes.report.service.ReportOperationalAnalysisService;
 import com.paper.mes.report.service.ReportOperationalQueryPolicy;
+import com.paper.mes.report.service.ReportAmountVisibility;
 import com.paper.mes.report.service.ReportQueryCoordinator;
+import com.paper.mes.auth.permission.PermissionChecker;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -62,7 +64,7 @@ class ReportOperationalAnalysisServiceTest {
                 "query", "hash", "release", Map.of(), asOf, asOf,
                 "LIVE_DB_READ", "LIVE_ONLY", List.of(), Map.of()));
         return new Fixture(mapper, coordinator, new ReportOperationalAnalysisService(mapper, coordinator,
-                new ReportOperationalQueryPolicy()),
+                new ReportOperationalQueryPolicy(), new ReportAmountVisibility(new PermissionChecker())),
                 new ReportQuery(), asOf);
     }
 

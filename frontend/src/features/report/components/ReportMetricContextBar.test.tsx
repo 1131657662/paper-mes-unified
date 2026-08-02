@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest'
 import type { ReportMetricContextVO, ReportQueryExecutionMetaVO } from '../../../types/report'
 import ReportMetricContextBar from './ReportMetricContextBar'
 
-describe('报表指标口径状态条', () => {
+describe('报表指标版本状态条', () => {
   it('紧凑模式保留版本、水位和一致性状态', () => {
     const markup = renderBar(true)
 
     expect(markup).toContain('统计报表全域指标口径 V2')
-    expect(markup).toContain('实时口径')
+    expect(markup).toContain('实时计算')
     expect(markup).toContain('数据截至 2026-07-21 16:20:00')
     expect(markup).not.toContain('38 个原子指标')
   })

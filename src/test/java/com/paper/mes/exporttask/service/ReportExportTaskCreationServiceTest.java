@@ -84,7 +84,7 @@ class ReportExportTaskCreationServiceTest {
 
         String taskUuid = service.createReportTask(dto);
 
-        assertTaskSnapshot(taskUuid, "task-report-1", Permissions.REPORT_VIEW,
+        assertTaskSnapshot(taskUuid, "task-report-1", Permissions.SETTLE_VIEW,
                 "dimension", "customerUuid");
     }
 
@@ -110,6 +110,7 @@ class ReportExportTaskCreationServiceTest {
         CurrentUser recipient = CurrentUser.builder().uuid("recipient-1").username("finance")
                 .realName("Finance").roleCode("finance").build();
         when(permissionChecker.hasRolePermission("finance", Permissions.REPORT_VIEW)).thenReturn(true);
+        when(permissionChecker.hasRolePermission("finance", Permissions.SETTLE_VIEW)).thenReturn(true);
         ReportQuery query = new ReportQuery();
         query.setMetricReleaseUuid("release-1");
         arrangeSnapshot(query, "release-1");

@@ -18,6 +18,8 @@ import { parseReportUrlState, serializeReportUrlState } from './reportUrlState'
 import ReportExplorerControls from './ReportExplorerControls'
 import ReportExplorerTable from './ReportExplorerTable'
 import ReportSavedViewModal from '../../features/reportSavedView/components/ReportSavedViewModal'
+import { PERMISSIONS } from '../../constants/permissions'
+import { useHasPermission } from '../../stores/authStore'
 import { drillQuery, explorerMetricDefaults, selectedMetricItems } from './reportExplorerModel'
 import '../documentModule.css'
 import './ReportPage.base.css'
@@ -39,6 +41,7 @@ export default function ReportExplorerPage() {
   const machines = useReportMachines()
   const papers = useReportPapers()
   const exportMutation = useExportReport()
+  const canExport = useHasPermission(PERMISSIONS.settleView)
   const refresh = () => { void context.refetch(); void analysis.refetch() }
   const submit = (values: ReportFilterValues) => setParams(withExplorerState(reportQueryFromFilters(values), dimension, metricCodes))
   const updateExplorer = (nextDimension: ReportDimension, nextMetrics: string[]) => {
@@ -62,6 +65,7 @@ export default function ReportExplorerPage() {
       }), refresh, submit }}
         data={{ customers: customers.data?.records ?? [], machines: machines.data?.records ?? [], papers: papers.data?.records ?? [] }}
         initialValues={reportFiltersFromQuery(baseQuery)} mode="explorer"
+        canExport={canExport}
         headerActions={<><ReportSubscriptionButton query={executable} reportPath="/reports/explorer" />
           <Button icon={<SaveOutlined />} onClick={() => setSaveModalOpen(true)}>保存视图</Button></>}
         status={{ exporting: exportMutation.isPending, loading: customers.isLoading }} />

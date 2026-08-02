@@ -32,21 +32,30 @@ public class ReportOperationalAnalysisService {
     private final ReportOperationalMapper mapper;
     private final ReportQueryCoordinator queryCoordinator;
     private final ReportOperationalQueryPolicy queryPolicy;
+    private final ReportAmountVisibility amountVisibility;
 
     @Transactional(readOnly = true)
     public ReportSettlementAnalysisVO settlement(ReportQuery query) {
         queryPolicy.requireSettlement(query);
         var metadata = queryCoordinator.prepare(query, SETTLEMENT_METRICS);
-        return new ReportSettlementAnalysisVO("settlement", mapper.settlementOverview(query),
-                mapper.settlementMonthly(query), mapper.settlementCustomers(query), metadata.dataAsOf(), metadata);
+        var overview = mapper.settlementOverview(query);
+        var monthly = mapper.settlementMonthly(query);
+        var customers = mapper.settlementCustomers(query);
+        amountVisibility.redactSettlement(overview, monthly, customers);
+        return new ReportSettlementAnalysisVO("settlement", overview, monthly, customers,
+                metadata.dataAsOf(), metadata);
     }
 
     @Transactional(readOnly = true)
     public ReportCollectionAnalysisVO collection(ReportQuery query) {
         queryPolicy.requireCollection(query);
         var metadata = queryCoordinator.prepare(query, COLLECTION_METRICS);
-        return new ReportCollectionAnalysisVO("collection", mapper.collectionOverview(query),
-                mapper.collectionMonthly(query), mapper.collectionCustomers(query), metadata.dataAsOf(), metadata);
+        var overview = mapper.collectionOverview(query);
+        var monthly = mapper.collectionMonthly(query);
+        var customers = mapper.collectionCustomers(query);
+        amountVisibility.redactCollection(overview, monthly, customers);
+        return new ReportCollectionAnalysisVO("collection", overview, monthly, customers,
+                metadata.dataAsOf(), metadata);
     }
 
     @Transactional(readOnly = true)

@@ -14,10 +14,11 @@ export function fillMonthlySeries(rows: ReportDimensionVO[], period: PeriodRange
   if (!start || !end || start.isAfter(end, 'month')) return sorted
 
   const byKey = new Map(sorted.map((row) => [row.dimensionKey, row]))
+  const amountsVisible = rows.some((row) => row.totalAmount != null || row.processAmount != null)
   const filled: ReportDimensionVO[] = []
   for (let cursor = start; !cursor.isAfter(end, 'month'); cursor = cursor.add(1, 'month')) {
     const key = cursor.format('YYYY-MM')
-    filled.push(byKey.get(key) ?? emptyMonth(key))
+    filled.push(byKey.get(key) ?? emptyMonth(key, amountsVisible))
   }
   return filled
 }
@@ -28,12 +29,13 @@ function monthStart(value?: string) {
   return parsed.isValid() ? parsed.startOf('month') : undefined
 }
 
-function emptyMonth(key: string): ReportDimensionVO {
+function emptyMonth(key: string, amountsVisible: boolean): ReportDimensionVO {
+  const amount = amountsVisible ? 0 : undefined
   return {
-    cashReceivedAmount: 0, dimensionKey: key, dimensionName: key, extraAmount: 0,
+    cashReceivedAmount: amount, dimensionKey: key, dimensionName: key, extraAmount: amount,
     finishRollCount: 0, finishWeight: 0, knifeCount: 0, lossRatio: 0, lossWeight: 0,
-    orderCount: 0, originalRollCount: 0, originalWeight: 0, pendingSettleAmount: 0,
-    processAmount: 0, receivedAmount: 0, rewindAmount: 0, sawAmount: 0,
-    scrapOffsetAmount: 0, settledAmount: 0, totalAmount: 0, unreceivedAmount: 0,
+    orderCount: 0, originalRollCount: 0, originalWeight: 0, pendingSettleAmount: amount,
+    processAmount: amount, receivedAmount: amount, rewindAmount: amount, sawAmount: amount,
+    scrapOffsetAmount: amount, settledAmount: amount, totalAmount: amount, unreceivedAmount: amount,
   }
 }

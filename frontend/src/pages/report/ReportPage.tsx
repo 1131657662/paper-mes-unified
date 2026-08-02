@@ -22,6 +22,8 @@ import ReportSubscriptionButton from '../../features/reportSubscription/componen
 import { useReportThresholdContext } from '../../features/reportAlert/hooks/useReportThresholdContext'
 import ReportAlertRuleButton from '../../features/reportAlert/components/ReportAlertRuleButton'
 import ReportAlertEventButton from '../../features/reportAlert/components/ReportAlertEventButton'
+import { PERMISSIONS } from '../../constants/permissions'
+import { useHasPermission } from '../../stores/authStore'
 import type { ReportDimension, ReportQuery } from '../../types/report'
 import { parseReportUrlState, serializeReportUrlState } from './reportUrlState'
 import { reportFiltersFromQuery, reportQueryFromFilters } from './reportFilterState'
@@ -58,6 +60,7 @@ export default function ReportPage() {
   const machinesQuery = useReportMachines()
   const papersQuery = useReportPapers()
   const exportMutation = useExportReport()
+  const canExport = useHasPermission(PERMISSIONS.settleView)
   const resultQueries = [analysisQuery, thresholdContextQuery]
   const loading = resultQueries.some((item) => item.isFetching)
   const resultError = [...resultQueries, metricContextQuery]
@@ -106,6 +109,7 @@ export default function ReportPage() {
             papers: papersQuery.data?.records ?? [],
           }}
           initialValues={initialFilters}
+          canExport={canExport}
           status={{ exporting: exportMutation.isPending, loading: customersQuery.isLoading }}
           headerActions={<>
             <ReportAlertEventButton />

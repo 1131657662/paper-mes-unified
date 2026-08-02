@@ -23,11 +23,11 @@ test.describe('报表管理工作台', () => {
     expect(errors).toEqual([])
   })
 
-  test('指标口径页支持历史发布包审计', async ({ page }) => {
+  test('指标版本页支持历史发布包审计', async ({ page }) => {
     const errors = capturePageErrors(page)
     await page.goto('/reports/management/metrics')
 
-    await expect(page.getByRole('heading', { name: '指标口径与版本审计' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '指标版本审计' })).toBeVisible()
     await expect(page.locator('.report-metric-release-item')).toHaveCount(2)
     await expect(page.locator('.report-metric-version-table')).toBeVisible()
     await expectNoHorizontalOverflow(page)

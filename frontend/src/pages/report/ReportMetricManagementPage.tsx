@@ -1,5 +1,6 @@
 import { Alert, Button, Skeleton, Statistic } from 'antd'
 import { useSearchParams } from 'react-router'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import ReportMetricReleaseList from '../../features/report/components/ReportMetricReleaseList'
 import ReportMetricReleasePanel from '../../features/report/components/ReportMetricReleasePanel'
 import { useReportMetricContext } from '../../features/report/hooks/useReportMetricContext'
@@ -18,9 +19,9 @@ export default function ReportMetricManagementPage() {
   const retry = () => { void context.refetch(); void releases.refetch() }
   return <main className="report-management report-metric-management mes-workbench">
     <header className="report-management__header">
-      <div><h1>指标口径与版本审计</h1><p>查看当前生效口径、历史发布包及每个指标的锁定版本。</p></div>
+      <div><h1>{DISPLAY_TERMS.metricVersion}审计</h1><p>查看当前生效版本、历史发布包及每个指标的锁定版本。</p></div>
     </header>
-    <section className="report-management__summary" aria-label="指标口径概况">
+    <section className="report-management__summary" aria-label={`${DISPLAY_TERMS.metricVersion}概况`}>
       <Statistic title="当前发布包" value={context.data?.releaseCode ?? '-'} />
       <Statistic title="原子指标" value={context.data?.metrics.length ?? 0} suffix="项" />
       <Statistic title="历史发布包" value={releases.data?.length ?? 0} suffix="个" />
@@ -28,7 +29,7 @@ export default function ReportMetricManagementPage() {
     </section>
     {(context.isError || releases.isError) && <Alert showIcon type="error" message="指标版本资料加载失败"
       action={<Button size="small" onClick={retry}>重试</Button>} />}
-    <Alert showIcon type="info" message="发布包一经生效即锁定指标版本；历史口径只读保留，用于报表结果追溯与审计。" />
+    <Alert showIcon type="info" message="发布包一经生效即锁定指标版本；历史定义只读保留，用于报表结果追溯与审计。" />
     <section className="report-management__panel report-metric-management__panel">
       <div className="report-metric-catalog-layout">
         <aside className="report-metric-catalog-history">

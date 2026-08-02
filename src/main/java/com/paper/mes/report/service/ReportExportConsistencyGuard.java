@@ -11,7 +11,7 @@ public class ReportExportConsistencyGuard {
                                          ReportQueryExecutionMetaVO execution) {
         if (submission == null || !execution.metricReleaseUuid().equals(submission.metricReleaseUuid())
                 || !execution.metricVersionMap().equals(submission.metricVersionMap())) {
-            throw new BusinessException("指标口径在导出执行前发生变化，请重新发起导出");
+            throw new BusinessException("指标版本在导出执行前发生变化，请重新发起导出");
         }
     }
 }

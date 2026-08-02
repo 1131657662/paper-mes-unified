@@ -42,22 +42,26 @@ function InsightMessage({ item }: { item: Insight }) {
 }
 
 function buildInsights(overview?: ReportOverviewVO, context?: ReportThresholdContext): Insight[] {
-  const settled = Number(overview?.settledAmount ?? 0)
-  const unreceived = Number(overview?.unreceivedAmount ?? 0)
-  const ratio = settled > 0 ? (unreceived / settled) * 100 : 0
+  const settled = overview?.settledAmount
+  const unreceived = overview?.unreceivedAmount
+  const ratio = settled != null && settled > 0 && unreceived != null ? (unreceived / settled) * 100 : null
   return [
-    cashInsight(unreceived, Number(overview?.pendingSettleAmount ?? 0), ratio,
+    cashInsight(unreceived, overview?.pendingSettleAmount, ratio,
       threshold(context, 'UNRECEIVED_RATIO')),
     lossInsight(Number(overview?.lossRatio ?? 0), threshold(context, 'LOSS_RATIO')),
-    processInsight(Number(overview?.sawAmount ?? 0), Number(overview?.rewindAmount ?? 0)),
+    processInsight(overview?.sawAmount, overview?.rewindAmount),
   ]
 }
 
-function cashInsight(unreceived: number, pending: number, ratio: number,
+function cashInsight(unreceived: number | null | undefined, pending: number | null | undefined,
+                     ratio: number | null,
                      rule?: ReportThresholdItem): Insight {
-  const alerted = isTriggered(ratio, rule)
+  const alerted = ratio != null && isTriggered(ratio, rule)
+  const detail = ratio == null
+    ? '金额字段按结算读取权限显示'
+    : `已结算未收 ${formatMoney(unreceived)}，占已结算 ${formatPercent(ratio)}；待结算 ${formatMoney(pending)}${ruleText(rule)}`
   return {
-    detail: `已结算未收 ${formatMoney(unreceived)}，占已结算 ${formatPercent(ratio)}；待结算 ${formatMoney(pending)}${ruleText(rule)}`,
+    detail,
     tag: alerted ? '关注' : '回款',
     title: alerted ? '未收占比较高' : rule ? '回款压力可控' : '回款结构',
     type: alerted ? severityType(rule) : rule ? 'success' : 'info',
@@ -74,11 +78,12 @@ function lossInsight(ratio: number, rule?: ReportThresholdItem): Insight {
   }
 }
 
-function processInsight(saw: number, rewind: number): Insight {
+function processInsight(saw: number | null | undefined, rewind: number | null | undefined): Insight {
+  const masked = saw == null || rewind == null
   return {
-    detail: `锯纸费 ${formatMoney(saw)}，复卷费 ${formatMoney(rewind)}`,
+    detail: masked ? '费用字段按结算读取权限显示' : `锯纸费 ${formatMoney(saw)}，复卷费 ${formatMoney(rewind)}`,
     tag: '结构',
-    title: rewind > saw ? '复卷贡献更高' : '锯纸贡献更高',
+    title: masked ? '费用结构' : rewind > saw ? '复卷贡献更高' : '锯纸贡献更高',
     type: 'info',
   }
 }

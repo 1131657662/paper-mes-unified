@@ -1,5 +1,6 @@
 import { ClockCircleOutlined } from '@ant-design/icons'
 import { Alert, Card, Skeleton, Tag } from 'antd'
+import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import { findReportNavigation } from './reportNavigation'
 import './ReportPendingPage.css'
 
@@ -25,7 +26,7 @@ export default function ReportPendingPage({ path }: Props) {
         showIcon
         type="info"
         message="专题数据尚未开放"
-        description="本页面已从旧的通用报表中独立，领域接口和指标口径通过数据审查后再展示结果。"
+        description={`本页面已从旧的通用报表中独立，领域接口和${DISPLAY_TERMS.metricDefinition}通过数据审查后再展示结果。`}
       />
       <section className="report-pending__metrics" aria-label="指标区域占位">
         {[1, 2, 3, 4, 5, 6].map((key) => (

@@ -32,7 +32,7 @@ public class ReportExportTaskHandler implements ExportTaskHandler {
 
     @Override
     public String requiredPermission() {
-        return Permissions.REPORT_VIEW;
+        return Permissions.SETTLE_VIEW;
     }
 
     @Override

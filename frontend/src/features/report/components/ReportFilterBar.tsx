@@ -36,6 +36,7 @@ interface Props {
   data: { customers: Customer[]; machines: Machine[]; papers: Paper[] }
   initialValues: ReportFilterValues
   status: { exporting: boolean; loading: boolean }
+  canExport?: boolean
   headerActions?: ReactNode
   mode?: 'overview' | 'production' | 'quality-loss' | 'explorer'
 }
@@ -64,9 +65,8 @@ export default function ReportFilterBar(props: Props) {
       <div className="report-header__actions">
         <Button icon={<ReloadOutlined />} onClick={props.actions.refresh}>刷新</Button>
         {props.headerActions}
-        <Button icon={<DownloadOutlined />} loading={props.status.exporting} onClick={props.actions.export}>
-          导出 Excel
-        </Button>
+        {props.canExport !== false && <Button icon={<DownloadOutlined />} loading={props.status.exporting}
+          onClick={props.actions.export}>导出 Excel</Button>}
       </div>
       <Form<ReportFilterValues>
         className="report-filter"

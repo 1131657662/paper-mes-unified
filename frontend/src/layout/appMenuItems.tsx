@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import type { ReactNode } from 'react'
+import { DISPLAY_TERMS } from '../constants/displayTerms'
 import { PERMISSIONS } from '../constants/permissions'
 import { hasAnyPermission } from '../utils/permission'
 
@@ -58,7 +59,7 @@ function reportMenu(): MenuItem {
     group('report-management', <SettingOutlined />, '报表管理', [
       menu('/reports/management/views', <FileTextOutlined />, '保存视图'),
       menu('/reports/management/subscriptions', <AlertOutlined />, '订阅与预警'),
-      menu('/reports/management/metrics', <ControlOutlined />, '指标口径'),
+      menu('/reports/management/metrics', <ControlOutlined />, DISPLAY_TERMS.metricVersion),
     ]),
   ])
 }
@@ -74,7 +75,7 @@ function baseMenuItems(can: (permissions: string[]) => boolean): MenuItem[] {
   return [
     can([PERMISSIONS.baseView]) && menu('/customers', <UsergroupAddOutlined />, '客户管理'),
     can([PERMISSIONS.baseView]) && menu('/papers', <FileOutlined />, '纸张档案'),
-    can([PERMISSIONS.baseView]) && menu('/machines', <ToolOutlined />, '机台与工位'),
+    can([PERMISSIONS.baseView]) && menu('/machines', <ToolOutlined />, '机台档案'),
     can([PERMISSIONS.baseView]) && menu('/warehouses', <InboxOutlined />, '仓库档案'),
   ].filter(Boolean) as MenuItem[]
 }

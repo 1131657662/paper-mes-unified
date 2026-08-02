@@ -4,7 +4,7 @@ import { formatMoney, formatTonFromKg } from '../utils/reportFormatters'
 
 interface TrendPoint {
   name: string
-  value: number
+  value?: number | null
   weight: number
 }
 
@@ -65,7 +65,7 @@ export function formatReportTrendTooltip(params: unknown): string {
 function toTrendPoint(item: ReportDimensionVO): TrendPoint {
   return {
     name: item.dimensionName,
-    value: Number(item.totalAmount ?? 0),
+    value: item.totalAmount,
     weight: Number(item.originalWeight ?? 0),
   }
 }

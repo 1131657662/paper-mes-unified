@@ -4,6 +4,7 @@ import type { Machine } from '../../../types/machine'
 import type { Paper } from '../../../types/paper'
 import type { ReportQuery } from '../../../types/report'
 import type { ReportOperationalTopicCode } from '../../../types/reportOperational'
+import { DISPLAY_TERMS } from '../../../constants/displayTerms'
 
 interface Props {
   customers: Customer[]
@@ -18,7 +19,7 @@ export default function ReportFilterSummary(props: Props) {
 
   return (
     <div className="report-filter-summary">
-      <span>当前口径</span>
+      <span>{DISPLAY_TERMS.currentFilters}</span>
       <div aria-label={tags.join('；')} title={tags.join('；')}>
         {tags.map((tag) => (
           <Tag key={tag}>{tag}</Tag>

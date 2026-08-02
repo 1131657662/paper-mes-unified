@@ -18,6 +18,7 @@ interface Props {
     submit: (values: ReportFilterValues) => void
   }
   data: { customers: Customer[]; papers: Paper[] }
+  canExport?: boolean
   headerActions?: ReactNode
   initialValues: ReportFilterValues
   status: { exporting: boolean; loading: boolean }
@@ -37,8 +38,8 @@ export default function ReportOperationalFilterBar(props: Props) {
     <p className="report-header__description">{descriptions[props.topic]}</p>
     <div className="report-header__actions">
       {props.headerActions}
-      <Button icon={<ExportOutlined />} loading={props.status.exporting}
-        onClick={props.actions.export}>导出</Button>
+      {props.canExport !== false && <Button icon={<ExportOutlined />} loading={props.status.exporting}
+        onClick={props.actions.export}>导出</Button>}
       <Button icon={<ReloadOutlined />} onClick={props.actions.refresh}>刷新</Button>
     </div>
     <Form form={form} initialValues={props.initialValues} layout="vertical" onFinish={props.actions.submit}>

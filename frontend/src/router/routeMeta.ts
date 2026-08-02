@@ -1,3 +1,5 @@
+import { DISPLAY_TERMS } from '../constants/displayTerms'
+
 export interface AppRouteMeta {
   closable?: boolean
   group?: string
@@ -26,7 +28,7 @@ export const routeMeta: AppRouteMeta[] = [
   { path: '/reports/explorer', label: '多维分析', parentLabel: '统计报表', menuKey: '/reports/explorer' },
   { path: '/reports/management/views', label: '保存视图', parentLabel: '报表管理', menuKey: '/reports/management/views' },
   { path: '/reports/management/subscriptions', label: '订阅与预警', parentLabel: '报表管理', menuKey: '/reports/management/subscriptions' },
-  { path: '/reports/management/metrics', label: '指标口径', parentLabel: '报表管理', menuKey: '/reports/management/metrics' },
+  { path: '/reports/management/metrics', label: DISPLAY_TERMS.metricVersion, parentLabel: '报表管理', menuKey: '/reports/management/metrics' },
   { path: '/profile', label: '个人中心' },
   { path: '/customers', label: '客户管理', parentLabel: '基础档案', group: 'base' },
   { path: '/customers/create', label: '新增客户', parentLabel: '客户管理', menuKey: '/customers' },
@@ -36,10 +38,10 @@ export const routeMeta: AppRouteMeta[] = [
   { path: '/papers/create', label: '新增纸张', parentLabel: '纸张档案', menuKey: '/papers' },
   { path: '/papers/:uuid', label: '纸张详情', parentLabel: '纸张档案', menuKey: '/papers' },
   { path: '/papers/:uuid/edit', label: '编辑纸张', parentLabel: '纸张档案', menuKey: '/papers' },
-  { path: '/machines', label: '机台与工位', parentLabel: '基础档案', group: 'base' },
-  { path: '/machines/create', label: '新增生产资源', parentLabel: '机台与工位', menuKey: '/machines' },
-  { path: '/machines/:uuid', label: '资源详情', parentLabel: '机台与工位', menuKey: '/machines' },
-  { path: '/machines/:uuid/edit', label: '编辑生产资源', parentLabel: '机台与工位', menuKey: '/machines' },
+  { path: '/machines', label: '机台档案', parentLabel: '基础档案', group: 'base' },
+  { path: '/machines/create', label: '新增机台', parentLabel: '机台档案', menuKey: '/machines' },
+  { path: '/machines/:uuid', label: '机台详情', parentLabel: '机台档案', menuKey: '/machines' },
+  { path: '/machines/:uuid/edit', label: '编辑机台', parentLabel: '机台档案', menuKey: '/machines' },
   { path: '/warehouses', label: '仓库档案', parentLabel: '基础档案', group: 'base' },
   { path: '/warehouses/create', label: '新增仓库', parentLabel: '仓库档案', menuKey: '/warehouses' },
   { path: '/warehouses/:uuid', label: '仓库详情', parentLabel: '仓库档案', menuKey: '/warehouses' },

@@ -83,7 +83,7 @@ function TrendValue({ label, period, tone, value }: TrendValueProps) {
 
 type TrendTone = 'down' | 'neutral' | 'up'
 
-function amountChange(currentValue?: number, previousValue?: number): { text: string; tone: TrendTone } {
+function amountChange(currentValue?: number | null, previousValue?: number | null): { text: string; tone: TrendTone } {
   const current = Number(currentValue ?? 0)
   const previous = Number(previousValue ?? 0)
   if (previous === 0) {

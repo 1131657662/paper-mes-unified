@@ -104,7 +104,7 @@ public class ExportTaskCreationService {
     }
 
     public String createReportTask(ReportExportTaskCreateDTO dto) {
-        permissionChecker.require(Permissions.REPORT_VIEW);
+        permissionChecker.require(Permissions.SETTLE_VIEW);
         CurrentUser user = currentUser();
         String requestId = dto.getRequestId().trim();
         ReportQuerySnapshotBundle snapshot = reportQuerySnapshotService.createForExport(dto.getQuery(), user);
@@ -118,8 +118,8 @@ public class ExportTaskCreationService {
     public String createScheduledReportTask(String requestId, String subscriptionUuid,
                                             String subscriptionName, String reportPath, ReportQuery query,
                                             CurrentUser recipient) {
-        if (!permissionChecker.hasRolePermission(recipient.getRoleCode(), Permissions.REPORT_VIEW)) {
-            throw new BusinessException(ResultCode.FORBIDDEN, "接收人没有报表权限");
+        if (!permissionChecker.hasRolePermission(recipient.getRoleCode(), Permissions.SETTLE_VIEW)) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "接收人没有结算读取权限");
         }
         ReportQuerySnapshotBundle snapshot = reportQuerySnapshotService.createForExport(query, recipient);
         String payload = reportPayload(snapshot, reportPath);

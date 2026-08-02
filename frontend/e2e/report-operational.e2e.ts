@@ -9,9 +9,9 @@ interface TopicCase {
 
 const PERIOD = '?dateFrom=2026-01-01&dateTo=2026-07-21'
 const TOPICS: TopicCase[] = [
-  { label: '结算分析', path: '/reports/settlement' + PERIOD },
+  { label: '结算与应收', path: '/reports/settlement' + PERIOD },
   { label: '回款分析', path: '/reports/collection' + PERIOD },
-  { label: '库存分析', path: '/reports/inventory' + PERIOD, inventoryScopeNote: true },
+  { label: '库存流转', path: '/reports/inventory' + PERIOD, inventoryScopeNote: true },
   { label: '出库分析', path: '/reports/delivery' + PERIOD },
 ]
 
