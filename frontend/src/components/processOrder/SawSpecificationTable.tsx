@@ -3,7 +3,7 @@ import { DeleteOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import MesTooltip from '../biz/MesTooltip'
 import type { FinishConfigSpecDTO } from '../../types/processOrder'
-import { createStableObjectRowKey } from '../../utils/createStableObjectRowKey'
+import { sawSpecificationRowKey } from './sawSpecificationRowKey'
 
 interface Props {
   specs: FinishConfigSpecDTO[]
@@ -11,11 +11,9 @@ interface Props {
 }
 
 export default function SawSpecificationTable({ specs, onChange }: Props) {
-  return <Table size="small" rowKey={specRowKey} pagination={false}
+  return <Table size="small" rowKey={sawSpecificationRowKey} pagination={false}
     columns={columns(specs, onChange)} dataSource={specs} scroll={{ x: 1180 }} />
 }
-
-const specRowKey = createStableObjectRowKey('saw-spec')
 
 function columns(specs: FinishConfigSpecDTO[], onChange: Props['onChange']): ColumnsType<FinishConfigSpecDTO> {
   return [
