@@ -24,7 +24,7 @@ public class DeliveryInventoryExportService {
 
     private static final int BATCH_SIZE = 500;
     private static final List<String> HEADERS = List.of(
-            "客户", "仓库", "仓库位置", "成品卷号", "加工单", "加工单日期", "品名", "规格",
+            "客户", "仓库", "仓库地址/说明", "成品卷号", "加工单", "加工单日期", "品名", "规格",
             "首次入库时间", "库龄(天)", "实际重量kg", "剩余重量kg", "计划出库重量kg", "类型", "状态", "待出库单");
 
     private final DeliveryInventoryMapper inventoryMapper;

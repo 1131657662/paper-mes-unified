@@ -5,7 +5,7 @@ export interface Warehouse {
   uuid: string
   warehouseCode?: string
   warehouseName: string
-  /** 库位/地址 */
+  /** 仓库地址或识别说明，不表示库位层级。 */
   location?: string
   /** 1启用 2停用 */
   status?: number

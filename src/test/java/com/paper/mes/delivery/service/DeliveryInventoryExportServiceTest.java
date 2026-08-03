@@ -35,6 +35,8 @@ class DeliveryInventoryExportServiceTest {
                     .exportToPath(new DeliveryInventoryFinishQuery(), target);
 
             try (XSSFWorkbook workbook = new XSSFWorkbook(Files.newInputStream(target))) {
+                assertThat(workbook.getSheetAt(0).getRow(0).getCell(2).getStringCellValue())
+                        .isEqualTo("仓库地址/说明");
                 assertThat(workbook.getSheetAt(0).getRow(1).getCell(0).getStringCellValue())
                         .isNotBlank();
                 assertThat(workbook.getSheetAt(0).getRow(1).getCell(14).getStringCellValue())

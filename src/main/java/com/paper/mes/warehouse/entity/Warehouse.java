@@ -20,7 +20,7 @@ public class Warehouse extends BaseEntity {
 
     private String warehouseCode;
     private String warehouseName;
-    /** 库位/地址 */
+    /** 仓库地址或识别说明，不表示库位层级。 */
     private String location;
     /** 1启用 2停用 */
     private Integer status;

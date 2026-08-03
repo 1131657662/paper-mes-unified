@@ -133,7 +133,7 @@ CREATE TABLE `sys_warehouse` (
   `uuid`            VARCHAR(36)  NOT NULL                COMMENT '仓库唯一ID',
   `warehouse_code`  VARCHAR(50)  DEFAULT NULL            COMMENT '仓库编码',
   `warehouse_name`  VARCHAR(100) NOT NULL                COMMENT '仓库名称',
-  `location`        VARCHAR(255) DEFAULT NULL            COMMENT '库位/地址',
+  `location`        VARCHAR(255) DEFAULT NULL            COMMENT '仓库地址/说明',
   `status`          TINYINT      NOT NULL DEFAULT 1      COMMENT '1启用 2停用',
   `is_default`      TINYINT      NOT NULL DEFAULT 0      COMMENT '默认仓库',
   `remark`          VARCHAR(255) DEFAULT NULL            COMMENT '备注',
