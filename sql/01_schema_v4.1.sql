@@ -1305,6 +1305,7 @@ CREATE TABLE `sys_no_rule` (
   `status`        TINYINT      NOT NULL DEFAULT 1      COMMENT '状态 1启用 0停用',
   `remark`        VARCHAR(255) DEFAULT NULL            COMMENT '备注',
   `is_deleted`    TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `active_biz_type` VARCHAR(50) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `biz_type` ELSE NULL END) STORED,
   `create_by`     VARCHAR(50)  DEFAULT NULL            COMMENT '创建人',
   `update_by`     VARCHAR(50)  DEFAULT NULL            COMMENT '更新人',
   `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -1315,7 +1316,7 @@ CREATE TABLE `sys_no_rule` (
   `ext_num1`      DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值1',
   `ext_num2`      DECIMAL(12,3) DEFAULT NULL           COMMENT '扩展数值2',
   PRIMARY KEY (`uuid`),
-  UNIQUE KEY `uk_sys_no_rule_biz` (`biz_type`, `is_deleted`),
+  UNIQUE KEY `uk_sys_no_rule_biz_active` (`active_biz_type`),
   KEY `idx_sys_no_rule_status` (`status`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统单号规则表';
@@ -1347,6 +1348,8 @@ CREATE TABLE `biz_process_config_draft` (
   `config_status` TINYINT NOT NULL DEFAULT 0,
   `last_error` VARCHAR(500) DEFAULT NULL,
   `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `active_order_uuid` VARCHAR(36) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `order_uuid` ELSE NULL END) STORED,
+  `active_original_uuid` VARCHAR(36) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `original_uuid` ELSE NULL END) STORED,
   `create_by` VARCHAR(64) DEFAULT NULL,
   `update_by` VARCHAR(64) DEFAULT NULL,
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1357,7 +1360,7 @@ CREATE TABLE `biz_process_config_draft` (
   `ext_num1` DECIMAL(18,6) DEFAULT NULL,
   `ext_num2` DECIMAL(18,6) DEFAULT NULL,
   PRIMARY KEY (`uuid`),
-  UNIQUE KEY `uk_config_draft_roll` (`order_uuid`, `original_uuid`, `is_deleted`),
+  UNIQUE KEY `uk_config_draft_roll_active` (`active_order_uuid`, `active_original_uuid`),
   KEY `idx_config_draft_order_status` (`order_uuid`, `config_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单单卷工艺配置草稿';
 
@@ -1382,6 +1385,8 @@ CREATE TABLE `sys_dict_item` (
   `built_in` TINYINT NOT NULL DEFAULT 0,
   `remark` VARCHAR(255) DEFAULT NULL,
   `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `active_dict_type` VARCHAR(50) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `dict_type` ELSE NULL END) STORED,
+  `active_item_code` VARCHAR(50) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `item_code` ELSE NULL END) STORED,
   `create_by` VARCHAR(50) DEFAULT NULL,
   `update_by` VARCHAR(50) DEFAULT NULL,
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1392,7 +1397,7 @@ CREATE TABLE `sys_dict_item` (
   `ext_num1` DECIMAL(12,3) DEFAULT NULL,
   `ext_num2` DECIMAL(12,3) DEFAULT NULL,
   PRIMARY KEY (`uuid`),
-  UNIQUE KEY `uk_sys_dict_item_code` (`dict_type`, `item_code`, `is_deleted`),
+  UNIQUE KEY `uk_sys_dict_item_code_active` (`active_dict_type`, `active_item_code`),
   KEY `idx_sys_dict_item_type` (`dict_type`),
   KEY `idx_sys_dict_item_status` (`status`),
   KEY `idx_is_deleted` (`is_deleted`)
@@ -1412,6 +1417,7 @@ CREATE TABLE `sys_config_item` (
   `built_in` TINYINT NOT NULL DEFAULT 0,
   `remark` VARCHAR(255) DEFAULT NULL,
   `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `active_config_key` VARCHAR(80) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `config_key` ELSE NULL END) STORED,
   `create_by` VARCHAR(50) DEFAULT NULL,
   `update_by` VARCHAR(50) DEFAULT NULL,
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1422,7 +1428,7 @@ CREATE TABLE `sys_config_item` (
   `ext_num1` DECIMAL(12,3) DEFAULT NULL,
   `ext_num2` DECIMAL(12,3) DEFAULT NULL,
   PRIMARY KEY (`uuid`),
-  UNIQUE KEY `uk_sys_config_key` (`config_key`, `is_deleted`),
+  UNIQUE KEY `uk_sys_config_key_active` (`active_config_key`),
   KEY `idx_sys_config_group` (`config_group`),
   KEY `idx_sys_config_status` (`status`),
   KEY `idx_is_deleted` (`is_deleted`)

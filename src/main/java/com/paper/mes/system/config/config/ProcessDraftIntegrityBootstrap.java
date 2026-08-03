@@ -42,6 +42,8 @@ public class ProcessDraftIntegrityBootstrap implements ApplicationRunner {
                   `config_status` TINYINT NOT NULL DEFAULT 0 COMMENT '0未完成 1可提交',
                   `last_error` VARCHAR(500) NULL COMMENT '最近一次校验错误',
                   `is_deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '0正常 1删除',
+                  `active_order_uuid` VARCHAR(36) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `order_uuid` ELSE NULL END) STORED,
+                  `active_original_uuid` VARCHAR(36) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `original_uuid` ELSE NULL END) STORED,
                   `create_by` VARCHAR(64) NULL,
                   `update_by` VARCHAR(64) NULL,
                   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -52,7 +54,7 @@ public class ProcessDraftIntegrityBootstrap implements ApplicationRunner {
                   `ext_num1` DECIMAL(18,6) NULL,
                   `ext_num2` DECIMAL(18,6) NULL,
                   PRIMARY KEY (`uuid`),
-                  UNIQUE KEY `uk_config_draft_roll` (`order_uuid`, `original_uuid`, `is_deleted`),
+                  UNIQUE KEY `uk_config_draft_roll_active` (`active_order_uuid`, `active_original_uuid`),
                   KEY `idx_config_draft_order_status` (`order_uuid`, `config_status`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单单卷工艺配置草稿'
                 """);

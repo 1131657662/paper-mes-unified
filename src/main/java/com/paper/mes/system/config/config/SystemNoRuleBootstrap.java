@@ -46,6 +46,7 @@ public class SystemNoRuleBootstrap implements ApplicationRunner {
                   `status` tinyint NOT NULL DEFAULT 1,
                   `remark` varchar(255) DEFAULT NULL,
                   `is_deleted` tinyint NOT NULL DEFAULT 0,
+                  `active_biz_type` varchar(50) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `biz_type` ELSE NULL END) STORED,
                   `create_by` varchar(50) DEFAULT NULL,
                   `update_by` varchar(50) DEFAULT NULL,
                   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -56,7 +57,7 @@ public class SystemNoRuleBootstrap implements ApplicationRunner {
                   `ext_num1` decimal(12,3) DEFAULT NULL,
                   `ext_num2` decimal(12,3) DEFAULT NULL,
                   PRIMARY KEY (`uuid`),
-                  UNIQUE KEY `uk_sys_no_rule_biz` (`biz_type`, `is_deleted`),
+                  UNIQUE KEY `uk_sys_no_rule_biz_active` (`active_biz_type`),
                   KEY `idx_sys_no_rule_status` (`status`),
                   KEY `idx_sys_no_rule_deleted` (`is_deleted`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='system document number rules'

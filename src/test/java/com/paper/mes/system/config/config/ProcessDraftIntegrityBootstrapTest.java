@@ -25,7 +25,8 @@ class ProcessDraftIntegrityBootstrapTest {
 
         verify(jdbcTemplate).execute(sqlContains("CREATE TABLE IF NOT EXISTS `biz_process_config_draft`"));
         verify(jdbcTemplate).execute(sqlContains("`version` INT NOT NULL DEFAULT 1"));
-        verify(jdbcTemplate).execute(sqlContains("UNIQUE KEY `uk_config_draft_roll`"));
+        verify(jdbcTemplate).execute(sqlContains("`active_order_uuid` VARCHAR(36) GENERATED ALWAYS AS"));
+        verify(jdbcTemplate).execute(sqlContains("UNIQUE KEY `uk_config_draft_roll_active`"));
     }
 
     @Test
