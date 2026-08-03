@@ -337,7 +337,7 @@ public class ProcessOrderController {
         return R.success(processOrderService.uploadDamageImages(rollUuid, files));
     }
 
-    /** 新增工序（Phase 5.1）：待下发可维护；待回录仅允许新增追加工序。 */
+    /** 新增工序：草稿可维护附加工艺，待下发可维护计划；已下发后须重新下发。 */
     @PostMapping("/{orderUuid}/steps")
     @RequirePermission(Permissions.ORDER_MANAGE)
     public R<Void> addProcessStep(@PathVariable String orderUuid,

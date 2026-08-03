@@ -62,7 +62,8 @@ public class ProcessRouteSaveService {
             throw new BusinessException(ErrorCode.E002, "加工单不存在");
         }
         if (order.getOrderStatus() == null || order.getOrderStatus() != STATUS_PENDING) {
-            throw new BusinessException(ErrorCode.E001, "工艺路线配置会重建工序和成品号，仅待下发加工单可操作；待回录请使用追加后续链式工艺");
+            throw new BusinessException(ErrorCode.E001,
+                    "工艺路线配置会重建工序和成品号，仅待下发加工单可操作；已下发计划请使用当前状态对应的受控变更命令");
         }
         OriginalRoll roll = originalRollMapper.selectOne(new LambdaQueryWrapper<OriginalRoll>()
                 .eq(OriginalRoll::getUuid, originalUuid)

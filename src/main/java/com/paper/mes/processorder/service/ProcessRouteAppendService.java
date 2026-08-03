@@ -74,7 +74,8 @@ public class ProcessRouteAppendService {
             throw new BusinessException(ErrorCode.E002, "加工单不存在");
         }
         if (!canAppend(order.getOrderStatus())) {
-            throw new BusinessException(ErrorCode.E001, "仅待下发或待回录加工单可追加后续链式工艺");
+            throw new BusinessException(ErrorCode.E001,
+                    "仅待下发加工单可追加后续链式工艺；已下发计划请使用当前状态对应的受控变更命令");
         }
         OriginalRoll roll = originalRollMapper.selectOne(new LambdaQueryWrapper<OriginalRoll>()
                 .eq(OriginalRoll::getUuid, originalUuid)

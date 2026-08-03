@@ -72,7 +72,7 @@ class ProcessRouteSafetyContractTest {
                 "persistenceService.replaceRoute(context, dto, preview);");
         assertContainsAll(loadContext,
                 "order.getOrderStatus() == null || order.getOrderStatus() != STATUS_PENDING",
-                "工艺路线配置会重建工序和成品号，仅待下发加工单可操作；待回录请使用追加后续链式工艺");
+                "工艺路线配置会重建工序和成品号，仅待下发加工单可操作；已下发计划请使用当前状态对应的受控变更命令");
     }
 
     @Test
@@ -97,7 +97,7 @@ class ProcessRouteSafetyContractTest {
 
         assertContainsAll(source,
                 "private static final int STATUS_PENDING = 1",
-                "仅待下发或待回录加工单可追加后续链式工艺");
+                "仅待下发加工单可追加后续链式工艺；已下发计划请使用当前状态对应的受控变更命令");
         assertContainsAll(canAppend,
                 "status == STATUS_PENDING");
     }

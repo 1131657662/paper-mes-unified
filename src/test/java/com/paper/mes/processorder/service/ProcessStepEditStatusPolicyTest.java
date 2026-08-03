@@ -21,9 +21,10 @@ class ProcessStepEditStatusPolicyTest {
     }
 
     @Test
-    void preservesPendingAndToRecordRules() {
+    void allowsPendingPlanChangesButRejectsToRecordAdditions() {
         assertDoesNotThrow(() -> ProcessStepEditStatusPolicy.requireAddAllowed(1, false));
-        assertDoesNotThrow(() -> ProcessStepEditStatusPolicy.requireAddAllowed(3, true));
+        assertThrows(BusinessException.class,
+                () -> ProcessStepEditStatusPolicy.requireAddAllowed(3, true));
         assertThrows(BusinessException.class,
                 () -> ProcessStepEditStatusPolicy.requireChangeAllowed(3));
     }
