@@ -1597,8 +1597,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
     @Override
     public List<ProcessOrderIssueVersionVO> listIssueVersions(String uuid) {
-        requireOrder(uuid);
-        return issueVersionService.list(uuid);
+        ProcessOrder order = requireOrder(uuid);
+        return issueVersionService.list(uuid, StringUtils.hasText(order.getSnapPrint()));
     }
 
     private boolean clearsIssuedSnapshot(OrderStatus from, OrderStatus to) {

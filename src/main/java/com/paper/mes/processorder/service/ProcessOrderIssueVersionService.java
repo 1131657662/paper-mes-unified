@@ -133,11 +133,12 @@ public class ProcessOrderIssueVersionService {
         insert(row);
     }
 
-    public List<ProcessOrderIssueVersionVO> list(String orderUuid) {
-        return mapper.selectList(new LambdaQueryWrapper<ProcessOrderIssueVersion>()
+    public List<ProcessOrderIssueVersionVO> list(String orderUuid, boolean hasLegacySnapshot) {
+        List<ProcessOrderIssueVersion> rows = mapper.selectList(
+                new LambdaQueryWrapper<ProcessOrderIssueVersion>()
                         .eq(ProcessOrderIssueVersion::getOrderUuid, orderUuid)
-                        .orderByDesc(ProcessOrderIssueVersion::getVersionNo))
-                .stream().map(this::toView).toList();
+                        .orderByDesc(ProcessOrderIssueVersion::getVersionNo));
+        return ProcessOrderIssueVersionViewFactory.views(orderUuid, rows, hasLegacySnapshot);
     }
 
     private ProcessOrderIssueVersion newRow(String orderUuid, int versionNo,
@@ -171,20 +172,4 @@ public class ProcessOrderIssueVersionService {
         }
     }
 
-    private ProcessOrderIssueVersionVO toView(ProcessOrderIssueVersion row) {
-        ProcessOrderIssueVersionVO view = new ProcessOrderIssueVersionVO();
-        view.setUuid(row.getUuid());
-        view.setOrderUuid(row.getOrderUuid());
-        view.setVersionNo(row.getVersionNo());
-        view.setPreviousVersionNo(row.getPreviousVersionNo());
-        view.setStatus(row.getStatus());
-        view.setChangeReason(row.getChangeReason());
-        view.setOperatorName(row.getOperatorName());
-        view.setChangeTime(row.getChangeTime());
-        view.setIssueTime(row.getIssueTime());
-        view.setIssueOperatorName(row.getIssueOperatorName());
-        view.setHasSnapshotBefore(StringUtils.hasText(row.getSnapshotBefore()));
-        view.setHasSnapshotAfter(StringUtils.hasText(row.getSnapshotAfter()));
-        return view;
-    }
 }

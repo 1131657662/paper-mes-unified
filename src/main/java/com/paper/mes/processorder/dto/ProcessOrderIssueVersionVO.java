@@ -7,6 +7,8 @@ import java.time.LocalDateTime;
 @Data
 public class ProcessOrderIssueVersionVO {
 
+    public static final String STATUS_LEGACY_UNVERSIONED = "LEGACY_UNVERSIONED";
+
     private String uuid;
     private String orderUuid;
     private Integer versionNo;

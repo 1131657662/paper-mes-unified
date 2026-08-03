@@ -12,4 +12,21 @@ describe('加工单快照差异加载状态', () => {
     expect(markup).not.toContain('原纸快照差异')
     expect(markup).not.toContain('成品快照差异')
   })
+
+  it('历史下发快照明确标记未版本化来源', () => {
+    const markup = renderToStaticMarkup(
+      <SnapshotDiffLoadState isError={false} legacyUnversioned loading={false}
+        onRetry={() => undefined} />,
+    )
+    expect(markup).toContain('下发快照来自 V3.53 前历史记录')
+    expect(markup).toContain('未补造版本号、操作者或事件时间')
+  })
+
+  it('版本来源未加载成功时不展示缺少来源标记的差异', () => {
+    const markup = renderToStaticMarkup(
+      <SnapshotDiffLoadState isError loading={false} onRetry={() => undefined} />,
+    )
+    expect(markup).toContain('版本来源未成功加载')
+    expect(markup).not.toContain('原纸快照差异')
+  })
 })

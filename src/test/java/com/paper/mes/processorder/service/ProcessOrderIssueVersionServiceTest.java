@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -80,5 +81,24 @@ class ProcessOrderIssueVersionServiceTest {
         assertThat(row.getSnapshotAfter()).isEqualTo("after-json");
         assertThat(row.getStatus()).isEqualTo(ProcessOrderIssueVersion.STATUS_APPLIED);
         verify(mapper).updateById(row);
+    }
+
+    @Test
+    void listReadsVersionRowsOnceAndReturnsSnapshotPresenceOnly() {
+        ProcessOrderIssueVersion row = new ProcessOrderIssueVersion();
+        row.setUuid("version-1");
+        row.setOrderUuid("order-1");
+        row.setVersionNo(1);
+        row.setStatus(ProcessOrderIssueVersion.STATUS_APPLIED);
+        row.setSnapshotAfter("sensitive-snapshot-json");
+        when(mapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(row));
+
+        var versions = service.list("order-1", true);
+
+        assertThat(versions).singleElement().satisfies(view -> {
+            assertThat(view.getUuid()).isEqualTo("version-1");
+            assertThat(view.isHasSnapshotAfter()).isTrue();
+        });
+        verify(mapper).selectList(any(LambdaQueryWrapper.class));
     }
 }

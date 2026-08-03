@@ -3,6 +3,7 @@ import { useHasPermission } from '../../../stores/authStore'
 import type { ProcessOrderDetailVO, ProcessStep, RollProductionVO } from '../../../types/processOrder'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import OrderDetailHeader from './OrderDetailHeader'
+import IssueVersionHistoryPanel from './IssueVersionHistoryPanel'
 import OrderExecutionHost from './OrderExecutionHost'
 import OrderInfoSection from './OrderInfoSection'
 import ProductionTree from './ProductionTree'
@@ -37,6 +38,7 @@ export default function OrderDetailContent({ actions, detail, mode }: Props) {
     <div className={`order-detail-view order-detail-view--${mode}`}>
       <OrderDetailHeader exporting={actions.exporting} order={detail?.order} onBack={actions.onBack} onExport={actions.onExport} />
       <OrderExecutionHost detail={detail} />
+      <IssueVersionHistoryPanel orderUuid={detail?.order.uuid} />
       <OrderInfoSection canEditRemark={canEditRemark} detail={detail} onEditRemark={actions.onEditOrderRemark} />
       <ProductionTree
         canManageOrder={canManageOrder}

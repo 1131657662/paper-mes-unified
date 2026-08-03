@@ -12,6 +12,7 @@ import com.paper.mes.processorder.dto.BackRecordResultVO;
 import com.paper.mes.processorder.dto.PrintDTO;
 import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
+import com.paper.mes.processorder.dto.ProcessOrderIssueVersionVO;
 import com.paper.mes.processorder.dto.ProcessOrderReissueDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingAdjustmentDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingBatchDTO;
@@ -30,6 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -39,6 +41,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -273,6 +276,26 @@ class ProcessOrderControllerContractTest {
                 .andExpect(jsonPath("$.code").value(400));
 
         verify(processOrderService, never()).prepareReissue(any(), any());
+    }
+
+    @Test
+    void issueVersions_withViewerRole_returnsLegacyBoundaryWithoutInventedMetadata() throws Exception {
+        authorizeAs("viewer");
+        ProcessOrderIssueVersionVO legacy = new ProcessOrderIssueVersionVO();
+        legacy.setOrderUuid("order-uuid");
+        legacy.setStatus(ProcessOrderIssueVersionVO.STATUS_LEGACY_UNVERSIONED);
+        legacy.setHasSnapshotAfter(true);
+        when(processOrderService.listIssueVersions("order-uuid")).thenReturn(List.of(legacy));
+
+        mvc.perform(get("/api/process-orders/order-uuid/issue-versions")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("LEGACY_UNVERSIONED"))
+                .andExpect(jsonPath("$.data[0].versionNo").doesNotExist())
+                .andExpect(jsonPath("$.data[0].operatorName").doesNotExist())
+                .andExpect(jsonPath("$.data[0].issueTime").doesNotExist());
+
+        verify(processOrderService).listIssueVersions("order-uuid");
     }
 
     @Test

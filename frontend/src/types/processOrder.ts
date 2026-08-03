@@ -831,14 +831,14 @@ export interface ProcessOrderReissueDTO {
 }
 
 export interface ProcessOrderIssueVersion {
-  uuid: string
+  uuid?: string
   orderUuid: string
-  versionNo: number
+  versionNo?: number
   previousVersionNo?: number
-  status: 'PENDING' | 'APPLIED' | 'ARCHIVED' | string
+  status: 'PENDING' | 'APPLIED' | 'ARCHIVED' | 'LEGACY_UNVERSIONED' | string
   changeReason?: string
-  operatorName: string
-  changeTime: string
+  operatorName?: string
+  changeTime?: string
   issueTime?: string
   issueOperatorName?: string
   hasSnapshotBefore: boolean

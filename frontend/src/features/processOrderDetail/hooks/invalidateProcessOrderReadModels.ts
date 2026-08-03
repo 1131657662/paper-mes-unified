@@ -3,6 +3,7 @@ import { queries } from '../../../queries'
 
 const localReadModelKeys = (orderUuid: string) => [
   queries.processOrderDetail.detail(orderUuid).queryKey,
+  queries.processOrderDetail.issueVersions(orderUuid).queryKey,
   queries.processOrderDetail.printView(orderUuid, 'ISSUED').queryKey,
   queries.processOrderDetail.printView(orderUuid, 'FINISHED').queryKey,
   queries.processOrderDetail.snapshotDiff(orderUuid).queryKey,

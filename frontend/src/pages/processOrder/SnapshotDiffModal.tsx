@@ -1,7 +1,8 @@
-import { Modal, Spin, Table, Tag, Typography } from 'antd'
+import { Alert, Modal, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { useSnapshotDiff } from '../../features/processOrderDetail/hooks/useSnapshotDiff'
+import { useProcessOrderIssueVersions } from '../../features/processOrderDetail/hooks/useProcessOrderIssueVersions'
 import type { FinishDiff, RollDiff, SnapshotDiffVO } from '../../types/processOrder'
 
 interface Props {
@@ -20,6 +21,16 @@ export default function SnapshotDiffModal({ uuid, open, onClose }: Props) {
     isLoading: isLoadingDiff,
     refetch: refetchDiff,
   } = useSnapshotDiff(uuid ?? undefined, open)
+  const {
+    data: issueVersions,
+    isError: isIssueVersionsError,
+    refetch: refetchIssueVersions,
+  } = useProcessOrderIssueVersions(uuid ?? undefined, open)
+  const legacyUnversioned = issueVersions?.some((item) => item.status === 'LEGACY_UNVERSIONED') ?? false
+
+  const retryDiffAndProvenance = () => {
+    void Promise.all([refetchDiff(), refetchIssueVersions()])
+  }
 
   return (
     <Modal
@@ -30,19 +41,24 @@ export default function SnapshotDiffModal({ uuid, open, onClose }: Props) {
       width="min(1040px, calc(100vw - 32px))"
       destroyOnHidden
     >
-      <SnapshotDiffLoadState diff={diff} isError={isDiffError} loading={isLoadingDiff}
-        onRetry={() => void refetchDiff()} />
+      <SnapshotDiffLoadState diff={diff} isError={isDiffError || isIssueVersionsError} loading={isLoadingDiff}
+        legacyUnversioned={legacyUnversioned}
+        onRetry={retryDiffAndProvenance} />
     </Modal>
   )
 }
 
 export function SnapshotDiffLoadState(props: {
-  diff?: SnapshotDiffVO; isError: boolean; loading: boolean; onRetry: () => void
+  diff?: SnapshotDiffVO; isError: boolean; legacyUnversioned?: boolean; loading: boolean; onRetry: () => void
 }) {
   if (props.isError) return <QueryLoadErrorAlert message="快照差异加载失败"
-    description="下发快照与完成数据未成功加载，请重新加载后再核对。" onRetry={props.onRetry} />
+    description="下发快照、完成数据或版本来源未成功加载，请重新加载后再核对。" onRetry={props.onRetry} />
   return (
       <Spin spinning={props.loading}>
+        {props.legacyUnversioned && <Alert type="warning" showIcon
+          message="下发快照来自 V3.53 前历史记录"
+          description="该来源未版本化；系统未补造版本号、操作者或事件时间。"
+          style={{ marginBottom: 16 }} />}
         <Typography.Title level={5}>原纸快照差异</Typography.Title>
         <Table
           rowKey={(record, index) => record.uuid ?? record.rollNo ?? `roll-${index}`}
