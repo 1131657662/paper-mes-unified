@@ -51,8 +51,10 @@ import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.dto.PrintViewVersion;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
+import com.paper.mes.processorder.dto.ProcessOrderIssueVersionVO;
 import com.paper.mes.processorder.dto.ProcessOrderPrintViewVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
+import com.paper.mes.processorder.dto.ProcessOrderReissueDTO;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
 import com.paper.mes.processorder.dto.ProcessStepDTO;
@@ -65,6 +67,7 @@ import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
+import com.paper.mes.processorder.entity.ProcessOrderIssueVersion;
 import com.paper.mes.processorder.entity.ProcessParam;
 import com.paper.mes.processorder.entity.ProcessStageInputRel;
 import com.paper.mes.processorder.entity.ProcessStageOutput;
@@ -97,6 +100,7 @@ import com.paper.mes.processorder.service.ProcessMixProcessResolver;
 import com.paper.mes.processorder.service.ProcessModePolicy;
 import com.paper.mes.processorder.service.ProcessCatalogStepValidator;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.ProcessOrderIssueVersionService;
 import com.paper.mes.processorder.service.ProcessOrderSettlementPolicy;
 import com.paper.mes.processorder.service.RewindPlanPreviewContext;
 import com.paper.mes.processorder.service.RewindWidthDifferenceCalculator;
@@ -229,6 +233,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private final ProcessRouteCleanupService processRouteCleanupService;
     private final ProcessOrderSettlementPolicy settlementPolicy;
     private final InventoryLedgerBusinessRecorder inventoryLedgerRecorder;
+    @Autowired
+    private ProcessOrderIssueVersionService issueVersionService;
 
     @Override
     public PageResult<ProcessOrder> pageOrders(ProcessOrderQuery query) {
@@ -936,6 +942,11 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (isRollback(from, to)) {
             String rollbackReason = requireRollbackReason(reason);
             validateRollback(order, from, to);
+            if (clearsIssuedSnapshot(from, to)) {
+                issueVersionService.cancelPending(order.getUuid(), rollbackReason, currentOperator(), LocalDateTime.now());
+                issueVersionService.archive(order.getUuid(), order.getSnapPrint(), rollbackReason,
+                        currentOperator(), LocalDateTime.now());
+            }
             cleanupDataOnRollback(order, from, to);
             // 记录回退操作日志
             operationLogService.record(
@@ -1031,6 +1042,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         OrderStatus from = OrderStatus.of(order.getOrderStatus());
         String rollbackReason = requireRollbackReason(reason);
         validateDeepRollbackToDraft(order, from);
+        issueVersionService.cancelPending(order.getUuid(), rollbackReason, currentOperator(), LocalDateTime.now());
+        issueVersionService.archive(order.getUuid(), order.getSnapPrint(), rollbackReason,
+                currentOperator(), LocalDateTime.now());
         backRecordReopenService.reverseStockInReceipts(order.getUuid(), order.getVersion());
         cleanupBackRecordActuals(order);
         clearGeneratedProductionData(order);
@@ -1481,13 +1495,70 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         StateMachine.assertTransition(OrderStatus.of(order.getOrderStatus()), OrderStatus.PROCESSING);
         LocalDateTime now = LocalDateTime.now();
         String printUser = currentOperator();
-        order.setSnapPrint(buildSnapPrint(order, rolls, finishRolls, steps, processParams, finishOriginalRels,
-                0, now, null, printUser));
+        String snapshot = buildSnapPrint(order, rolls, finishRolls, steps, processParams, finishOriginalRels,
+                0, now, null, printUser);
+        ProcessOrderIssueVersion pendingVersion = issueVersionService.findPending(uuid).orElse(null);
+        ProcessOrderIssueVersion appliedVersion;
+        if (pendingVersion == null) {
+            appliedVersion = issueVersionService.recordInitial(uuid, snapshot, printUser, now);
+        } else {
+            issueVersionService.apply(pendingVersion, snapshot, printUser, now);
+            appliedVersion = pendingVersion;
+            operationLogService.recordField(BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
+                    "下发版本快照", pendingVersion.getSnapshotBefore(), snapshot, printUser);
+            operationLogService.record(BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
+                    OperationLogService.ACTION_REISSUE, printUser,
+                    "重新下发版本 " + pendingVersion.getVersionNo() + "，变更原因：" + pendingVersion.getChangeReason());
+        }
+        order.setSnapPrint(snapshot);
         order.setOrderStatus(OrderStatus.PROCESSING.getCode());
         order.setPrintStatus(PRINT_STATUS_UNPRINTED);
         order.setPrintCount(0);
         ConcurrencyGuard.requireUpdated(updateById(order));
-        return buildPrintResult(order, finishRolls, 0, now);
+        PrintResultVO result = buildPrintResult(order, finishRolls, 0, now);
+        result.setIssueVersion(appliedVersion.getVersionNo());
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void prepareReissue(String uuid, ProcessOrderReissueDTO dto) {
+        businessLockService.lockProcessOrders(List.of(uuid));
+        ProcessOrder order = requireOrder(uuid);
+        if (!Objects.equals(order.getVersion(), dto.getExpectedVersion())) {
+            throw new BusinessException(ErrorCode.E006, "加工单已被其他页面修改，请刷新后重试");
+        }
+        if (!Integer.valueOf(STATUS_PROCESSING).equals(order.getOrderStatus())) {
+            throw new BusinessException(ErrorCode.E001, "仅加工中的已下发加工单可申请变更并重新下发");
+        }
+        if (!StringUtils.hasText(order.getSnapPrint())) {
+            throw new BusinessException(ErrorCode.E002, "当前加工单没有可归档的下发快照");
+        }
+        ensureOrderNotReferencedBySettle(order.getUuid(), "加工单已被结算单引用，不能重新下发");
+        ensureOrderHasNoDeliveryDetail(order.getUuid(), "加工单已有出库明细，不能重新下发");
+        ensureOrderHasNoOutboundFinish(order.getUuid());
+        String reason = requireRollbackReason(dto.getReason());
+        LocalDateTime now = LocalDateTime.now();
+        String operator = currentOperator();
+        issueVersionService.prepare(order.getUuid(), order.getSnapPrint(), reason, operator, now);
+        resetIssueAndBackRecordFields(order);
+        order.setOrderStatus(STATUS_PENDING);
+        ConcurrencyGuard.requireUpdated(updateById(order));
+        operationLogService.record(BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
+                OperationLogService.ACTION_REISSUE, operator,
+                "提交下发后变更，旧版本已归档，原因：" + reason);
+    }
+
+    @Override
+    public List<ProcessOrderIssueVersionVO> listIssueVersions(String uuid) {
+        requireOrder(uuid);
+        return issueVersionService.list(uuid);
+    }
+
+    private boolean clearsIssuedSnapshot(OrderStatus from, OrderStatus to) {
+        return (from == OrderStatus.PENDING && to == OrderStatus.DRAFT)
+                || (from == OrderStatus.PROCESSING && to == OrderStatus.PENDING)
+                || (from == OrderStatus.TO_RECORD && to == OrderStatus.PENDING);
     }
 
     @Override

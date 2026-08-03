@@ -2,15 +2,16 @@ package com.paper.mes.inventory.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ErrorCode;
+import com.paper.mes.common.ResultCode;
 import com.paper.mes.common.db.BusinessLockService;
-import com.paper.mes.delivery.entity.DeliveryDetail;
-import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
 import com.paper.mes.inventory.dto.InventoryOpeningReconciliation;
 import com.paper.mes.inventory.dto.InventoryOpeningReconciliationLine;
 import com.paper.mes.inventory.dto.InventoryOpeningRequest;
 import com.paper.mes.inventory.dto.InventoryLedgerCommand;
 import com.paper.mes.inventory.entity.InventoryLedgerEntry;
 import com.paper.mes.inventory.entity.InventoryLedgerEventType;
+import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +22,9 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,27 +35,71 @@ public class InventoryOpeningService {
     private static final BigDecimal ZERO = BigDecimal.ZERO;
 
     private final FinishRollMapper finishRollMapper;
-    private final DeliveryDetailMapper deliveryDetailMapper;
+    private final InventoryOpeningReservationReader reservationReader;
     private final BusinessLockService businessLockService;
     private final InventoryLedgerService ledgerService;
+    private final OperationLogService operationLogService;
+
+    // The preview is write-free at the business level, but must hold the same
+    // row and switch locks as the opening command while the projection is read.
+    @Transactional(rollbackFor = Exception.class)
+    public InventoryOpeningReconciliation previewCurrentProjection(InventoryOpeningRequest request) {
+        validateRequest(request);
+        List<FinishRoll> finishes = lockAndReloadFinishes();
+        Map<String, BigDecimal> reservedByFinish = reservationReader.read(finishes);
+        List<InventoryOpeningReconciliationLine> lines = finishes.stream()
+                .map(finish -> previewOne(finish, reservedByFinish.getOrDefault(finish.getUuid(), ZERO)))
+                .toList();
+        return InventoryOpeningReconciliation.preview(request.getSwitchUuid().trim(), lines);
+    }
 
     @Transactional(rollbackFor = Exception.class)
     public InventoryOpeningReconciliation openCurrentProjection(InventoryOpeningRequest request) {
-        if (request == null) {
-            throw new BusinessException("inventory opening command is required");
-        }
-        requireText(request.getSwitchUuid(), "switchUuid");
-        businessLockService.lockInventorySwitch();
-        List<FinishRoll> finishes = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
-                .orderByAsc(FinishRoll::getUuid));
-        businessLockService.lockFinishRolls(finishes.stream().map(FinishRoll::getUuid).toList());
-        finishes = reloadFinishes();
-        Map<String, BigDecimal> reservedByFinish = activeReservations(finishes);
+        validateRequest(request);
+        List<FinishRoll> finishes = lockAndReloadFinishes();
+        Map<String, BigDecimal> reservedByFinish = reservationReader.read(finishes);
         List<InventoryOpeningReconciliationLine> lines = new ArrayList<>(finishes.size());
         for (FinishRoll finish : finishes) {
             lines.add(openOne(finish, reservedByFinish.getOrDefault(finish.getUuid(), ZERO), request));
         }
-        return InventoryOpeningReconciliation.from(request.getSwitchUuid(), lines);
+        InventoryOpeningReconciliation reconciliation =
+                InventoryOpeningReconciliation.from(request.getSwitchUuid().trim(), lines);
+        requireMatched(reconciliation);
+        operationLogService.record(OperationLogService.BIZ_TYPE_INVENTORY, request.getSwitchUuid().trim(),
+                request.getSwitchUuid().trim(), OperationLogService.ACTION_INVENTORY_OPENING, null,
+                reconciliation.auditSummary());
+        return reconciliation;
+    }
+
+    private List<FinishRoll> lockAndReloadFinishes() {
+        List<FinishRoll> finishes = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
+                .orderByAsc(FinishRoll::getUuid));
+        businessLockService.lockFinishRolls(finishes.stream().map(FinishRoll::getUuid).toList());
+        // Keep the lock order identical to normal ledger writes: roll rows first, switch gate second.
+        businessLockService.lockInventorySwitch();
+        return reloadFinishes();
+    }
+
+    private InventoryOpeningReconciliationLine previewOne(FinishRoll finish, BigDecimal reserved) {
+        BigDecimal available = availableProjection(finish);
+        BigDecimal physical = available.add(reserved);
+        BigDecimal quantity = physical.signum() > 0 ? BigDecimal.ONE : ZERO;
+        return InventoryOpeningReconciliationLine.builder()
+                .finishRollUuid(finish.getUuid())
+                .projectedQuantity(quantity)
+                .openingQuantity(quantity)
+                .projectedWeight(available)
+                .openingWeight(available)
+                .quantityDifference(ZERO)
+                .weightDifference(ZERO)
+                .build();
+    }
+
+    private void validateRequest(InventoryOpeningRequest request) {
+        if (request == null) {
+            throw new BusinessException("inventory opening command is required");
+        }
+        requireText(request.getSwitchUuid(), "switchUuid");
     }
 
     private InventoryOpeningReconciliationLine openOne(FinishRoll finish, BigDecimal reserved,
@@ -93,21 +138,6 @@ public class InventoryOpeningService {
                 .orderByAsc(FinishRoll::getUuid));
     }
 
-    private Map<String, BigDecimal> activeReservations(List<FinishRoll> finishes) {
-        if (finishes.isEmpty()) {
-            return Map.of();
-        }
-        List<String> finishUuids = finishes.stream().map(FinishRoll::getUuid).toList();
-        Map<String, BigDecimal> result = new HashMap<>();
-        List<DeliveryDetail> details = deliveryDetailMapper.selectList(new LambdaQueryWrapper<DeliveryDetail>()
-                .in(DeliveryDetail::getFinishUuid, finishUuids)
-                .eq(DeliveryDetail::getStockLockStatus, STOCK_LOCK_ACTIVE));
-        for (DeliveryDetail detail : details) {
-            result.merge(detail.getFinishUuid(), nz(detail.getOutWeight()), BigDecimal::add);
-        }
-        return result;
-    }
-
     private BigDecimal availableProjection(FinishRoll finish) {
         if (!Integer.valueOf(IN_STOCK).equals(finish.getFinishStatus())) {
             return ZERO;
@@ -122,8 +152,18 @@ public class InventoryOpeningService {
         return remaining;
     }
 
-    private BigDecimal nz(BigDecimal value) {
-        return value == null ? ZERO : value;
+    private void requireMatched(InventoryOpeningReconciliation reconciliation) {
+        if (reconciliation.matched()) {
+            return;
+        }
+        String differences = reconciliation.lines().stream()
+                .filter(line -> !line.matches())
+                .limit(20)
+                .map(line -> line.finishRollUuid() + "(quantity=" + line.quantityDifference()
+                        + ",weight=" + line.weightDifference() + ")")
+                .collect(Collectors.joining(", "));
+        throw new BusinessException(ResultCode.CONFLICT, ErrorCode.E004.getCode(),
+                "inventory opening reconciliation mismatch: " + differences);
     }
 
     private void requireText(String value, String name) {

@@ -128,7 +128,9 @@ function Assert-RequiredContract {
         @{ Label = "uk_report_query_snapshot_idempotency"; Sql = "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='$TargetDatabase' AND table_name='rpt_report_query_snapshot' AND index_name='uk_report_query_snapshot_idempotency';" },
         @{ Label = "token digest column"; Sql = "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$TargetDatabase' AND table_name='sys_user_session' AND column_name='token' AND character_maximum_length=64;" },
         @{ Label = "inventory no-update trigger"; Sql = "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='$TargetDatabase' AND trigger_name='trg_inventory_transaction_no_update';" },
-        @{ Label = "inventory no-delete trigger"; Sql = "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='$TargetDatabase' AND trigger_name='trg_inventory_transaction_no_delete';" }
+        @{ Label = "inventory no-delete trigger"; Sql = "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='$TargetDatabase' AND trigger_name='trg_inventory_transaction_no_delete';" },
+        @{ Label = "process order issue version table"; Sql = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$TargetDatabase' AND table_name='biz_process_order_issue_version';" },
+        @{ Label = "process order issue version uniqueness"; Sql = "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='$TargetDatabase' AND table_name='biz_process_order_issue_version' AND index_name='uk_process_order_issue_version';" }
     )
     foreach ($check in $checks) {
         $value = Invoke-MySql $check.Sql

@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ProcessOrder } from '../../types/processOrder'
-import { OrderNoCell, OrderStatusCell } from './ProcessOrderListCells'
+import { OrderDateScheduleCell, OrderNoCell, OrderStatusCell } from './ProcessOrderListCells'
 import { processSummaryText } from './processOrderListModel'
 
 describe('加工单列表单号单元格', () => {
@@ -68,5 +68,15 @@ describe('加工单列表单号单元格', () => {
     )
 
     expect(markup).toContain('已下发，未打印')
+  })
+
+  it('不在加工单列表展示历史班组字段', () => {
+    const markup = renderToStaticMarkup(
+      <OrderDateScheduleCell record={{ uuid: 'order-8', orderDate: '2026-08-02', teamGroup: '一班' }} />,
+    )
+
+    expect(markup).toContain('制单 2026-08-02')
+    expect(markup).not.toContain('一班')
+    expect(markup).not.toContain('班组')
   })
 })

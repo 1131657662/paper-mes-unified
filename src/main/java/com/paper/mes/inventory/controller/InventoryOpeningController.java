@@ -21,6 +21,11 @@ public class InventoryOpeningController {
 
     private final InventoryOpeningService openingService;
 
+    @PostMapping("/opening/preview")
+    public R<InventoryOpeningReconciliation> preview(@Valid @RequestBody InventoryOpeningRequest request) {
+        return R.success(openingService.previewCurrentProjection(request));
+    }
+
     @PostMapping("/opening")
     public R<InventoryOpeningReconciliation> open(@Valid @RequestBody InventoryOpeningRequest request) {
         return R.success(openingService.openCurrentProjection(request));

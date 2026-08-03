@@ -21,6 +21,8 @@ import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.dto.ProcessOrderPrintViewVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
+import com.paper.mes.processorder.dto.ProcessOrderIssueVersionVO;
+import com.paper.mes.processorder.dto.ProcessOrderReissueDTO;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
 import com.paper.mes.processorder.dto.ProcessStepDTO;
@@ -113,6 +115,12 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
 
     /** 下发加工单：生成不可变下发快照并流转到加工中，但不记录为已打印。 */
     PrintResultVO issue(String uuid);
+
+    /** Archive the current issued snapshot and reopen a controlled pending edit for reissue. */
+    void prepareReissue(String uuid, ProcessOrderReissueDTO dto);
+
+    /** List retained issued versions without exposing raw snapshots to ordinary list views. */
+    List<ProcessOrderIssueVersionVO> listIssueVersions(String uuid);
 
     /**
      * 回录提交：写入原纸复称实际参数与成品实际重量，逐卷三级闭合校验，

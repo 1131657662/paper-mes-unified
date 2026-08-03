@@ -44,7 +44,6 @@ function ScheduleFields({ onCustomerChange, options }: Pick<Props, 'onCustomerCh
       <Row gutter={14}>
         <Col span={6}><Form.Item name="customerUuid" label="客户" rules={[{ required: true, message: '请选择客户' }]}><Select showSearch optionFilterProp="label" options={options.customers} placeholder="选择客户" onChange={onCustomerChange} /></Form.Item></Col>
         <Col span={6}><Form.Item name="warehouseUuid" label="仓库"><Select allowClear options={options.warehouses} placeholder="选择仓库" /></Form.Item></Col>
-        <Col span={6}><Form.Item name="teamGroup" label="班组"><Input placeholder="班组" /></Form.Item></Col>
         <Col span={6}><Form.Item name="priority" label="优先级"><Select options={options.priorities} /></Form.Item></Col>
         <Col span={6}><Form.Item name="orderDate" label="制单日期" rules={[{ required: true, message: '请选择日期' }]}><DatePicker /></Form.Item></Col>
         <Col span={6}><Form.Item name="expectFinishDate" label="期望完成"><DatePicker /></Form.Item></Col>

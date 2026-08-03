@@ -27,6 +27,8 @@ import type {
   PrintResultVO,
   ProcessConfigDraftSaveDTO,
   ProcessOrder,
+  ProcessOrderIssueVersion,
+  ProcessOrderReissueDTO,
   ProcessOrderCreateDTO,
   ProcessOrderDetailVO,
   ProcessOrderPrintViewVO,
@@ -321,6 +323,21 @@ export function issueProcessOrder(uuid: string) {
   return request<PrintResultVO>({
     url: `/api/process-orders/${uuid}/issue`,
     method: 'post',
+  })
+}
+
+export function prepareProcessOrderReissue(uuid: string, dto: ProcessOrderReissueDTO) {
+  return request<void>({
+    url: `/api/process-orders/${uuid}/reissue`,
+    method: 'post',
+    data: dto,
+  })
+}
+
+export function listProcessOrderIssueVersions(uuid: string) {
+  return request<ProcessOrderIssueVersion[]>({
+    url: `/api/process-orders/${uuid}/issue-versions`,
+    method: 'get',
   })
 }
 

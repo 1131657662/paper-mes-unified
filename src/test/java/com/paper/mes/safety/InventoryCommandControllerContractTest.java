@@ -26,6 +26,7 @@ class InventoryCommandControllerContractTest {
         String source = read("src/main/java/com/paper/mes/inventory/controller/InventoryOpeningController.java");
 
         assertThat(source).contains("@RequirePermission(Permissions.DATA_HEALTH)")
+                .contains("@PostMapping(\"/opening/preview\")")
                 .contains("@PostMapping(\"/opening\")")
                 .contains("InventoryOpeningRequest");
     }

@@ -81,7 +81,7 @@ function Apply-Schema {
 }
 
 function Apply-PendingMigrations {
-    # The current baseline is 3.52.  The smoke database replays the last
+    # The current baseline is 3.53.  The smoke database replays the last
     # upgrade window (3.49 -> current) so migrations are executed instead of
     # being registered as a fabricated baseline.  Update this fixture when a
     # release introduces a new canonical baseline.

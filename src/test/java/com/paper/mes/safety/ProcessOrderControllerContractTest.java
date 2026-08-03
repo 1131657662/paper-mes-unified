@@ -12,6 +12,7 @@ import com.paper.mes.processorder.dto.BackRecordResultVO;
 import com.paper.mes.processorder.dto.PrintDTO;
 import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
+import com.paper.mes.processorder.dto.ProcessOrderReissueDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingAdjustmentDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingBatchDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingBatchPreviewVO;
@@ -225,6 +226,38 @@ class ProcessOrderControllerContractTest {
                 .andExpect(jsonPath("$.code").value(403));
 
         verify(processOrderService, never()).print(any(), any());
+    }
+
+    @Test
+    void reissue_withOperatorRole_returnsForbidden() throws Exception {
+        authorizeAs("operator");
+
+        mvc.perform(post("/api/process-orders/order-uuid/reissue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\":7,\"reason\":\"客户变更规格\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+
+        verify(processOrderService, never()).prepareReissue(any(), any());
+    }
+
+    @Test
+    void reissue_withAdminRole_bindsExpectedVersionAndReason() throws Exception {
+        authorizeAs("admin");
+
+        mvc.perform(post("/api/process-orders/order-uuid/reissue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\":7,\"reason\":\"客户变更规格\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        ArgumentCaptor<ProcessOrderReissueDTO> captor =
+                ArgumentCaptor.forClass(ProcessOrderReissueDTO.class);
+        verify(processOrderService).prepareReissue(eq("order-uuid"), captor.capture());
+        assertEquals(7, captor.getValue().getExpectedVersion());
+        assertEquals("客户变更规格", captor.getValue().getReason());
     }
 
     @Test

@@ -36,4 +36,13 @@ describe('加工单基础信息结算来源', () => {
 
     expect(dto.settleOverrideReason).toBe('合同约定')
   })
+
+  it('提交新建加工单时不再写入历史班组字段', () => {
+    const dto = toBaseInfoDto({
+      customerUuid: 'customer-1',
+      teamGroup: '历史班组',
+    })
+
+    expect(dto.teamGroup).toBeUndefined()
+  })
 })

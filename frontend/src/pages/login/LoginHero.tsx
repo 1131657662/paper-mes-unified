@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { BarChartOutlined, ClusterOutlined, SafetyCertificateOutlined, TeamOutlined } from '@ant-design/icons'
+import { BarChartOutlined, ClusterOutlined, DatabaseOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
 import AppLogoMark from '../../components/brand/AppLogoMark'
 import { APP_BRAND } from '../../config/brand'
 import loginHeroScene from '../../assets/login-paper-hero.webp'
@@ -13,7 +13,7 @@ interface FeatureItem {
 
 const FEATURE_ITEMS: FeatureItem[] = [
   { icon: <ClusterOutlined />, title: '加工闭环', description: '工艺配置 / 卷号追踪' },
-  { icon: <TeamOutlined />, title: '现场协同', description: '机台作业 / 生产回录' },
+  { icon: <DatabaseOutlined />, title: '业务台账', description: '加工单 / 库存与结算' },
   { icon: <BarChartOutlined />, title: '经营分析', description: '应收金额 / 产出损耗' },
   { icon: <SafetyCertificateOutlined />, title: '全程追溯', description: '从开单到结算可追溯' },
 ]
@@ -55,7 +55,7 @@ function HeroCopy() {
         <span>生产、出库、结算</span>
         <span>回到同一条业务<em>链路</em></span>
       </h1>
-      <p>面向卷筒纸加工现场，聚合工艺配置、机台作业、卷号追踪、出库签收和加工应收。</p>
+      <p>面向卷筒纸加工业务，聚合工艺配置、卷号追踪、出库签收和加工结算。</p>
     </div>
   )
 }

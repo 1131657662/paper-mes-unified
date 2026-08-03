@@ -49,7 +49,7 @@ export default function WarehouseDetailPage() {
       <MesPageHeader
         title={warehouse.warehouseName}
         eyebrow="仓库档案"
-        description={`仓库编码：${text(warehouse.warehouseCode)} · 库位：${text(warehouse.location)} · 状态：${statusText(warehouse.status)}`}
+        description={`仓库编码：${text(warehouse.warehouseCode)} · 地址/说明：${text(warehouse.location)} · 状态：${statusText(warehouse.status)}`}
         onBack={() => navigate('/warehouses')}
         tags={<Tag color={warehouse.status === 1 ? 'green' : 'default'}>{statusText(warehouse.status)}</Tag>}
         actions={canManageBase ? (
@@ -62,7 +62,7 @@ export default function WarehouseDetailPage() {
       />
 
       <section className="warehouse-detail-overview">
-        <MetricCard label="库位/地址" value={warehouse.location || '-'} helper="用于出库和库内识别" />
+        <MetricCard label="仓库地址/说明" value={warehouse.location || '-'} helper="用于出库和仓库识别" />
         <MetricCard label="当前状态" value={statusText(warehouse.status)} helper="停用仓库不建议选用" />
         <MetricCard label="仓库编码" value={warehouse.warehouseCode || '-'} helper="内部仓库编号" />
         <MetricCard label="最近更新" value={dateText(warehouse.updateTime)} helper="档案维护时间" />
@@ -73,7 +73,7 @@ export default function WarehouseDetailPage() {
           <Descriptions column={2} size="small">
             <Descriptions.Item label="仓库编码">{text(warehouse.warehouseCode)}</Descriptions.Item>
             <Descriptions.Item label="仓库名称">{text(warehouse.warehouseName)}</Descriptions.Item>
-            <Descriptions.Item label="库位/地址">{text(warehouse.location)}</Descriptions.Item>
+            <Descriptions.Item label="仓库地址/说明">{text(warehouse.location)}</Descriptions.Item>
             <Descriptions.Item label="状态">{statusText(warehouse.status)}</Descriptions.Item>
           </Descriptions>
         </Card>

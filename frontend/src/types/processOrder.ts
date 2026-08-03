@@ -814,6 +814,7 @@ export interface PrintResultVO {
   orderUuid?: string
   orderNo?: string
   printCount?: number
+  issueVersion?: number
   /** 0已下发但未确认物理打印，1已确认打印。 */
   printStatus?: number
   /** 是否补打（printCount>1） */
@@ -822,6 +823,26 @@ export interface PrintResultVO {
   orderStatus?: number
   finishRollNos?: string[]
   spareRollNos?: string[]
+}
+
+export interface ProcessOrderReissueDTO {
+  expectedVersion: number
+  reason: string
+}
+
+export interface ProcessOrderIssueVersion {
+  uuid: string
+  orderUuid: string
+  versionNo: number
+  previousVersionNo?: number
+  status: 'PENDING' | 'APPLIED' | 'ARCHIVED' | string
+  changeReason?: string
+  operatorName: string
+  changeTime: string
+  issueTime?: string
+  issueOperatorName?: string
+  hasSnapshotBefore: boolean
+  hasSnapshotAfter: boolean
 }
 
 /** 单卷计费明细。 */

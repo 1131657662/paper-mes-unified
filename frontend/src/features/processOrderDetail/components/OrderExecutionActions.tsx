@@ -2,6 +2,7 @@ import { Button, Dropdown, Space, type MenuProps } from 'antd'
 import {
   CalculatorOutlined,
   DiffOutlined,
+  EditOutlined,
   FileDoneOutlined,
   MoreOutlined,
   PrinterOutlined,
@@ -12,6 +13,7 @@ import {
 
 export interface ExecutionActionHandlers {
   onPrint: () => void
+  onPrepareReissue: () => void
   onBackRecord: () => void
   onSnapshotDiff: () => void
   onManageRolls: () => void
@@ -26,6 +28,7 @@ export interface ExecutionActionHandlers {
 export interface ExecutionLoading {
   changingStatus?: boolean
   rollingBackDraft?: boolean
+  preparingReissue?: boolean
   calculatingFee?: boolean
   voidingOrder?: boolean
 }
@@ -98,7 +101,8 @@ function SecondaryActions({ actions, capabilities, hasPrinted, loading, status }
   )
 }
 
-function buildMoreItems(status: number, actions: ExecutionActionHandlers, capabilities: ExecutionCapabilities): NonNullable<MenuProps['items']> {
+// oxlint-disable-next-line react/only-export-components
+export function buildMoreItems(status: number, actions: ExecutionActionHandlers, capabilities: ExecutionCapabilities): NonNullable<MenuProps['items']> {
   const items: NonNullable<MenuProps['items']> = []
   if (!capabilities.canManageOrder) return items
   if (status === 1) items.push(rollbackItem('回退编辑', () => actions.onChangeStatus(0, '确认回退到草稿继续编辑？已生成的工序、成品号和打印快照会失效。')))
@@ -106,6 +110,7 @@ function buildMoreItems(status: number, actions: ExecutionActionHandlers, capabi
   if (status === 3) items.push(rollbackItem('回退待下发', () => actions.onChangeStatus(1, '确认回退到待下发？会清理完成快照和回录信息。')))
   if (status === 4) items.push(rollbackItem('回退待回录', () => actions.onChangeStatus(3, '确认回退到待回录？')))
   if (status === 3 || status === 4) items.push(rollbackItem('回退编辑', () => actions.onChangeStatus(0, '确认回退到草稿更换母卷？会清理下发、回录、成品号和工序产物数据。')))
+  if (status === 2) items.push({ icon: <EditOutlined />, key: 'reissue', label: '申请变更并重新下发', onClick: actions.onPrepareReissue })
   if (status >= 0 && status <= 2) items.push({ danger: true, icon: <StopOutlined />, key: 'void', label: '作废加工单', onClick: actions.onVoidOrder })
   return items
 }
@@ -115,5 +120,5 @@ function rollbackItem(label: string, onClick: () => void) {
 }
 
 function isMoreLoading(loading: ExecutionLoading): boolean {
-  return Boolean(loading.changingStatus || loading.rollingBackDraft || loading.voidingOrder)
+  return Boolean(loading.changingStatus || loading.rollingBackDraft || loading.preparingReissue || loading.voidingOrder)
 }

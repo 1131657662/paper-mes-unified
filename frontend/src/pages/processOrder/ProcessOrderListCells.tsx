@@ -84,7 +84,6 @@ export function OrderDateScheduleCell({ record }: { record: ProcessOrder }) {
     <div className="process-order-list__schedule">
       <span>制单 {record.orderDate || '-'}</span>
       {record.expectFinishDate && <span>交期 {record.expectFinishDate}</span>}
-      {record.teamGroup && <span>班组 {record.teamGroup}</span>}
     </div>
   )
 }

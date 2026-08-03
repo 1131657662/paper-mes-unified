@@ -15,6 +15,7 @@ public class OperationLogService {
 
     /** 动作类型常量，对齐 DDL 注释枚举。 */
     public static final String ACTION_REPRINT = "补打";
+    public static final String ACTION_REISSUE = "变更重新下发";
     public static final String ACTION_BACK_RECORD = "回录";
     public static final String ACTION_VOID_ROLL_NO = "作废卷号";
     public static final String ACTION_VOID_ORDER = "作废加工单";
@@ -26,6 +27,7 @@ public class OperationLogService {
     public static final String ACTION_DELIVERY_RELEASE = "出库放行";
     public static final String ACTION_DELIVERY_CANCEL = "取消出库";
     public static final String ACTION_INVENTORY_SCRAP = "成品库存报废";
+    public static final String ACTION_INVENTORY_OPENING = "库存切换日开账";
     public static final String ACTION_SETTLE = "结算";
     public static final String ACTION_SETTLE_VOID = "作废结算";
     public static final String ACTION_RECEIVE = "收款";
@@ -58,6 +60,7 @@ public class OperationLogService {
     public static final String BIZ_TYPE_SYSTEM_CONFIG = "系统配置";
     public static final String BIZ_TYPE_BACKUP = "数据安全";
     public static final String BIZ_TYPE_REPORT = "统计报表";
+    public static final String BIZ_TYPE_INVENTORY = "库存账本";
 
     private final OperationLogMapper operationLogMapper;
 

@@ -55,7 +55,7 @@ export default function WarehouseList() {
   const columns: ProColumns<Warehouse>[] = [
     { title: '仓库编码', dataIndex: 'warehouseCode', width: 140 },
     { title: '仓库名称', dataIndex: 'warehouseName', width: 200, render: textCell },
-    { title: '库位', dataIndex: 'location', width: 200, search: false },
+    { title: '仓库地址/说明', dataIndex: 'location', width: 200, search: false },
     {
       title: '状态',
       dataIndex: 'status',
@@ -158,7 +158,7 @@ function warehouseExportColumns() {
   return [
     { header: '仓库编码', value: (row: Warehouse) => row.warehouseCode },
     { header: '仓库名称', value: (row: Warehouse) => row.warehouseName },
-    { header: '库位', value: (row: Warehouse) => row.location },
+    { header: '仓库地址/说明', value: (row: Warehouse) => row.location },
     { header: '状态', value: (row: Warehouse) => row.status ? STATUS[row.status] ?? '-' : '-' },
     { header: '默认仓库', value: (row: Warehouse) => row.isDefault === 1 ? '默认仓库' : '否' },
     { header: '备注', value: (row: Warehouse) => row.remark },

@@ -23,6 +23,8 @@ class HighRiskOperationAuditContractTest {
             "src/main/java/com/paper/mes/backup/service/BackupMaintenanceService.java";
     private static final String DATA_REPAIR_SERVICE =
             "src/main/java/com/paper/mes/health/service/DataHealthRepairService.java";
+    private static final String INVENTORY_OPENING_SERVICE =
+            "src/main/java/com/paper/mes/inventory/service/InventoryOpeningService.java";
 
     @Test
     void processOrderHighRiskActions_areAudited() throws IOException {
@@ -76,6 +78,11 @@ class HighRiskOperationAuditContractTest {
         assertAudit(slice(maintenance, "private int cleanup", "private void deleteDirectory"),
                 "OperationLogService.ACTION_BACKUP_CLEANUP");
         assertAudit(source(DATA_REPAIR_SERVICE), "OperationLogService.ACTION_DATA_REPAIR");
+    }
+
+    @Test
+    void inventoryOpening_isAuditedAfterReconciliation() throws IOException {
+        assertAudit(source(INVENTORY_OPENING_SERVICE), "OperationLogService.ACTION_INVENTORY_OPENING");
     }
 
     private void assertAudit(String source, String action) {

@@ -6,9 +6,9 @@ The V3.52 ledger foundation is intentionally isolated from existing stock write 
 
 `DeliveryServiceImpl` and first-stock-in handling now map create/append/confirm/rollback/cancel and receipt operations to reserve/release/issue/return/RECEIPT events atomically. The recorder is a required constructor dependency and no production path silently skips ledger writes. Finished-goods scrap uses a dedicated permission-protected command with reason validation and an operation-log hook. The `ADJUSTMENT` event is supported by the immutable schema and validator, but no adjustment command or UI is exposed until its business value, scope and impact are explicitly confirmed.
 
-The V3.52 table and constraints are mirrored in the canonical baseline (`sql/01_schema_v4.1.sql`), and the schema-gate contracts require the append-only triggers and balance checks. The migration was replayed successfully against a disposable MySQL 8.0 database; publication still requires the release-environment replay evidence.
+The V3.52 table and constraints are mirrored in the current 3.53 canonical baseline (`sql/01_schema_v4.1.sql`), and the schema-gate contracts require the append-only triggers and balance checks. The V3.50-V3.53 window was replayed successfully in disposable and release environments.
 
-Controlled finished-roll scrap has a dedicated permission-protected command, occupancy checks, reason/request validation, operation log, and SCRAP event. The canonical baseline includes the ledger and `sql/schema-baseline.version` is `3.52`.
+Controlled finished-roll scrap has a dedicated permission-protected command, occupancy checks, reason/request validation, operation log, and SCRAP event. The canonical baseline includes the ledger and `sql/schema-baseline.version` is `3.53`.
 
 Back-record rollback now appends a compensating `ADJUSTMENT` for every finish roll that is moved from in-stock back to pending. The command runs before production facts are cleared, is guarded by delivery-activity checks, and uses the process-order version plus finish-roll UUID as its idempotency key. This covers completed-order reopen, partial-record rollback to pending, and rollback-to-draft cleanup without introducing a general adjustment API.
 
@@ -18,4 +18,6 @@ Delivery issue/return idempotency is versioned by the delivery detail optimistic
 
 The scope boundary keeps historical `WORKSTATION` resource rows readable for old process-order references, but new machine writes accept only `MACHINE`; the workstation edit entry is hidden in the PC UI and rejected again by the backend.
 
-Stage 0 remains gated until the full P0 suite, a real MySQL baseline/replay diff including V3.52, and opening reconciliation evidence pass. Historical pre-switch snapshots are not converted into synthetic events, and no stage 1 readiness is claimed yet.
+Stage 0 remains gated until the full P0 suite and switch-day opening reconciliation evidence pass. Historical pre-switch snapshots are not converted into synthetic events, and no stage 1 readiness is claimed yet.
+
+The cutover evidence path is now explicit: during the approved write-freeze window, call authenticated `POST /api/inventory/ledger/opening/preview`, save the raw response and its SHA-256, then run `deploy/inventory-opening-cutover.example.sh` with `MODE=preflight`. Only after that gate passes may the operator call the authenticated opening command and rerun the evidence script with `MODE=postcheck`, using the same approved manifest and preview checksums. The script only reads MySQL and writes local evidence artifacts; it does not execute the opening command or fabricate historical events. Production cutover and the approved V1-V3.49 historical fixture remain external release gates.

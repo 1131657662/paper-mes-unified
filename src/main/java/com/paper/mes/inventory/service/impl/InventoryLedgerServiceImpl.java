@@ -62,6 +62,8 @@ public class InventoryLedgerServiceImpl implements InventoryLedgerService {
         }
 
         businessLockService.lockFinishRolls(List.of(command.getFinishRollUuid()));
+        // Opening holds this gate for the entire transaction; regular events must join that gate.
+        businessLockService.lockInventorySwitch();
         existing = mapper.selectByIdempotencyKey(command.getIdempotencyKey());
         if (existing != null) {
             return requireSameCommand(existing, payloadHash);

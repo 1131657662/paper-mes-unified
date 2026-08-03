@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -44,7 +45,9 @@ class InventoryLedgerServiceImplTest {
         assertThat(result.getQuantityAfter()).isEqualByComparingTo("1");
         assertThat(result.getWeightAfter()).isEqualByComparingTo("100");
         assertThat(result.getAvailableWeightAfter()).isEqualByComparingTo("100");
-        verify(locks).lockFinishRolls(List.of("finish-1"));
+        var lockOrder = inOrder(locks);
+        lockOrder.verify(locks).lockFinishRolls(List.of("finish-1"));
+        lockOrder.verify(locks).lockInventorySwitch();
     }
 
     @Test

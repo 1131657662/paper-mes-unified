@@ -14,6 +14,7 @@ const actions: ExecutionActionHandlers = {
   onGoSettle: () => undefined,
   onManageRolls: () => undefined,
   onPrint: () => undefined,
+  onPrepareReissue: () => undefined,
   onSnapshotDiff: () => undefined,
   onVoidOrder: () => undefined,
 }

@@ -11,10 +11,22 @@ public record InventoryOpeningReconciliation(
         BigDecimal openingQuantityTotal,
         BigDecimal projectedWeightTotal,
         BigDecimal openingWeightTotal,
-        boolean matched) {
+        boolean matched,
+        boolean preview) {
 
     public static InventoryOpeningReconciliation from(String switchUuid,
                                                        List<InventoryOpeningReconciliationLine> lines) {
+        return create(switchUuid, lines, false);
+    }
+
+    public static InventoryOpeningReconciliation preview(String switchUuid,
+                                                         List<InventoryOpeningReconciliationLine> lines) {
+        return create(switchUuid, lines, true);
+    }
+
+    private static InventoryOpeningReconciliation create(String switchUuid,
+                                                         List<InventoryOpeningReconciliationLine> lines,
+                                                         boolean preview) {
         BigDecimal projectedQuantity = lines.stream()
                 .map(InventoryOpeningReconciliationLine::projectedQuantity)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -29,6 +41,16 @@ public record InventoryOpeningReconciliation(
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         boolean matched = lines.stream().allMatch(InventoryOpeningReconciliationLine::matches);
         return new InventoryOpeningReconciliation(switchUuid, List.copyOf(lines), projectedQuantity,
-                openingQuantity, projectedWeight, openingWeight, matched);
+                openingQuantity, projectedWeight, openingWeight, matched, preview);
+    }
+
+    public String auditSummary() {
+        return "lines=" + lines.size()
+                + "; projectedQuantity=" + projectedQuantityTotal
+                + "; openingQuantity=" + openingQuantityTotal
+                + "; projectedWeight=" + projectedWeightTotal
+                + "; openingWeight=" + openingWeightTotal
+                + "; matched=" + matched
+                + "; preview=" + preview;
     }
 }

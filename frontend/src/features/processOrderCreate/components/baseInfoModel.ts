@@ -9,7 +9,7 @@ export interface BaseInfoFormValues extends Omit<DraftOrderBaseDTO, 'customerUui
 }
 
 export function toBaseInfoDto(value: BaseInfoFormValues): DraftOrderBaseDTO {
-  return {
+  const dto: DraftOrderBaseDTO = {
     ...value,
     customerUuid: value.customerUuid ?? '',
     orderDate: value.orderDate ? value.orderDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
@@ -19,6 +19,8 @@ export function toBaseInfoDto(value: BaseInfoFormValues): DraftOrderBaseDTO {
       ? value.settleOverrideReason?.trim()
       : undefined,
   }
+  delete dto.teamGroup
+  return dto
 }
 
 export function baseInfoInitialValues(initialValue?: DraftOrderBaseDTO): BaseInfoFormValues {

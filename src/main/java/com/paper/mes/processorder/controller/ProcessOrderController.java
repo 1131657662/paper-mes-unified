@@ -25,6 +25,8 @@ import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.dto.ProcessOrderPrintViewVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
+import com.paper.mes.processorder.dto.ProcessOrderIssueVersionVO;
+import com.paper.mes.processorder.dto.ProcessOrderReissueDTO;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessOrderRollbackDTO;
 import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
@@ -227,6 +229,20 @@ public class ProcessOrderController {
     @RequirePermission(Permissions.ORDER_MANAGE)
     public R<PrintResultVO> issue(@PathVariable String uuid) {
         return R.success(processOrderService.issue(uuid));
+    }
+
+    @PostMapping("/{uuid}/reissue")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<Void> prepareReissue(@PathVariable String uuid,
+                                  @Valid @RequestBody ProcessOrderReissueDTO dto) {
+        processOrderService.prepareReissue(uuid, dto);
+        return R.success();
+    }
+
+    @GetMapping("/{uuid}/issue-versions")
+    @RequirePermission(Permissions.ORDER_VIEW)
+    public R<List<ProcessOrderIssueVersionVO>> issueVersions(@PathVariable String uuid) {
+        return R.success(processOrderService.listIssueVersions(uuid));
     }
 
     @PostMapping("/{uuid}/back-record")

@@ -38,8 +38,8 @@ export default function WarehouseProfileForm({ editing, form, onFinish, onValues
           >
             <Input placeholder="请输入仓库名称" />
           </Form.Item>
-          <Form.Item name="location" label="库位/地址">
-            <Input placeholder="如 A区1号 / 东仓" />
+          <Form.Item name="location" label="仓库地址/说明">
+            <Input placeholder="填写仓库地址或识别说明" />
           </Form.Item>
           <Form.Item name="status" label="状态">
             <Select options={statusOptions} />
@@ -58,7 +58,7 @@ export default function WarehouseProfileForm({ editing, form, onFinish, onValues
       <section className="warehouse-profile-form__section">
         <h3>备注</h3>
         <Form.Item name="remark" label="备注说明">
-          <Input.TextArea rows={4} placeholder="记录仓库用途、库位范围或管理说明" />
+          <Input.TextArea rows={4} placeholder="记录仓库用途、地址或管理说明" />
         </Form.Item>
       </section>
     </Form>

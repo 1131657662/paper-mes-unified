@@ -1,0 +1,9 @@
+format=paper-mes-inventory-opening-v1
+switch_uuid=00000000-0000-4000-8000-000000000000
+occurred_at=2026-08-03T22:00:00
+timezone=Asia/Shanghai
+reason=切换日开账
+approved_by=REPLACE_WITH_BUSINESS_APPROVER
+approved_at=2026-08-03T20:00:00+08:00
+write_freeze_confirmed_by=REPLACE_WITH_FREEZE_CONFIRMER
+write_freeze_confirmed_at=2026-08-03T21:55:00+08:00
