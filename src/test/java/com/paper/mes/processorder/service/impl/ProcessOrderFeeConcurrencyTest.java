@@ -154,7 +154,9 @@ class ProcessOrderFeeConcurrencyTest {
                     mock(RollNoSequenceService.class), new SawPlanPreviewer(), mock(DocumentNoService.class),
                     mock(BusinessLockService.class), mock(MachineMapper.class), mock(WeightCheckThresholdService.class),
                     null, null, null, null, new BackRecordScopeResolver(), null, mock(BackRecordWarehousePolicy.class),
-                    null, null, null, null, null, null, null, null,
+                    null, null, null, null, null,
+                    mock(com.paper.mes.processorder.service.ProcessStepRouteMutationGuard.class),
+                    null, null, null,
                     new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy(),
                     mock(InventoryLedgerBusinessRecorder.class));
             this.order = order;

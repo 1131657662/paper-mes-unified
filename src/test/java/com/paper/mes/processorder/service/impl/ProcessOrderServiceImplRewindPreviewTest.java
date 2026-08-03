@@ -381,6 +381,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 null,
                 null,
                 null,
+                mock(com.paper.mes.processorder.service.ProcessStepRouteMutationGuard.class),
                 null,
                 null,
                 null,

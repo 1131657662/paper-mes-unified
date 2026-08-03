@@ -111,6 +111,7 @@ import com.paper.mes.processorder.service.ProcessRouteContext;
 import com.paper.mes.processorder.service.ProcessStepPricingSettings;
 import com.paper.mes.processorder.service.ProcessStepPricingPolicy;
 import com.paper.mes.processorder.service.ProcessStepEditStatusPolicy;
+import com.paper.mes.processorder.service.ProcessStepRouteMutationGuard;
 import com.paper.mes.processorder.service.ProcessStepPricingBatchCalculator;
 import com.paper.mes.processorder.service.RollLossSummaryCalculator;
 import com.paper.mes.processorder.service.RollNoSequenceService;
@@ -228,6 +229,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private final PermissionChecker permissionChecker;
     private final ProcessStepPricingSettings processStepPricingSettings;
     private final ProcessCatalogStepValidator processCatalogStepValidator;
+    private final ProcessStepRouteMutationGuard processStepRouteMutationGuard;
     private final ServiceStepBatchUpsertWriter serviceStepBatchUpsertWriter;
     private final ServiceOnlyProcessPolicy serviceOnlyProcessPolicy;
     private final ProcessRouteCleanupService processRouteCleanupService;
@@ -4666,6 +4668,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         // 2. 校验状态
         ProcessOrder order = getById(step.getOrderUuid());
         ProcessStepEditStatusPolicy.requireChangeAllowed(order.getOrderStatus());
+        processStepRouteMutationGuard.requireOrdinaryMutationAllowed(step);
         validateServiceStepUnique(step.getOriginalUuid(), dto.getStepType(), step.getUuid());
 
         // 3. 更新工序（不允许修改orderUuid、originalUuid、isMain）
@@ -4720,6 +4723,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         // 2. 校验状态
         ProcessOrder order = getById(step.getOrderUuid());
         ProcessStepEditStatusPolicy.requireChangeAllowed(order.getOrderStatus());
+        processStepRouteMutationGuard.requireOrdinaryMutationAllowed(step);
 
         // 3. 主工艺不可删除
         if (step.getIsMain() != null && step.getIsMain() == 1) {

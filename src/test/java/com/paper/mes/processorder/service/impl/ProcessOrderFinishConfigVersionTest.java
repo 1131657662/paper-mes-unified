@@ -114,7 +114,9 @@ class ProcessOrderFinishConfigVersionTest {
                     mock(OperationLogService.class), new ObjectMapper(), mock(DamageImageService.class),
                     mock(RollNoSequenceService.class), new SawPlanPreviewer(), documentNoService,
                     mock(BusinessLockService.class), mock(MachineMapper.class), mock(WeightCheckThresholdService.class),
-                    null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null, null, null, null,
+                    mock(com.paper.mes.processorder.service.ProcessStepRouteMutationGuard.class),
+                    null, null, null,
                     new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy(),
                     mock(InventoryLedgerBusinessRecorder.class));
             this.order = order;

@@ -24,6 +24,7 @@ import com.paper.mes.processorder.service.BackRecordWarehousePolicy;
 import com.paper.mes.processorder.service.BackRecordScopeResolver;
 import com.paper.mes.processorder.service.DamageImageService;
 import com.paper.mes.processorder.service.ProcessCatalogStepValidator;
+import com.paper.mes.processorder.service.ProcessStepRouteMutationGuard;
 import com.paper.mes.processorder.service.RollNoSequenceService;
 import com.paper.mes.processorder.service.SawPlanPreviewer;
 import com.paper.mes.processorder.service.WeightCheckThresholdService;
@@ -118,6 +119,7 @@ class ProcessOrderServiceImplCatalogGuardTest {
                 null,
                 null,
                 catalogValidator,
+                mock(ProcessStepRouteMutationGuard.class),
                 null,
                 null,
                 null,
