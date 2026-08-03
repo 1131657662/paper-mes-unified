@@ -15,6 +15,7 @@ export interface ProcessOrder {
   priority?: number
   labelBrand?: string
   warehouseUuid?: string
+  /** 历史班组字段，仅用于只读兼容；新请求不得写入。 */
   teamGroup?: string
   /** 1开票 2不开票 */
   isInvoice?: number
@@ -677,7 +678,6 @@ export interface ProcessOrderCreateDTO {
   priority?: number
   labelBrand?: string
   warehouseUuid?: string
-  teamGroup?: string
   isInvoice?: number
   settleType?: number
   settleDay?: number
@@ -703,7 +703,6 @@ export interface DraftOrderBaseDTO {
   priority?: number
   labelBrand?: string
   warehouseUuid?: string
-  teamGroup?: string
   isInvoice?: number
   settleType?: number
   settleDay?: number

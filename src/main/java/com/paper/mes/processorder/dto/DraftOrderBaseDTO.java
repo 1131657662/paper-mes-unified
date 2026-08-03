@@ -36,8 +36,6 @@ public class DraftOrderBaseDTO implements OrderSettlementSelection {
     private String labelBrand;
     @Size(max = 32, message = "仓库标识长度不能超过32")
     private String warehouseUuid;
-    @Size(max = 50, message = "班组长度不能超过50")
-    private String teamGroup;
     @Min(value = 1, message = "开票状态不正确")
     @Max(value = 2, message = "开票状态不正确")
     private Integer isInvoice;

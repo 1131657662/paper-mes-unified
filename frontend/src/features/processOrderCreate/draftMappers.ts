@@ -108,7 +108,6 @@ export function baseInfoFromOrder(order: { [key: string]: unknown }): DraftOrder
     priority: order.priority as number | undefined,
     labelBrand: order.labelBrand as string | undefined,
     warehouseUuid: order.warehouseUuid as string | undefined,
-    teamGroup: order.teamGroup as string | undefined,
     isInvoice: order.isInvoice as number | undefined,
     settleType: order.settleType as number | undefined,
     settleDay: order.settleDay as number | undefined,

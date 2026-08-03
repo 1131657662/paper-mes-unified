@@ -34,6 +34,7 @@ public class ProcessOrder extends BaseEntity {
     private Integer priority;
     private String labelBrand;
     private String warehouseUuid;
+    /** 历史班组字段，仅用于只读兼容；新请求不得写入。 */
     private String teamGroup;
 
     /** 1开票 2不开票 */

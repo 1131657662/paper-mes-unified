@@ -19,7 +19,6 @@ export function toBaseInfoDto(value: BaseInfoFormValues): DraftOrderBaseDTO {
       ? value.settleOverrideReason?.trim()
       : undefined,
   }
-  delete dto.teamGroup
   return dto
 }
 

@@ -34,7 +34,6 @@ public class ProcessOrderCreateDTO implements OrderSettlementSelection {
     private Integer priority;
     private String labelBrand;
     private String warehouseUuid;
-    private String teamGroup;
 
     /** 1开票 2不开票 */
     @Min(value = 1, message = "开票状态不正确")
