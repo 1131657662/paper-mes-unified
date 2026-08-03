@@ -44,8 +44,6 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
     /** 唯一索引冲突时的重试次数，应对并发同时取到同一最大值。 */
     private static final int ALLOC_RETRY = 5;
     private static final int STATUS_PENDING = 1;
-    private static final int STATUS_PROCESSING = 2;
-    private static final int STATUS_TO_RECORD = 3;
 
     private final ProcessOrderMapper processOrderMapper;
     private final RollNoSequenceService rollNoSequenceService;
@@ -254,10 +252,9 @@ public class FinishRollServiceImpl extends ServiceImpl<FinishRollMapper, FinishR
 
     private void requireRollNumberEditable(ProcessOrder order) {
         Integer status = order.getOrderStatus();
-        if (status == null || (status != STATUS_PENDING
-                && status != STATUS_PROCESSING && status != STATUS_TO_RECORD)) {
+        if (!Integer.valueOf(STATUS_PENDING).equals(status)) {
             throw new BusinessException(ErrorCode.E004,
-                    "仅待下发、加工中或待回录加工单可维护成品卷号");
+                    "仅待下发加工单可通过普通卷号命令维护正式或备用卷号；已下发计划请使用重新下发或回录命令");
         }
     }
 }
