@@ -130,7 +130,12 @@ function Assert-RequiredContract {
         @{ Label = "inventory no-update trigger"; Sql = "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='$TargetDatabase' AND trigger_name='trg_inventory_transaction_no_update';" },
         @{ Label = "inventory no-delete trigger"; Sql = "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='$TargetDatabase' AND trigger_name='trg_inventory_transaction_no_delete';" },
         @{ Label = "process order issue version table"; Sql = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$TargetDatabase' AND table_name='biz_process_order_issue_version';" },
-        @{ Label = "process order issue version uniqueness"; Sql = "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='$TargetDatabase' AND table_name='biz_process_order_issue_version' AND index_name='uk_process_order_issue_version';" }
+        @{ Label = "process order issue request id"; Sql = "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$TargetDatabase' AND table_name='biz_process_order_issue_version' AND column_name='request_id';" },
+        @{ Label = "process order issue payload hash"; Sql = "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$TargetDatabase' AND table_name='biz_process_order_issue_version' AND column_name='payload_hash';" },
+        @{ Label = "process order issue version uniqueness"; Sql = "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='$TargetDatabase' AND table_name='biz_process_order_issue_version' AND index_name='uk_process_order_issue_version';" },
+        @{ Label = "process order issue request idempotency"; Sql = "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='$TargetDatabase' AND table_name='biz_process_order_issue_version' AND index_name='uk_process_order_issue_request';" },
+        @{ Label = "process order issue terminal update trigger"; Sql = "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='$TargetDatabase' AND trigger_name='trg_process_order_issue_version_no_terminal_update';" },
+        @{ Label = "process order issue terminal delete trigger"; Sql = "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='$TargetDatabase' AND trigger_name='trg_process_order_issue_version_no_terminal_delete';" }
     )
     foreach ($check in $checks) {
         $value = Invoke-MySql $check.Sql

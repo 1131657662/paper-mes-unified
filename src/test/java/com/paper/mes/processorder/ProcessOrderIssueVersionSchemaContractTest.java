@@ -34,10 +34,32 @@ class ProcessOrderIssueVersionSchemaContractTest {
         String baselineVersion = Files.readString(
                 Path.of("sql/schema-baseline.version"), StandardCharsets.UTF_8).trim();
 
-        assertThat(baselineVersion).isEqualTo("3.53");
+        assertThat(baselineVersion).isEqualTo("3.54");
         assertThat(schema).contains(
                 "CREATE TABLE `biz_process_order_issue_version`",
                 "UNIQUE KEY `uk_process_order_issue_version` (`order_uuid`, `version_no`)",
+                "UNIQUE KEY `uk_process_order_issue_request` (`order_uuid`, `request_id`)",
+                "`request_id`           VARCHAR(64)",
+                "`payload_hash`         CHAR(64)",
                 "CONSTRAINT `fk_process_order_issue_version_order`");
+        assertThat(schema).contains(
+                "trg_process_order_issue_version_no_terminal_update",
+                "trg_process_order_issue_version_no_terminal_delete");
+    }
+
+    @Test
+    void v354AddsRequestFingerprintAndTerminalStateGuards() throws IOException {
+        String migration = Files.readString(
+                Path.of("sql/V3.54__protect_issue_versions_and_add_reissue_idempotency.sql"),
+                StandardCharsets.UTF_8);
+
+        assertThat(migration).contains(
+                "`request_id` VARCHAR(64)",
+                "`payload_hash` CHAR(64)",
+                "uk_process_order_issue_request",
+                "trg_process_order_issue_version_no_terminal_update",
+                "trg_process_order_issue_version_no_terminal_delete",
+                "OLD.`status` IN ('APPLIED', 'ARCHIVED')",
+                "V3_54_MIGRATION_LOCK_NOT_ACQUIRED");
     }
 }

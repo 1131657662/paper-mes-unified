@@ -43,12 +43,15 @@ class ProcessOrderIssueVersionServiceTest {
         when(mapper.insert(any(ProcessOrderIssueVersion.class))).thenReturn(1);
 
         ProcessOrderIssueVersion row = service.prepare(
-                "order-1", "before-json", "客户改规格", "operator", LocalDateTime.now());
+                "order-1", "before-json", "客户改规格", "operator", LocalDateTime.now(),
+                "request-1", "payload-hash-1");
 
         assertThat(row.getVersionNo()).isEqualTo(1);
         assertThat(row.getStatus()).isEqualTo(ProcessOrderIssueVersion.STATUS_PENDING);
         assertThat(row.getSnapshotBefore()).isEqualTo("before-json");
         assertThat(row.getSnapshotAfter()).isNull();
+        assertThat(row.getRequestId()).isEqualTo("request-1");
+        assertThat(row.getPayloadHash()).isEqualTo("payload-hash-1");
         verify(mapper).insert(argThat((ProcessOrderIssueVersion value) -> "客户改规格".equals(value.getChangeReason())));
     }
 
@@ -59,7 +62,8 @@ class ProcessOrderIssueVersionServiceTest {
         when(mapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(pending);
 
         assertThatThrownBy(() -> service.prepare(
-                "order-1", "before-json", "再次修改", "operator", LocalDateTime.now()))
+                "order-1", "before-json", "再次修改", "operator", LocalDateTime.now(),
+                "request-2", "payload-hash-2"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("已有待应用");
     }

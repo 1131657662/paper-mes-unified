@@ -32,5 +32,7 @@ public class ProcessOrderIssueVersion extends BaseEntity {
     private LocalDateTime changeTime;
     private LocalDateTime issueTime;
     private String issueOperatorName;
+    private String requestId;
+    private String payloadHash;
     private String status;
 }

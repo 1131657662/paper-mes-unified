@@ -6,9 +6,9 @@ The V3.52 ledger foundation is intentionally isolated from existing stock write 
 
 `DeliveryServiceImpl` and first-stock-in handling now map create/append/confirm/rollback/cancel and receipt operations to reserve/release/issue/return/RECEIPT events atomically. The recorder is a required constructor dependency and no production path silently skips ledger writes. Finished-goods scrap uses a dedicated permission-protected command with reason validation and an operation-log hook. The `ADJUSTMENT` event is supported by the immutable schema and validator, but no adjustment command or UI is exposed until its business value, scope and impact are explicitly confirmed.
 
-The V3.52 table and constraints are mirrored in the current 3.53 canonical baseline (`sql/01_schema_v4.1.sql`), and the schema-gate contracts require the append-only triggers and balance checks. The V3.50-V3.53 window was replayed successfully in disposable and release environments.
+The V3.52 table and constraints are mirrored in the current 3.54 canonical baseline (`sql/01_schema_v4.1.sql`), and the schema-gate contracts require the append-only triggers and balance checks. The V3.50-V3.54 window was replayed successfully in disposable and release environments.
 
-Controlled finished-roll scrap has a dedicated permission-protected command, occupancy checks, reason/request validation, operation log, and SCRAP event. The canonical baseline includes the ledger and `sql/schema-baseline.version` is `3.53`.
+Controlled finished-roll scrap has a dedicated permission-protected command, occupancy checks, reason/request validation, operation log, and SCRAP event. The canonical baseline includes the ledger and `sql/schema-baseline.version` is `3.54`.
 
 Back-record rollback now appends a compensating `ADJUSTMENT` for every finish roll that is moved from in-stock back to pending. The command runs before production facts are cleared, is guarded by delivery-activity checks, and uses the process-order version plus finish-roll UUID as its idempotency key. This covers completed-order reopen, partial-record rollback to pending, and rollback-to-draft cleanup without introducing a general adjustment API.
 

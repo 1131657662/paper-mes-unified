@@ -825,6 +825,7 @@ export interface PrintResultVO {
 }
 
 export interface ProcessOrderReissueDTO {
+  requestId: string
   expectedVersion: number
   reason: string
 }

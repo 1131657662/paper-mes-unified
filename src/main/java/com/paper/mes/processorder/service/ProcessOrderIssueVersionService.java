@@ -31,6 +31,22 @@ public class ProcessOrderIssueVersionService {
                 .last("LIMIT 1")));
     }
 
+    public Optional<ProcessOrderIssueVersion> findByRequest(String orderUuid, String requestId) {
+        if (!StringUtils.hasText(orderUuid) || !StringUtils.hasText(requestId)) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(mapper.selectOne(new LambdaQueryWrapper<ProcessOrderIssueVersion>()
+                .eq(ProcessOrderIssueVersion::getOrderUuid, orderUuid)
+                .eq(ProcessOrderIssueVersion::getRequestId, requestId.trim())
+                .last("LIMIT 1")));
+    }
+
+    public void requireSameRequest(ProcessOrderIssueVersion row, String payloadHash) {
+        if (!Objects.equals(row.getPayloadHash(), payloadHash)) {
+            throw new BusinessException(ErrorCode.E003, "reissue request id was already used with a different payload");
+        }
+    }
+
     public int nextVersion(String orderUuid) {
         ProcessOrderIssueVersion latest = mapper.selectOne(new LambdaQueryWrapper<ProcessOrderIssueVersion>()
                 .eq(ProcessOrderIssueVersion::getOrderUuid, orderUuid)
@@ -52,8 +68,12 @@ public class ProcessOrderIssueVersionService {
     }
 
     public ProcessOrderIssueVersion prepare(String orderUuid, String snapshotBefore,
-                                             String reason, String operator, LocalDateTime changeTime) {
+                                             String reason, String operator, LocalDateTime changeTime,
+                                             String requestId, String payloadHash) {
         requireSnapshot(snapshotBefore);
+        if (StringUtils.hasText(requestId) && !StringUtils.hasText(payloadHash)) {
+            throw new BusinessException(ErrorCode.E001, "reissue payload hash is required");
+        }
         if (findPending(orderUuid).isPresent()) {
             throw new BusinessException(ErrorCode.E003, "该加工单已有待应用的重新下发变更");
         }
@@ -62,6 +82,10 @@ public class ProcessOrderIssueVersionService {
         row.setPreviousVersionNo(previousVersion > 0 ? previousVersion : null);
         row.setSnapshotBefore(snapshotBefore);
         row.setChangeReason(reason.trim());
+        if (StringUtils.hasText(requestId)) {
+            row.setRequestId(requestId.trim());
+            row.setPayloadHash(payloadHash);
+        }
         row.setStatus(ProcessOrderIssueVersion.STATUS_PENDING);
         insert(row);
         return row;

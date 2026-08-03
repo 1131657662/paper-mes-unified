@@ -8,6 +8,10 @@ import lombok.Data;
 @Data
 public class ProcessOrderReissueDTO {
 
+    @NotBlank
+    @Size(max = 64)
+    private String requestId;
+
     @NotNull(message = "加工单版本不能为空")
     private Integer expectedVersion;
 

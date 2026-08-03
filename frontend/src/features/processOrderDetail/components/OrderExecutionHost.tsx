@@ -121,6 +121,7 @@ export default function OrderExecutionHost({ detail }: Props) {
       message.error('当前加工单缺少版本信息，请刷新后重试')
       return
     }
+    const requestId = crypto.randomUUID()
     confirmOrderStatusChange({
       title: '申请变更并重新下发',
       orderNo: detail.order.orderNo,
@@ -128,7 +129,12 @@ export default function OrderExecutionHost({ detail }: Props) {
       reasonPlaceholder: '请填写本次下发后变更原因，便于审计追溯',
       requireReason: true,
       onConfirm: async (reason) => {
-        await prepareReissue({ orderUuid, expectedVersion, reason: reason ?? '' })
+        await prepareReissue({
+          orderUuid,
+          requestId,
+          expectedVersion,
+          reason: reason ?? '',
+        })
         message.success('变更申请已提交，订单已回到待下发，请编辑工艺后重新下发')
       },
     })

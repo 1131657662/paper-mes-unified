@@ -234,7 +234,7 @@ class ProcessOrderControllerContractTest {
 
         mvc.perform(post("/api/process-orders/order-uuid/reissue")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedVersion\":7,\"reason\":\"客户变更规格\"}")
+                        .content("{\"requestId\":\"reissue-request-1\",\"expectedVersion\":7,\"reason\":\"客户变更规格\"}")
                         .header("Authorization", "Bearer " + TOKEN))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(403));
@@ -248,7 +248,7 @@ class ProcessOrderControllerContractTest {
 
         mvc.perform(post("/api/process-orders/order-uuid/reissue")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expectedVersion\":7,\"reason\":\"客户变更规格\"}")
+                        .content("{\"requestId\":\"reissue-request-1\",\"expectedVersion\":7,\"reason\":\"客户变更规格\"}")
                         .header("Authorization", "Bearer " + TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
@@ -258,6 +258,21 @@ class ProcessOrderControllerContractTest {
         verify(processOrderService).prepareReissue(eq("order-uuid"), captor.capture());
         assertEquals(7, captor.getValue().getExpectedVersion());
         assertEquals("客户变更规格", captor.getValue().getReason());
+        assertEquals("reissue-request-1", captor.getValue().getRequestId());
+    }
+
+    @Test
+    void reissue_withoutRequestId_returnsValidationError() throws Exception {
+        authorizeAs("admin");
+
+        mvc.perform(post("/api/process-orders/order-uuid/reissue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\":7,\"reason\":\"客户变更规格\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400));
+
+        verify(processOrderService, never()).prepareReissue(any(), any());
     }
 
     @Test

@@ -2342,7 +2342,7 @@ BEGIN
 END$$
 DELIMITER ;
 
--- V3.53 canonical baseline: versioned issued snapshots and post-dispatch change audit.
+-- V3.54 canonical baseline: versioned issued snapshots and post-dispatch change audit.
 CREATE TABLE `biz_process_order_issue_version` (
   `uuid`                 VARCHAR(36)  NOT NULL,
   `order_uuid`           VARCHAR(36)  NOT NULL,
@@ -2355,6 +2355,8 @@ CREATE TABLE `biz_process_order_issue_version` (
   `change_time`          DATETIME(6)  NOT NULL,
   `issue_time`           DATETIME(6)  DEFAULT NULL,
   `issue_operator_name`  VARCHAR(100) DEFAULT NULL,
+  `request_id`           VARCHAR(64)  DEFAULT NULL COMMENT 'reissue request idempotency key',
+  `payload_hash`         CHAR(64)     DEFAULT NULL COMMENT 'reissue payload SHA-256 digest',
   `status`               VARCHAR(16)  NOT NULL,
   `is_deleted`           TINYINT      NOT NULL DEFAULT 0,
   `create_by`            VARCHAR(50)  DEFAULT NULL,
@@ -2368,6 +2370,7 @@ CREATE TABLE `biz_process_order_issue_version` (
   `ext_num2`             DECIMAL(12,3) DEFAULT NULL,
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `uk_process_order_issue_version` (`order_uuid`, `version_no`),
+  UNIQUE KEY `uk_process_order_issue_request` (`order_uuid`, `request_id`),
   KEY `idx_process_order_issue_status` (`order_uuid`, `status`, `change_time`),
   CONSTRAINT `fk_process_order_issue_version_order` FOREIGN KEY (`order_uuid`)
     REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
@@ -2381,6 +2384,26 @@ CREATE TABLE `biz_process_order_issue_version` (
     CHECK (`status` = 'APPLIED' AND `snapshot_before` IS NULL
       OR (`change_reason` IS NOT NULL AND CHAR_LENGTH(TRIM(`change_reason`)) > 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单下发版本与变更审计';
+
+DELIMITER $$
+CREATE TRIGGER `trg_process_order_issue_version_no_terminal_update`
+BEFORE UPDATE ON `biz_process_order_issue_version`
+FOR EACH ROW
+BEGIN
+  IF OLD.`status` IN ('APPLIED', 'ARCHIVED') THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'terminal process order issue version is immutable';
+  END IF;
+END$$
+
+CREATE TRIGGER `trg_process_order_issue_version_no_terminal_delete`
+BEFORE DELETE ON `biz_process_order_issue_version`
+FOR EACH ROW
+BEGIN
+  IF OLD.`status` IN ('APPLIED', 'ARCHIVED') THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'terminal process order issue version cannot be deleted';
+  END IF;
+END$$
+DELIMITER ;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

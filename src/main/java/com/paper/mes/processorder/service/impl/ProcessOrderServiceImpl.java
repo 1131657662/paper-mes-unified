@@ -101,6 +101,7 @@ import com.paper.mes.processorder.service.ProcessModePolicy;
 import com.paper.mes.processorder.service.ProcessCatalogStepValidator;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.ProcessOrderIssueVersionService;
+import com.paper.mes.processorder.service.ProcessOrderReissueFingerprint;
 import com.paper.mes.processorder.service.ProcessOrderSettlementPolicy;
 import com.paper.mes.processorder.service.RewindPlanPreviewContext;
 import com.paper.mes.processorder.service.RewindWidthDifferenceCalculator;
@@ -1184,6 +1185,58 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
     }
 
+    private ReissueRequest normalizeReissueRequest(String orderUuid, ProcessOrderReissueDTO dto) {
+        String requestId = requireRequestId(dto.getRequestId());
+        String reason = requireRollbackReason(dto.getReason());
+        String payloadHash = ProcessOrderReissueFingerprint.of(orderUuid, dto.getExpectedVersion(), reason);
+        return new ReissueRequest(requestId, reason, payloadHash);
+    }
+
+    private void validateReissueOrder(ProcessOrder order, Integer expectedVersion) {
+        if (!Objects.equals(order.getVersion(), expectedVersion)) {
+            throw new BusinessException(ErrorCode.E006, "加工单已被其他页面修改，请刷新后重试");
+        }
+        if (!Integer.valueOf(STATUS_PROCESSING).equals(order.getOrderStatus())) {
+            throw new BusinessException(ErrorCode.E001, "仅加工中的已下发加工单可申请变更并重新下发");
+        }
+        if (!StringUtils.hasText(order.getSnapPrint())) {
+            throw new BusinessException(ErrorCode.E002, "当前加工单没有可归档的下发快照");
+        }
+        ensureOrderNotReferencedBySettle(order.getUuid(), "加工单已被结算单引用，不能重新下发");
+        ensureOrderHasNoDeliveryDetail(order.getUuid(), "加工单已有出库明细，不能重新下发");
+        ensureOrderHasNoOutboundFinish(order.getUuid());
+    }
+
+    private void completeReissue(ProcessOrder order, ReissueRequest request) {
+        LocalDateTime now = LocalDateTime.now();
+        String operator = currentOperator();
+        issueVersionService.prepare(order.getUuid(), order.getSnapPrint(), request.reason(), operator, now,
+                request.requestId(), request.payloadHash());
+        resetIssueAndBackRecordFields(order);
+        order.setOrderStatus(STATUS_PENDING);
+        ConcurrencyGuard.requireUpdated(updateById(order));
+        operationLogService.record(BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
+                OperationLogService.ACTION_REISSUE, operator,
+                "提交下发后变更，旧版本已归档，原因：" + request.reason());
+    }
+
+    private boolean isReissueReplay(String orderUuid, ReissueRequest request) {
+        ProcessOrderIssueVersion replay = issueVersionService
+                .findByRequest(orderUuid, request.requestId()).orElse(null);
+        if (replay == null) {
+            return false;
+        }
+        issueVersionService.requireSameRequest(replay, request.payloadHash());
+        return true;
+    }
+
+    private String requireRequestId(String requestId) {
+        if (!StringUtils.hasText(requestId)) {
+            throw new BusinessException(ErrorCode.E001, "reissue request id is required");
+        }
+        return requestId.trim();
+    }
+
     private String requireRollbackReason(String reason) {
         if (!StringUtils.hasText(reason)) {
             throw new BusinessException(ErrorCode.E001, "回退原因不能为空");
@@ -1532,30 +1585,14 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void prepareReissue(String uuid, ProcessOrderReissueDTO dto) {
+        ReissueRequest request = normalizeReissueRequest(uuid, dto);
         businessLockService.lockProcessOrders(List.of(uuid));
+        if (isReissueReplay(uuid, request)) {
+            return;
+        }
         ProcessOrder order = requireOrder(uuid);
-        if (!Objects.equals(order.getVersion(), dto.getExpectedVersion())) {
-            throw new BusinessException(ErrorCode.E006, "加工单已被其他页面修改，请刷新后重试");
-        }
-        if (!Integer.valueOf(STATUS_PROCESSING).equals(order.getOrderStatus())) {
-            throw new BusinessException(ErrorCode.E001, "仅加工中的已下发加工单可申请变更并重新下发");
-        }
-        if (!StringUtils.hasText(order.getSnapPrint())) {
-            throw new BusinessException(ErrorCode.E002, "当前加工单没有可归档的下发快照");
-        }
-        ensureOrderNotReferencedBySettle(order.getUuid(), "加工单已被结算单引用，不能重新下发");
-        ensureOrderHasNoDeliveryDetail(order.getUuid(), "加工单已有出库明细，不能重新下发");
-        ensureOrderHasNoOutboundFinish(order.getUuid());
-        String reason = requireRollbackReason(dto.getReason());
-        LocalDateTime now = LocalDateTime.now();
-        String operator = currentOperator();
-        issueVersionService.prepare(order.getUuid(), order.getSnapPrint(), reason, operator, now);
-        resetIssueAndBackRecordFields(order);
-        order.setOrderStatus(STATUS_PENDING);
-        ConcurrencyGuard.requireUpdated(updateById(order));
-        operationLogService.record(BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
-                OperationLogService.ACTION_REISSUE, operator,
-                "提交下发后变更，旧版本已归档，原因：" + reason);
+        validateReissueOrder(order, dto.getExpectedVersion());
+        completeReissue(order, request);
     }
 
     @Override
@@ -4932,6 +4969,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     private record LockedRoll(OriginalRoll roll, ProcessOrder order) {
+    }
+
+    private record ReissueRequest(String requestId, String reason, String payloadHash) {
     }
 
     private void recordFieldIfChanged(String orderUuid, String orderNo, String fieldName,
