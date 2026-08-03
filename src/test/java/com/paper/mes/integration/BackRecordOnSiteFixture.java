@@ -45,8 +45,8 @@ class BackRecordOnSiteFixture {
     Scenario arrange() {
         BusinessFlowFixtureFactory.Scenario base = fixtures.createCompletedOrderWithTwoFinishes();
         setSawPrice(base.customer());
-        OriginalRoll roll = originalRoll(base.order());
-        originalRollMapper.insert(roll);
+        OriginalRoll roll = prepareOriginal(base.original());
+        originalRollMapper.updateById(roll);
         ProcessStep step = prepareStep(base.order(), roll);
         reverseFixtureReceipts(base);
         prepareFinish(base.first(), roll);
@@ -123,17 +123,10 @@ class BackRecordOnSiteFixture {
         relationMapper.insert(relation);
     }
 
-    private OriginalRoll originalRoll(ProcessOrder order) {
-        OriginalRoll roll = new OriginalRoll();
-        roll.setUuid(id());
-        roll.setOrderUuid(order.getUuid());
-        roll.setRowSort(1);
+    private OriginalRoll prepareOriginal(OriginalRoll roll) {
         roll.setRollNo("IT-ONSITE");
-        roll.setPaperName("integration-paper");
-        roll.setGramWeight(80);
         roll.setOriginalWidth(2000);
         roll.setRollWeight(new BigDecimal("200.000"));
-        roll.setPieceNum(1);
         roll.setTotalWeight(new BigDecimal("200.000"));
         roll.setProcessMode(2);
         roll.setMainStepType(1);

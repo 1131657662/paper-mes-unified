@@ -4,9 +4,11 @@ import com.paper.mes.customer.entity.Customer;
 import com.paper.mes.customer.mapper.CustomerMapper;
 import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.processorder.entity.FinishRoll;
+import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.entity.ProcessStep;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
+import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.warehouse.entity.Warehouse;
@@ -25,6 +27,7 @@ class BusinessFlowFixtureFactory {
 
     private final CustomerMapper customerMapper;
     private final ProcessOrderMapper processOrderMapper;
+    private final OriginalRollMapper originalRollMapper;
     private final FinishRollMapper finishRollMapper;
     private final ProcessStepMapper processStepMapper;
     private final WarehouseMapper warehouseMapper;
@@ -45,15 +48,17 @@ class BusinessFlowFixtureFactory {
         order.setWarehouseUuid(warehouse.getUuid());
         FinishRoll first = finish(order, 1, token.substring(0, 6));
         FinishRoll second = finish(order, 2, token.substring(6, 12));
+        OriginalRoll original = original(order);
 
         processOrderMapper.insert(order);
-        processStepMapper.insert(sawStep(order));
+        originalRollMapper.insert(original);
+        processStepMapper.insert(sawStep(order, original));
         finishRollMapper.insert(first);
         finishRollMapper.insert(second);
         LocalDateTime receiptTime = LocalDateTime.now().minusSeconds(1);
         inventoryLedgerRecorder.receipt(first, order.getUuid(), "fixture", receiptTime);
         inventoryLedgerRecorder.receipt(second, order.getUuid(), "fixture", receiptTime);
-        return new Scenario(customer, order, first, second);
+        return new Scenario(customer, order, original, first, second);
     }
 
     private Warehouse warehouse(String token) {
@@ -105,11 +110,28 @@ class BusinessFlowFixtureFactory {
         return order;
     }
 
-    private ProcessStep sawStep(ProcessOrder order) {
+    private OriginalRoll original(ProcessOrder order) {
+        OriginalRoll roll = new OriginalRoll();
+        roll.setUuid(id());
+        roll.setOrderUuid(order.getUuid());
+        roll.setRowSort(1);
+        roll.setPaperName("integration-paper");
+        roll.setGramWeight(80);
+        roll.setOriginalWidth(1000);
+        roll.setRollWeight(weight("200"));
+        roll.setPieceNum(1);
+        roll.setTotalWeight(weight("200"));
+        roll.setProcessMode(1);
+        roll.setMainStepType(1);
+        roll.setRollStatus(3);
+        return roll;
+    }
+
+    private ProcessStep sawStep(ProcessOrder order, OriginalRoll original) {
         ProcessStep step = new ProcessStep();
         step.setUuid(id());
         step.setOrderUuid(order.getUuid());
-        step.setOriginalUuid(id());
+        step.setOriginalUuid(original.getUuid());
         step.setInputType(1);
         step.setStageLevel(1);
         step.setStepSort(1);
@@ -160,6 +182,7 @@ class BusinessFlowFixtureFactory {
         return new BigDecimal(value).setScale(3);
     }
 
-    record Scenario(Customer customer, ProcessOrder order, FinishRoll first, FinishRoll second) {
+    record Scenario(Customer customer, ProcessOrder order, OriginalRoll original,
+                    FinishRoll first, FinishRoll second) {
     }
 }

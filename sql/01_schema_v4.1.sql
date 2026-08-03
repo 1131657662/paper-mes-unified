@@ -765,6 +765,10 @@ CREATE TABLE `biz_finish_original_rel` (
   `share_weight`  DECIMAL(10,3) DEFAULT NULL            COMMENT '本原卷分摊到本成品的重量 kg',
   `remark`        VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
   `is_deleted`    TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
+  `active_finish_uuid` VARCHAR(36)
+    GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `finish_uuid` ELSE NULL END) STORED,
+  `active_original_uuid` VARCHAR(36)
+    GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 THEN `original_uuid` ELSE NULL END) STORED,
   `create_by`     VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
   `update_by`     VARCHAR(50)   DEFAULT NULL            COMMENT '更新人',
   `create_time`   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -780,6 +784,99 @@ CREATE TABLE `biz_finish_original_rel` (
   KEY `idx_order_uuid` (`order_uuid`),
   KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='成品-原纸关联表（合并复卷多对多）';
+
+-- V3.55-V3.58: database-enforced process route and lineage scope.
+ALTER TABLE `biz_original_roll`
+  ADD UNIQUE KEY `uk_original_roll_scope` (`uuid`, `order_uuid`);
+ALTER TABLE `biz_process_step`
+  ADD UNIQUE KEY `uk_process_step_scope` (`uuid`, `order_uuid`, `original_uuid`);
+ALTER TABLE `biz_process_step`
+  ADD UNIQUE KEY `uk_process_step_stage_scope` (`uuid`, `order_uuid`, `original_uuid`, `stage_level`);
+ALTER TABLE `biz_finish_roll`
+  ADD UNIQUE KEY `uk_finish_roll_scope` (`uuid`, `order_uuid`);
+
+ALTER TABLE `biz_original_roll`
+  ADD CONSTRAINT `fk_original_roll_order`
+    FOREIGN KEY (`order_uuid`) REFERENCES `biz_process_order` (`uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_process_step`
+  ADD CONSTRAINT `fk_process_step_original_scope`
+    FOREIGN KEY (`original_uuid`, `order_uuid`)
+    REFERENCES `biz_original_roll` (`uuid`, `order_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_finish_roll`
+  ADD CONSTRAINT `fk_finish_roll_order`
+    FOREIGN KEY (`order_uuid`) REFERENCES `biz_process_order` (`uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE `biz_process_stage_output`
+  ADD UNIQUE KEY `uk_stage_output_scope` (`uuid`, `order_uuid`, `original_uuid`);
+ALTER TABLE `biz_process_stage_output`
+  ADD UNIQUE KEY `uk_stage_output_source_scope` (`uuid`, `order_uuid`, `original_uuid`, `step_uuid`);
+ALTER TABLE `biz_process_stage_output`
+  ADD CONSTRAINT `fk_stage_output_original_scope`
+    FOREIGN KEY (`original_uuid`, `order_uuid`)
+    REFERENCES `biz_original_roll` (`uuid`, `order_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_process_stage_output`
+  ADD CONSTRAINT `fk_stage_output_step_scope`
+    FOREIGN KEY (`step_uuid`, `order_uuid`, `original_uuid`, `stage_level`)
+    REFERENCES `biz_process_step` (`uuid`, `order_uuid`, `original_uuid`, `stage_level`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_process_stage_output`
+  ADD CONSTRAINT `fk_stage_output_parent_scope`
+    FOREIGN KEY (`parent_output_uuid`, `order_uuid`, `original_uuid`)
+    REFERENCES `biz_process_stage_output` (`uuid`, `order_uuid`, `original_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_process_stage_output`
+  ADD CONSTRAINT `fk_stage_output_finish_scope`
+    FOREIGN KEY (`finish_roll_uuid`, `order_uuid`)
+    REFERENCES `biz_finish_roll` (`uuid`, `order_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE `biz_process_stage_input_rel`
+  ADD CONSTRAINT `fk_stage_input_original_scope`
+    FOREIGN KEY (`original_uuid`, `order_uuid`)
+    REFERENCES `biz_original_roll` (`uuid`, `order_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_process_stage_input_rel`
+  ADD CONSTRAINT `fk_stage_input_step_scope`
+    FOREIGN KEY (`step_uuid`, `order_uuid`, `original_uuid`, `stage_level`)
+    REFERENCES `biz_process_step` (`uuid`, `order_uuid`, `original_uuid`, `stage_level`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_process_stage_input_rel`
+  ADD CONSTRAINT `fk_stage_input_output_scope`
+    FOREIGN KEY (`input_output_uuid`, `order_uuid`, `original_uuid`)
+    REFERENCES `biz_process_stage_output` (`uuid`, `order_uuid`, `original_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_process_stage_input_rel`
+  ADD CONSTRAINT `fk_stage_input_source_output_scope`
+    FOREIGN KEY (`input_output_uuid`, `order_uuid`, `original_uuid`, `source_step_uuid`)
+    REFERENCES `biz_process_stage_output` (`uuid`, `order_uuid`, `original_uuid`, `step_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE `biz_finish_original_rel`
+  ADD UNIQUE KEY `uk_finish_original_rel_active` (`active_finish_uuid`, `active_original_uuid`);
+ALTER TABLE `biz_process_param`
+  ADD CONSTRAINT `fk_process_param_original_scope`
+    FOREIGN KEY (`original_uuid`, `order_uuid`)
+    REFERENCES `biz_original_roll` (`uuid`, `order_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_process_param`
+  ADD CONSTRAINT `fk_process_param_step_scope`
+    FOREIGN KEY (`step_uuid`, `order_uuid`, `original_uuid`)
+    REFERENCES `biz_process_step` (`uuid`, `order_uuid`, `original_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_finish_original_rel`
+  ADD CONSTRAINT `fk_finish_original_rel_finish_scope`
+    FOREIGN KEY (`finish_uuid`, `order_uuid`)
+    REFERENCES `biz_finish_roll` (`uuid`, `order_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `biz_finish_original_rel`
+  ADD CONSTRAINT `fk_finish_original_rel_original_scope`
+    FOREIGN KEY (`original_uuid`, `order_uuid`)
+    REFERENCES `biz_original_roll` (`uuid`, `order_uuid`)
+    ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- =============================================================================
 -- 三、出库模块

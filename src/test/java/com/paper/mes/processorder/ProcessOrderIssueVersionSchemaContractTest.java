@@ -34,7 +34,7 @@ class ProcessOrderIssueVersionSchemaContractTest {
         String baselineVersion = Files.readString(
                 Path.of("sql/schema-baseline.version"), StandardCharsets.UTF_8).trim();
 
-        assertThat(baselineVersion).isEqualTo("3.54");
+        assertThat(baselineVersion).isEqualTo("3.58");
         assertThat(schema).contains(
                 "CREATE TABLE `biz_process_order_issue_version`",
                 "UNIQUE KEY `uk_process_order_issue_version` (`order_uuid`, `version_no`)",
