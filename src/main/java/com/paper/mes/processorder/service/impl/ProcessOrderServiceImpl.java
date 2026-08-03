@@ -940,6 +940,13 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         StateMachine.assertTransition(from, to);
         assertPublicStatusCommand(from, to);
 
+        if (from == OrderStatus.PROCESSING
+                && to == OrderStatus.TO_RECORD
+                && (order.getPrintCount() == null || order.getPrintCount() <= 0)) {
+            throw new BusinessException(ErrorCode.E003,
+                    "加工完成前必须先人工确认一次打印；该记录不代表打印机设备回执");
+        }
+
         // 回退业务规则校验与数据清理
         if (isRollback(from, to)) {
             String rollbackReason = requireRollbackReason(reason);

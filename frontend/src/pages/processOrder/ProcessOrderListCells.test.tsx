@@ -70,6 +70,15 @@ describe('加工单列表单号单元格', () => {
     expect(markup).toContain('已下发，未打印')
   })
 
+  it('打印次数为零时不被异常打印状态字段误判为已打印', () => {
+    const markup = renderToStaticMarkup(
+      <OrderStatusCell record={{ uuid: 'order-7', orderStatus: 2, printStatus: 1, printCount: 0 }} />,
+    )
+
+    expect(markup).toContain('已下发，未打印')
+    expect(markup).not.toContain('已打印 0 次')
+  })
+
   it('不在加工单列表展示历史班组字段', () => {
     const markup = renderToStaticMarkup(
       <OrderDateScheduleCell record={{ uuid: 'order-8', orderDate: '2026-08-02', teamGroup: '一班' }} />,

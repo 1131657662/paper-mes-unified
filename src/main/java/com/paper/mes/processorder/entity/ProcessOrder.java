@@ -75,7 +75,7 @@ public class ProcessOrder extends BaseEntity {
 
     /** 0草稿 1待下发 2加工中 3待回录 4已完成 5已结算 6已作废 */
     private Integer orderStatus;
-    /** 0未打印 1已打印 */
+    /** 0未确认打印 1已人工确认打印，不代表打印机设备回执 */
     private Integer printStatus;
     private Integer printCount;
     private LocalDateTime lastPrintTime;

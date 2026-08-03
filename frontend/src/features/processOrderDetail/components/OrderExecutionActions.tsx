@@ -67,7 +67,18 @@ function PrimaryAction({ actions, capabilities, hasPrinted, loading, status }: P
   if (status === 5 && !capabilities.canManageDelivery) return null
   if (status === 0) return <Button type="primary" onClick={actions.onEditDraft}>继续编辑草稿</Button>
   if (status === 1) return <Button type="primary" icon={<PrinterOutlined />} onClick={actions.onPrint}>{hasPrinted ? '打印预览' : '下发并打印'}</Button>
-  if (status === 2) return <Button type="primary" icon={<SendOutlined />} loading={loading.changingStatus} onClick={() => actions.onChangeStatus(3, '确认车间已完成加工，转入待回录？')}>转待回录</Button>
+  if (status === 2) return (
+    <Button
+      type="primary"
+      icon={<SendOutlined />}
+      disabled={!hasPrinted}
+      loading={loading.changingStatus}
+      title={!hasPrinted ? '请先确认已完成打印' : undefined}
+      onClick={() => actions.onChangeStatus(3, '确认车间已完成加工，转入待回录？')}
+    >
+      转待回录
+    </Button>
+  )
   if (status === 3) return <Button type="primary" icon={<FileDoneOutlined />} onClick={actions.onBackRecord}>进入回录工作台</Button>
   if (status === 4 || status === 5) {
     return <CompletedActions actions={actions} capabilities={capabilities} status={status} />
