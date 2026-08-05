@@ -15,7 +15,7 @@ interface Props {
 
 export default function OrderDetailHeader({ exporting, order, onBack, onExport }: Props) {
   const status = order?.orderStatus != null ? ORDER_STATUS[order.orderStatus] : undefined
-  const hasPrinted = (order?.printCount ?? 0) > 0
+  const hasPrinted = order?.printStatus === 1 && (order.printCount ?? 0) > 0
   const printText = hasPrinted
     ? `已打印 ${order?.printCount} 次`
     : order?.orderStatus != null && order.orderStatus >= 2 && order.orderStatus < 6

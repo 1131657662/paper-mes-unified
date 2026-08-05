@@ -7,6 +7,6 @@ export function useReceiveSettle() {
 
   return useMutation({
     mutationFn: settleService.receive,
-    onSuccess: (_, variables) => invalidateSettleFinancialChange(queryClient, variables.uuid),
+    onSettled: (_, __, variables) => invalidateSettleFinancialChange(queryClient, variables.uuid),
   })
 }

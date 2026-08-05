@@ -19,14 +19,16 @@ describe('新建加工单草稿缓存失效', () => {
 
   it('提交加工单后刷新草稿列表、仪表盘和报表', async () => {
     const queryClient = new QueryClient()
+    const detailKey = queries.processOrderDetail.detail('draft-1').queryKey
     const keys = [
       queries.createOrder.drafts.queryKey,
+      detailKey,
       queries.dashboard.overview.queryKey,
       queries.report.overview({}).queryKey,
     ]
     keys.forEach((queryKey) => queryClient.setQueryData(queryKey, {}))
 
-    await invalidateSubmittedProcessOrder(queryClient)
+    await invalidateSubmittedProcessOrder(queryClient, 'draft-1')
 
     keys.forEach((queryKey) => {
       expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)

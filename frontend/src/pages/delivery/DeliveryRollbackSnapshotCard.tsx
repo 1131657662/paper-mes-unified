@@ -38,7 +38,7 @@ export default function DeliveryRollbackSnapshotCard({ snapshot }: DeliveryRollb
       <div className="document-module-table delivery-rollback-snapshot__table">
         <DocumentDetailTable<DeliveryDetail>
           storageKey="delivery-rollback-snapshot-items"
-          rowKey={(record, index) => record.uuid || `${record.finishRollNo}-${index}`}
+          rowKey="uuid"
           columns={buildDeliveryDetailColumns({
             deliveryStatus: 2,
             onRemove: () => undefined,

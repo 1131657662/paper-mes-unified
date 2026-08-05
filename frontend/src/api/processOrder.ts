@@ -311,6 +311,14 @@ export function printProcessOrder(uuid: string, dto?: PrintDTO) {
   })
 }
 
+export function printAndCompleteProcessOrder(uuid: string, dto?: PrintDTO) {
+  return request<PrintResultVO>({
+    url: `/api/process-orders/${uuid}/print-and-to-record`,
+    method: 'post',
+    data: dto,
+  })
+}
+
 export function physicalReprintProcessOrder(uuid: string, dto: PhysicalReprintDTO) {
   return request<PrintResultVO>({
     url: `/api/process-orders/${uuid}/physical-reprint`,

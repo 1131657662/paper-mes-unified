@@ -103,7 +103,7 @@ export function BillingCell({ record }: { record: ProcessOrder }) {
 
 export function OrderStatusCell({ record }: { record: ProcessOrder }) {
   const status = record.orderStatus == null ? undefined : ORDER_STATUS[record.orderStatus]
-  const printText = (record.printCount ?? 0) > 0
+  const printText = record.printStatus === 1 && (record.printCount ?? 0) > 0
     ? `已打印 ${record.printCount} 次`
     : record.orderStatus != null && record.orderStatus >= 2 && record.orderStatus < 6
       ? '已下发，未打印'

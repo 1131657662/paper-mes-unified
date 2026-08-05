@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Drawer, Form, Input, InputNumber, Spin, message } from 'antd'
 import QueryLoadErrorAlert from '../../../components/feedback/QueryLoadErrorAlert'
-import type { PrintResultVO, ProcessOrderDetailVO, ProcessOrderPrintViewVO, PrintViewVersion } from '../../../types/processOrder'
+import { notifyErrorOnce } from '../../../api/request'
+import type { PrintDTO, PrintResultVO, ProcessOrderDetailVO, ProcessOrderPrintViewVO, PrintViewVersion } from '../../../types/processOrder'
 import { useIssueProcessOrder, usePhysicalReprintProcessOrder, usePrintProcessOrder } from '../hooks/usePrintProcessOrder'
 import { useProcessOrderPrintView } from '../hooks/useProcessOrderPrintView'
 import { printIssueDrawerTitle, resolvePrintIssueMode, type PrintIssueMode } from '../printIssueMode'
@@ -18,9 +19,10 @@ interface Props {
   open: boolean
   onClose: () => void
   onPrinted: () => void | Promise<void>
+  onPrintConfirmed: (dto?: PrintDTO) => Promise<PrintResultVO>
 }
 
-export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: Props) {
+export default function PrintIssueDrawer({ detail, open, onClose, onPrinted, onPrintConfirmed }: Props) {
   const [form] = Form.useForm()
   const [result, setResult] = useState<PrintResultVO | null>(null)
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingPrintConfirmation | null>(null)
@@ -46,7 +48,7 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: P
   const handleIssue = async () => {
     const issueResult = await issueOrder()
     setResult(issueResult)
-    setPendingConfirmation({ version })
+    setPendingConfirmation({ firstPrint: true, version })
     message.success('加工单已下发，请完成物理打印')
     await onPrinted()
     await refetchPrintView()
@@ -55,7 +57,7 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: P
 
   const handleOpenPrint = async () => {
     if (mode === 'preview' || mode === 'unprinted') {
-      if (mode === 'unprinted') setPendingConfirmation({ version })
+      if (mode === 'unprinted') setPendingConfirmation({ firstPrint: true, version })
       openBrowserPrint()
       return
     }
@@ -67,14 +69,24 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted }: P
 
   const handleConfirmPrint = async () => {
     if (!pendingConfirmation) return
-    const dto = pendingConfirmation.reason ? { reason: pendingConfirmation.reason } : undefined
-    const printResult = mode === 'audited-reprint'
-      ? await physicalReprint({ reason: pendingConfirmation.reason ?? '', version: pendingConfirmation.version })
-      : await printOrder(dto)
-    setResult(printResult)
-    setPendingConfirmation(null)
-    message.success(printResult.reprint ? '补打已确认' : '打印已确认')
-    await onPrinted()
+    const confirmation = pendingConfirmation
+    const dto = confirmation.reason ? { reason: confirmation.reason } : undefined
+    try {
+      const printResult = confirmation.firstPrint
+        ? await onPrintConfirmed(dto)
+        : mode === 'audited-reprint'
+        ? await physicalReprint({ reason: confirmation.reason ?? '', version: confirmation.version })
+        : await printOrder(dto)
+      setResult(printResult)
+      setPendingConfirmation(null)
+      await onPrinted()
+      message.success(printResult.reprint ? '补打已确认' : '打印已确认')
+    } catch (error) {
+      setPendingConfirmation(confirmation)
+      notifyErrorOnce(error, '打印确认失败，确认按钮仍可重试')
+    } finally {
+      await refetchPrintView()
+    }
   }
 
   return (

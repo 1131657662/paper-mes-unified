@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Card, Spin, message } from 'antd'
 import { useLocation, useNavigate, useParams } from 'react-router'
+import { notifyErrorOnce } from '../../api/request'
 import { PERMISSIONS } from '../../constants/permissions'
 import DocumentAuditTimeline from '../../components/biz/DocumentAuditTimeline'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
@@ -68,15 +69,20 @@ export default function DeliveryDetailPage() {
     if (confirmMutation.isPending || !canConfirmDelivery || !uuid || !order) return
     const signUser = await askDeliverySignUser(order.deliveryNo)
     if (signUser === null) return
-    const completed = await authorizeDeliveryConfirmation((forceRelease) => (
-      confirmMutation.mutateAsync({
-        uuid,
-        data: { ...(signUser ? { signUser } : {}), forceRelease },
-      })
-    ), 1, canReleaseDelivery)
-    if (!completed) return
-    message.success('出库签收完成')
-    detailQuery.refetch()
+    try {
+      const completed = await authorizeDeliveryConfirmation((forceRelease) => (
+        confirmMutation.mutateAsync({
+          uuid,
+          data: { ...(signUser ? { signUser } : {}), forceRelease },
+        })
+      ), 1, canReleaseDelivery)
+      if (!completed) return
+      message.success('出库签收完成')
+      detailQuery.refetch()
+    } catch (error) {
+      notifyErrorOnce(error, '出库签收失败，请刷新后重试')
+      await detailQuery.refetch()
+    }
   }
 
   const handleRollback = async () => {

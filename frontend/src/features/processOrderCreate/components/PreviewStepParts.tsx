@@ -57,13 +57,27 @@ export function SinglePlanPreview({ plan, preview, roll }: SinglePlanPreviewProp
       {preview?.errors?.length ? <Typography.Text type="danger">{preview.errors.join('；')}</Typography.Text> : null}
       <Table
         size="small"
-        rowKey={(_, index) => `${roll.localId}-${index}`}
+        rowKey={(record) => `${roll.localId}-${previewFinishRowKey(record)}`}
         pagination={false}
         columns={finishColumns}
         dataSource={preview?.finishes ?? []}
       />
     </Space>
   )
+}
+
+function previewFinishRowKey(row: NonNullable<PlanPreviewVO['finishes']>[number]) {
+  return [
+    row.segmentSort,
+    row.finishWidth,
+    row.finishDiameter,
+    row.finishCoreDiameter,
+    row.segmentRatio,
+    row.customerPaperName,
+    row.customerGramWeight,
+    row.customerFinishWidth,
+    row.sourceSummary,
+  ].map((value) => String(value ?? '')).join(':')
 }
 
 function planLabel(plan?: ProcessPlanDTO) {

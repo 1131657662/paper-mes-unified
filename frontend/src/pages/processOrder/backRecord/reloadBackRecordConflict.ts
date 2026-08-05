@@ -9,6 +9,7 @@ interface Options<TData> {
   onRefetch: () => Promise<RefetchResult<TData>>
   onReloaded: (data: TData) => void
   onResetInitialization: () => void
+  preserveDirty?: boolean
 }
 
 export interface ConflictReloadResult {
@@ -20,9 +21,9 @@ export async function reloadBackRecordConflict<TData>(options: Options<TData>): 
   try {
     const result = await options.onRefetch()
     if (!result.isSuccess || !result.data) return { error: result.error, reloaded: false }
-    options.onResetInitialization()
+    if (!options.preserveDirty) options.onResetInitialization()
     options.onReloaded(result.data)
-    options.onPersisted?.()
+    if (!options.preserveDirty) options.onPersisted?.()
     return { reloaded: true }
   } catch (error) {
     return { error, reloaded: false }

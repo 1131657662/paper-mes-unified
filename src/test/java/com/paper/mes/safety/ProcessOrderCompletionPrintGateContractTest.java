@@ -34,6 +34,18 @@ class ProcessOrderCompletionPrintGateContractTest {
         assertTrue(method.indexOf("order.getPrintCount()") < method.indexOf("order.setOrderStatus"));
     }
 
+    @Test
+    void atomicPrintCommand_existsForHumanPrintCompletionFlow() throws IOException {
+        String source = source();
+
+        assertTrue(source.contains("printAndCompleteProcessing(String uuid, PrintDTO dto)"));
+        String method = method(source, "public PrintResultVO printAndCompleteProcessing",
+                "public PrintResultVO physicalReprint");
+        assertTrue(method.contains("PrintResultVO result = print(uuid"));
+        assertTrue(method.contains("completeProcessing(uuid, null)"));
+        assertTrue(method.contains("OrderStatus.TO_RECORD.getCode()"));
+    }
+
     private String source() throws IOException {
         return Files.readString(SERVICE, StandardCharsets.UTF_8);
     }

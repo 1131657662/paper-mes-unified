@@ -13,6 +13,7 @@ export interface BatchActions {
   onBackRecord: (uuid: string) => void
   onCalcFee: (record: ProcessOrder) => Promise<void>
   onChangeStatus: (record: ProcessOrder, target: number, title: string) => void
+  onConfirmPrintAndToRecord: (record: ProcessOrder) => void
   onGoDelivery: (record: ProcessOrder) => void
   onGoSettle: (record: ProcessOrder) => void
   onManageRolls: (uuid: string) => void

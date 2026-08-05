@@ -7,6 +7,7 @@ interface Props {
   capabilities: ProcessOrderListCapabilities
   onBackRecord: (uuid: string) => void
   onChangeStatus: (record: ProcessOrder, target: number, title: string) => void
+  onConfirmPrintAndToRecord: (record: ProcessOrder) => void
   onEditDraft: (uuid: string) => void
   onGoDelivery: (record: ProcessOrder) => void
   onGoSettle: (record: ProcessOrder) => void
@@ -29,7 +30,12 @@ function rowActions(record: ProcessOrder, actions: Omit<Props, 'record'>) {
   const status = record.orderStatus ?? 0
   if (status === 0 && actions.capabilities.canCreateOrder) return [{ label: '继续编辑', onClick: () => actions.onEditDraft(record.uuid) }]
   if (status === 1 && actions.capabilities.canManageOrder) return [{ label: '打印下发', onClick: () => actions.onPrint(record) }]
-  if (status === 2 && actions.capabilities.canManageOrder) return [{ label: '转待回录', onClick: () => actions.onChangeStatus(record, 3, '确认车间已完成加工，转入待回录？') }]
+  if (status === 2 && actions.capabilities.canManageOrder) {
+    const hasPrinted = record.printStatus === 1 && (record.printCount ?? 0) > 0
+    return hasPrinted
+      ? [{ label: '转待回录', onClick: () => actions.onChangeStatus(record, 3, '确认车间已完成加工，转入待回录？') }]
+      : [{ label: '确认打印并转待回录', onClick: () => actions.onConfirmPrintAndToRecord(record) }]
+  }
   if (status === 3 && actions.capabilities.canBackRecord) return [{ label: '进入回录', onClick: () => actions.onBackRecord(record.uuid) }]
   if (status !== 4 && status !== 5) return []
   const completedActions = []

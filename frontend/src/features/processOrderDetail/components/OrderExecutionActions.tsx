@@ -13,6 +13,7 @@ import {
 
 export interface ExecutionActionHandlers {
   onPrint: () => void
+  onConfirmPrintAndToRecord: () => void
   onPrepareReissue: () => void
   onBackRecord: () => void
   onSnapshotDiff: () => void
@@ -27,6 +28,7 @@ export interface ExecutionActionHandlers {
 
 export interface ExecutionLoading {
   changingStatus?: boolean
+  confirmingPrint?: boolean
   rollingBackDraft?: boolean
   preparingReissue?: boolean
   calculatingFee?: boolean
@@ -67,13 +69,21 @@ function PrimaryAction({ actions, capabilities, hasPrinted, loading, status }: P
   if (status === 5 && !capabilities.canManageDelivery) return null
   if (status === 0) return <Button type="primary" onClick={actions.onEditDraft}>继续编辑草稿</Button>
   if (status === 1) return <Button type="primary" icon={<PrinterOutlined />} onClick={actions.onPrint}>{hasPrinted ? '打印预览' : '下发并打印'}</Button>
+  if (status === 2 && !hasPrinted) return (
+    <Button
+      type="primary"
+      icon={<PrinterOutlined />}
+      loading={loading.confirmingPrint}
+      onClick={actions.onConfirmPrintAndToRecord}
+    >
+      确认打印并转待回录
+    </Button>
+  )
   if (status === 2) return (
     <Button
       type="primary"
       icon={<SendOutlined />}
-      disabled={!hasPrinted}
       loading={loading.changingStatus}
-      title={!hasPrinted ? '请先确认已完成打印' : undefined}
       onClick={() => actions.onChangeStatus(3, '确认车间已完成加工，转入待回录？')}
     >
       转待回录

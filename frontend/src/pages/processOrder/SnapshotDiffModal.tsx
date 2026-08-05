@@ -61,7 +61,7 @@ export function SnapshotDiffLoadState(props: {
           style={{ marginBottom: 16 }} />}
         <Typography.Title level={5}>原纸快照差异</Typography.Title>
         <Table
-          rowKey={(record, index) => record.uuid ?? record.rollNo ?? `roll-${index}`}
+          rowKey={(record) => record.uuid ?? record.rollNo ?? `roll-${record.printGramWeight ?? ''}-${record.printWidth ?? ''}`}
           size="small"
           columns={rollColumns}
           dataSource={props.diff?.rollDiffs ?? []}
@@ -70,7 +70,7 @@ export function SnapshotDiffLoadState(props: {
         />
         <Typography.Title level={5}>成品快照差异</Typography.Title>
         <Table
-          rowKey={(record, index) => record.uuid ?? record.finishRollNo ?? `finish-${index}`}
+          rowKey={(record) => record.uuid ?? record.finishRollNo ?? `finish-${record.printWidth ?? ''}-${record.printDiameter ?? ''}`}
           size="small"
           columns={finishColumns}
           dataSource={props.diff?.finishDiffs ?? []}

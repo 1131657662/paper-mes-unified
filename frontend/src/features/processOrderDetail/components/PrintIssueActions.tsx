@@ -7,6 +7,7 @@ import type { PrintIssueMode } from '../printIssueMode'
 import PrintResultSummary from './PrintResultSummary'
 
 export interface PendingPrintConfirmation {
+  firstPrint?: boolean
   reason?: string
   version: PrintViewVersion
 }
@@ -29,7 +30,8 @@ export function PrintActions({ disabledReason, isBusy, mode, pendingConfirmation
     return <GuardedPrintAction reason={disabledReason}><Button type="primary" icon={<PrinterOutlined />} disabled={disabled} onClick={onOpenPrint}>打印{version === 'FINISHED' ? '完工版本' : '下发版本'}</Button></GuardedPrintAction>
   }
   if (pendingConfirmation) {
-    return <GuardedPrintAction reason={disabledReason}><Space><Button icon={<PrinterOutlined />} disabled={disabled} onClick={onOpenPrint}>再次打开打印</Button><Button type="primary" icon={<PrinterOutlined />} disabled={disabled} loading={isBusy} onClick={onConfirmPrint}>确认已完成打印</Button></Space></GuardedPrintAction>
+    const confirmLabel = pendingConfirmation.firstPrint ? '确认打印并转待回录' : '确认已完成打印'
+    return <GuardedPrintAction reason={disabledReason}><Space><Button icon={<PrinterOutlined />} disabled={disabled} onClick={onOpenPrint}>再次打开打印</Button><Button type="primary" icon={<PrinterOutlined />} disabled={disabled} loading={isBusy} onClick={onConfirmPrint}>{confirmLabel}</Button></Space></GuardedPrintAction>
   }
   if (mode === 'unprinted') {
     return <GuardedPrintAction reason={disabledReason}><Button type="primary" icon={<PrinterOutlined />} disabled={disabled} onClick={onOpenPrint}>打开打印</Button></GuardedPrintAction>
@@ -46,7 +48,7 @@ function GuardedPrintAction({ children, reason }: { children: ReactNode; reason?
 
 export function IssueNotice({ mode, pendingConfirmation, result }: { mode: PrintIssueMode; pendingConfirmation: PendingPrintConfirmation | null; result: PrintResultVO | null }) {
   if (pendingConfirmation) {
-    return <Alert type="warning" showIcon message="请完成物理打印后确认" description="浏览器打印窗口取消不会撤销下发；确认纸张已输出后再点击“确认已完成打印”。" />
+    return <Alert type="warning" showIcon message="请完成物理打印后确认" description={pendingConfirmation.firstPrint ? '浏览器打印窗口取消不会撤销下发；确认纸张已输出后，系统会记录打印并自动转入待回录。' : '浏览器打印窗口取消不会撤销下发；确认纸张已输出后再点击“确认已完成打印”。'} />
   }
   if (result) {
     const reprint = mode === 'reprint' || mode === 'audited-reprint'

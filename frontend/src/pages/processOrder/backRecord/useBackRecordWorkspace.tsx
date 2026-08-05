@@ -15,21 +15,25 @@ interface Params {
 }
 
 export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onPersisted, onSuccess }: Params) {
-  const detailQuery = useProcessOrderDetail(uuid ?? undefined, { enabled })
-  const formState = useBackRecordFormState({ detail: detailQuery.data, enabled })
+  const detailQuery = useProcessOrderDetail(uuid ?? undefined, { enabled, freshOnMount: true })
+  const detail = getFreshDetail(detailQuery.data, detailQuery.isFetchedAfterMount, detailQuery.isError)
+  const detailLoading = enabled && Boolean(uuid) && !detailQuery.isFetchedAfterMount && !detailQuery.isError
+  const formState = useBackRecordFormState({ detail, enabled })
   const warehouse = useBackRecordWarehouseSelection({
-    detail: detailQuery.data,
+    detail,
     enabled,
     form: formState.form,
   })
-  const selection = useBackRecordSelection(detailQuery.data)
+  const selection = useBackRecordSelection(detail)
   const submission = useBackRecordSubmission({
-    detail: detailQuery.data,
+    detail,
     enabled,
     form: formState.form,
+    getInitializedVersion: formState.getInitializedVersion,
     onClose,
     onPersisted,
     onRefetch: detailQuery.refetch,
+    onConflictReloaded: formState.refreshPreservingValues,
     onReloaded: formState.initialize,
     onResetInitialization: formState.resetInitialization,
     onSuccess,
@@ -51,10 +55,10 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onPersis
   })
 
   return {
-    detail: detailQuery.data,
+    detail,
     form: formState.form,
     isDetailError: detailQuery.isError,
-    isLoadingDetail: detailQuery.isLoading,
+    isLoadingDetail: detailQuery.isLoading || detailLoading,
     refetchDetail: detailQuery.refetch,
     isSubmitting: submission.isSubmitting,
     modals: (
@@ -65,7 +69,7 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onPersis
         varianceOpen={submission.varianceOpen}
         changeItem={changes.changeItem}
         changeOpen={changes.changeOpen}
-        detail={detailQuery.data ?? null}
+        detail={detail ?? null}
         addingStep={changes.addingStep}
         rollingBack={changes.rollingBack}
         onAddExtraStep={changes.addExtraStep}
@@ -90,4 +94,13 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onPersis
     reopening: changes.reopening,
     submit: submission.submit,
   }
+}
+
+function getFreshDetail(
+  detail: ReturnType<typeof useProcessOrderDetail>['data'],
+  fetchedAfterMount: boolean,
+  isError: boolean,
+) {
+  if (!fetchedAfterMount || isError) return undefined
+  return detail
 }

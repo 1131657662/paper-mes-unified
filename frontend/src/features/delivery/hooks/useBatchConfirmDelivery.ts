@@ -7,6 +7,6 @@ export function useBatchConfirmDelivery() {
 
   return useMutation({
     mutationFn: deliveryService.confirmBatch,
-    onSuccess: () => invalidateDeliveryReadModels(queryClient),
+    onSettled: () => invalidateDeliveryReadModels(queryClient),
   })
 }

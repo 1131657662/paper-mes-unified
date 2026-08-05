@@ -57,4 +57,17 @@ class InventoryLedgerSchemaContractTest {
                 .doesNotContain("inventoryLedgerRecorder == null")
                 .doesNotContain("inventoryLedgerRecorder != null");
     }
+
+    @Test
+    void localStartupChecksAndBootstrapsInventoryLedgerBeforeStartingServices() throws Exception {
+        String launcher = Files.readString(Path.of("dev.ps1"), StandardCharsets.UTF_8);
+        String schemaScript = Files.readString(Path.of("dev-schema.ps1"), StandardCharsets.UTF_8);
+
+        assertThat(launcher).contains("Ensure-LocalInventoryLedgerSchema").contains(". $SchemaScript");
+        assertThat(schemaScript).contains("V3.52__add_inventory_transaction_ledger.sql")
+                .contains("biz_inventory_transaction")
+                .contains("COUNT(DISTINCT index_name)")
+                .contains("Get-Content -LiteralPath $MigrationPath -Raw -Encoding utf8")
+                .contains("$OutputEncoding");
+    }
 }

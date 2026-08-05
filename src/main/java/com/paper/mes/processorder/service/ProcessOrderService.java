@@ -110,6 +110,8 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
     /** 确认物理打印完成并回写打印次数/时间；首次确认可无原因，补打必须留痕。 */
     PrintResultVO print(String uuid, PrintDTO dto);
 
+    PrintResultVO printAndCompleteProcessing(String uuid, PrintDTO dto);
+
     /** 对已下发后的历史版本执行物理补打审计，不改变加工单状态。 */
     PrintResultVO physicalReprint(String uuid, PhysicalReprintDTO dto);
 

@@ -10,6 +10,8 @@ import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
 import com.paper.mes.machine.mapper.MachineMapper;
 import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.processorder.entity.ProcessOrder;
+import com.paper.mes.processorder.dto.PrintDTO;
+import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.mapper.FinishOriginalRelMapper;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
@@ -77,9 +79,25 @@ class ProcessOrderServiceImplCompletionPrintGateTest {
         assertTrue(service.updated);
     }
 
+    @Test
+    void printAndCompleteProcessing_isAtomicAndRetryable() {
+        service.atomicCommand = true;
+        PrintResultVO first = service.printAndCompleteProcessing(order.getUuid(), new PrintDTO());
+
+        assertEquals(3, order.getOrderStatus());
+        assertEquals(3, first.getOrderStatus());
+        assertEquals(1, order.getPrintCount());
+
+        PrintResultVO retry = service.printAndCompleteProcessing(order.getUuid(), new PrintDTO());
+
+        assertEquals(3, retry.getOrderStatus());
+        assertEquals(1, order.getPrintCount());
+    }
+
     private static final class TrackingService extends ProcessOrderServiceImpl {
         private final ProcessOrder order;
         private boolean updated;
+        private boolean atomicCommand;
 
         TrackingService(ProcessOrder order) {
             super(mock(OriginalRollMapper.class), mock(FinishRollMapper.class), mock(ProcessStepMapper.class),
@@ -107,6 +125,27 @@ class ProcessOrderServiceImplCompletionPrintGateTest {
         public boolean updateById(ProcessOrder entity) {
             updated = true;
             return true;
+        }
+
+        @Override
+        public PrintResultVO print(String uuid, PrintDTO dto) {
+            if (!atomicCommand) {
+                return super.print(uuid, dto);
+            }
+            order.setPrintCount(1);
+            order.setPrintStatus(1);
+            PrintResultVO result = new PrintResultVO();
+            result.setOrderStatus(2);
+            return result;
+        }
+
+        @Override
+        public void completeProcessing(String uuid, String reason) {
+            if (!atomicCommand) {
+                super.completeProcessing(uuid, reason);
+                return;
+            }
+            order.setOrderStatus(3);
         }
     }
 }

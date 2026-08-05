@@ -218,6 +218,14 @@ public class ProcessOrderController {
         return R.success(processOrderService.print(uuid, dto == null ? new PrintDTO() : dto));
     }
 
+    @PostMapping("/{uuid}/print-and-to-record")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<PrintResultVO> printAndCompleteProcessing(@PathVariable String uuid,
+                                                       @RequestBody(required = false) PrintDTO dto) {
+        return R.success(processOrderService.printAndCompleteProcessing(
+                uuid, dto == null ? new PrintDTO() : dto));
+    }
+
     @PostMapping("/{uuid}/physical-reprint")
     @RequirePermission(Permissions.ORDER_MANAGE)
     public R<PrintResultVO> physicalReprint(@PathVariable String uuid,

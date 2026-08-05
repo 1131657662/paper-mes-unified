@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { Input, Modal, message } from 'antd'
+import { notifyErrorOnce } from '../../../api/request'
 import { useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router'
 import { PERMISSIONS } from '../../../constants/permissions'
 import { useHasPermission } from '../../../stores/authStore'
-import type { ProcessOrderDetailVO } from '../../../types/processOrder'
+import type { PrintDTO, ProcessOrderDetailVO } from '../../../types/processOrder'
 import FinishRollManageDrawer from '../../../pages/processOrder/FinishRollManageDrawer'
 import SnapshotDiffModal from '../../../pages/processOrder/SnapshotDiffModal'
 import { useCalcProcessOrderFee } from '../hooks/useCalcProcessOrderFee'
 import { useChangeOrderStatus } from '../hooks/useChangeOrderStatus'
 import { useCompleteProcessing } from '../hooks/useCompleteProcessing'
+import { usePrintAndCompleteProcessOrder } from '../hooks/usePrintAndCompleteProcessOrder'
 import { useRollbackProcessOrderToDraft } from '../hooks/useRollbackProcessOrderToDraft'
 import { useVoidProcessOrder } from '../hooks/useVoidProcessOrder'
 import { usePrepareProcessOrderReissue } from '../hooks/usePrepareProcessOrderReissue'
@@ -33,6 +35,7 @@ export default function OrderExecutionHost({ detail }: Props) {
   const [manageRollOpen, setManageRollOpen] = useState(false)
   const { mutateAsync: changeStatus, isPending: isChangingStatus } = useChangeOrderStatus()
   const { mutateAsync: completeProcessing, isPending: isCompletingProcessing } = useCompleteProcessing()
+  const { mutateAsync: printAndCompleteProcessing, isPending: isConfirmingPrint } = usePrintAndCompleteProcessOrder(orderUuid)
   const { mutateAsync: rollbackToDraft, isPending: isRollingBackDraft } = useRollbackProcessOrderToDraft()
   const { mutateAsync: calcFee, isPending: isCalculatingFee } = useCalcProcessOrderFee(orderUuid)
   const { mutateAsync: voidOrder, isPending: isVoidingOrder } = useVoidProcessOrder()
@@ -83,6 +86,27 @@ export default function OrderExecutionHost({ detail }: Props) {
   const handleCalcFee = async () => {
     const result = await calcFee()
     message.success(`计费已更新，总额 ¥${result.totalAmount ?? 0}`)
+  }
+
+  const handleFirstPrintConfirmed = (dto?: PrintDTO) =>
+    printAndCompleteProcessing(dto)
+
+  const handleConfirmPrintAndToRecord = () => {
+    Modal.confirm({
+      title: '确认打印并转待回录',
+      content: '请确认纸张已从打印机输出。浏览器打印窗口仅代表人工确认，不代表打印机设备回执。',
+      okText: '确认打印并转待回录',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await printAndCompleteProcessing(undefined)
+          message.success('已确认打印并转入待回录')
+        } catch (error) {
+          notifyErrorOnce(error, '打印确认失败，请刷新后重试')
+          await refreshDetail()
+        }
+      },
+    })
   }
 
   const handleVoidOrder = () => {
@@ -147,6 +171,7 @@ export default function OrderExecutionHost({ detail }: Props) {
         capabilities={capabilities}
         actions={{
           onPrint: () => setPrintOpen(true),
+          onConfirmPrintAndToRecord: handleConfirmPrintAndToRecord,
           onPrepareReissue: handlePrepareReissue,
           onBackRecord: () => navigate(`/process-orders/${orderUuid}/back-record`),
           onSnapshotDiff: () => setDiffOpen(true),
@@ -167,6 +192,7 @@ export default function OrderExecutionHost({ detail }: Props) {
         }}
         loading={{
           changingStatus: isChangingStatus || isCompletingProcessing,
+          confirmingPrint: isConfirmingPrint,
           rollingBackDraft: isRollingBackDraft,
           preparingReissue: isPreparingReissue,
           calculatingFee: isCalculatingFee,
@@ -179,6 +205,7 @@ export default function OrderExecutionHost({ detail }: Props) {
           detail={detail}
           open={printOpen}
           onClose={() => setPrintOpen(false)}
+          onPrintConfirmed={handleFirstPrintConfirmed}
           onPrinted={refreshDetail}
         />
       )}

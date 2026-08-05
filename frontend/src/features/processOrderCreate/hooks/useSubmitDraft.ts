@@ -7,6 +7,6 @@ export function useSubmitDraft() {
 
   return useMutation({
     mutationFn: createOrderService.submit,
-    onSuccess: () => invalidateSubmittedProcessOrder(queryClient),
+    onSuccess: (_, variables) => invalidateSubmittedProcessOrder(queryClient, variables.uuid),
   })
 }

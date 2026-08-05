@@ -220,6 +220,23 @@ class ProcessOrderControllerContractTest {
     }
 
     @Test
+    void printAndToRecord_withAdminRole_usesAtomicCommand() throws Exception {
+        authorizeAs("admin");
+        PrintResultVO result = new PrintResultVO();
+        result.setOrderUuid("order-uuid");
+        when(processOrderService.printAndCompleteProcessing(eq("order-uuid"), any())).thenReturn(result);
+
+        mvc.perform(post("/api/process-orders/order-uuid/print-and-to-record")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderUuid").value("order-uuid"));
+
+        ArgumentCaptor<PrintDTO> captor = ArgumentCaptor.forClass(PrintDTO.class);
+        verify(processOrderService).printAndCompleteProcessing(eq("order-uuid"), captor.capture());
+        assertNull(captor.getValue().getReason());
+    }
+
+    @Test
     void print_withOperatorRole_returnsForbidden() throws Exception {
         authorizeAs("operator");
 

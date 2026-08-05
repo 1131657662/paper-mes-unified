@@ -12,19 +12,19 @@ import {
 import { confirmBackRecordSubmission } from './confirmBackRecordSubmission'
 import { reloadBackRecordConflict } from './reloadBackRecordConflict'
 import { showBackRecordResult } from './backRecordResultModal'
+import { refreshBackRecordBeforeSubmit } from './backRecordSubmissionFreshness'
+import { prepareBackRecordPayload } from './prepareBackRecordPayload'
 import type { useBackRecordSelection } from './useBackRecordSelection'
-import {
-  buildBackRecordValidationPaths,
-  selectedFinishUuidsForSubmission,
-} from './backRecordValidationPaths'
 
 interface UseBackRecordSubmissionOptions {
   detail?: ProcessOrderDetailVO
   enabled: boolean
   form: FormInstance<BackRecordFormValues>
+  getInitializedVersion: () => number | undefined
   onClose: () => void
   onPersisted?: () => void
   onRefetch: () => Promise<{ data?: ProcessOrderDetailVO; error?: unknown; isSuccess: boolean }>
+  onConflictReloaded: (detail: ProcessOrderDetailVO) => void
   onReloaded: (detail: ProcessOrderDetailVO) => void
   onResetInitialization: () => void
   onSuccess: () => void
@@ -33,12 +33,21 @@ interface UseBackRecordSubmissionOptions {
   uuid?: string | null
 }
 
+interface FreshSubmission {
+  authorization?: BackRecordAuthorization
+  completeOrder: boolean
+  detail: ProcessOrderDetailVO
+  variance?: BackRecordVarianceConfirmation
+}
+
 export function useBackRecordSubmission(options: UseBackRecordSubmissionOptions) {
   const [authForm] = Form.useForm<BackRecordAuthorization>()
   const [varianceForm] = Form.useForm<BackRecordVarianceConfirmation>()
   const [authOpen, setAuthOpen] = useState(false)
   const [varianceOpen, setVarianceOpen] = useState(false)
   const completeIntentRef = useRef(true)
+  const submittingRef = useRef(false)
+  const [preparing, setPreparing] = useState(false)
   const backRecordMutation = useBackRecordProcessOrder(options.uuid ?? undefined)
 
   useEffect(() => {
@@ -49,31 +58,58 @@ export function useBackRecordSubmission(options: UseBackRecordSubmissionOptions)
     setVarianceOpen(false)
   }, [authForm, options.enabled, varianceForm])
 
-  const submit = async (
-    completeOrder = completeIntentRef.current,
-    authorization?: BackRecordAuthorization,
-    variance?: BackRecordVarianceConfirmation,
-  ) => {
-    if (!options.detail || !validateSelection(options.selection, completeOrder)) return
-    completeIntentRef.current = completeOrder
-    const payload = await preparePayload({
-      authorization,
-      completeOrder,
-      detail: options.detail,
-      form: options.form,
-      selection: options.selection,
-      variance,
+  const refreshSubmissionDetail = async () => {
+    if (!options.detail) return undefined
+    const refreshed = await refreshBackRecordBeforeSubmit({
+      expectedVersion: options.getInitializedVersion() ?? options.detail.order.version,
+      onConflictReloaded: options.onConflictReloaded,
+      onRefetch: options.onRefetch,
     })
-    if (!authorization && !variance) {
+    if (refreshed.status === 'failed') {
+      notifyErrorOnce(refreshed.error, '回录详情刷新失败，请检查网络后重试')
+      return undefined
+    }
+    if (refreshed.status === 'changed') {
+      message.warning('加工单已更新，已保留当前填写内容，请核对后再提交')
+      return undefined
+    }
+    return refreshed.detail
+  }
+
+  const submitFreshDetail = async (submission: FreshSubmission) => {
+    if (!validateSelection(options.selection, submission.completeOrder)) return
+    const payload = await prepareBackRecordPayload({
+      ...submission, form: options.form, selection: options.selection,
+    })
+    if (!submission.authorization && !submission.variance) {
       const confirmed = await confirmBackRecordSubmission({
-        orderNo: options.detail.order.orderNo,
-        completeOrder,
+        orderNo: submission.detail.order.orderNo,
+        completeOrder: submission.completeOrder,
         selectedCount: options.selection.selectedCount,
         warehouseName: options.selectedWarehouseName ?? payload.warehouseUuid,
       })
       if (!confirmed) return
     }
     await submitPayload(payload)
+  }
+
+  const submit = async (
+    completeOrder = completeIntentRef.current,
+    authorization?: BackRecordAuthorization,
+    variance?: BackRecordVarianceConfirmation,
+  ) => {
+    if (submittingRef.current) return
+    if (!options.detail) return
+    submittingRef.current = true
+    setPreparing(true)
+    completeIntentRef.current = completeOrder
+    try {
+      const detail = await refreshSubmissionDetail()
+      if (detail) await submitFreshDetail({ authorization, completeOrder, detail, variance })
+    } finally {
+      submittingRef.current = false
+      setPreparing(false)
+    }
   }
 
   const submitPayload = async (payload: ReturnType<typeof buildBackRecordDTO>) => {
@@ -100,7 +136,11 @@ export function useBackRecordSubmission(options: UseBackRecordSubmissionOptions)
     if (error instanceof BizError && error.errorCode === 'E005') return setAuthOpen(true)
     if (error instanceof BizError && error.errorCode === 'E007') return setVarianceOpen(true)
     if (error instanceof BizError && error.errorCode === 'E006') {
-      const reload = await reloadBackRecordConflict(options)
+      const reload = await reloadBackRecordConflict({
+        ...options,
+        onReloaded: options.onConflictReloaded,
+        preserveDirty: true,
+      })
       if (!reload.reloaded) {
         notifyErrorOnce(reload.error, '数据已被他人修改，但服务端最新内容加载失败，请保留当前页面并重试')
         return
@@ -126,7 +166,7 @@ export function useBackRecordSubmission(options: UseBackRecordSubmissionOptions)
   return {
     authForm,
     authOpen,
-    isSubmitting: backRecordMutation.isPending,
+    isSubmitting: preparing || backRecordMutation.isPending,
     setAuthOpen,
     setVarianceOpen,
     submit,
@@ -150,39 +190,4 @@ function validateSelection(
     return false
   }
   return true
-}
-
-interface PreparePayloadOptions {
-  authorization?: BackRecordAuthorization
-  completeOrder: boolean
-  detail: ProcessOrderDetailVO
-  form: FormInstance<BackRecordFormValues>
-  selection: ReturnType<typeof useBackRecordSelection>
-  variance?: BackRecordVarianceConfirmation
-}
-
-async function preparePayload(options: PreparePayloadOptions) {
-  const formValues = options.form.getFieldsValue(true) as BackRecordFormValues
-  const selectedFinishUuids = selectedFinishUuidsForSubmission(
-    options.detail,
-    formValues,
-    options.selection.selectedFinishUuids,
-    options.selection.selectedRollUuids,
-  )
-  await options.form.validateFields(buildBackRecordValidationPaths({
-    completeOrder: options.completeOrder,
-    detail: options.detail,
-    selectedFinishUuids,
-    selectedItemKeys: options.selection.selectedItemKeys,
-    selectedRollUuids: options.selection.selectedRollUuids,
-    addedFinishUuids: new Set(Object.entries(formValues.finishAdjustments ?? {})
-      .filter(([key]) => options.selection.selectedItemKeys.has(key))
-      .flatMap(([, adjustment]) => adjustment.added.map((added) => added.uuid))),
-  }), { recursive: true })
-  return buildBackRecordDTO(options.detail, formValues, options.authorization, options.variance, {
-    completeOrder: options.completeOrder,
-    selectedFinishUuids,
-    selectedItemKeys: options.selection.selectedItemKeys,
-    selectedRollUuids: options.selection.selectedRollUuids,
-  })
 }

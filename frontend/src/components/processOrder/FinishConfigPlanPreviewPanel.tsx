@@ -81,7 +81,7 @@ export default function FinishConfigPlanPreviewPanel({ preview, loading }: Props
       </Typography.Text>
       <Table
         size="small"
-        rowKey={(_, i) => String(i)}
+        rowKey={finishPreviewRowKey}
         columns={finishColumns}
         dataSource={finishes ?? []}
         pagination={false}
@@ -93,4 +93,18 @@ export default function FinishConfigPlanPreviewPanel({ preview, loading }: Props
 
 function textCell(value?: string | number) {
   return <TooltipText value={value} />
+}
+
+function finishPreviewRowKey(row: RewindFinishItemPreview) {
+  return [
+    row.segmentSort,
+    row.finishWidth,
+    row.finishDiameter,
+    row.finishCoreDiameter,
+    row.segmentRatio,
+    row.customerPaperName,
+    row.customerGramWeight,
+    row.customerFinishWidth,
+    row.sourceSummary,
+  ].map((value) => String(value ?? '')).join(':')
 }

@@ -31,6 +31,12 @@ function Wait-Http([string]$Uri, [int]$TimeoutSeconds) {
     throw "Service startup timed out: $Uri"
 }
 
+$SchemaScript = Join-Path $Root 'dev-schema.ps1'
+if (-not (Test-Path -LiteralPath $SchemaScript)) {
+    throw "Missing local schema helper: $SchemaScript"
+}
+. $SchemaScript
+
 function Start-Backend {
     $healthUri = "http://127.0.0.1:$BackendPort/actuator/health"
     if (Test-HttpOk $healthUri) {
@@ -76,6 +82,8 @@ function Start-Frontend {
     Write-Output "Frontend started: $frontendUri"
 }
 
+Ensure-LocalInventoryLedgerSchema
+Ensure-LocalIssueVersionSchema
 Start-Backend
 Start-Frontend
 Write-Output ''

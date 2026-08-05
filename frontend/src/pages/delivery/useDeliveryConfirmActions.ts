@@ -1,4 +1,5 @@
 import { message } from 'antd'
+import { notifyErrorOnce } from '../../api/request'
 import { useBatchConfirmDelivery } from '../../features/delivery/hooks/useBatchConfirmDelivery'
 import { useConfirmDelivery } from '../../features/delivery/hooks/useConfirmDelivery'
 import type { DeliveryOrder } from '../../types/delivery'
@@ -31,13 +32,18 @@ async function confirmOne(record: DeliveryOrder, options: Options, mutate: Retur
   if (record.deliveryStatus !== 1) return
   const signUser = await askSignUser(record)
   if (signUser === null) return
-  const completed = await authorizeDeliveryConfirmation((forceRelease) => mutate({
-    uuid: record.uuid,
-    data: { ...(signUser ? { signUser } : {}), forceRelease },
-  }), 1, options.canRelease)
-  if (!completed) return
-  message.success('出库签收完成')
-  options.clearSelection()
+  try {
+    const completed = await authorizeDeliveryConfirmation((forceRelease) => mutate({
+      uuid: record.uuid,
+      data: { ...(signUser ? { signUser } : {}), forceRelease },
+    }), 1, options.canRelease)
+    if (!completed) return
+    message.success('出库签收完成')
+    options.clearSelection()
+  } catch (error) {
+    options.clearSelection()
+    notifyErrorOnce(error, '出库签收失败，请刷新后重试')
+  }
 }
 
 async function confirmBatch(records: DeliveryOrder[], options: Options,
@@ -46,11 +52,16 @@ async function confirmBatch(records: DeliveryOrder[], options: Options,
   if (records.length === 0) return void message.warning('请先选择待出库单据')
   const ignoredCount = options.selectedRows.length - records.length
   if (!await confirmBatchSign(records.length, ignoredCount)) return
-  const completed = await authorizeDeliveryConfirmation((forceRelease) => mutate({
-    deliveryUuids: records.map((record) => record.uuid),
-    forceRelease,
-  }), records.length, options.canRelease)
-  if (!completed) return
-  message.success(`已签收 ${records.length} 张出库单`)
-  options.clearSelection()
+  try {
+    const completed = await authorizeDeliveryConfirmation((forceRelease) => mutate({
+      deliveryUuids: records.map((record) => record.uuid),
+      forceRelease,
+    }), records.length, options.canRelease)
+    if (!completed) return
+    message.success(`已签收 ${records.length} 张出库单`)
+    options.clearSelection()
+  } catch (error) {
+    options.clearSelection()
+    notifyErrorOnce(error, '出库签收失败，请刷新后重试')
+  }
 }

@@ -14,6 +14,7 @@ const actions: ExecutionActionHandlers = {
   onGoSettle: () => undefined,
   onManageRolls: () => undefined,
   onPrint: () => undefined,
+  onConfirmPrintAndToRecord: () => undefined,
   onPrepareReissue: () => undefined,
   onSnapshotDiff: () => undefined,
   onVoidOrder: () => undefined,
@@ -28,11 +29,11 @@ const noCapabilities: ExecutionCapabilities = {
 }
 
 describe('加工单详情执行操作', () => {
-  it('未确认打印时禁用转待回录', () => {
+  it('未确认打印时改为原子确认并转待回录', () => {
     const markup = renderActions(2, { ...noCapabilities, canManageOrder: true }, false)
 
-    expect(markup).toContain('disabled=""')
-    expect(markup).toContain('title="请先确认已完成打印"')
+    expect(markup).toContain('确认打印并转待回录')
+    expect(markup).not.toContain('disabled=""')
   })
 
   it('确认打印后允许转待回录', () => {

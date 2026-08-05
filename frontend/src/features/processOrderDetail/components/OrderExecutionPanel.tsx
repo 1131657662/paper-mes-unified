@@ -16,7 +16,7 @@ interface Props {
 export default function OrderExecutionPanel({ detail, actions, capabilities, loading = {} }: Props) {
   const order = detail?.order
   const status = order?.orderStatus ?? 0
-  const hasPrinted = (order?.printCount ?? 0) > 0
+  const hasPrinted = order?.printStatus === 1 && (order.printCount ?? 0) > 0
   const summary = buildExecutionSummary(detail)
   const statusText = ORDER_STATUS[status]?.text ?? '未知状态'
 

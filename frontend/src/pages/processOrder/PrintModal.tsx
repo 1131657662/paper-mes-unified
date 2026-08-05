@@ -2,6 +2,7 @@ import { Drawer, Spin } from 'antd'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { useProcessOrderDetail } from '../../features/processOrderDetail/hooks/useProcessOrderDetail'
 import PrintIssueDrawer from '../../features/processOrderDetail/components/PrintIssueDrawer'
+import { usePrintAndCompleteProcessOrder } from '../../features/processOrderDetail/hooks/usePrintAndCompleteProcessOrder'
 
 interface Props {
   uuid: string | null
@@ -18,6 +19,7 @@ interface Props {
  */
 export default function PrintModal({ uuid, orderNo, open, onClose, onSuccess }: Props) {
   const detailQuery = useProcessOrderDetail(uuid ?? undefined, { enabled: open })
+  const { mutateAsync: printAndCompleteProcessing } = usePrintAndCompleteProcessOrder(uuid ?? undefined)
   const drawerTitle = orderNo ? `加工单打印：${orderNo}` : '加工单打印'
 
   if (!open || !uuid) return null
@@ -40,5 +42,6 @@ export default function PrintModal({ uuid, orderNo, open, onClose, onSuccess }: 
     )
   }
 
-  return <PrintIssueDrawer detail={detailQuery.data} open onClose={onClose} onPrinted={onSuccess} />
+  return <PrintIssueDrawer detail={detailQuery.data} open onClose={onClose} onPrinted={onSuccess}
+    onPrintConfirmed={printAndCompleteProcessing} />
 }

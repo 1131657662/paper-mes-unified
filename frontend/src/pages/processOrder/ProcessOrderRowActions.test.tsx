@@ -15,6 +15,7 @@ const noCapabilities: ProcessOrderListCapabilities = {
 const actions = {
   onBackRecord: () => undefined,
   onChangeStatus: () => undefined,
+  onConfirmPrintAndToRecord: () => undefined,
   onEditDraft: () => undefined,
   onGoDelivery: () => undefined,
   onGoSettle: () => undefined,
@@ -32,6 +33,16 @@ describe('加工单列表行内主操作权限', () => {
     const markup = renderAction({ orderStatus: 1 }, { ...noCapabilities, canManageOrder: true })
 
     expect(markup).toContain('打印下发')
+  })
+
+  it('未确认打印时提供原子确认并转待回录', () => {
+    const markup = renderAction(
+      { orderStatus: 2, printStatus: 0, printCount: 0 },
+      { ...noCapabilities, canManageOrder: true },
+    )
+
+    expect(markup).toContain('确认打印并转待回录')
+    expect(markup).not.toContain('确认车间已完成加工')
   })
 
   it('只有结算权限时将已完成单据主操作切换为生成结算', () => {

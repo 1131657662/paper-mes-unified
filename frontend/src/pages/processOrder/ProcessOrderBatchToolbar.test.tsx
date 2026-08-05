@@ -8,6 +8,7 @@ const actions: BatchActions = {
   onBackRecord: () => undefined,
   onCalcFee: async () => undefined,
   onChangeStatus: () => undefined,
+  onConfirmPrintAndToRecord: () => undefined,
   onGoDelivery: () => undefined,
   onGoSettle: () => undefined,
   onManageRolls: () => undefined,
@@ -24,16 +25,18 @@ const capabilities: ProcessOrderListCapabilities = {
 }
 
 describe('加工单列表转待回录门禁', () => {
-  it('打印次数为零时禁用入口，即使打印状态字段异常为已打印', () => {
+  it('未完成人工确认时改为原子确认打印并转待回录', () => {
     const item = toRecordItem({ uuid: 'order-1', orderStatus: 2, printCount: 0, printStatus: 1 })
 
-    expect(item).toMatchObject({ disabled: true, label: '转待回录（请先确认打印）' })
+    expect(item).toMatchObject({ label: '确认打印并转待回录' })
+    expect(item).not.toHaveProperty('disabled')
   })
 
   it('至少有一次打印确认记录时允许入口', () => {
-    const item = toRecordItem({ uuid: 'order-1', orderStatus: 2, printCount: 1 })
+    const item = toRecordItem({ uuid: 'order-1', orderStatus: 2, printCount: 1, printStatus: 1 })
 
-    expect(item).toMatchObject({ disabled: false, label: '转待回录' })
+    expect(item).toMatchObject({ label: '转待回录' })
+    expect(item).not.toHaveProperty('disabled')
   })
 })
 

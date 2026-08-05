@@ -13,6 +13,7 @@ export interface ProcessOrderColumnOptions {
   onBackRecord: (uuid: string) => void
   onCalcFee: (record: ProcessOrder) => Promise<void>
   onChangeStatus: (record: ProcessOrder, target: number, title: string) => void
+  onConfirmPrintAndToRecord: (record: ProcessOrder) => void
   onDetail: (uuid: string) => void
   onEditDraft: (uuid: string) => void
   onGoDelivery: (record: ProcessOrder) => void

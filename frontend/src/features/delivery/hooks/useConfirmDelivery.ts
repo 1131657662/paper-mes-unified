@@ -7,6 +7,6 @@ export function useConfirmDelivery() {
 
   return useMutation({
     mutationFn: deliveryService.confirm,
-    onSuccess: () => invalidateDeliveryReadModels(queryClient),
+    onSettled: () => invalidateDeliveryReadModels(queryClient),
   })
 }

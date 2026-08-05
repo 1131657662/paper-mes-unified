@@ -3,11 +3,13 @@ import { queries } from '../../../queries'
 
 interface Options {
   enabled?: boolean
+  freshOnMount?: boolean
 }
 
 export function useProcessOrderDetail(uuid?: string, options: Options = {}) {
   return useQuery({
     ...queries.processOrderDetail.detail(uuid ?? ''),
     enabled: !!uuid && (options.enabled ?? true),
+    refetchOnMount: options.freshOnMount ? 'always' : undefined,
   })
 }

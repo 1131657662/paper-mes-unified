@@ -24,14 +24,13 @@ export function buildMoreItems(
 }
 
 function addCompletionItem(items: MenuItems, record: ProcessOrder, actions: BatchActions) {
-  const hasPrinted = (record.printCount ?? 0) > 0
+  const hasPrinted = record.printStatus === 1 && (record.printCount ?? 0) > 0
   items.push({
     key: 'to-record',
-    label: hasPrinted ? '转待回录' : '转待回录（请先确认打印）',
-    disabled: !hasPrinted,
+    label: hasPrinted ? '转待回录' : '确认打印并转待回录',
     onClick: hasPrinted
       ? () => actions.onChangeStatus(record, 3, '确认车间已完成加工，转入待回录？')
-      : undefined,
+      : () => actions.onConfirmPrintAndToRecord(record),
   })
 }
 

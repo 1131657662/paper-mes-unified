@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import { Input, Modal, message } from 'antd'
+import { notifyErrorOnce } from '../../api/request'
 import { useLocation, useNavigate, type NavigateFunction } from 'react-router'
 import type { ActionType } from '@ant-design/pro-components'
 import {
@@ -7,6 +8,7 @@ import {
   changeOrderStatus,
   getProcessOrder,
   completeProcessOrder,
+  printAndCompleteProcessOrder,
   rollbackProcessOrderToDraft,
   voidProcessOrder,
 } from '../../api/processOrder'
@@ -42,6 +44,7 @@ export function useProcessOrderListCommands(params: Params) {
     onBackRecord: navigation.openRecord,
     onCalcFee: (record) => calculateFee(context, record),
     onChangeStatus: (record, target, title) => requestTransition(context, record, target, title),
+    onConfirmPrintAndToRecord: (record) => requestPrintAndComplete(context, record),
     onGoDelivery: navigation.goDelivery,
     onGoSettle: navigation.goSettle,
     onManageRolls: params.dialogs.openManageRoll,
@@ -103,6 +106,26 @@ function requestTransition(context: CommandContext, record: ProcessOrder, target
     requireReason,
     reasonPlaceholder: '请填写回退原因，例如：客户改单、现场方案调整、下发前补充信息',
     onConfirm: (reason) => executeTransition(context, record, target, reason),
+  })
+}
+
+function requestPrintAndComplete(context: CommandContext, record: ProcessOrder) {
+  Modal.confirm({
+    title: '确认打印并转待回录',
+    content: '请确认纸张已从打印机输出。浏览器打印窗口仅代表人工确认，不代表打印机设备回执。',
+    okText: '确认打印并转待回录',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await printAndCompleteProcessOrder(record.uuid)
+        message.success('已确认打印并转入待回录')
+        context.clearSelection()
+      } catch (error) {
+        notifyErrorOnce(error, '打印确认失败，请刷新后重试')
+      } finally {
+        void context.actionRef.current?.reload()
+      }
+    },
   })
 }
 

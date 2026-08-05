@@ -1642,6 +1642,25 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public PrintResultVO printAndCompleteProcessing(String uuid, PrintDTO dto) {
+        businessLockService.lockProcessOrders(List.of(uuid));
+        ProcessOrder order = getById(uuid);
+        if (order != null
+                && order.getOrderStatus() != null
+                && order.getOrderStatus() == OrderStatus.TO_RECORD.getCode()
+                && PRINT_STATUS_PRINTED == (order.getPrintStatus() == null ? PRINT_STATUS_UNPRINTED : order.getPrintStatus())
+                && order.getPrintCount() != null
+                && order.getPrintCount() > 0) {
+            return buildPrintResult(order, List.of(), order.getPrintCount(), order.getLastPrintTime());
+        }
+        PrintResultVO result = print(uuid, dto == null ? new PrintDTO() : dto);
+        completeProcessing(uuid, null);
+        result.setOrderStatus(OrderStatus.TO_RECORD.getCode());
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public PrintResultVO physicalReprint(String uuid, PhysicalReprintDTO dto) {
         businessLockService.lockProcessOrders(List.of(uuid));
         ProcessOrder order = requireOrder(uuid);

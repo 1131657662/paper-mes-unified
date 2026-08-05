@@ -34,6 +34,25 @@ describe('reload back-record conflict', () => {
     expect(onPersisted).not.toHaveBeenCalled()
     expect(onResetInitialization).not.toHaveBeenCalled()
   })
+
+  it('keeps dirty values when a version conflict reloads the latest detail', async () => {
+    const onPersisted = vi.fn()
+    const onResetInitialization = vi.fn()
+    const onReloaded = vi.fn()
+
+    const result = await reloadBackRecordConflict({
+      onPersisted,
+      onRefetch: async () => ({ data: detail(), isSuccess: true }),
+      onReloaded,
+      onResetInitialization,
+      preserveDirty: true,
+    })
+
+    expect(result.reloaded).toBe(true)
+    expect(onReloaded).toHaveBeenCalledOnce()
+    expect(onResetInitialization).not.toHaveBeenCalled()
+    expect(onPersisted).not.toHaveBeenCalled()
+  })
 })
 
 function detail() {
