@@ -25,6 +25,7 @@ export function newRollDraft(defaults: Partial<RollDraft> = {}): RollDraft {
 
 export function toRollDto(roll: RollDraft): OriginalRollDTO {
   return {
+    uuid: roll.uuid,
     extraNo: roll.extraNo,
     rollNo: roll.rollNo,
     paperName: roll.paperName,
@@ -41,6 +42,7 @@ export function toRollDto(roll: RollDraft): OriginalRollDTO {
     mainStepType: processModeRequiresMain(roll.processMode) ? roll.mainStepType : undefined,
     machineUuid: processModeRequiresMain(roll.processMode) ? roll.machineUuid : undefined,
     remark: roll.remark,
+    serviceSteps: roll.serviceSteps,
   }
 }
 
@@ -66,6 +68,7 @@ export function toOriginalRoll(roll: RollDraft): OriginalRoll {
     mainStepType: roll.mainStepType,
     machineUuid: roll.machineUuid,
     remark: roll.remark,
+    serviceSteps: roll.serviceSteps,
   }
 }
 
@@ -95,12 +98,14 @@ export function rollDraftFromOriginal(roll: OriginalRoll): RollDraft {
     mainStepType: processModeRequiresMain(roll.processMode) ? roll.mainStepType ?? 2 : undefined,
     machineUuid: roll.machineUuid,
     remark: roll.remark,
+    serviceSteps: roll.serviceSteps,
     uuid: roll.uuid,
     localId: roll.uuid,
   }
 }
 
 export function baseInfoFromOrder(order: { [key: string]: unknown }): DraftOrderBaseDTO {
+  const settleType = order.settleType === 1 || order.settleType === 2 ? order.settleType : undefined
   return {
     customerUuid: String(order.customerUuid ?? ''),
     orderDate: String(order.orderDate ?? ''),
@@ -109,7 +114,7 @@ export function baseInfoFromOrder(order: { [key: string]: unknown }): DraftOrder
     labelBrand: order.labelBrand as string | undefined,
     warehouseUuid: order.warehouseUuid as string | undefined,
     isInvoice: order.isInvoice as number | undefined,
-    settleType: order.settleType as number | undefined,
+    settleType,
     settleDay: order.settleDay as number | undefined,
     settleMode: order.settleSource as DraftOrderBaseDTO['settleMode'],
     customerVersion: order.settleCustomerVersion as number | undefined,

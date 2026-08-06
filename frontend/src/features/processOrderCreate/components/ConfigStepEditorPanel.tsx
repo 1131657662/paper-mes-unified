@@ -10,6 +10,7 @@ import type { ConfigStepWorkspaceActions, ConfigStepWorkspaceData } from './conf
 import ProcessPlanActions from './ProcessPlanActions'
 import ProcessPlanEditor from './ProcessPlanEditor'
 import ServiceOnlyConfigEditor from './ServiceOnlyConfigEditor'
+import AppendServiceStepEditor from './AppendServiceStepEditor'
 
 interface Props {
   actions: ConfigStepWorkspaceActions
@@ -62,6 +63,19 @@ function singlePlanEditor(options: Props & { plan: ProcessPlanDTO; roll: RollDra
 
 function buildServiceEditor(options: Props & { roll: RollDraft }) {
   const { actions, data, roll, service } = options
+  if (data.onServiceStepsChange) {
+    return <AppendServiceStepEditor
+      allSteps={data.allSteps}
+      customerPrices={data.customerPrices}
+      roll={roll}
+      rolls={data.rolls}
+      selectedRolls={data.selectedServiceRolls}
+      onPersist={data.onServiceStepsChange}
+      onBatchApplied={actions.onServiceBatchApplied}
+      onCurrentSaved={actions.onCurrentServiceSaved}
+      onStatusChange={service.changeStatus}
+    />
+  }
   return <ServiceOnlyConfigEditor
     customerPrices={data.customerPrices} detailError={data.detailError}
     detailLoading={data.detailLoading} allSteps={data.allSteps} draftVersion={data.draftVersion}

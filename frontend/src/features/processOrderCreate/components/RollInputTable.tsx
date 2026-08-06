@@ -3,6 +3,7 @@ import { CopyOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { ColumnType } from 'antd/es/table'
 import ResizableTable from '../../../components/ResizableTable'
 import MesTooltip from '../../../components/biz/MesTooltip'
+import { MAX_SOURCE_PIECES } from '../../../constants/processOrder'
 import type { RollDraft } from '../types'
 import { newRollDraft } from '../draftMappers'
 
@@ -23,7 +24,7 @@ export default function RollInputTable({ onChange, rolls }: Props) {
     optionalNumberColumn('纸芯(in)', 'coreDiameter', 90, setField),
     textColumn('母卷号', 'rollNo', 120, setField),
     textColumn('编号', 'extraNo', 110, setField),
-    numberColumn('件数', 'pieceNum', 80, setField),
+    numberColumn('件数', 'pieceNum', 80, setField, undefined, MAX_SOURCE_PIECES),
     weightColumn(setField),
     textColumn('备注', 'remark', 140, setField),
     actionColumn(rolls, onChange),
@@ -43,9 +44,10 @@ function textColumn(key: string, field: keyof RollDraft, width: number, setField
   ) }
 }
 
-function numberColumn(key: string, field: 'gramWeight' | 'originalWidth' | 'pieceNum', width: number, setField: SetField, className?: string): ColumnType<RollDraft> {
+function numberColumn(key: string, field: 'gramWeight' | 'originalWidth' | 'pieceNum', width: number, setField: SetField, className?: string, max?: number): ColumnType<RollDraft> {
   return { title: key, dataIndex: field, width, minWidth: width, render: (_, roll, index) => (
     <InputNumber className={className} aria-label={`母卷 ${index + 1} ${key}`} min={1}
+      max={max}
       value={positiveValue(roll[field])} onChange={(value) => setField(roll, field, value ?? 0)} />
   ) }
 }

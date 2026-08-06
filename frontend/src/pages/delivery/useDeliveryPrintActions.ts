@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 interface Options {
   detailReady: boolean
   documentReady: boolean
+  documentError?: string
   shouldAutoPrint: boolean
 }
 
@@ -13,11 +14,11 @@ export function useDeliveryPrintActions(options: Options) {
 
   const requestPrint = () => {
     if (!options.documentReady) {
-      message.warning('客户单据口径尚未加载，请重试或切换到仓库实物视图')
+      message.warning(options.documentError || '司机单据尚未准备完成，请稍后重试')
       return
     }
     scrollToPrint(printPreviewRef.current)
-    window.setTimeout(() => printFromIsolatedRoot(printPreviewRef.current), 220)
+    schedulePrint(printPreviewRef.current)
   }
 
   useEffect(() => {
@@ -25,8 +26,8 @@ export function useDeliveryPrintActions(options: Options) {
       || !options.shouldAutoPrint || autoPrintDoneRef.current) return
     autoPrintDoneRef.current = true
     scrollToPrint(printPreviewRef.current)
-    const timer = window.setTimeout(() => printFromIsolatedRoot(printPreviewRef.current), 220)
-    return () => window.clearTimeout(timer)
+    const frame = schedulePrint(printPreviewRef.current)
+    return () => window.cancelAnimationFrame(frame)
   }, [options.detailReady, options.documentReady, options.shouldAutoPrint])
 
   return { printPreviewRef, requestPrint }
@@ -34,6 +35,10 @@ export function useDeliveryPrintActions(options: Options) {
 
 function scrollToPrint(target: HTMLDivElement | null) {
   target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function schedulePrint(target: HTMLDivElement | null) {
+  return window.requestAnimationFrame(() => printFromIsolatedRoot(target))
 }
 
 function printFromIsolatedRoot(target: HTMLDivElement | null) {

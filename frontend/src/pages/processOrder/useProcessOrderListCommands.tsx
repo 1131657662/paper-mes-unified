@@ -67,11 +67,15 @@ function navigationCommands(navigate: NavigateFunction, returnTo: string) {
     create: () => navigate('/process-orders/create'),
     editDraft: (uuid: string) => navigate(`/process-orders/create?draft=${uuid}`),
     goDelivery: async (record: ProcessOrder) => {
-      const detail = await getProcessOrder(record.uuid)
-      const finishUuids = (detail.finishRolls ?? []).map((finish) => finish.uuid)
-      navigate(`/delivery-orders/create?customerUuid=${encodeURIComponent(record.customerUuid ?? '')}`, {
-        state: { finishUuids, from: returnTo },
-      })
+      try {
+        const detail = await getProcessOrder(record.uuid)
+        const finishUuids = (detail.finishRolls ?? []).map((finish) => finish.uuid)
+        navigate(`/delivery-orders/create?customerUuid=${encodeURIComponent(record.customerUuid ?? '')}`, {
+          state: { finishUuids, from: returnTo },
+        })
+      } catch (error) {
+        notifyErrorOnce(error, '加载可出库成品失败，请刷新后重试')
+      }
     },
     goSettle: (record: ProcessOrder) => navigate('/settle-orders/create', {
       state: { initialOrderUuids: [record.uuid], from: returnTo },
@@ -92,7 +96,7 @@ async function executeTransition(
   else await changeOrderStatus(record.uuid, { reason, targetStatus: target })
   message.success('状态已更新')
   context.clearSelection()
-  void context.actionRef.current?.reload()
+  reloadListSafely(context, '状态已更新，但列表刷新失败，请手动刷新')
   if (target === 0) context.navigate(`/process-orders/create?draft=${record.uuid}`)
 }
 
@@ -123,7 +127,7 @@ function requestPrintAndComplete(context: CommandContext, record: ProcessOrder) 
       } catch (error) {
         notifyErrorOnce(error, '打印确认失败，请刷新后重试')
       } finally {
-        void context.actionRef.current?.reload()
+        reloadListSafely(context, '打印状态可能已变化，但列表刷新失败，请手动刷新')
       }
     },
   })
@@ -138,9 +142,13 @@ function openPrint(context: CommandContext, record: ProcessOrder) {
 }
 
 async function calculateFee(context: CommandContext, record: ProcessOrder) {
-  const result = await calcProcessOrderFee(record.uuid)
-  message.success(`计费完成，总额 ¥${result.totalAmount ?? 0}`)
-  void context.actionRef.current?.reload()
+  try {
+    const result = await calcProcessOrderFee(record.uuid)
+    message.success(`计费完成，总额 ¥${result.totalAmount ?? 0}`)
+    reloadListSafely(context, '计费已完成，但列表刷新失败，请手动刷新')
+  } catch (error) {
+    notifyErrorOnce(error, '重新计费失败，请刷新后重试')
+  }
 }
 
 async function requestVoid(context: CommandContext, record: ProcessOrder) {
@@ -161,8 +169,18 @@ async function voidOrder(context: CommandContext, record: ProcessOrder, reason: 
     message.warning('请填写作废原因')
     throw new Error('作废原因不能为空')
   }
-  await voidProcessOrder(record.uuid, { reason: trimmed })
-  message.success('加工单已作废')
-  context.clearSelection()
-  void context.actionRef.current?.reload()
+  try {
+    await voidProcessOrder(record.uuid, { reason: trimmed })
+    message.success('加工单已作废')
+    context.clearSelection()
+    reloadListSafely(context, '加工单已作废，但列表刷新失败，请手动刷新')
+  } catch (error) {
+    notifyErrorOnce(error, '作废加工单失败，请刷新后重试')
+  }
+}
+
+function reloadListSafely(context: CommandContext, failureMessage: string) {
+  const reload = context.actionRef.current?.reload()
+  if (!reload) return
+  void reload.catch((error) => notifyErrorOnce(error, failureMessage))
 }

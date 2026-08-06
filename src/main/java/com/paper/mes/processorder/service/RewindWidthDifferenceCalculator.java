@@ -18,6 +18,16 @@ public final class RewindWidthDifferenceCalculator {
     public static Decision calculate(String policyValue, Integer rewindMode, int sourceWidth,
                                      BigDecimal totalWeight, BigDecimal segmentRatio,
                                      RewindPlanPreviewDTO.RewindSegmentDTO segment) {
+        return calculate(policyValue, rewindMode, sourceWidth, totalWeight, segmentRatio, segment, 1);
+    }
+
+    public static Decision calculate(String policyValue, Integer rewindMode, int sourceWidth,
+                                     BigDecimal totalWeight, BigDecimal segmentRatio,
+                                     RewindPlanPreviewDTO.RewindSegmentDTO segment,
+                                     int sourcePieceCount) {
+        if (sourcePieceCount < 1) {
+            throw new BusinessException("母卷件数必须大于0");
+        }
         if (!supportsWidthPolicy(rewindMode)) {
             requireNoTrim(segment);
             return Decision.disabled();
@@ -37,8 +47,8 @@ public final class RewindWidthDifferenceCalculator {
         BigDecimal trimWeight = proportional(segmentWeight, trimWidth, sourceWidth);
         BigDecimal differenceWeight = proportional(segmentWeight, differenceWidth, sourceWidth);
         int repeatCount = segment.getRepeatCount() == null ? 1 : segment.getRepeatCount();
-        int finishCount = layoutCount(segment, false) * repeatCount;
-        int trimCount = layoutCount(segment, true) * repeatCount;
+        int finishCount = layoutCount(segment, false) * repeatCount * sourcePieceCount;
+        int trimCount = layoutCount(segment, true) * repeatCount * sourcePieceCount;
         int outputCount = finishCount + trimCount;
         BigDecimal allocationShare = policy == WidthDifferencePolicy.ALLOCATE && outputCount > 0
                 ? differenceWeight.divide(BigDecimal.valueOf(outputCount), SCALE, RoundingMode.HALF_UP)

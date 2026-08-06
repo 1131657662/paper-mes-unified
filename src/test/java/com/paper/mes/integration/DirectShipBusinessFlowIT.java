@@ -42,4 +42,20 @@ class DirectShipBusinessFlowIT {
         assertThat(detail.getRollProductions().getFirst().getFinishes().getFirst()
                 .getSources().getFirst().getOriginalUuid()).isEqualTo(original.getUuid());
     }
+
+    @Test
+    void directShip_threePhysicalPieces_createsThreeInventoryRolls() {
+        scenario = fixture.createDirectShip(3);
+
+        fixture.issueAndComplete(scenario);
+
+        var detail = processOrderService.getDetail(scenario.orderUuid());
+        assertThat(detail.getFinishRolls()).hasSize(3);
+        assertThat(detail.getFinishRolls()).allSatisfy(finish -> {
+            assertThat(finish.getSourceType()).isEqualTo(2);
+            assertThat(finish.getActualWeight()).isEqualByComparingTo("800.000");
+        });
+        assertThat(detail.getFinishRolls()).extracting(finish -> finish.getFinishRollNo())
+                .doesNotHaveDuplicates();
+    }
 }

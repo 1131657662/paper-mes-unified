@@ -12,6 +12,7 @@ import {
   getExportTaskSummary,
   retryExportTask,
 } from '../../../api/exportTask'
+import type { DeliveryExportSortChains, DeliverySortSpec } from '../../../types/deliverySort'
 
 export const exportTaskService = {
   summary: getExportTaskSummary,
@@ -22,9 +23,14 @@ export const exportTaskService = {
   acknowledgeOne: acknowledgeExportTask,
   retry: retryExportTask,
   cancel: cancelExportTask,
-  createDeliveryOrder: ({ uuid, requestId, customerRevisionNo }: {
-    uuid: string; requestId?: string; customerRevisionNo?: number
-  }) => createDeliveryOrderExportTask(uuid, requestId, customerRevisionNo ?? 0),
+  createDeliveryOrder: ({ uuid, requestId, customerRevisionNo, sortChains, sortChain, documentView }: {
+    uuid: string; requestId?: string; customerRevisionNo?: number; sortChains?: DeliveryExportSortChains
+    sortChain?: DeliverySortSpec[]
+    documentView?: 'customer' | 'physical' | 'trace'
+  }) => createDeliveryOrderExportTask(
+    uuid, requestId, customerRevisionNo ?? 0,
+    sortChains ?? { physical: sortChain ?? [], customer: [], trace: [] }, documentView ?? 'physical',
+  ),
   createProcessOrder: ({ uuid, requestId, customerRevisionNo }: {
     uuid: string; requestId?: string; customerRevisionNo?: number
   }) => createProcessOrderExportTask(uuid, requestId, customerRevisionNo),

@@ -2,6 +2,23 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_PAGE_TAB_PATH, createTab, ensurePageTabs } from './pageTabModel'
 
 describe('pageTabModel', () => {
+  it('preserves an append session in its tab path', () => {
+    expect(createTab('/process-orders/order-1/append?session=session-1')).toMatchObject({
+      label: '追加母卷',
+      path: '/process-orders/order-1/append?session=session-1',
+    })
+  })
+
+  it('removes a stale session-less append tab when a session tab is present', () => {
+    const result = ensurePageTabs([
+      createTab('/process-orders/order-1/append'),
+      createTab('/process-orders/order-1/append?session=session-1'),
+    ])
+
+    expect(result.map((item) => item.path)).toContain('/process-orders/order-1/append?session=session-1')
+    expect(result.map((item) => item.path)).not.toContain('/process-orders/order-1/append')
+  })
+
   it('将旧统计报表标签迁移到经营总览', () => {
     expect(createTab('/reports')).toMatchObject({ label: '经营总览', path: '/reports/overview' })
   })

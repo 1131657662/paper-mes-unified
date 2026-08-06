@@ -82,9 +82,9 @@ public class ReportOperationalWorkbookExporter {
 
     private void collectionOverview(SXSSFWorkbook workbook, ReportCollectionAnalysisVO.Overview row) {
         Object[][] values = {
-                {"回款记录", number(row.getRecordCount()), "现金记录", number(row.getCashRecordCount())},
+                {"回款记录", number(row.getRecordCount()), "到账记录", number(row.getCashRecordCount())},
                 {"废纸抵扣记录", number(row.getScrapRecordCount()), "折让记录", number(row.getDiscountRecordCount())},
-                {"结清金额", number(row.getSettledAmount()), "现金到账", number(row.getCashAmount())},
+                {"结清金额", number(row.getSettledAmount()), "实际到账", number(row.getCashAmount())},
                 {"废纸抵扣", number(row.getScrapOffsetAmount()), "折让金额", number(row.getDiscountAmount())},
                 {"废纸重量(吨)", tons(row.getScrapWeight()), "", ""}
         };
@@ -121,7 +121,7 @@ public class ReportOperationalWorkbookExporter {
 
     private void collectionTable(SXSSFWorkbook workbook, String name,
                                  List<ReportCollectionAnalysisVO.Dimension> rows) {
-        String[] headers = {"维度", "记录数", "结清金额", "现金到账", "非现金金额", "废纸重量(吨)"};
+        String[] headers = {"维度", "记录数", "结清金额", "实际到账", "抵扣与核销", "废纸重量(吨)"};
         ReportWorkbookSupport.table(workbook, name, headers, rows.stream().map(row -> new Object[]{
                 label(row.getDimensionName(), row.getDimensionKey()), number(row.getRecordCount()),
                 number(row.getSettledAmount()), number(row.getCashAmount()), number(row.getNonCashAmount()),

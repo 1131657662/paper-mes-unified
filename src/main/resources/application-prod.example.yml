@@ -23,6 +23,14 @@ spring:
 app:
   schema-bootstrap:
     enabled: false
+  schema-readiness:
+    expected-version: ${PAPER_MES_EXPECTED_SCHEMA_VERSION:3.61}
+    require-migration-history: true
+  runtime:
+    backend-version: ${PAPER_MES_BACKEND_VERSION}
+    frontend-version: ${PAPER_MES_FRONTEND_VERSION}
+    git-sha: ${PAPER_MES_GIT_SHA}
+    build-time: ${PAPER_MES_BUILD_TIME}
   auth:
     session-hours: 12
     session-retention-days: 7

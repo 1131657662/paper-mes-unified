@@ -5,8 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.delivery.dto.DeliveryCustomerRevisionPreviewVO;
 import com.paper.mes.delivery.dto.DeliveryCustomerSpecVO;
+import com.paper.mes.delivery.dto.DeliverySortSpec;
 import com.paper.mes.delivery.entity.DeliveryCustomerRevision;
 import com.paper.mes.delivery.service.DeliveryCustomerRevisionPreviewService;
+import com.paper.mes.delivery.service.DeliveryCustomerSortPolicy;
+import com.paper.mes.delivery.service.DeliveryDetailSortPolicy;
 import com.paper.mes.delivery.service.DeliveryCustomerRevisionReader;
 import com.paper.mes.exporttask.dto.DeliveryOrderExportTaskPayload;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,17 @@ public class DeliveryOrderExportRevisionSnapshot {
     private final ObjectMapper objectMapper;
 
     public String capture(String orderUuid, Integer expectedRevisionNo, Integer deliveryStatus) {
+        return capture(orderUuid, expectedRevisionNo, deliveryStatus, List.of());
+    }
+
+    public String capture(String orderUuid, Integer expectedRevisionNo, Integer deliveryStatus,
+                          List<DeliverySortSpec> sortChain) {
+        return capture(orderUuid, expectedRevisionNo, deliveryStatus, sortChain, List.of(), List.of(), "physical");
+    }
+
+    public String capture(String orderUuid, Integer expectedRevisionNo, Integer deliveryStatus,
+                          List<DeliverySortSpec> sortChain, List<DeliverySortSpec> customerSortChain,
+                          List<DeliverySortSpec> traceSortChain, String documentView) {
         DeliveryCustomerRevisionPreviewVO preview = Integer.valueOf(DELIVERY_STATUS_VOID).equals(deliveryStatus)
                 ? null : previewService.current(orderUuid);
         int revisionNo = preview == null ? currentRevisionNo(orderUuid) : revisionNo(preview);
@@ -37,7 +51,31 @@ public class DeliveryOrderExportRevisionSnapshot {
         }
         return serialize(new DeliveryOrderExportTaskPayload(
                 DeliveryOrderExportTaskPayload.CURRENT_SCHEMA_VERSION, revisionNo,
-                preview == null ? VOID_FINGERPRINT : fingerprint(preview)));
+                preview == null ? VOID_FINGERPRINT : fingerprint(preview),
+                DeliveryDetailSortPolicy.normalize(sortChain),
+                DeliveryCustomerSortPolicy.normalize(customerSortChain),
+                DeliveryCustomerSortPolicy.normalize(traceSortChain),
+                normalizeDocumentView(documentView)));
+    }
+
+    public List<DeliverySortSpec> sortChain(String value) {
+        if (value == null || value.isBlank()) return List.of();
+        return DeliveryDetailSortPolicy.normalize(parse(value).sortChain());
+    }
+
+    public List<DeliverySortSpec> customerSortChain(String value) {
+        if (value == null || value.isBlank()) return List.of();
+        return DeliveryCustomerSortPolicy.normalize(parse(value).customerSortChain());
+    }
+
+    public List<DeliverySortSpec> traceSortChain(String value) {
+        if (value == null || value.isBlank()) return List.of();
+        return DeliveryCustomerSortPolicy.normalize(parse(value).traceSortChain());
+    }
+
+    public String documentView(String value) {
+        if (value == null || value.isBlank()) return "physical";
+        return normalizeDocumentView(parse(value).documentView());
     }
 
     public DeliveryCustomerRevisionPreviewVO verifyCurrentAndRead(String orderUuid, String value) {
@@ -45,7 +83,7 @@ public class DeliveryOrderExportRevisionSnapshot {
         if (value == null || value.isBlank()) return preview;
         DeliveryOrderExportTaskPayload payload = parse(value);
         verifyRevision(revisionNo(preview), payload.customerRevisionNo());
-        if (payload.schemaVersion() == DeliveryOrderExportTaskPayload.CURRENT_SCHEMA_VERSION
+        if (fingerprintSchema(payload.schemaVersion())
                 && !fingerprint(preview).equals(payload.documentFingerprint())) {
             throw new BusinessException("出库客户单据内容已变化，请重新创建导出任务");
         }
@@ -59,7 +97,7 @@ public class DeliveryOrderExportRevisionSnapshot {
     public void verifyVoided(String value) {
         if (value == null || value.isBlank()) return;
         DeliveryOrderExportTaskPayload payload = parse(value);
-        if (payload.schemaVersion() == DeliveryOrderExportTaskPayload.CURRENT_SCHEMA_VERSION
+        if (fingerprintSchema(payload.schemaVersion())
                 && !VOID_FINGERPRINT.equals(payload.documentFingerprint())) {
             throw new BusinessException("出库单状态已变化，请重新创建导出任务");
         }
@@ -70,6 +108,8 @@ public class DeliveryOrderExportRevisionSnapshot {
             DeliveryOrderExportTaskPayload payload = objectMapper.readValue(
                     value, DeliveryOrderExportTaskPayload.class);
             if (payload.schemaVersion() != DeliveryOrderExportTaskPayload.CURRENT_SCHEMA_VERSION
+                    && payload.schemaVersion() != DeliveryOrderExportTaskPayload.PREVIOUS_SCHEMA_VERSION
+                    && payload.schemaVersion() != DeliveryOrderExportTaskPayload.OLDEST_SUPPORTED_SCHEMA_VERSION
                     && payload.schemaVersion() != DeliveryOrderExportTaskPayload.LEGACY_SCHEMA_VERSION) {
                 throw new BusinessException("出库导出任务的客户规格版本格式不受支持");
             }
@@ -77,6 +117,17 @@ public class DeliveryOrderExportRevisionSnapshot {
         } catch (JsonProcessingException exception) {
             throw new BusinessException("出库导出任务的客户规格版本快照损坏");
         }
+    }
+
+    private boolean fingerprintSchema(int schemaVersion) {
+        return schemaVersion == DeliveryOrderExportTaskPayload.CURRENT_SCHEMA_VERSION
+                || schemaVersion == DeliveryOrderExportTaskPayload.PREVIOUS_SCHEMA_VERSION
+                || schemaVersion == DeliveryOrderExportTaskPayload.OLDEST_SUPPORTED_SCHEMA_VERSION;
+    }
+
+    private String normalizeDocumentView(String value) {
+        if ("customer".equals(value) || "trace".equals(value) || "physical".equals(value)) return value;
+        return "physical";
     }
 
     private int currentRevisionNo(String orderUuid) {

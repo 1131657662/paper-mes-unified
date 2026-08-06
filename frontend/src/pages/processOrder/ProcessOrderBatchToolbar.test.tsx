@@ -32,11 +32,23 @@ describe('加工单列表转待回录门禁', () => {
     expect(item).not.toHaveProperty('disabled')
   })
 
-  it('至少有一次打印确认记录时允许入口', () => {
+  it('已有打印确认记录时仍使用幂等确认入口', () => {
     const item = toRecordItem({ uuid: 'order-1', orderStatus: 2, printCount: 1, printStatus: 1 })
 
-    expect(item).toMatchObject({ label: '转待回录' })
+    expect(item).toMatchObject({ label: '确认打印并转待回录' })
     expect(item).not.toHaveProperty('disabled')
+  })
+
+  it('历史未确认打印时不提供出库和结算操作', () => {
+    const record = { uuid: 'order-history', orderStatus: 4, printStatus: 0, printCount: 0 }
+    const items = buildMoreItems(record, actions, {
+      ...capabilities,
+      canManageDelivery: true,
+      canManageSettlement: true,
+    })
+
+    expect(items).not.toContainEqual(expect.objectContaining({ key: 'delivery' }))
+    expect(items).not.toContainEqual(expect.objectContaining({ key: 'settle' }))
   })
 })
 

@@ -33,7 +33,7 @@ class FullFlowDemoDataAcceptanceTest {
             assertEquals("CK-DEMO-0001", text(deliveryWorkbook.getSheetAt(0).getRow(1).getCell(1)));
             assertEquals("JG-DEMO-0001", text(deliveryWorkbook.getSheetAt(0).getRow(9).getCell(1)));
             assertEquals("JG-DEMO-0002", text(deliveryWorkbook.getSheetAt(0).getRow(12).getCell(1)));
-            assertEquals("直发", text(deliveryWorkbook.getSheetAt(0).getRow(12).getCell(9)));
+            assertEquals("直发", text(deliveryWorkbook.getSheetAt(0).getRow(12).getCell(29)));
 
             assertEquals(5, settle.getPrintLines().size());
             assertEquals("JS-DEMO-0001", text(settleWorkbook.getSheetAt(0).getRow(1).getCell(1)));

@@ -26,6 +26,8 @@
         FROM biz_process_order
         WHERE is_deleted = 0
           AND order_status = 4
+          AND print_status = 1
+          AND print_count &gt; 0
         <if test="query.orderUuids != null and query.orderUuids.size() > 0">
             AND uuid IN
             <foreach collection="query.orderUuids" item="orderUuid" open="(" separator="," close=")">

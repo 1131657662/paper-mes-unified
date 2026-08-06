@@ -36,4 +36,28 @@ describe('buildSettleBillGroups', () => {
     expect(group.standardProcessAmount).toBe(300)
     expect(group.pricingAdjustmentAmount).toBe(0)
   })
+
+  it('does not interpret a non-invoice amount difference as tax', () => {
+    const [group] = buildSettleBillGroups([line({
+      isInvoice: 2,
+      processAmount: 45,
+      extraAmount: 0,
+      lineAmount: 1325,
+    })])
+
+    expect(group?.taxAmount).toBe(0)
+    expect(group?.historicalDifferenceAmount).toBe(0)
+  })
+
+  it('aggregates an explicitly classified historical difference', () => {
+    const [group] = buildSettleBillGroups([line({
+      isInvoice: 2,
+      processAmount: 6000,
+      historicalDifferenceAmount: 846,
+      lineAmount: 6846,
+    })])
+
+    expect(group?.taxAmount).toBe(0)
+    expect(group?.historicalDifferenceAmount).toBe(846)
+  })
 })

@@ -47,22 +47,27 @@ public class BackRecordDirectShipRecorder {
                 .filter(finish -> Integer.valueOf(SOURCE_DIRECT_SHIP).equals(finish.getSourceType()))
                 .toList();
         List<FinishOriginalRel> relations = loadRelations(order.getUuid());
-        Map<String, FinishRoll> assigned = DirectShipFinishMatcher.assign(
+        Map<String, List<FinishRoll>> assigned = DirectShipFinishMatcher.assign(
                 directSources(allOrderRolls), directFinishes, relations);
         Map<String, FinishOriginalRel> relationIndex = relationIndex(relations);
         int nextRowSort = maxRowSort(allFinishes);
         int generated = 0;
-        List<FinishRoll> touched = new ArrayList<>(sources.size());
+        List<FinishRoll> touched = new ArrayList<>();
         for (OriginalRoll source : sources) {
-            FinishRoll finish = assigned.get(source.getUuid());
-            if (finish == null) {
-                finish = create(order, source, ++nextRowSort);
-                generated++;
-            } else {
-                update(order, source, finish);
+            List<FinishRoll> matched = assigned.getOrDefault(source.getUuid(), List.of());
+            List<BigDecimal> pieceWeights = DirectShipPiecePlan.from(source).weights();
+            for (int index = 0; index < pieceWeights.size(); index++) {
+                FinishRoll finish = index < matched.size() ? matched.get(index) : null;
+                BigDecimal pieceWeight = pieceWeights.get(index);
+                if (finish == null) {
+                    finish = create(order, source, pieceWeight, ++nextRowSort);
+                    generated++;
+                } else {
+                    update(order, source, pieceWeight, finish);
+                }
+                upsertRelation(order, source, finish, pieceWeight, relationIndex);
+                touched.add(finish);
             }
-            upsertRelation(order, source, finish, relationIndex);
-            touched.add(finish);
         }
         return new Result(generated, touched);
     }
@@ -86,18 +91,18 @@ public class BackRecordDirectShipRecorder {
                 .eq(FinishOriginalRel::getOrderUuid, orderUuid));
     }
 
-    private FinishRoll create(ProcessOrder order, OriginalRoll source, int rowSort) {
+    private FinishRoll create(ProcessOrder order, OriginalRoll source, BigDecimal pieceWeight, int rowSort) {
         FinishRoll finish = new FinishRoll();
         finish.setOrderUuid(order.getUuid());
         finish.setRowSort(rowSort);
-        applyActuals(order, source, finish);
+        applyActuals(order, source, pieceWeight, finish);
         insertWithBusinessNo(finish);
         return finish;
     }
 
-    private void update(ProcessOrder order, OriginalRoll source, FinishRoll finish) {
+    private void update(ProcessOrder order, OriginalRoll source, BigDecimal pieceWeight, FinishRoll finish) {
         boolean needsBusinessNumber = !StringUtils.hasText(finish.getFinishRollNo());
-        applyActuals(order, source, finish);
+        applyActuals(order, source, pieceWeight, finish);
         if (needsBusinessNumber) {
             updateWithBusinessNo(finish);
             return;
@@ -119,7 +124,7 @@ public class BackRecordDirectShipRecorder {
         throw new BusinessException("直发成品卷号迁移冲突，请重试");
     }
 
-    private void applyActuals(ProcessOrder order, OriginalRoll source, FinishRoll finish) {
+    private void applyActuals(ProcessOrder order, OriginalRoll source, BigDecimal pieceWeight, FinishRoll finish) {
         finish.setRollNoStatus(ROLL_NO_USED);
         finish.setIsSpare(0);
         finish.setIsRemain(0);
@@ -129,9 +134,9 @@ public class BackRecordDirectShipRecorder {
         finish.setFinishWidth(source.getActualWidth() != null
                 ? source.getActualWidth() : source.getOriginalWidth());
         finish.setSourceType(SOURCE_DIRECT_SHIP);
-        finish.setActualWeight(source.getActualWeight());
-        finish.setRemainingWeight(source.getActualWeight());
-        finish.setEstimateWeight(source.getActualWeight());
+        finish.setActualWeight(pieceWeight);
+        finish.setRemainingWeight(pieceWeight);
+        finish.setEstimateWeight(pieceWeight);
         finish.setFinishStatus(FINISH_IN_STOCK);
         finish.setProductionResult(RESULT_PRODUCED);
         finish.setProductionAdjustmentReason(null);
@@ -154,8 +159,9 @@ public class BackRecordDirectShipRecorder {
     }
 
     private void upsertRelation(ProcessOrder order, OriginalRoll source, FinishRoll finish,
+                                BigDecimal pieceWeight,
                                 Map<String, FinishOriginalRel> relationIndex) {
-        String key = relationKey(source.getUuid(), finish.getUuid());
+        String key = source.getUuid() + ":" + finish.getUuid();
         FinishOriginalRel relation = relationIndex.get(key);
         if (relation == null) {
             relation = new FinishOriginalRel();
@@ -165,24 +171,20 @@ public class BackRecordDirectShipRecorder {
             relation.setRemark("原纸直发来源");
             relationIndex.put(key, relation);
             relation.setShareRatio(HUNDRED);
-            relation.setShareWeight(source.getActualWeight());
+            relation.setShareWeight(pieceWeight);
             relationMapper.insert(relation);
             return;
         }
         relation.setShareRatio(HUNDRED);
-        relation.setShareWeight(source.getActualWeight());
+        relation.setShareWeight(pieceWeight);
         ConcurrencyGuard.requireRowUpdated(relationMapper.updateById(relation));
     }
 
     private Map<String, FinishOriginalRel> relationIndex(List<FinishOriginalRel> relations) {
         Map<String, FinishOriginalRel> result = new HashMap<>();
         relations.forEach(relation -> result.put(
-                relationKey(relation.getOriginalUuid(), relation.getFinishUuid()), relation));
+                relation.getOriginalUuid() + ":" + relation.getFinishUuid(), relation));
         return result;
-    }
-
-    private String relationKey(String originalUuid, String finishUuid) {
-        return originalUuid + ":" + finishUuid;
     }
 
     private int maxRowSort(List<FinishRoll> finishes) {

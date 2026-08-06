@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.customer.service.CustomerService;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
+import com.paper.mes.processorder.dto.ProcessOrderSubmitVO;
+import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
@@ -31,6 +33,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -71,6 +74,23 @@ class ProcessOrderDraftRollReplacementTest {
         verify(originalRollMapper).insert(any(OriginalRoll.class));
     }
 
+    @Test
+    void submit_pendingOrder_returnsRollNumbersByBusinessCategory() {
+        ProcessOrder order = draftOrder();
+        order.setOrderStatus(1);
+        when(processOrderMapper.selectById("order-1")).thenReturn(order);
+        when(finishRollMapper.selectList(any())).thenReturn(List.of(
+                finishRoll("A000001", 0, 0),
+                finishRoll("A000002", 0, 1),
+                finishRoll("A000003", 1, 0)));
+
+        ProcessOrderSubmitVO result = service.submit("order-1", 7);
+
+        assertEquals(List.of("A000001"), result.getFinishRollNos());
+        assertEquals(List.of("A000002"), result.getRemainRollNos());
+        assertEquals(List.of("A000003"), result.getSpareRollNos());
+    }
+
     private ProcessOrder draftOrder() {
         ProcessOrder order = new ProcessOrder();
         order.setUuid("order-1");
@@ -87,6 +107,14 @@ class ProcessOrderDraftRollReplacementTest {
         roll.setPieceNum(1);
         roll.setProcessMode(1);
         roll.setMainStepType(2);
+        return roll;
+    }
+
+    private FinishRoll finishRoll(String rollNo, int isSpare, int isRemain) {
+        FinishRoll roll = new FinishRoll();
+        roll.setFinishRollNo(rollNo);
+        roll.setIsSpare(isSpare);
+        roll.setIsRemain(isRemain);
         return roll;
     }
 

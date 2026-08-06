@@ -1,7 +1,5 @@
 import { useState } from 'react'
-import type { ColumnsState } from '@ant-design/pro-table/es/Store/Provide'
-
-type ColumnsStateMap = Record<string, ColumnsState>
+import { readTablePreferences, updateTablePreferences, type ColumnsStateMap } from './tablePreferences'
 
 interface ColumnsStateConfig {
   value: ColumnsStateMap
@@ -19,39 +17,13 @@ export function useTableColumnsState(storageKey: string): ColumnsStateConfig {
   const [columnsState, setColumnsState] = useState<ColumnsStateConfig>(() => {
     const onChange = (value: ColumnsStateMap) => {
       setColumnsState((prev) => ({ ...prev, value }))
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(value))
-      } catch (error) {
-        console.warn(`Failed to save table columns state for ${storageKey}:`, error)
-      }
+      updateTablePreferences(storageKey, (current) => ({ ...current, columns: value }))
     }
-
-    try {
-      const saved = localStorage.getItem(storageKey)
-      if (saved) {
-        const parsed = parseColumnsStateMap(saved)
-        return {
-          value: parsed,
-          onChange,
-        }
-      }
-    } catch (error) {
-      console.warn(`Failed to load table columns state for ${storageKey}:`, error)
-    }
-
     return {
-      value: {},
+      value: readTablePreferences<never>(storageKey).columns,
       onChange,
     }
   })
 
   return columnsState
-}
-
-function parseColumnsStateMap(value: string): ColumnsStateMap {
-  const parsed: unknown = JSON.parse(value)
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return {}
-  }
-  return parsed as ColumnsStateMap
 }

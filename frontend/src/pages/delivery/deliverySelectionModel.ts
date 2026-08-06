@@ -1,5 +1,6 @@
 import { availableFinishWeight } from '../../features/delivery/utils/deliveryFormatters'
 import type { AvailableFinishVO } from '../../types/delivery'
+import { hasDeliverySettlementRisk } from '../../types/settlementSemantics'
 
 export interface DeliveryLineEdit {
   outWeight?: number
@@ -55,7 +56,7 @@ export function summarizeDeliverySelection(
     productWeight: selectionWeight(products, edits),
     remainCount: remains.length,
     remainWeight: selectionWeight(remains, edits),
-    riskCount: items.filter((item) => item.settlementRisk).length,
+    riskCount: items.filter(hasDeliverySettlementRisk).length,
   }
 }
 

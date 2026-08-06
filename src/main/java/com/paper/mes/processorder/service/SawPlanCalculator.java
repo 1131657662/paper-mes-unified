@@ -26,24 +26,27 @@ public class SawPlanCalculator {
         int differenceWidth = Math.max(0, sourceWidth - usedWidth);
         validate(policy, sourceWidth, finishWidth, usedWidth, differenceWidth);
 
-        BigDecimal totalWeight = totalWeight(roll);
+        int sourcePieces = sourcePieceCount(roll);
+        BigDecimal totalWeight = totalWeight(roll, sourcePieces);
         BigDecimal differenceWeight = proportionalWeight(totalWeight, differenceWidth, sourceWidth);
-        List<FinishConfigSpecDTO> expanded = expand(specs);
+        List<FinishConfigSpecDTO> perPieceOutputs = expand(specs);
+        List<FinishConfigSpecDTO> expanded = repeatForSourcePieces(perPieceOutputs, sourcePieces);
         List<SawPlanCalculation.CalculatedFinish> calculated = calculateOutputs(
-                expanded, totalWeight, differenceWeight, policy, usedWidth);
+                expanded, totalWeight, differenceWeight, policy, (long) usedWidth * sourcePieces);
         List<SawPlanCalculation.CalculatedFinish> finishes = calculated.stream()
                 .filter(item -> isFinish(item.specification())).toList();
         List<SawPlanCalculation.CalculatedFinish> trims = calculated.stream()
                 .filter(item -> isTrim(item.specification())).toList();
-        int physicalPieces = expanded.size() + (differenceWidth > 0 ? 1 : 0);
-        int knives = physicalPieces <= 0 ? 0 : Math.max(0, physicalPieces - 1);
+        int physicalPieces = perPieceOutputs.size() + (differenceWidth > 0 ? 1 : 0);
+        int knivesPerSource = physicalPieces <= 0 ? 0 : Math.max(0, physicalPieces - 1);
+        int knives = knivesPerSource * sourcePieces;
         return new SawPlanCalculation(finishes, trims, policy, sourceWidth, finishWidth,
                 trimWidth, differenceWidth, differenceWeight, knives);
     }
 
     private List<SawPlanCalculation.CalculatedFinish> calculateOutputs(
             List<FinishConfigSpecDTO> specs, BigDecimal totalWeight,
-            BigDecimal differenceWeight, WidthDifferencePolicy policy, int usedWidth) {
+            BigDecimal differenceWeight, WidthDifferencePolicy policy, long usedWidth) {
         BigDecimal configuredWeight = totalWeight.subtract(differenceWeight);
         List<BigDecimal> weights = allocateByWidth(specs, configuredWeight, usedWidth);
         if (policy == WidthDifferencePolicy.ALLOCATE && differenceWeight.signum() > 0) {
@@ -57,7 +60,7 @@ public class SawPlanCalculator {
     }
 
     private List<BigDecimal> allocateByWidth(List<FinishConfigSpecDTO> specs,
-                                             BigDecimal total, int widthBasis) {
+                                             BigDecimal total, long widthBasis) {
         List<BigDecimal> result = new ArrayList<>(specs.size());
         for (FinishConfigSpecDTO spec : specs) {
             result.add(total.multiply(BigDecimal.valueOf(spec.getFinishWidth()))
@@ -123,15 +126,32 @@ public class SawPlanCalculator {
         return result;
     }
 
+    private List<FinishConfigSpecDTO> repeatForSourcePieces(List<FinishConfigSpecDTO> outputs,
+                                                             int sourcePieces) {
+        long total = (long) outputs.size() * sourcePieces;
+        if (total > FinishConfigQuantityValidator.MAX_TOTAL_FINISHES) {
+            throw new BusinessException("单个母卷展开后的成品和余料总数不能超过500");
+        }
+        List<FinishConfigSpecDTO> result = new ArrayList<>((int) total);
+        for (int index = 0; index < sourcePieces; index++) result.addAll(outputs);
+        return result;
+    }
+
     private BigDecimal proportionalWeight(BigDecimal totalWeight, int width, int sourceWidth) {
         if (width <= 0 || sourceWidth <= 0) return BigDecimal.ZERO.setScale(SCALE);
         return totalWeight.multiply(BigDecimal.valueOf(width))
                 .divide(BigDecimal.valueOf(sourceWidth), SCALE, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal totalWeight(OriginalRoll roll) {
+    private BigDecimal totalWeight(OriginalRoll roll, int sourcePieces) {
         BigDecimal unit = roll.getRollWeight() == null ? BigDecimal.ZERO : roll.getRollWeight();
-        return unit.multiply(BigDecimal.valueOf(roll.getPieceNum() == null ? 1 : roll.getPieceNum()));
+        return unit.multiply(BigDecimal.valueOf(sourcePieces));
+    }
+
+    private int sourcePieceCount(OriginalRoll roll) {
+        int count = roll.getPieceNum() == null ? 1 : roll.getPieceNum();
+        if (count < 1) throw new BusinessException("母卷件数必须大于0");
+        return count;
     }
 
     private int effectiveSourceWidth(OriginalRoll roll) {

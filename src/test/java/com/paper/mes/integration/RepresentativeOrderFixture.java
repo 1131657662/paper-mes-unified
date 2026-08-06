@@ -43,8 +43,14 @@ class RepresentativeOrderFixture {
     }
 
     Scenario createDirectShip() {
+        return createDirectShip(1);
+    }
+
+    Scenario createDirectShip(int pieceNum) {
         Customer customer = createCustomer();
-        String orderUuid = processOrderService.create(order(customer, directShipRoll()));
+        OriginalRollDTO roll = directShipRoll();
+        roll.setPieceNum(pieceNum);
+        String orderUuid = processOrderService.create(order(customer, roll));
         return new Scenario(orderUuid, customer.getUuid());
     }
 

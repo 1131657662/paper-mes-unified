@@ -144,6 +144,25 @@ class DeliveryServiceImplBatchLoadTest {
     }
 
     @Test
+    void create_withUnconfirmedHistoricalPrint_rejectsDelivery() {
+        when(customerService.getById("customer-1")).thenReturn(customer());
+        when(deliveryDetailMapper.selectList(any())).thenReturn(List.of());
+        ProcessOrder unconfirmed = order("order-1", "customer-1");
+        unconfirmed.setPrintStatus(0);
+        unconfirmed.setPrintCount(0);
+        when(deliverySourceLockService.lockAndReload(any())).thenReturn(
+                new DeliverySourceLockService.LockedSources(
+                        Map.of("finish-1", finish("finish-1", "order-1", "P000001")),
+                        Map.of("order-1", unconfirmed)));
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.create(createDto()));
+
+        assertEquals("加工单未记录人工确认打印，不可出库：JG-order-1", error.getMessage());
+        verify(deliveryOrderMapper, never()).insert(any(DeliveryOrder.class));
+    }
+
+    @Test
     void listAvailable_attachesBatchLoadedMotherRollSources() {
         ProcessOrder order = order("order-1", "customer-1");
         FinishRoll finish = finish("finish-1", "order-1", "P000001");
@@ -235,6 +254,8 @@ class DeliveryServiceImplBatchLoadTest {
         order.setCustomerUuid(customerUuid);
         order.setOrderNo("JG-" + uuid);
         order.setOrderStatus(4);
+        order.setPrintStatus(1);
+        order.setPrintCount(1);
         return order;
     }
 

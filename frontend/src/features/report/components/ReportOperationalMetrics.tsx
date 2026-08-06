@@ -26,7 +26,7 @@ function settlementMetrics(v: Extract<ReportOperationalAnalysisVO, { topicCode: 
   return [
     metric('有效结算单', formatNumber(v.totalDocuments), '不含作废单据', <ReconciliationOutlined />),
     metric('应收金额', formatMoney(v.totalAmount), '结算单确认口径', <BankOutlined />, 'primary'),
-    metric('已结清金额', formatMoney(v.receivedAmount), '含现金、抵扣与核销', <CheckCircleOutlined />),
+    metric('已结清金额', formatMoney(v.receivedAmount), '含实际到账、抵扣与核销', <CheckCircleOutlined />),
     metric('未收余额', formatMoney(v.unreceivedAmount), '待收 ' + v.pendingDocuments + ' / 部分 ' + v.partialDocuments,
       <WarningOutlined />, 'warning'),
     metric('逾期金额', formatMoney(v.overdueAmount), v.overdueDocuments + ' 张逾期单据',
@@ -37,8 +37,8 @@ function settlementMetrics(v: Extract<ReportOperationalAnalysisVO, { topicCode: 
 function collectionMetrics(v: Extract<ReportOperationalAnalysisVO, { topicCode: 'collection' }>['overview']): Metric[] {
   return [
     metric('有效回款流水', formatNumber(v.recordCount), '不含已撤销记录', <ReconciliationOutlined />),
-    metric('结清金额', formatMoney(v.settledAmount), '现金 + 抵扣 + 核销', <CheckCircleOutlined />, 'primary'),
-    metric('现金到账', formatMoney(v.cashAmount), v.cashRecordCount + ' 笔含现金', <BankOutlined />),
+    metric('结清金额', formatMoney(v.settledAmount), '实际到账 + 抵扣 + 核销', <CheckCircleOutlined />, 'primary'),
+    metric('实际到账', formatMoney(v.cashAmount), v.cashRecordCount + ' 笔含到账金额', <BankOutlined />),
     metric('废纸抵扣', formatMoney(v.scrapOffsetAmount), formatTonFromKg(v.scrapWeight),
       <InboxOutlined />, 'warning'),
     metric('优惠核销', formatMoney(v.discountAmount), v.discountRecordCount + ' 笔含优惠',

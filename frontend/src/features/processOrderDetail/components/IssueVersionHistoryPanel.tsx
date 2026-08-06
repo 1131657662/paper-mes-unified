@@ -21,7 +21,7 @@ export default function IssueVersionHistoryPanel({ orderUuid }: Props) {
     <section className="order-detail-section">
       <div className="order-detail-section__header">
         <h2 className="order-detail-section__title">下发版本历史</h2>
-        <Tag>{issueVersions.length} 条</Tag>
+        <Tag>{isLoadingIssueVersions ? '加载中' : `${issueVersions.length} 条`}</Tag>
       </div>
       <div className="order-detail-section__body">
         <IssueVersionHistoryContent
@@ -43,17 +43,23 @@ export function IssueVersionHistoryContent(props: {
 }) {
   if (props.isError) return <QueryLoadErrorAlert message="下发版本历史加载失败"
     description="版本元数据未成功加载，当前空白不代表没有历史记录。" onRetry={props.onRetry} />
+  if (props.loading) {
+    return (
+      <Flex className="issue-version-history__loading" align="center" justify="center" gap={12}>
+        <Spin size="small" />
+        <Typography.Text type="secondary">正在加载下发版本历史</Typography.Text>
+      </Flex>
+    )
+  }
   const hasLegacy = props.versions.some((item) => item.status === 'LEGACY_UNVERSIONED')
   return (
-    <Spin spinning={props.loading}>
-      <Flex vertical gap={12}>
-        {hasLegacy && <Alert type="warning" showIcon message="包含 V3.53 前历史下发快照"
-          description="该快照未版本化；系统未补造版本号、操作者、变更时间或下发时间。" />}
-        <Table rowKey={(row) => row.uuid ?? `legacy-${row.orderUuid}`} size="small"
-          columns={versionColumns} dataSource={props.versions} pagination={false}
-          locale={{ emptyText: '暂无下发版本记录' }} scroll={{ x: 920 }} />
-      </Flex>
-    </Spin>
+    <Flex vertical gap={12}>
+      {hasLegacy && <Alert type="warning" showIcon message="包含 V3.53 前历史下发快照"
+        description="该快照未版本化；系统未补造版本号、操作者、变更时间或下发时间。" />}
+      <Table rowKey={(row) => row.uuid ?? `legacy-${row.orderUuid}`} size="small"
+        columns={versionColumns} dataSource={props.versions} pagination={false}
+        locale={{ emptyText: '暂无下发版本记录' }} scroll={{ x: 920 }} />
+    </Flex>
   )
 }
 

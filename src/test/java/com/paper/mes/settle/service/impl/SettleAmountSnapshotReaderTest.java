@@ -90,6 +90,27 @@ class SettleAmountSnapshotReaderTest {
         assertEquals(new BigDecimal("318.00"), amounts.total());
     }
 
+    @Test
+    void resolve_whenLegacyNonInvoiceContainsTax_movesItToHistoricalDifference() {
+        SettleOrder settle = new SettleOrder();
+        settle.setIsInvoice(2);
+        settle.setSnapBill("""
+                {
+                  "amount_no_tax": 6000.00,
+                  "tax_amount": 846.00,
+                  "total_amount": 6846.00
+                }
+                """);
+
+        SettleAmountSnapshotReader.Amounts amounts =
+                SettleAmountSnapshotReader.resolve(settle, List.of(), objectMapper);
+
+        assertEquals(new BigDecimal("6000.00"), amounts.noTax());
+        assertEquals(new BigDecimal("0.00"), amounts.tax());
+        assertEquals(new BigDecimal("846.00"), amounts.difference());
+        assertEquals(new BigDecimal("6846.00"), amounts.total());
+    }
+
     private SettleDetail detail(String saw, String rewind, String extra, String total) {
         SettleDetail detail = new SettleDetail();
         detail.setSawAmount(new BigDecimal(saw));

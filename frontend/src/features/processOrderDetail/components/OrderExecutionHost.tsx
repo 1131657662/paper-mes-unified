@@ -20,6 +20,7 @@ import { confirmOrderStatusChange, isRollbackStatusChange } from '../confirmOrde
 import OrderExecutionPanel from './OrderExecutionPanel'
 import PrintIssueDrawer from './PrintIssueDrawer'
 import { processOrderReturnTarget } from '../../../pages/processOrder/processOrderNavigation'
+import { createProcessOrderAppendSession } from '../../../api/processOrder'
 
 interface Props {
   detail?: ProcessOrderDetailVO
@@ -33,6 +34,7 @@ export default function OrderExecutionHost({ detail }: Props) {
   const [printOpen, setPrintOpen] = useState(false)
   const [diffOpen, setDiffOpen] = useState(false)
   const [manageRollOpen, setManageRollOpen] = useState(false)
+  const [startingAppend, setStartingAppend] = useState(false)
   const { mutateAsync: changeStatus, isPending: isChangingStatus } = useChangeOrderStatus()
   const { mutateAsync: completeProcessing, isPending: isCompletingProcessing } = useCompleteProcessing()
   const { mutateAsync: printAndCompleteProcessing, isPending: isConfirmingPrint } = usePrintAndCompleteProcessOrder(orderUuid)
@@ -53,6 +55,14 @@ export default function OrderExecutionHost({ detail }: Props) {
 
   const refreshDetail = async () => {
     await invalidateProcessOrderReadModels(queryClient, orderUuid)
+  }
+
+  const refreshDetailSafely = async (failureMessage: string) => {
+    try {
+      await refreshDetail()
+    } catch (error) {
+      notifyErrorOnce(error, failureMessage)
+    }
   }
 
   const handleChangeStatus = async (targetStatus: number, reason?: string) => {
@@ -84,8 +94,13 @@ export default function OrderExecutionHost({ detail }: Props) {
   }
 
   const handleCalcFee = async () => {
-    const result = await calcFee()
-    message.success(`计费已更新，总额 ¥${result.totalAmount ?? 0}`)
+    try {
+      const result = await calcFee()
+      message.success(`计费已更新，总额 ¥${result.totalAmount ?? 0}`)
+    } catch (error) {
+      notifyErrorOnce(error, '重新计费失败，请刷新后重试')
+      await refreshDetailSafely('加工单详情刷新失败，请手动刷新页面')
+    }
   }
 
   const handleFirstPrintConfirmed = (dto?: PrintDTO) =>
@@ -100,11 +115,13 @@ export default function OrderExecutionHost({ detail }: Props) {
       onOk: async () => {
         try {
           await printAndCompleteProcessing(undefined)
-          message.success('已确认打印并转入待回录')
         } catch (error) {
           notifyErrorOnce(error, '打印确认失败，请刷新后重试')
-          await refreshDetail()
+          await refreshDetailSafely('加工单详情刷新失败，请手动刷新页面')
+          return
         }
+        message.success('已确认打印并转入待回录')
+        await refreshDetailSafely('打印已确认，但加工单详情刷新失败，请手动刷新页面')
       },
     })
   }
@@ -133,10 +150,34 @@ export default function OrderExecutionHost({ detail }: Props) {
           message.warning('请填写作废原因')
           throw new Error('作废原因不能为空')
         }
-        await voidOrder({ orderUuid, reason: trimmed })
+        const completed = await voidOrder({ orderUuid, reason: trimmed })
+          .then(() => true)
+          .catch((error) => {
+            notifyErrorOnce(error, '作废加工单失败，请刷新后重试')
+            return false
+          })
+        if (!completed) return
         message.success('加工单已作废')
       },
     })
+  }
+
+  const handleStartAppend = async () => {
+    if (detail.order.version == null) {
+      message.error('当前加工单缺少版本信息，请刷新后重试')
+      return
+    }
+    setStartingAppend(true)
+    try {
+      const session = await createProcessOrderAppendSession(orderUuid, {
+        expectedOrderVersion: detail.order.version,
+      })
+      navigate(`/process-orders/${orderUuid}/append?session=${encodeURIComponent(session.sessionUuid)}`)
+    } catch (error) {
+      notifyErrorOnce(error, '追加会话创建失败，请刷新后重试')
+    } finally {
+      setStartingAppend(false)
+    }
   }
 
   const handlePrepareReissue = () => {
@@ -176,6 +217,7 @@ export default function OrderExecutionHost({ detail }: Props) {
           onBackRecord: () => navigate(`/process-orders/${orderUuid}/back-record`),
           onSnapshotDiff: () => setDiffOpen(true),
           onManageRolls: () => setManageRollOpen(true),
+          onAppendRolls: handleStartAppend,
           onEditDraft: () => navigate(`/process-orders/create?draft=${orderUuid}`),
           onChangeStatus: handleConfirmStatus,
           onCalcFee: handleCalcFee,
@@ -197,6 +239,7 @@ export default function OrderExecutionHost({ detail }: Props) {
           preparingReissue: isPreparingReissue,
           calculatingFee: isCalculatingFee,
           voidingOrder: isVoidingOrder,
+          startingAppend,
         }}
       />
 

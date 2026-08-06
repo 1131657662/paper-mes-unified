@@ -73,6 +73,7 @@ function buildRollList(
         configuredPlanIds: data.configuredPlanIds,
         lockedRolls: data.lockedRolls,
         machines: data.machines,
+        plans: data.plans,
         operation: data.operation,
         previews: data.previews,
         rolls: data.rolls,

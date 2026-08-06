@@ -18,6 +18,10 @@ public class R<T> {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String errorCode;
 
+    /** Correlates a failed browser request with the corresponding backend log entry. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String requestId;
+
     public static <T> R<T> success(T data) {
         R<T> r = new R<>();
         r.code = ResultCode.SUCCESS;
@@ -40,6 +44,7 @@ public class R<T> {
         r.data = null;
         r.errorCode = errorCode;
         r.message = message;
+        r.requestId = RequestIdContext.current();
         return r;
     }
 }

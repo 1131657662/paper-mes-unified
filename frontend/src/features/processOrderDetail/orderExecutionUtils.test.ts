@@ -22,4 +22,20 @@ describe('加工单执行完整性', () => {
 
     expect(summary.printableWarnings).toEqual([])
   })
+
+  it('已完成历史单缺少打印确认时阻止继续流转提示', () => {
+    const summary = buildExecutionSummary({
+      order: { uuid: 'order-history', orderStatus: 4, printStatus: 0, printCount: 0 },
+      originalRolls: [],
+      rolls: [],
+      steps: [],
+      finishRolls: [],
+      rollProductions: [],
+    })
+
+    expect(summary.statusHint).toContain('完成补打确认后才能继续流转')
+    expect(summary.printableWarnings).toEqual([
+      '该历史加工单没有人工确认打印记录，请完成补打确认后再出库或结算',
+    ])
+  })
 })

@@ -1,4 +1,5 @@
 import type { ReportQuery } from '../../types/report'
+import { isProcessOrderSettlementMode } from '../../types/settlementSemantics'
 
 export function parseReportUrlState(params: URLSearchParams) {
   return { query: parseQuery(params) }
@@ -30,7 +31,7 @@ function parseQuery(params: URLSearchParams): ReportQuery {
     processStepType: number(params.get('processStepType')),
     processMode: number(params.get('processMode')),
     machineUuid: text(params.get('machineUuid')),
-    settleType: number(params.get('settleType')),
+    settleType: processOrderSettlementMode(params.get('settleType')),
     isInvoice: number(params.get('isInvoice')),
     orderStatus: number(params.get('orderStatus')),
   }
@@ -44,4 +45,9 @@ function number(value: string | null) {
   if (!value) return undefined
   const parsed = Number(value)
   return Number.isInteger(parsed) ? parsed : undefined
+}
+
+function processOrderSettlementMode(value: string | null) {
+  const parsed = number(value)
+  return isProcessOrderSettlementMode(parsed) ? parsed : undefined
 }

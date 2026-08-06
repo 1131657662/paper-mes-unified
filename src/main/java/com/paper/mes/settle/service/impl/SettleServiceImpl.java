@@ -35,6 +35,7 @@ import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.ProcessOrderPrintConfirmationPolicy;
 import com.paper.mes.processorder.service.ServicePricingFinalizationPolicy;
 import com.paper.mes.settle.dto.ReceiveDTO;
 import com.paper.mes.settle.dto.SettleActionReasonDTO;
@@ -45,6 +46,7 @@ import com.paper.mes.settle.dto.SettleCandidateQuery;
 import com.paper.mes.settle.dto.SettleCandidateOrder;
 import com.paper.mes.settle.dto.SettleCandidateVO;
 import com.paper.mes.settle.dto.SettleDetailVO;
+import com.paper.mes.settle.dto.SettleListSummaryVO;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
 import com.paper.mes.settle.dto.SettleQuery;
 import com.paper.mes.settle.dto.SettleQuoteVO;
@@ -63,6 +65,7 @@ import com.paper.mes.settle.service.SettleAccountingPeriodPolicy;
 import com.paper.mes.settle.service.SettleCollectionQueryPolicy;
 import com.paper.mes.settle.service.SettleReceiveRequestFingerprint;
 import com.paper.mes.settle.service.SettleReceiveStatusResolver;
+import com.paper.mes.settle.service.SettlePrintLineTaxPolicy;
 import com.paper.mes.settle.service.SettleService;
 import com.paper.mes.settle.service.SettlementAmountCalculator;
 import com.paper.mes.settle.service.SettlementDueDatePolicy;
@@ -143,6 +146,21 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     @Override
     public PageResult<SettleOrder> page(SettleQuery query) {
+        LambdaQueryWrapper<SettleOrder> wrapper = settleListQuery(query, true);
+        applyListOrdering(wrapper, query);
+        Page<SettleOrder> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
+        normalizePageAmountView(page.getRecords());
+        return PageResult.of(page);
+    }
+
+    @Override
+    public SettleListSummaryVO summary(SettleQuery query) {
+        List<SettleOrder> settlements = list(settleListQuery(query, false));
+        normalizePageAmountView(settlements);
+        return SettleListSummaryAccumulator.summarize(settlements);
+    }
+
+    private LambdaQueryWrapper<SettleOrder> settleListQuery(SettleQuery query, boolean hideVoidedByDefault) {
         LambdaQueryWrapper<SettleOrder> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(query.getKeyword())) {
             String kw = query.getKeyword().trim();
@@ -156,7 +174,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             SettleCollectionQueryPolicy.apply(wrapper, query.getCollectionQueue(), LocalDate.now());
         } else if (query.getSettleStatus() != null) {
             wrapper.eq(SettleOrder::getSettleStatus, query.getSettleStatus());
-        } else {
+        } else if (hideVoidedByDefault) {
             // 日常结算工作台默认只看有效单据；已作废记录通过显式“已作废”队列追溯。
             wrapper.ne(SettleOrder::getSettleStatus, 4);
         }
@@ -169,6 +187,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (query.getDateTo() != null) {
             wrapper.le(SettleOrder::getSettleDate, query.getDateTo());
         }
+        return wrapper;
+    }
+
+    private void applyListOrdering(LambdaQueryWrapper<SettleOrder> wrapper, SettleQuery query) {
         if (StringUtils.hasText(query.getCollectionQueue())) {
             wrapper.orderByAsc(SettleOrder::getDueDate)
                     .orderByDesc(SettleOrder::getUnreceivedAmount)
@@ -177,9 +199,6 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             wrapper.orderByDesc(SettleOrder::getCreateTime)
                     .orderByDesc(SettleOrder::getUuid);
         }
-        Page<SettleOrder> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()), wrapper);
-        normalizePageAmountView(page.getRecords());
-        return PageResult.of(page);
     }
 
     @Override
@@ -362,6 +381,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         vo.setReceives(receives);
         List<SettlePrintLineVO> snapshotLines = readSnapshotPrintLines(order.getSnapBill());
         List<SettlePrintLineVO> printLines = snapshotLines == null ? buildPrintLines(viewOrder, details) : snapshotLines;
+        normalizePrintLinesForInvoice(printLines);
         SettleFeeLineBuilder.ensureFeeLines(printLines);
         vo.setPrintLines(printLines);
         vo.setOperationLogs(loadOperationLogs(uuid));
@@ -370,7 +390,14 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     @Override
     public SettleOrder getDetailOrder(String uuid) {
-        return snapshotSettleOrder(requireSettle(uuid));
+        SettleOrder source = requireSettle(uuid);
+        SettleOrder view = snapshotSettleOrder(source);
+        List<SettleDetail> details = readSnapshotDetails(source.getSnapBill());
+        if (details == null) {
+            details = normalizeDetailsForInvoiceView(view, settleDetails(uuid));
+        }
+        applySettlementAmountView(view, details);
+        return view;
     }
 
     @Override
@@ -398,6 +425,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         List<SettleDetail> details = getDetails(uuid);
         List<SettlePrintLineVO> snapshot = readSnapshotPrintLines(order.getSnapBill());
         List<SettlePrintLineVO> lines = snapshot == null ? buildPrintLines(order, details) : snapshot;
+        normalizePrintLinesForInvoice(lines);
         SettleFeeLineBuilder.ensureFeeLines(lines);
         return lines;
     }
@@ -579,6 +607,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 SettleAmountSnapshotReader.resolve(settle, details, objectMapper);
         settle.setAmountNoTax(amounts.noTax());
         settle.setTaxAmount(amounts.tax());
+        settle.setHistoricalDifferenceAmount(amounts.difference());
         settle.setTotalAmount(amounts.total());
         applyReceiveState(settle, amounts.total(), receiveTotals);
     }
@@ -796,7 +825,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         List<SettlePrintLineVO> lines = new ArrayList<>(rolls.size());
         for (Map.Entry<String, List<SettlePrintLineVO>> entry : linesByOrderUuid.entrySet()) {
             SettleDetail detail = detailByOrderUuid.get(entry.getKey());
-            applyOrderAmountClosure(entry.getValue(), detail, orderByUuid.get(entry.getKey()));
+            applyOrderAmountClosure(entry.getValue(), detail, orderByUuid.get(entry.getKey()), settle.getIsInvoice());
             lines.addAll(entry.getValue());
         }
         return lines;
@@ -925,6 +954,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setProcessAmount(amounts.processAmount());
         line.setExtraAmount(BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
         line.setTaxAmount(BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
+        line.setHistoricalDifferenceAmount(BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP));
         line.setTaxRate(taxRate);
         line.setLineAmount(amounts.processAmount());
         line.setIsInvoice(settle.getIsInvoice());
@@ -940,15 +970,35 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         return machineNameByUuid.get(machineUuid);
     }
 
-    private void applyOrderAmountClosure(List<SettlePrintLineVO> lines, SettleDetail detail, ProcessOrder order) {
+    private void applyOrderAmountClosure(List<SettlePrintLineVO> lines, SettleDetail detail,
+                                         ProcessOrder order, Integer isInvoice) {
         if (lines.isEmpty()) {
             return;
         }
         BigDecimal extraTotal = detail == null ? BigDecimal.ZERO : nz(detail.getExtraAmount());
         applyExtraAmount(lines, extraTotal, extraFeeSummary(order, extraTotal));
         BigDecimal targetAmount = detail == null ? sumLineAmount(lines) : nz(detail.getOrderAmount());
-        BigDecimal invoiceIncrease = targetAmount.subtract(sumLineAmount(lines));
-        applyInvoiceIncrease(lines, invoiceIncrease);
+        BigDecimal amountDifference = targetAmount.subtract(sumLineAmount(lines));
+        if (Integer.valueOf(1).equals(isInvoice)) {
+            applyInvoiceIncrease(lines, amountDifference);
+        } else {
+            applyNonInvoiceAmountClosure(lines, amountDifference);
+        }
+    }
+
+    private void normalizePrintLinesForInvoice(List<SettlePrintLineVO> lines) {
+        for (SettlePrintLineVO line : lines) {
+            SettlePrintLineTaxPolicy.normalizeNonInvoice(line);
+        }
+    }
+
+    private void applyNonInvoiceAmountClosure(List<SettlePrintLineVO> lines, BigDecimal difference) {
+        if (difference.signum() == 0 || lines.isEmpty()) {
+            return;
+        }
+        SettlePrintLineVO line = lines.get(lines.size() - 1);
+        line.setLineAmount(nz(line.getLineAmount()).add(difference));
+        line.setHistoricalDifferenceAmount(nz(line.getHistoricalDifferenceAmount()).add(difference));
     }
 
     private void applyExtraAmount(List<SettlePrintLineVO> lines, BigDecimal extraTotal, String extraFeeSummary) {
@@ -1728,7 +1778,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     private List<ProcessOrder> findMonthlyOrders(String customerUuid, LocalDate start, LocalDate end) {
         LambdaQueryWrapper<ProcessOrder> wrapper = new LambdaQueryWrapper<ProcessOrder>()
                 .eq(ProcessOrder::getCustomerUuid, customerUuid)
-                .eq(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED);
+                .eq(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED)
+                .eq(ProcessOrder::getPrintStatus, 1)
+                .gt(ProcessOrder::getPrintCount, 0);
         SettleAccountingPeriodPolicy.applyPeriod(wrapper, start, end);
         SettleAccountingPeriodPolicy.orderByAccountingDate(wrapper);
         return processOrderService.list(wrapper);
@@ -1782,6 +1834,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         }
         if (order.getOrderStatus() == null || order.getOrderStatus() != ORDER_STATUS_FINISHED) {
             throw new BusinessException(ErrorCode.E001, "加工单尚未完成，不可结算：" + order.getOrderNo());
+        }
+        if (!ProcessOrderPrintConfirmationPolicy.isConfirmed(order)) {
+            throw new BusinessException(ErrorCode.E001,
+                    "加工单未记录人工确认打印，不可结算：" + order.getOrderNo());
         }
     }
 

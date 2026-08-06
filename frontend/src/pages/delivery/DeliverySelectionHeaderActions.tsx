@@ -16,7 +16,7 @@ interface Props {
 }
 
 export default function DeliverySelectionHeaderActions(props: Props) {
-  const label = props.expanded ? '恢复页面布局' : '扩大选择区'
+  const label = props.expanded ? '返回完整表单' : '专注选择'
   return (
     <Space className="delivery-selection-header-actions" size={8} wrap>
       <DeliveryFinishScopeControl

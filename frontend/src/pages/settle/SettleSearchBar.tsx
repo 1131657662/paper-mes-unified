@@ -3,12 +3,13 @@ import type { FormInstance } from 'antd'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
 import { SETTLE_TYPE } from '../../constants/settle'
+import type { SettlementDocumentMode } from '../../types/settlementSemantics'
 
 export interface SettleSearchFormValues {
   customerUuid?: string
   dateRange?: [Dayjs, Dayjs] | null
   keyword?: string
-  settleType?: number
+  settleType?: SettlementDocumentMode
 }
 
 interface Props {

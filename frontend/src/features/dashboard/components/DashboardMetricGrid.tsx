@@ -36,7 +36,7 @@ export default function DashboardMetricGrid({ metrics }: Props) {
       label: '已结算未收',
       main: formatMoney(metrics?.receivableAmount),
       sub: `${metrics?.receivableCount ?? 0} 单待跟进`,
-      tip: `现金 ${formatMoney(metrics?.cashReceivedAmount)} / 废纸 ${formatMoney(metrics?.scrapOffsetAmount)}`,
+      tip: `实际到账 ${formatMoney(metrics?.cashReceivedAmount)} / 废纸 ${formatMoney(metrics?.scrapOffsetAmount)}`,
       tone: 'green',
     },
     {

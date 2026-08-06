@@ -11,9 +11,13 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
+/**
+ * Legacy aggregation service retained for compatibility with existing integrations.
+ * The production list endpoint uses SettleServiceImpl's normalized amount view.
+ */
+@Deprecated(forRemoval = false)
 @Service
 @RequiredArgsConstructor
 public class SettleListSummaryService {

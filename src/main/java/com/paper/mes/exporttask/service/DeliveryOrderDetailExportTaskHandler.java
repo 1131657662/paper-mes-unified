@@ -3,6 +3,7 @@ package com.paper.mes.exporttask.service;
 import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.delivery.dto.DeliveryCustomerRevisionPreviewVO;
 import com.paper.mes.delivery.dto.DeliveryDetailVO;
+import com.paper.mes.delivery.dto.DeliverySortSpec;
 import com.paper.mes.delivery.service.DeliveryExportService;
 import com.paper.mes.delivery.service.DeliveryService;
 import com.paper.mes.exporttask.entity.ExportTask;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -44,13 +46,36 @@ public class DeliveryOrderDetailExportTaskHandler implements ExportTaskHandler {
     public ExportTaskArtifact generate(ExportTask task, Path target) throws Exception {
         DeliveryDetailVO detail = deliveryService.getDetail(task.getSourceUuid());
         DeliveryCustomerRevisionPreviewVO customerSpecs = customerSpecs(task, detail);
-        try (Workbook workbook = exportService.buildWorkbook(detail, customerSpecs);
+        List<DeliverySortSpec> physicalSortChain = revisionSnapshot.sortChain(task.getRequestPayload());
+        List<DeliverySortSpec> customerSortChain = revisionSnapshot.customerSortChain(task.getRequestPayload());
+        List<DeliverySortSpec> traceSortChain = revisionSnapshot.traceSortChain(task.getRequestPayload());
+        String documentView = revisionSnapshot.documentView(task.getRequestPayload());
+        try (Workbook workbook = workbook(detail, customerSpecs, physicalSortChain, customerSortChain,
+                traceSortChain, documentView);
              OutputStream output = Files.newOutputStream(target)) {
             workbook.write(output);
         }
         verifyAfterGeneration(task);
         String filename = "出库单_" + detail.getOrder().getDeliveryNo() + ".xlsx";
         return new ExportTaskArtifact(filename, CONTENT_TYPE);
+    }
+
+    private Workbook workbook(DeliveryDetailVO detail, DeliveryCustomerRevisionPreviewVO customerSpecs,
+                              List<DeliverySortSpec> physicalSortChain,
+                              List<DeliverySortSpec> customerSortChain,
+                              List<DeliverySortSpec> traceSortChain,
+                              String documentView) {
+        boolean hasPhysicalSort = physicalSortChain != null && !physicalSortChain.isEmpty();
+        boolean hasCustomerSort = customerSortChain != null && !customerSortChain.isEmpty();
+        boolean hasTraceSort = traceSortChain != null && !traceSortChain.isEmpty();
+        if (!hasPhysicalSort && !hasCustomerSort && !hasTraceSort) {
+            return exportService.buildWorkbook(detail, customerSpecs);
+        }
+        if (!hasCustomerSort && !hasTraceSort) {
+            return exportService.buildWorkbook(detail, customerSpecs, physicalSortChain);
+        }
+        return exportService.buildWorkbook(detail, customerSpecs, physicalSortChain,
+                customerSortChain, traceSortChain, documentView);
     }
 
     private DeliveryCustomerRevisionPreviewVO customerSpecs(ExportTask task, DeliveryDetailVO detail) {

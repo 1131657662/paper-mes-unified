@@ -1,5 +1,6 @@
 import type { PageQuery } from './common'
 import type { OperationLog } from './operationLog'
+import type { ProcessOrderSettlementMode, SettlementDocumentMode } from './settlementSemantics'
 
 export interface SettleOrder {
   uuid: string
@@ -9,7 +10,7 @@ export interface SettleOrder {
   requestId?: string
   quoteVersion?: string
   quoteHash?: string
-  settleType: number
+  settleType: SettlementDocumentMode
   settleDate: string
   dueDate?: string
   periodStart?: string
@@ -20,6 +21,7 @@ export interface SettleOrder {
   extraAmount: number
   amountNoTax: number
   taxAmount: number
+  historicalDifferenceAmount?: number
   totalAmount: number
   receivedAmount: number
   cashReceivedAmount?: number
@@ -107,6 +109,7 @@ export interface SettlePrintLine {
   extraFeeSummary?: string
   taxRate?: number
   taxAmount?: number
+  historicalDifferenceAmount?: number
   lineAmount?: number
   isInvoice?: number
   remark?: string
@@ -182,7 +185,7 @@ export interface SettleCandidateVO {
   customerName: string
   orderDate?: string
   accountingDate?: string
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
   settleDay?: number
   isInvoice?: number
   originalRollCount?: number
@@ -350,7 +353,7 @@ export interface SettleQuery extends PageQuery {
   keyword?: string
   customerUuid?: string
   settleStatus?: number
-  settleType?: number
+  settleType?: SettlementDocumentMode
   dateFrom?: string
   dateTo?: string
   collectionQueue?: SettleCollectionQueue

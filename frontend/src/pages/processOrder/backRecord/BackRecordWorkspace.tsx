@@ -53,7 +53,10 @@ export default function BackRecordWorkspace({
             form={workspace.form}
             layout="vertical"
             className={`back-record-drawer back-record-workspace--${mode}`}
-            onValuesChange={onDirty}
+            onValuesChange={() => {
+              workspace.persistDraft()
+              onDirty?.()
+            }}
           >
             <WorkspaceTopbar
               cancelText={cancelText}

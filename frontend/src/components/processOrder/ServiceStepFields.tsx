@@ -35,25 +35,23 @@ export default function ServiceStepFields({ catalog, billingMode, billingBasis, 
         <Radio.Group options={billingOptions} optionType="button" buttonStyle="solid" />
       </Form.Item>
       {activeBillingMode === 0 && <PendingPricingFields
-        catalog={catalog} defaultBillingBasis={defaultUnit?.code} compact={compact} />}
+        catalog={catalog} compact={compact} />}
       {activeBillingMode === 1 && <StandardServiceFields catalog={catalog} unitName={unitName}
-        defaultBillingBasis={defaultUnit?.code} compact={compact} />}
+        compact={compact} />}
       {activeBillingMode === 3 && <FixedAmountFields batchMode={batchMode} compact={compact} />}
     </>
   )
 }
 
-function StandardServiceFields({ catalog, unitName, defaultBillingBasis, compact }: {
+function StandardServiceFields({ catalog, unitName, compact }: {
   catalog: ProcessCatalog
   unitName: string
-  defaultBillingBasis?: string
   compact?: boolean
 }) {
   return (
     <>
       <Form.Item className="service-step-fields__unit" label="计费单位" name="billingBasis"
-        initialValue={defaultBillingBasis} preserve
-        rules={[{ required: true, message: '请选择计费单位' }]}>
+        preserve rules={[{ required: true, message: '请选择计费单位' }]}>
         <Select options={catalog.units.map((unit) => ({ label: unit.name, value: unit.code }))} />
       </Form.Item>
       <Form.Item className="service-step-fields__price" label={`服务单价（元/${unitName}）`} name="unitPrice" rules={[{ required: true, message: '请填写服务单价' }]}>
@@ -64,16 +62,14 @@ function StandardServiceFields({ catalog, unitName, defaultBillingBasis, compact
   )
 }
 
-function PendingPricingFields({ catalog, defaultBillingBasis, compact }: {
+function PendingPricingFields({ catalog, compact }: {
   catalog: ProcessCatalog
-  defaultBillingBasis?: string
   compact?: boolean
 }) {
   return (
     <>
       <Form.Item className="service-step-fields__unit" label="预计计费单位" name="billingBasis"
-        initialValue={defaultBillingBasis} preserve
-        rules={[{ required: true, message: '请选择后续计费单位' }]}>
+        preserve rules={[{ required: true, message: '请选择后续计费单位' }]}>
         <Select options={catalog.units.map((unit) => ({ label: unit.name, value: unit.code }))} />
       </Form.Item>
       {compact ? <InlineHint>费用可稍后核定，结算前补价或设为免费。</InlineHint> : (

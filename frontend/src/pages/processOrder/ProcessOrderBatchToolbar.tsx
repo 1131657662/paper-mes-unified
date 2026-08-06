@@ -6,6 +6,7 @@ import {
   PrinterOutlined,
 } from '@ant-design/icons'
 import type { ProcessOrder } from '../../types/processOrder'
+import { hasConfirmedProcessOrderPrint, hasHistoricalUnconfirmedPrint } from '../../features/processOrderDetail/processOrderPrintStage'
 import type { ProcessOrderListCapabilities } from './useProcessOrderListCapabilities'
 import { buildMoreItems } from './processOrderBatchMenuItems'
 
@@ -37,7 +38,7 @@ export default function ProcessOrderBatchToolbar({ selectedRows, actions, capabi
     <div className="process-order-batchbar is-active">
       <span className="process-order-batchbar__selection">已选 <strong>{record.orderNo}</strong></span>
       <Space size={8}>
-        {capabilities.canManageOrder && canPrint(record) && <Button icon={<PrinterOutlined />} onClick={() => actions.onPrint(record)}>打印/补打</Button>}
+        {capabilities.canManageOrder && canPrint(record) && <Button icon={<PrinterOutlined />} onClick={() => actions.onPrint(record)}>{printActionLabel(record)}</Button>}
         {capabilities.canBackRecord && record.orderStatus === 3 && <Button icon={<FileDoneOutlined />} onClick={() => actions.onBackRecord(record.uuid)}>进入回录</Button>}
         {capabilities.canManageOrder && canManageRolls(record) && <Button icon={<NumberOutlined />} onClick={() => actions.onManageRolls(record.uuid)}>成品号</Button>}
         {capabilities.canManageOrder && canCalcFee(record) && <Button icon={<CalculatorOutlined />} onClick={() => confirmFee(record, actions)}>重算计费</Button>}
@@ -54,6 +55,12 @@ export default function ProcessOrderBatchToolbar({ selectedRows, actions, capabi
 function canPrint(record?: ProcessOrder) {
   const status = record?.orderStatus ?? 0
   return record != null && status >= 1 && status !== 6
+}
+
+function printActionLabel(record: ProcessOrder): string {
+  const status = record.orderStatus ?? 0
+  const hasPrinted = hasConfirmedProcessOrderPrint(record.printStatus, record.printCount)
+  return hasHistoricalUnconfirmedPrint(status, hasPrinted) ? '补确认历史打印' : '打印/补打'
 }
 
 function canManageRolls(record?: ProcessOrder) {

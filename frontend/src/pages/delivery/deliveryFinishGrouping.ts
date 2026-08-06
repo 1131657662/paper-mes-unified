@@ -2,6 +2,7 @@ import { availableFinishWeight } from '../../features/delivery/utils/deliveryFor
 import type { AvailableFinishVO } from '../../types/delivery'
 import type { DeliveryFinishScope } from './deliveryFinishScope'
 import type { DeliveryLineEdit } from './deliverySelectionModel'
+import { hasDeliverySettlementRisk } from '../../types/settlementSemantics'
 
 export interface DeliveryFinishRow extends AvailableFinishVO {
   key: string
@@ -80,7 +81,7 @@ function buildGroup(
     totalWeight: availableWeight(items),
     selectedCount: selectedItems.length,
     selectedWeight: editedWeight(selectedItems, edits),
-    riskCount: items.filter((item) => item.settlementRisk).length,
+    riskCount: items.filter(hasDeliverySettlementRisk).length,
     children,
   }
 }

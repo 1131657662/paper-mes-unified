@@ -86,14 +86,14 @@ function barWidth(value: number, maximum: number) { return Math.max((value / max
 
 const trendHint = {
   settlement: '金额按结算日期聚合，第二条线表示已收金额。',
-  collection: '金额按到账时间聚合，第二条线表示现金到账。',
+  collection: '金额按到账时间聚合，第二条线表示实际到账。',
   inventory: '这是当前库存按首次入库月份分层，不是历史期末余额。',
   delivery: '重量按出库单日期聚合，第二条线表示已签收重量。',
 } satisfies Record<ReportOperationalAnalysisVO['topicCode'], string>
 
 const trendLegend = {
   settlement: { primary: '应收', secondary: '已收' },
-  collection: { primary: '结清', secondary: '现金到账' },
+  collection: { primary: '结清', secondary: '实际到账' },
   inventory: { primary: '库存重量', secondary: '锁定重量' },
   delivery: { primary: '计划重量', secondary: '已签收' },
 } satisfies Record<ReportOperationalAnalysisVO['topicCode'], { primary: string; secondary: string }>

@@ -18,6 +18,14 @@ spring:
 app:
   schema-bootstrap:
     enabled: ${PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED:false}
+  schema-readiness:
+    expected-version: ${PAPER_MES_EXPECTED_SCHEMA_VERSION:3.61}
+    require-migration-history: ${PAPER_MES_REQUIRE_MIGRATION_HISTORY:false}
+  runtime:
+    backend-version: ${PAPER_MES_BACKEND_VERSION:dev}
+    frontend-version: ${PAPER_MES_FRONTEND_VERSION:dev}
+    git-sha: ${PAPER_MES_GIT_SHA:unknown}
+    build-time: ${PAPER_MES_BUILD_TIME:unknown}
   auth:
     session-hours: ${PAPER_MES_SESSION_HOURS:12}
     session-retention-days: ${PAPER_MES_SESSION_RETENTION_DAYS:7}
@@ -72,6 +80,13 @@ management:
       show-details: never
       probes:
         enabled: true
+      group:
+        readiness:
+          include: readinessState,db,schemaReadiness
+
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-system}]"
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml

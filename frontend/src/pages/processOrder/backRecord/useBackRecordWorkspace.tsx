@@ -25,13 +25,18 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onPersis
     form: formState.form,
   })
   const selection = useBackRecordSelection(detail)
+  const handlePersisted = () => {
+    formState.clearDraft()
+    onPersisted?.()
+  }
   const submission = useBackRecordSubmission({
     detail,
     enabled,
     form: formState.form,
     getInitializedVersion: formState.getInitializedVersion,
     onClose,
-    onPersisted,
+    onPersistDraft: formState.persistDraft,
+    onPersisted: handlePersisted,
     onRefetch: detailQuery.refetch,
     onConflictReloaded: formState.refreshPreservingValues,
     onReloaded: formState.initialize,
@@ -89,6 +94,7 @@ export function useBackRecordWorkspace({ uuid, enabled = true, onClose, onPersis
     selection,
     warehouse,
     syncFilledValues: formState.syncFilledValues,
+    persistDraft: formState.persistDraft,
     openChangeGuide: changes.openChangeGuide,
     reopenBatch: changes.reopenBatch,
     reopening: changes.reopening,

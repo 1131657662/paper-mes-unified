@@ -21,9 +21,11 @@ export async function reloadBackRecordConflict<TData>(options: Options<TData>): 
   try {
     const result = await options.onRefetch()
     if (!result.isSuccess || !result.data) return { error: result.error, reloaded: false }
-    if (!options.preserveDirty) options.onResetInitialization()
+    if (!options.preserveDirty) {
+      options.onResetInitialization()
+      options.onPersisted?.()
+    }
     options.onReloaded(result.data)
-    if (!options.preserveDirty) options.onPersisted?.()
     return { reloaded: true }
   } catch (error) {
     return { error, reloaded: false }

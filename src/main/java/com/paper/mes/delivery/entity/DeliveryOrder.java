@@ -2,6 +2,7 @@ package com.paper.mes.delivery.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.paper.mes.common.BaseEntity;
 import lombok.Data;
@@ -46,4 +47,14 @@ public class DeliveryOrder extends BaseEntity {
     private String snapDelivery;
     private LocalDateTime snapDeliveryTime;
     private String remark;
+
+    /** Detail-only state projection. These fields are not persisted in biz_delivery_order. */
+    @TableField(exist = false)
+    private String signState;
+    @TableField(exist = false)
+    private String stockState;
+    @TableField(exist = false)
+    private Boolean canSign;
+    @TableField(exist = false)
+    private Boolean canEdit;
 }

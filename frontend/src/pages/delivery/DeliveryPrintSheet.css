@@ -9,6 +9,17 @@
   display: none;
 }
 
+.delivery-print-order-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.delivery-print-order-summary > .anticon {
+  color: var(--mes-color-primary);
+}
+
 .delivery-print-header h1 {
   margin: 0;
   font-size: 26px;

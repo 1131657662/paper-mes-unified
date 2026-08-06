@@ -5,6 +5,8 @@ export interface R<T> {
   message: string
   /** 业务错误码 E001-E006，成功时后端不下发。 */
   errorCode?: string
+  /** Correlates the failed request with the matching backend log entry. */
+  requestId?: string
 }
 
 /** 分页结果，与后端 com.paper.mes.common.PageResult 对应。 */

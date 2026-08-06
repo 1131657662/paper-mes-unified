@@ -30,14 +30,40 @@ class DeliveryExportServiceTest {
             assertEquals("实物品名", text(sheet.getRow(8).getCell(3)));
             assertEquals("实物克重", text(sheet.getRow(8).getCell(4)));
             assertEquals("实物规格", text(sheet.getRow(8).getCell(5)));
-            assertEquals("实物件重kg", text(sheet.getRow(8).getCell(6)));
-            assertEquals("原纸信息", text(sheet.getRow(8).getCell(8)));
-            assertEquals("工艺摘要", text(sheet.getRow(8).getCell(10)));
-            assertEquals("回录备注", text(sheet.getRow(8).getCell(14)));
+            assertEquals("规格单位", text(sheet.getRow(8).getCell(6)));
+            assertEquals("实物直径", text(sheet.getRow(8).getCell(7)));
+            assertEquals("直径单位", text(sheet.getRow(8).getCell(8)));
+            assertEquals("实物纸芯", text(sheet.getRow(8).getCell(9)));
+            assertEquals("纸芯单位", text(sheet.getRow(8).getCell(10)));
+            assertEquals("实物件重kg", text(sheet.getRow(8).getCell(11)));
+            assertEquals("母卷序号", text(sheet.getRow(8).getCell(13)));
+            assertEquals("历史原纸信息", text(sheet.getRow(8).getCell(28)));
+            assertEquals("工艺摘要", text(sheet.getRow(8).getCell(30)));
+            assertEquals("回录备注", text(sheet.getRow(8).getCell(34)));
             assertEquals("A000001", text(sheet.getRow(9).getCell(2)));
             assertEquals("白卡纸", text(sheet.getRow(9).getCell(3)));
-            assertEquals("母卷1 / 2500mm / 3255kg", text(sheet.getRow(9).getCell(8)));
-            assertEquals("复卷 950×2 + 修边", text(sheet.getRow(9).getCell(10)));
+            assertEquals("950", text(sheet.getRow(9).getCell(5)));
+            assertEquals("mm", text(sheet.getRow(9).getCell(6)));
+            assertEquals("1200", text(sheet.getRow(9).getCell(7)));
+            assertEquals("mm", text(sheet.getRow(9).getCell(8)));
+            assertEquals("3", text(sheet.getRow(9).getCell(9)));
+            assertEquals("英寸", text(sheet.getRow(9).getCell(10)));
+            assertEquals("母卷1 / 2500mm / 3255kg", text(sheet.getRow(9).getCell(28)));
+            assertEquals("复卷 950×2 + 修边", text(sheet.getRow(9).getCell(30)));
+        }
+    }
+
+    @Test
+    void buildWorkbook_whenStoredDiametersUseLegacyUnits_exportsMatchingUnitColumns() throws Exception {
+        DeliveryDetailVO detail = detail();
+        DeliveryDetailItemVO item = detail.getDetails().getFirst();
+        item.setFinishDiameter(40);
+        item.setFinishCoreDiameter(76);
+
+        try (Workbook workbook = new DeliveryExportService().buildWorkbook(detail)) {
+            var row = workbook.getSheetAt(0).getRow(9);
+            assertEquals("英寸", text(row.getCell(8)));
+            assertEquals("mm", text(row.getCell(10)));
         }
     }
 
@@ -56,6 +82,9 @@ class DeliveryExportServiceTest {
             assertEquals("1299", text(sheet.getRow(8).getCell(10)));
             assertEquals("101", text(sheet.getRow(8).getCell(11)));
             assertEquals("出库客户更正版", text(sheet.getRow(8).getCell(13)));
+            assertEquals("母卷序号", text(sheet.getRow(7).getCell(15)));
+            assertEquals("历史原纸信息", text(sheet.getRow(7).getCell(30)));
+            assertEquals("母卷1 / 2500mm / 3255kg", text(sheet.getRow(8).getCell(30)));
         }
     }
 
@@ -76,12 +105,15 @@ class DeliveryExportServiceTest {
 
     private DeliveryDetailItemVO item() {
         DeliveryDetailItemVO item = new DeliveryDetailItemVO();
+        item.setUuid("detail-1");
+        item.setFinishUuid("finish-1");
         item.setOrderNo("JG202607010001");
         item.setFinishRollNo("A000001");
         item.setPaperName("白卡纸");
         item.setGramWeight(300);
         item.setFinishWidth(950);
         item.setFinishDiameter(1200);
+        item.setFinishCoreDiameter(3);
         item.setActualWeight(new BigDecimal("1200"));
         item.setOutWeight(new BigDecimal("1198"));
         item.setOriginalSummary("母卷1 / 2500mm / 3255kg");

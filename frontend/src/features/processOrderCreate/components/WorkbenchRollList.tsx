@@ -1,7 +1,7 @@
 import { List } from 'antd'
 import { useEffect, useRef } from 'react'
 import type { Machine } from '../../../types/machine'
-import type { PlanPreviewVO, ProcessRoutePreviewVO } from '../../../types/processOrder'
+import type { PlanPreviewVO, ProcessPlanDTO, ProcessRoutePreviewVO } from '../../../types/processOrder'
 import '../../../components/processOrder/ProcessOrderShared.css'
 import { useWorkbenchRollSort } from '../hooks/useWorkbenchRollSort'
 import { rollPreviewStatus } from '../previewStatusUtils'
@@ -18,6 +18,7 @@ export interface WorkbenchRollListData {
   machines: Machine[]
   selectionDisabled?: boolean
   operation?: ConfigOperation
+  plans?: Record<string, ProcessPlanDTO>
   previews: Record<string, PlanPreviewVO>
   rolls: RollDraft[]
   routePreviews?: Record<string, ProcessRoutePreviewVO>
@@ -82,6 +83,7 @@ export default function WorkbenchRollList({ actions, data, selection }: Props) {
                 index: originalIndex,
                 lock,
                 machines: data.machines,
+                machineUuid: data.plans?.[roll.localId]?.machineUuid ?? roll.machineUuid,
                 previewStatus: rollPreviewStatus({
                   configured: isConfiguredPlanReady(roll, configured, data.previews),
                   operation: selection.selectedId === roll.localId ? data.operation : undefined,

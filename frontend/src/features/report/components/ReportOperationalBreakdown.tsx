@@ -45,7 +45,7 @@ const collectionColumns: ColumnsType<Dimension> = [
   { title: '客户', dataIndex: 'dimensionName', width: 180, fixed: 'left', ellipsis: true },
   { title: '回款流水', dataIndex: 'recordCount', width: 100, align: 'right', render: renderNumber },
   { title: '结清金额', dataIndex: 'settledAmount', width: 130, align: 'right', render: formatMoney },
-  { title: '现金到账', dataIndex: 'cashAmount', width: 130, align: 'right', render: formatMoney },
+  { title: '实际到账', dataIndex: 'cashAmount', width: 130, align: 'right', render: formatMoney },
   { title: '废纸重量', dataIndex: 'scrapWeight', width: 120, align: 'right', render: formatTonFromKg },
 ]
 const inventoryColumns: ColumnsType<Dimension> = [
@@ -64,7 +64,7 @@ const deliveryColumns: ColumnsType<Dimension> = [
 
 const breakdownHint = {
   settlement: '按客户汇总结算单与未收余额，优先显示风险高的客户。',
-  collection: '按客户汇总有效到账流水，不把优惠误计为现金。',
+  collection: '按客户汇总有效到账流水，实际到账不包含废纸抵扣或优惠核销。',
   inventory: '按库存档案中的仓库归属汇总，未分配仓库单独列出。',
   delivery: '按出库单仓库汇总计划重量与已签收重量。',
 } satisfies Record<ReportOperationalAnalysisVO['topicCode'], string>

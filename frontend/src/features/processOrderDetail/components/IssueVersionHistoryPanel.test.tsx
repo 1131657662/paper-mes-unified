@@ -4,6 +4,16 @@ import type { ProcessOrderIssueVersion } from '../../../types/processOrder'
 import { IssueVersionHistoryContent } from './IssueVersionHistoryPanel'
 
 describe('下发版本历史', () => {
+  it('加载期间不展示零条或空记录状态', () => {
+    const markup = renderToStaticMarkup(
+      <IssueVersionHistoryContent isError={false} loading versions={[]} onRetry={() => undefined} />,
+    )
+
+    expect(markup).toContain('正在加载下发版本历史')
+    expect(markup).not.toContain('0 条')
+    expect(markup).not.toContain('暂无下发版本记录')
+  })
+
   it('历史未版本化快照明确说明未补造审计元数据', () => {
     const legacy = {
       orderUuid: 'order-1',

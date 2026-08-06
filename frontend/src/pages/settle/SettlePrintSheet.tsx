@@ -29,7 +29,7 @@ export default function SettlePrintSheet({ detail }: Props) {
           <div className="document-print-sheet__summary">
             <span>应收：{formatMoney(order.totalAmount)}</span>
             <span>累计结清：{formatMoney(order.receivedAmount)}</span>
-            <span>现金到账：{formatMoney(order.cashReceivedAmount)}</span>
+            <span>实际到账：{formatMoney(order.cashReceivedAmount)}</span>
             <span>废纸抵扣：{formatMoney(order.scrapOffsetAmount)}</span>
             <span>优惠核销：{formatMoney(order.discountAmount)}</span>
             <span>未收：{formatMoney(order.unreceivedAmount)}</span>
@@ -45,6 +45,7 @@ export default function SettlePrintSheet({ detail }: Props) {
           <span>未税金额：{formatMoney(order.amountNoTax)}</span>
           <span>额外费用：{formatMoney(order.extraAmount)}</span>
           <span>税费：{formatMoney(order.taxAmount)}</span>
+          <span>未分解差异：{formatMoney(order.historicalDifferenceAmount)}</span>
           <strong>应收合计：{formatMoney(order.totalAmount)}</strong>
           <span>客户确认：</span>
           <span>经办：</span>
@@ -120,6 +121,9 @@ function GroupTotals({ group }: { group: SettleBillGroup }) {
       {group.pricingAdjustmentAmount !== 0 && <span>计价调整：{formatMoney(group.pricingAdjustmentAmount)}</span>}
       <span>额外费：{formatMoney(group.extraAmount)}{group.extraFeeSummary ? `（${group.extraFeeSummary}）` : ''}</span>
       <span>税费：{formatMoney(group.taxAmount)}</span>
+      {group.historicalDifferenceAmount !== 0 && (
+        <span>未分解差异：{formatMoney(group.historicalDifferenceAmount)}</span>
+      )}
       <strong>本单应收：{formatMoney(group.lineAmount)}</strong>
     </div>
   )

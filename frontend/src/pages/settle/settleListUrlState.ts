@@ -56,7 +56,7 @@ function filtersFromSearch(params: URLSearchParams): SettleQuery {
     dateFrom: params.get('dateFrom') || undefined,
     dateTo: params.get('dateTo') || undefined,
     keyword: params.get('keyword') || undefined,
-    settleType: settleType === 1 || settleType === 2 ? settleType : undefined,
+    settleType: settleType === 1 || settleType === 2 || settleType === 3 ? settleType : undefined,
   }
 }
 

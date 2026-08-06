@@ -16,7 +16,7 @@ import {
 } from './draftMappers'
 import { normalizeRewindPlan } from './rewindLayerPlanUtils'
 import type { RollDraft } from './types'
-import { processModeRequiresMain } from '../../constants/processOrder'
+import { MAX_SOURCE_PIECES, processModeRequiresMain } from '../../constants/processOrder'
 import { applyDefaultMachineToPlan } from './machineDefaults'
 
 export interface HydratedCreateOrderState {
@@ -123,7 +123,9 @@ export function rebasePlanForRoll(plan: ProcessPlanDTO, roll: RollDraft): Proces
 export function isRollReadyForSave(roll: RollDraft) {
   if (!roll.paperName.trim()) return false
   if (!positiveInteger(roll.gramWeight) || !positiveInteger(roll.originalWidth)) return false
-  if (!positiveInteger(roll.pieceNum ?? 1) || !positiveNumber(roll.rollWeight)) return false
+  if (!positiveInteger(roll.pieceNum ?? 1)
+    || (roll.pieceNum ?? 1) > MAX_SOURCE_PIECES
+    || !positiveNumber(roll.rollWeight)) return false
   return roll.processMode !== 3 || Boolean(roll.rollNo?.trim())
 }
 

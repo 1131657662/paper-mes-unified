@@ -142,6 +142,24 @@ class SawPlanPreviewerTest {
         assertEquals(new BigDecimal("0.000"), finishes.getFirst().getEstimateWeight());
     }
 
+    @Test
+    void saveSpecs_withMultipleSourcePieces_returnsEveryPhysicalOutput() {
+        OriginalRoll roll = roll(1000, "744.900");
+        roll.setPieceNum(8);
+
+        List<FinishConfigSpecDTO> outputs = previewer.saveSpecs(List.of(
+                spec("FINISH", 900, 1), spec("TRIM", 100, 1)), roll);
+
+        assertEquals(16, outputs.size());
+        assertEquals(8, outputs.stream().filter(item -> "FINISH".equals(item.getItemType())).count());
+        assertEquals(8, outputs.stream().filter(item -> "TRIM".equals(item.getItemType())).count());
+        assertTrue(outputs.stream().allMatch(item -> item.getCount() == 1));
+
+        PlanPreviewVO preview = previewer.preview(plan(List.of(
+                spec("FINISH", 900, 1), spec("TRIM", 100, 1))), roll);
+        assertTrue(preview.getSummary().contains("刀数 8"));
+    }
+
     private ProcessPlanDTO plan(List<FinishConfigSpecDTO> specs) {
         return planWithPolicy(specs, null);
     }

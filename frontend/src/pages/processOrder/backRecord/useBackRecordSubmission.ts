@@ -23,6 +23,7 @@ interface UseBackRecordSubmissionOptions {
   getInitializedVersion: () => number | undefined
   onClose: () => void
   onPersisted?: () => void
+  onPersistDraft: () => void
   onRefetch: () => Promise<{ data?: ProcessOrderDetailVO; error?: unknown; isSuccess: boolean }>
   onConflictReloaded: (detail: ProcessOrderDetailVO) => void
   onReloaded: (detail: ProcessOrderDetailVO) => void
@@ -62,6 +63,7 @@ export function useBackRecordSubmission(options: UseBackRecordSubmissionOptions)
     if (!options.detail) return undefined
     const refreshed = await refreshBackRecordBeforeSubmit({
       expectedVersion: options.getInitializedVersion() ?? options.detail.order.version,
+      onBeforeRefetch: options.onPersistDraft,
       onConflictReloaded: options.onConflictReloaded,
       onRefetch: options.onRefetch,
     })
@@ -70,7 +72,7 @@ export function useBackRecordSubmission(options: UseBackRecordSubmissionOptions)
       return undefined
     }
     if (refreshed.status === 'changed') {
-      message.warning('加工单已更新，已保留当前填写内容，请核对后再提交')
+      message.warning('加工单已更新，当前填写已保存为本地草稿并完成合并，请核对后再提交')
       return undefined
     }
     return refreshed.detail
@@ -114,6 +116,7 @@ export function useBackRecordSubmission(options: UseBackRecordSubmissionOptions)
 
   const submitPayload = async (payload: ReturnType<typeof buildBackRecordDTO>) => {
     try {
+      options.onPersistDraft()
       const result = await backRecordMutation.mutateAsync(payload)
       message.success(result.orderCompleted ? '回录成功，单据已完成' : '本批回录已保存并入库')
       showBackRecordResult(result)
@@ -145,7 +148,7 @@ export function useBackRecordSubmission(options: UseBackRecordSubmissionOptions)
         notifyErrorOnce(reload.error, '数据已被他人修改，但服务端最新内容加载失败，请保留当前页面并重试')
         return
       }
-      message.warning('数据已被他人修改，已载入服务端最新内容，请重新核对后提交')
+      message.warning('数据已被他人修改，已合并服务端最新内容并保留本地草稿，请重新核对后提交')
       return
     }
     notifyErrorOnce(error, '回录失败，请检查数据后重试')

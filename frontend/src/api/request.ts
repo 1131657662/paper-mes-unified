@@ -29,14 +29,16 @@ export class BizError extends Error {
   code: number
   errorCode?: string
   httpStatus?: number
+  requestId?: string
   notified = false
 
-  constructor(msg: string, code: number, errorCode?: string, httpStatus?: number) {
+  constructor(msg: string, code: number, errorCode?: string, httpStatus?: number, requestId?: string) {
     super(msg)
     this.name = 'BizError'
     this.code = code
     this.errorCode = errorCode
     this.httpStatus = httpStatus
+    this.requestId = requestId
   }
 }
 
@@ -51,6 +53,13 @@ const instance = axios.create({
   baseURL: '/',
   timeout: 15000,
   headers: { 'X-Requested-With': 'XMLHttpRequest' },
+})
+
+instance.interceptors.request.use((config) => {
+  if (!config.headers.has('X-Request-Id')) {
+    config.headers.set('X-Request-Id', crypto.randomUUID())
+  }
+  return config
 })
 
 // 成功和普通业务错误仍按 R<T> 解包；认证/授权错误使用真实 HTTP 401/403。
@@ -103,7 +112,7 @@ export default request
 export function businessErrorFromResponse(value: unknown, httpStatus?: number): BizError | null {
   if (!isBusinessErrorBody(value)) return null
   const text = value.message || (value.errorCode && ERROR_CODE_TEXT[value.errorCode]) || '请求失败'
-  return new BizError(text, value.code, value.errorCode, httpStatus)
+  return new BizError(text, value.code, value.errorCode, httpStatus, value.requestId)
 }
 
 function rejectBusinessError(body: unknown, config?: MesRequestConfig) {
@@ -143,13 +152,14 @@ export function shouldNotifyBusinessError(error: BizError, config?: MesRequestCo
 }
 
 function contextualErrorText(error: BizError, url?: string) {
+  let text = error.message
   if (error.code === 403 && url?.includes('/process-orders/steps/') && url.endsWith('/pricing')) {
-    return '当前计价优惠超过免审额度，请由财务或管理员账号处理'
+    text = '当前计价优惠超过免审额度，请由财务或管理员账号处理'
   }
-  return error.message
+  return withRequestId(text, error.requestId)
 }
 
-function isBusinessErrorBody(value: unknown): value is Pick<R<unknown>, 'code' | 'message' | 'errorCode'> {
+function isBusinessErrorBody(value: unknown): value is Pick<R<unknown>, 'code' | 'message' | 'errorCode' | 'requestId'> {
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as Partial<R<unknown>>
   return typeof candidate.code === 'number' && candidate.code !== 200
@@ -160,8 +170,12 @@ function configUrlEndsWith(url: string | undefined, suffix: string) {
 }
 
 function errorText(error: unknown, fallbackText: string) {
-  if (error instanceof BizError && error.message) return error.message
+  if (error instanceof BizError && error.message) return withRequestId(error.message, error.requestId)
   return fallbackText
+}
+
+function withRequestId(text: string, requestId?: string) {
+  return requestId ? `${text}（请求编号：${requestId}）` : text
 }
 
 function isErrorNotified(error: unknown) {

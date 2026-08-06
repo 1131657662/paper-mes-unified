@@ -8,6 +8,12 @@ import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import { renderTableToolbarPortal } from '../../components/biz/tableToolbarPortalUtils'
 import type { DeliveryInventoryFinish, DeliveryInventoryOrderGroup } from '../../types/deliveryInventory'
 import DeliveryInventoryFinishDetailTable from './DeliveryInventoryFinishDetailTable'
+import type { InventoryFinishSortController, InventoryGroupSortController } from './useDeliveryInventoryCustomerSortState'
+import {
+  sortDeliveryInventoryOrderGroups,
+  type DeliveryInventoryOrderGroupSortField,
+  type DeliveryInventoryOrderGroupSortSpec,
+} from './deliveryInventorySorting'
 
 interface Props {
   groups: DeliveryInventoryOrderGroup[]
@@ -17,12 +23,16 @@ interface Props {
   onReload: () => void
   onToggle: (row: DeliveryInventoryFinish, checked: boolean) => void
   onToggleGroup: (group: DeliveryInventoryOrderGroup, checked: boolean) => void
+  sortState?: InventoryGroupSortController
+  detailSortState?: InventoryFinishSortController
 }
 
-export default function DeliveryInventoryOrderGroupTable(props: Props) {
+export default function DeliveryInventoryOrderGroupTable(inputProps: Props) {
   const [expansion, dispatchExpansion] = useReducer(expansionReducer, INITIAL_EXPANSION_STATE)
   const [hoveredRowKey, setHoveredRowKey] = useState<Key>()
-  const visibleRenderedKeys = expansion.renderedKeys.filter((key) => props.groups.some((group) => group.orderUuid === key))
+  const groups = inputProps.sortState ? sortDeliveryInventoryOrderGroups(inputProps.groups, inputProps.sortState.sortChain) : inputProps.groups
+  const props = { ...inputProps, groups }
+  const visibleRenderedKeys = expansion.renderedKeys.filter((key) => groups.some((group) => group.orderUuid === key))
   const visibleExpandedKeys = visibleRenderedKeys.filter((key) => !expansion.closingKeys.has(key))
   const toggleExpanded = (group: DeliveryInventoryOrderGroup) => {
     dispatchExpansion({ type: 'toggle', key: group.orderUuid })
@@ -30,16 +40,17 @@ export default function DeliveryInventoryOrderGroupTable(props: Props) {
   return <ProTable<DeliveryInventoryOrderGroup> className="delivery-inventory-customer-table delivery-inventory-order-group-table"
     tableClassName="delivery-inventory-order-group-grid"
     rowKey="orderUuid" headerTitle="加工单库存" size="small" dataSource={props.groups} loading={props.loading}
-    columns={buildColumns(props, visibleExpandedKeys, hoveredRowKey)} options={mesProTableOptions(props.onReload)}
+    columns={buildColumns(props, visibleExpandedKeys, hoveredRowKey, props.sortState?.sortChain)} options={mesProTableOptions(props.onReload)}
     optionsRender={renderTableToolbarPortal} cardProps={false} search={false} pagination={false} bordered tableLayout="fixed"
     onRow={(group) => groupRowProps(group, { expandedKeys: visibleExpandedKeys, toggleExpanded, setHoveredRowKey })}
+    onChange={props.sortState?.onChange}
     expandable={{ columnWidth: 48, expandedRowKeys: visibleRenderedKeys,
       onExpand: (_expanded, group) => toggleExpanded(group),
       rowExpandable: (group) => group.finishes.length > 0,
       expandedRowRender: (group) => <ExpandedDetailMotion closing={expansion.closingKeys.has(group.orderUuid)}
         onClosed={() => dispatchExpansion({ type: 'finish-close', key: group.orderUuid })}>
         <DeliveryInventoryFinishDetailTable rows={group.finishes} selectedByUuid={props.selectedByUuid}
-          selectionDisabled={props.selectionDisabled} onToggle={props.onToggle} />
+          selectionDisabled={props.selectionDisabled} onToggle={props.onToggle} sortState={props.detailSortState} />
       </ExpandedDetailMotion> }}
     scroll={{ x: 798, y: '100%' }} toolBarRender={() => []} />
 }
@@ -82,8 +93,8 @@ function ExpandedDetailMotion({ children, closing, onClosed }: { children: React
   </div>
 }
 
-function buildColumns(props: Props, expandedKeys: Key[], hoveredRowKey?: Key): ProColumns<DeliveryInventoryOrderGroup>[] {
-  return [
+function buildColumns(props: Props, expandedKeys: Key[], hoveredRowKey?: Key, sortChain: DeliveryInventoryOrderGroupSortSpec[] = []): ProColumns<DeliveryInventoryOrderGroup>[] {
+  const columns: ProColumns<DeliveryInventoryOrderGroup>[] = [
     { title: '加工单', dataIndex: 'orderNo', width: 210, render: (_, group) => <Space><GroupCheckbox group={group} {...props} /><MesTooltip title={groupExpandHint(group, expandedKeys)} open={hoveredRowKey === group.orderUuid} placement="top"><span className="mes-tooltip-text">{group.orderNo}</span></MesTooltip></Space> },
     { title: '加工日期', dataIndex: 'orderDate', width: 120 },
     { title: '库存卷数', dataIndex: 'totalRollCount', align: 'right', width: 100, render: (_, row) => `${row.totalRollCount} 卷` },
@@ -91,6 +102,19 @@ function buildColumns(props: Props, expandedKeys: Key[], hoveredRowKey?: Key): P
     { title: '可出库', dataIndex: 'availableRollCount', align: 'right', width: 100, render: (_, row) => `${row.availableRollCount} 卷` },
     { title: '已占用', dataIndex: 'lockedRollCount', align: 'right', width: 100, render: (_, row) => `${row.lockedRollCount} 卷` },
   ]
+  return columns.map((column) => {
+    const field = typeof column.dataIndex === 'string' ? column.dataIndex as DeliveryInventoryOrderGroupSortField : undefined
+    if (!field) return column
+    const active = sortChain.find((item) => item.field === field)
+    const priority = sortChain.findIndex((item) => item.field === field)
+    return {
+      ...column,
+      title: priority >= 0 && typeof column.title === 'string' ? `${column.title} ${priority + 1}` : column.title,
+      sorter: { multiple: 1 },
+      sortOrder: active?.direction === 'asc' ? 'ascend' : active?.direction === 'desc' ? 'descend' : null,
+      sortDirections: ['ascend', 'descend', null],
+    }
+  })
 }
 
 function groupExpandHint(group: DeliveryInventoryOrderGroup, expandedKeys: Key[]) {

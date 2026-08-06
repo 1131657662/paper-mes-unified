@@ -15,5 +15,6 @@ public class ProcessOrderSubmitVO {
     private String orderNo;
     private Integer orderStatus;
     private List<String> finishRollNos = new ArrayList<>();
+    private List<String> remainRollNos = new ArrayList<>();
     private List<String> spareRollNos = new ArrayList<>();
 }

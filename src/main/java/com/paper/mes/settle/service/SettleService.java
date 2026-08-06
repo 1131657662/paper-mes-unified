@@ -10,6 +10,7 @@ import com.paper.mes.settle.dto.SettleActionReasonDTO;
 import com.paper.mes.settle.dto.SettleCandidateQuery;
 import com.paper.mes.settle.dto.SettleCandidateVO;
 import com.paper.mes.settle.dto.SettleDetailVO;
+import com.paper.mes.settle.dto.SettleListSummaryVO;
 import com.paper.mes.settle.dto.SettleQuery;
 import com.paper.mes.settle.dto.SettleQuoteVO;
 import com.paper.mes.settle.dto.SettleQuoteByOrderDTO;
@@ -26,6 +27,8 @@ import java.util.List;
 public interface SettleService extends IService<SettleOrder> {
 
     PageResult<SettleOrder> page(SettleQuery query);
+
+    SettleListSummaryVO summary(SettleQuery query);
 
     /** 列出已完成且未结算的加工单，作为结算工作台的候选范围。 */
     PageResult<SettleCandidateVO> listCandidates(SettleCandidateQuery query);

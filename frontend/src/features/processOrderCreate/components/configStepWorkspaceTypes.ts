@@ -30,6 +30,7 @@ export interface ConfigStepWorkspaceData {
   orderUuid?: string
   operation?: ConfigOperation
   plan?: ProcessPlanDTO
+  plans: Record<string, ProcessPlanDTO>
   previewError?: string
   previewing: boolean
   previews: Record<string, PlanPreviewVO>
@@ -42,6 +43,8 @@ export interface ConfigStepWorkspaceData {
   selectedServiceRolls: RollDraft[]
   serviceConfigured: Record<string, boolean>
   serviceOnly: boolean
+  serviceStepsByRoll: Record<string, ProcessStep[]>
+  onServiceStepsChange?: (changes: Record<string, ProcessStep[]>) => Promise<void>
 }
 
 export interface ConfigStepWorkspaceActions {

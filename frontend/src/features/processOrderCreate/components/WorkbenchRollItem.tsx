@@ -24,6 +24,7 @@ export interface WorkbenchRollItemState {
   batchDisabledReason?: string
   index: number
   interactionDisabled: boolean
+  machineUuid?: string
   lock?: MergedSourceLock
   machines: Machine[]
   previewStatus: { color: string; label: string }
@@ -60,7 +61,9 @@ export default function WorkbenchRollItem({ actions, state }: Props) {
         <RollHeading actions={actions} disabled={disabled} state={state} />
         <div className="process-roll-option__footer">
           <RollTags state={state} />
-          {supportsRouteDesigner(state.roll.processMode) && <RouteButton actions={actions} state={state} />}
+          {(supportsRouteDesigner(state.roll.processMode, state.roll.pieceNum) || state.routePreview) && (
+            <RouteButton actions={actions} state={state} />
+          )}
         </div>
       </div>
     </List.Item>
@@ -108,19 +111,21 @@ function RollTags({ state }: { state: WorkbenchRollItemState }) {
     <div className="process-roll-option__tags">
       <Tag color={roll.processMode === 3 ? 'default' : 'blue'}>{PROCESS_MODE[roll.processMode ?? 1]}</Tag>
       {processModeRequiresMain(roll.processMode) && <Tag color="green">{STEP_TYPE[roll.mainStepType ?? 2]}</Tag>}
-      {processModeRequiresMain(roll.processMode) && <Tag color={roll.machineUuid ? 'cyan' : 'default'}>{machineName(roll.machineUuid, state.machines)}</Tag>}
+      {processModeRequiresMain(roll.processMode) && <Tag color={state.machineUuid ? 'cyan' : 'default'}>{machineName(state.machineUuid, state.machines)}</Tag>}
       {state.routePreview ? <Tag color="blue">链式 {state.routePreview.stages?.length ?? 0} 道</Tag> : <Tag color={state.previewStatus.color}>{state.previewStatus.label}</Tag>}
     </div>
   )
 }
 
 function RouteButton({ actions, state }: { actions: WorkbenchRollItemActions; state: WorkbenchRollItemState }) {
+  const blocked = !supportsRouteDesigner(state.roll.processMode, state.roll.pieceNum)
   return (
     <Button
       className="process-roll-option__route"
-      disabled={state.interactionDisabled}
+      disabled={state.interactionDisabled || blocked}
       size="small"
       type={state.routePreview ? 'primary' : 'default'}
+      title={blocked ? '件数大于1的母卷需拆分为单件后配置链式工艺' : undefined}
       onClick={(event) => {
         event.stopPropagation()
         actions.onOpenRouteDesigner?.(state.roll)

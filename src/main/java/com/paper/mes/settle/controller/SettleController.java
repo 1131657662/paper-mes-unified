@@ -25,7 +25,6 @@ import com.paper.mes.settle.entity.SettleDetail;
 import com.paper.mes.settle.entity.ReceiveRecord;
 import com.paper.mes.oplog.entity.OperationLog;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
-import com.paper.mes.settle.service.SettleListSummaryService;
 import com.paper.mes.settle.service.SettleDiscountApprovalService;
 import com.paper.mes.settle.service.SettleService;
 import jakarta.validation.Valid;
@@ -45,7 +44,6 @@ import java.util.List;
 public class SettleController {
 
     private final SettleService settleService;
-    private final SettleListSummaryService settleListSummaryService;
     private final SettleDiscountApprovalService discountApprovalService;
 
     @GetMapping
@@ -57,7 +55,7 @@ public class SettleController {
     @GetMapping("/summary")
     @RequirePermission(Permissions.SETTLE_VIEW)
     public R<SettleListSummaryVO> summary(@Valid SettleQuery query) {
-        return R.success(settleListSummaryService.summarize(query));
+        return R.success(settleService.summary(query));
     }
 
     @GetMapping("/candidates")

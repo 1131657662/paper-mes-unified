@@ -8,6 +8,7 @@ import RouteErrorBoundary from './RouteErrorBoundary'
 import { PERMISSIONS } from '../constants/permissions'
 
 import {
+  AppendOrderPage,
   AuthenticatedLayout,
   BackRecordPage,
   CreateOrderPage,
@@ -109,6 +110,7 @@ export const router = createBrowserRouter([
           { path: 'process-orders/create', element: guardedPage(<CreateOrderPage />, [PERMISSIONS.orderCreate]) },
           { path: 'process-orders/create/:uuid/routes/:rollUuid', element: guardedPage(<RouteDesignerPage />, [PERMISSIONS.orderCreate]) },
           { path: 'process-orders/:uuid', element: guardedPage(<OrderDetailPage />, [PERMISSIONS.orderView]) },
+          { path: 'process-orders/:uuid/append', element: guardedPage(<AppendOrderPage />, [PERMISSIONS.orderCreate]) },
           { path: 'process-orders/:uuid/back-record', element: guardedPage(<BackRecordPage />, [PERMISSIONS.orderBackRecord]) },
           { path: 'process-orders/:uuid/config-finish', element: guardedPage(<Navigate to=".." relative="path" replace />, [PERMISSIONS.orderView]) },
           { path: 'delivery-orders', element: guardedPage(<DeliveryOrderEntryPage />, [PERMISSIONS.deliveryView]) },

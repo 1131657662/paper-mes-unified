@@ -73,7 +73,7 @@ function buildCards(overview?: ReportOverviewVO): MetricProps[] {
     {
       icon: <WalletOutlined />,
       main: formatMoney(overview?.receivedAmount),
-      sub: `现金 ${formatMoney(overview?.cashReceivedAmount)} / 废纸抵扣 ${formatMoney(overview?.scrapOffsetAmount)}`,
+      sub: `实际到账 ${formatMoney(overview?.cashReceivedAmount)} / 废纸抵扣 ${formatMoney(overview?.scrapOffsetAmount)}`,
       title: '回款构成',
     },
   ]

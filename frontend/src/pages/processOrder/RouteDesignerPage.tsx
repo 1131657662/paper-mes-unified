@@ -1,5 +1,6 @@
 import { Button, Empty, Spin } from 'antd'
 import { useNavigate, useParams } from 'react-router'
+import { notifyErrorOnce } from '../../api/request'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import MesPageHeader from '../../components/layout/MesPageHeader'
 import { useGetDraft } from '../../features/processOrderCreate/hooks/useGetDraft'
@@ -34,7 +35,8 @@ export default function RouteDesignerPage() {
         description="机台或客户价格资料未完整加载，为避免使用错误默认值，当前暂停路线配置。"
         message="工艺基础资料加载失败"
         onBack={backToDraft}
-        onRetry={() => void Promise.all([machineQuery.refetch(), customerQuery.refetch()])}
+        onRetry={() => void Promise.all([machineQuery.refetch(), customerQuery.refetch()])
+          .catch((error) => notifyErrorOnce(error, '工艺基础资料刷新失败，请重试'))}
       />
     )
   }

@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 
 export const BackRecordPage = lazy(() => import('../pages/processOrder/BackRecordPage'))
+export const AppendOrderPage = lazy(() => import('../pages/processOrder/AppendOrderPage'))
 export const AuthenticatedLayout = lazy(() => import('../layout/AuthenticatedLayout'))
 export const CreateOrderPage = lazy(() => import('../pages/processOrder/CreateOrderPage'))
 export const CustomerDetailPage = lazy(() => import('../pages/customer/CustomerDetailPage'))

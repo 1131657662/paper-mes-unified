@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { message } from 'antd'
+import { notifyErrorOnce } from '../../api/request'
 import { rollbackDeliveryOrder } from '../../api/delivery'
 import { useCancelPendingDelivery } from '../../features/delivery/hooks/useCancelPendingDelivery'
 import type { DeliveryOrder } from '../../types/delivery'
@@ -31,9 +32,13 @@ async function cancelSelected(options: Options,
   if (pending || !options.canManage || !selected || selected.deliveryStatus !== 1) return
   const reason = await askDeliveryCancelReason(selected.deliveryNo)
   if (!reason) return
-  await mutate({ uuid: selected.uuid, data: { reason } })
-  message.success('待出库单已作废，成品库存已释放')
-  options.clearSelection()
+  try {
+    await mutate({ uuid: selected.uuid, data: { reason } })
+    message.success('待出库单已作废，成品库存已释放')
+    options.clearSelection()
+  } catch (error) {
+    notifyErrorOnce(error, '取消出库单失败，请刷新后重试')
+  }
 }
 
 async function rollbackSelected(options: Options, setLoading: (value: boolean) => void) {
@@ -47,6 +52,8 @@ async function rollbackSelected(options: Options, setLoading: (value: boolean) =
     message.success('已回退为待出库，可继续改单')
     options.clearSelection()
     options.refetch()
+  } catch (error) {
+    notifyErrorOnce(error, '出库单回退失败，请刷新后重试')
   } finally {
     setLoading(false)
   }

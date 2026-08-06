@@ -52,13 +52,20 @@ export default function ConfigFinishPage() {
     const savedConfig = configForRoll(selection.currentRoll, selection.configs)
     setSaving(true)
     try {
-      const result = await saveFinishConfig(uuid, savedUuid, savedConfig, detail.order.version)
+      let result
+      try {
+        result = await saveFinishConfig(uuid, savedUuid, savedConfig, detail.order.version)
+      } catch (error) {
+        await handleSaveError(error)
+        return
+      }
       message.success(`保存成功，已生成 ${result.finishRollNos?.length ?? 0} 个正式成品号`)
       selection.clearDirty([savedUuid])
       if (!selection.dirtyUuids.some((item) => item !== savedUuid)) clearDirty()
-      await refetchDetail()
-    } catch (error) {
-      await handleSaveError(error)
+      const reload = await reloadConfigFinishAfterSaveFailure(refetchDetail)
+      if (!reload.reloaded) {
+        notifyErrorOnce(reload.error, '成品配置已保存，但最新版本加载失败，请重新加载后再继续保存')
+      }
     } finally {
       setSaving(false)
     }

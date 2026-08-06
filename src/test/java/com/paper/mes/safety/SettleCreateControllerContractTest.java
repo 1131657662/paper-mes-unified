@@ -13,7 +13,6 @@ import com.paper.mes.settle.dto.SettleByOrdersDTO;
 import com.paper.mes.settle.dto.SettleCandidateQuery;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.settle.dto.SettleCandidateVO;
-import com.paper.mes.settle.service.SettleListSummaryService;
 import com.paper.mes.settle.service.SettleService;
 import com.paper.mes.settle.service.SettleDiscountApprovalService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -51,8 +50,7 @@ class SettleCreateControllerContractTest {
         authService = mock(AuthService.class);
         settleService = mock(SettleService.class);
         mvc = MockMvcBuilders.standaloneSetup(new SettleController(
-                        settleService, mock(SettleListSummaryService.class),
-                        mock(SettleDiscountApprovalService.class)))
+                        settleService, mock(SettleDiscountApprovalService.class)))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())

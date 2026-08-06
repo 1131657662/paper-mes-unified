@@ -45,7 +45,10 @@ public class AvailableFinishVO {
     /** 月结对账日，来自加工单快照。 */
     private Integer settleDay;
     private Integer isInvoice;
-    /** 该客户是否存在未结清结算单，用于出库风险提示。 */
+    /** Explicit risk state; new clients must use this field. */
+    private DeliverySettlementRiskState settlementRiskState = DeliverySettlementRiskState.NONE;
+    /** @deprecated Rolling-upgrade compatibility for clients using the old boolean contract. */
+    @Deprecated
     private Boolean settlementRisk;
 
     @Data

@@ -54,6 +54,7 @@ export const routeMeta: AppRouteMeta[] = [
   { path: '/process-orders/create', label: '新建加工单', parentLabel: '加工单', menuKey: '/process-orders' },
   { path: '/process-orders/create/:uuid/routes/:rollUuid', label: '链式工艺设计', parentLabel: '加工单', menuKey: '/process-orders' },
   { path: '/process-orders/:uuid', label: '加工单详情', parentLabel: '加工单', menuKey: '/process-orders' },
+  { path: '/process-orders/:uuid/append', label: '追加母卷', parentLabel: '加工单', menuKey: '/process-orders' },
   { path: '/process-orders/:uuid/back-record', label: '回录工作台', parentLabel: '加工单', menuKey: '/process-orders' },
   { path: '/process-orders/:uuid/config-finish', label: '成品配置', parentLabel: '加工单', menuKey: '/process-orders' },
   { path: '/delivery-orders/create', label: '新建出库单', parentLabel: '出库管理', menuKey: '/delivery-orders' },

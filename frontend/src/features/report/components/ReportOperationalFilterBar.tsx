@@ -72,7 +72,7 @@ export default function ReportOperationalFilterBar(props: Props) {
 
 const descriptions: Record<ReportOperationalTopicCode, string> = {
   settlement: '按结算日期分析有效结算单、应收覆盖、未收余额和逾期风险。',
-  collection: '按实际到账时间拆分现金、废纸抵扣与优惠核销，避免混淆回款口径。',
+  collection: '按到账时间拆分实际到账、废纸抵扣与优惠核销，避免混淆回款口径。',
   inventory: '查看当前在库快照，并按入库月份和仓库定位库存结构与锁定占用。',
   delivery: '按出库单日期分析待出库、已签收和仓库履约结构。',
 }

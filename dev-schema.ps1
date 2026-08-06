@@ -21,7 +21,7 @@ function Invoke-LocalMySql([string]$Sql) {
     try {
         @("[client]", "user=$($credentials.User)", "password=$($credentials.Password)", 'host=127.0.0.1', 'port=3306') |
             Set-Content -LiteralPath $defaultsFile.FullName -Encoding ascii
-        $output = & $mysql.Source "--defaults-extra-file=$($defaultsFile.FullName)" '--batch' '--skip-column-names' '--raw' 'paper_processing' '-e' $Sql 2>&1
+        $output = & $mysql.Source "--defaults-extra-file=$($defaultsFile.FullName)" '--default-character-set=utf8mb4' '--batch' '--skip-column-names' '--raw' 'paper_processing' '-e' $Sql 2>&1
         if ($LASTEXITCODE -ne 0) { throw ($output | Out-String).Trim() }
         return ($output | Out-String).Trim()
     } finally {
@@ -43,7 +43,7 @@ function Invoke-LocalMigration([string]$MigrationPath) {
         $previousOutputEncoding = $OutputEncoding
         try {
             $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-            $output = $sql | & $mysql.Source "--defaults-extra-file=$($defaultsFile.FullName)" 'paper_processing' 2>&1
+            $output = $sql | & $mysql.Source "--defaults-extra-file=$($defaultsFile.FullName)" '--default-character-set=utf8mb4' 'paper_processing' 2>&1
         } finally {
             $OutputEncoding = $previousOutputEncoding
         }
@@ -120,5 +120,66 @@ SELECT IF(
 "@
     if ($verified -ne 'ready') {
         throw 'Local inventory transaction schema is still incomplete after V3.52.'
+    }
+}
+
+function Ensure-LocalAppendSessionSchema {
+    $status = Invoke-LocalMySql @"
+SELECT IF(
+  (SELECT COUNT(*) FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name IN
+      ('biz_process_order_append_session','biz_process_order_append_roll')) = 2
+  AND (SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'biz_process_order_append_session'
+      AND column_name IN ('commit_request_id','active_order_uuid')) = 2
+  AND (SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics
+    WHERE table_schema = DATABASE() AND table_name = 'biz_process_order_append_session'
+      AND index_name = 'uk_process_append_active_order') = 1,
+  'ready', 'missing')
+"@
+    if ($status -eq 'ready') {
+        Write-Output 'Local schema ready: process order append sessions'
+        return
+    }
+
+    Write-Output 'Local schema incomplete: applying V3.61...'
+    Invoke-LocalMigration (Join-Path $Root 'sql/V3.61__add_process_order_append_sessions.sql')
+    if ((Invoke-LocalMySql "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'biz_process_order_append_session' AND index_name = 'uk_process_append_active_order'") -ne '1') {
+        throw 'Local process order append session schema is still incomplete after V3.61.'
+    }
+}
+
+function Ensure-LocalActualReceivedMetricSemantic {
+    $tableExists = Invoke-LocalMySql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'rpt_metric_definition'"
+    if ($tableExists -ne '1') {
+        Write-Output 'Local report metric table is not present; application bootstrap will seed current semantics.'
+        return
+    }
+
+    $status = Invoke-LocalMySql @"
+SELECT CASE
+  WHEN COUNT(*) = 0 THEN 'seed'
+  WHEN MAX(HEX(metric_name)) = 'E5AE9EE99985E588B0E8B4A6'
+    AND MAX(HEX(description)) = 'E69C89E69588E694B6E6ACBEE6B581E6B0B4E4B8ADE79A84E5AE9EE99985E588B0E8B4A6E98791E9A29DEFBC8CE58C85E590ABE78EB0E98791E38081E8BDACE8B4A6E38081E5BEAEE4BFA1E5928CE694AFE4BB98E5AE9D'
+    THEN 'ready'
+  ELSE 'stale'
+END
+FROM rpt_metric_definition
+WHERE metric_code = 'cash_received_amount'
+"@
+    if ($status -eq 'ready') {
+        Write-Output 'Local report metric ready: actual received amount'
+        return
+    }
+    if ($status -eq 'seed') {
+        Write-Output 'Local actual received metric is not seeded yet; application bootstrap will create it.'
+        return
+    }
+
+    Write-Output 'Local report metric label is stale: applying V3.62...'
+    Invoke-LocalMigration (Join-Path $Root 'sql/V3.62__clarify_actual_received_amount_semantics.sql')
+    $verified = Invoke-LocalMySql "SELECT COUNT(*) FROM rpt_metric_definition WHERE metric_code = 'cash_received_amount' AND HEX(metric_name) = 'E5AE9EE99985E588B0E8B4A6'"
+    if ($verified -ne '1') {
+        throw 'Local actual received metric semantic is still stale after V3.62.'
     }
 }

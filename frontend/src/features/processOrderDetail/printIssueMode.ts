@@ -1,4 +1,5 @@
-import type { PrintViewVersion } from '../../types/processOrder'
+import type { PrintViewVersion, ProcessOrderPrintStage } from '../../types/processOrder'
+import { resolveProcessOrderStatus } from './processOrderPrintStage'
 
 export type PrintIssueMode = 'issue' | 'unprinted' | 'reprint' | 'audited-reprint' | 'preview'
 
@@ -7,12 +8,14 @@ export function resolvePrintIssueMode(
   printCount?: number,
   version: PrintViewVersion = 'ISSUED',
   printStatus?: number,
+  printStage?: ProcessOrderPrintStage,
 ): PrintIssueMode {
-  if (version === 'FINISHED') return orderStatus != null && orderStatus >= 4 && orderStatus <= 5 ? 'audited-reprint' : 'preview'
-  if (orderStatus === 1 && (printCount ?? 0) === 0) return 'issue'
-  if (orderStatus === 2 && printStatus === 0 && (printCount ?? 0) === 0) return 'unprinted'
-  if (orderStatus === 2 && (printCount ?? 0) > 0) return 'reprint'
-  if (orderStatus != null && orderStatus >= 3 && orderStatus <= 5) return 'audited-reprint'
+  const effectiveStatus = resolveProcessOrderStatus(printStage, orderStatus)
+  if (version === 'FINISHED') return effectiveStatus >= 4 && effectiveStatus <= 5 ? 'audited-reprint' : 'preview'
+  if (effectiveStatus === 1 && (printCount ?? 0) === 0) return 'issue'
+  if (effectiveStatus === 2 && printStatus === 0 && (printCount ?? 0) === 0) return 'unprinted'
+  if (effectiveStatus === 2 && (printCount ?? 0) > 0) return 'reprint'
+  if (effectiveStatus >= 3 && effectiveStatus <= 5) return 'audited-reprint'
   return 'preview'
 }
 

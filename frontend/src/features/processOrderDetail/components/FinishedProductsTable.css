@@ -26,6 +26,11 @@
   border-radius: var(--mes-radius-sm);
 }
 
+.finished-products-sort-toolbar {
+  display: flex;
+  align-items: center;
+}
+
 .physical-specification-detail-view,
 .physical-specification-detail-view > section {
   display: flex;

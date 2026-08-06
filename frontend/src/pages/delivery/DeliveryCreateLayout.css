@@ -1,0 +1,44 @@
+.document-module-page.delivery-create-page:not(.delivery-create-page--selection-expanded) {
+  --delivery-create-table-body-height: clamp(420px, calc(100vh - 500px), 560px);
+
+  height: auto;
+  min-height: max(560px, calc(100vh - 126px));
+  overflow: visible;
+}
+
+.document-module-page.delivery-create-page:not(.delivery-create-page--selection-expanded)
+  .delivery-create-page__selection {
+  min-height: 560px;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.document-module-page.delivery-create-page:not(.delivery-create-page--selection-expanded)
+  .delivery-create-page__selection > .ant-card-body {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.document-module-page.delivery-create-page:not(.delivery-create-page--selection-expanded)
+  .delivery-create-page__selection .document-module-table,
+.document-module-page.delivery-create-page:not(.delivery-create-page--selection-expanded)
+  .delivery-create-page__selection .ant-table-wrapper,
+.document-module-page.delivery-create-page:not(.delivery-create-page--selection-expanded)
+  .delivery-create-page__selection .ant-spin-nested-loading,
+.document-module-page.delivery-create-page:not(.delivery-create-page--selection-expanded)
+  .delivery-create-page__selection .ant-spin-container,
+.document-module-page.delivery-create-page:not(.delivery-create-page--selection-expanded)
+  .delivery-create-page__selection .ant-table,
+.document-module-page.delivery-create-page:not(.delivery-create-page--selection-expanded)
+  .delivery-create-page__selection .ant-table-container {
+  flex: 0 0 auto;
+}
+
+.document-module-page.delivery-create-page:not(.delivery-create-page--selection-expanded)
+  .delivery-create-page__selection .ant-table-body {
+  height: var(--delivery-create-table-body-height);
+  min-height: 420px;
+  max-height: var(--delivery-create-table-body-height) !important;
+  flex: 0 0 auto;
+  scrollbar-gutter: stable;
+}

@@ -1,4 +1,5 @@
 import { Button, Form, Space, Spin, message } from 'antd'
+import { notifyErrorOnce } from '../../api/request'
 import { DeleteOutlined, DownloadOutlined, PrinterOutlined, WalletOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
@@ -75,15 +76,27 @@ export default function SettleDetailPage() {
 
   const handleExport = async () => {
     if (uuid) {
-      await exportMutation.mutateAsync({ uuid, requestId: crypto.randomUUID() })
+      const completed = await exportMutation.mutateAsync({ uuid, requestId: crypto.randomUUID() })
+        .then(() => true)
+        .catch((error) => {
+          notifyErrorOnce(error, '结算单导出失败，请刷新后重试')
+          return false
+        })
+      if (!completed) return
       message.success('已加入导出任务，可在右上角下载任务中心查看')
     }
   }
 
   const handlePrint = async () => {
     setActiveTab('print')
-    if (uuid) {
-      await printLinesQuery.refetch()
+    try {
+      if (uuid) {
+        const refreshed = await printLinesQuery.refetch()
+        if (refreshed.isError) throw refreshed.error
+      }
+    } catch (error) {
+      notifyErrorOnce(error, '结算打印数据刷新失败，请重试后再打印')
+      return
     }
     window.setTimeout(() => {
       document.querySelector<HTMLElement>('.document-module-card--print')
@@ -93,20 +106,52 @@ export default function SettleDetailPage() {
   }
 
   const retrySection = () => {
-    if (activeTab === 'audit') return void operationLogsQuery.refetch()
-    if (activeTab === 'receives') return void receivesQuery.refetch()
+    if (activeTab === 'audit') {
+      return void operationLogsQuery.refetch().catch((error) => notifyErrorOnce(error, '审计记录刷新失败，请重试'))
+    }
+    if (activeTab === 'receives') {
+      return void receivesQuery.refetch().catch((error) => notifyErrorOnce(error, '收款记录刷新失败，请重试'))
+    }
     void Promise.all([detailsQuery.refetch(), printLinesQuery.refetch()])
+      .catch((error) => notifyErrorOnce(error, '当前分区刷新失败，请重试'))
+  }
+
+  const refreshFinancialViews = async (failureMessage: string) => {
+    try {
+      const results = await Promise.all([
+        orderQuery.refetch(),
+        receivesQuery.refetch(),
+        detailsQuery.refetch(),
+        printLinesQuery.refetch(),
+      ])
+      const failed = results.find((result) => result.isError)
+      if (failed?.isError) throw failed.error
+    } catch (error) {
+      notifyErrorOnce(error, failureMessage)
+    }
   }
 
   async function handleConfirmAction() {
     const values = await actionForm.validateFields()
     if (!uuid || !actionTarget) return
     if (actionTarget.type === 'cancelReceive') {
-      await cancelReceiveMutation.mutateAsync({ uuid, receiveUuid: actionTarget.record.uuid, data: values })
+      const completed = await cancelReceiveMutation.mutateAsync({ uuid, receiveUuid: actionTarget.record.uuid, data: values })
+        .then(() => true)
+        .catch((error) => {
+          notifyErrorOnce(error, '撤销收款失败，请刷新后重试')
+          return false
+        })
+      if (!completed) return
       message.success('收款已撤销')
-      await Promise.all([orderQuery.refetch(), receivesQuery.refetch()])
+      await refreshFinancialViews('收款已撤销，但结算单刷新失败，请手动刷新页面')
     } else {
-      await voidSettleMutation.mutateAsync({ uuid, data: values })
+      const completed = await voidSettleMutation.mutateAsync({ uuid, data: values })
+        .then(() => true)
+        .catch((error) => {
+          notifyErrorOnce(error, '作废结算单失败，请刷新后重试')
+          return false
+        })
+      if (!completed) return
       message.success('结算单已作废')
       navigate(returnTo)
     }
@@ -193,7 +238,7 @@ export default function SettleDetailPage() {
         onClose={() => setReceiveOpen(false)}
         onSuccess={() => {
           setReceiveOpen(false)
-          void Promise.all([orderQuery.refetch(), receivesQuery.refetch()])
+          void refreshFinancialViews('收款已登记，但结算单刷新失败，请手动刷新页面')
         }}
       />
       <SettleActionReasonModal

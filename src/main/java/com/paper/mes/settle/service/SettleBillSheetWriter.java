@@ -45,7 +45,9 @@ final class SettleBillSheetWriter {
         summaryRow(sheet, 4, "应收合计", text(order.getTotalAmount()), "已结清", text(order.getReceivedAmount()));
         summaryRow(sheet, 5, "实际到账", text(order.getCashReceivedAmount()), "废纸抵扣", text(order.getScrapOffsetAmount()));
         summaryRow(sheet, 6, "优惠核销", text(order.getDiscountAmount()), "未收金额", text(order.getUnreceivedAmount()));
-        summaryRow(sheet, 7, "备注", order.getRemark(), "口径说明", "已结清由现金、废纸抵扣和优惠核销组成。");
+        summaryRow(sheet, 7, "备注", order.getRemark(), "未分解金额差异",
+                text(order.getHistoricalDifferenceAmount()));
+        summaryRow(sheet, 8, "口径说明", "已结清由实际到账、废纸抵扣和优惠核销组成。", "", "");
     }
 
     private static void writeHeader(Sheet sheet, CellStyle style) {
@@ -128,7 +130,7 @@ final class SettleBillSheetWriter {
         row.createCell(2).setCellValue(text(subtotal.processAmount));
         row.createCell(3).setCellValue("额外费");
         row.createCell(4).setCellValue(extraFeeText(subtotal));
-        row.createCell(5).setCellValue("税费 " + text(subtotal.taxAmount));
+        row.createCell(5).setCellValue(feeDifferenceText(subtotal));
         row.createCell(6).setCellValue("本单应收");
         row.createCell(7).setCellValue(text(subtotal.lineAmount));
         applyStyle(row, style);
@@ -146,6 +148,14 @@ final class SettleBillSheetWriter {
     private static String extraFeeText(SettleExportSubtotal subtotal) {
         String amount = text(subtotal.extraAmount);
         return subtotal.extraFeeSummary == null ? amount : amount + "（" + subtotal.extraFeeSummary + "）";
+    }
+
+    private static String feeDifferenceText(SettleExportSubtotal subtotal) {
+        String result = "税费 " + text(subtotal.taxAmount);
+        if (subtotal.historicalDifferenceAmount.signum() != 0) {
+            result += " / 未分解差异 " + text(subtotal.historicalDifferenceAmount);
+        }
+        return result;
     }
 
     private static String orderKey(SettlePrintLineVO line) {

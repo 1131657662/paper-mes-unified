@@ -14,14 +14,17 @@ import { useRollbackDelivery } from '../../features/delivery/hooks/useRollbackDe
 import { useDeliveryCustomerSpecs } from '../../features/deliveryCustomerSpec/useDeliveryCustomerSpecs'
 import type { DeliveryDocumentView } from '../../features/deliveryCustomerSpec/deliveryCustomerSpecTypes'
 import type { DeliveryDetail } from '../../types/delivery'
+import type { DeliveryExportSortChains } from '../../types/deliverySort'
 import DeliveryAppendItemsModal from './DeliveryAppendItemsModal'
-import DeliveryPrintSheet from './DeliveryPrintSheet'
+import DeliveryPrintPreviewCard from './DeliveryPrintPreviewCard'
 import DeliveryRollbackSnapshotCard from './DeliveryRollbackSnapshotCard'
 import DeliveryCustomerDocumentSection from './DeliveryCustomerDocumentSection'
 import DeliveryDetailHeader, { type DeliveryDetailHeaderActions } from './DeliveryDetailHeader'
 import DeliveryPendingEditModal from './DeliveryPendingEditModal'
 import { DeliveryOverview, DeliveryPickupInfo } from './DeliveryDetailSummary'
 import { useDeliveryPrintActions } from './useDeliveryPrintActions'
+import { useDeliveryDetailTableState } from './useDeliveryDetailTableState'
+import { buildDeliveryPrintProjection } from './deliveryPrintProjection'
 import { authorizeDeliveryConfirmation } from './deliveryConfirmAuthorization'
 import {
   askDeliveryCancelReason,
@@ -50,17 +53,48 @@ export default function DeliveryDetailPage() {
   const removeDetailMutation = useRemoveDeliveryDetail()
   const detail = detailQuery.data
   const order = detail?.order
-  const customerSpecQuery = useDeliveryCustomerSpecs(order?.deliveryStatus === 3 ? undefined : uuid)
+  const detailTableState = useDeliveryDetailTableState()
+  const customerSpecQuery = useDeliveryCustomerSpecs(uuid)
+  const sortChains = {
+    physical: detailTableState.physical.sortChain,
+    customer: detailTableState.customer.sortChain,
+    trace: detailTableState.trace.sortChain,
+  } satisfies DeliveryExportSortChains
+  const printProjection = detail ? buildDeliveryPrintProjection({
+    detail, customerSpecs: customerSpecQuery.data, variant: documentView, sortChains,
+  }) : undefined
   const shouldAutoPrint = new URLSearchParams(location.search).get('print') === '1'
-  const customerDocumentReady = documentView === 'physical' || Boolean(customerSpecQuery.data)
   const { printPreviewRef, requestPrint } = useDeliveryPrintActions({
-    detailReady: Boolean(detail), documentReady: customerDocumentReady, shouldAutoPrint,
+    detailReady: Boolean(detail),
+    documentReady: printProjection?.status === 'ready',
+    documentError: printProjection?.status === 'invalid' ? printProjection.message : undefined,
+    shouldAutoPrint,
   })
+
+  const refreshDetailSafely = async (failureMessage: string) => {
+    try {
+      const refreshed = await detailQuery.refetch()
+      if (refreshed.isError) throw refreshed.error
+    } catch (error) {
+      notifyErrorOnce(error, failureMessage)
+    }
+  }
 
   const handleExport = async () => {
     if (exportMutation.isPending) return
     if (uuid) {
-      await exportMutation.mutateAsync({ uuid, customerRevisionNo: customerSpecQuery.data?.currentRevisionNo ?? 0 })
+      const completed = await exportMutation.mutateAsync({
+        uuid,
+        customerRevisionNo: customerSpecQuery.data?.currentRevisionNo ?? 0,
+        documentView,
+        sortChains,
+      })
+        .then(() => true)
+        .catch((error) => {
+          notifyErrorOnce(error, '出库单导出失败，请刷新后重试')
+          return false
+        })
+      if (!completed) return
       message.success('已加入导出任务，可在右上角下载任务中心查看')
     }
   }
@@ -78,10 +112,10 @@ export default function DeliveryDetailPage() {
       ), 1, canReleaseDelivery)
       if (!completed) return
       message.success('出库签收完成')
-      detailQuery.refetch()
+      await refreshDetailSafely('出库已签收，但详情刷新失败，请手动刷新页面')
     } catch (error) {
       notifyErrorOnce(error, '出库签收失败，请刷新后重试')
-      await detailQuery.refetch()
+      await refreshDetailSafely('出库详情刷新失败，请手动刷新页面')
     }
   }
 
@@ -90,16 +124,28 @@ export default function DeliveryDetailPage() {
     if (!uuid || !order) return
     const reason = await askDeliveryRollbackReason(order.deliveryNo).catch(() => null)
     if (!reason) return
-    await rollbackMutation.mutateAsync({ uuid, data: { reason } })
+    const completed = await rollbackMutation.mutateAsync({ uuid, data: { reason } })
+      .then(() => true)
+      .catch((error) => {
+        notifyErrorOnce(error, '出库单回退失败，请刷新后重试')
+        return false
+      })
+    if (!completed) return
     message.success('已回退为待出库，可继续改单')
-    detailQuery.refetch()
+    await refreshDetailSafely('出库单已回退，但详情刷新失败，请手动刷新页面')
   }
 
   const handleCancel = async () => {
     if (cancelMutation.isPending || !canManageDelivery || !uuid || !order) return
     const reason = await askDeliveryCancelReason(order.deliveryNo)
     if (!reason) return
-    await cancelMutation.mutateAsync({ uuid, data: { reason } })
+    const completed = await cancelMutation.mutateAsync({ uuid, data: { reason } })
+      .then(() => true)
+      .catch((error) => {
+        notifyErrorOnce(error, '取消出库单失败，请刷新后重试')
+        return false
+      })
+    if (!completed) return
     message.success('待出库单已作废，成品库存已释放')
     navigate('/delivery-orders')
   }
@@ -109,9 +155,15 @@ export default function DeliveryDetailPage() {
     if (!uuid) return
     const confirmed = await confirmRemoveDeliveryDetail(record.finishRollNo)
     if (!confirmed) return
-    await removeDetailMutation.mutateAsync({ uuid, detailUuid: record.uuid })
+    const completed = await removeDetailMutation.mutateAsync({ uuid, detailUuid: record.uuid })
+      .then(() => true)
+      .catch((error) => {
+        notifyErrorOnce(error, '移除出库明细失败，请刷新后重试')
+        return false
+      })
+    if (!completed) return
     message.success('已从本张出库单移出')
-    detailQuery.refetch()
+    await refreshDetailSafely('明细已移除，但出库单刷新失败，请手动刷新页面')
   }
 
   const headerActions = {
@@ -150,7 +202,7 @@ export default function DeliveryDetailPage() {
 
             <DeliveryPickupInfo order={detail.order} />
 
-            {customerSpecQuery.isError && order?.deliveryStatus !== 3 && (
+            {customerSpecQuery.isError && (
               <QueryLoadErrorAlert message="客户单据口径加载失败"
                 description="为避免打印错误口径，客户单据与追溯视图暂不可打印；仓库实物视图不受影响。"
                 onRetry={() => void customerSpecQuery.refetch()} />
@@ -162,7 +214,8 @@ export default function DeliveryDetailPage() {
               detail={detail}
               loading={customerSpecQuery.isLoading}
               view={documentView}
-              onReload={() => void detailQuery.refetch()}
+              sortState={detailTableState}
+              onReload={() => void refreshDetailSafely('出库单详情刷新失败，请手动刷新页面')}
               onRemove={handleRemove}
               onViewChange={setDocumentView}
             />
@@ -175,9 +228,12 @@ export default function DeliveryDetailPage() {
               <DocumentAuditTimeline logs={detail.operationLogs ?? []} />
             </Card>
 
-            <Card ref={printPreviewRef} className="document-module-card document-module-card--print" title="司机单据预览">
-              <DeliveryPrintSheet detail={detail} customerSpecs={customerSpecQuery.data} variant={documentView} />
-            </Card>
+            {printProjection && <DeliveryPrintPreviewCard
+              ref={printPreviewRef}
+              detail={detail}
+              customerSpecs={customerSpecQuery.data}
+              projection={printProjection}
+            />}
 
             <DeliveryAppendItemsModal
               customerName={detail.order.customerName}
@@ -186,7 +242,7 @@ export default function DeliveryDetailPage() {
               deliveryUuid={detail.order.uuid}
               open={appendOpen}
               onClose={() => setAppendOpen(false)}
-              onSuccess={() => detailQuery.refetch()}
+              onSuccess={() => void refreshDetailSafely('明细已追加，但出库单刷新失败，请手动刷新页面')}
             />
 
             {editOpen && (

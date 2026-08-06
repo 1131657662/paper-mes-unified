@@ -32,3 +32,10 @@ describe('resolvePrintIssueMode', () => {
     expect(resolvePrintIssueMode(2, 1, 'FINISHED')).toBe('preview')
   })
 })
+
+describe('server print stage compatibility', () => {
+  it('prefers the explicit stage when legacy numeric status is stale', () => {
+    expect(resolvePrintIssueMode(1, 0, 'ISSUED', 0, 'PENDING_MANUAL_CONFIRM')).toBe('unprinted')
+    expect(resolvePrintIssueMode(2, 0, 'ISSUED', 0, 'PENDING_ISSUE')).toBe('issue')
+  })
+})

@@ -9,12 +9,21 @@ final class DeliveryExportText {
     private DeliveryExportText() {
     }
 
-    static String specText(DeliveryDetailItemVO item) {
-        StringBuilder value = new StringBuilder();
-        append(value, item.getFinishWidth() == null ? null : item.getFinishWidth() + "mm");
-        append(value, item.getFinishDiameter() == null ? null : "φ" + item.getFinishDiameter());
-        append(value, item.getFinishCoreDiameter() == null ? null : "芯" + item.getFinishCoreDiameter());
-        return value.isEmpty() ? "-" : value.toString();
+    static String widthUnit(Integer value) {
+        return value == null ? "-" : "mm";
+    }
+
+    static String diameterUnit(Integer value) {
+        return storedDiameterUnit(value, 100);
+    }
+
+    static String coreDiameterUnit(Integer value) {
+        return storedDiameterUnit(value, 10);
+    }
+
+    private static String storedDiameterUnit(Integer value, int inchUpperBound) {
+        if (value == null) return "-";
+        return value > 0 && value < inchUpperBound ? "英寸" : "mm";
     }
 
     static String join(String left, String right) {

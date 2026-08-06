@@ -54,6 +54,9 @@ function GroupHeader({ group }: { group: SettleBillGroup }) {
       )}
       <Metric label="额外费" value={formatMoney(group.extraAmount)} hint={group.extraFeeSummary} />
       <Metric label="税费" value={formatMoney(group.taxAmount)} />
+      {group.historicalDifferenceAmount !== 0 && (
+        <Metric label="未分解差异" value={formatMoney(group.historicalDifferenceAmount)} />
+      )}
       <strong>应收 {formatMoney(group.lineAmount)}</strong>
     </div>
   )

@@ -37,7 +37,13 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted, onP
     isLoading: isLoadingPrintView,
     refetch: refetchPrintView,
   } = useProcessOrderPrintView(detail.order.uuid, version, open)
-  const mode = resolvePrintIssueMode(detail.order.orderStatus, detail.order.printCount, version, detail.order.printStatus)
+  const mode = resolvePrintIssueMode(
+    detail.order.orderStatus,
+    detail.order.printCount,
+    version,
+    detail.order.printStatus,
+    detail.printStage,
+  )
   const printDetail = printView?.detail ?? detail
   const disabledReason = isLoadingPrintView
     ? '正在加载打印版本，请稍候'
@@ -45,14 +51,38 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted, onP
 
   const openBrowserPrint = () => window.setTimeout(() => window.print(), 0)
 
+  const refreshPrintViewSafely = async (failureMessage: string) => {
+    try {
+      const refreshed = await refetchPrintView()
+      if (refreshed.isError) throw refreshed.error
+      return true
+    } catch (error) {
+      notifyErrorOnce(error, failureMessage)
+      return false
+    }
+  }
+
   const handleIssue = async () => {
-    const issueResult = await issueOrder()
+    let issueResult: PrintResultVO
+    try {
+      issueResult = await issueOrder()
+    } catch (error) {
+      notifyErrorOnce(error, '下发加工单失败，请刷新后重试')
+      return
+    }
     setResult(issueResult)
     setPendingConfirmation({ firstPrint: true, version })
     message.success('加工单已下发，请完成物理打印')
-    await onPrinted()
-    await refetchPrintView()
-    openBrowserPrint()
+    try {
+      await onPrinted()
+    } catch (error) {
+      notifyErrorOnce(error, '加工单已下发，但详情刷新失败，请手动刷新后再打印')
+      return
+    }
+    const refreshed = await refreshPrintViewSafely(
+      '加工单已下发，但打印视图刷新失败，请手动刷新后再打印',
+    )
+    if (refreshed) openBrowserPrint()
   }
 
   const handleOpenPrint = async () => {
@@ -71,28 +101,34 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted, onP
     if (!pendingConfirmation) return
     const confirmation = pendingConfirmation
     const dto = confirmation.reason ? { reason: confirmation.reason } : undefined
+    let printResult: PrintResultVO
     try {
-      const printResult = confirmation.firstPrint
+      printResult = confirmation.firstPrint
         ? await onPrintConfirmed(dto)
         : mode === 'audited-reprint'
         ? await physicalReprint({ reason: confirmation.reason ?? '', version: confirmation.version })
         : await printOrder(dto)
-      setResult(printResult)
-      setPendingConfirmation(null)
-      await onPrinted()
-      message.success(printResult.reprint ? '补打已确认' : '打印已确认')
     } catch (error) {
       setPendingConfirmation(confirmation)
       notifyErrorOnce(error, '打印确认失败，确认按钮仍可重试')
-    } finally {
-      await refetchPrintView()
+      await refreshPrintViewSafely('打印状态刷新失败，请手动刷新页面')
+      return
     }
+    setResult(printResult)
+    setPendingConfirmation(null)
+    message.success(printResult.reprint ? '补打已确认' : '打印已确认并转入待回录')
+    try {
+      await onPrinted()
+    } catch (error) {
+      notifyErrorOnce(error, '打印已确认，但详情刷新失败，请手动刷新页面')
+    }
+    await refreshPrintViewSafely('打印已确认，但打印视图刷新失败，请手动刷新页面')
   }
 
   return (
     <>
       <Drawer
-      title={printIssueDrawerTitle(mode, version)}
+        title={printIssueDrawerTitle(mode, version)}
         rootClassName="print-issue-drawer-root"
         className="print-issue-drawer"
         width="min(1180px, calc(100vw - 32px))"

@@ -1,4 +1,5 @@
 import { Input, Modal, message } from 'antd'
+import { notifyErrorOnce } from '../../api/request'
 
 interface ConfirmStatusChangeParams {
   orderNo?: string
@@ -45,7 +46,12 @@ export function confirmOrderStatusChange({
         message.warning('请填写原因')
         throw new Error('状态变更原因不能为空')
       }
-      await onConfirm(trimmed || undefined)
+      try {
+        await onConfirm(trimmed || undefined)
+      } catch (error) {
+        notifyErrorOnce(error, '操作失败，请刷新后重试')
+        throw error
+      }
     },
   })
 }

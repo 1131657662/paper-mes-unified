@@ -4,6 +4,7 @@ import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.entity.ProcessStep;
+import com.paper.mes.processorder.service.ProcessOrderPrintStage;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -17,6 +18,8 @@ import java.util.List;
 public class ProcessOrderDetailVO {
 
     private ProcessOrder order;
+
+    private ProcessOrderPrintStage printStage;
 
     private List<OriginalRoll> originalRolls;
 

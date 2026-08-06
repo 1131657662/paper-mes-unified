@@ -1,4 +1,5 @@
 import type { PageQuery } from './common'
+import type { ProcessOrderSettlementMode } from './settlementSemantics'
 
 export type {
   ReportDimensionAnalysisVO, ReportPageAnalysisVO, ReportProductionAnalysisVO,
@@ -15,7 +16,7 @@ export interface ReportQuery {
   processStepType?: number
   processMode?: number
   machineUuid?: string
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
   isInvoice?: number
   orderStatus?: number
   dimension?: ReportDimension
@@ -183,7 +184,7 @@ export interface ReportDetailVO {
   orderDate: string
   accountingDate: string
   customerName: string
-  settleType: number
+  settleType: ProcessOrderSettlementMode
   isInvoice: number
   orderStatus: number
   originalRollCount: number

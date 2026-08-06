@@ -25,6 +25,7 @@ export default function SubmitSuccessPanel({
   onViewDetail,
 }: Props) {
   const finishNos = result.finishRollNos ?? []
+  const remainNos = result.remainRollNos ?? []
   const spareNos = result.spareRollNos ?? []
   const status = ORDER_STATUS[result.orderStatus ?? 1]
 
@@ -42,11 +43,13 @@ export default function SubmitSuccessPanel({
       <div className="submit-success-panel__stats">
         <Statistic title="加工单号" value={result.orderNo ?? '-'} />
         <Statistic title="正式卷号" value={formatNumber(finishNos.length)} suffix="个" />
+        <Statistic title="余料卷号" value={formatNumber(remainNos.length)} suffix="个" />
         <Statistic title="备用卷号" value={formatNumber(spareNos.length)} suffix="个" />
       </div>
 
       <div className="submit-success-panel__rolls">
         <RollNumberGroup title="正式卷号" numbers={finishNos} color="blue" />
+        <RollNumberGroup title="余料卷号" numbers={remainNos} color="gold" />
         <RollNumberGroup title="备用卷号" numbers={spareNos} color="default" />
       </div>
 
@@ -66,7 +69,10 @@ export default function SubmitSuccessPanel({
           <Button icon={<PlusOutlined />} onClick={onCreateAnother}>
             继续新建
           </Button>
-          <Button icon={<CopyOutlined />} onClick={() => copyRollNumbers([...finishNos, ...spareNos])}>
+          <Button
+            icon={<CopyOutlined />}
+            onClick={() => copyRollNumbers([...finishNos, ...remainNos, ...spareNos])}
+          >
             复制卷号
           </Button>
         </Space>

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.delivery.dto.DeliveryCustomerRevisionPreviewVO;
 import com.paper.mes.delivery.dto.DeliveryCustomerSpecVO;
+import com.paper.mes.delivery.dto.DeliverySortSpec;
 import com.paper.mes.delivery.entity.DeliveryCustomerRevision;
 import com.paper.mes.delivery.service.DeliveryCustomerRevisionPreviewService;
 import com.paper.mes.delivery.service.DeliveryCustomerRevisionReader;
@@ -37,6 +38,23 @@ class DeliveryOrderExportRevisionSnapshotTest {
 
         assertThat(objectMapper.readTree(payload).get("customerRevisionNo").asInt()).isEqualTo(2);
         assertThat(objectMapper.readTree(payload).get("documentFingerprint").asText()).hasSize(64);
+    }
+
+    @Test
+    void capture_persistsCustomerAndTraceSortChainsWithActiveView() throws Exception {
+        when(previewService.current("delivery-1")).thenReturn(preview("paper-a"));
+
+        String payload = snapshot.capture("delivery-1", 2, 1,
+                java.util.List.of(),
+                java.util.List.of(new DeliverySortSpec("customerPaperName", "asc")),
+                java.util.List.of(new DeliverySortSpec("sourceMotherRoll", "desc")),
+                "trace");
+
+        assertThat(objectMapper.readTree(payload).get("documentView").asText()).isEqualTo("trace");
+        assertThat(objectMapper.readTree(payload).get("customerSortChain").get(0).get("field").asText())
+                .isEqualTo("customerPaperName");
+        assertThat(objectMapper.readTree(payload).get("traceSortChain").get(0).get("direction").asText())
+                .isEqualTo("desc");
     }
 
     @Test

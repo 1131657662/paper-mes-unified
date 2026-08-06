@@ -26,13 +26,21 @@ final class SettleAmountSnapshotReader {
         Amounts detailAmounts = amountsFromDetails(details);
         JsonNode root = snapshotRoot(settle.getSnapBill(), objectMapper);
         if (root == null) {
-            return detailAmounts;
+            return applyInvoicePolicy(settle, detailAmounts);
         }
 
         BigDecimal noTax = firstNonNull(decimalValue(root, "amount_no_tax", "amountNoTax"), settle.getAmountNoTax());
         BigDecimal tax = firstNonNull(decimalValue(root, "tax_amount", "taxAmount"), settle.getTaxAmount());
         BigDecimal total = firstNonNull(decimalValue(root, "total_amount", "totalAmount"), settle.getTotalAmount());
-        return completeAmounts(noTax, tax, total, detailAmounts);
+        return applyInvoicePolicy(settle, completeAmounts(noTax, tax, total, detailAmounts));
+    }
+
+    private static Amounts applyInvoicePolicy(SettleOrder settle, Amounts source) {
+        if (!Integer.valueOf(2).equals(settle.getIsInvoice())) {
+            return source.withDifference(BigDecimal.ZERO);
+        }
+        BigDecimal difference = money(source.total().subtract(source.noTax()));
+        return new Amounts(source.noTax(), BigDecimal.ZERO.setScale(MONEY_SCALE), source.total(), difference);
     }
 
     private static Amounts amountsFromDetails(List<SettleDetail> details) {
@@ -42,7 +50,7 @@ final class SettleAmountSnapshotReader {
             noTax = noTax.add(detailBaseAmount(detail));
             total = total.add(nz(detail.getOrderAmount()));
         }
-        return new Amounts(money(noTax), money(total.subtract(noTax)), money(total));
+        return new Amounts(money(noTax), money(total.subtract(noTax)), money(total), BigDecimal.ZERO);
     }
 
     private static Amounts completeAmounts(BigDecimal noTax, BigDecimal tax, BigDecimal total, Amounts fallback) {
@@ -58,7 +66,7 @@ final class SettleAmountSnapshotReader {
         return new Amounts(
                 money(firstNonNull(noTax, fallback.noTax())),
                 money(firstNonNull(tax, fallback.tax())),
-                money(firstNonNull(total, fallback.total())));
+                money(firstNonNull(total, fallback.total())), BigDecimal.ZERO);
     }
 
     private static BigDecimal detailBaseAmount(SettleDetail detail) {
@@ -108,6 +116,9 @@ final class SettleAmountSnapshotReader {
         return value == null ? BigDecimal.ZERO : value;
     }
 
-    record Amounts(BigDecimal noTax, BigDecimal tax, BigDecimal total) {
+    record Amounts(BigDecimal noTax, BigDecimal tax, BigDecimal total, BigDecimal difference) {
+        Amounts withDifference(BigDecimal value) {
+            return new Amounts(noTax, tax, total, value);
+        }
     }
 }

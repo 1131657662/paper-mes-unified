@@ -72,11 +72,36 @@ class ProcessOrderServiceImplCompletionPrintGateTest {
     @Test
     void completeProcessing_withConfirmedPrint_movesToRecord() {
         order.setPrintCount(1);
+        order.setPrintStatus(1);
 
         service.completeProcessing(order.getUuid(), "车间完成");
 
         assertEquals(3, order.getOrderStatus());
         assertTrue(service.updated);
+    }
+
+    @Test
+    void completeProcessing_withCountOnlyRejectsUnconfirmedRecord() {
+        order.setPrintCount(1);
+        order.setPrintStatus(0);
+
+        assertThrows(BusinessException.class,
+                () -> service.completeProcessing(order.getUuid(), "车间完成"));
+        assertEquals(2, order.getOrderStatus());
+        assertFalse(service.updated);
+    }
+
+    @Test
+    void printAndCompleteProcessing_withExistingConfirmationCompletesWithoutReprint() {
+        order.setPrintCount(1);
+        order.setPrintStatus(1);
+        service.atomicCommand = false;
+
+        PrintResultVO result = service.printAndCompleteProcessing(order.getUuid(), new PrintDTO());
+
+        assertEquals(3, order.getOrderStatus());
+        assertEquals(1, order.getPrintCount());
+        assertEquals(3, result.getOrderStatus());
     }
 
     @Test

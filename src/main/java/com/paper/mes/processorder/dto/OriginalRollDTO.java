@@ -1,5 +1,6 @@
 package com.paper.mes.processorder.dto;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +14,9 @@ import java.math.BigDecimal;
  */
 @Data
 public class OriginalRollDTO {
+
+    /** 草稿保存时用于保留已有母卷身份；新建母卷不传。 */
+    private String uuid;
 
     /** 客户内部编号 */
     private String extraNo;
@@ -43,6 +47,7 @@ public class OriginalRollDTO {
 
     /** 件数，默认 1。 */
     @Min(value = 1, message = "件数至少为1")
+    @Max(value = 500, message = "件数不能超过500")
     private Integer pieceNum;
 
     private String batchNo;

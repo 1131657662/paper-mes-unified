@@ -5,11 +5,12 @@ import {
   EditOutlined,
   FileDoneOutlined,
   MoreOutlined,
+  PlusOutlined,
   PrinterOutlined,
   RollbackOutlined,
-  SendOutlined,
   StopOutlined,
 } from '@ant-design/icons'
+import { hasHistoricalUnconfirmedPrint } from '../processOrderPrintStage'
 
 export interface ExecutionActionHandlers {
   onPrint: () => void
@@ -18,6 +19,7 @@ export interface ExecutionActionHandlers {
   onBackRecord: () => void
   onSnapshotDiff: () => void
   onManageRolls: () => void
+  onAppendRolls?: () => void
   onEditDraft: () => void
   onChangeStatus: (targetStatus: number, title: string) => void
   onCalcFee: () => void
@@ -33,6 +35,7 @@ export interface ExecutionLoading {
   preparingReissue?: boolean
   calculatingFee?: boolean
   voidingOrder?: boolean
+  startingAppend?: boolean
 }
 
 export interface ExecutionCapabilities {
@@ -61,6 +64,10 @@ export default function ExecutionActions(props: Props) {
 }
 
 function PrimaryAction({ actions, capabilities, hasPrinted, loading, status }: Props) {
+  if (hasHistoricalUnconfirmedPrint(status, hasPrinted)) {
+    if (!capabilities.canManageOrder) return null
+    return <Button type="primary" icon={<PrinterOutlined />} onClick={actions.onPrint}>补确认历史打印</Button>
+  }
   if (status === 0 && !capabilities.canCreateOrder) return null
   if (status === 1 && !capabilities.canManageOrder) return null
   if (status === 2 && !capabilities.canManageOrder) return null
@@ -69,7 +76,7 @@ function PrimaryAction({ actions, capabilities, hasPrinted, loading, status }: P
   if (status === 5 && !capabilities.canManageDelivery) return null
   if (status === 0) return <Button type="primary" onClick={actions.onEditDraft}>继续编辑草稿</Button>
   if (status === 1) return <Button type="primary" icon={<PrinterOutlined />} onClick={actions.onPrint}>{hasPrinted ? '打印预览' : '下发并打印'}</Button>
-  if (status === 2 && !hasPrinted) return (
+  if (status === 2) return (
     <Button
       type="primary"
       icon={<PrinterOutlined />}
@@ -77,16 +84,6 @@ function PrimaryAction({ actions, capabilities, hasPrinted, loading, status }: P
       onClick={actions.onConfirmPrintAndToRecord}
     >
       确认打印并转待回录
-    </Button>
-  )
-  if (status === 2) return (
-    <Button
-      type="primary"
-      icon={<SendOutlined />}
-      loading={loading.changingStatus}
-      onClick={() => actions.onChangeStatus(3, '确认车间已完成加工，转入待回录？')}
-    >
-      转待回录
     </Button>
   )
   if (status === 3) return <Button type="primary" icon={<FileDoneOutlined />} onClick={actions.onBackRecord}>进入回录工作台</Button>
@@ -109,7 +106,13 @@ function SecondaryActions({ actions, capabilities, hasPrinted, loading, status }
   const moreItems = buildMoreItems(status, actions, capabilities)
   return (
     <Space wrap size={[8, 8]}>
-      {status >= 2 && status <= 5 && capabilities.canManageOrder && <Button icon={<PrinterOutlined />} onClick={actions.onPrint}>{status === 2 && !hasPrinted ? '完成打印' : '打印预览'}</Button>}
+      {capabilities.canCreateOrder && actions.onAppendRolls && (status === 0 || status === 1) && (
+        <Button icon={<PlusOutlined />} loading={loading.startingAppend} onClick={actions.onAppendRolls}>
+          追加母卷
+        </Button>
+      )}
+      {status >= 2 && status <= 5 && capabilities.canManageOrder && !hasHistoricalUnconfirmedPrint(status, hasPrinted)
+        && <Button icon={<PrinterOutlined />} onClick={actions.onPrint}>{status === 2 && !hasPrinted ? '重新打开打印' : '打印预览'}</Button>}
       {capabilities.canManageOrder && status >= 1 && status <= 3 && <Button onClick={actions.onManageRolls}>管理成品号</Button>}
       {capabilities.canManageOrder && status >= 2 && status <= 4 && <Button icon={<CalculatorOutlined />} loading={loading.calculatingFee} onClick={actions.onCalcFee}>重算计费</Button>}
       {(status === 4 || status === 5) && <Button icon={<DiffOutlined />} onClick={actions.onSnapshotDiff}>快照差异</Button>}
@@ -141,5 +144,6 @@ function rollbackItem(label: string, onClick: () => void) {
 }
 
 function isMoreLoading(loading: ExecutionLoading): boolean {
-  return Boolean(loading.changingStatus || loading.rollingBackDraft || loading.preparingReissue || loading.voidingOrder)
+  return Boolean(loading.changingStatus || loading.rollingBackDraft || loading.preparingReissue
+    || loading.voidingOrder || loading.startingAppend)
 }

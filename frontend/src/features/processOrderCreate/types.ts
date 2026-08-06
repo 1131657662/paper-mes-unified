@@ -6,6 +6,7 @@ import type {
   OriginalRoll,
   OriginalRollDTO,
 } from '../../types/processOrder'
+import type { ProcessOrderSettlementMode } from '../../types/settlementSemantics'
 
 export interface RollDraft extends OriginalRollDTO {
   localId: string
@@ -28,7 +29,7 @@ export interface ReferenceOption {
   version?: number
   defaultInvoice?: number
   settleDay?: number
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
   priceIncludeTax?: number
   rewindPrice?: number
   sawPrice?: number

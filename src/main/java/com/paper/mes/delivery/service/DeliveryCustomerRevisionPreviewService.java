@@ -19,6 +19,7 @@ import java.util.*;
 public class DeliveryCustomerRevisionPreviewService {
 
     private static final int DELIVERY_STATUS_OUT = 2;
+    private static final int DELIVERY_STATUS_VOID = 3;
     public static final String REVISION_KIND_LIVE = "LIVE_FINISH";
     public static final String REVISION_KIND_SYSTEM = "SYSTEM_BASELINE";
     public static final String REVISION_KIND_USER = "USER_REVISION";
@@ -43,7 +44,7 @@ public class DeliveryCustomerRevisionPreviewService {
     @Transactional(readOnly = true)
     public DeliveryCustomerRevisionPreviewVO preview(
             String deliveryUuid, DeliveryCustomerRevisionRequestDTO request) {
-        DeliveryOrder order = requireOrder(deliveryUuid);
+        DeliveryOrder order = requireEditableOrder(deliveryUuid);
         validateOrder(order, request.getExpectedDeliveryVersion());
         DeliveryCustomerRevision latest = reader.latestRevision(deliveryUuid);
         Map<String, DeliveryCustomerSpecItemDTO> requested = requestedItems(request);
@@ -105,7 +106,12 @@ public class DeliveryCustomerRevisionPreviewService {
     private DeliveryOrder requireOrder(String deliveryUuid) {
         DeliveryOrder order = orderMapper.selectById(deliveryUuid);
         if (order == null) throw new BusinessException(ErrorCode.E002, "出库单不存在");
-        if (order.getDeliveryStatus() != null && order.getDeliveryStatus() == 3) {
+        return order;
+    }
+
+    private DeliveryOrder requireEditableOrder(String deliveryUuid) {
+        DeliveryOrder order = requireOrder(deliveryUuid);
+        if (Integer.valueOf(DELIVERY_STATUS_VOID).equals(order.getDeliveryStatus())) {
             throw new BusinessException(ErrorCode.E001, "已作废出库单不能创建客户更正版");
         }
         return order;
@@ -143,7 +149,9 @@ public class DeliveryCustomerRevisionPreviewService {
     }
 
     private boolean usePhysicalBaseline(DeliveryOrder order, DeliveryCustomerRevision latest) {
-        return Integer.valueOf(DELIVERY_STATUS_OUT).equals(order.getDeliveryStatus()) && latest == null;
+        Integer status = order.getDeliveryStatus();
+        return latest == null && (Integer.valueOf(DELIVERY_STATUS_OUT).equals(status)
+                || Integer.valueOf(DELIVERY_STATUS_VOID).equals(status));
     }
 
     private String revisionKind(DeliveryOrder order, DeliveryCustomerRevision latest) {

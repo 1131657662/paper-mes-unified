@@ -8,6 +8,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.lang.reflect.Method;
+import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -78,8 +79,6 @@ class GlobalExceptionHandlerTest {
         assertResponseStatus("handleValidation",
                 org.springframework.web.bind.MethodArgumentNotValidException.class, HttpStatus.BAD_REQUEST);
         assertResponseStatus("handleDuplicateKey", Exception.class, HttpStatus.CONFLICT);
-        assertResponseStatus("handleBadSqlGrammar",
-                org.springframework.jdbc.BadSqlGrammarException.class, HttpStatus.INTERNAL_SERVER_ERROR);
         assertResponseStatus("handleDataIntegrity",
                 org.springframework.dao.DataIntegrityViolationException.class, HttpStatus.CONFLICT);
         assertResponseStatus("handleMissingParam",
@@ -90,6 +89,34 @@ class GlobalExceptionHandlerTest {
                 org.springframework.http.converter.HttpMessageNotReadableException.class, HttpStatus.BAD_REQUEST);
         assertResponseStatus("handleMethodNotSupported",
                 org.springframework.web.HttpRequestMethodNotSupportedException.class, HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
+    @Test
+    void missingTableReturnsServiceUnavailableWithoutExposingSql() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        var error = new org.springframework.jdbc.BadSqlGrammarException(
+                "query", "select secret", new SQLException("missing", "42S02", 1146));
+
+        var response = handler.handleBadSqlGrammar(error);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getErrorCode()).isEqualTo("DB_SCHEMA_NOT_READY");
+        assertThat(response.getBody().getMessage()).doesNotContain("select secret");
+    }
+
+    @Test
+    void ordinarySqlFailureDoesNotClaimSchemaIsOutOfDate() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        var error = new org.springframework.jdbc.BadSqlGrammarException(
+                "query", "select secret", new SQLException("syntax", "42000", 1064));
+
+        var response = handler.handleBadSqlGrammar(error);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getErrorCode()).isEqualTo("SQL_EXECUTION_ERROR");
+        assertThat(response.getBody().getMessage()).doesNotContain("数据库结构未同步");
     }
 
     private void assertResponseStatus(String methodName, Class<?> parameterType, HttpStatus expected) throws Exception {

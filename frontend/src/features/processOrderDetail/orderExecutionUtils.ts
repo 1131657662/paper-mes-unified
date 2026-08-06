@@ -1,5 +1,6 @@
 import type { ProcessOrderDetailVO, RollProductionVO } from '../../types/processOrder'
 import { processModeRequiresMain } from '../../constants/processOrder'
+import { hasConfirmedProcessOrderPrint, hasHistoricalUnconfirmedPrint } from './processOrderPrintStage'
 
 export interface ExecutionSummary {
   officialCount: number
@@ -14,11 +15,19 @@ export function buildExecutionSummary(detail?: ProcessOrderDetailVO): ExecutionS
   const spareCount = (detail?.finishRolls ?? []).filter((roll) => roll.isSpare === 1 && roll.rollNoStatus !== 3).length
 
   const status = detail?.order?.orderStatus
+  const hasConfirmedPrint = hasConfirmedProcessOrderPrint(
+    detail?.order?.printStatus,
+    detail?.order?.printCount,
+  )
+  const historicalPrintRisk = status != null
+    && hasHistoricalUnconfirmedPrint(status, hasConfirmedPrint)
 
   return {
     officialCount,
     spareCount,
-    printableWarnings: status === 1 ? buildPrintableWarnings(productions, officialCount) : [],
+    printableWarnings: historicalPrintRisk
+      ? ['该历史加工单没有人工确认打印记录，请完成补打确认后再出库或结算']
+      : status === 1 ? buildPrintableWarnings(productions, officialCount) : [],
     statusHint: buildStatusHint(detail),
   }
 }
@@ -40,6 +49,13 @@ function buildPrintableWarnings(productions: RollProductionVO[], officialCount: 
 
 function buildStatusHint(detail?: ProcessOrderDetailVO): string {
   const status = detail?.order?.orderStatus
+  const hasConfirmedPrint = hasConfirmedProcessOrderPrint(
+    detail?.order?.printStatus,
+    detail?.order?.printCount,
+  )
+  if (status != null && hasHistoricalUnconfirmedPrint(status, hasConfirmedPrint)) {
+    return '历史单缺少人工确认打印记录，完成补打确认后才能继续流转。'
+  }
   if (status === 1) return '当前可以预览车间单据并打印下发，首打会锁定下发快照。'
   if (status === 2) return '车间加工中，可补打加工单，完工后转入待回录。'
   if (status === 3) return '等待录入车间实测重量，回录通过后生成完成快照。'

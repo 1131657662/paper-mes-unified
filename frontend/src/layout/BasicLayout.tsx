@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, Dropdown, Layout, Menu } from 'antd'
 import {
   DownOutlined,
+  InfoCircleOutlined,
   LogoutOutlined,
   UserOutlined,
 } from '@ant-design/icons'
@@ -22,6 +23,7 @@ import { buildMenuItems } from './appMenuItems'
 import { isEdgeScrollRoute } from './layoutRouteMode'
 import { defaultOpenMenuKeys } from './menuOpenKeys'
 import { roleLabel } from './roleLabel'
+import RuntimeVersionModal from '../features/runtime/components/RuntimeVersionModal'
 import '../styles/app-shell.css'
 
 const { Sider, Header, Content } = Layout
@@ -30,6 +32,7 @@ export default function BasicLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const contentRef = useRef<HTMLElement | null>(null)
+  const [runtimeVersionOpen, setRuntimeVersionOpen] = useState(false)
   const user = useAuthUser()
   const { signOut } = useAuthActions()
   const isOnline = useOnlineStatus()
@@ -80,6 +83,12 @@ export default function BasicLayout() {
                   onClick: () => navigate('/profile'),
                 },
                 {
+                  key: 'runtime-version',
+                  icon: <InfoCircleOutlined />,
+                  label: '运行版本',
+                  onClick: () => setRuntimeVersionOpen(true),
+                },
+                {
                   type: 'divider',
                 },
                 {
@@ -123,6 +132,7 @@ export default function BasicLayout() {
         <Content ref={contentRef} className={contentClassName}>
           <Outlet />
         </Content>
+        <RuntimeVersionModal open={runtimeVersionOpen} onClose={() => setRuntimeVersionOpen(false)} />
       </Layout>
     </Layout>
   )

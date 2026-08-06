@@ -1,4 +1,5 @@
 import type { PageQuery } from './common'
+import type { ProcessOrderSettlementMode } from './settlementSemantics'
 
 /** 客户实体，与后端 Customer 对应（含 BaseEntity 通用字段，按需取用）。 */
 export interface Customer {
@@ -9,7 +10,7 @@ export interface Customer {
   contact?: string
   phone?: string
   /** 结算方式 1次结 2月结 */
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
   settleDay?: number
   sawPrice?: number
   rewindPrice?: number
@@ -54,7 +55,7 @@ export interface CustomerSaveDTO {
   customerName: string
   contact?: string
   phone?: string
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
   settleDay?: number
   sawPrice?: number
   rewindPrice?: number

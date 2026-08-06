@@ -2,6 +2,7 @@ import { Alert, Tag } from 'antd'
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import { ORDER_STATUS } from '../../../constants/processOrder'
 import { buildExecutionSummary } from '../orderExecutionUtils'
+import { hasConfirmedProcessOrderPrint, resolveProcessOrderStatus } from '../processOrderPrintStage'
 import ExecutionActions, { type ExecutionActionHandlers, type ExecutionCapabilities, type ExecutionLoading } from './OrderExecutionActions'
 import OrderMetricStrip from './OrderMetricStrip'
 import OrderStatusProgress from './OrderStatusProgress'
@@ -15,8 +16,8 @@ interface Props {
 
 export default function OrderExecutionPanel({ detail, actions, capabilities, loading = {} }: Props) {
   const order = detail?.order
-  const status = order?.orderStatus ?? 0
-  const hasPrinted = order?.printStatus === 1 && (order.printCount ?? 0) > 0
+  const status = resolveProcessOrderStatus(detail?.printStage, order?.orderStatus)
+  const hasPrinted = hasConfirmedProcessOrderPrint(order?.printStatus, order?.printCount)
   const summary = buildExecutionSummary(detail)
   const statusText = ORDER_STATUS[status]?.text ?? '未知状态'
 

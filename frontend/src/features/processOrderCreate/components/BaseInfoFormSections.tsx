@@ -1,6 +1,7 @@
 import { Col, DatePicker, Form, Input, InputNumber, Row, Segmented, Select } from 'antd'
 import type { OrderSettlementMode } from '../../../types/processOrder'
 import type { ReferenceOption } from '../types'
+import type { ProcessOrderSettlementMode } from '../../../types/settlementSemantics'
 
 interface NumberOption {
   label: string
@@ -21,7 +22,7 @@ interface Props {
   onSettleModeChange: (mode: OrderSettlementMode) => void
   options: BaseInfoFieldOptions
   settleMode?: OrderSettlementMode
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
 }
 
 export default function BaseInfoFormSections(props: Props) {

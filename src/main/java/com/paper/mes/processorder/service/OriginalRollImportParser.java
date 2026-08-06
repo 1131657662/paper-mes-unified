@@ -139,6 +139,9 @@ public class OriginalRollImportParser {
         if (dto.getRollWeight() == null || dto.getRollWeight().signum() <= 0) {
             addError(preview, rowNumber, "单重", "单重必须大于0", raw);
         }
+        if (dto.getPieceNum() == null || dto.getPieceNum() < 1 || dto.getPieceNum() > 500) {
+            addError(preview, rowNumber, "件数", "件数必须在1到500之间", raw);
+        }
         if (preview.getErrors().stream().noneMatch(error -> error.getRowNumber() == rowNumber)) {
             dto.setProcessMode(1);
             dto.setMainStepType(2);

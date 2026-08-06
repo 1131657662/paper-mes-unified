@@ -1,10 +1,11 @@
 import dayjs from 'dayjs'
 import { DISPLAY_TERMS } from '../../constants/displayTerms'
-import type { DeliveryCustomerRevisionPreview, DeliveryCustomerSpec, DeliveryDocumentView } from '../../features/deliveryCustomerSpec/deliveryCustomerSpecTypes'
+import type { DeliveryCustomerRevisionPreview } from '../../features/deliveryCustomerSpec/deliveryCustomerSpecTypes'
 import { deliveryOriginalSnapshotText, formatKg, formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryDetail, DeliveryDetailVO, DeliveryOrder } from '../../types/delivery'
 import { formatDateTime } from '../../utils/dateTime'
 import { formatGram, formatMm } from '../../utils/numberFormatters'
+import type { DeliveryPrintRow, ReadyDeliveryPrintProjection } from './deliveryPrintProjection'
 import '../../pages/documentModule.css'
 import './DeliveryPrintSheet.css'
 import './DeliveryPrintSheet.print.css'
@@ -12,22 +13,15 @@ import './DeliveryPrintSheet.print.css'
 interface Props {
   detail: DeliveryDetailVO
   customerSpecs?: DeliveryCustomerRevisionPreview
-  variant?: DeliveryDocumentView
+  projection: ReadyDeliveryPrintProjection
 }
 
-interface PrintTableProps extends Props {
-  totalWeight: number
-}
-
-export default function DeliveryPrintSheet({ detail, customerSpecs, variant = 'customer' }: Props) {
-  const totalWeight = variant === 'physical'
-    ? detail.order.totalWeight
-    : customerSpecs?.customerTotalWeight ?? detail.order.totalWeight
+export default function DeliveryPrintSheet({ detail, customerSpecs, projection }: Props) {
   return (
     <div className="document-print-area document-print-area--delivery">
       <article className="document-print-sheet delivery-print-sheet">
-        <DeliveryPrintHeader order={detail.order} title={printTitle(variant, customerSpecs)} />
-        <DeliveryPrintTable detail={detail} customerSpecs={customerSpecs} variant={variant} totalWeight={totalWeight} />
+        <DeliveryPrintHeader order={detail.order} title={printTitle(projection.variant, customerSpecs)} />
+        <DeliveryPrintTable projection={projection} />
         {detail.order.remark && <div className="delivery-print-remark"><strong>出库备注</strong><span>{detail.order.remark}</span></div>}
         <DeliveryPrintSignatures order={detail.order} />
         <div className="delivery-print-page-footer" aria-hidden="true">
@@ -59,37 +53,65 @@ function PrintInfo({ className = '', label, value }: { className?: string; label
   return <div className={`delivery-print-info__item ${className}`.trim()}><dt>{label}</dt><dd>{value}</dd></div>
 }
 
-function DeliveryPrintTable({ detail, customerSpecs, variant = 'customer', totalWeight }: PrintTableProps) {
-  const specIndex = new Map((customerSpecs?.items ?? []).map((item) => [item.deliveryDetailUuid, item]))
+function DeliveryPrintTable({ projection }: { projection: ReadyDeliveryPrintProjection }) {
+  const trace = projection.variant === 'trace'
   return (
     <section className="delivery-print-details">
-      <h2>{variant === 'customer' ? '提货明细' : variant === 'physical' ? '仓库出库明细' : '客户与实物对照'}</h2>
+      <h2>{projection.variant === 'customer' ? '提货明细' : projection.variant === 'physical' ? '仓库出库明细' : '客户与实物对照'}</h2>
       <table className="document-print-table delivery-print-table">
         <colgroup><col /><col /><col /><col /><col /><col /><col /></colgroup>
-        <thead><tr><th>序号</th><th>加工单</th><th>卷号</th><th>品名</th><th>规格</th><th>重量/kg</th><th>{variant === 'trace' ? '来源追溯' : '备注'}</th></tr></thead>
-        <tbody>{detail.details.map((item, index) => <PrintRow key={item.uuid} index={index} item={item} spec={specIndex.get(item.uuid)} variant={variant} />)}</tbody>
-        <tbody className="delivery-print-table__total"><tr><td colSpan={5}>合计：{detail.order.totalCount} 卷</td><td>{formatTon(totalWeight)}</td><td /></tr></tbody>
+        <thead><tr><th>序号</th><th>加工单</th><th>卷号</th><th>品名</th><th>规格</th><th>重量/kg</th><th>{trace ? '来源追溯' : '备注'}</th></tr></thead>
+        <tbody>{projection.rows.map((row, index) => <PrintRow key={row.key} index={index} row={row} />)}</tbody>
+        <tbody className="delivery-print-table__total"><tr><td colSpan={5}>合计：{projection.rows.length} 卷</td><td>{formatTon(projection.totalWeight)}</td><td /></tr></tbody>
       </table>
     </section>
   )
 }
 
-function PrintRow({ index, item, spec, variant }: { index: number; item: DeliveryDetail; spec?: DeliveryCustomerSpec; variant: DeliveryDocumentView }) {
-  const customer = variant !== 'physical'
+function PrintRow({ index, row }: { index: number; row: DeliveryPrintRow }) {
+  if (row.kind === 'physical') return <PhysicalPrintRow index={index} item={row.detail} />
+  if (row.kind === 'customer') return <CustomerPrintRow index={index} row={row} />
+  return <TracePrintRow index={index} row={row} />
+}
+
+function PhysicalPrintRow({ index, item }: { index: number; item: DeliveryDetail }) {
   return (
     <tr>
       <td>{index + 1}</td><td>{item.orderNo || '-'}</td><td>{printFinishRollNo(item)}</td>
-      <td><PrintValue customer={customer ? spec?.customerPaperName : undefined} physical={item.paperName} trace={variant === 'trace'} /></td>
-      <td><PrintValue customer={customer ? customerSpec(item, spec) : undefined} physical={physicalSpec(item)} trace={variant === 'trace'} /></td>
-      <td className="delivery-print-table__weight"><PrintValue customer={customer ? optionalWeight(spec?.customerDisplayWeight) : undefined} physical={formatKg(item.outWeight)} trace={variant === 'trace'} /></td>
-      <td>{variant === 'trace' ? deliveryOriginalSnapshotText(item) : customer ? spec?.customerRemark || item.actualRemark || '-' : item.actualRemark || '-'}</td>
+      <td>{item.paperName || '-'}</td><td>{physicalSpec(item)}</td>
+      <td className="delivery-print-table__weight">{formatKg(item.outWeight)}</td>
+      <td>{item.actualRemark || '-'}</td>
     </tr>
   )
 }
 
-function PrintValue({ customer, physical, trace }: { customer?: string; physical?: string; trace: boolean }) {
-  if (!trace) return <>{customer || physical || '-'}</>
-  return <div className="document-print-comparison"><strong>{customer || physical || '-'}</strong><span>实物：{physical || '-'}</span></div>
+function CustomerPrintRow({ index, row }: { index: number; row: Extract<DeliveryPrintRow, { kind: 'customer' }> }) {
+  const { detail, spec } = row
+  return (
+    <tr>
+      <td>{index + 1}</td><td>{detail.orderNo || '-'}</td><td>{printFinishRollNo(detail)}</td>
+      <td>{spec.customerPaperName || '-'}</td><td>{customerSpec(spec)}</td>
+      <td className="delivery-print-table__weight">{formatKg(spec.customerDisplayWeight)}</td>
+      <td>{spec.customerRemark || detail.actualRemark || '-'}</td>
+    </tr>
+  )
+}
+
+function TracePrintRow({ index, row }: { index: number; row: Extract<DeliveryPrintRow, { kind: 'trace' }> }) {
+  const { detail, spec } = row
+  return (
+    <tr>
+      <td>{index + 1}</td><td>{detail.orderNo || '-'}</td><td>{printFinishRollNo(detail)}</td>
+      <td><ComparisonValue primary={spec.customerPaperName} secondary={detail.paperName} /></td>
+      <td><ComparisonValue primary={customerSpec(spec)} secondary={physicalSpec(detail)} /></td>
+      <td className="delivery-print-table__weight"><ComparisonValue primary={formatKg(spec.customerDisplayWeight)} secondary={formatKg(detail.outWeight)} /></td>
+      <td>{deliveryOriginalSnapshotText(detail)}</td>
+    </tr>
+  )
+}
+
+function ComparisonValue({ primary, secondary }: { primary?: string; secondary?: string }) {
+  return <div className="document-print-comparison"><strong>{primary || '-'}</strong><span>实物：{secondary || '-'}</span></div>
 }
 
 function DeliveryPrintSignatures({ order }: { order: DeliveryOrder }) {
@@ -103,7 +125,7 @@ function DeliveryPrintSignatures({ order }: { order: DeliveryOrder }) {
   )
 }
 
-function printTitle(variant: DeliveryDocumentView, specs?: DeliveryCustomerRevisionPreview) {
+function printTitle(variant: ReadyDeliveryPrintProjection['variant'], specs?: DeliveryCustomerRevisionPreview) {
   if (variant === 'physical') return '出库单（仓库实物）'
   if (variant === 'trace') return '出库单（追溯对照）'
   if (specs?.currentRevisionKind === 'USER_REVISION') return `出库单（客户更正版 V${specs.currentRevisionNo}）`
@@ -122,10 +144,6 @@ function physicalSpec(item: Pick<DeliveryDetail, 'gramWeight' | 'finishWidth'>) 
   return `${formatGram(item.gramWeight)} × ${formatMm(item.finishWidth)}`
 }
 
-function customerSpec(item: Pick<DeliveryDetail, 'gramWeight' | 'finishWidth'>, spec?: DeliveryCustomerSpec) {
-  const gram = spec?.customerGramWeight == null ? formatGram(item.gramWeight) : formatGram(spec.customerGramWeight)
-  const width = spec?.customerFinishWidth == null ? formatMm(item.finishWidth) : formatMm(spec.customerFinishWidth)
-  return `${gram} × ${width}`
+function customerSpec(spec: Extract<DeliveryPrintRow, { kind: 'customer' | 'trace' }>['spec']) {
+  return `${formatGram(spec.customerGramWeight)} × ${formatMm(spec.customerFinishWidth)}`
 }
-
-const optionalWeight = (value?: number) => value == null ? undefined : formatKg(value)

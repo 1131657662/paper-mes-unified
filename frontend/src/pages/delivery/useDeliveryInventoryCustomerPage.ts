@@ -13,6 +13,7 @@ import { useHasPermission } from '../../stores/authStore'
 import type { DeliveryInventoryFilter } from '../../types/deliveryInventory'
 import { filtersForInventoryQuickFilter } from './deliveryInventoryModel'
 import { useDeliveryInventorySelection } from './useDeliveryInventorySelection'
+import { useDeliveryInventoryCustomerSortState } from './useDeliveryInventoryCustomerSortState'
 
 export function useDeliveryInventoryCustomerPage() {
   const navigate = useNavigate()
@@ -23,6 +24,7 @@ export function useDeliveryInventoryCustomerPage() {
   const [pageSize, setPageSize] = useState(20)
   const [view, setView] = useState<'rolls' | 'orders'>('rolls')
   const selection = useDeliveryInventorySelection()
+  const sortState = useDeliveryInventoryCustomerSortState()
   const query = { ...filters, customerUuid, current: page, size: pageSize }
   const finishQuery = useDeliveryInventoryFinishes(query, view === 'rolls')
   const orderGroupQuery = useDeliveryInventoryOrderGroups(query, view === 'orders')
@@ -69,6 +71,13 @@ export function useDeliveryInventoryCustomerPage() {
     rows, selected, selectedByUuid: selection.selectedByUuid, selectedKeys,
     selectionDisabled: selection.selectionDisabled, setView: changeView, summaryQuery,
     toggleGroup: selection.toggleGroup, toggleSelection: selection.toggleSelection, updateFilters,
-    validation, view, warehouses,
+    validation, view, warehouses, sortState,
+    activeSortCount: view === 'rolls'
+      ? sortState.finishes.sortChain.length
+      : sortState.groups.sortChain.length + sortState.detail.sortChain.length,
+    clearActiveSort: () => {
+      if (view === 'rolls') sortState.finishes.clearSort()
+      else { sortState.groups.clearSort(); sortState.detail.clearSort() }
+    },
   }
 }

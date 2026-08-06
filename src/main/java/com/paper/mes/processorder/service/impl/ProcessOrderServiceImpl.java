@@ -51,6 +51,8 @@ import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.dto.PrintViewVersion;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
+import com.paper.mes.processorder.service.ProcessOrderPrintStageResolver;
+import com.paper.mes.processorder.service.ProcessOrderPrintConfirmationPolicy;
 import com.paper.mes.processorder.dto.ProcessOrderIssueVersionVO;
 import com.paper.mes.processorder.dto.ProcessOrderPrintViewVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
@@ -370,6 +372,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                         .eq(FinishOriginalRel::getOrderUuid, uuid));
         ProcessOrderDetailVO vo = new ProcessOrderDetailVO();
         vo.setOrder(order);
+        vo.setPrintStage(ProcessOrderPrintStageResolver.resolve(order));
         vo.setOriginalRolls(rolls);
         vo.setFinishRolls(finishRolls);
         vo.setSteps(steps);
@@ -809,7 +812,6 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     private FinishConfigSaveVO saveFinishConfigInternal(String orderUuid, String rollUuid, FinishConfigSaveDTO dto) {
-        FinishConfigQuantityValidator.requireWithinLimit(dto);
         ProcessOrder order = getById(orderUuid);
         if (order == null) {
             throw new BusinessException(ErrorCode.E002, "加工单不存在");
@@ -823,6 +825,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             throw new BusinessException(ErrorCode.E002, "原纸明细不存在");
         }
 
+        FinishConfigQuantityValidator.requireWithinLimit(dto, sourcePieceCount(roll));
         roll.setProcessMode(dto.getProcessMode());
         roll.setMainStepType(dto.getMainStepType());
         if (StringUtils.hasText(dto.getMachineUuid())) {
@@ -877,14 +880,14 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
     @Override
     public FinishPreviewVO previewRewindPlan(String orderUuid, String rollUuid, RewindPlanPreviewDTO dto) {
-        FinishConfigQuantityValidator.requireWithinLimit(dto);
         RewindPlanPreviewContext context = loadRewindPreviewContext(orderUuid, rollUuid, dto);
+        FinishConfigQuantityValidator.requireWithinLimit(dto, rewindExpansionPieceCount(context.roll(), dto));
         return previewLoadedRewindPlan(context, dto);
     }
 
     @Override
     public FinishPreviewVO previewRewindPlan(RewindPlanPreviewContext context, RewindPlanPreviewDTO dto) {
-        FinishConfigQuantityValidator.requireWithinLimit(dto);
+        FinishConfigQuantityValidator.requireWithinLimit(dto, rewindExpansionPieceCount(context.roll(), dto));
         return previewLoadedRewindPlan(context, dto);
     }
 
@@ -943,7 +946,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
         if (from == OrderStatus.PROCESSING
                 && to == OrderStatus.TO_RECORD
-                && (order.getPrintCount() == null || order.getPrintCount() <= 0)) {
+                && !hasConfirmedHumanPrint(order)) {
             throw new BusinessException(ErrorCode.E003,
                     "加工完成前必须先人工确认一次打印；该记录不代表打印机设备回执");
         }
@@ -1645,18 +1648,26 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     public PrintResultVO printAndCompleteProcessing(String uuid, PrintDTO dto) {
         businessLockService.lockProcessOrders(List.of(uuid));
         ProcessOrder order = getById(uuid);
-        if (order != null
-                && order.getOrderStatus() != null
+        if (order != null && order.getOrderStatus() != null
                 && order.getOrderStatus() == OrderStatus.TO_RECORD.getCode()
-                && PRINT_STATUS_PRINTED == (order.getPrintStatus() == null ? PRINT_STATUS_UNPRINTED : order.getPrintStatus())
-                && order.getPrintCount() != null
-                && order.getPrintCount() > 0) {
+                && hasConfirmedHumanPrint(order)) {
+            return buildPrintResult(order, List.of(), order.getPrintCount(), order.getLastPrintTime());
+        }
+        if (order != null && order.getOrderStatus() != null
+                && order.getOrderStatus() == OrderStatus.PROCESSING.getCode()
+                && hasConfirmedHumanPrint(order)) {
+            completeProcessing(uuid, null);
+            order.setOrderStatus(OrderStatus.TO_RECORD.getCode());
             return buildPrintResult(order, List.of(), order.getPrintCount(), order.getLastPrintTime());
         }
         PrintResultVO result = print(uuid, dto == null ? new PrintDTO() : dto);
         completeProcessing(uuid, null);
         result.setOrderStatus(OrderStatus.TO_RECORD.getCode());
         return result;
+    }
+
+    private boolean hasConfirmedHumanPrint(ProcessOrder order) {
+        return ProcessOrderPrintConfirmationPolicy.isConfirmed(order);
     }
 
     @Override
@@ -3334,6 +3345,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         int originalWidth = effectiveWidth == null ? 0 : effectiveWidth;
         boolean consumptionPlan = dto.getRewindMode() != null && dto.getRewindMode() == 5
                 && MultiSourceConsumptionNormalizer.hasConsumption(dto.getSegments());
+        int sourcePieceCount = rewindExpansionPieceCount(roll, dto);
         BigDecimal totalWeight = consumptionPlan
                 ? MultiSourceConsumptionNormalizer.totalConsumedWeight(dto.getSegments(), sourceRolls)
                 : previewTotalWeight(roll, dto, sourceRolls);
@@ -3354,7 +3366,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             int layoutWidth = calcLayoutWidth(segment, LAYOUT_ITEM_FINISH);
             RewindWidthDifferenceCalculator.Decision widthDecision =
                     RewindWidthDifferenceCalculator.calculate(dto.getWidthDifferencePolicy(),
-                            dto.getRewindMode(), originalWidth, totalWeight, segmentRatio, segment);
+                            dto.getRewindMode(), originalWidth, totalWeight, segmentRatio, segment,
+                            sourcePieceCount);
             int trimWidth = widthDecision.trimWidth();
             trimCount += widthDecision.trimCount();
             totalDifferenceWidth += widthDecision.differenceWidth();
@@ -3375,7 +3388,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             segmentPreviews.add(segmentPreview);
 
             BigDecimal repeatedSegmentRatio = segmentRatio.divide(BigDecimal.valueOf(repeatCount), 6, RoundingMode.HALF_UP);
-            int segmentPieceStart = pieces.size();
+            List<PreviewPiece> segmentPieces = new ArrayList<>();
             for (int repeat = 0; repeat < repeatCount; repeat++) {
                 List<PreviewPiece> repeatPieces = new ArrayList<>();
                 for (RewindPlanPreviewDTO.RewindLayoutItemDTO item : segment.getLayoutItems()) {
@@ -3404,12 +3417,16 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                     }
                 }
                 if (!repeatPieces.isEmpty() && trimWidth > 0) {
-                    weightedTrimWidth = weightedTrimWidth.add(BigDecimal.valueOf(trimWidth).multiply(repeatedSegmentRatio));
+                    weightedTrimWidth = weightedTrimWidth.add(BigDecimal.valueOf(trimWidth)
+                            .multiply(repeatedSegmentRatio));
                 }
-                pieces.addAll(repeatPieces);
+                for (int sourcePiece = 0; sourcePiece < sourcePieceCount; sourcePiece++) {
+                    repeatPieces.stream().map(PreviewPiece::copy).forEach(segmentPieces::add);
+                }
             }
-            if (pieces.size() > segmentPieceStart && widthDecision.allocationRemainder().signum() != 0) {
-                PreviewPiece lastPiece = pieces.getLast();
+            pieces.addAll(segmentPieces);
+            if (!segmentPieces.isEmpty() && widthDecision.allocationRemainder().signum() != 0) {
+                PreviewPiece lastPiece = segmentPieces.getLast();
                 lastPiece.allocationExtra = lastPiece.allocationExtra
                         .add(widthDecision.allocationRemainder());
             }
@@ -3738,6 +3755,26 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         private List<FinishConfigSpecDTO.FinishLayerDTO> layers = List.of();
         private BigDecimal basis = BigDecimal.ZERO;
         private BigDecimal allocationExtra = BigDecimal.ZERO;
+
+        private PreviewPiece copy() {
+            PreviewPiece copy = new PreviewPiece();
+            copy.segmentSort = segmentSort;
+            copy.segmentRatio = segmentRatio;
+            copy.finishWidth = finishWidth;
+            copy.finishDiameter = finishDiameter;
+            copy.finishCoreDiameter = finishCoreDiameter;
+            copy.customerPaperName = customerPaperName;
+            copy.customerGramWeight = customerGramWeight;
+            copy.customerFinishWidth = customerFinishWidth;
+            copy.customerSpecOverrideReason = customerSpecOverrideReason;
+            copy.originalWidth = originalWidth;
+            copy.trimWidth = trimWidth;
+            copy.sourceSummary = sourceSummary;
+            copy.layers = layers;
+            copy.basis = basis;
+            copy.allocationExtra = allocationExtra;
+            return copy;
+        }
     }
 
     private void validateFinishConfig(String orderUuid, OriginalRoll roll, FinishConfigSaveDTO dto) {
@@ -4311,7 +4348,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 }
                 specs.add(spec);
             }
-            specs.addAll(RewindTrimSaveSpecBuilder.build(preview, dto));
+            specs.addAll(RewindTrimSaveSpecBuilder.build(preview, dto, rewindExpansionPieceCount(roll, dto)));
             return specs;
         }
         return applyRewindEstimateWeights(orderUuid, roll, dto);
@@ -4628,6 +4665,26 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
     private BigDecimal calcTotalWeight(BigDecimal rollWeight, Integer pieceNum) {
         return rollWeight.multiply(BigDecimal.valueOf(pieceNum));
+    }
+
+    private int sourcePieceCount(OriginalRoll roll) {
+        int count = roll.getPieceNum() == null ? 1 : roll.getPieceNum();
+        FinishConfigQuantityValidator.requireSourcePieceCount(count);
+        return count;
+    }
+
+    private int rewindExpansionPieceCount(OriginalRoll roll, RewindPlanPreviewDTO dto) {
+        if (isOnSite(roll) || Integer.valueOf(5).equals(dto.getRewindMode())) {
+            return 1;
+        }
+        return sourcePieceCount(roll);
+    }
+
+    private int rewindExpansionPieceCount(OriginalRoll roll, FinishConfigSaveDTO dto) {
+        if (isOnSite(roll) || Integer.valueOf(5).equals(dto.getRewindMode())) {
+            return 1;
+        }
+        return sourcePieceCount(roll);
     }
 
     /** 取该加工单当前有效明细的最大 row_sort + 1。 */

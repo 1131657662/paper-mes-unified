@@ -66,6 +66,8 @@ public class SettlePrintLineVO {
     /** 分摊到本原纸行的开票加价；不开票时为 0。 */
     private BigDecimal taxAmount;
     private BigDecimal taxRate;
+    /** Historical amount that cannot be decomposed into process, extra fee, or tax. */
+    private BigDecimal historicalDifferenceAmount;
     /** 本行应收合计，所有行汇总应等于结算单应收总额。 */
     private BigDecimal lineAmount;
     private Integer isInvoice;

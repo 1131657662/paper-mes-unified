@@ -27,4 +27,10 @@ describe('结算列表 URL 状态', () => {
 
     expect(params.toString()).toBe('queue=partial&page=2&size=20&customerUuid=c1&keyword=%E5%BC%98%E4%B8%B0%E6%8B%93')
   })
+
+  it('刷新后保留勾选合并结算类型', () => {
+    const state = parseSettleListUrl(new URLSearchParams('settleType=3'))
+
+    expect(state.filters.settleType).toBe(3)
+  })
 })

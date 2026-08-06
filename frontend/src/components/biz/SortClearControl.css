@@ -1,0 +1,35 @@
+.mes-sort-clear-control {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 3px 0 8px;
+  border: 1px solid var(--mes-color-border-light);
+  border-radius: var(--mes-radius-sm);
+  background: var(--mes-color-surface-subtle);
+}
+
+.mes-sort-clear-control__status-icon {
+  color: var(--mes-color-primary);
+  font-size: 13px;
+}
+
+.mes-sort-clear-control__button {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--mes-color-text-muted);
+}
+
+.mes-sort-clear-control__button:not(:disabled):hover {
+  color: var(--mes-color-primary);
+  background: var(--mes-color-surface-selected);
+}
+
+.mes-sort-clear-control__count {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

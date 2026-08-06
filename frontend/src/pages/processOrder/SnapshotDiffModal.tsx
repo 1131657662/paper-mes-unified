@@ -1,6 +1,7 @@
 import { Alert, Modal, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
+import { notifyErrorOnce } from '../../api/request'
 import { useSnapshotDiff } from '../../features/processOrderDetail/hooks/useSnapshotDiff'
 import { useProcessOrderIssueVersions } from '../../features/processOrderDetail/hooks/useProcessOrderIssueVersions'
 import type { FinishDiff, RollDiff, SnapshotDiffVO } from '../../types/processOrder'
@@ -30,6 +31,7 @@ export default function SnapshotDiffModal({ uuid, open, onClose }: Props) {
 
   const retryDiffAndProvenance = () => {
     void Promise.all([refetchDiff(), refetchIssueVersions()])
+      .catch((error) => notifyErrorOnce(error, '快照差异刷新失败，请重试'))
   }
 
   return (

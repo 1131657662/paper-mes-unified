@@ -13,7 +13,7 @@ describe('客户结算单预览', () => {
     expect(markup).toContain('额外费：¥80.00（装卸费 80.00）')
     expect(markup).toContain('税费：¥29.12')
     expect(markup).toContain('优惠核销：¥1.00')
-    expect(markup).toContain('现金到账：¥0.00')
+    expect(markup).toContain('实际到账：¥0.00')
     expect(markup).toContain('废纸抵扣：¥0.00')
     expect(markup).not.toContain('加工内容')
     expect(markup).not.toContain('演示锯纸机')
@@ -71,6 +71,7 @@ function detail(): SettleDetailVO {
       extraFeeSummary: '装卸费 80.00',
       taxAmount: 29.12,
       lineAmount: 253.12,
+      isInvoice: 1,
       feeLines: [{
         feeType: 'saw',
         feeName: '锯纸',

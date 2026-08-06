@@ -5,6 +5,7 @@ import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { AvailableFinishVO } from '../../types/delivery'
+import { hasDeliverySettlementRisk } from '../../types/settlementSemantics'
 import DeliveryCreateTable from './DeliveryCreateTable'
 import DeliveryFinishTableToolbar from './DeliveryFinishTableToolbar'
 import {
@@ -72,7 +73,7 @@ export default function DeliveryAppendItemsModal({
       message.error(selectionError)
       return
     }
-    const hasRisk = selectedFinishes.some((item) => item.settlementRisk)
+    const hasRisk = selectedFinishes.some(hasDeliverySettlementRisk)
     if (hasRisk) {
       const confirmed = await confirmCashRelease()
       if (!confirmed) return

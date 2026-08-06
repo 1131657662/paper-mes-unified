@@ -52,18 +52,31 @@ class DeliveryCustomerRevisionPreviewServiceTest {
     }
 
     @Test
-    void current_rejectsVoidedDeliveryButCompletedDeliveryRemainsCorrectable() {
+    void current_voidedDeliveryRemainsReadableButPreviewRejectsEdit() {
         DeliveryOrderMapper orderMapper = mock(DeliveryOrderMapper.class);
+        DeliveryDetailMapper detailMapper = mock(DeliveryDetailMapper.class);
+        FinishRollMapper finishMapper = mock(FinishRollMapper.class);
+        DeliveryService deliveryService = mock(DeliveryService.class);
+        DeliveryCustomerRevisionReader reader = mock(DeliveryCustomerRevisionReader.class);
         DeliveryOrder order = new DeliveryOrder();
         order.setUuid("delivery-1");
         order.setDeliveryStatus(3);
+        order.setVersion(1);
         when(orderMapper.selectById("delivery-1")).thenReturn(order);
+        when(deliveryService.getDetail("delivery-1")).thenReturn(deliveryDetail(order));
+        when(detailMapper.selectBatchIds(List.of("detail-1"))).thenReturn(List.of(detail()));
+        when(finishMapper.selectBatchIds(List.of("finish-1"))).thenReturn(List.of(changedFinish()));
+        when(reader.latestItems("delivery-1", List.of("detail-1"))).thenReturn(Map.of());
+        when(reader.nextRevisionNo("delivery-1")).thenReturn(1);
         DeliveryCustomerRevisionPreviewService service = new DeliveryCustomerRevisionPreviewService(
-                orderMapper, mock(DeliveryDetailMapper.class), mock(FinishRollMapper.class),
-                mock(DeliveryService.class), mock(DeliveryCustomerRevisionReader.class),
-                mock(DeliveryCustomerSpecPlanner.class));
+                orderMapper, detailMapper, finishMapper, deliveryService, reader,
+                new DeliveryCustomerSpecPlanner(new CustomerWeightFormulaEngine()));
 
-        assertThatThrownBy(() -> service.current("delivery-1"))
+        var current = service.current("delivery-1");
+
+        assertThat(current.getItemCount()).isEqualTo(1);
+        assertThat(current.getCurrentRevisionKind()).isEqualTo("HISTORICAL_BASELINE");
+        assertThatThrownBy(() -> service.preview("delivery-1", new com.paper.mes.delivery.dto.DeliveryCustomerRevisionRequestDTO()))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("已作废出库单");
     }

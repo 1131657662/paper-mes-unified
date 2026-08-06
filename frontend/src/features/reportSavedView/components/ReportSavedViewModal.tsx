@@ -24,7 +24,7 @@ const metricOptions = [
   ['original_weight_kg', '原纸重量'], ['finish_weight_kg', '成品重量'], ['loss_weight_kg', '损耗重量'],
   ['loss_ratio_pct', '损耗率'], ['knife_count', '刀数'], ['saw_amount', '锯纸费'], ['rewind_amount', '复卷费'],
   ['process_amount', '加工费'], ['extra_amount', '附加费'], ['total_amount', '应收合计'], ['settled_amount', '已结算应收'],
-  ['pending_settle_amount', '待结算应收'], ['received_amount', '已收金额'], ['cash_received_amount', '现金到账'],
+  ['pending_settle_amount', '待结算应收'], ['received_amount', '已收金额'], ['cash_received_amount', '实际到账'],
 ].map(([value, label]) => ({ value, label: `${label} (${value})` }))
 
 export default function ReportSavedViewModal(props: Props) {

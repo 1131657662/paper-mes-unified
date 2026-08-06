@@ -25,7 +25,7 @@ final class ReportMetricBaselineMetrics {
                 metric("settled_amount", "已结算应收", "有效结算单覆盖的应收金额", "MONEY", "CNY", 2, 140),
                 metric("pending_settle_amount", "待结算应收", "尚未进入有效结算单的应收金额", "MONEY", "CNY", 2, 150),
                 metric("received_amount", "已收金额", "有效收款流水总额", "MONEY", "CNY", 2, 160),
-                metric("cash_received_amount", "现金到账", "有效收款流水中的现金金额", "MONEY", "CNY", 2, 170),
+                metric("cash_received_amount", "实际到账", "有效收款流水中的实际到账金额，包含现金、转账、微信和支付宝", "MONEY", "CNY", 2, 170),
                 metric("scrap_offset_amount", "废纸抵扣", "有效收款流水中的废纸抵扣金额", "MONEY", "CNY", 2, 180),
                 metric("unreceived_amount", "已结算未收", "已结算应收减有效已收金额，不小于零", "MONEY", "CNY", 2, 190)
         ).stream(), operational().stream()).toList();

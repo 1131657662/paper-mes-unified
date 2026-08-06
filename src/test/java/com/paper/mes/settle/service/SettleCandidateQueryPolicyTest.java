@@ -32,4 +32,13 @@ class SettleCandidateQueryPolicyTest {
         assertThat(wrapper.getParamNameValuePairs().values())
                 .contains("order-101", "order-205");
     }
+
+    @Test
+    void create_onlyIncludesOrdersWithConfirmedPrint() {
+        LambdaQueryWrapper<ProcessOrder> wrapper =
+                SettleCandidateQueryPolicy.create(new SettleCandidateQuery());
+
+        assertThat(wrapper.getSqlSegment())
+                .contains("print_status", "print_count");
+    }
 }

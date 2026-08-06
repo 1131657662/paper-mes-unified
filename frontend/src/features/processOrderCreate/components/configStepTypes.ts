@@ -1,6 +1,6 @@
 import type { CustomerProcessPrice } from '../../../types/customer'
 import type { Machine } from '../../../types/machine'
-import type { PlanPreviewVO, ProcessPlanDTO, ProcessRoutePreviewVO } from '../../../types/processOrder'
+import type { PlanPreviewVO, ProcessPlanDTO, ProcessRoutePreviewVO, ProcessStep } from '../../../types/processOrder'
 import type { DefaultPlanOptions } from '../draftMappers'
 import type { RollDraft } from '../types'
 import type { PlanBatchSaveResult, PlanSaveResult } from '../planSaveResult'
@@ -34,4 +34,6 @@ export interface ConfigStepProps {
   routePreviews: Record<string, ProcessRoutePreviewVO>
   saving: boolean
   selectedId?: string
+  serviceStepsByRoll?: Record<string, ProcessStep[]>
+  onServiceStepsChange?: (changes: Record<string, ProcessStep[]>) => Promise<void>
 }

@@ -1,12 +1,17 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { DeliveryCustomerRevisionPreview } from '../../features/deliveryCustomerSpec/deliveryCustomerSpecTypes'
+import type {
+  DeliveryCustomerRevisionPreview,
+  DeliveryDocumentView,
+} from '../../features/deliveryCustomerSpec/deliveryCustomerSpecTypes'
 import type { DeliveryDetailVO } from '../../types/delivery'
+import type { DeliveryExportSortChains } from '../../types/deliverySort'
+import { buildDeliveryPrintProjection } from './deliveryPrintProjection'
 import DeliveryPrintSheet from './DeliveryPrintSheet'
 
 describe('司机单据预览', () => {
   it('区分货主和货主告知的客户', () => {
-    const markup = renderToStaticMarkup(<DeliveryPrintSheet detail={detail()} />)
+    const markup = renderSheet(detail())
 
     expect(markup).toContain('<dt>货主</dt><dd>测试客户</dd>')
     expect(markup).toContain('<dt>收货客户</dt><dd>永丰包装</dd>')
@@ -16,16 +21,14 @@ describe('司机单据预览', () => {
     const value = detail()
     value.order.receiverCustomerName = undefined
 
-    const markup = renderToStaticMarkup(<DeliveryPrintSheet detail={value} />)
+    const markup = renderSheet(value)
 
     expect(markup).toContain('<dt>收货客户</dt><dd></dd>')
     expect(markup.match(/测试客户/g)).toHaveLength(1)
   })
 
   it('使用结构化运输信息和合并规格', () => {
-    const markup = renderToStaticMarkup(
-      <DeliveryPrintSheet detail={detail()} customerSpecs={customerSpecs()} variant="customer" />,
-    )
+    const markup = renderSheet(detail(), { customerSpecs: customerSpecs(), variant: 'customer' })
 
     expect(markup).toContain('成品仓')
     expect(markup).toContain('<dt>车牌号</dt><dd>浙A12345</dd>')
@@ -34,7 +37,7 @@ describe('司机单据预览', () => {
   })
 
   it('表头不显示内部状态或提货人', () => {
-    const markup = renderToStaticMarkup(<DeliveryPrintSheet detail={detail()} />)
+    const markup = renderSheet(detail())
 
     expect(markup).not.toContain('<dt>单据状态</dt>')
     expect(markup).not.toContain('<dt>提货人</dt>')
@@ -42,15 +45,13 @@ describe('司机单据预览', () => {
   })
 
   it('合计仅显示卷数和吨位', () => {
-    const markup = renderToStaticMarkup(
-      <DeliveryPrintSheet detail={detail()} customerSpecs={customerSpecs()} variant="customer" />,
-    )
+    const markup = renderSheet(detail(), { customerSpecs: customerSpecs(), variant: 'customer' })
 
     expect(markup).toContain('合计：1 卷</td><td>1.05 t</td>')
   })
 
   it('显示签字区和三段式页脚', () => {
-    const markup = renderToStaticMarkup(<DeliveryPrintSheet detail={detail()} />)
+    const markup = renderSheet(detail())
 
     expect(markup).toContain('出库备注')
     expect(markup).toContain('仓库复核')
@@ -59,7 +60,7 @@ describe('司机单据预览', () => {
   })
 
   it('提货人和仓库复核保留为空白手签位', () => {
-    const markup = renderToStaticMarkup(<DeliveryPrintSheet detail={detail()} />)
+    const markup = renderSheet(detail())
 
     expect(markup).toContain('<span>提货人</span><strong></strong>')
     expect(markup).toContain('<span>仓库复核</span><strong></strong>')
@@ -67,7 +68,7 @@ describe('司机单据预览', () => {
   })
 
   it('只显示门幅和回录备注并隐藏生产内部字段', () => {
-    const markup = renderToStaticMarkup(<DeliveryPrintSheet detail={detail()} />)
+    const markup = renderSheet(detail())
 
     expect(markup).toContain('900 mm')
     expect(markup).toContain('边部轻微压痕')
@@ -79,9 +80,7 @@ describe('司机单据预览', () => {
   })
 
   it('客户更正版显示版本标题和客户规格', () => {
-    const markup = renderToStaticMarkup(
-      <DeliveryPrintSheet detail={detail()} customerSpecs={customerSpecs()} variant="customer" />,
-    )
+    const markup = renderSheet(detail(), { customerSpecs: customerSpecs(), variant: 'customer' })
 
     expect(markup).toContain('出库单（客户更正版 V2）')
     expect(markup).toContain('食品卡')
@@ -92,16 +91,36 @@ describe('司机单据预览', () => {
   })
 
   it('追溯打印同时显示客户值和不可变的实物值', () => {
-    const markup = renderToStaticMarkup(
-      <DeliveryPrintSheet detail={detail()} customerSpecs={customerSpecs()} variant="trace" />,
-    )
+    const markup = renderSheet(detail(), { customerSpecs: customerSpecs(), variant: 'trace' })
 
     expect(markup).toContain('出库单（追溯对照）')
     expect(markup).toContain('<strong>食品卡</strong><span>实物：白卡</span>')
     expect(markup).toContain('<strong>75 g × 1000 mm</strong><span>实物：300 g × 900 mm</span>')
     expect(markup).toContain('<strong>1050 kg</strong><span>实物：950 kg</span>')
   })
+
 })
+
+interface RenderSheetOptions {
+  customerSpecs?: DeliveryCustomerRevisionPreview
+  sortChains?: DeliveryExportSortChains
+  variant?: DeliveryDocumentView
+}
+
+const EMPTY_SORT_CHAINS: DeliveryExportSortChains = { physical: [], customer: [], trace: [] }
+
+function renderSheet(value: DeliveryDetailVO, options: RenderSheetOptions = {}) {
+  const projection = buildDeliveryPrintProjection({
+    detail: value,
+    customerSpecs: options.customerSpecs,
+    variant: options.variant ?? 'physical',
+    sortChains: options.sortChains ?? EMPTY_SORT_CHAINS,
+  })
+  if (projection.status !== 'ready') throw new Error(projection.message)
+  return renderToStaticMarkup(
+    <DeliveryPrintSheet detail={value} customerSpecs={options.customerSpecs} projection={projection} />,
+  )
+}
 
 function customerSpecs(): DeliveryCustomerRevisionPreview {
   return {

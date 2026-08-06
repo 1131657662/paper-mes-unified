@@ -14,6 +14,30 @@ export interface ReceiveFormValues {
   remark?: string
 }
 
+export interface ReceiveAmountBaseline {
+  settleUuid: string
+  unreceivedAmount: number
+}
+
+interface ReceiveAmountChangeOptions {
+  baseline: ReceiveAmountBaseline | null
+  settleUuid: string | null
+  unreceivedAmount: number
+}
+
+export interface ReceiveAmountChange {
+  currentAmount: number
+  previousAmount: number
+}
+
+export function resolveReceiveAmountChange(options: ReceiveAmountChangeOptions): ReceiveAmountChange | null {
+  const { baseline, settleUuid, unreceivedAmount } = options
+  if (!baseline || !settleUuid || baseline.settleUuid !== settleUuid) return null
+  const previousAmount = roundMoney(baseline.unreceivedAmount)
+  const currentAmount = roundMoney(unreceivedAmount)
+  return previousAmount === currentAmount ? null : { currentAmount, previousAmount }
+}
+
 export function buildReceiveDTO(values: ReceiveFormValues, requestId = crypto.randomUUID()): ReceiveDTO {
   return {
     requestId,

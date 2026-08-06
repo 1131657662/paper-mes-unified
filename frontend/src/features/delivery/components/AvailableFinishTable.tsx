@@ -3,6 +3,7 @@ import type { ColumnsType } from 'antd/es/table'
 import type { AvailableFinishVO } from '../../../types/delivery'
 import { SOURCE_TYPE } from '../../../constants/delivery'
 import { availableFinishWeight, finishSpecText, formatKg, settleText } from '../utils/deliveryFormatters'
+import { hasDeliverySettlementRisk } from '../../../types/settlementSemantics'
 
 interface Props {
   data: AvailableFinishVO[]
@@ -100,10 +101,10 @@ const columns: ColumnsType<AvailableFinishVO> = [
   },
   {
     title: '风险',
-    dataIndex: 'settlementRisk',
+    key: 'settlementRiskState',
     width: 110,
-    render: (value) => (
-      value
+    render: (_, record) => (
+      hasDeliverySettlementRisk(record)
         ? <Tag className="mes-status-tag" color="orange">待收款确认</Tag>
         : <Tag className="mes-status-tag">正常</Tag>
     ),

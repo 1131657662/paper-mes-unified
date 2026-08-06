@@ -63,6 +63,19 @@ describe('加工单列表行内主操作权限', () => {
     expect(markup).toContain('生成结算')
   })
 
+  it('历史已完成单缺少打印确认时只提供补确认入口', () => {
+    const markup = renderAction({ orderStatus: 4, printStatus: 0, printCount: 0 }, {
+      ...noCapabilities,
+      canManageDelivery: true,
+      canManageOrder: true,
+      canManageSettlement: true,
+    })
+
+    expect(markup).toContain('补确认历史打印')
+    expect(markup).not.toContain('创建出库')
+    expect(markup).not.toContain('生成结算')
+  })
+
   it('回录权限独立控制待回录入口', () => {
     const markup = renderAction({ orderStatus: 3 }, { ...noCapabilities, canBackRecord: true })
 
@@ -86,7 +99,7 @@ function renderAction(order: Partial<ProcessOrder>, capabilities: ProcessOrderLi
     <ProcessOrderRowActions
       {...actions}
       capabilities={capabilities}
-      record={{ uuid: 'order-1', ...order }}
+      record={{ uuid: 'order-1', printStatus: 1, printCount: 1, ...order }}
     />,
   )
 }

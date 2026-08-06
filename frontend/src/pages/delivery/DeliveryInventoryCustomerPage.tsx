@@ -1,5 +1,6 @@
 import { ArrowLeftOutlined, DownloadOutlined } from '@ant-design/icons'
 import { Button, Segmented, Space, Tag, Typography } from 'antd'
+import SortClearControl from '../../components/biz/SortClearControl'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import DeliveryInventoryFilterBar from './DeliveryInventoryFilterBar'
@@ -25,9 +26,12 @@ export default function DeliveryInventoryCustomerPage() {
             {model.activeWarehouseName && <Tag className="delivery-inventory-tag delivery-inventory-tag--primary">{model.activeWarehouseName}</Tag>}
           </Space>
         </div>
-        <Segmented aria-label="库存明细视图" value={model.view}
-          options={[{ label: '按卷', value: 'rolls' }, { label: '按加工单', value: 'orders' }]}
-          onChange={(value) => model.setView(value as 'rolls' | 'orders')} />
+        <Space size={8}>
+          <Segmented aria-label="库存明细视图" value={model.view}
+            options={[{ label: '按卷', value: 'rolls' }, { label: '按加工单', value: 'orders' }]}
+            onChange={(value) => model.setView(value as 'rolls' | 'orders')} />
+          <SortClearControl activeCount={model.activeSortCount} onClear={model.clearActiveSort} />
+        </Space>
         <Space className="delivery-inventory-customer-header__actions">
           <Button icon={<DownloadOutlined />} loading={model.exportMutation.isPending} onClick={model.exportRows}>导出</Button>
           {model.canManage && <Button type="primary" loading={model.validation.isPending} disabled={!model.selected.length} onClick={() => void model.createDelivery()}>新建出库 {model.selected.length || ''}</Button>}
@@ -44,12 +48,14 @@ export default function DeliveryInventoryCustomerPage() {
           {model.view === 'rolls' ? (
             <DeliveryInventoryFinishTable data={model.rows} fillHeight loading={model.finishQuery.isLoading || model.finishQuery.isFetching}
               tableTitle="成品卷库存" onReload={model.reload} onOpenDelivery={model.openDelivery}
+              sortState={model.sortState.finishes}
               selection={model.canManage ? { selectedRowKeys: model.selectedKeys, onChange: model.changeSelection, onToggle: model.toggleSelection, disabled: model.selectionDisabled } : undefined} />
           ) : (
             <DeliveryInventoryOrderGroupTable groups={model.groups}
               loading={model.orderGroupQuery.isLoading || model.orderGroupQuery.isFetching}
               selectedByUuid={model.selectedByUuid} selectionDisabled={model.selectionDisabled}
-              onReload={model.reload} onToggle={model.toggleSelection} onToggleGroup={model.toggleGroup} />
+              onReload={model.reload} onToggle={model.toggleSelection} onToggleGroup={model.toggleGroup}
+              sortState={model.sortState.groups} detailSortState={model.sortState.detail} />
           )}
         </div>
         <DocumentPaginationBar current={model.page} pageSize={model.pageSize} total={model.activeTotal} onChange={model.changePage} />

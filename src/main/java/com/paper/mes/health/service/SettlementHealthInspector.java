@@ -22,6 +22,8 @@ public class SettlementHealthInspector implements DataHealthInspector {
         List<DataHealthIssueVO> issues = new ArrayList<>(settlementTotalMismatches());
         issues.addAll(settledOrdersWithoutSettlement());
         issues.addAll(snapshotIntegrityIssues());
+        issues.addAll(nonInvoiceTaxIssues());
+        issues.addAll(settlementReceiveMismatches());
         return issues;
     }
 
@@ -57,6 +59,30 @@ public class SettlementHealthInspector implements DataHealthInspector {
                         row.uuid(), row.businessNo(), "结算单历史快照损坏",
                         "快照无法解析或缺少结算明细、打印明细，历史单据已停止读取", null))
                 .toList();
+    }
+
+    private List<DataHealthIssueVO> nonInvoiceTaxIssues() {
+        return jdbcTemplate.query(NON_INVOICE_TAX_SQL, (rs, rowNum) -> new DataHealthIssueVO(
+                "NON_INVOICE_TAX_AMOUNT", "WARNING", "结算单",
+                rs.getString("uuid"), rs.getString("settle_no"),
+                "不开票结算单仍有税额",
+                "不含税金额 " + rs.getBigDecimal("amount_no_tax")
+                        + "，税额 " + rs.getBigDecimal("tax_amount")
+                        + "，含税金额 " + rs.getBigDecimal("total_amount")
+                        + "；请人工确认历史金额口径",
+                null
+        ));
+    }
+
+    private List<DataHealthIssueVO> settlementReceiveMismatches() {
+        return jdbcTemplate.query(SETTLEMENT_RECEIVE_SQL, (rs, rowNum) -> new DataHealthIssueVO(
+                "SETTLEMENT_RECEIVE_MISMATCH", "CRITICAL", "结算单",
+                rs.getString("uuid"), rs.getString("settle_no"),
+                "结算单收款汇总与有效流水不一致",
+                "结算单已收 " + rs.getBigDecimal("received_amount")
+                        + "，有效流水合计 " + rs.getBigDecimal("active_received_amount"),
+                "RECONCILE_SETTLEMENT"
+        ));
     }
 
     private boolean isValidSnapshot(String snapshot) {
@@ -133,6 +159,29 @@ public class SettlementHealthInspector implements DataHealthInspector {
             FROM biz_settle_order
             WHERE is_deleted = 0 AND snap_bill IS NOT NULL
               AND CHAR_LENGTH(TRIM(CAST(snap_bill AS CHAR))) > 0
+            """;
+
+    private static final String NON_INVOICE_TAX_SQL = """
+            SELECT uuid, settle_no, amount_no_tax, tax_amount, total_amount
+            FROM biz_settle_order
+            WHERE is_deleted = 0 AND is_invoice = 2
+              AND ABS(COALESCE(tax_amount, 0)) > 0.01
+            ORDER BY update_time DESC
+            """;
+
+    private static final String SETTLEMENT_RECEIVE_SQL = """
+            SELECT s.uuid, s.settle_no, s.received_amount,
+                   COALESCE(r.active_received_amount, 0) active_received_amount
+            FROM biz_settle_order s
+            LEFT JOIN (
+                SELECT settle_uuid, SUM(receive_amount) active_received_amount
+                FROM biz_receive_record
+                WHERE is_deleted = 0 AND (record_status = 1 OR record_status IS NULL)
+                GROUP BY settle_uuid
+            ) r ON r.settle_uuid = s.uuid
+            WHERE s.is_deleted = 0 AND s.settle_status IN (1, 2, 3)
+              AND ABS(s.received_amount - COALESCE(r.active_received_amount, 0)) > 0.01
+            ORDER BY s.update_time DESC
             """;
 
     private record SnapshotRow(String uuid, String businessNo, String snapshot) {

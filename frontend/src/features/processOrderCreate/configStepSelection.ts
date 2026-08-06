@@ -12,8 +12,8 @@ export function supportsSinglePlanEditing(processMode?: number): boolean {
   return processMode === 1 || processMode === 2
 }
 
-export function supportsRouteDesigner(processMode?: number): boolean {
-  return processMode === 1
+export function supportsRouteDesigner(processMode?: number, pieceNum?: number): boolean {
+  return processMode === 1 && (pieceNum ?? 1) === 1
 }
 
 export function selectedConfigRoll(

@@ -1,5 +1,6 @@
 import type { PageQuery, PageResult } from './common'
 import type { OperationLog } from './operationLog'
+import type { DeliverySettlementRisk, ProcessOrderSettlementMode } from './settlementSemantics'
 
 export interface DeliveryOrder {
   uuid: string
@@ -23,6 +24,10 @@ export interface DeliveryOrder {
   voidBy?: string
   voidTime?: string
   remark?: string
+  signState?: 'PENDING' | 'SIGNED' | 'NOT_REQUIRED' | 'UNKNOWN'
+  stockState?: 'LOCKED' | 'DEDUCTED' | 'RELEASED' | 'UNKNOWN'
+  canSign?: boolean
+  canEdit?: boolean
   createTime?: string
   updateTime?: string
 }
@@ -114,9 +119,11 @@ export interface AvailableFinishVO {
   finishStatus: number
   originalRollNos?: string
   sourceMotherRolls?: AvailableFinishSourceMotherRoll[]
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
   settleDay?: number
   isInvoice?: number
+  settlementRiskState?: DeliverySettlementRisk
+  /** @deprecated Read through hasDeliverySettlementRisk for old API compatibility. */
   settlementRisk?: boolean
 }
 

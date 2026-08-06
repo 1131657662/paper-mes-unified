@@ -25,4 +25,10 @@ describe('report URL state', () => {
 
     expect(state.query.mainStepType).toBeUndefined()
   })
+
+  it('ignores settlement-document modes in process-order report filters', () => {
+    const state = parseReportUrlState(new URLSearchParams('settleType=3'))
+
+    expect(state.query.settleType).toBeUndefined()
+  })
 })

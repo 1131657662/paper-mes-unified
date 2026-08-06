@@ -7,6 +7,7 @@ import com.paper.mes.processorder.entity.OriginalRoll;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -22,18 +23,18 @@ final class DirectShipFinishMatcher {
     private DirectShipFinishMatcher() {
     }
 
-    static Map<String, FinishRoll> assign(List<OriginalRoll> sources, List<FinishRoll> finishes,
-                                          List<FinishOriginalRel> relations) {
+    static Map<String, List<FinishRoll>> assign(List<OriginalRoll> sources, List<FinishRoll> finishes,
+                                                List<FinishOriginalRel> relations) {
         requireOneSourcePerFinish(finishes, relations);
         Map<String, FinishRoll> finishByUuid = new HashMap<>();
         finishes.forEach(finish -> finishByUuid.put(finish.getUuid(), finish));
-        requireOneActiveFinishPerSource(finishByUuid, relations);
         Set<String> sourceIds = new HashSet<>();
         sources.forEach(source -> sourceIds.add(source.getUuid()));
-        Map<String, FinishRoll> result = linkedAssignments(sourceIds, finishByUuid, relations);
+        Map<String, List<FinishRoll>> result = linkedAssignments(sourceIds, finishByUuid, relations);
         List<FinishRoll> available = unlinkedFinishes(finishes, relations);
         assignLegacyMatches(sources, result, available);
         requireNoAmbiguousLegacyFinishes(available);
+        requirePieceCapacity(sources, result);
         return result;
     }
 
@@ -54,35 +55,22 @@ final class DirectShipFinishMatcher {
         }
     }
 
-    private static void requireOneActiveFinishPerSource(Map<String, FinishRoll> finishes,
-                                                        List<FinishOriginalRel> relations) {
-        Map<String, String> finishesBySource = new HashMap<>();
-        for (FinishOriginalRel relation : relations) {
-            FinishRoll finish = finishes.get(relation.getFinishUuid());
-            if (!isActive(finish)) {
-                continue;
-            }
-            String previous = finishesBySource.putIfAbsent(
-                    relation.getOriginalUuid(), relation.getFinishUuid());
-            if (previous != null && !previous.equals(relation.getFinishUuid())) {
-                throw new BusinessException("同一来源母卷存在多个有效直发成品，请先修复来源数据");
-            }
-        }
-    }
-
-    private static Map<String, FinishRoll> linkedAssignments(Set<String> sourceIds,
-                                                              Map<String, FinishRoll> finishes,
-                                                              List<FinishOriginalRel> relations) {
-        Map<String, FinishRoll> result = new LinkedHashMap<>();
+    private static Map<String, List<FinishRoll>> linkedAssignments(Set<String> sourceIds,
+                                                                    Map<String, FinishRoll> finishes,
+                                                                    List<FinishOriginalRel> relations) {
+        Map<String, List<FinishRoll>> result = new LinkedHashMap<>();
         for (FinishOriginalRel relation : relations) {
             FinishRoll finish = finishes.get(relation.getFinishUuid());
             if (sourceIds.contains(relation.getOriginalUuid()) && isActive(finish)) {
-                FinishRoll current = result.get(relation.getOriginalUuid());
-                if (current == null || preferredOver(finish, current)) {
-                    result.put(relation.getOriginalUuid(), finish);
+                List<FinishRoll> assigned = result.computeIfAbsent(
+                        relation.getOriginalUuid(), ignored -> new ArrayList<>());
+                if (assigned.stream().noneMatch(row -> row.getUuid().equals(finish.getUuid()))) {
+                    assigned.add(finish);
                 }
             }
         }
+        result.values().forEach(rows -> rows.sort(Comparator.comparing(
+                FinishRoll::getRowSort, Comparator.nullsLast(Comparator.naturalOrder()))));
         return result;
     }
 
@@ -96,23 +84,31 @@ final class DirectShipFinishMatcher {
     }
 
     private static void assignLegacyMatches(List<OriginalRoll> sources,
-                                            Map<String, FinishRoll> assigned,
+                                            Map<String, List<FinishRoll>> assigned,
                                             List<FinishRoll> available) {
         for (OriginalRoll source : sources) {
-            if (assigned.containsKey(source.getUuid())) {
-                continue;
-            }
+            List<FinishRoll> current = assigned.computeIfAbsent(source.getUuid(), ignored -> new ArrayList<>());
+            int remaining = DirectShipPiecePlan.from(source).count() - current.size();
+            if (remaining <= 0) continue;
             boolean uniqueRollNo = StringUtils.hasText(source.getRollNo())
                     && sources.stream().filter(row -> source.getRollNo().equals(row.getRollNo())).count() == 1;
             List<FinishRoll> matches = available.stream()
                     .filter(finish -> legacyMatches(source, finish, uniqueRollNo))
                     .toList();
-            if (matches.size() > 1) {
+            if (matches.size() > remaining) {
                 throw new BusinessException("历史直发成品存在多个可能来源，不能自动匹配，请先修复来源数据");
             }
-            if (matches.size() == 1) {
-                assigned.put(source.getUuid(), matches.getFirst());
-                available.remove(matches.getFirst());
+            current.addAll(matches);
+            available.removeAll(matches);
+        }
+    }
+
+    private static void requirePieceCapacity(List<OriginalRoll> sources,
+                                             Map<String, List<FinishRoll>> assigned) {
+        for (OriginalRoll source : sources) {
+            if (assigned.getOrDefault(source.getUuid(), List.of()).size()
+                    > DirectShipPiecePlan.from(source).count()) {
+                throw new BusinessException("直发成品数量超过母卷件数，请先修复来源数据");
             }
         }
     }
@@ -130,17 +126,6 @@ final class DirectShipFinishMatcher {
         return uniqueRollNo
                 && (source.getRollNo().equals(finish.getFinishRollNo())
                 || source.getRollNo().equals(finish.getOriginalRollNos()));
-    }
-
-    private static boolean preferredOver(FinishRoll candidate, FinishRoll current) {
-        boolean candidateActive = !Integer.valueOf(ROLL_NO_VOID).equals(candidate.getRollNoStatus());
-        boolean currentActive = !Integer.valueOf(ROLL_NO_VOID).equals(current.getRollNoStatus());
-        if (candidateActive != currentActive) {
-            return candidateActive;
-        }
-        int candidateSort = candidate.getRowSort() == null ? 0 : candidate.getRowSort();
-        int currentSort = current.getRowSort() == null ? 0 : current.getRowSort();
-        return candidateSort > currentSort;
     }
 
     private static boolean isActive(FinishRoll finish) {

@@ -8,6 +8,7 @@ import { dashboardKeys } from '../features/dashboard/queries/dashboardKeys'
 import { notificationKeys } from '../features/notification/queries/notificationKeys'
 import { exportTaskKeys } from '../features/exportTask/queries/exportTaskKeys'
 import { createOrderKeys } from '../features/processOrderCreate/queries/createOrderKeys'
+import { appendKeys } from '../features/processOrderCreate/queries/appendKeys'
 import { processOrderDetailKeys } from '../features/processOrderDetail/queries/processOrderDetailKeys'
 import { finishCustomerSpecKeys } from '../features/processOrderCustomerSpec/customerSpecKeys'
 import { processCatalogKeys } from '../features/processCatalog/queries/processCatalogKeys'
@@ -18,6 +19,7 @@ import { reportSavedViewKeys } from '../features/reportSavedView/queries/reportS
 import { settleKeys } from '../features/settle/queries/settleKeys'
 import { systemConfigKeys } from '../features/systemConfig/queries/systemConfigKeys'
 import { userKeys } from '../features/user/queries/userKeys'
+import { runtimeKeys } from '../features/runtime/queries/runtimeKeys'
 
 export const queries = mergeQueryKeys(
   authKeys,
@@ -27,6 +29,7 @@ export const queries = mergeQueryKeys(
   notificationKeys,
   exportTaskKeys,
   createOrderKeys,
+  appendKeys,
   processOrderDetailKeys,
   finishCustomerSpecKeys,
   processCatalogKeys,
@@ -39,4 +42,5 @@ export const queries = mergeQueryKeys(
   reportSavedViewKeys,
   userKeys,
   systemConfigKeys,
+  runtimeKeys,
 )

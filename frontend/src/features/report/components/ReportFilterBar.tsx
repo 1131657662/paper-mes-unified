@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import type { Customer } from '../../../types/customer'
 import type { Machine } from '../../../types/machine'
 import type { Paper } from '../../../types/paper'
+import type { ProcessOrderSettlementMode } from '../../../types/settlementSemantics'
 import { DICT_TYPES, invoiceFallbackOptions, settleFallbackOptions } from '../../systemConfig/configFallbacks'
 import { useNumberDictOptions } from '../../systemConfig/hooks/useRuntimeDictOptions'
 import ReportPeriodPreset from './ReportPeriodPreset'
@@ -24,7 +25,7 @@ export interface ReportFilterValues {
   paperName?: string
   period: [Dayjs, Dayjs]
   processMode?: number
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
 }
 
 interface Props {

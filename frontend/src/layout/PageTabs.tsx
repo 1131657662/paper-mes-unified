@@ -22,7 +22,7 @@ export default function PageTabs() {
   const navigate = useNavigate()
   const tabsRef = useRef<HTMLDivElement>(null)
   const [scrollState, setScrollState] = useState<TabScrollState>(emptyScrollState)
-  const tabState = usePageTabs(location.pathname)
+  const tabState = usePageTabs(`${location.pathname}${location.search}${location.hash}`)
   const { activePath, ...pageTabState } = tabState
   const actions = createPageTabActions({ activePath, navigate, ...pageTabState })
   const activeMenuItems = createMenuItems({

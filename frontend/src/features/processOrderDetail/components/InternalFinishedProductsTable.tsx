@@ -1,27 +1,33 @@
 import { Empty, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import type { SortOrder } from 'antd/es/table/interface'
 import { FINISH_SOURCE_TYPE, FINISH_STATUS, ROLL_NO_STATUS } from '../../../constants/processOrder'
 import type { FinishProductionVO, FinishSourceVO } from '../../../types/processOrder'
 import { formatGram, formatKg, formatMm, formatOptionalKg, formatPercent } from '../../../utils/numberFormatters'
 import { calculateFinishedProductTotals, type FinishedProductRow } from './finishedProductRows'
+import type { FinishedProductsSortController } from './useFinishedProductsSortState'
+import { sortPhysicalItemRows, type PhysicalItemsSortField, type PhysicalItemsSortSpec } from './finishedProductsSorting'
 
 interface Props {
   rows: FinishedProductRow[]
+  sortState?: FinishedProductsSortController<FinishedProductRow, PhysicalItemsSortSpec>
 }
 
-export default function InternalFinishedProductsTable({ rows }: Props) {
+export default function InternalFinishedProductsTable({ rows, sortState: providedSortState }: Props) {
+  const sortState = providedSortState ?? emptySortState()
   const totals = calculateFinishedProductTotals(rows)
   if (rows.length === 0) return <Empty description="暂无成品产出数据" />
   return (
     <Table<FinishedProductRow>
       bordered
       className="finished-products-table mes-table-card"
-      columns={columns}
-      dataSource={rows}
+      columns={buildColumns(sortState.sortChain)}
+      dataSource={sortPhysicalItemRows(rows, sortState.sortChain)}
       pagination={false}
       rowKey="key"
       scroll={{ x: 1210 }}
       size="small"
+      onChange={sortState.onChange}
       summary={() => renderSummary(totals)}
     />
   )
@@ -36,6 +42,29 @@ const columns: ColumnsType<FinishedProductRow> = [
   { title: '实际重量', align: 'right', width: 115, render: (_, row) => formatOptionalKg(row.finish.actualWeight) },
   { title: '差异', align: 'right', width: 120, render: (_, row) => renderDifference(row.finish) },
 ]
+
+const physicalItemFields: PhysicalItemsSortField[] = ['finishRollNo', 'specification', 'sourceMotherRoll', 'status', 'estimateWeight', 'actualWeight', 'difference']
+
+function emptySortState(): FinishedProductsSortController<FinishedProductRow, PhysicalItemsSortSpec> {
+  return { sortChain: [], onChange: () => undefined, clearSort: () => undefined }
+}
+
+function buildColumns(sortChain: PhysicalItemsSortSpec[]): ColumnsType<FinishedProductRow> {
+  return columns.map((column, index) => {
+    const field = physicalItemFields[index]
+    if (!field) return column
+    const active = sortChain.find((item) => item.field === field)
+    const priority = sortChain.findIndex((item) => item.field === field)
+    return {
+      ...column,
+      key: field,
+      title: priority >= 0 && typeof column.title === 'string' ? `${column.title} ${priority + 1}` : column.title,
+      sorter: { multiple: 1 },
+      sortOrder: (active?.direction === 'asc' ? 'ascend' : active?.direction === 'desc' ? 'descend' : null) as SortOrder,
+      sortDirections: ['ascend', 'descend', null] as SortOrder[],
+    }
+  })
+}
 
 function renderSpec(finish: FinishProductionVO) {
   const diameter = finish.finishDiameter == null ? '-' : `直径 ${formatMm(finish.finishDiameter)}`

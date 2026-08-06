@@ -13,7 +13,9 @@ public final class SettleCandidateQueryPolicy {
 
     public static LambdaQueryWrapper<ProcessOrder> create(SettleCandidateQuery query) {
         LambdaQueryWrapper<ProcessOrder> wrapper = new LambdaQueryWrapper<ProcessOrder>()
-                .eq(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED);
+                .eq(ProcessOrder::getOrderStatus, ORDER_STATUS_FINISHED)
+                .eq(ProcessOrder::getPrintStatus, 1)
+                .gt(ProcessOrder::getPrintCount, 0);
         if (query.getOrderUuids() != null && !query.getOrderUuids().isEmpty()) {
             wrapper.in(ProcessOrder::getUuid, query.getOrderUuids());
         }

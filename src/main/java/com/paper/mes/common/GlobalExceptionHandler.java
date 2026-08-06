@@ -56,10 +56,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BadSqlGrammarException.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public R<Void> handleBadSqlGrammar(BadSqlGrammarException ex) {
-        log.error("数据库结构或 SQL 不匹配", ex);
-        return R.fail(ResultCode.ERROR, "数据库结构未同步，请完成最新版本部署后重试");
+    public ResponseEntity<R<Void>> handleBadSqlGrammar(BadSqlGrammarException ex) {
+        if (SqlErrorClassifier.isMissingStructure(ex)) {
+            log.error("数据库结构缺失", ex);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(R.fail(ResultCode.SERVICE_UNAVAILABLE, "DB_SCHEMA_NOT_READY",
+                            "数据库结构未同步，请完成最新版本部署后重试"));
+        }
+        log.error("SQL 执行失败", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(R.fail(ResultCode.ERROR, "SQL_EXECUTION_ERROR", "数据查询失败，请联系管理员"));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

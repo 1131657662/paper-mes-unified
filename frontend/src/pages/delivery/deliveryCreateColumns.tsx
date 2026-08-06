@@ -16,6 +16,7 @@ import {
   type DeliverySelectionTableRow,
 } from './deliveryFinishGrouping'
 import type { DeliveryLineEdit } from './deliverySelectionModel'
+import { hasDeliverySettlementRisk } from '../../types/settlementSemantics'
 
 interface ColumnOptions {
   edits: Record<string, DeliveryLineEdit>
@@ -153,7 +154,7 @@ function riskColumn(): ColumnType<DeliverySelectionTableRow> {
     title: '风险',
     width: 116,
     minWidth: 104,
-    render: (_, row) => isDeliveryGroupRow(row) ? null : row.settlementRisk
+    render: (_, row) => isDeliveryGroupRow(row) ? null : hasDeliverySettlementRisk(row)
       ? <Tag className="mes-status-tag" color="orange">待收款确认</Tag>
       : <Tag className="mes-status-tag">正常</Tag>,
   }

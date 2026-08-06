@@ -76,6 +76,19 @@ class ReportMetricSchemaContractTest {
     }
 
     @Test
+    void cashReceivedMetric_whenClarified_usesActualReceivedSemantics() throws IOException {
+        String migration = source("sql/V3.62__clarify_actual_received_amount_semantics.sql");
+        String launcher = source("dev.ps1");
+        String schemaHelper = source("dev-schema.ps1");
+
+        assertTrue(migration.contains("`metric_code` = 'cash_received_amount'"));
+        assertTrue(migration.contains("`metric_name` = '实际到账'"));
+        assertTrue(migration.contains("包含现金、转账、微信和支付宝"));
+        assertTrue(launcher.contains("Ensure-LocalActualReceivedMetricSemantic"));
+        assertTrue(schemaHelper.contains("V3.62__clarify_actual_received_amount_semantics.sql"));
+    }
+
+    @Test
     void metricCatalog_whenListingReleases_preAggregatesItemsAndParameterizesDetail() throws IOException {
         String service = source("src/main/java/com/paper/mes/report/service/ReportMetricCatalogService.java");
 

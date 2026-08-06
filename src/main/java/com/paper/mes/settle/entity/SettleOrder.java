@@ -3,6 +3,7 @@ package com.paper.mes.settle.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.paper.mes.common.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -40,6 +41,8 @@ public class SettleOrder extends BaseEntity {
     private BigDecimal extraAmount;
     private BigDecimal amountNoTax;
     private BigDecimal taxAmount;
+    @TableField(exist = false)
+    private BigDecimal historicalDifferenceAmount;
     private BigDecimal totalAmount;
     private BigDecimal receivedAmount;
     private BigDecimal cashReceivedAmount;

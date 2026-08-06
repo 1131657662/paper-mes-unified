@@ -9,6 +9,7 @@ import type {
 } from '../types/exportTask'
 import type { DeliveryInventoryFinishQuery } from '../types/deliveryInventory'
 import type { DeliveryQuery } from '../types/delivery'
+import type { DeliveryExportSortChains, DeliverySortSpec } from '../types/deliverySort'
 import type { ReportExportRequest } from '../types/report'
 import { downloadFileFromResponse } from '../utils/downloadFile'
 
@@ -47,10 +48,22 @@ export function createProcessOrderExportTask(
 
 export function createDeliveryOrderExportTask(
   uuid: string, requestId: string = crypto.randomUUID(), customerRevisionNo = 0,
+  sortChains: DeliveryExportSortChains | DeliverySortSpec[] = { physical: [], customer: [], trace: [] },
+  documentView: 'customer' | 'physical' | 'trace' = 'physical',
 ) {
+  const chains: DeliveryExportSortChains = Array.isArray(sortChains)
+    ? { physical: sortChains, customer: [], trace: [] }
+    : sortChains
   return request<string>({
     url: `/api/export-tasks/delivery-orders/${uuid}`, method: 'post',
-    data: { requestId, customerRevisionNo },
+    data: {
+      requestId,
+      customerRevisionNo,
+      sortChain: chains.physical,
+      customerSortChain: chains.customer,
+      traceSortChain: chains.trace,
+      documentView,
+    },
   })
 }
 

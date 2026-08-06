@@ -1,9 +1,12 @@
 package com.paper.mes.exporttask.dto;
 
+import com.paper.mes.delivery.dto.DeliverySortSpec;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 public class ExportTaskCreateDTO {
@@ -14,4 +17,12 @@ public class ExportTaskCreateDTO {
     /** 加工单或出库单导出时固定的客户规格版本；其他单据类型为空。 */
     @Min(value = 0, message = "客户规格版本不能小于0")
     private Integer customerRevisionNo;
+
+    private List<DeliverySortSpec> sortChain;
+
+    private List<DeliverySortSpec> customerSortChain;
+
+    private List<DeliverySortSpec> traceSortChain;
+
+    private String documentView;
 }

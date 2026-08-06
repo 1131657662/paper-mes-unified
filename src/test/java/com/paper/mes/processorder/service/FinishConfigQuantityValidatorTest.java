@@ -32,6 +32,22 @@ class FinishConfigQuantityValidatorTest {
     }
 
     @Test
+    void requireWithinLimit_whenSourcePiecesExpandSawOutputsBeyond500_rejects() {
+        FinishConfigSaveDTO config = config(spec(63), 0);
+        config.setProcessMode(1);
+        config.setMainStepType(1);
+
+        assertThrows(BusinessException.class,
+                () -> FinishConfigQuantityValidator.requireWithinLimit(config, 8));
+    }
+
+    @Test
+    void requireSourcePieceCount_whenAbove500_rejects() {
+        assertThrows(BusinessException.class,
+                () -> FinishConfigQuantityValidator.requireSourcePieceCount(501));
+    }
+
+    @Test
     void requireWithinLimit_whenPreviewExpandsTo500_accepts() {
         RewindPlanPreviewDTO preview = preview(50, 10, 0);
 

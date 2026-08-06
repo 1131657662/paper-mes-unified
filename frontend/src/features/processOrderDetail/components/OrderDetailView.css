@@ -145,6 +145,10 @@
   padding: 14px 16px 16px;
 }
 
+.issue-version-history__loading {
+  min-height: 160px;
+}
+
 .order-detail-note-alert {
   margin-bottom: 12px;
 }

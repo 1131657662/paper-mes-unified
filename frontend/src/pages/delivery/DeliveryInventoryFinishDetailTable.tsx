@@ -7,15 +7,23 @@ import { formatKg } from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryInventoryFinish } from '../../types/deliveryInventory'
 import { formatSpecification } from './deliveryInventoryGrouping'
 import './DeliveryInventoryFinishDetailTable.css'
+import type { InventoryFinishSortController } from './useDeliveryInventoryCustomerSortState'
+import {
+  sortDeliveryInventoryFinishes,
+  type DeliveryInventoryFinishSortField,
+  type DeliveryInventoryFinishSortSpec,
+} from './deliveryInventorySorting'
 
 interface Props {
   rows: DeliveryInventoryFinish[]
   selectedByUuid: Record<string, DeliveryInventoryFinish>
   onToggle: (row: DeliveryInventoryFinish, checked: boolean) => void
   selectionDisabled?: (row: DeliveryInventoryFinish) => boolean
+  sortState?: InventoryFinishSortController
 }
 
-export default function DeliveryInventoryFinishDetailTable({ rows, selectedByUuid, selectionDisabled, onToggle }: Props) {
+export default function DeliveryInventoryFinishDetailTable(props: Props) {
+  const { rows, selectedByUuid, selectionDisabled, onToggle } = props
   const rowSelection: TableRowSelection<DeliveryInventoryFinish> = {
     selectedRowKeys: rows.filter((row) => selectedByUuid[row.finishUuid]).map((row) => row.finishUuid),
     preserveSelectedRowKeys: true,
@@ -28,10 +36,11 @@ export default function DeliveryInventoryFinishDetailTable({ rows, selectedByUui
       className="delivery-inventory-finish-detail-table"
       rowKey="finishUuid"
       size="small"
-      columns={columns}
-      dataSource={rows}
+      columns={buildColumns(props.sortState?.sortChain ?? [])}
+      dataSource={props.sortState ? sortDeliveryInventoryFinishes(rows, props.sortState.sortChain) : rows}
       pagination={false}
       rowSelection={rowSelection}
+      onChange={props.sortState?.onChange}
       onRow={(row) => detailRowProps(row, { onToggle, selectedByUuid, selectionDisabled })}
       bordered={false}
       tableLayout="fixed"
@@ -75,7 +84,7 @@ function syncSelection(
   })
 }
 
-const columns: ColumnsType<DeliveryInventoryFinish> = [
+const baseColumns: ColumnsType<DeliveryInventoryFinish> = [
   {
     title: '成品卷号', dataIndex: 'finishRollNo', width: 140, ellipsis: true,
     render: (_value, row) => <Typography.Text strong><TooltipText value={row.finishRollNo} /></Typography.Text>,
@@ -106,6 +115,30 @@ const columns: ColumnsType<DeliveryInventoryFinish> = [
     render: (_value, row) => <TooltipText value={row.deliveryNo || '-'} />,
   },
 ]
+
+function buildColumns(sortChain: DeliveryInventoryFinishSortSpec[]): ColumnsType<DeliveryInventoryFinish> {
+  return baseColumns.map((column) => {
+    const field = detailSortField(column)
+    if (!field) return column
+    const active = sortChain.find((item) => item.field === field)
+    const priority = sortChain.findIndex((item) => item.field === field)
+    return {
+      ...column,
+      title: priority >= 0 && typeof column.title === 'string' ? `${column.title} ${priority + 1}` : column.title,
+      sorter: { multiple: 1 },
+      sortOrder: active?.direction === 'asc' ? 'ascend' : active?.direction === 'desc' ? 'descend' : null,
+      sortDirections: ['ascend', 'descend', null],
+    }
+  })
+}
+
+function detailSortField(column: ColumnsType<DeliveryInventoryFinish>[number]): DeliveryInventoryFinishSortField | undefined {
+  if (!('dataIndex' in column)) return undefined
+  if (column.dataIndex === 'paperName') return 'specification'
+  if (column.dataIndex === 'finishRollNo' || column.dataIndex === 'remainingWeight' || column.dataIndex === 'stockState' || column.dataIndex === 'deliveryNo') return column.dataIndex as DeliveryInventoryFinishSortField
+  if (column.key === 'inventoryType') return 'inventoryType'
+  return undefined
+}
 
 function typeText(row: DeliveryInventoryFinish) {
   if (row.isRemain === 1) return '余料'

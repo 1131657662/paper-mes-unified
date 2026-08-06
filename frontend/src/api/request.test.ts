@@ -20,6 +20,12 @@ describe('HTTP 认证错误解包', () => {
     expect(businessErrorFromResponse('<html>error</html>')).toBeNull()
   })
 
+  it('preserves the backend request id for support diagnostics', () => {
+    const error = businessErrorFromResponse({ code: 400, message: 'bad request', requestId: 'request-123' })
+
+    expect(error?.requestId).toBe('request-123')
+  })
+
   it('允许页面流程接管指定业务错误', () => {
     const staleCandidate = new BizError('加工单已结算', 400, 'E004')
 

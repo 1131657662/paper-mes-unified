@@ -9,6 +9,7 @@ import {
 } from '../../systemConfig/configFallbacks'
 import { useNumberDictOptions } from '../../systemConfig/hooks/useRuntimeDictOptions'
 import type { ReferenceOption } from '../types'
+import type { ProcessOrderSettlementMode } from '../../../types/settlementSemantics'
 import { toBaseInfoDto, type BaseInfoFormValues } from './baseInfoModel'
 
 interface Options {
@@ -24,7 +25,7 @@ export interface BaseInfoFormSession {
   customerVersionStale: boolean
   settleOptions: ReturnType<typeof useNumberDictOptions>['options']
   settleMode?: OrderSettlementMode
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
   onCustomerChange: (customerUuid: string) => void
   onSettleModeChange: (mode: OrderSettlementMode) => void
   refreshCustomerSettlement: () => void

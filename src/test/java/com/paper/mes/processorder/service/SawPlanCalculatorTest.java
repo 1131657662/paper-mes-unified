@@ -84,6 +84,32 @@ class SawPlanCalculatorTest {
         assertEquals(new BigDecimal("2.913"), trimWeight(result));
     }
 
+    @Test
+    void multipleSourcePieces_expandEachPhysicalOutputWithPerPieceWeight() {
+        OriginalRoll roll = roll(1000, "744.900");
+        roll.setPieceNum(8);
+
+        SawPlanCalculation result = calculator.calculate(List.of(
+                spec("FINISH", 900), spec("TRIM", 100)), roll, "REMAINDER");
+
+        assertEquals(8, result.finishes().size());
+        assertEquals(8, result.trims().size());
+        assertEquals(new BigDecimal("670.410"), result.finishes().getFirst().estimateWeight());
+        assertEquals(new BigDecimal("74.490"), result.trims().getFirst().estimateWeight());
+        assertEquals(new BigDecimal("5363.280"), finishWeight(result));
+        assertEquals(new BigDecimal("595.920"), trimWeight(result));
+        assertEquals(8, result.knifeCount());
+    }
+
+    @Test
+    void sourcePieceExpansion_overLimit_isRejected() {
+        OriginalRoll roll = roll(1000, "744.900");
+        roll.setPieceNum(501);
+
+        assertThrows(BusinessException.class, () -> calculator.calculate(
+                List.of(spec("FINISH", 1000)), roll, "REMAINDER"));
+    }
+
     private BigDecimal finishWeight(SawPlanCalculation result) {
         return result.finishes().stream().map(SawPlanCalculation.CalculatedFinish::estimateWeight)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);

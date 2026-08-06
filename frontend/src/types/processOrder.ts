@@ -1,4 +1,5 @@
 import type { PageQuery } from './common'
+import type { ProcessOrderSettlementMode } from './settlementSemantics'
 
 export type OrderSettlementMode = 'INHERIT' | 'OVERRIDE'
 
@@ -20,7 +21,7 @@ export interface ProcessOrder {
   /** 1开票 2不开票 */
   isInvoice?: number
   /** 1次结 2月结，本单可覆盖客户默认值。 */
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
   settleDay?: number
   settleSource?: OrderSettlementMode
   settleCustomerVersion?: number
@@ -101,6 +102,7 @@ export interface OriginalRoll {
   operator?: string
   processAmount?: number
   remark?: string
+  serviceSteps?: ProcessStep[]
 }
 
 /** 成品明细（详情只读展示用，最小字段集）。 */
@@ -295,8 +297,20 @@ export interface RollProductionVO {
 }
 
 /** 加工单详情返回体，与后端 ProcessOrderDetailVO 对应。 */
+export type ProcessOrderPrintStage =
+  | 'DRAFT'
+  | 'PENDING_ISSUE'
+  | 'PENDING_MANUAL_CONFIRM'
+  | 'WAITING_BACK_RECORD'
+  | 'COMPLETED'
+  | 'SETTLED'
+  | 'VOIDED'
+  | 'UNKNOWN'
+
 export interface ProcessOrderDetailVO {
   order: ProcessOrder
+  /** 服务端根据状态机解析出的稳定打印/生产阶段。 */
+  printStage?: ProcessOrderPrintStage
   originalRolls: OriginalRoll[]
   rolls: OriginalRoll[]
   finishRolls: FinishRoll[]
@@ -320,6 +334,7 @@ export interface ProcessOrderPrintViewVO {
 
 /** 原纸明细行入参，与后端 OriginalRollDTO 对应。 */
 export interface OriginalRollDTO {
+  uuid?: string
   extraNo?: string
   rollNo?: string
   paperName: string
@@ -338,6 +353,7 @@ export interface OriginalRollDTO {
   mainStepType?: number
   machineUuid?: string
   remark?: string
+  serviceSteps?: ProcessStep[]
 }
 
 export interface FinishLayerDTO {
@@ -670,6 +686,80 @@ export interface DraftSummaryVO {
   totalWeight?: number
 }
 
+export interface ProcessOrderAppendRollProcessDTO {
+  rollUuid: string
+  processMode: number
+  mainStepType?: number
+  machineUuid?: string
+}
+
+export interface ProcessOrderAppendRollBatchDTO {
+  expectedSessionVersion: number
+  rolls: OriginalRollDTO[]
+}
+
+export interface ProcessOrderAppendSessionCreateDTO {
+  expectedOrderVersion: number
+  reason?: string
+}
+
+export interface ProcessOrderAppendProcessSettingsDTO {
+  expectedSessionVersion: number
+  rolls: ProcessOrderAppendRollProcessDTO[]
+}
+
+export interface ProcessOrderAppendPlanSaveDTO {
+  expectedSessionVersion: number
+  rollUuid: string
+  config: FinishConfigSaveDTO
+  configType?: 'singlePlan' | 'routePlan'
+  previewJson?: string
+}
+
+export interface ProcessOrderAppendPlanPreviewDTO {
+  expectedSessionVersion: number
+  plan: ProcessPlanDTO
+}
+
+export interface ProcessOrderAppendPreviewDTO {
+  expectedSessionVersion: number
+}
+
+export interface ProcessOrderAppendCommitDTO {
+  expectedOrderVersion: number
+  requestId: string
+}
+
+export interface ProcessOrderAppendRollVO extends OriginalRoll {
+  configStatus?: number
+  configType?: 'singlePlan' | 'routePlan' | string
+  lastError?: string
+  config?: FinishConfigSaveDTO
+  previewJson?: string
+  preview?: PlanPreviewVO
+  route?: ProcessRoutePreviewDTO
+  routePreview?: ProcessRoutePreviewVO
+}
+
+export interface ProcessOrderAppendSessionVO {
+  sessionUuid: string
+  orderUuid: string
+  orderNo?: string
+  baseOrderVersion?: number
+  sessionVersion?: number
+  status?: 'DRAFT' | 'READY' | 'APPLIED' | 'CANCELLED' | 'EXPIRED' | string
+  reason?: string
+  rolls?: ProcessOrderAppendRollVO[]
+}
+
+export interface ProcessOrderAppendCommitResult {
+  sessionUuid?: string
+  orderUuid?: string
+  orderVersion?: number
+  rollUuids?: string[]
+  finishRollNos?: string[]
+}
+
 /** 创建加工单入参，与后端 ProcessOrderCreateDTO 对应。 */
 export interface ProcessOrderCreateDTO {
   customerUuid: string
@@ -679,7 +769,7 @@ export interface ProcessOrderCreateDTO {
   labelBrand?: string
   warehouseUuid?: string
   isInvoice?: number
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
   settleDay?: number
   settleMode?: OrderSettlementMode
   customerVersion?: number
@@ -704,7 +794,7 @@ export interface DraftOrderBaseDTO {
   labelBrand?: string
   warehouseUuid?: string
   isInvoice?: number
-  settleType?: number
+  settleType?: ProcessOrderSettlementMode
   settleDay?: number
   settleMode?: OrderSettlementMode
   customerVersion?: number
@@ -767,6 +857,7 @@ export interface ProcessOrderSubmitVO {
   orderNo?: string
   orderStatus?: number
   finishRollNos?: string[]
+  remainRollNos?: string[]
   spareRollNos?: string[]
 }
 

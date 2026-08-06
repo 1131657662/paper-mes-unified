@@ -16,6 +16,18 @@ class SettleServiceImplOrderEligibilityTest {
     }
 
     @Test
+    void validateFinishedOrder_whenPrintWasNotConfirmed_rejectsSettlement() {
+        ProcessOrder order = order(4);
+        order.setPrintStatus(0);
+        order.setPrintCount(0);
+
+        assertThatThrownBy(() -> SettleServiceImpl.validateFinishedOrder(order))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("未记录人工确认打印")
+                .hasMessageContaining("不可结算");
+    }
+
+    @Test
     void validateFinishedOrder_whenSettled_reportsDuplicateSettlement() {
         assertThatThrownBy(() -> SettleServiceImpl.validateFinishedOrder(order(5)))
                 .isInstanceOf(BusinessException.class)
@@ -34,6 +46,8 @@ class SettleServiceImplOrderEligibilityTest {
         ProcessOrder order = new ProcessOrder();
         order.setOrderNo("JG-TEST-001");
         order.setOrderStatus(status);
+        order.setPrintStatus(1);
+        order.setPrintCount(1);
         return order;
     }
 }

@@ -75,7 +75,8 @@ public class ExportTaskCreationService {
         CurrentUser user = currentUser();
         DeliveryOrder order = documentResolver.deliveryOrder(orderUuid);
         String payload = deliveryOrderRevisionSnapshot.capture(
-                orderUuid, dto.getCustomerRevisionNo(), order.getDeliveryStatus());
+                orderUuid, dto.getCustomerRevisionNo(), order.getDeliveryStatus(), dto.getSortChain(),
+                dto.getCustomerSortChain(), dto.getTraceSortChain(), dto.getDocumentView());
         ExportTask existing = findByRequest(user.getUuid(), dto.getRequestId());
         if (existing != null) {
             return requireSameDocumentSnapshot(

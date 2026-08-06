@@ -79,6 +79,15 @@ class OriginalRollImportParserTest {
         assertEquals("第一行\n第二行", preview.getValidRows().getFirst().getRemark());
     }
 
+    @Test
+    void parse_whenCsvPieceCountExceeds500_reportsError() {
+        OriginalRollImportPreviewVO preview = parser.parse(csvFile(
+                csvWithBlankRollNo().replace(",1,,", ",501,,")));
+
+        assertTrue(preview.getErrors().size() >= 1);
+        assertTrue(preview.getValidRows().isEmpty());
+    }
+
     private MockMultipartFile csvFile(String csv) {
         return new MockMultipartFile(
                 "file", "original-rolls.csv", "text/csv", csv.getBytes(StandardCharsets.UTF_8));

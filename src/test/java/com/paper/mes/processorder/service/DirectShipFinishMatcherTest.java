@@ -18,10 +18,10 @@ class DirectShipFinishMatcherTest {
         OriginalRoll source = source("roll-1", null);
         FinishRoll finish = finish("finish-1", "A000001", 2);
 
-        Map<String, FinishRoll> result = DirectShipFinishMatcher.assign(
+        Map<String, List<FinishRoll>> result = DirectShipFinishMatcher.assign(
                 List.of(source), List.of(finish), List.of(relation(source, finish)));
 
-        assertThat(result).containsEntry("roll-1", finish);
+        assertThat(result).containsEntry("roll-1", List.of(finish));
     }
 
     @Test
@@ -64,7 +64,7 @@ class DirectShipFinishMatcherTest {
     }
 
     @Test
-    void assign_twoActiveFinishesForSameUuidSource_rejectsCorruptRelations() {
+    void assign_moreActiveFinishesThanPieces_rejectsCorruptRelations() {
         OriginalRoll source = source("roll-1", "M001");
         FinishRoll first = finish("finish-1", "A000001", 2);
         FinishRoll second = finish("finish-2", "A000002", 2);
@@ -72,7 +72,21 @@ class DirectShipFinishMatcherTest {
         assertThatThrownBy(() -> DirectShipFinishMatcher.assign(
                 List.of(source), List.of(first, second),
                 List.of(relation(source, first), relation(source, second))))
-                .hasMessageContaining("多个有效直发成品");
+                .hasMessageContaining("超过母卷件数");
+    }
+
+    @Test
+    void assign_twoPiecesWithTwoUuidRelations_returnsBothFinishes() {
+        OriginalRoll source = source("roll-1", "M001");
+        source.setPieceNum(2);
+        FinishRoll first = finish("finish-1", "A000001", 2);
+        FinishRoll second = finish("finish-2", "A000002", 2);
+
+        Map<String, List<FinishRoll>> result = DirectShipFinishMatcher.assign(
+                List.of(source), List.of(first, second),
+                List.of(relation(source, first), relation(source, second)));
+
+        assertThat(result.get("roll-1")).containsExactly(first, second);
     }
 
     @Test
@@ -81,17 +95,18 @@ class DirectShipFinishMatcherTest {
         FinishRoll old = finish("finish-old", "A000001", 3);
         FinishRoll current = finish("finish-new", "A000002", 2);
 
-        Map<String, FinishRoll> result = DirectShipFinishMatcher.assign(
+        Map<String, List<FinishRoll>> result = DirectShipFinishMatcher.assign(
                 List.of(source), List.of(old, current),
                 List.of(relation(source, old), relation(source, current)));
 
-        assertThat(result).containsEntry("roll-1", current);
+        assertThat(result).containsEntry("roll-1", List.of(current));
     }
 
     private OriginalRoll source(String uuid, String rollNo) {
         OriginalRoll source = new OriginalRoll();
         source.setUuid(uuid);
         source.setRollNo(rollNo);
+        source.setPieceNum(1);
         return source;
     }
 

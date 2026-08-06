@@ -8,6 +8,11 @@ import {
 } from './backRecordUtils'
 import { buildBackRecordWorkbench } from './backRecordWorkbenchUtils'
 import { useBackRecordDisplayValues } from './useBackRecordDisplayValues'
+import {
+  clearBackRecordDraft,
+  readBackRecordDraft,
+  writeBackRecordDraft,
+} from './backRecordDraft'
 
 interface UseBackRecordFormStateOptions {
   detail?: ProcessOrderDetailVO
@@ -23,8 +28,10 @@ export function useBackRecordFormState(options: UseBackRecordFormStateOptions) {
   const displayValues = useBackRecordDisplayValues(form, filledValues)
   const initialize = useCallback((nextDetail: ProcessOrderDetailVO) => {
     const initialValues = buildInitialValues(nextDetail)
-    form.setFieldsValue(initialValues)
-    setFilledValues(initialValues)
+    const draft = readBackRecordDraft(nextDetail.order.uuid)
+    const restoredValues = draft ? mergeFormValues(initialValues, draft.values) : initialValues
+    form.setFieldsValue(restoredValues)
+    setFilledValues(restoredValues)
     initializedOrderRef.current = nextDetail.order.uuid
     initializedVersionRef.current = nextDetail.order.version
   }, [form])
@@ -40,6 +47,26 @@ export function useBackRecordFormState(options: UseBackRecordFormStateOptions) {
     initializedOrderRef.current = null
     initializedVersionRef.current = undefined
   }, [])
+  const persistDraft = useCallback(() => {
+    if (!detail) return
+    writeBackRecordDraft(
+      detail.order.uuid,
+      initializedVersionRef.current,
+      form.getFieldsValue(true) as BackRecordFormValues,
+    )
+  }, [detail, form])
+  const clearDraft = useCallback(() => {
+    if (detail) clearBackRecordDraft(detail.order.uuid)
+  }, [detail])
+  const syncFilledValues = useCallback((values: BackRecordFormValues) => {
+    setFilledValues(values)
+    if (!detail) return
+    writeBackRecordDraft(
+      detail.order.uuid,
+      initializedVersionRef.current,
+      form.getFieldsValue(true) as BackRecordFormValues,
+    )
+  }, [detail, form])
 
   useEffect(() => {
     const detailUuid = detail?.order.uuid
@@ -57,10 +84,12 @@ export function useBackRecordFormState(options: UseBackRecordFormStateOptions) {
     displayValues,
     form,
     getInitializedVersion: () => initializedVersionRef.current,
+    clearDraft,
     initialize,
     refreshPreservingValues,
     resetInitialization,
-    syncFilledValues: setFilledValues,
+    persistDraft,
+    syncFilledValues,
   }
 }
 

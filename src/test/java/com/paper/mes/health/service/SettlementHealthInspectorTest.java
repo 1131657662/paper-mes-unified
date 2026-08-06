@@ -27,8 +27,10 @@ class SettlementHealthInspectorTest {
         inspector.inspect();
 
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate, times(3)).query(sqlCaptor.capture(), any(RowMapper.class));
+        verify(jdbcTemplate, times(5)).query(sqlCaptor.capture(), any(RowMapper.class));
         assertThat(sqlCaptor.getAllValues().getFirst())
                 .contains("s.settle_status IN (1, 2, 3)");
+        assertThat(sqlCaptor.getAllValues()).anyMatch(sql -> sql.contains("is_invoice = 2"));
+        assertThat(sqlCaptor.getAllValues()).anyMatch(sql -> sql.contains("active_received_amount"));
     }
 }

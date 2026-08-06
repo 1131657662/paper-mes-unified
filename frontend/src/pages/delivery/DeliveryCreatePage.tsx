@@ -26,8 +26,10 @@ import {
 import { useDeliveryCreateInventory } from './useDeliveryCreateInventory'
 import { deliveryCreateReturnTarget, finishUuidsFromNavigationState } from './deliveryCreateNavigation'
 import { deliveryAvailableEmptyText } from './deliveryAvailableEmptyText'
+import { hasDeliverySettlementRisk } from '../../types/settlementSemantics'
 import '../documentModule.css'
 import './DeliveryCreatePage.css'
+import './DeliveryCreateLayout.css'
 
 export default function DeliveryCreatePage() {
   const [form] = Form.useForm<DeliveryCreateFormValues>()
@@ -102,7 +104,7 @@ export default function DeliveryCreatePage() {
       message.error(selectionError)
       return
     }
-    const hasRisk = selectedFinishes.some((item) => item.settlementRisk)
+    const hasRisk = selectedFinishes.some(hasDeliverySettlementRisk)
     if (hasRisk) {
       const confirmed = await confirmDeliveryCashRelease()
       if (!confirmed) return

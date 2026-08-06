@@ -15,10 +15,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -97,6 +99,33 @@ class BackRecordDirectShipRecorderTest {
         verify(finishMapper, never()).updateById(voided);
     }
 
+    @Test
+    void record_threePhysicalPieces_createsThreeFinishesAndAbsorbsWeightRemainder() {
+        OriginalRoll source = source("roll-1", "M001", "100.000");
+        source.setPieceNum(3);
+        when(finishMapper.selectList(any())).thenReturn(List.of());
+        when(relationMapper.selectList(any())).thenReturn(List.of());
+        when(sequenceService.nextFinishRollNo()).thenReturn("A000001", "A000002", "A000003");
+        AtomicInteger sequence = new AtomicInteger();
+        when(finishMapper.insert(any(FinishRoll.class))).thenAnswer(invocation -> {
+            invocation.<FinishRoll>getArgument(0).setUuid("finish-" + sequence.incrementAndGet());
+            return 1;
+        });
+
+        BackRecordDirectShipRecorder.Result result = recorder.record(
+                order(), List.of(source), List.of(source));
+
+        assertThat(result.generated()).isEqualTo(3);
+        assertThat(result.finishes()).extracting(FinishRoll::getActualWeight)
+                .containsExactly(new BigDecimal("33.333"), new BigDecimal("33.333"),
+                        new BigDecimal("33.334"));
+        ArgumentCaptor<FinishOriginalRel> relationCaptor = ArgumentCaptor.forClass(FinishOriginalRel.class);
+        verify(relationMapper, times(3)).insert(relationCaptor.capture());
+        assertThat(relationCaptor.getAllValues()).extracting(FinishOriginalRel::getShareWeight)
+                .containsExactly(new BigDecimal("33.333"), new BigDecimal("33.333"),
+                        new BigDecimal("33.334"));
+    }
+
     private ProcessOrder order() {
         ProcessOrder order = new ProcessOrder();
         order.setUuid("order-1");
@@ -115,6 +144,7 @@ class BackRecordDirectShipRecorderTest {
         source.setGramWeight(80);
         source.setOriginalWidth(1200);
         source.setActualWeight(new BigDecimal(weight));
+        source.setPieceNum(1);
         return source;
     }
 

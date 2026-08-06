@@ -9,6 +9,12 @@ import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import { renderTableToolbarPortal } from '../../components/biz/tableToolbarPortalUtils'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import { useResizableTableColumns } from '../../components/useResizableTableColumns'
+import type { InventoryFinishSortController } from './useDeliveryInventoryCustomerSortState'
+import {
+  sortDeliveryInventoryFinishes,
+  type DeliveryInventoryFinishSortField,
+  type DeliveryInventoryFinishSortSpec,
+} from './deliveryInventorySorting'
 
 export interface DeliveryInventoryTableSelection {
   selectedRowKeys: React.Key[]
@@ -26,12 +32,13 @@ interface Props {
   showCustomer?: boolean
   onOpenCustomer?: (customerUuid: string) => void
   onOpenDelivery: (uuid: string) => void
+  sortState?: InventoryFinishSortController
   tableTitle?: string
 }
 
 export default function DeliveryInventoryFinishTable(props: Props) {
   const resizable = useResizableTableColumns<DeliveryInventoryFinish, ProColumns<DeliveryInventoryFinish>>(
-    finishColumns(props.showCustomer, props.onOpenCustomer, props.onOpenDelivery), 'delivery-inventory-finishes',
+    finishColumns(props.showCustomer, props.onOpenCustomer, props.onOpenDelivery, props.sortState?.sortChain), 'delivery-inventory-finishes',
   )
   const columnsState = useTableColumnsState('table-columns-delivery-inventory-finishes')
   const rowSelection = props.selection ? {
@@ -48,10 +55,11 @@ export default function DeliveryInventoryFinishTable(props: Props) {
       columns={resizable.columns}
       components={resizable.components}
       columnsState={columnsState}
-      dataSource={props.data}
+      dataSource={props.sortState ? sortDeliveryInventoryFinishes(props.data, props.sortState.sortChain) : props.data}
       loading={props.loading}
       pagination={false}
       rowSelection={rowSelection}
+      onChange={props.sortState?.onChange}
       tableAlertRender={false}
       onRow={(row) => finishRowProps(row, props.selection)}
       scroll={props.fillHeight ? { x: resizable.scrollX, y: '100%' } : { x: resizable.scrollX }}
@@ -84,7 +92,7 @@ function isInteractiveTarget(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest('a, button, input, label, [role="checkbox"]'))
 }
 
-function finishColumns(showCustomer = false, onOpenCustomer: ((uuid: string) => void) | undefined, onOpenDelivery: (uuid: string) => void): ProColumns<DeliveryInventoryFinish>[] {
+function finishColumns(showCustomer = false, onOpenCustomer: ((uuid: string) => void) | undefined, onOpenDelivery: (uuid: string) => void, sortChain: DeliveryInventoryFinishSortSpec[] = []): ProColumns<DeliveryInventoryFinish>[] {
   const columns: ProColumns<DeliveryInventoryFinish>[] = [
     { title: '成品卷号', dataIndex: 'finishRollNo', fixed: 'left', width: 135, minWidth: 120, ellipsis: true, render: (_, row) => <Typography.Text strong><TooltipText value={row.finishRollNo} /></Typography.Text> },
     { title: '加工单', dataIndex: 'orderNo', width: 160, minWidth: 140, ellipsis: true, render: (_, row) => <StackedCell main={row.orderNo} sub={row.orderDate} /> },
@@ -102,7 +110,31 @@ function finishColumns(showCustomer = false, onOpenCustomer: ((uuid: string) => 
       ? <Button type="link" className="delivery-inventory-customer-link" onClick={() => onOpenCustomer(row.customerUuid)}><TooltipText value={value} /></Button>
       : <TooltipText value={value} />,
   })
-  return columns
+  return columns.map((column) => addSortState(column, sortChain))
+}
+
+function addSortState(column: ProColumns<DeliveryInventoryFinish>, sortChain: DeliveryInventoryFinishSortSpec[]): ProColumns<DeliveryInventoryFinish> {
+  const field = inventoryFinishField(column)
+  if (!field) return column
+  const active = sortChain.find((item) => item.field === field)
+  const priority = sortChain.findIndex((item) => item.field === field)
+  return {
+    ...column,
+    title: priority >= 0 && typeof column.title === 'string' ? `${column.title} ${priority + 1}` : column.title,
+    sorter: { multiple: 1 },
+    sortOrder: active?.direction === 'asc' ? 'ascend' : active?.direction === 'desc' ? 'descend' : null,
+    sortDirections: ['ascend', 'descend', null],
+  }
+}
+
+function inventoryFinishField(column: ProColumns<DeliveryInventoryFinish>): DeliveryInventoryFinishSortField | undefined {
+  if (column.key === 'inventoryType') return 'inventoryType'
+  if (column.dataIndex === 'paperName') return 'specification'
+  if (typeof column.dataIndex !== 'string') return undefined
+  const fields: DeliveryInventoryFinishSortField[] = [
+    'finishRollNo', 'orderNo', 'remainingWeight', 'warehouseName', 'stockInTime', 'stockState', 'deliveryNo',
+  ]
+  return fields.includes(column.dataIndex as DeliveryInventoryFinishSortField) ? column.dataIndex as DeliveryInventoryFinishSortField : undefined
 }
 
 function formatStockTime(value?: string) {

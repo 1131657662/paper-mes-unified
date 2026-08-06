@@ -33,13 +33,15 @@ describe('加工单详情执行操作', () => {
     const markup = renderActions(2, { ...noCapabilities, canManageOrder: true }, false)
 
     expect(markup).toContain('确认打印并转待回录')
+    expect(markup).toContain('重新打开打印')
+    expect(markup).not.toContain('完成打印')
     expect(markup).not.toContain('disabled=""')
   })
 
-  it('确认打印后允许转待回录', () => {
+  it('已有打印记录时仍使用幂等确认入口', () => {
     const markup = renderActions(2, { ...noCapabilities, canManageOrder: true })
 
-    expect(markup).toContain('转待回录')
+    expect(markup).toContain('确认打印并转待回录')
     expect(markup).not.toContain('disabled=""')
   })
 
@@ -49,6 +51,20 @@ describe('加工单详情执行操作', () => {
     expect(markup).toContain('创建出库')
     expect(markup).not.toContain('生成结算')
     expect(markup).not.toContain('暂无可执行动作')
+  })
+
+  it.each([4, 5])('状态为 %s 且缺少打印记录时仅提供历史打印补确认', (status) => {
+    const markup = renderActions(status, {
+      ...noCapabilities,
+      canManageDelivery: true,
+      canManageOrder: true,
+      canManageSettlement: true,
+    }, false)
+
+    expect(markup).toContain('补确认历史打印')
+    expect(markup).not.toContain('创建出库')
+    expect(markup).not.toContain('生成结算')
+    expect(markup).not.toContain('打印预览')
   })
 
   it('无出库权限时已结算加工单不显示空操作按钮', () => {

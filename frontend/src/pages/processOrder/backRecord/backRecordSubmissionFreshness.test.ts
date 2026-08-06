@@ -45,6 +45,34 @@ describe('回录提交前详情刷新', () => {
     expect(result).toEqual({ status: 'failed', error })
   })
 
+  it('详情刷新直接抛错时转换为可处理的失败结果', async () => {
+    const error = new Error('request rejected')
+
+    const result = await refreshBackRecordBeforeSubmit({
+      expectedVersion: 14,
+      onConflictReloaded: vi.fn(),
+      onRefetch: async () => { throw error },
+    })
+
+    expect(result).toEqual({ status: 'failed', error })
+  })
+
+  it('刷新服务端版本前先持久化当前表单', async () => {
+    const events: string[] = []
+
+    await refreshBackRecordBeforeSubmit({
+      expectedVersion: 14,
+      onBeforeRefetch: () => events.push('persist'),
+      onConflictReloaded: vi.fn(),
+      onRefetch: async () => {
+        events.push('refetch')
+        return { data: detail(14), isSuccess: true }
+      },
+    })
+
+    expect(events).toEqual(['persist', 'refetch'])
+  })
+
 })
 
 function detail(version: number): ProcessOrderDetailVO {

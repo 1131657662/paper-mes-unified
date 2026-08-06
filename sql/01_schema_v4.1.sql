@@ -2445,6 +2445,84 @@ BEGIN
 END$$
 DELIMITER ;
 
+-- V3.61 canonical baseline: process order append sessions and roll drafts.
+CREATE TABLE `biz_process_order_append_session` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `order_uuid` VARCHAR(36) NOT NULL,
+  `session_no` VARCHAR(64) NOT NULL,
+  `base_order_version` INT NOT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
+  `reason` VARCHAR(255) DEFAULT NULL,
+  `operator` VARCHAR(100) DEFAULT NULL,
+  `commit_request_id` VARCHAR(64) DEFAULT NULL,
+  `apply_time` DATETIME DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `active_order_uuid` VARCHAR(36) GENERATED ALWAYS AS
+    (CASE WHEN `is_deleted` = 0 AND `status` IN ('DRAFT','READY')
+      THEN `order_uuid` ELSE NULL END) STORED,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_process_append_session_no` (`session_no`),
+  UNIQUE KEY `uk_process_append_active_order` (`active_order_uuid`),
+  KEY `idx_process_append_order_status` (`order_uuid`,`status`,`is_deleted`),
+  CONSTRAINT `fk_process_append_session_order` FOREIGN KEY (`order_uuid`)
+    REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_process_append_session_status` CHECK
+    (`status` IN ('DRAFT','READY','APPLIED','CANCELLED','EXPIRED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单追加母卷会话';
+
+CREATE TABLE `biz_process_order_append_roll` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `session_uuid` VARCHAR(36) NOT NULL,
+  `row_sort` INT NOT NULL,
+  `extra_no` VARCHAR(100) DEFAULT NULL,
+  `roll_no` VARCHAR(100) DEFAULT NULL,
+  `paper_name` VARCHAR(100) NOT NULL,
+  `gram_weight` INT NOT NULL,
+  `original_width` INT NOT NULL,
+  `original_diameter` INT DEFAULT NULL,
+  `core_diameter` INT DEFAULT NULL,
+  `original_length` INT DEFAULT NULL,
+  `roll_weight` DECIMAL(12,3) NOT NULL,
+  `piece_num` INT NOT NULL DEFAULT 1,
+  `batch_no` VARCHAR(100) DEFAULT NULL,
+  `damage_desc` VARCHAR(255) DEFAULT NULL,
+  `process_mode` TINYINT DEFAULT NULL,
+  `main_step_type` TINYINT DEFAULT NULL,
+  `machine_uuid` VARCHAR(36) DEFAULT NULL,
+  `remark` VARCHAR(255) DEFAULT NULL,
+  `config_json` JSON DEFAULT NULL,
+  `preview_json` JSON DEFAULT NULL,
+  `config_status` TINYINT NOT NULL DEFAULT 0,
+  `config_type` VARCHAR(20) DEFAULT 'singlePlan',
+  `service_steps_json` JSON DEFAULT NULL,
+  `last_error` VARCHAR(500) DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(50) DEFAULT NULL,
+  `update_by` VARCHAR(50) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `version` INT NOT NULL DEFAULT 1,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+  `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_process_append_roll_sort` (`session_uuid`,`row_sort`,`is_deleted`),
+  KEY `idx_process_append_roll_session` (`session_uuid`,`is_deleted`),
+  CONSTRAINT `fk_process_append_roll_session` FOREIGN KEY (`session_uuid`)
+    REFERENCES `biz_process_order_append_session` (`uuid`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_process_append_roll_config_status` CHECK (`config_status` IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='加工单追加母卷草稿';
+
 -- V3.54 canonical baseline: versioned issued snapshots and post-dispatch change audit.
 CREATE TABLE `biz_process_order_issue_version` (
   `uuid`                 VARCHAR(36)  NOT NULL,
@@ -2511,7 +2589,7 @@ DELIMITER ;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================
--- 建表脚本结束  共 48 张表
+-- 建表脚本结束  共 50 张表
 --   基础档案 4: sys_customer / sys_paper / sys_machine / sys_warehouse
 --   加工核心 8: biz_process_order / biz_original_roll / biz_process_step /
 --               biz_process_stage_output / biz_process_stage_input_rel /

@@ -83,6 +83,7 @@ class DeliveryServiceImplConfirmAuthorizationTest {
     @InjectMocks private DeliveryServiceImpl service;
 
     private DeliveryOrder delivery;
+    private ProcessOrder sourceOrder;
 
     @BeforeAll
     static void initTableInfo() {
@@ -98,14 +99,14 @@ class DeliveryServiceImplConfirmAuthorizationTest {
         delivery = delivery();
         DeliveryDetail detail = detail();
         FinishRoll finish = finish();
-        ProcessOrder order = processOrder();
+        sourceOrder = processOrder();
         when(deliveryOrderMapper.selectById("delivery-1")).thenReturn(delivery);
         when(deliveryDetailMapper.selectList(any())).thenReturn(List.of(detail));
         when(deliverySourceLockService.lockAndReload(List.of("finish-1"))).thenReturn(
                 new DeliverySourceLockService.LockedSources(
-                        Map.of(finish.getUuid(), finish), Map.of(order.getUuid(), order)));
+                        Map.of(finish.getUuid(), finish), Map.of(sourceOrder.getUuid(), sourceOrder)));
         lenient().when(finishRollMapper.selectBatchIds(any())).thenReturn(List.of(finish));
-        lenient().when(processOrderMapper.selectBatchIds(any())).thenReturn(List.of(order));
+        lenient().when(processOrderMapper.selectBatchIds(any())).thenReturn(List.of(sourceOrder));
         lenient().when(finishOriginalRelMapper.selectList(any())).thenReturn(List.of());
         lenient().when(cashSettlementGuard.hasUnsettledCashOrders(any())).thenReturn(true);
     }
@@ -123,6 +124,19 @@ class DeliveryServiceImplConfirmAuthorizationTest {
         verify(deliveryDetailMapper, never()).update(any(), any());
         verify(deliveryOrderMapper, never()).update(any(), any());
         verify(customerRevisionSnapshotWriter, never()).freezeOnConfirm(any(), any(), any());
+    }
+
+    @Test
+    void confirm_whenSourcePrintWasNotConfirmed_doesNotWriteInventory() {
+        sourceOrder.setPrintStatus(0);
+        sourceOrder.setPrintCount(0);
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.confirm("delivery-1", new DeliveryConfirmDTO()));
+
+        assertEquals("加工单未记录人工确认打印，不可出库：JG202607240001", error.getMessage());
+        verify(finishRollMapper, never()).update(any(), any());
+        verify(deliveryOrderMapper, never()).update(any(), any());
     }
 
     @Test
@@ -181,8 +195,11 @@ class DeliveryServiceImplConfirmAuthorizationTest {
     private ProcessOrder processOrder() {
         ProcessOrder order = new ProcessOrder();
         order.setUuid("order-1");
+        order.setOrderNo("JG202607240001");
         order.setOrderStatus(4);
         order.setSettleType(1);
+        order.setPrintStatus(1);
+        order.setPrintCount(1);
         return order;
     }
 }

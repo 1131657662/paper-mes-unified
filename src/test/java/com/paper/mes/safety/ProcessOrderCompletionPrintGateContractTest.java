@@ -27,11 +27,10 @@ class ProcessOrderCompletionPrintGateContractTest {
 
         assertTrue(method.contains("from == OrderStatus.PROCESSING"));
         assertTrue(method.contains("to == OrderStatus.TO_RECORD"));
-        assertTrue(method.contains("order.getPrintCount() == null"));
-        assertTrue(method.contains("order.getPrintCount() <= 0"));
+        assertTrue(method.contains("!hasConfirmedHumanPrint(order)"));
         assertTrue(method.contains("人工确认一次打印"));
         assertTrue(method.contains("不代表打印机设备回执"));
-        assertTrue(method.indexOf("order.getPrintCount()") < method.indexOf("order.setOrderStatus"));
+        assertTrue(method.indexOf("hasConfirmedHumanPrint(order)") < method.indexOf("order.setOrderStatus"));
     }
 
     @Test
@@ -43,6 +42,7 @@ class ProcessOrderCompletionPrintGateContractTest {
                 "public PrintResultVO physicalReprint");
         assertTrue(method.contains("PrintResultVO result = print(uuid"));
         assertTrue(method.contains("completeProcessing(uuid, null)"));
+        assertTrue(method.contains("hasConfirmedHumanPrint(order)"));
         assertTrue(method.contains("OrderStatus.TO_RECORD.getCode()"));
     }
 

@@ -27,6 +27,10 @@ describe('加工方案操作范围', () => {
     expect(supportsRouteDesigner(mode)).toBe(expected)
   })
 
+  it('多件标准加工卷不开放链式工艺入口', () => {
+    expect(supportsRouteDesigner(1, 2)).toBe(false)
+  })
+
   it('批量目标排除链式路线和处理方式不兼容的母卷', () => {
     const selected = roll('source', 1, 2)
     const compatible = roll('compatible', 1, 2)

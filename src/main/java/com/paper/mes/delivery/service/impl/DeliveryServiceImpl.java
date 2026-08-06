@@ -27,6 +27,7 @@ import com.paper.mes.delivery.dto.DeliveryDetailVO;
 import com.paper.mes.delivery.dto.DeliveryQuery;
 import com.paper.mes.delivery.dto.DeliveryRollbackDTO;
 import com.paper.mes.delivery.dto.DeliveryRollbackSnapshotVO;
+import com.paper.mes.delivery.dto.DeliverySettlementRiskState;
 import com.paper.mes.delivery.entity.DeliveryDetail;
 import com.paper.mes.delivery.entity.DeliveryOrder;
 import com.paper.mes.delivery.mapper.DeliveryDetailMapper;
@@ -36,6 +37,7 @@ import com.paper.mes.delivery.service.DeliveryCustomerRevisionSnapshotWriter;
 import com.paper.mes.delivery.service.DeliverySettlementBlockPolicy;
 import com.paper.mes.delivery.service.DeliverySourceLockService;
 import com.paper.mes.delivery.service.DeliveryService;
+import com.paper.mes.delivery.service.DeliveryOrderStateResolver;
 import com.paper.mes.delivery.service.DeliveryWarehousePolicy;
 import com.paper.mes.delivery.service.AvailableFinishSourceLoader;
 import com.paper.mes.inventory.service.InventoryLedgerBusinessRecorder;
@@ -54,6 +56,7 @@ import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
+import com.paper.mes.processorder.service.ProcessOrderPrintConfirmationPolicy;
 import com.paper.mes.settle.entity.SettleDetail;
 import com.paper.mes.settle.mapper.SettleDetailMapper;
 import com.paper.mes.system.config.constant.NoRuleBizType;
@@ -126,6 +129,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
     public PageResult<DeliveryOrder> page(DeliveryQuery query) {
         Page<DeliveryOrder> page = page(PageRequestBounds.of(query.getCurrent(), query.getSize()),
                 DeliveryOrderQueryBuilder.build(query));
+        DeliveryOrderStateResolver.enrich(page.getRecords());
         return PageResult.of(page);
     }
 
@@ -144,7 +148,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 new LambdaQueryWrapper<ProcessOrder>()
                         .eq(ProcessOrder::getCustomerUuid, customerUuid)
                         .in(ProcessOrder::getOrderStatus,
-                                List.of(ORDER_STATUS_TO_RECORD, ORDER_STATUS_FINISHED, ORDER_STATUS_SETTLED)));
+                                List.of(ORDER_STATUS_TO_RECORD, ORDER_STATUS_FINISHED, ORDER_STATUS_SETTLED))
+                        .eq(ProcessOrder::getPrintStatus, 1)
+                        .gt(ProcessOrder::getPrintCount, 0));
         if (orders.isEmpty()) {
             return new ArrayList<>();
         }
@@ -202,7 +208,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             vo.setFinishStatus(f.getFinishStatus());
             vo.setOriginalRollNos(f.getOriginalRollNos());
             vo.setSourceMotherRolls(sourcesByFinish.getOrDefault(f.getUuid(), List.of()));
-            vo.setSettlementRisk(settlementRiskOrderUuids.contains(f.getOrderUuid()));
+            boolean unsettledCash = settlementRiskOrderUuids.contains(f.getOrderUuid());
+            vo.setSettlementRiskState(DeliverySettlementRiskState.fromUnsettledCash(unsettledCash));
+            vo.setSettlementRisk(unsettledCash);
             list.add(vo);
         }
         return list;
@@ -239,6 +247,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             if (order == null || !dto.getCustomerUuid().equals(order.getCustomerUuid())) {
                 throw new BusinessException("成品不属于该货主：" + f.getFinishRollNo());
             }
+            requirePrintConfirmedForDelivery(order);
             if (!canDeliveryProcessOrder(order)) {
                 throw new BusinessException("加工单非可出库状态：" + order.getOrderNo());
             }
@@ -322,7 +331,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         List<DeliveryDetail> details = deliveryDetails(uuid);
         DeliveryDetailVO vo = new DeliveryDetailVO();
-        vo.setOrder(snapshotDeliveryOrder(order));
+        DeliveryOrder view = snapshotDeliveryOrder(order);
+        DeliveryOrderStateResolver.enrich(view);
+        vo.setOrder(view);
         List<DeliveryDetailItemVO> snapshotItems = readSnapshotDeliveryItems(order.getSnapDelivery());
         vo.setDetails(snapshotItems == null ? buildDetailItems(details) : snapshotItems);
         vo.setRollbackSnapshot(readRollbackSnapshot(order.getSnapDelivery()));
@@ -485,6 +496,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
             if (processOrder == null || !order.getCustomerUuid().equals(processOrder.getCustomerUuid())) {
                 throw new BusinessException("成品不属于该出库单货主：" + finish.getFinishRollNo());
             }
+            requirePrintConfirmedForDelivery(processOrder);
             if (!canDeliveryProcessOrder(processOrder)) {
                 throw new BusinessException("加工单非可出库状态：" + processOrder.getOrderNo());
             }
@@ -697,7 +709,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         view.setWarehouseUuid(textValue(root, "warehouse_uuid", "warehouseUuid", order.getWarehouseUuid()));
         view.setWarehouseName(textValue(root, "warehouse_name", "warehouseName", order.getWarehouseName()));
         view.setDeliveryDate(dateValue(root, "delivery_date", "deliveryDate", order.getDeliveryDate()));
-        view.setDeliveryStatus(intValue(root, "delivery_status", "deliveryStatus", order.getDeliveryStatus()));
+        // Lifecycle state is always read from the live order. A print snapshot must not resurrect an old state.
+        view.setDeliveryStatus(order.getDeliveryStatus());
         view.setPickerName(textValue(root, "picker_name", "pickerName", order.getPickerName()));
         view.setCarNo(textValue(root, "car_no", "carNo", order.getCarNo()));
         view.setContainerNo(textValue(root, "container_no", "containerNo", order.getContainerNo()));
@@ -732,6 +745,9 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         view.setSnapDelivery(order.getSnapDelivery());
         view.setSnapDeliveryTime(order.getSnapDeliveryTime());
         view.setRemark(order.getRemark());
+        view.setVoidReason(order.getVoidReason());
+        view.setVoidBy(order.getVoidBy());
+        view.setVoidTime(order.getVoidTime());
         view.setCreateTime(order.getCreateTime());
         view.setUpdateTime(order.getUpdateTime());
         return view;
@@ -1241,11 +1257,21 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 || status == ORDER_STATUS_FINISHED || status == ORDER_STATUS_SETTLED);
     }
 
+    private void requirePrintConfirmedForDelivery(ProcessOrder order) {
+        if (!ProcessOrderPrintConfirmationPolicy.isConfirmed(order)) {
+            throw new BusinessException("加工单未记录人工确认打印，不可出库：" + order.getOrderNo());
+        }
+    }
+
     private void requireConfirmableOrders(List<DeliveryDetail> details,
                                           Map<String, ProcessOrder> processOrders) {
         for (DeliveryDetail detail : details) {
             ProcessOrder processOrder = processOrders.get(detail.getOrderUuid());
-            if (processOrder == null || !canDeliveryProcessOrder(processOrder)) {
+            if (processOrder == null) {
+                throw new BusinessException("来源加工单状态已变化，不可确认出库：" + detail.getFinishRollNo());
+            }
+            requirePrintConfirmedForDelivery(processOrder);
+            if (!canDeliveryProcessOrder(processOrder)) {
                 throw new BusinessException("来源加工单状态已变化，不可确认出库：" + detail.getFinishRollNo());
             }
         }

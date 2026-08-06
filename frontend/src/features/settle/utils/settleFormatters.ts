@@ -19,7 +19,9 @@ export function formatTon(value?: number) {
 
 export function formatPercent(value: number, total: number) {
   if (total <= 0) return '0%'
-  return `${Math.round((value / total) * 100)}%`
+  const percent = (value / total) * 100
+  if (percent > 0 && percent < 1) return `${percent.toFixed(2)}%`
+  return `${Math.round(percent)}%`
 }
 
 export function settleModeText(settleType?: number, settleDay?: number) {

@@ -71,6 +71,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     private static final int ROLL_STATUS_PENDING = 1;
     private static final int ROLL_NO_VOID = 3;
     private static final int IS_SPARE_YES = 1;
+    private static final int IS_REMAIN_YES = 1;
     private static final int DEFAULT_IS_INVOICE = 2;
     private final ProcessOrderMapper processOrderMapper;
     private final OriginalRollMapper originalRollMapper;
@@ -158,14 +159,110 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         versionGuard.assertExpected(order, expectedVersion);
         versionGuard.assertLockedExpected(orderUuid, expectedVersion);
         versionGuard.advance(orderUuid, expectedVersion);
-        deleteDraftRolls(orderUuid);
-        List<String> rollUuids = new ArrayList<>(rolls.size());
-        for (int i = 0; i < rolls.size(); i++) {
-            OriginalRoll roll = buildDraftRoll(order, rolls.get(i), i + 1);
-            originalRollMapper.insert(roll);
-            rollUuids.add(roll.getUuid());
+        return reconcileDraftRolls(order, rolls);
+    }
+
+    private List<String> reconcileDraftRolls(ProcessOrder order, List<OriginalRollDTO> requested) {
+        if (requested.stream().allMatch(this::isNewRoll)) {
+            return replaceWithFreshDraftRolls(order, requested);
         }
-        return rollUuids;
+        Map<String, OriginalRoll> existing = new LinkedHashMap<>();
+        listRolls(order.getUuid()).forEach(roll -> existing.put(roll.getUuid(), roll));
+        Set<String> retained = new LinkedHashSet<>();
+        List<String> result = new ArrayList<>(requested.size());
+        for (int index = 0; index < requested.size(); index++) {
+            OriginalRollDTO dto = requested.get(index);
+            if (dto.getUuid() == null || dto.getUuid().isBlank()) {
+                OriginalRoll created = buildDraftRoll(order, dto, index + 1);
+                originalRollMapper.insert(created);
+                result.add(created.getUuid());
+                continue;
+            }
+            OriginalRoll current = existing.get(dto.getUuid());
+            if (current == null || !retained.add(dto.getUuid())) {
+                throw new BusinessException(ErrorCode.E003, "原纸明细身份无效或重复，请刷新后重试");
+            }
+            updateRetainedRoll(order, current, dto, index + 1);
+            result.add(current.getUuid());
+        }
+        for (OriginalRoll current : existing.values()) {
+            if (!retained.contains(current.getUuid())) deleteDraftRoll(current);
+        }
+        return result;
+    }
+
+    private List<String> replaceWithFreshDraftRolls(ProcessOrder order, List<OriginalRollDTO> requested) {
+        deleteDraftRolls(order.getUuid());
+        List<String> result = new ArrayList<>(requested.size());
+        for (int index = 0; index < requested.size(); index++) {
+            OriginalRoll created = buildDraftRoll(order, requested.get(index), index + 1);
+            originalRollMapper.insert(created);
+            result.add(created.getUuid());
+        }
+        return result;
+    }
+
+    private boolean isNewRoll(OriginalRollDTO roll) {
+        return roll.getUuid() == null || roll.getUuid().isBlank();
+    }
+
+    private void updateRetainedRoll(ProcessOrder order, OriginalRoll current,
+                                     OriginalRollDTO dto, int rowSort) {
+        boolean structuralChange = structuralDraftChange(current, dto);
+        OriginalRoll updated = buildDraftRoll(order, dto, rowSort);
+        updated.setUuid(current.getUuid());
+        updated.setVersion(current.getVersion());
+        updated.setRollStatus(current.getRollStatus());
+        if (!structuralChange) {
+            updated.setProcessMode(current.getProcessMode());
+            updated.setMainStepType(current.getMainStepType());
+            updated.setMachineUuid(current.getMachineUuid());
+        }
+        ConcurrencyGuard.requireRowUpdated(originalRollMapper.updateById(updated));
+        if (structuralChange) {
+            deleteDraftRollArtifacts(current.getOrderUuid(), current.getUuid());
+            if (ProcessModePolicy.requiresMainProcess(updated.getProcessMode())) {
+                createDraftMainStep(updated);
+            }
+        }
+    }
+
+    private boolean structuralDraftChange(OriginalRoll current, OriginalRollDTO dto) {
+        return !java.util.Objects.equals(current.getPaperName(), dto.getPaperName())
+                || !java.util.Objects.equals(current.getGramWeight(), dto.getGramWeight())
+                || !java.util.Objects.equals(current.getOriginalWidth(), dto.getOriginalWidth())
+                || !java.util.Objects.equals(current.getOriginalDiameter(), dto.getOriginalDiameter())
+                || !java.util.Objects.equals(current.getCoreDiameter(), dto.getCoreDiameter())
+                || !java.util.Objects.equals(current.getOriginalLength(), dto.getOriginalLength())
+                || !java.util.Objects.equals(current.getRollWeight(), dto.getRollWeight())
+                || !java.util.Objects.equals(current.getPieceNum(), dto.getPieceNum())
+                || !java.util.Objects.equals(current.getProcessMode(), dto.getProcessMode())
+                || !java.util.Objects.equals(current.getMainStepType(), dto.getMainStepType())
+                || !java.util.Objects.equals(current.getMachineUuid(), dto.getMachineUuid());
+    }
+
+    private void deleteDraftRoll(OriginalRoll roll) {
+        deleteDraftRollArtifacts(roll.getOrderUuid(), roll.getUuid());
+        ConcurrencyGuard.requireRowUpdated(originalRollMapper.deleteById(roll.getUuid()));
+    }
+
+    private void deleteDraftRollArtifacts(String orderUuid, String rollUuid) {
+        processStepMapper.delete(new LambdaQueryWrapper<ProcessStep>()
+                .eq(ProcessStep::getOrderUuid, orderUuid)
+                .eq(ProcessStep::getOriginalUuid, rollUuid));
+        draftMapper.delete(new LambdaQueryWrapper<ProcessConfigDraft>()
+                .eq(ProcessConfigDraft::getOrderUuid, orderUuid)
+                .eq(ProcessConfigDraft::getOriginalUuid, rollUuid));
+    }
+
+    private void createDraftMainStep(OriginalRoll roll) {
+        ProcessStep step = new ProcessStep();
+        step.setOrderUuid(roll.getOrderUuid());
+        step.setOriginalUuid(roll.getUuid());
+        step.setStepSort(1);
+        step.setStepType(roll.getMainStepType());
+        step.setIsMain(1);
+        processStepMapper.insert(step);
     }
 
     @Override
@@ -453,6 +550,8 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         for (FinishRoll roll : rolls) {
             if (roll.getIsSpare() != null && roll.getIsSpare() == IS_SPARE_YES) {
                 vo.getSpareRollNos().add(roll.getFinishRollNo());
+            } else if (roll.getIsRemain() != null && roll.getIsRemain() == IS_REMAIN_YES) {
+                vo.getRemainRollNos().add(roll.getFinishRollNo());
             } else {
                 vo.getFinishRollNos().add(roll.getFinishRollNo());
             }

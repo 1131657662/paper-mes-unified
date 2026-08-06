@@ -1,4 +1,5 @@
 import type { ReportDimension, ReportDimensionVO, ReportMetricItemVO, ReportQuery } from '../../types/report'
+import { isProcessOrderSettlementMode } from '../../types/settlementSemantics'
 
 export const explorerDimensions: Array<{ label: string; value: ReportDimension }> = [
   { label: '月份', value: 'month' },
@@ -46,7 +47,7 @@ export function drillQuery(dimension: ReportDimension, key: string, query: Repor
   if (dimension === 'machine') next.machineUuid = key
   if (dimension === 'process') next.processStepType = processStepType(key)
   if (dimension === 'invoice') next.isInvoice = finiteInteger(key)
-  if (dimension === 'settleType') next.settleType = finiteInteger(key)
+  if (dimension === 'settleType') next.settleType = settlementMode(key)
   if (dimension === 'status') next.orderStatus = finiteInteger(key)
   return next
 }
@@ -61,4 +62,9 @@ function processStepType(key: string): number | undefined {
 function finiteInteger(key: string): number | undefined {
   const value = Number(key)
   return Number.isInteger(value) ? value : undefined
+}
+
+function settlementMode(key: string) {
+  const value = finiteInteger(key)
+  return isProcessOrderSettlementMode(value) ? value : undefined
 }

@@ -54,7 +54,9 @@ export function useConfigStepWorkspaceModel(options: Options): ConfigStepWorkspa
     ? planBatchSelectionReasons(selectionReasonOptions)
     : serviceBatchSelectionReasons(selectionReasonOptions)
   const detailQuery = useProcessOrderDetail(props.orderUuid, { enabled: Boolean(props.orderUuid) })
-  const allSteps = detailQuery.data?.steps ?? []
+  const localServiceSteps = props.serviceStepsByRoll ?? {}
+  const localSteps = Object.values(localServiceSteps).flat()
+  const allSteps = [...(detailQuery.data?.steps ?? []), ...localSteps]
   const serviceConfigured = Object.fromEntries(
     props.rolls
       .filter((roll) => roll.uuid)
@@ -107,6 +109,8 @@ export function useConfigStepWorkspaceModel(options: Options): ConfigStepWorkspa
       selected,
       serviceConfigured,
       serviceOnly,
+      serviceStepsByRoll: localServiceSteps,
+      onServiceStepsChange: props.onServiceStepsChange,
     }),
   }
 }
@@ -128,6 +132,8 @@ interface DataOptions {
   selected: ConfigStepWorkspaceData['roll']
   serviceConfigured: ConfigStepWorkspaceData['serviceConfigured']
   serviceOnly: boolean
+  serviceStepsByRoll: ConfigStepWorkspaceData['serviceStepsByRoll']
+  onServiceStepsChange?: ConfigStepWorkspaceData['onServiceStepsChange']
 }
 
 function buildWorkspaceData(options: DataOptions): ConfigStepWorkspaceData {
@@ -149,6 +155,7 @@ function buildWorkspaceData(options: DataOptions): ConfigStepWorkspaceData {
     orderUuid: props.orderUuid,
     operation: props.operation,
     plan: options.plan,
+    plans: props.plans,
     previewError: options.previewError,
     previewing: options.previewing,
     previews: props.previews,
@@ -162,5 +169,7 @@ function buildWorkspaceData(options: DataOptions): ConfigStepWorkspaceData {
       && roll.processMode !== 3 && !options.lockedRolls[roll.localId]),
     serviceConfigured: options.serviceConfigured,
     serviceOnly: options.serviceOnly,
+    serviceStepsByRoll: options.serviceStepsByRoll,
+    onServiceStepsChange: options.onServiceStepsChange,
   }
 }

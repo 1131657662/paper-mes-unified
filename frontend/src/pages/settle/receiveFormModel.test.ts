@@ -5,6 +5,7 @@ import {
   discountReasonError,
   payNoError,
   receiveTotalError,
+  resolveReceiveAmountChange,
   settledAmount,
 } from './receiveFormModel'
 
@@ -53,5 +54,25 @@ describe('收款表单金额模型', () => {
     const error = receiveTotalError({ cashAmount: 1790, discountAmount: 1.01 }, 1791)
 
     expect(error).toBe('本次结清金额不能超过未收金额')
+  })
+
+  it('同一结算单的未收金额变化时返回前后金额', () => {
+    const change = resolveReceiveAmountChange({
+      baseline: { settleUuid: 'settle-1', unreceivedAmount: 2274 },
+      settleUuid: 'settle-1',
+      unreceivedAmount: 2100.5,
+    })
+
+    expect(change).toEqual({ previousAmount: 2274, currentAmount: 2100.5 })
+  })
+
+  it('切换结算单时不把金额差异误判为外部更新', () => {
+    const change = resolveReceiveAmountChange({
+      baseline: { settleUuid: 'settle-1', unreceivedAmount: 2274 },
+      settleUuid: 'settle-2',
+      unreceivedAmount: 1325,
+    })
+
+    expect(change).toBeNull()
   })
 })

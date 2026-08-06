@@ -63,6 +63,7 @@ export const STEP_TYPE: Record<number, string> = {
 }
 
 export const DEFAULT_WIDTH_DIFFERENCE_POLICY: WidthDifferencePolicy = 'REMAINDER'
+export const MAX_SOURCE_PIECES = 500
 export const WIDTH_DIFFERENCE_POLICY_OPTIONS = [
   { label: '留余料', value: 'REMAINDER' },
   { label: '分摊', value: 'ALLOCATE' },

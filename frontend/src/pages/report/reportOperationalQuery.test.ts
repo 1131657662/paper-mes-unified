@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { needsOperationalPaperCandidates, reportOperationalQuery } from './reportOperationalQuery'
+import type { ReportQuery } from '../../types/report'
 
-const source = {
+const source: ReportQuery = {
   customerUuid: 'customer', dateFrom: '2026-01-01', dateTo: '2026-07-21',
   paperName: '牛卡', machineUuid: 'machine', settleType: 2, isInvoice: 1,
   processMode: 2, orderStatus: 4,

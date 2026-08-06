@@ -14,6 +14,7 @@ export interface SettleBillGroup {
   standardProcessAmount: number
   pricingAdjustmentAmount: number
   taxAmount: number
+  historicalDifferenceAmount: number
   trimWeight: number
   lines: SettlePrintLine[]
 }
@@ -32,6 +33,7 @@ export function buildSettleBillGroups(lines: SettlePrintLine[]): SettleBillGroup
     group.standardProcessAmount += line.standardProcessAmount ?? line.processAmount ?? 0
     group.pricingAdjustmentAmount += line.pricingAdjustmentAmount ?? 0
     group.taxAmount += lineTaxAmount(line)
+    group.historicalDifferenceAmount += line.historicalDifferenceAmount ?? 0
     group.extraAmount += line.extraAmount ?? 0
     group.extraFeeSummary ||= line.extraFeeSummary
     group.lineAmount += line.lineAmount ?? 0
@@ -41,6 +43,7 @@ export function buildSettleBillGroups(lines: SettlePrintLine[]): SettleBillGroup
 }
 
 function lineTaxAmount(line: SettlePrintLine) {
+  if (line.isInvoice !== 1) return 0
   if ((line.taxAmount ?? 0) > 0) return line.taxAmount ?? 0
   const feeTax = (line.feeLines ?? [])
     .filter((fee) => fee.feeType === 'tax')
@@ -64,6 +67,7 @@ function emptyGroup(key: string, line: SettlePrintLine): SettleBillGroup {
     standardProcessAmount: 0,
     pricingAdjustmentAmount: 0,
     taxAmount: 0,
+    historicalDifferenceAmount: 0,
     trimWeight: 0,
     lines: [],
   }

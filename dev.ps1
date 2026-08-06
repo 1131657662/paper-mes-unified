@@ -9,6 +9,20 @@ $LogDir = Join-Path $Root '.codex-run-logs'
 $FrontendDir = Join-Path $Root 'frontend'
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
+function Resolve-LocalRuntimeMetadata {
+    try {
+        $sha = (& git -C $Root rev-parse --short HEAD 2>$null).Trim()
+        if ($sha) { $env:PAPER_MES_GIT_SHA = $sha }
+    } catch {
+        # Keep an explicitly supplied value when git metadata is unavailable.
+    }
+    if (-not $env:PAPER_MES_BUILD_TIME) {
+        $env:PAPER_MES_BUILD_TIME = (Get-Date).ToUniversalTime().ToString('o')
+    }
+}
+
+Resolve-LocalRuntimeMetadata
+
 function Test-HttpOk([string]$Uri) {
     try {
         $response = Invoke-WebRequest -Uri $Uri -UseBasicParsing -TimeoutSec 2
@@ -84,6 +98,8 @@ function Start-Frontend {
 
 Ensure-LocalInventoryLedgerSchema
 Ensure-LocalIssueVersionSchema
+Ensure-LocalAppendSessionSchema
+Ensure-LocalActualReceivedMetricSemantic
 Start-Backend
 Start-Frontend
 Write-Output ''
