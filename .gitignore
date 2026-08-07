@@ -40,6 +40,7 @@ src/main/resources/application-prod.yml
 /upload/
 /backup/
 /data/
+/tmp/
 
 # 前端构建产物与依赖
 frontend/node_modules/
