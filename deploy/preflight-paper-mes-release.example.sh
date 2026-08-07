@@ -30,7 +30,10 @@ APP_TMP_DIR="${APP_TMP_DIR:-/run/paper-mes}"
 APP_TMP_MODE="${APP_TMP_MODE:-750}"
 APP_RUNTIME_DIRECTORY="${APP_RUNTIME_DIRECTORY:-paper-mes}"
 PROC_ROOT="${PROC_ROOT:-/proc}"
-SOURCE_PROVENANCE_SCRIPT="${SOURCE_PROVENANCE_SCRIPT:-/opt/paper-mes/source/deploy/verify-paper-mes-source.example.sh}"
+SOURCE_ROOT="${SOURCE_ROOT:-/opt/paper-mes/source}"
+SOURCE_PROVENANCE_SCRIPT="${SOURCE_PROVENANCE_SCRIPT:-${SOURCE_ROOT}/deploy/verify-paper-mes-source.example.sh}"
+SCHEMA_BASELINE_FILE="${SCHEMA_BASELINE_FILE:-${SOURCE_ROOT}/sql/schema-baseline.version}"
+APP_ENV_FILE="${APP_ENV_FILE:-/etc/paper-mes/paper-mes.env}"
 
 mysql_cnf="$(mktemp)"
 cleanup() { rm -f "${mysql_cnf}"; }
@@ -105,6 +108,42 @@ check_source_provenance() {
     || fail "cloud source or installed runtime files do not match GitHub"
 }
 
+check_schema_version_configuration() {
+  [ -r "${SCHEMA_BASELINE_FILE}" ] \
+    || fail "schema baseline version file not found: ${SCHEMA_BASELINE_FILE}"
+  [ -r "${APP_ENV_FILE}" ] \
+    || fail "application environment file not found: ${APP_ENV_FILE}"
+
+  local source_version configured_version
+  source_version="$(tr -d '[:space:]' < "${SCHEMA_BASELINE_FILE}")"
+  [[ "${source_version}" =~ ^[0-9]+(\.[0-9]+)*$ ]] \
+    || fail "schema baseline version is invalid: ${source_version}"
+  if ! configured_version="$(awk -F= '
+    /^[[:space:]]*(#|$)/ { next }
+    /^[[:space:]]*(export[[:space:]]+)?PAPER_MES_EXPECTED_SCHEMA_VERSION[[:space:]]*=/ {
+      line=$0
+      sub(/^[^=]*=/, "", line)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+      if (line ~ /^".*"$/ || line ~ /^'"'"'.*'"'"'$/) line=substr(line, 2, length(line) - 2)
+      if (found) duplicate=1
+      value=line
+      found=1
+    }
+    END {
+      if (duplicate) exit 2
+      if (found) print value
+    }
+  ' "${APP_ENV_FILE}")"; then
+    fail "application environment contains duplicate schema version settings"
+  fi
+  [ -n "${configured_version}" ] \
+    || fail "PAPER_MES_EXPECTED_SCHEMA_VERSION is missing from ${APP_ENV_FILE}"
+  [[ "${configured_version}" =~ ^[0-9]+(\.[0-9]+)*$ ]] \
+    || fail "configured schema version is invalid"
+  [ "${configured_version}" = "${source_version}" ] \
+    || fail "schema baseline mismatch: source=${source_version}, configured=${configured_version}"
+}
+
 check_backup() {
   [ -d "${BACKUP_ROOT}" ] || fail "backup root not found"
   local latest age_hours
@@ -138,7 +177,7 @@ check_database() {
   fi
 }
 
-for command_name in mysql curl sha256sum find sort stat grep runuser systemctl tr bash; do
+for command_name in mysql curl sha256sum find sort stat grep runuser systemctl tr awk bash; do
   command -v "${command_name}" >/dev/null 2>&1 || fail "required command not found: ${command_name}"
 done
 [[ "${DB_NAME}" =~ ^[A-Za-z0-9_]+$ ]] || fail "invalid DB_NAME"
@@ -157,6 +196,7 @@ EOF
 chmod 600 "${mysql_cnf}"
 
 check_source_provenance
+check_schema_version_configuration
 check_health
 check_app_temp
 check_service_temp_runtime

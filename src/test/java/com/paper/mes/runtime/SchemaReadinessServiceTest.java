@@ -45,6 +45,32 @@ class SchemaReadinessServiceTest {
                 "constraint:biz_settle_discount_approval.chk_discount_approval_components");
     }
 
+    @Test
+    void selectsTheHighestSemanticMigrationVersion() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate(null, List.of("3.61", "3.9", "3.62")));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.databaseVersion()).isEqualTo("3.62");
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures())
+                .contains("migration:expected=3.63,actual=3.62");
+    }
+
+    @Test
+    void marksTheDatabaseUntrackedWhenAppliedVersionIsInvalid() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate(null, List.of("3.62", "legacy")));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.databaseVersion()).isEqualTo("UNTRACKED");
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures())
+                .contains("migration:expected=3.63,actual=UNTRACKED");
+    }
+
     private SchemaReadinessService service(JdbcTemplate jdbcTemplate) {
         SchemaReadinessService service = new SchemaReadinessService(jdbcTemplate);
         ReflectionTestUtils.setField(service, "expectedVersion", "3.63");
@@ -54,9 +80,15 @@ class SchemaReadinessServiceTest {
 
     private static final class ReadinessJdbcTemplate extends JdbcTemplate {
         private final String missingName;
+        private final List<String> versions;
 
         private ReadinessJdbcTemplate(String missingName) {
+            this(missingName, List.of("3.63"));
+        }
+
+        private ReadinessJdbcTemplate(String missingName, List<String> versions) {
             this.missingName = missingName;
+            this.versions = versions;
         }
 
         @Override
@@ -68,7 +100,7 @@ class SchemaReadinessServiceTest {
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType) {
-            return List.of(elementType.cast("3.63"));
+            return versions.stream().map(elementType::cast).toList();
         }
     }
 }

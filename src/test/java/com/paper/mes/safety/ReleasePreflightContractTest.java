@@ -18,6 +18,9 @@ class ReleasePreflightContractTest {
         assertThat(script).contains("PrivateTmp", "RuntimeDirectory", "ExecStart", "MainPID");
         assertThat(script).contains("PROC_ROOT", "-Djava.io.tmpdir=${APP_TMP_DIR}");
         assertThat(script).contains("SOURCE_PROVENANCE_SCRIPT", "check_source_provenance");
+        assertThat(script).contains(
+                "SOURCE_ROOT", "SCHEMA_BASELINE_FILE", "APP_ENV_FILE",
+                "PAPER_MES_EXPECTED_SCHEMA_VERSION", "check_schema_version_configuration");
         assertThat(script).contains("duplicate pending finish reservation");
         assertThat(script).contains("duplicate active customer code", "running backup task");
         assertThat(script).doesNotContain("INSERT INTO", "UPDATE `", "DELETE FROM", "DROP TABLE");
@@ -27,7 +30,9 @@ class ReleasePreflightContractTest {
     void behaviorTestCoversHealthyAndConflictingPreflightResults() throws Exception {
         String script = source("deploy/test-preflight-paper-mes-release.sh");
 
-        assertThat(script).contains("run_preflight 0 0", "run_preflight 1 0", "run_preflight 0 1");
+        assertThat(script).contains(
+                "run_preflight 0 0", "run_preflight 1 0", "run_preflight 0 1",
+                "schema baseline mismatch");
         assertThat(script).contains("preflight unexpectedly accepted a database conflict");
         assertThat(script).contains("preflight unexpectedly accepted an unwritable application temp directory");
         assertThat(script).contains("preflight unexpectedly accepted PrivateTmp=no");

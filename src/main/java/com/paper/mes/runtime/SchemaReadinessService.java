@@ -7,14 +7,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class SchemaReadinessService {
 
     private static final String MIGRATION_TABLE = "sys_schema_migration";
+    private static final Pattern VERSION_PATTERN = Pattern.compile("\\d+(?:\\.\\d+)*");
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -76,9 +79,39 @@ public class SchemaReadinessService {
         }
         List<String> versions = jdbcTemplate.queryForList("""
                 SELECT version FROM sys_schema_migration
-                WHERE status = 'applied' ORDER BY executed_at DESC LIMIT 1
+                WHERE status = 'applied'
                 """, String.class);
-        return versions.isEmpty() ? "UNTRACKED" : versions.getFirst();
+        return latestVersion(versions);
+    }
+
+    private static String latestVersion(List<String> versions) {
+        if (versions.isEmpty() || versions.stream().anyMatch(version -> !isValidVersion(version))) {
+            return "UNTRACKED";
+        }
+        return versions.stream()
+                .max(SchemaReadinessService::compareVersions)
+                .orElse("UNTRACKED");
+    }
+
+    private static boolean isValidVersion(String version) {
+        return version != null && VERSION_PATTERN.matcher(version).matches();
+    }
+
+    private static int compareVersions(String left, String right) {
+        String[] leftParts = left.split("\\.");
+        String[] rightParts = right.split("\\.");
+        int size = Math.max(leftParts.length, rightParts.length);
+        for (int index = 0; index < size; index++) {
+            int comparison = versionPart(leftParts, index).compareTo(versionPart(rightParts, index));
+            if (comparison != 0) {
+                return comparison;
+            }
+        }
+        return 0;
+    }
+
+    private static BigInteger versionPart(String[] parts, int index) {
+        return index < parts.length ? new BigInteger(parts[index]) : BigInteger.ZERO;
     }
 
     private SchemaReadinessReport unavailableDatabase(DataAccessException exception) {

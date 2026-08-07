@@ -39,7 +39,7 @@ class FinishRollNumberFreezeContractTest {
     }
 
     private String read() throws IOException {
-        return Files.readString(SERVICE, StandardCharsets.UTF_8);
+        return Files.readString(SERVICE, StandardCharsets.UTF_8).replace("\r\n", "\n");
     }
 
     private String slicePublicMethod(String source, String methodName) {

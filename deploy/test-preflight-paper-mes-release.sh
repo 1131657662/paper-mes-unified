@@ -9,8 +9,11 @@ cleanup() { rm -rf "${temp_dir}"; }
 trap cleanup EXIT
 
 mkdir -p "${temp_dir}/bin" "${temp_dir}/app-tmp" "${temp_dir}/proc/4242" \
+  "${temp_dir}/source/sql" \
   "${temp_dir}/proc/4243" "${temp_dir}/backups/$(date +%Y%m%d-%H%M%S)"
 chmod 0750 "${temp_dir}/app-tmp"
+printf '3.63\n' > "${temp_dir}/source/sql/schema-baseline.version"
+printf 'PAPER_MES_EXPECTED_SCHEMA_VERSION=3.63\n' > "${temp_dir}/paper-mes.env"
 backup_dir="$(find "${temp_dir}/backups" -mindepth 1 -maxdepth 1 -type d)"
 printf 'backup-data' > "${backup_dir}/paper.sql.gz"
 (cd "${backup_dir}" && sha256sum paper.sql.gz > SHA256SUMS)
@@ -69,11 +72,20 @@ run_preflight() {
   APP_RUNTIME_DIRECTORY=app-tmp \
   APP_TMP_DIR="${temp_dir}/app-tmp" \
   PROC_ROOT="${temp_dir}/proc" \
+  SOURCE_ROOT="${temp_dir}/source" \
+  SCHEMA_BASELINE_FILE="${temp_dir}/source/sql/schema-baseline.version" \
+  APP_ENV_FILE="${temp_dir}/paper-mes.env" \
   SOURCE_PROVENANCE_SCRIPT="${temp_dir}/bin/verify-source" \
   bash "${preflight_script}"
 }
 
 run_preflight 0 0 >/dev/null
+printf 'PAPER_MES_EXPECTED_SCHEMA_VERSION=3.62\n' > "${temp_dir}/paper-mes.env"
+if run_preflight 0 0 >/dev/null 2>&1; then
+  echo "preflight unexpectedly accepted a schema baseline mismatch" >&2
+  exit 1
+fi
+printf 'PAPER_MES_EXPECTED_SCHEMA_VERSION=3.63\n' > "${temp_dir}/paper-mes.env"
 if run_preflight 1 0 >/dev/null 2>&1; then
   echo "preflight unexpectedly accepted a database conflict" >&2
   exit 1
