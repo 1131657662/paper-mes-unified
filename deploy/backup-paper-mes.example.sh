@@ -10,6 +10,7 @@ if [ -r "${BACKUP_ENV_FILE}" ]; then
 fi
 
 BACKUP_ROOT="${BACKUP_ROOT:-/opt/backups/paper-mes}"
+MONITOR_GROUP="${MONITOR_GROUP:-paper-mes}"
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-3306}"
 DB_NAME="${DB_NAME:-paper_processing}"
@@ -61,6 +62,8 @@ require_safe_backup_root
 require_safe_identifier "DB_NAME" "${DB_NAME}"
 require_safe_identifier "DB_USER" "${DB_USER}"
 require_non_negative_integer "DB_PORT" "${DB_PORT}"
+[[ "${MONITOR_GROUP}" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "invalid MONITOR_GROUP: ${MONITOR_GROUP}"
+getent group "${MONITOR_GROUP}" >/dev/null || fail "group not found: ${MONITOR_GROUP}"
 
 for command_name in mysqldump gzip tar sha256sum flock; do
   command -v "${command_name}" >/dev/null 2>&1 || fail "required command not found: ${command_name}"
@@ -114,6 +117,12 @@ if [ -f "${temp_dir}/upload.tar.gz" ]; then
 fi
 mv "${temp_dir}" "${target_dir}"
 temp_dir=""
+
+# Keep archives private while exposing only checksum metadata to monitoring.
+chgrp "${MONITOR_GROUP}" "${target_dir}"
+chmod 750 "${target_dir}"
+chgrp "${MONITOR_GROUP}" "${target_dir}/SHA256SUMS"
+chmod 640 "${target_dir}/SHA256SUMS"
 
 echo "backup completed: ${target_dir}"
 echo "backup_id=${timestamp}"
