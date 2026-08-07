@@ -1,5 +1,6 @@
 package com.paper.mes.runtime;
 
+import com.paper.mes.auth.permission.AuthenticatedEndpoint;
 import com.paper.mes.common.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/system/runtime")
 @RequiredArgsConstructor
+@AuthenticatedEndpoint
 public class RuntimeVersionController {
 
     private final RuntimeVersionService versionService;

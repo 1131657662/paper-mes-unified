@@ -28,13 +28,19 @@ import {
   saveProcessOrderAppendRolls,
 } from '../../api/processOrder'
 import AppendOrderPreviewStep from './AppendOrderPreviewStep'
+import AppendOrderVersionAlert from './AppendOrderVersionAlert'
 import { BizError, notifyErrorOnce } from '../../api/request'
 import {
   clearAppendOrderDraft,
   readAppendOrderDraft,
   writeAppendOrderDraft,
 } from './appendOrderDraft'
-import { mergeAppendConflictRolls, summarizeAppendConflict } from './appendOrderConflict'
+import {
+  isAppendOrderVersionOnlyConflict,
+  mergeAppendConflictRolls,
+  summarizeAppendConflict,
+} from './appendOrderConflict'
+import { appendOrderVersionForCommit } from './appendOrderVersion'
 
 const stepItems = ['原纸录入', '加工方式', '工艺配置', '预览确认'].map((title) => ({ title }))
 
@@ -101,6 +107,15 @@ function AppendOrderContent({ session, machines, onReloadSession }: ContentProps
       return true
     }
     const previous = serverSessionRef.current
+    if (isAppendOrderVersionOnlyConflict(previous, latest)) {
+      serverSessionRef.current = latest
+      Modal.info({
+        title: '加工单基础信息已更新',
+        content: `加工单已更新到 V${latest.currentOrderVersion}，当前追加草稿仍然保留。请核对后再次提交。`,
+        okText: '知道了',
+      })
+      return true
+    }
     const summary = summarizeAppendConflict(previous, latest)
     Modal.confirm({
       title: '追加会话已被其他页面修改',
@@ -226,7 +241,7 @@ function AppendOrderContent({ session, machines, onReloadSession }: ContentProps
       { expectedSessionVersion: version })
     setVersion(ready.sessionVersion ?? version + 1)
     await commitProcessOrderAppend(session.orderUuid, session.sessionUuid, {
-      expectedOrderVersion: session.baseOrderVersion ?? 1, requestId: crypto.randomUUID(),
+      expectedOrderVersion: appendOrderVersionForCommit(ready), requestId: crypto.randomUUID(),
     })
     await queryClient.invalidateQueries({ queryKey: queries.processOrderDetail._def })
     message.success('母卷及工艺已追加到原加工单')
@@ -238,6 +253,7 @@ function AppendOrderContent({ session, machines, onReloadSession }: ContentProps
     <div className="mes-scroll-page mes-form-page">
       <MesPageHeader backText="返回加工单" eyebrow="加工单变更" title={`追加母卷 ${session.orderNo ?? ''}`}
         onBack={() => navigate(`/process-orders/${session.orderUuid}`)} />
+      <AppendOrderVersionAlert session={session} />
       <Card className="mes-form-page__steps"><Steps current={current} items={stepItems} /></Card>
       {current === 0 && <RollInputStep rolls={rolls} loading={pending} onChange={setRolls}
         onImportPreview={(file) => previewOriginalRollImport(session.orderUuid, file)}

@@ -124,6 +124,7 @@ export default function DeliveryCreatePage() {
       ? ' delivery-create-page--selection-expanded'
       : ''}`}
     >
+      <div className="delivery-create-page__scroll">
       <MesPageHeader
         title="新建出库单"
         eyebrow="出库管理"
@@ -206,6 +207,7 @@ export default function DeliveryCreatePage() {
           />
         )}
       </Card>
+      </div>
       <DeliveryCreateFooter
         disabled={Boolean(selectionError)}
         loading={createMutation.isPending}

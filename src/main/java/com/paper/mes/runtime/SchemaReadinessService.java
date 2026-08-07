@@ -18,7 +18,7 @@ public class SchemaReadinessService {
 
     private final JdbcTemplate jdbcTemplate;
 
-    @Value("${app.schema-readiness.expected-version:3.61}")
+    @Value("${app.schema-readiness.expected-version:3.62}")
     private String expectedVersion;
 
     @Value("${app.schema-readiness.require-migration-history:false}")

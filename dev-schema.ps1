@@ -53,6 +53,21 @@ function Invoke-LocalMigration([string]$MigrationPath) {
     }
 }
 
+function Register-LocalMigrationState([string]$MigrationPath) {
+    if ((Invoke-LocalMySql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'sys_schema_migration'") -ne '1') {
+        return
+    }
+    $name = [IO.Path]::GetFileName($MigrationPath)
+    $match = [regex]::Match($name, '^V(?<version>[0-9]+(?:\.[0-9]+)*)__')
+    if (-not $match.Success) { throw "Invalid migration filename: $name" }
+    $version = $match.Groups['version'].Value
+    if ((Invoke-LocalMySql "SELECT COUNT(*) FROM sys_schema_migration WHERE version = '$version' AND status = 'applied'") -eq '1') {
+        return
+    }
+    $checksum = (Get-FileHash -LiteralPath $MigrationPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Invoke-LocalMySql "INSERT INTO sys_schema_migration (version,script_name,checksum,execution_type,status,started_at,finished_at,executed_at) VALUES ('$version','$name','$checksum','applied','applied',NOW(),NOW(),NOW()) ON DUPLICATE KEY UPDATE script_name=VALUES(script_name),checksum=VALUES(checksum),execution_type='applied',status='applied',failure_message=NULL,finished_at=NOW(),executed_at=NOW()" | Out-Null
+}
+
 function Ensure-LocalIssueVersionSchema {
     $status = Invoke-LocalMySql @"
 SELECT IF(
@@ -150,6 +165,7 @@ SELECT IF(
 }
 
 function Ensure-LocalActualReceivedMetricSemantic {
+    $migrationPath = Join-Path $Root 'sql/V3.62__clarify_actual_received_amount_semantics.sql'
     $tableExists = Invoke-LocalMySql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'rpt_metric_definition'"
     if ($tableExists -ne '1') {
         Write-Output 'Local report metric table is not present; application bootstrap will seed current semantics.'
@@ -168,18 +184,22 @@ FROM rpt_metric_definition
 WHERE metric_code = 'cash_received_amount'
 "@
     if ($status -eq 'ready') {
+        Register-LocalMigrationState $migrationPath
         Write-Output 'Local report metric ready: actual received amount'
         return
     }
     if ($status -eq 'seed') {
+        Invoke-LocalMigration $migrationPath
+        Register-LocalMigrationState $migrationPath
         Write-Output 'Local actual received metric is not seeded yet; application bootstrap will create it.'
         return
     }
 
     Write-Output 'Local report metric label is stale: applying V3.62...'
-    Invoke-LocalMigration (Join-Path $Root 'sql/V3.62__clarify_actual_received_amount_semantics.sql')
+    Invoke-LocalMigration $migrationPath
     $verified = Invoke-LocalMySql "SELECT COUNT(*) FROM rpt_metric_definition WHERE metric_code = 'cash_received_amount' AND HEX(metric_name) = 'E5AE9EE99985E588B0E8B4A6'"
     if ($verified -ne '1') {
         throw 'Local actual received metric semantic is still stale after V3.62.'
     }
+    Register-LocalMigrationState $migrationPath
 }

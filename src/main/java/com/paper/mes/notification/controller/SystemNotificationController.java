@@ -1,5 +1,6 @@
 package com.paper.mes.notification.controller;
 
+import com.paper.mes.auth.permission.AuthenticatedEndpoint;
 import com.paper.mes.common.R;
 import com.paper.mes.notification.dto.NotificationSummaryVO;
 import com.paper.mes.notification.service.SystemNotificationService;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
+@AuthenticatedEndpoint
 public class SystemNotificationController {
 
     private final SystemNotificationService notificationService;

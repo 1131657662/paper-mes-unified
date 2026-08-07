@@ -15,7 +15,7 @@ interface Props {
 export default function DeliveryCreateFooter(props: Props) {
   const { summary } = props
   return (
-    <footer className="delivery-create-footer">
+    <footer className="delivery-create-footer" aria-label="出库单提交操作">
       <div className="delivery-create-footer__summary">
         <Button
           className="delivery-create-footer__review"

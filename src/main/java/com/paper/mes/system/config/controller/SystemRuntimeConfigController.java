@@ -1,5 +1,6 @@
 package com.paper.mes.system.config.controller;
 
+import com.paper.mes.auth.permission.AuthenticatedEndpoint;
 import com.paper.mes.common.R;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ResultCode;
@@ -19,6 +20,7 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/system/runtime")
 @RequiredArgsConstructor
+@AuthenticatedEndpoint
 public class SystemRuntimeConfigController {
 
     private static final int MAX_KEYS = 20;

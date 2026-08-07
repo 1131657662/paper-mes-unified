@@ -12,6 +12,7 @@ public class ProcessOrderAppendVO {
     private String orderUuid;
     private String orderNo;
     private Integer baseOrderVersion;
+    private Integer currentOrderVersion;
     private Integer sessionVersion;
     private String status;
     private String reason;

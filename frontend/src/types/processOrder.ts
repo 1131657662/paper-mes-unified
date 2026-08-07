@@ -746,6 +746,7 @@ export interface ProcessOrderAppendSessionVO {
   orderUuid: string
   orderNo?: string
   baseOrderVersion?: number
+  currentOrderVersion?: number
   sessionVersion?: number
   status?: 'DRAFT' | 'READY' | 'APPLIED' | 'CANCELLED' | 'EXPIRED' | string
   reason?: string

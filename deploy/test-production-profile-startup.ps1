@@ -49,6 +49,8 @@ $testOperatorPassword = "Bb8!" + [Guid]::NewGuid().ToString("N").Substring(0, 16
 $environmentNames = @(
     "SPRING_PROFILES_ACTIVE", "SPRING_CONFIG_ADDITIONAL_LOCATION", "SERVER_PORT",
     "PAPER_MES_DB_URL", "PAPER_MES_DB_USER", "PAPER_MES_DB_PASSWORD",
+    "PAPER_MES_EXPECTED_SCHEMA_VERSION", "PAPER_MES_BACKEND_VERSION",
+    "PAPER_MES_FRONTEND_VERSION", "PAPER_MES_GIT_SHA", "PAPER_MES_BUILD_TIME",
     "PAPER_MES_BACKUP_ENABLED", "PAPER_MES_DATA_HEALTH_INITIAL_DELAY_MS",
     "APP_INITIAL_ADMIN_PASSWORD", "APP_INITIAL_OPERATOR_PASSWORD", "LOGGING_FILE_NAME"
 )
@@ -81,7 +83,7 @@ function Apply-Schema {
 }
 
 function Apply-PendingMigrations {
-    # The current baseline is 3.54.  The smoke database replays the last
+    # The current canonical baseline is 3.62. The smoke database replays the last
     # upgrade window (3.49 -> current) so migrations are executed instead of
     # being registered as a fabricated baseline.  Update this fixture when a
     # release introduces a new canonical baseline.
@@ -169,6 +171,11 @@ try {
     $env:PAPER_MES_DB_URL = "jdbc:mysql://${dbHost}:${dbPort}/${Database}?useSSL=false&useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true"
     $env:PAPER_MES_DB_USER = $dbUser
     $env:PAPER_MES_DB_PASSWORD = $dbPassword
+    $env:PAPER_MES_EXPECTED_SCHEMA_VERSION = "3.62"
+    $env:PAPER_MES_BACKEND_VERSION = "prod-smoke-backend"
+    $env:PAPER_MES_FRONTEND_VERSION = "prod-smoke-frontend"
+    $env:PAPER_MES_GIT_SHA = "0000000000000000000000000000000000000000"
+    $env:PAPER_MES_BUILD_TIME = "2026-08-07T00:00:00Z"
     $env:PAPER_MES_BACKUP_ENABLED = "false"
     $env:PAPER_MES_DATA_HEALTH_INITIAL_DELAY_MS = "3600000"
     $env:APP_INITIAL_ADMIN_PASSWORD = $testAdminPassword

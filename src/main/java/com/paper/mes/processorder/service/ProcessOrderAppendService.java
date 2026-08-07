@@ -50,7 +50,6 @@ public class ProcessOrderAppendService {
     private static final String READY = "READY";
     private static final String APPLIED = "APPLIED";
     private static final int STATUS_DRAFT = 0;
-    private static final int STATUS_PENDING = 1;
     private static final int ROLL_STATUS_PENDING = 1;
 
     private final ProcessOrderMapper orderMapper;
@@ -72,7 +71,7 @@ public class ProcessOrderAppendService {
         ProcessOrder order = requireOrder(orderUuid);
         ProcessOrderAppendSession activeSession = findActiveSession(orderUuid);
         if (activeSession != null) {
-            requireAppendable(order, activeSession.getBaseOrderVersion());
+            ProcessOrderAppendVersionPolicy.requireAppendableStatus(order.getOrderStatus());
             return toView(activeSession, order, listRolls(activeSession.getUuid()));
         }
         requireAppendable(order, request.getExpectedOrderVersion());
@@ -292,8 +291,6 @@ public class ProcessOrderAppendService {
         }
         ProcessOrder order = requireOrder(orderUuid);
         requireAppendable(order, request.getExpectedOrderVersion());
-        if (!java.util.Objects.equals(session.getBaseOrderVersion(), request.getExpectedOrderVersion()))
-            throw new BusinessException(ErrorCode.E006, "加工单已被其他页面修改，请刷新后重试");
         List<ProcessOrderAppendRoll> rolls = listRolls(sessionUuid);
         validateReadyRolls(rolls);
         Map<String, String> ids = new LinkedHashMap<>();
@@ -311,6 +308,7 @@ public class ProcessOrderAppendService {
             processOrderService.addProcessSteps(orderUuid, batch);
         }
         processOrderService.calcFee(orderUuid);
+        session.setBaseOrderVersion(request.getExpectedOrderVersion());
         session.setStatus(APPLIED);
         session.setCommitRequestId(request.getRequestId());
         session.setApplyTime(LocalDateTime.now());
@@ -515,11 +513,8 @@ public class ProcessOrderAppendService {
     }
 
     private void requireAppendable(ProcessOrder order, Integer expectedVersion) {
-        if (!java.util.Objects.equals(order.getVersion(), expectedVersion))
-            throw new BusinessException(ErrorCode.E006, "加工单已被其他页面修改，请刷新后重试");
-        if (order.getOrderStatus() == null ||
-                (order.getOrderStatus() != STATUS_DRAFT && order.getOrderStatus() != STATUS_PENDING))
-            throw new BusinessException(ErrorCode.E001, "仅草稿或待下发加工单可追加母卷");
+        ProcessOrderAppendVersionPolicy.requireCurrentVersion(order.getVersion(), expectedVersion);
+        ProcessOrderAppendVersionPolicy.requireAppendableStatus(order.getOrderStatus());
     }
 
     private ProcessOrderAppendSession findActiveSession(String orderUuid) {
@@ -551,6 +546,7 @@ public class ProcessOrderAppendService {
         view.setOrderUuid(order.getUuid());
         view.setOrderNo(order.getOrderNo());
         view.setBaseOrderVersion(session.getBaseOrderVersion());
+        view.setCurrentOrderVersion(order.getVersion());
         view.setSessionVersion(session.getVersion());
         view.setStatus(session.getStatus());
         view.setReason(session.getReason());

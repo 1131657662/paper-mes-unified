@@ -86,6 +86,7 @@ class ReportMetricSchemaContractTest {
         assertTrue(migration.contains("包含现金、转账、微信和支付宝"));
         assertTrue(launcher.contains("Ensure-LocalActualReceivedMetricSemantic"));
         assertTrue(schemaHelper.contains("V3.62__clarify_actual_received_amount_semantics.sql"));
+        assertTrue(schemaHelper.contains("Register-LocalMigrationState $migrationPath"));
     }
 
     @Test

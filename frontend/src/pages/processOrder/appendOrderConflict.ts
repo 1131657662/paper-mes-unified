@@ -8,6 +8,14 @@ export interface AppendConflictSummary {
   removed: number
 }
 
+export function isAppendOrderVersionOnlyConflict(
+  previous: ProcessOrderAppendSessionVO,
+  latest: ProcessOrderAppendSessionVO,
+): boolean {
+  return previous.sessionVersion === latest.sessionVersion
+    && previous.currentOrderVersion !== latest.currentOrderVersion
+}
+
 export function summarizeAppendConflict(
   previous: ProcessOrderAppendSessionVO,
   latest: ProcessOrderAppendSessionVO,

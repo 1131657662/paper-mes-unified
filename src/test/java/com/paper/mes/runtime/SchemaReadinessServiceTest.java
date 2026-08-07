@@ -17,7 +17,7 @@ class SchemaReadinessServiceTest {
         SchemaReadinessReport report = service.refresh();
 
         assertThat(report.ready()).isTrue();
-        assertThat(report.databaseVersion()).isEqualTo("3.61");
+        assertThat(report.databaseVersion()).isEqualTo("3.62");
         assertThat(report.missingStructures()).isEmpty();
     }
 
@@ -35,7 +35,7 @@ class SchemaReadinessServiceTest {
 
     private SchemaReadinessService service(JdbcTemplate jdbcTemplate) {
         SchemaReadinessService service = new SchemaReadinessService(jdbcTemplate);
-        ReflectionTestUtils.setField(service, "expectedVersion", "3.61");
+        ReflectionTestUtils.setField(service, "expectedVersion", "3.62");
         ReflectionTestUtils.setField(service, "requireMigrationHistory", true);
         return service;
     }
@@ -56,7 +56,7 @@ class SchemaReadinessServiceTest {
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType) {
-            return List.of(elementType.cast("3.61"));
+            return List.of(elementType.cast("3.62"));
         }
     }
 }

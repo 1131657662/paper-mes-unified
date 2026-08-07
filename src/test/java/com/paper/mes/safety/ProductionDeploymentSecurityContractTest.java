@@ -49,7 +49,13 @@ class ProductionDeploymentSecurityContractTest {
         assertContainsAll(application,
                 "schema-bootstrap:",
                 "enabled: ${PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED:false}");
-        assertContainsAll(environment, "PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED=false");
+        assertContainsAll(environment,
+                "PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED=false",
+                "PAPER_MES_EXPECTED_SCHEMA_VERSION=3.62",
+                "PAPER_MES_BACKEND_VERSION=CHANGE_ME_RELEASE_VERSION",
+                "PAPER_MES_FRONTEND_VERSION=CHANGE_ME_RELEASE_VERSION",
+                "PAPER_MES_GIT_SHA=CHANGE_ME_GIT_SHA",
+                "PAPER_MES_BUILD_TIME=CHANGE_ME_UTC_BUILD_TIME");
     }
 
     @Test

@@ -3,6 +3,8 @@ package com.paper.mes.auth.controller;
 import com.paper.mes.auth.dto.AuthUserVO;
 import com.paper.mes.auth.dto.ChangePasswordDTO;
 import com.paper.mes.auth.dto.LoginDTO;
+import com.paper.mes.auth.permission.AuthenticatedEndpoint;
+import com.paper.mes.auth.permission.PublicEndpoint;
 import com.paper.mes.auth.service.AuthService;
 import com.paper.mes.auth.service.AuthCookieService;
 import com.paper.mes.auth.service.LoginAttemptGuard;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@AuthenticatedEndpoint
 public class AuthController {
 
     private final AuthService authService;
@@ -28,6 +31,7 @@ public class AuthController {
     private final LoginAttemptGuard loginAttemptGuard;
 
     @PostMapping("/login")
+    @PublicEndpoint
     public R<AuthUserVO> login(@Valid @RequestBody LoginDTO dto, HttpServletRequest request,
                               HttpServletResponse response) {
         String clientId = request.getRemoteAddr();

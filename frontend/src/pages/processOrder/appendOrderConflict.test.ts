@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { mergeAppendConflictRolls, summarizeAppendConflict } from './appendOrderConflict'
+import {
+  isAppendOrderVersionOnlyConflict,
+  mergeAppendConflictRolls,
+  summarizeAppendConflict,
+} from './appendOrderConflict'
 import type { ProcessOrderAppendSessionVO } from '../../types/processOrder'
 
 describe('appendOrderConflict', () => {
+  it('treats an order-only version change separately from roll conflicts', () => {
+    const previous = { ...session([]), sessionVersion: 3, currentOrderVersion: 8 }
+    const latest = { ...session([]), sessionVersion: 3, currentOrderVersion: 9 }
+
+    expect(isAppendOrderVersionOnlyConflict(previous, latest)).toBe(true)
+  })
+
   it('summarizes remote changes and keeps local input during recovery', () => {
     const previous = session([{ uuid: 'roll-1', paperName: 'A', rollWeight: 100 }])
     const latest = session([
