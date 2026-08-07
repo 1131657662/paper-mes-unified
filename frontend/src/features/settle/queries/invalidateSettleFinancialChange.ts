@@ -13,9 +13,13 @@ export function invalidateSettleFinancialChange(
       queries.settle.details(settleUuid).queryKey,
       queries.settle.receives(settleUuid).queryKey,
       queries.settle.printLines(settleUuid).queryKey,
+      queries.settle.discountApprovals(settleUuid).queryKey,
+      queries.settle.latestDiscountApproval(settleUuid).queryKey,
     queries.settle.list._def,
     queries.settle.summary._def,
     queries.settle.collectionSummary._def,
+    queries.settle.discountApprovalPage._def,
+    queries.settle.discountApprovalDetail._def,
   ]
   return Promise.all(queryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })))
     .then(() => undefined)

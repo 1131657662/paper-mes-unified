@@ -1,5 +1,5 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
-import type { SettleCandidateQuery, SettleQuery, SettleQuoteByMonthDTO, SettleQuoteByOrdersDTO } from '../../../types/settle'
+import type { SettleCandidateQuery, SettleDiscountApprovalQuery, SettleQuery, SettleQuoteByMonthDTO, SettleQuoteByOrdersDTO } from '../../../types/settle'
 import { settleService } from '../services/settleService'
 
 export const settleKeys = createQueryKeys('settle', {
@@ -34,6 +34,18 @@ export const settleKeys = createQueryKeys('settle', {
   discountApprovals: (uuid: string) => ({
     queryKey: [uuid],
     queryFn: () => settleService.discountApprovals(uuid),
+  }),
+  latestDiscountApproval: (uuid: string) => ({
+    queryKey: [uuid],
+    queryFn: () => settleService.latestDiscountApproval(uuid),
+  }),
+  discountApprovalPage: (query: SettleDiscountApprovalQuery) => ({
+    queryKey: [query],
+    queryFn: () => settleService.discountApprovalPage(query),
+  }),
+  discountApprovalDetail: (uuid: string) => ({
+    queryKey: [uuid],
+    queryFn: () => settleService.discountApprovalDetail(uuid),
   }),
   list: (query: SettleQuery) => ({
     queryKey: [query],

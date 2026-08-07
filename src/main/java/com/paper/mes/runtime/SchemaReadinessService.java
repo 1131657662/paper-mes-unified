@@ -18,7 +18,7 @@ public class SchemaReadinessService {
 
     private final JdbcTemplate jdbcTemplate;
 
-    @Value("${app.schema-readiness.expected-version:3.62}")
+    @Value("${app.schema-readiness.expected-version:3.63}")
     private String expectedVersion;
 
     @Value("${app.schema-readiness.require-migration-history:false}")
@@ -60,6 +60,7 @@ public class SchemaReadinessService {
             case TABLE -> count(TABLE_SQL, requirement.table()) > 0;
             case COLUMN -> count(COLUMN_SQL, requirement.table(), requirement.name()) > 0;
             case INDEX -> count(INDEX_SQL, requirement.table(), requirement.name()) > 0;
+            case CONSTRAINT -> count(CONSTRAINT_SQL, requirement.table(), requirement.name()) > 0;
             case TRIGGER -> count(TRIGGER_SQL, requirement.name()) > 0;
         };
     }
@@ -97,6 +98,10 @@ public class SchemaReadinessService {
     private static final String INDEX_SQL = """
             SELECT COUNT(*) FROM information_schema.statistics
             WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?
+            """;
+    private static final String CONSTRAINT_SQL = """
+            SELECT COUNT(*) FROM information_schema.table_constraints
+            WHERE constraint_schema = DATABASE() AND table_name = ? AND constraint_name = ?
             """;
     private static final String TRIGGER_SQL = """
             SELECT COUNT(*) FROM information_schema.triggers

@@ -16,6 +16,7 @@ import {
   InboxOutlined,
   LineChartOutlined,
   ProfileOutlined,
+  SafetyCertificateOutlined,
   SettingOutlined,
   SlidersOutlined,
   TeamOutlined,
@@ -38,7 +39,7 @@ export function buildMenuItems(permissions?: string[]): MenuProps['items'] {
     can([PERMISSIONS.reportView]) && menu('/dashboard', <DashboardOutlined />, '仪表盘'),
     can([PERMISSIONS.orderView]) && menu('/process-orders', <ContainerOutlined />, '加工单'),
     can([PERMISSIONS.deliveryView]) && deliveryMenu(),
-    can([PERMISSIONS.settleView]) && menu('/settle-orders', <AccountBookOutlined />, '结算管理'),
+    settlementMenu(can),
     can([PERMISSIONS.reportView]) && reportMenu(),
     baseChildren.length > 0 && group('base', <ProfileOutlined />, '基础档案', baseChildren),
     systemChildren.length > 0 && group('system', <SettingOutlined />, '系统管理', systemChildren),
@@ -69,6 +70,16 @@ function deliveryMenu(): MenuItem {
     menu('/delivery-orders', <FileDoneOutlined />, '出库单'),
     menu('/delivery-orders/inventory', <InboxOutlined />, '成品库存'),
   ])
+}
+
+function settlementMenu(can: (permissions: string[]) => boolean): MenuItem | false {
+  const children = [
+    can([PERMISSIONS.settleView]) && menu('/settle-orders', <AccountBookOutlined />, '结算单'),
+    can([PERMISSIONS.settleDiscount, PERMISSIONS.settleDiscountApprove,
+      PERMISSIONS.settleDiscountAdminApprove])
+      && menu('/settle-orders/discount-approvals', <SafetyCertificateOutlined />, '优惠审批'),
+  ].filter(Boolean) as MenuItem[]
+  return children.length > 0 && group('settlement', <AccountBookOutlined />, '结算管理', children)
 }
 
 function baseMenuItems(can: (permissions: string[]) => boolean): MenuItem[] {

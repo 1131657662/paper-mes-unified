@@ -16,6 +16,10 @@ import {
   quoteSettleByOrders,
   voidSettleOrder,
   getSettleDiscountApprovals,
+  getLatestSettleDiscountApproval,
+  getSettleDiscountApprovalPage,
+  getSettleDiscountApprovalDetail,
+  decideSettleDiscountApproval,
   requestSettleDiscountApproval,
   approveSettleDiscount,
   getSettleCollectionReminders,
@@ -32,6 +36,8 @@ import type {
   SettleQuoteByOrdersDTO,
   SettleQuoteByMonthDTO,
   SettleDiscountApprovalRequestDTO,
+  SettleDiscountApprovalQuery,
+  SettleDiscountDecisionDTO,
   SettleCollectionReminderRequestDTO,
 } from '../../../types/settle'
 
@@ -55,6 +61,11 @@ export const settleService = {
     recordSettleCollectionReminder(params.uuid, params.data),
   receive: (params: { uuid: string; data: ReceiveDTO }) => receivePayment(params.uuid, params.data),
   discountApprovals: (uuid: string) => getSettleDiscountApprovals(uuid),
+  latestDiscountApproval: (uuid: string) => getLatestSettleDiscountApproval(uuid),
+  discountApprovalPage: (query: SettleDiscountApprovalQuery) => getSettleDiscountApprovalPage(query),
+  discountApprovalDetail: (uuid: string) => getSettleDiscountApprovalDetail(uuid),
+  decideDiscountApproval: (params: { uuid: string; action: 'approve' | 'reject' | 'cancel';
+    data?: SettleDiscountDecisionDTO }) => decideSettleDiscountApproval(params.uuid, params.action, params.data),
   requestDiscountApproval: (params: { uuid: string; data: SettleDiscountApprovalRequestDTO }) =>
     requestSettleDiscountApproval(params.uuid, params.data),
   approveDiscount: (params: { uuid: string; approvalUuid: string }) =>

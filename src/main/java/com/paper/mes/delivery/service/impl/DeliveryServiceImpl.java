@@ -260,7 +260,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 warehousePolicy.requireForCreate(dto.getWarehouseUuid(), picked);
 
         // 现结拦截：以加工单结算快照为准，避免客户档案后续调整影响历史单据。
-        int blockAction = settlementBlockPolicy.resolveAction(
+        int blockAction = settlementBlockPolicy.resolveCreateAction(
                 cashSettlementGuard.hasUnsettledCashOrders(cashOrderUuids), dto.isForceRelease(), "出库");
 
         LocalDate date = dto.getDeliveryDate();
@@ -511,7 +511,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
                 warehousePolicy.requireForAppend(order, existingFinishes, finishByUuid.values().stream().toList());
         persistWarehouseSnapshot(order, warehouse);
 
-        int blockAction = settlementBlockPolicy.resolveAction(
+        int blockAction = settlementBlockPolicy.resolveCreateAction(
                 cashSettlementGuard.hasUnsettledCashOrders(cashOrderUuids), dto.isForceRelease(), "追加出库");
         if (blockAction == DeliverySettlementBlockPolicy.ACTION_RELEASE) {
             order.setSettleBlockAction(DeliverySettlementBlockPolicy.ACTION_RELEASE);

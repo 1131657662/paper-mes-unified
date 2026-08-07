@@ -14,9 +14,13 @@ describe('结算金额变更后的缓存失效', () => {
       queries.settle.details('settle-1').queryKey,
       queries.settle.receives('settle-1').queryKey,
       queries.settle.printLines('settle-1').queryKey,
+      queries.settle.discountApprovals('settle-1').queryKey,
+      queries.settle.latestDiscountApproval('settle-1').queryKey,
       queries.settle.list({ current: 1, size: 20 }).queryKey,
       queries.settle.summary({ current: 1, size: 20 }).queryKey,
       queries.settle.collectionSummary({ current: 1, size: 20 }).queryKey,
+      queries.settle.discountApprovalPage({ scope: 'mine', current: 1, size: 20 }).queryKey,
+      queries.settle.discountApprovalDetail('approval-1').queryKey,
     ]
     keys.forEach((queryKey) => queryClient.setQueryData(queryKey, {}))
 

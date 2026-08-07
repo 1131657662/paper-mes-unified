@@ -20,6 +20,8 @@ import type {
   SettleQuoteByMonthDTO,
   SettleDiscountApproval,
   SettleDiscountApprovalRequestDTO,
+  SettleDiscountApprovalQuery,
+  SettleDiscountDecisionDTO,
   SettleCollectionReminder,
   SettleCollectionReminderRequestDTO,
   SettleCollectionSummary,
@@ -160,6 +162,37 @@ export function getSettleDiscountApprovals(uuid: string) {
 export function requestSettleDiscountApproval(uuid: string, data: SettleDiscountApprovalRequestDTO) {
   return request<string>({
     url: `/api/settle-orders/${uuid}/discount-approvals`,
+    method: 'post',
+    data,
+  })
+}
+
+export function getLatestSettleDiscountApproval(uuid: string) {
+  return request<SettleDiscountApproval | null>({
+    url: `/api/settle-orders/${uuid}/discount-approvals/latest`,
+    method: 'get',
+  })
+}
+
+export function getSettleDiscountApprovalPage(query: SettleDiscountApprovalQuery) {
+  return request<PageResult<SettleDiscountApproval>>({
+    url: '/api/settle-discount-approvals',
+    method: 'get',
+    params: query,
+  })
+}
+
+export function getSettleDiscountApprovalDetail(uuid: string) {
+  return request<SettleDiscountApproval>({
+    url: `/api/settle-discount-approvals/${uuid}`,
+    method: 'get',
+  })
+}
+
+export function decideSettleDiscountApproval(uuid: string, action: 'approve' | 'reject' | 'cancel',
+  data?: SettleDiscountDecisionDTO) {
+  return request<void>({
+    url: `/api/settle-discount-approvals/${uuid}/${action}`,
     method: 'post',
     data,
   })

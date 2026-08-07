@@ -83,7 +83,7 @@ function Apply-Schema {
 }
 
 function Apply-PendingMigrations {
-    # The current canonical baseline is 3.62. The smoke database replays the last
+    # The current canonical baseline is 3.63. The smoke database replays the last
     # upgrade window (3.49 -> current) so migrations are executed instead of
     # being registered as a fabricated baseline.  Update this fixture when a
     # release introduces a new canonical baseline.
@@ -171,7 +171,7 @@ try {
     $env:PAPER_MES_DB_URL = "jdbc:mysql://${dbHost}:${dbPort}/${Database}?useSSL=false&useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true"
     $env:PAPER_MES_DB_USER = $dbUser
     $env:PAPER_MES_DB_PASSWORD = $dbPassword
-    $env:PAPER_MES_EXPECTED_SCHEMA_VERSION = "3.62"
+    $env:PAPER_MES_EXPECTED_SCHEMA_VERSION = "3.63"
     $env:PAPER_MES_BACKEND_VERSION = "prod-smoke-backend"
     $env:PAPER_MES_FRONTEND_VERSION = "prod-smoke-frontend"
     $env:PAPER_MES_GIT_SHA = "0000000000000000000000000000000000000000"

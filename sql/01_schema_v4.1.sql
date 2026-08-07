@@ -1,6 +1,6 @@
 -- =============================================================================
 -- 卷筒纸加工管理系统 V4.1  数据库建表脚本
--- Canonical schema version: 3.62
+-- Canonical schema version: 3.63
 -- Phase 1 / P0-1  数据库建表
 -- 引擎: InnoDB   字符集: utf8mb4   排序规则: utf8mb4_general_ci
 -- 规范依据: 开发文档 第三章 + 3.4 节 DDL 统一规范
@@ -1169,7 +1169,13 @@ CREATE TABLE `biz_settle_discount_approval` (
   `uuid`              VARCHAR(36)   NOT NULL,
   `settle_uuid`       VARCHAR(36)   NOT NULL,
   `request_id`        VARCHAR(64)   NOT NULL,
+  `cash_amount`       DECIMAL(12,2) NOT NULL DEFAULT 0,
+  `scrap_offset_amount` DECIMAL(12,2) NOT NULL DEFAULT 0,
   `discount_amount`   DECIMAL(12,2) NOT NULL,
+  `unreceived_snapshot` DECIMAL(12,2) NOT NULL,
+  `discount_percent`  DECIMAL(7,2)  NOT NULL DEFAULT 0,
+  `required_level`    VARCHAR(16)   NOT NULL,
+  `request_hash`      CHAR(64)      NOT NULL,
   `reason`            VARCHAR(255)  NOT NULL,
   `approval_status`   TINYINT       NOT NULL DEFAULT 1 COMMENT '1待审批 2已批准 3已使用 4已拒绝',
   `request_by`        VARCHAR(36)   NOT NULL,
@@ -1178,7 +1184,14 @@ CREATE TABLE `biz_settle_discount_approval` (
   `approve_by`        VARCHAR(36)   DEFAULT NULL,
   `approve_by_name`   VARCHAR(50)   DEFAULT NULL,
   `approve_time`      DATETIME      DEFAULT NULL,
+  `decision_reason`   VARCHAR(255)  DEFAULT NULL,
+  `cancel_by`         VARCHAR(36)   DEFAULT NULL,
+  `cancel_by_name`    VARCHAR(50)   DEFAULT NULL,
+  `cancel_time`       DATETIME      DEFAULT NULL,
+  `policy_version`    VARCHAR(32)   NOT NULL,
   `used_receive_uuid` VARCHAR(36)   DEFAULT NULL,
+  `active_settle_uuid` VARCHAR(36) GENERATED ALWAYS AS
+    (CASE WHEN `approval_status` IN (1, 2) THEN `settle_uuid` ELSE NULL END) STORED,
   `is_deleted`        TINYINT       NOT NULL DEFAULT 0,
   `create_by`         VARCHAR(50)   DEFAULT NULL,
   `update_by`         VARCHAR(50)   DEFAULT NULL,
@@ -1192,8 +1205,15 @@ CREATE TABLE `biz_settle_discount_approval` (
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `uk_discount_approval_request` (`settle_uuid`, `request_id`),
   UNIQUE KEY `uk_discount_approval_receive` (`used_receive_uuid`),
+  UNIQUE KEY `uk_discount_approval_active_settle` (`active_settle_uuid`),
   KEY `idx_discount_approval_settle_status` (`settle_uuid`, `approval_status`),
-  CONSTRAINT `chk_discount_approval_amount_positive` CHECK (`discount_amount` > 0)
+  KEY `idx_discount_approval_inbox` (`approval_status`, `required_level`, `request_time`),
+  KEY `idx_discount_approval_requester` (`request_by`, `approval_status`, `request_time`),
+  CONSTRAINT `chk_discount_approval_amount_positive` CHECK (`discount_amount` > 0),
+  CONSTRAINT `chk_discount_approval_status` CHECK (`approval_status` BETWEEN 1 AND 6),
+  CONSTRAINT `chk_discount_approval_level` CHECK (`required_level` IN ('FINANCE', 'ADMIN')),
+  CONSTRAINT `chk_discount_approval_components` CHECK (
+    `cash_amount` >= 0 AND `scrap_offset_amount` >= 0 AND `unreceived_snapshot` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='结算优惠及尾差审批记录';
 
 -- =============================================================================

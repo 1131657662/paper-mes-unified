@@ -30,6 +30,14 @@ export interface ReceiveAmountChange {
   previousAmount: number
 }
 
+export interface DiscountApprovalSettings {
+  autoApproveLimit: number
+  maxAmount: number
+  maxPercent: number
+}
+
+export type DiscountApprovalLevel = 'DIRECT' | 'FINANCE' | 'ADMIN'
+
 export function resolveReceiveAmountChange(options: ReceiveAmountChangeOptions): ReceiveAmountChange | null {
   const { baseline, settleUuid, unreceivedAmount } = options
   if (!baseline || !settleUuid || baseline.settleUuid !== settleUuid) return null
@@ -60,6 +68,26 @@ export function settledAmount(values: Pick<ReceiveFormValues,
   return roundMoney(Number(values.cashAmount ?? 0)
     + Number(values.scrapOffsetAmount ?? 0)
     + Number(values.discountAmount ?? 0))
+}
+
+export function remainingAmount(unreceivedAmount: number,
+  values: Pick<ReceiveFormValues, 'cashAmount' | 'scrapOffsetAmount' | 'discountAmount'>): number {
+  return Math.max(0, roundMoney(roundMoney(unreceivedAmount) - settledAmount(values)))
+}
+
+export function requiresDiscountApproval(discountAmount: number, unreceivedAmount: number,
+  settings: DiscountApprovalSettings): boolean {
+  return resolveDiscountApprovalLevel(discountAmount, unreceivedAmount, settings) !== 'DIRECT'
+}
+
+export function resolveDiscountApprovalLevel(discountAmount: number, unreceivedAmount: number,
+  settings: DiscountApprovalSettings): DiscountApprovalLevel {
+  const discount = roundMoney(discountAmount)
+  const unreceived = roundMoney(unreceivedAmount)
+  if (discount <= settings.autoApproveLimit) return 'DIRECT'
+  const withinAmount = discount <= settings.maxAmount
+  const withinPercent = unreceived > 0 && discount * 100 <= unreceived * settings.maxPercent
+  return withinAmount && withinPercent ? 'FINANCE' : 'ADMIN'
 }
 
 export function receiveTotalError(values: ReceiveFormValues, unreceivedAmount: number): string | undefined {

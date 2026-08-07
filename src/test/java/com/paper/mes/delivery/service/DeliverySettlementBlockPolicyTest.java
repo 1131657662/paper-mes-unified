@@ -90,6 +90,17 @@ class DeliverySettlementBlockPolicyTest {
         assertEquals(403, error.getCode());
     }
 
+    @Test
+    void resolveCreateAction_whenForceRelease_requiresReleasePermission() {
+        PermissionChecker checker = mock(PermissionChecker.class);
+        DeliverySettlementBlockPolicy policy = policy(List.of(), checker);
+
+        int action = policy.resolveCreateAction(true, true, "出库");
+
+        assertEquals(DeliverySettlementBlockPolicy.ACTION_RELEASE, action);
+        verify(checker).require(Permissions.DELIVERY_RELEASE);
+    }
+
     private DeliverySettlementBlockPolicy policy(List<SysConfigItem> configs) {
         return policy(configs, mock(PermissionChecker.class));
     }

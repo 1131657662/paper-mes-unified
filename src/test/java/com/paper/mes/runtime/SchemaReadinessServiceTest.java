@@ -17,7 +17,7 @@ class SchemaReadinessServiceTest {
         SchemaReadinessReport report = service.refresh();
 
         assertThat(report.ready()).isTrue();
-        assertThat(report.databaseVersion()).isEqualTo("3.62");
+        assertThat(report.databaseVersion()).isEqualTo("3.63");
         assertThat(report.missingStructures()).isEmpty();
     }
 
@@ -33,9 +33,21 @@ class SchemaReadinessServiceTest {
                 .containsExactly("column:biz_process_order_append_session.active_order_uuid");
     }
 
+    @Test
+    void reportsTheExactMissingConstraint() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("chk_discount_approval_components"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "constraint:biz_settle_discount_approval.chk_discount_approval_components");
+    }
+
     private SchemaReadinessService service(JdbcTemplate jdbcTemplate) {
         SchemaReadinessService service = new SchemaReadinessService(jdbcTemplate);
-        ReflectionTestUtils.setField(service, "expectedVersion", "3.62");
+        ReflectionTestUtils.setField(service, "expectedVersion", "3.63");
         ReflectionTestUtils.setField(service, "requireMigrationHistory", true);
         return service;
     }
@@ -56,7 +68,7 @@ class SchemaReadinessServiceTest {
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType) {
-            return List.of(elementType.cast("3.62"));
+            return List.of(elementType.cast("3.63"));
         }
     }
 }

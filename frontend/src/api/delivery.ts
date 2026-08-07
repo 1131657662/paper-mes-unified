@@ -46,6 +46,7 @@ export function createDeliveryOrder(data: DeliveryCreateDTO) {
     url: '/api/delivery-orders',
     method: 'post',
     data,
+    silentBusinessErrorCodes: ['E010'],
   })
 }
 
@@ -106,6 +107,7 @@ export function appendDeliveryDetails(uuid: string, data: DeliveryAppendItemsDTO
     url: `/api/delivery-orders/${uuid}/details`,
     method: 'post',
     data,
+    silentBusinessErrorCodes: ['E010'],
   })
 }
 

@@ -32,9 +32,9 @@ public class SettlementDiscountPolicy {
         permissionChecker.require(Permissions.SETTLE_DISCOUNT);
         requireReason(dto.getDiscountReason());
         settings.requireAllowed(discount, settle.getUnreceivedAmount());
-        if (!settings.requiresApproval(discount)) return Decision.auto(operator);
+        if (!settings.requiresApproval(discount, settle.getUnreceivedAmount())) return Decision.auto(operator);
         SettleDiscountApproval approval = lockApproval(dto.getDiscountApprovalUuid());
-        requireApproved(approval, settle.getUuid(), discount);
+        requireApproved(approval, settle, dto, discount);
         return new Decision(approval.getUuid(), approval.getApproveByName());
     }
 
@@ -56,8 +56,9 @@ public class SettlementDiscountPolicy {
                 .eq(SettleDiscountApproval::getUuid, uuid.trim()).last("FOR UPDATE"));
     }
 
-    private void requireApproved(SettleDiscountApproval approval, String settleUuid, BigDecimal discount) {
-        if (approval == null || !settleUuid.equals(approval.getSettleUuid())) {
+    private void requireApproved(SettleDiscountApproval approval, SettleOrder settle,
+                                 ReceiveDTO dto, BigDecimal discount) {
+        if (approval == null || !settle.getUuid().equals(approval.getSettleUuid())) {
             throw new BusinessException("优惠审批记录不存在");
         }
         if (approval.getApprovalStatus() == null || approval.getApprovalStatus() != APPROVED) {
@@ -65,6 +66,16 @@ public class SettlementDiscountPolicy {
         }
         if (money(approval.getDiscountAmount()).compareTo(money(discount)) != 0) {
             throw new BusinessException("优惠金额与审批金额不一致");
+        }
+        if (money(approval.getCashAmount()).compareTo(money(dto.getCashAmount())) != 0
+                || money(approval.getScrapOffsetAmount()).compareTo(money(dto.getScrapOffsetAmount())) != 0) {
+            throw new BusinessException("本次到账或废纸抵扣金额与审批方案不一致，请重新申请");
+        }
+        if (!text(approval.getReason()).equals(text(dto.getDiscountReason()))) {
+            throw new BusinessException("优惠原因与审批方案不一致，请重新申请");
+        }
+        if (money(approval.getUnreceivedSnapshot()).compareTo(money(settle.getUnreceivedAmount())) != 0) {
+            throw new BusinessException("未收金额已变化，该优惠审批已失效，请重新申请");
         }
     }
 
@@ -74,6 +85,10 @@ public class SettlementDiscountPolicy {
 
     private BigDecimal money(BigDecimal value) {
         return (value == null ? BigDecimal.ZERO : value).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private String text(String value) {
+        return value == null ? "" : value.trim();
     }
 
     public record Decision(String approvalUuid, String approvedBy) {

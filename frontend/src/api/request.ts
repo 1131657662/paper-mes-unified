@@ -2,6 +2,7 @@ import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { message } from 'antd'
 import type { R } from '../types/common'
 import { getAuthSnapshot } from '../stores/authStore'
+import { formatRequestErrorText } from './requestErrorPresentation'
 
 /** 业务错误码默认文案（后端未带 message 时兜底）。 */
 const ERROR_CODE_TEXT: Record<string, string> = {
@@ -156,7 +157,7 @@ function contextualErrorText(error: BizError, url?: string) {
   if (error.code === 403 && url?.includes('/process-orders/steps/') && url.endsWith('/pricing')) {
     text = '当前计价优惠超过免审额度，请由财务或管理员账号处理'
   }
-  return withRequestId(text, error.requestId)
+  return formatRequestErrorText(text, error)
 }
 
 function isBusinessErrorBody(value: unknown): value is Pick<R<unknown>, 'code' | 'message' | 'errorCode' | 'requestId'> {
@@ -170,12 +171,8 @@ function configUrlEndsWith(url: string | undefined, suffix: string) {
 }
 
 function errorText(error: unknown, fallbackText: string) {
-  if (error instanceof BizError && error.message) return withRequestId(error.message, error.requestId)
+  if (error instanceof BizError && error.message) return formatRequestErrorText(error.message, error)
   return fallbackText
-}
-
-function withRequestId(text: string, requestId?: string) {
-  return requestId ? `${text}（请求编号：${requestId}）` : text
 }
 
 function isErrorNotified(error: unknown) {

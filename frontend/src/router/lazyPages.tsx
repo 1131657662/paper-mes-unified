@@ -37,6 +37,7 @@ export const ReportPendingPage = lazy(() => import('../pages/report/ReportPendin
 export const ReportLegacyRedirectPage = lazy(() => import('../pages/report/ReportLegacyRedirectPage'))
 export const RouteDesignerPage = lazy(() => import('../pages/processOrder/RouteDesignerPage'))
 export const SettleCreatePage = lazy(() => import('../pages/settle/SettleCreatePage'))
+export const SettleDiscountApprovalPage = lazy(() => import('../pages/settle/SettleDiscountApprovalPage'))
 export const SettleDetailPage = lazy(() => import('../pages/settle/SettleDetailPage'))
 export const SettleOrderList = lazy(() => import('../pages/settle/SettleOrderList'))
 export const SystemConfigPage = lazy(() => import('../pages/systemConfig/SystemConfigPage'))

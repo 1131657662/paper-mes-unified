@@ -22,6 +22,7 @@ public final class Permissions {
     public static final String SETTLE_MANAGE = "settle:manage";
     public static final String SETTLE_DISCOUNT = "settle:discount";
     public static final String SETTLE_DISCOUNT_APPROVE = "settle:discount-approve";
+    public static final String SETTLE_DISCOUNT_ADMIN_APPROVE = "settle:discount-admin-approve";
     public static final String SETTLE_RECEIVE = "settle:receive";
     public static final String SETTLE_VIEW = "settle:view";
     public static final String DATA_BACKUP = "system:data-backup";
@@ -49,7 +50,7 @@ public final class Permissions {
         }
         if (RoleCodes.FINANCE.equals(roleCode)) {
             return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, DELIVERY_RELEASE, SETTLE_VIEW, SETTLE_MANAGE,
-                    SETTLE_RECEIVE, SETTLE_DISCOUNT, ORDER_PRICING, ORDER_PRICING_APPROVE, REPORT_VIEW,
+                    SETTLE_RECEIVE, SETTLE_DISCOUNT, SETTLE_DISCOUNT_APPROVE, ORDER_PRICING, ORDER_PRICING_APPROVE, REPORT_VIEW,
                     EXPORT_TASK_VIEW);
         }
         if (RoleCodes.WAREHOUSE.equals(roleCode)) {

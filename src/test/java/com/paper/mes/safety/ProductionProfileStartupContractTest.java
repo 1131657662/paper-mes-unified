@@ -19,7 +19,7 @@ class ProductionProfileStartupContractTest {
         assertThat(script).doesNotContain("Register-MigrationBaseline", "'baseline'");
         assertThat(script).contains("SPRING_PROFILES_ACTIVE = \"prod\"");
         assertThat(script).contains(
-                "PAPER_MES_EXPECTED_SCHEMA_VERSION = \"3.62\"",
+                "PAPER_MES_EXPECTED_SCHEMA_VERSION = \"3.63\"",
                 "PAPER_MES_BACKEND_VERSION = \"prod-smoke-backend\"",
                 "PAPER_MES_FRONTEND_VERSION = \"prod-smoke-frontend\"",
                 "PAPER_MES_GIT_SHA", "PAPER_MES_BUILD_TIME");

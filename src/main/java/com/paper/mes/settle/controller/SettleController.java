@@ -25,6 +25,7 @@ import com.paper.mes.settle.entity.SettleDetail;
 import com.paper.mes.settle.entity.ReceiveRecord;
 import com.paper.mes.oplog.entity.OperationLog;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
+import com.paper.mes.settle.service.SettleDiscountApprovalQueryService;
 import com.paper.mes.settle.service.SettleDiscountApprovalService;
 import com.paper.mes.settle.service.SettleService;
 import jakarta.validation.Valid;
@@ -45,6 +46,7 @@ public class SettleController {
 
     private final SettleService settleService;
     private final SettleDiscountApprovalService discountApprovalService;
+    private final SettleDiscountApprovalQueryService discountApprovalQueryService;
 
     @GetMapping
     @RequirePermission(Permissions.SETTLE_VIEW)
@@ -146,7 +148,13 @@ public class SettleController {
     @GetMapping("/{uuid}/discount-approvals")
     @RequirePermission(Permissions.SETTLE_RECEIVE)
     public R<List<SettleDiscountApprovalVO>> discountApprovals(@PathVariable String uuid) {
-        return R.success(discountApprovalService.list(uuid));
+        return R.success(discountApprovalQueryService.list(uuid));
+    }
+
+    @GetMapping("/{uuid}/discount-approvals/latest")
+    @RequirePermission({Permissions.SETTLE_RECEIVE, Permissions.SETTLE_DISCOUNT})
+    public R<SettleDiscountApprovalVO> latestDiscountApproval(@PathVariable String uuid) {
+        return R.success(discountApprovalQueryService.latest(uuid).orElse(null));
     }
 
     @PostMapping("/{uuid}/discount-approvals")
@@ -157,9 +165,9 @@ public class SettleController {
     }
 
     @PostMapping("/{uuid}/discount-approvals/{approvalUuid}/approve")
-    @RequirePermission(Permissions.SETTLE_DISCOUNT_APPROVE)
+    @RequirePermission({Permissions.SETTLE_DISCOUNT_APPROVE, Permissions.SETTLE_DISCOUNT_ADMIN_APPROVE})
     public R<Void> approveDiscount(@PathVariable String uuid, @PathVariable String approvalUuid) {
-        discountApprovalService.approve(uuid, approvalUuid);
+        discountApprovalService.approve(uuid, approvalUuid, null);
         return R.success();
     }
 

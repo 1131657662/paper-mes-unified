@@ -6,6 +6,8 @@ import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { useCustomers, useWarehouses } from '../../features/processOrderCreate/hooks/useReferenceData'
 import { useCreateDelivery } from '../../features/delivery/hooks/useCreateDelivery'
+import { PERMISSIONS } from '../../constants/permissions'
+import { useHasPermission } from '../../stores/authStore'
 import DeliveryCreateTable from './DeliveryCreateTable'
 import DeliveryCreateFooter from './DeliveryCreateFooter'
 import DeliveryFinishTableToolbar from './DeliveryFinishTableToolbar'
@@ -14,9 +16,9 @@ import DeliverySelectionReviewDrawer from './DeliverySelectionReviewDrawer'
 import DeliveryPickupInfoCard from './DeliveryPickupInfoCard'
 import {
   buildDeliveryCreateDTO,
-  confirmDeliveryCashRelease,
   type DeliveryCreateFormValues,
 } from './deliveryCreateSubmit'
+import { authorizeDeliveryConfirmation } from './deliveryConfirmAuthorization'
 import { finishScopeName } from './deliveryFinishScope'
 import {
   deliverySelectionError,
@@ -26,7 +28,6 @@ import {
 import { useDeliveryCreateInventory } from './useDeliveryCreateInventory'
 import { deliveryCreateReturnTarget, finishUuidsFromNavigationState } from './deliveryCreateNavigation'
 import { deliveryAvailableEmptyText } from './deliveryAvailableEmptyText'
-import { hasDeliverySettlementRisk } from '../../types/settlementSemantics'
 import '../documentModule.css'
 import './DeliveryCreatePage.css'
 import './DeliveryCreateLayout.css'
@@ -43,6 +44,7 @@ export default function DeliveryCreatePage() {
   const customersQuery = useCustomers()
   const warehousesQuery = useWarehouses()
   const createMutation = useCreateDelivery()
+  const canRelease = useHasPermission(PERMISSIONS.deliveryRelease)
   const [customerUuid, setCustomerUuid] = useState<string | undefined>(initialCustomerUuid)
   const warehouseUuid = Form.useWatch('warehouseUuid', form) as string | undefined
   const enabledWarehouses = (warehousesQuery.data?.records ?? []).filter((item) => item.status === 1)
@@ -104,19 +106,18 @@ export default function DeliveryCreatePage() {
       message.error(selectionError)
       return
     }
-    const hasRisk = selectedFinishes.some(hasDeliverySettlementRisk)
-    if (hasRisk) {
-      const confirmed = await confirmDeliveryCashRelease()
-      if (!confirmed) return
-    }
-    const uuid = await createMutation.mutateAsync(buildDeliveryCreateDTO({
-      forceRelease: hasRisk,
-      lineEdits,
-      selectedFinishes,
-      values,
-    }))
+    let createdUuid: string | undefined
+    const completed = await authorizeDeliveryConfirmation(async (forceRelease) => {
+      createdUuid = await createMutation.mutateAsync(buildDeliveryCreateDTO({
+        forceRelease,
+        lineEdits,
+        selectedFinishes,
+        values,
+      }))
+    }, 1, canRelease)
+    if (!completed || !createdUuid) return
     message.success('出库单已生成')
-    navigate(`/delivery-orders/${uuid}`)
+    navigate(`/delivery-orders/${createdUuid}`)
   }
 
   return (

@@ -13,7 +13,9 @@ const CURRENT_VERSION = 2
 
 export function readTablePreferences<TSort>(storageKey: string): TablePreferences<TSort> {
   try {
-    const saved = localStorage.getItem(storageKey)
+    const storage = getStorage()
+    if (!storage) return emptyPreferences<TSort>()
+    const saved = storage.getItem(storageKey)
     if (!saved) return emptyPreferences<TSort>()
     const parsed: unknown = JSON.parse(saved)
     if (isEnvelope<TSort>(parsed)) {
@@ -41,11 +43,17 @@ export function updateTablePreferences<TSort>(
   update: (current: TablePreferences<TSort>) => TablePreferences<TSort>,
 ) {
   try {
+    const storage = getStorage()
+    if (!storage) return
     const next = update(readTablePreferences<TSort>(storageKey))
-    localStorage.setItem(storageKey, JSON.stringify({ ...next, version: CURRENT_VERSION }))
+    storage.setItem(storageKey, JSON.stringify({ ...next, version: CURRENT_VERSION }))
   } catch (error) {
     console.warn(`Failed to save table preferences for ${storageKey}:`, error)
   }
+}
+
+function getStorage(): Storage | null {
+  return typeof localStorage === 'undefined' ? null : localStorage
 }
 
 function emptyPreferences<TSort>(): TablePreferences<TSort> {

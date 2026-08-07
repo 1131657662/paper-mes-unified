@@ -14,6 +14,7 @@ import com.paper.mes.settle.dto.SettleCandidateQuery;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.settle.dto.SettleCandidateVO;
 import com.paper.mes.settle.service.SettleService;
+import com.paper.mes.settle.service.SettleDiscountApprovalQueryService;
 import com.paper.mes.settle.service.SettleDiscountApprovalService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +51,8 @@ class SettleCreateControllerContractTest {
         authService = mock(AuthService.class);
         settleService = mock(SettleService.class);
         mvc = MockMvcBuilders.standaloneSetup(new SettleController(
-                        settleService, mock(SettleDiscountApprovalService.class)))
+                        settleService, mock(SettleDiscountApprovalService.class),
+                        mock(SettleDiscountApprovalQueryService.class)))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())

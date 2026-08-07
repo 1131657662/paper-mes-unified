@@ -6,6 +6,7 @@ record SchemaRequirement(Kind kind, String table, String name) {
         TABLE,
         COLUMN,
         INDEX,
+        CONSTRAINT,
         TRIGGER
     }
 
@@ -14,6 +15,7 @@ record SchemaRequirement(Kind kind, String table, String name) {
             case TABLE -> "table:" + table;
             case COLUMN -> "column:" + table + "." + name;
             case INDEX -> "index:" + table + "." + name;
+            case CONSTRAINT -> "constraint:" + table + "." + name;
             case TRIGGER -> "trigger:" + name;
         };
     }

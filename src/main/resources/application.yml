@@ -19,7 +19,7 @@ app:
   schema-bootstrap:
     enabled: ${PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED:false}
   schema-readiness:
-    expected-version: ${PAPER_MES_EXPECTED_SCHEMA_VERSION:3.62}
+    expected-version: ${PAPER_MES_EXPECTED_SCHEMA_VERSION:3.63}
     require-migration-history: ${PAPER_MES_REQUIRE_MIGRATION_HISTORY:false}
   runtime:
     backend-version: ${PAPER_MES_BACKEND_VERSION:dev}

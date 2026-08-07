@@ -18,7 +18,9 @@ class PermissionsTest {
     @Test
     void finance_canApproveLargePricingAdjustments() {
         assertThat(Permissions.resolve(RoleCodes.FINANCE))
-                .contains(Permissions.ORDER_PRICING, Permissions.ORDER_PRICING_APPROVE);
+                .contains(Permissions.ORDER_PRICING, Permissions.ORDER_PRICING_APPROVE,
+                        Permissions.SETTLE_DISCOUNT_APPROVE)
+                .doesNotContain(Permissions.SETTLE_DISCOUNT_ADMIN_APPROVE);
         assertThat(Permissions.resolve(RoleCodes.FINANCE)).contains(Permissions.DELIVERY_RELEASE);
     }
 

@@ -110,7 +110,7 @@ class DeliveryServiceImplBatchLoadTest {
         when(deliverySourceLockService.lockAndReload(any()))
                 .thenReturn(new DeliverySourceLockService.LockedSources(finishes, orders));
         when(cashSettlementGuard.hasUnsettledCashOrders(any())).thenReturn(true);
-        when(settlementBlockPolicy.resolveAction(anyBoolean(), anyBoolean(), eq("出库")))
+        when(settlementBlockPolicy.resolveCreateAction(anyBoolean(), anyBoolean(), eq("出库")))
                 .thenReturn(DeliverySettlementBlockPolicy.ACTION_RELEASE);
         when(warehousePolicy.requireForCreate(eq("warehouse-1"), any()))
                 .thenReturn(new DeliveryWarehousePolicy.WarehouseSnapshot(

@@ -16,6 +16,7 @@ export const PERMISSIONS = {
   settleManage: 'settle:manage',
   settleDiscount: 'settle:discount',
   settleDiscountApprove: 'settle:discount-approve',
+  settleDiscountAdminApprove: 'settle:discount-admin-approve',
   settleReceive: 'settle:receive',
   settleView: 'settle:view',
   dataBackup: 'system:data-backup',

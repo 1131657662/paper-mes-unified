@@ -25,6 +25,26 @@ final class SchemaRequirementCatalog {
                 column("biz_receive_record", "request_id"),
                 column("biz_receive_record", "request_hash"),
                 index("biz_receive_record", "uk_receive_settle_request"),
+                table("biz_settle_discount_approval"),
+                column("biz_settle_discount_approval", "cash_amount"),
+                column("biz_settle_discount_approval", "scrap_offset_amount"),
+                column("biz_settle_discount_approval", "request_hash"),
+                column("biz_settle_discount_approval", "required_level"),
+                column("biz_settle_discount_approval", "unreceived_snapshot"),
+                column("biz_settle_discount_approval", "discount_percent"),
+                column("biz_settle_discount_approval", "decision_reason"),
+                column("biz_settle_discount_approval", "cancel_by"),
+                column("biz_settle_discount_approval", "cancel_by_name"),
+                column("biz_settle_discount_approval", "cancel_time"),
+                column("biz_settle_discount_approval", "policy_version"),
+                column("biz_settle_discount_approval", "active_settle_uuid"),
+                index("biz_settle_discount_approval", "uk_discount_approval_active_settle"),
+                index("biz_settle_discount_approval", "idx_discount_approval_inbox"),
+                index("biz_settle_discount_approval", "idx_discount_approval_requester"),
+                constraint("biz_settle_discount_approval", "chk_discount_approval_amount_positive"),
+                constraint("biz_settle_discount_approval", "chk_discount_approval_status"),
+                constraint("biz_settle_discount_approval", "chk_discount_approval_level"),
+                constraint("biz_settle_discount_approval", "chk_discount_approval_components"),
                 table("biz_inventory_transaction"),
                 column("biz_inventory_transaction", "idempotency_key"),
                 column("biz_inventory_transaction", "payload_hash"),
@@ -44,6 +64,10 @@ final class SchemaRequirementCatalog {
 
     private static SchemaRequirement index(String table, String index) {
         return new SchemaRequirement(SchemaRequirement.Kind.INDEX, table, index);
+    }
+
+    private static SchemaRequirement constraint(String table, String constraint) {
+        return new SchemaRequirement(SchemaRequirement.Kind.CONSTRAINT, table, constraint);
     }
 
     private static SchemaRequirement trigger(String trigger) {

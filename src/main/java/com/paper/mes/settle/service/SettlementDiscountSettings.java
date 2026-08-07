@@ -1,5 +1,6 @@
 package com.paper.mes.settle.service;
 
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.system.config.entity.SysConfigItem;
 import com.paper.mes.system.config.service.SystemConfigService;
 import lombok.RequiredArgsConstructor;
@@ -36,17 +37,42 @@ public class SettlementDiscountSettings {
     }
 
     public void requireAllowed(BigDecimal discount, BigDecimal unreceived) {
-        Settings limits = current();
-        BigDecimal ratioCap = money(unreceived).multiply(limits.maxPercent())
-                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-        BigDecimal cap = limits.maxAmount().min(ratioCap);
-        if (money(discount).compareTo(cap) > 0) {
-            throw new com.paper.mes.common.BusinessException("优惠金额超过系统允许上限 " + cap);
+        BigDecimal normalizedDiscount = money(discount);
+        BigDecimal normalizedUnreceived = money(unreceived);
+        if (normalizedDiscount.signum() < 0) {
+            throw new BusinessException("优惠金额不能为负数");
+        }
+        if (normalizedUnreceived.signum() < 0 || normalizedDiscount.compareTo(normalizedUnreceived) > 0) {
+            throw new BusinessException("优惠金额不能超过当前未收金额");
         }
     }
 
-    public boolean requiresApproval(BigDecimal discount) {
-        return money(discount).compareTo(current().autoApproveLimit()) > 0;
+    public boolean requiresApproval(BigDecimal discount, BigDecimal unreceived) {
+        return approvalLevel(discount, unreceived) != SettlementDiscountApprovalLevel.DIRECT;
+    }
+
+    public SettlementDiscountApprovalLevel approvalLevel(BigDecimal discount, BigDecimal unreceived) {
+        BigDecimal normalizedDiscount = money(discount);
+        if (normalizedDiscount.signum() <= 0) return SettlementDiscountApprovalLevel.DIRECT;
+        Settings limits = current();
+        BigDecimal normalizedUnreceived = money(unreceived);
+        if (normalizedDiscount.compareTo(limits.autoApproveLimit()) <= 0) {
+            return SettlementDiscountApprovalLevel.DIRECT;
+        }
+        boolean withinFinanceAmount = normalizedDiscount.compareTo(limits.maxAmount()) <= 0;
+        boolean withinFinancePercent = normalizedUnreceived.signum() > 0
+                && discountPercent(normalizedDiscount, normalizedUnreceived)
+                .compareTo(limits.maxPercent()) <= 0;
+        return withinFinanceAmount && withinFinancePercent
+                ? SettlementDiscountApprovalLevel.FINANCE
+                : SettlementDiscountApprovalLevel.ADMIN;
+    }
+
+    public BigDecimal discountPercent(BigDecimal discount, BigDecimal unreceived) {
+        BigDecimal normalizedUnreceived = money(unreceived);
+        if (normalizedUnreceived.signum() <= 0) return BigDecimal.ZERO.setScale(2);
+        return money(discount).multiply(BigDecimal.valueOf(100))
+                .divide(normalizedUnreceived, 2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal read(Map<String, String> values, String key, BigDecimal fallback) {

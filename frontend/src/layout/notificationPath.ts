@@ -11,5 +11,10 @@ export function notificationPath(item: SystemNotification): string | undefined {
     const params = new URLSearchParams({ section: 'backup', view: 'tasks', task: item.sourceUuid })
     return `/system-config?${params.toString()}`
   }
+  if (item.sourceType === 'SETTLE_DISCOUNT_APPROVAL') {
+    const scope = item.notificationType === 'SETTLE_DISCOUNT_REQUESTED' ? 'pending' : 'mine'
+    const params = new URLSearchParams({ scope, approval: item.sourceUuid })
+    return `/settle-orders/discount-approvals?${params.toString()}`
+  }
   return undefined
 }

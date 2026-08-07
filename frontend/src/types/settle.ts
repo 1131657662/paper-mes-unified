@@ -294,20 +294,46 @@ export interface ReceiveDTO {
 
 export interface SettleDiscountApprovalRequestDTO {
   requestId: string
+  cashAmount: number
+  scrapOffsetAmount: number
   discountAmount: number
+  unreceivedSnapshot: number
   reason: string
 }
 
 export interface SettleDiscountApproval {
   uuid: string
+  settleUuid: string
+  settleNo?: string
+  customerName?: string
+  cashAmount: number
+  scrapOffsetAmount: number
   discountAmount: number
+  unreceivedSnapshot: number
+  discountPercent: number
+  requiredLevel: 'FINANCE' | 'ADMIN'
   reason: string
   approvalStatus: number
+  requestBy?: string
   requestByName: string
   requestTime: string
   approveByName?: string
   approveTime?: string
+  decisionReason?: string
+  cancelByName?: string
+  cancelTime?: string
+  policyVersion?: string
   usedReceiveUuid?: string
+}
+
+export interface SettleDiscountApprovalQuery extends PageQuery {
+  scope: 'pending' | 'processed' | 'mine'
+  requiredLevel?: 'FINANCE' | 'ADMIN'
+  keyword?: string
+}
+
+export interface SettleDiscountDecisionDTO {
+  reason?: string
 }
 
 export type SettleCollectionQueue = 'today' | 'overdue' | 'upcoming' | 'reminded'

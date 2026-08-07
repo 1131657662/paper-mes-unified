@@ -24,6 +24,7 @@ public class SystemConfigBootstrap implements ApplicationRunner {
         seedDictItems();
         seedConfigItems();
         migrateDeliveryCashConfigLabel();
+        migrateSettlementDiscountConfigLabels();
     }
 
     private void createTablesIfMissing() {
@@ -114,9 +115,9 @@ public class SystemConfigBootstrap implements ApplicationRunner {
         seedConfig("cfg-page-size", "ui", "ui.defaultPageSize", "默认每页条数", "20", "number", "条", 10, "列表默认分页条数");
         seedConfig("cfg-company-name", "print", "print.companyName", "公司名称", "纸品加工 MES", "string", null, 20, "出库单、结算单和打印页展示");
         seedConfig("cfg-delivery-cash-block-mode", "delivery", "delivery.cashSettleBlockMode", "现结出库拦截模式", "1", "number", null, 10, "0关闭拦截，1警告放行，2强制拦截");
-        seedConfig("cfg-settle-discount-auto-limit", "settle", "settle.discountAutoApproveLimit", "优惠免审上限", "1.00", "number", "元", 10, "不超过该金额的尾差可由有权限财务直接核销");
-        seedConfig("cfg-settle-discount-max-amount", "settle", "settle.discountMaxAmount", "单次优惠金额上限", "500.00", "number", "元", 20, "超过该金额禁止通过收款核销");
-        seedConfig("cfg-settle-discount-max-percent", "settle", "settle.discountMaxPercent", "单次优惠比例上限", "10.00", "number", "%", 30, "优惠金额占当前未收金额的最大比例");
+        seedConfig("cfg-settle-discount-auto-limit", "settle", "settle.discountAutoApproveLimit", "优惠免审金额阈值", "1.00", "number", "元", 10, "不超过该金额的优惠可由有权限财务直接核销");
+        seedConfig("cfg-settle-discount-max-amount", "settle", "settle.discountMaxAmount", "财务复核金额上限", "500.00", "number", "元", 20, "超过该金额时升级为管理员审批");
+        seedConfig("cfg-settle-discount-max-percent", "settle", "settle.discountMaxPercent", "财务复核比例上限", "10.00", "number", "%", 30, "超过未收金额的该比例时升级为管理员审批");
         seedConfig("cfg-backup-management-enabled", "backup", "backup.managementEnabled", "管理端备份功能", "true", "boolean", null, 10, "控制管理员手动备份和隔离恢复验证入口，默认开启");
         seedConfig("cfg-backup-retention-days", "backup", "backup.retentionDays", "本地备份保留天数", "30", "number", "天", 20, "每天自动清理超过保留期的备份，至少保留一份");
         seedConfig("cfg-backup-auto-enabled", "backup", "backup.autoEnabled", "自动备份", "true", "boolean", null, 30, "后端统一调度自动备份，默认开启");
@@ -169,5 +170,20 @@ public class SystemConfigBootstrap implements ApplicationRunner {
                 "0关闭拦截，1警告放行，2强制拦截",
                 "system",
                 "delivery.cashSettleBlockMode");
+    }
+
+    void migrateSettlementDiscountConfigLabels() {
+        updateBuiltInConfigLabel("settle.discountAutoApproveLimit", "优惠免审金额阈值",
+                "不超过该金额的优惠可由有权限财务直接核销");
+        updateBuiltInConfigLabel("settle.discountMaxAmount", "财务复核金额上限",
+                "超过该金额时升级为管理员审批");
+        updateBuiltInConfigLabel("settle.discountMaxPercent", "财务复核比例上限",
+                "超过未收金额的该比例时升级为管理员审批");
+    }
+
+    private void updateBuiltInConfigLabel(String key, String name, String remark) {
+        jdbcTemplate.update("UPDATE sys_config_item SET config_name=?, remark=?, update_by=?"
+                        + " WHERE config_key=? AND built_in=1 AND is_deleted=0",
+                name, remark, "system", key);
     }
 }

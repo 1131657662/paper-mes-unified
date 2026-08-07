@@ -11,6 +11,13 @@ import lombok.Data;
 public class R<T> {
 
     private int code;
+
+    /**
+     * Keep the success envelope shape stable even when an endpoint has no payload.
+     * The frontend unwraps this field, so omitting it turns a valid null result
+     * into React Query's invalid undefined result.
+     */
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     private T data;
     private String message;
 

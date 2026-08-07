@@ -44,6 +44,21 @@ public class DeliverySettlementBlockPolicy {
 
     public int resolveReleaseAction(boolean hasUnsettledCashOrders, boolean forceRelease,
                                     String operationName) {
+        return resolveAuthorizedAction(hasUnsettledCashOrders, forceRelease, operationName);
+    }
+
+    /**
+     * Resolve the settlement block for creating or appending a delivery order.
+     * Creation is a delivery-management operation, but an explicit release of
+     * unsettled cash orders still requires the dedicated release permission.
+     */
+    public int resolveCreateAction(boolean hasUnsettledCashOrders, boolean forceRelease,
+                                   String operationName) {
+        return resolveAuthorizedAction(hasUnsettledCashOrders, forceRelease, operationName);
+    }
+
+    private int resolveAuthorizedAction(boolean hasUnsettledCashOrders, boolean forceRelease,
+                                       String operationName) {
         int action = resolveAction(hasUnsettledCashOrders, forceRelease, operationName);
         if (action == ACTION_RELEASE) {
             permissionChecker.require(Permissions.DELIVERY_RELEASE);

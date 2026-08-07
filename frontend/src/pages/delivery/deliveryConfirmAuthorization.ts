@@ -14,7 +14,7 @@ export async function authorizeDeliveryConfirmation(
   }
 
   if (!canRelease) {
-    message.warning('该出库单存在未结清现结款项，请由财务或管理员账号签收放行')
+    message.warning('当前账号没有“现结出库放行”权限，请由财务或管理员账号处理')
     return false
   }
   if (!await confirmCashRelease(count)) return false
@@ -23,12 +23,12 @@ export async function authorizeDeliveryConfirmation(
 }
 
 function confirmCashRelease(count: number): Promise<boolean> {
-  const subject = count > 1 ? `所选 ${count} 张出库单中` : '该出库单中'
+  const subject = count > 1 ? `所选 ${count} 张出库单中` : '本次操作涉及的出库明细中'
   return new Promise((resolve) => {
     Modal.confirm({
-      title: '授权现结未结清出库',
-      content: `${subject}存在未结清的现结加工单。继续将实际扣减成品库存并记录放行日志，确认授权出库吗？`,
-      okText: '授权实际出库',
+      title: '现结未结清放行授权',
+      content: `${subject}存在未结清的现结加工单。继续操作需要“现结出库放行”权限，系统将记录放行日志；创建待出库单时只锁定库存，签收时才实际扣减。`,
+      okText: '授权并继续',
       okButtonProps: { danger: true },
       cancelText: '取消',
       onOk: () => resolve(true),

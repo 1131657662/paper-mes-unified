@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Modal, Space, message } from 'antd'
 import { useAppendDeliveryDetails } from '../../features/delivery/hooks/useAppendDeliveryDetails'
+import { PERMISSIONS } from '../../constants/permissions'
+import { useHasPermission } from '../../stores/authStore'
 import DocumentPaginationBar from '../../components/biz/DocumentPaginationBar'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { formatTon } from '../../features/delivery/utils/deliveryFormatters'
 import type { AvailableFinishVO } from '../../types/delivery'
-import { hasDeliverySettlementRisk } from '../../types/settlementSemantics'
 import DeliveryCreateTable from './DeliveryCreateTable'
 import DeliveryFinishTableToolbar from './DeliveryFinishTableToolbar'
 import {
@@ -18,6 +19,7 @@ import {
   type DeliveryLineEdit,
 } from './deliverySelectionModel'
 import { useDeliveryAppendInventory } from './useDeliveryAppendInventory'
+import { authorizeDeliveryConfirmation } from './deliveryConfirmAuthorization'
 
 interface Props {
   customerName?: string
@@ -39,6 +41,7 @@ export default function DeliveryAppendItemsModal({
   open,
 }: Props) {
   const appendMutation = useAppendDeliveryDetails()
+  const canRelease = useHasPermission(PERMISSIONS.deliveryRelease)
   const inventory = useDeliveryAppendInventory({ customerUuid, warehouseUuid, enabled: open })
   const [lineEdits, setLineEdits] = useState<Record<string, DeliveryLineEdit>>({})
   const selectedFinishes = inventory.selectedRows
@@ -73,15 +76,11 @@ export default function DeliveryAppendItemsModal({
       message.error(selectionError)
       return
     }
-    const hasRisk = selectedFinishes.some(hasDeliverySettlementRisk)
-    if (hasRisk) {
-      const confirmed = await confirmCashRelease()
-      if (!confirmed) return
-    }
-    await appendMutation.mutateAsync({
+    const completed = await authorizeDeliveryConfirmation((forceRelease) => appendMutation.mutateAsync({
       uuid: deliveryUuid,
-      data: buildAppendDTO(selectedFinishes, lineEdits, hasRisk),
-    })
+      data: buildAppendDTO(selectedFinishes, lineEdits, forceRelease),
+    }), 1, canRelease)
+    if (!completed) return
     message.success('已追加到本张出库单')
     onSuccess()
     onClose()
@@ -170,17 +169,4 @@ function buildAppendDTO(
       remark: lineEdits[item.finishUuid]?.remark,
     })),
   }
-}
-
-function confirmCashRelease() {
-  return new Promise<boolean>((resolve) => {
-    Modal.confirm({
-      title: '现结出库确认',
-      content: '本次追加包含现结且有待收款风险的加工单。确认后将按“警告放行”追加到本张出库单。',
-      okText: '警告放行',
-      cancelText: '取消',
-      onOk: () => resolve(true),
-      onCancel: () => resolve(false),
-    })
-  })
 }

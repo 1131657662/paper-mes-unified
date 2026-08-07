@@ -49,7 +49,7 @@ describe('出库签收现结风险授权', () => {
     expect(submit).toHaveBeenCalledTimes(1)
     expect(Modal.confirm).not.toHaveBeenCalled()
     expect(message.warning).toHaveBeenCalledWith(
-      '该出库单存在未结清现结款项，请由财务或管理员账号签收放行',
+      '当前账号没有“现结出库放行”权限，请由财务或管理员账号处理',
     )
   })
 

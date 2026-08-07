@@ -18,9 +18,15 @@ public class SettleDiscountApproval extends BaseEntity {
     private String uuid;
     private String settleUuid;
     private String requestId;
+    private BigDecimal cashAmount;
+    private BigDecimal scrapOffsetAmount;
     private BigDecimal discountAmount;
+    private BigDecimal unreceivedSnapshot;
+    private BigDecimal discountPercent;
+    private String requiredLevel;
+    private String requestHash;
     private String reason;
-    /** 1待审批 2已批准 3已使用 4已拒绝 */
+    /** 1待审批 2已批准 3已使用 4已拒绝 5已取消 6已失效 */
     private Integer approvalStatus;
     private String requestBy;
     private String requestByName;
@@ -28,5 +34,10 @@ public class SettleDiscountApproval extends BaseEntity {
     private String approveBy;
     private String approveByName;
     private LocalDateTime approveTime;
+    private String decisionReason;
+    private String cancelBy;
+    private String cancelByName;
+    private LocalDateTime cancelTime;
+    private String policyVersion;
     private String usedReceiveUuid;
 }

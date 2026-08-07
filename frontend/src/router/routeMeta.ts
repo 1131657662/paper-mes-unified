@@ -17,6 +17,7 @@ export const routeMeta: AppRouteMeta[] = [
   { path: '/delivery-orders/inventory/finishes', label: '成品库存', parentLabel: '出库管理', menuKey: '/delivery-orders/inventory' },
   { path: '/delivery-orders/inventory/customers/:customerUuid', label: '客户库存明细', parentLabel: '成品库存', menuKey: '/delivery-orders/inventory' },
   { path: '/settle-orders', label: '结算管理' },
+  { path: '/settle-orders/discount-approvals', label: '优惠审批', parentLabel: '结算管理', menuKey: '/settle-orders/discount-approvals' },
   { path: '/reports', label: '统计报表' },
   { path: '/reports/overview', label: '经营总览', parentLabel: '统计报表', menuKey: '/reports/overview' },
   { path: '/reports/production', label: '生产分析', parentLabel: '统计报表', menuKey: '/reports/production' },

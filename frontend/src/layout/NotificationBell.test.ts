@@ -12,12 +12,22 @@ describe('notificationPath', () => {
     expect(notificationPath(notification('BACKUP_TASK')))
       .toBe('/system-config?section=backup&view=tasks&task=source-1')
   })
+
+  it('routes a pending discount request to the approval inbox', () => {
+    expect(notificationPath(notification('SETTLE_DISCOUNT_APPROVAL', 'SETTLE_DISCOUNT_REQUESTED')))
+      .toBe('/settle-orders/discount-approvals?scope=pending&approval=source-1')
+  })
+
+  it('routes a discount decision to the requester history', () => {
+    expect(notificationPath(notification('SETTLE_DISCOUNT_APPROVAL', 'SETTLE_DISCOUNT_APPROVED')))
+      .toBe('/settle-orders/discount-approvals?scope=mine&approval=source-1')
+  })
 })
 
-function notification(sourceType: string): SystemNotification {
+function notification(sourceType: string, notificationType = 'REPORT_ALERT'): SystemNotification {
   return {
     uuid: 'notification-1',
-    notificationType: 'REPORT_ALERT',
+    notificationType,
     severity: 'WARNING',
     title: 'title',
     content: 'content',
