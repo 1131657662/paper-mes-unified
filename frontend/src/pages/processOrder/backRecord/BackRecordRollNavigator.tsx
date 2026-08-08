@@ -126,7 +126,7 @@ function RollNavItem({
       <span className="back-record-nav-item__meta">
         <span>{mode}</span>
         {item.roll && <span>{formatKg((item.roll.rollWeight ?? 0) * (item.roll.pieceNum ?? 1))}</span>}
-        <span>{item.finishes.filter(({ finish }) => finish.isSpare !== 1).length} 件成品</span>
+        <span>{item.finishes.filter(({ finish }) => finish.isSpare !== 1 && finish.isRemain !== 1).length} 件成品</span>
         {shouldShowDiff && metrics.diff != null && <span>差 {formatOptionalKg(metrics.diff)}</span>}
       </span>
       </Button>
