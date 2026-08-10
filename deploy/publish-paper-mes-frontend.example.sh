@@ -36,7 +36,7 @@ validate_release_id() {
 
 require_commands() {
   local command_name
-  for command_name in cmp cp date find flock grep ln mkdir mktemp mv readlink realpath rm sort stat touch; do
+  for command_name in chmod cmp cp date find flock grep ln mkdir mktemp mv readlink realpath rm sort stat touch; do
     command -v "${command_name}" >/dev/null 2>&1 || fail "required command not found: ${command_name}"
   done
 }
@@ -62,6 +62,7 @@ import_assets() {
     else
       cp -a -- "${source_file}" "${target_file}"
     fi
+    chmod 0644 "${target_file}"
   done < <(find "${source_assets}" -type f -print0)
 }
 
@@ -159,9 +160,11 @@ publish_release() {
   [ ! -e "${final_dir}" ] || fail "release already exists: ${release_id}"
   import_assets "${source_real}/assets"
   stage_dir="$(mktemp -d "${RELEASES_DIR}/.staging-${release_id}.XXXXXX")"
+  chmod 0755 "${stage_dir}"
   while IFS= read -r -d '' item; do cp -a -- "${item}" "${stage_dir}/"; done \
     < <(find "${source_real}" -mindepth 1 -maxdepth 1 ! -name assets -print0)
   write_asset_manifest "${source_real}/assets" "${stage_dir}/assets.manifest"
+  chmod -R u=rwX,go=rX "${stage_dir}"
   ln -s ../../assets "${stage_dir}/assets"
   mv -T -- "${stage_dir}" "${final_dir}"
   stage_dir=""

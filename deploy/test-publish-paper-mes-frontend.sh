@@ -26,9 +26,16 @@ publish() {
 
 make_dist "${frontend_root}/dist" legacy old-hash.js old
 make_dist "${temp_dir}/release-one" one one-hash.js one
+chmod 0600 "${temp_dir}/release-one/index.html" "${temp_dir}/release-one/assets/one-hash.js"
 publish "${temp_dir}/release-one" release-one >/dev/null
 
 [ -L "${frontend_root}/dist" ] || { echo "dist was not activated as a symlink" >&2; exit 1; }
+[ "$(stat -c %a "${frontend_root}/releases/release-one")" = 755 ] \
+  || { echo "release directory is not readable by the web server" >&2; exit 1; }
+[ "$(stat -c %a "${frontend_root}/dist/index.html")" = 644 ] \
+  || { echo "release files are not readable by the web server" >&2; exit 1; }
+[ "$(stat -c %a "${frontend_root}/dist/assets/one-hash.js")" = 644 ] \
+  || { echo "shared assets are not readable by the web server" >&2; exit 1; }
 [ "$(cat "${frontend_root}/dist/index.html")" = one ] || exit 1
 [ -f "${frontend_root}/dist/assets/old-hash.js" ] || exit 1
 [ -f "${frontend_root}/dist/assets/one-hash.js" ] || exit 1
