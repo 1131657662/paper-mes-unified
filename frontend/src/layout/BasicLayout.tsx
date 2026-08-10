@@ -47,6 +47,7 @@ export default function BasicLayout() {
 
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, left: 0 })
+    contentRef.current?.focus({ preventScroll: true })
   }, [location.pathname, location.search])
 
   return (
@@ -129,7 +130,12 @@ export default function BasicLayout() {
             message="当前网络已断开，页面数据可能无法保存或刷新，请检查网络连接。"
           />
         )}
-        <Content ref={contentRef} className={contentClassName}>
+        <Content
+          ref={contentRef}
+          aria-label={routeTitle ? `${routeTitle}主内容` : '主内容'}
+          className={contentClassName}
+          tabIndex={-1}
+        >
           <Outlet />
         </Content>
         <RuntimeVersionModal open={runtimeVersionOpen} onClose={() => setRuntimeVersionOpen(false)} />

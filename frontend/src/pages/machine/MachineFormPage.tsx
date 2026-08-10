@@ -1,8 +1,13 @@
-import { Button, Card, Form, Skeleton, Space, message } from 'antd'
+import { Button, Card, Empty, Form, Skeleton, Space, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { createMachine, getMachine, updateMachine } from '../../api/machine'
+import { useQueryClient } from '@tanstack/react-query'
+import { createMachine, updateMachine } from '../../api/machine'
+import { isNotFoundError } from '../../api/request'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import { useMachineDetail } from '../../features/machine/hooks/useMachineDetail'
+import { machineKeys } from '../../features/machine/queries/machineKeys'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { Machine, MachineSaveDTO } from '../../types/machine'
 import '../documentModule.css'
@@ -17,25 +22,31 @@ interface Props {
 export default function MachineFormPage({ mode }: Props) {
   const [form] = Form.useForm<MachineSaveDTO>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { uuid } = useParams()
-  const [loading, setLoading] = useState(mode === 'edit')
   const [submitting, setSubmitting] = useState(false)
   const isEdit = mode === 'edit'
   const { clearDirty, markDirty } = useUnsavedChangesGuard()
+  const {
+    data: machine,
+    error: machineError,
+    isError: isMachineError,
+    isPending: isLoadingMachine,
+    refetch: refetchMachine,
+  } = useMachineDetail(isEdit ? uuid : undefined)
 
   useEffect(() => {
-    if (!isEdit || !uuid) return
-    setLoading(true)
-    getMachine(uuid)
-      .then((data) => form.setFieldsValue(toFormValues(data)))
-      .finally(() => setLoading(false))
-  }, [form, isEdit, uuid])
+    if (machine) form.setFieldsValue(toFormValues(machine))
+  }, [form, machine])
 
   const submit = async (values: MachineSaveDTO) => {
     setSubmitting(true)
     try {
       const savedUuid = isEdit && uuid ? uuid : await createMachine(values)
       if (isEdit && uuid) await updateMachine(uuid, values)
+      if (isEdit && uuid) {
+        await queryClient.invalidateQueries({ queryKey: machineKeys.detail(uuid).queryKey })
+      }
       clearDirty()
       message.success(isEdit ? '生产资源已保存' : '生产资源已新增')
       navigate(`/machines/${savedUuid}`)
@@ -62,8 +73,16 @@ export default function MachineFormPage({ mode }: Props) {
       />
 
       <Card className="document-module-card machine-profile-card" title="生产资源资料">
-        {loading ? (
+        {isLoadingMachine ? (
           <Skeleton active paragraph={{ rows: 6 }} />
+        ) : isMachineError && !isNotFoundError(machineError) ? (
+          <QueryLoadErrorAlert
+            message="生产资源加载失败"
+            description="请检查网络或服务状态后重新加载。"
+            onRetry={() => { void refetchMachine() }}
+          />
+        ) : isMachineError || (isEdit && !machine) ? (
+          <Empty description="生产资源不存在" />
         ) : (
           <MachineProfileForm editing={isEdit} form={form} onFinish={submit} onValuesChange={markDirty} />
         )}

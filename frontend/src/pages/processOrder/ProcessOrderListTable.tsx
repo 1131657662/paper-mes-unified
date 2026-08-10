@@ -1,9 +1,10 @@
 import { useState, type RefObject } from 'react'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components'
-import { pageProcessOrders } from '../../api/processOrder'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import { renderTableToolbarPortal } from '../../components/biz/tableToolbarPortalUtils'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
+import { fetchProcessOrderPage } from '../../features/processOrderList/queries/fetchProcessOrderPage'
 import { useTableColumnsState } from '../../hooks/useTableColumnsState'
 import type { ProcessOrder } from '../../types/processOrder'
 import ProcessOrderPaginationBar from './ProcessOrderPaginationBar'
@@ -19,13 +20,17 @@ interface Props {
   rowSelection: ReturnType<typeof useProcessOrderRowSelection>
 }
 
+const VIRTUAL_TABLE_BODY_HEIGHT = 560
+
 export default function ProcessOrderListTable({ actionRef, columns, listState, onPageChange, rowSelection }: Props) {
+  const queryClient = useQueryClient()
   const [visibleRowCount, setVisibleRowCount] = useState(0)
   const [total, setTotal] = useState(0)
   const [loadError, setLoadError] = useState(false)
   const columnsState = useTableColumnsState('table-columns-process-order')
   const resizableTable = useResizableProcessColumns(columns)
   const density = tableDensityMode(visibleRowCount, listState.pageSize)
+  const virtual = listState.pageSize >= 50
 
   return (
     <>
@@ -51,16 +56,22 @@ export default function ProcessOrderListTable({ actionRef, columns, listState, o
         optionsRender={renderTableToolbarPortal}
         pagination={false}
         params={{ ...listState.filters, page: listState.page, pageSize: listState.pageSize, quickStatus: listState.quickStatus }}
-        request={(params) => loadOrders({ listState, params, setLoadError, setTotal, setVisibleRowCount })}
+        request={(params) => loadOrders({ listState, params, queryClient, setLoadError, setTotal, setVisibleRowCount })}
         rowClassName={rowSelection.rowClassName}
         rowKey="uuid"
         rowSelection={rowSelection.rowSelection}
-        scroll={{ x: resizableTable.scrollX, ...(density === 'fill' ? { y: '100%' } : {}) }}
+        scroll={{
+          x: resizableTable.scrollX,
+          ...(virtual
+            ? { y: VIRTUAL_TABLE_BODY_HEIGHT }
+            : density === 'fill' ? { y: '100%' } : {}),
+        }}
         search={false}
         tableAlertOptionRender={false}
         tableAlertRender={false}
         tableLayout="fixed"
         toolBarRender={() => []}
+        virtual={virtual}
       />
       <ProcessOrderPaginationBar
         current={listState.page}
@@ -75,15 +86,16 @@ export default function ProcessOrderListTable({ actionRef, columns, listState, o
 interface LoadParams {
   listState: ReturnType<typeof useProcessOrderListPageState>
   params: Record<string, unknown>
+  queryClient: QueryClient
   setLoadError: (value: boolean) => void
   setTotal: (value: number) => void
   setVisibleRowCount: (value: number) => void
 }
 
-async function loadOrders({ listState, params, setLoadError, setTotal, setVisibleRowCount }: LoadParams) {
+async function loadOrders({ listState, params, queryClient, setLoadError, setTotal, setVisibleRowCount }: LoadParams) {
   setLoadError(false)
   try {
-    const result = await pageProcessOrders({
+    const result = await fetchProcessOrderPage(queryClient, {
       current: listState.page,
       size: listState.pageSize,
       keyword: textParam(params.keyword),

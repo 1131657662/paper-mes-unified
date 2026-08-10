@@ -43,6 +43,11 @@ export class BizError extends Error {
   }
 }
 
+export function isNotFoundError(error: unknown): boolean {
+  if (error instanceof BizError) return error.httpStatus === 404 || error.code === 404
+  return axios.isAxiosError(error) && error.response?.status === 404
+}
+
 /** 避免请求拦截器、React Query、页面 catch 对同一个错误重复弹提示。 */
 export function notifyErrorOnce(error: unknown, fallbackText = '请求失败'): void {
   if (isErrorNotified(error)) return

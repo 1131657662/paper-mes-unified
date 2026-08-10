@@ -1,13 +1,17 @@
-import { Button, Card, Form, Skeleton, Space, message } from 'antd'
+import { Button, Card, Empty, Form, Skeleton, Space, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { createCustomer, getCustomer, updateCustomer } from '../../api/customer'
+import { createCustomer, updateCustomer } from '../../api/customer'
+import { isNotFoundError } from '../../api/request'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import { useCustomerDetail } from '../../features/customer/hooks/useCustomerDetail'
+import { customerKeys } from '../../features/customer/queries/customerKeys'
+import { createOrderKeys } from '../../features/processOrderCreate/queries/createOrderKeys'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { Customer, CustomerSaveDTO } from '../../types/customer'
 import CustomerProfileForm from './CustomerProfileForm'
-import { queries } from '../../queries'
 import '../documentModule.css'
 import './CustomerProfile.css'
 
@@ -20,27 +24,32 @@ export default function CustomerFormPage({ mode }: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { uuid } = useParams()
-  const [loading, setLoading] = useState(mode === 'edit')
   const [submitting, setSubmitting] = useState(false)
   const isEdit = mode === 'edit'
   const { clearDirty, markDirty } = useUnsavedChangesGuard()
+  const {
+    data: customer,
+    error: customerError,
+    isError: isCustomerError,
+    isPending: isLoadingCustomer,
+    refetch: refetchCustomer,
+  } = useCustomerDetail(isEdit ? uuid : undefined)
 
   useEffect(() => {
-    if (!isEdit || !uuid) return
-    setLoading(true)
-    getCustomer(uuid)
-      .then((data) => {
-        form.setFieldsValue(toFormValues(data))
-      })
-      .finally(() => setLoading(false))
-  }, [form, isEdit, uuid])
+    if (customer) form.setFieldsValue(toFormValues(customer))
+  }, [customer, form])
 
   const submit = async (values: CustomerSaveDTO) => {
     setSubmitting(true)
     try {
       const savedUuid = isEdit && uuid ? uuid : await createCustomer(values)
       if (isEdit && uuid) await updateCustomer(uuid, values)
-      await queryClient.invalidateQueries({ queryKey: queries.createOrder.customers.queryKey })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: createOrderKeys.customers.queryKey }),
+        isEdit && uuid
+          ? queryClient.invalidateQueries({ queryKey: customerKeys.detail(uuid).queryKey })
+          : Promise.resolve(),
+      ])
       clearDirty()
       message.success(isEdit ? '客户资料已保存' : '客户已新增')
       navigate(`/customers/${savedUuid}`)
@@ -65,8 +74,16 @@ export default function CustomerFormPage({ mode }: Props) {
       />
 
       <Card className="document-module-card customer-profile-card" title="客户资料">
-        {loading ? (
+        {isLoadingCustomer ? (
           <Skeleton active paragraph={{ rows: 8 }} />
+        ) : isCustomerError && !isNotFoundError(customerError) ? (
+          <QueryLoadErrorAlert
+            message="客户档案加载失败"
+            description="请检查网络或服务状态后重新加载。"
+            onRetry={() => { void refetchCustomer() }}
+          />
+        ) : isCustomerError || (isEdit && !customer) ? (
+          <Empty description="客户档案不存在" />
         ) : (
           <CustomerProfileForm editing={isEdit} form={form} onFinish={submit} onValuesChange={markDirty} />
         )}

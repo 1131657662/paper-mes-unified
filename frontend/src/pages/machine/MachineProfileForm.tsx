@@ -38,6 +38,7 @@ export default function MachineProfileForm({ editing, form, onFinish, onValuesCh
       layout="vertical"
       onFinish={onFinish}
       onValuesChange={handleValuesChange}
+      scrollToFirstError={{ focus: true }}
     >
       <section className="machine-profile-form__section">
         <h3>基础信息</h3>

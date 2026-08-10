@@ -1,21 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import type { MenuProps, TabsProps } from 'antd'
-import { Button, Dropdown, Tabs } from 'antd'
-import {
-  LeftOutlined,
-  CloseCircleOutlined,
-  CloseOutlined,
-  ColumnWidthOutlined,
-  HomeOutlined,
-  MoreOutlined,
-  RightOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons'
+import { Tabs } from 'antd'
+import { MoreOutlined } from '@ant-design/icons'
 import { useLocation, useNavigate } from 'react-router'
-import { DEFAULT_PAGE_TAB_PATH, getNextActivePath, type PageTabItem } from './pageTabModel'
+import { createPageTabActions } from './pageTabActions'
+import { PageTabTools, TabScrollButton } from './PageTabView'
+import { createMenuItems, toTabItems } from './pageTabMenuModel'
+import {
+  emptyScrollState,
+  readTabScrollState,
+  scrollTabs,
+  watchTabScrollState,
+  type TabScrollState,
+} from './pageTabScroll'
 import { usePageTabs } from './usePageTabs'
-
-type TabActionKey = 'refresh' | 'close-current' | 'close-left' | 'close-right' | 'close-other' | 'close-all'
 
 export default function PageTabs() {
   const location = useLocation()
@@ -25,16 +22,10 @@ export default function PageTabs() {
   const tabState = usePageTabs(`${location.pathname}${location.search}${location.hash}`)
   const { activePath, ...pageTabState } = tabState
   const actions = createPageTabActions({ activePath, navigate, ...pageTabState })
-  const activeMenuItems = createMenuItems({
-    activePath,
-    currentPath: activePath,
-    tabs: tabState.tabs,
-  })
+  const activeMenuItems = createMenuItems({ activePath, currentPath: activePath, tabs: tabState.tabs })
   const shellClassName = scrollState.canScroll ? 'app-shell__tabs app-shell__tabs--scrollable' : 'app-shell__tabs'
 
-  useEffect(() => {
-    return watchTabScrollState(tabsRef.current, setScrollState)
-  }, [activePath, tabState.tabs.length])
+  useEffect(() => watchTabScrollState(tabsRef.current, setScrollState), [activePath, tabState.tabs.length])
 
   const handleScroll = (deltaX: number) => {
     scrollTabs(tabsRef.current, deltaX, () => setScrollState(readTabScrollState(tabsRef.current)))
@@ -42,20 +33,14 @@ export default function PageTabs() {
 
   return (
     <div className={shellClassName} ref={tabsRef}>
-      {scrollState.canScroll && (
-        <TabScrollButton disabled={!scrollState.canScrollLeft} direction="left" onScroll={() => handleScroll(-220)} />
-      )}
+      {scrollState.canScroll && <TabScrollButton disabled={!scrollState.canScrollLeft} direction="left" onScroll={() => handleScroll(-220)} />}
       <div className="app-shell__tabs-center">
         <Tabs
           activeKey={activePath}
           className="app-shell__tabs-control"
           hideAdd
-          items={toTabItems({
-            currentPath: activePath,
-            onAction: actions.handleMenuAction,
-            tabs: tabState.tabs,
-          })}
-          more={{ icon: null, trigger: 'hover' }}
+          items={toTabItems({ currentPath: activePath, onAction: actions.handleMenuAction, tabs: tabState.tabs })}
+          more={{ icon: <MoreOutlined aria-label="更多标签" />, trigger: 'hover' }}
           onChange={navigate}
           onEdit={(targetKey, action) => {
             if (action === 'remove' && typeof targetKey === 'string') actions.closeCurrent(targetKey)
@@ -66,7 +51,7 @@ export default function PageTabs() {
               canScroll={scrollState.canScroll}
               canScrollRight={scrollState.canScrollRight}
               items={activeMenuItems}
-              onAction={(key) => actions.handleMenuAction(key)}
+              onAction={actions.handleMenuAction}
               onScrollRight={() => handleScroll(220)}
             />
           )}
@@ -75,257 +60,4 @@ export default function PageTabs() {
       </div>
     </div>
   )
-}
-
-function TabScrollButton({ direction, disabled, onScroll }: TabScrollButtonProps) {
-  const icon = direction === 'left' ? <LeftOutlined /> : <RightOutlined />
-  const label = direction === 'left' ? '向左滚动标签' : '向右滚动标签'
-
-  return (
-    <Button
-      aria-label={label}
-      className={`app-shell__tabs-arrow app-shell__tabs-arrow--${direction}`}
-      disabled={disabled}
-      icon={icon}
-      onClick={onScroll}
-      type="text"
-    />
-  )
-}
-
-function PageTabTools({ canScroll, canScrollRight, items, onAction, onScrollRight }: PageTabToolsProps) {
-  return (
-    <div className="app-shell__tabs-tools">
-      {canScroll && (
-        <TabScrollButton disabled={!canScrollRight} direction="right" onScroll={onScrollRight} />
-      )}
-      <PageTabMenu items={items} onAction={onAction} />
-    </div>
-  )
-}
-
-function PageTabMenu({ items, onAction }: PageTabMenuProps) {
-  return (
-    <Dropdown menu={{ items, onClick: ({ key }) => onAction(key as TabActionKey) }} trigger={['click']}>
-      <Button aria-label="标签操作" className="app-shell__tabs-more" icon={<MoreOutlined />} size="small" type="text" />
-    </Dropdown>
-  )
-}
-
-function PageTabLabel({ label, menuItems, onAction }: PageTabLabelProps) {
-  return (
-    <Dropdown menu={{ items: menuItems, onClick: ({ key }) => onAction(key as TabActionKey) }} trigger={['contextMenu']}>
-      <span className="app-shell__tab-label">{label}</span>
-    </Dropdown>
-  )
-}
-
-function createPageTabActions(options: PageTabActionOptions) {
-  const { activePath, closeAllTabs, closeLeftTabs, closeOtherTabs, closeRightTabs, closeTab, navigate, tabs } = options
-
-  const closeCurrent = (path = activePath) => {
-    const nextPath = getNextActivePath(tabs, path, activePath)
-    closeTab(path)
-    if (path === activePath) navigate(nextPath)
-  }
-
-  const closeLeft = (targetPath: string) => {
-    closeLeftTabs(targetPath)
-    if (!willKeepPathAfterSideClose({ activePath, direction: 'left', targetPath, tabs })) navigate(targetPath)
-  }
-
-  const closeRight = (targetPath: string) => {
-    closeRightTabs(targetPath)
-    if (!willKeepPathAfterSideClose({ activePath, direction: 'right', targetPath, tabs })) navigate(targetPath)
-  }
-
-  const closeOther = (targetPath: string) => {
-    closeOtherTabs(targetPath)
-    if (targetPath !== activePath) navigate(targetPath)
-  }
-
-  const closeAll = () => {
-    closeAllTabs()
-    navigate(DEFAULT_PAGE_TAB_PATH)
-  }
-
-  return {
-    closeCurrent,
-    handleMenuAction: (key: TabActionKey, targetPath = activePath) => {
-      if (key === 'refresh') navigate(0)
-      if (key === 'close-current') closeCurrent(targetPath)
-      if (key === 'close-left') closeLeft(targetPath)
-      if (key === 'close-right') closeRight(targetPath)
-      if (key === 'close-other') closeOther(targetPath)
-      if (key === 'close-all') closeAll()
-    },
-  }
-}
-
-function willKeepPathAfterSideClose(options: SideCloseOptions) {
-  const { activePath, direction, targetPath, tabs } = options
-  const activeIndex = tabs.findIndex((tab) => tab.path === activePath)
-  const targetIndex = tabs.findIndex((tab) => tab.path === targetPath)
-  const activeTab = tabs[activeIndex]
-
-  if (!activeTab?.closable) return true
-  if (activeIndex === -1 || targetIndex === -1) return false
-  return direction === 'left' ? activeIndex >= targetIndex : activeIndex <= targetIndex
-}
-
-function scrollTabs(container: HTMLDivElement | null, deltaX: number, onSettled: () => void) {
-  const scroller = container?.querySelector('.ant-tabs-nav-wrap')
-  if (!scroller || deltaX === 0) return
-
-  let remaining = Math.abs(deltaX)
-  const direction = Math.sign(deltaX)
-  const stepSize = 28
-  const scrollStep = () => {
-    const nextDelta = direction * Math.min(stepSize, remaining)
-    scroller.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: nextDelta, deltaY: 0 }))
-    remaining -= Math.abs(nextDelta)
-
-    if (remaining > 0) {
-      requestAnimationFrame(scrollStep)
-      return
-    }
-    onSettled()
-  }
-
-  requestAnimationFrame(scrollStep)
-}
-
-function watchTabScrollState(container: HTMLDivElement | null, onChange: (state: TabScrollState) => void) {
-  if (!container) return undefined
-
-  const update = () => onChange(readTabScrollState(container))
-  const resizeObserver = new ResizeObserver(update)
-  const mutationObserver = new MutationObserver(update)
-  const targets = getTabScrollTargets(container)
-
-  targets.forEach((target) => resizeObserver.observe(target))
-  targets.forEach((target) => mutationObserver.observe(target, { attributes: true, attributeFilter: ['class', 'style'] }))
-  window.addEventListener('resize', update)
-
-  const frame = requestAnimationFrame(update)
-
-  return () => {
-    cancelAnimationFrame(frame)
-    resizeObserver.disconnect()
-    mutationObserver.disconnect()
-    window.removeEventListener('resize', update)
-  }
-}
-
-function readTabScrollState(container: HTMLDivElement | null): TabScrollState {
-  const wrap = container?.querySelector('.ant-tabs-nav-wrap')
-  const list = container?.querySelector('.ant-tabs-nav-list')
-  if (!(wrap instanceof HTMLElement) || !(list instanceof HTMLElement)) return emptyScrollState
-
-  const canScrollLeft = wrap.classList.contains('ant-tabs-nav-wrap-ping-left')
-  const canScrollRight = wrap.classList.contains('ant-tabs-nav-wrap-ping-right')
-  const canScroll = canScrollLeft || canScrollRight || list.getBoundingClientRect().width > wrap.getBoundingClientRect().width + 1
-  return { canScroll, canScrollLeft, canScrollRight }
-}
-
-function getTabScrollTargets(container: HTMLDivElement) {
-  return [container, ...container.querySelectorAll('.ant-tabs-nav-wrap, .ant-tabs-nav-list')]
-}
-
-function toTabItems(options: ToTabItemsOptions): TabsProps['items'] {
-  const { currentPath, onAction, tabs } = options
-  const onlyOneTab = tabs.length <= 1
-  return tabs.map((tab) => ({
-    closable: tab.closable && !onlyOneTab,
-    key: tab.path,
-    label: (
-      <PageTabLabel
-        label={tab.label}
-        menuItems={createMenuItems({ activePath: tab.path, currentPath, tabs })}
-        onAction={(key) => onAction(key, tab.path)}
-      />
-    ),
-  }))
-}
-
-function createMenuItems(options: CreateMenuItemsOptions): MenuProps['items'] {
-  const { activePath, currentPath, tabs } = options
-  const activeIndex = tabs.findIndex((tab) => tab.path === activePath)
-  const closableTabs = tabs.filter((tab) => tab.closable)
-  const hasLeftClosable = tabs.slice(0, Math.max(activeIndex, 0)).some((tab) => tab.closable)
-  const hasRightClosable = tabs.slice(activeIndex + 1).some((tab) => tab.closable)
-
-  return [
-    { key: 'refresh', disabled: activePath !== currentPath, icon: <ReloadOutlined />, label: '刷新当前' },
-    { key: 'close-current', disabled: tabs.length <= 1, icon: <CloseOutlined />, label: '关闭当前' },
-    { key: 'close-left', disabled: !hasLeftClosable, icon: <ColumnWidthOutlined rotate={180} />, label: '关闭左侧' },
-    { key: 'close-right', disabled: !hasRightClosable, icon: <ColumnWidthOutlined />, label: '关闭右侧' },
-    { key: 'close-other', disabled: tabs.length <= 1, icon: <CloseCircleOutlined />, label: '关闭其他' },
-    { key: 'close-all', disabled: tabs.length <= 1 || closableTabs.length === 0, icon: <HomeOutlined />, label: '关闭全部' },
-  ]
-}
-
-interface PageTabMenuProps {
-  items: MenuProps['items']
-  onAction: (key: TabActionKey) => void
-}
-
-interface PageTabToolsProps extends PageTabMenuProps {
-  canScroll: boolean
-  canScrollRight: boolean
-  onScrollRight: () => void
-}
-
-interface PageTabLabelProps {
-  label: string
-  menuItems: MenuProps['items']
-  onAction: (key: TabActionKey) => void
-}
-
-interface ToTabItemsOptions {
-  currentPath: string
-  onAction: (key: TabActionKey, path: string) => void
-  tabs: PageTabItem[]
-}
-
-interface SideCloseOptions {
-  activePath: string
-  direction: 'left' | 'right'
-  targetPath: string
-  tabs: PageTabItem[]
-}
-
-interface CreateMenuItemsOptions {
-  activePath: string
-  currentPath: string
-  tabs: PageTabItem[]
-}
-
-interface TabScrollButtonProps {
-  disabled: boolean
-  direction: 'left' | 'right'
-  onScroll: () => void
-}
-
-interface TabScrollState {
-  canScroll: boolean
-  canScrollLeft: boolean
-  canScrollRight: boolean
-}
-
-const emptyScrollState: TabScrollState = {
-  canScroll: false,
-  canScrollLeft: false,
-  canScrollRight: false,
-}
-
-interface PageTabActionOptions {
-  activePath: string
-  closeAllTabs: () => void
-  closeLeftTabs: (path: string) => void
-  closeOtherTabs: (path: string) => void
-  closeRightTabs: (path: string) => void
-  closeTab: (path: string) => void
-  navigate: ReturnType<typeof useNavigate>
-  tabs: PageTabItem[]
 }

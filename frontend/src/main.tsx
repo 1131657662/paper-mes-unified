@@ -13,6 +13,8 @@ import { router } from './router'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { queryClient } from './app/queryClient'
 import { installUnhandledErrorHandlers } from './app/unhandledErrors'
+import { installChunkRecovery } from './app/chunkRecovery'
+import { installRum } from './app/rum'
 
 const antdLocale = {
   ...zhCN,
@@ -68,6 +70,8 @@ function renderEmpty(componentName?: string) {
 }
 
 installUnhandledErrorHandlers()
+installChunkRecovery()
+installRum()
 
 ConfigProvider.config({
   holderRender: (children) => <ConfigProvider locale={antdLocale} theme={appTheme}>{children}</ConfigProvider>,

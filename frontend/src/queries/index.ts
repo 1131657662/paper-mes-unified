@@ -10,6 +10,7 @@ import { exportTaskKeys } from '../features/exportTask/queries/exportTaskKeys'
 import { createOrderKeys } from '../features/processOrderCreate/queries/createOrderKeys'
 import { appendKeys } from '../features/processOrderCreate/queries/appendKeys'
 import { processOrderDetailKeys } from '../features/processOrderDetail/queries/processOrderDetailKeys'
+import { processOrderListKeys } from '../features/processOrderList/queries/processOrderListKeys'
 import { finishCustomerSpecKeys } from '../features/processOrderCustomerSpec/customerSpecKeys'
 import { processCatalogKeys } from '../features/processCatalog/queries/processCatalogKeys'
 import { reportKeys } from '../features/report/queries/reportKeys'
@@ -31,6 +32,7 @@ export const queries = mergeQueryKeys(
   createOrderKeys,
   appendKeys,
   processOrderDetailKeys,
+  processOrderListKeys,
   finishCustomerSpecKeys,
   processCatalogKeys,
   deliveryKeys,

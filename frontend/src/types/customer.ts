@@ -1,46 +1,17 @@
 import type { PageQuery } from './common'
 import type { ProcessOrderSettlementMode } from './settlementSemantics'
+import type {
+  CustomerProcessPriceVO,
+  CustomerProcessPriceVOBillingBasis,
+  CustomerVO,
+} from '../api/generated/customerReadOnly'
 
 /** 客户实体，与后端 Customer 对应（含 BaseEntity 通用字段，按需取用）。 */
-export interface Customer {
-  uuid: string
-  version?: number
-  customerCode?: string
-  customerName: string
-  contact?: string
-  phone?: string
-  /** 结算方式 1次结 2月结 */
-  settleType?: ProcessOrderSettlementMode
-  settleDay?: number
-  sawPrice?: number
-  rewindPrice?: number
-  defaultInvoice?: number
-  priceIncludeTax?: number
-  taxRate?: number
-  taxNo?: string
-  invoiceAddress?: string
-  bankAccount?: string
-  deliveryAddress?: string
-  customerLevel?: number
-  exportTemplate?: string
-  remark?: string
-  createTime?: string
-  updateTime?: string
-  processPrices?: CustomerProcessPrice[]
-}
+export type Customer = CustomerVO
 
-export type CustomerProcessPriceBasis = 'PIECE' | 'TON' | 'FIXED'
+export type CustomerProcessPriceBasis = CustomerProcessPriceVOBillingBasis
 
-export interface CustomerProcessPrice {
-  catalogUuid: string
-  stepType?: number
-  processCode?: string
-  processName?: string
-  billingBasis: CustomerProcessPriceBasis
-  billingUnitName?: string
-  price: number
-  defaultOption: boolean
-}
+export type CustomerProcessPrice = CustomerProcessPriceVO
 
 export interface CustomerProcessPriceSaveDTO {
   catalogUuid: string

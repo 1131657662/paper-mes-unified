@@ -1,4 +1,4 @@
-import type { RefObject } from 'react'
+import { useMemo, type RefObject } from 'react'
 import { Input, Modal, message } from 'antd'
 import { notifyErrorOnce } from '../../api/request'
 import { useLocation, useNavigate, type NavigateFunction } from 'react-router'
@@ -31,34 +31,51 @@ interface Params {
   dialogs: ReturnType<typeof useProcessOrderListDialogs>
 }
 
-interface CommandContext extends Params {
+type DialogCommands = Pick<Params['dialogs'], 'openPrint' | 'openDiff' | 'openManageRoll'>
+
+interface CommandContext extends Omit<Params, 'dialogs'> {
+  dialogs: DialogCommands
   navigate: NavigateFunction
 }
 
 export function useProcessOrderListCommands(params: Params) {
+  const { actionRef, capabilities, clearSelection, customerEnum, dialogs } = params
   const navigate = useNavigate()
   const location = useLocation()
-  const context = { ...params, navigate }
-  const navigation = navigationCommands(navigate, processOrderListLocation(location.pathname, location.search))
-  const batchActions: BatchActions = {
+  const returnTo = processOrderListLocation(location.pathname, location.search)
+  const navigation = useMemo(() => navigationCommands(navigate, returnTo), [navigate, returnTo])
+  const dialogCommands = useMemo<DialogCommands>(() => ({
+    openDiff: dialogs.openDiff,
+    openManageRoll: dialogs.openManageRoll,
+    openPrint: dialogs.openPrint,
+  }), [dialogs.openDiff, dialogs.openManageRoll, dialogs.openPrint])
+  const context = useMemo<CommandContext>(() => ({
+    actionRef,
+    capabilities,
+    clearSelection,
+    customerEnum,
+    dialogs: dialogCommands,
+    navigate,
+  }), [actionRef, capabilities, clearSelection, customerEnum, dialogCommands, navigate])
+  const batchActions = useMemo<BatchActions>(() => ({
     onBackRecord: navigation.openRecord,
     onCalcFee: (record) => calculateFee(context, record),
     onChangeStatus: (record, target, title) => requestTransition(context, record, target, title),
     onConfirmPrintAndToRecord: (record) => requestPrintAndComplete(context, record),
     onGoDelivery: navigation.goDelivery,
     onGoSettle: navigation.goSettle,
-    onManageRolls: params.dialogs.openManageRoll,
+    onManageRolls: dialogCommands.openManageRoll,
     onPrint: (record) => openPrint(context, record),
-    onSnapshotDiff: params.dialogs.openDiff,
+    onSnapshotDiff: dialogCommands.openDiff,
     onVoidOrder: (record) => requestVoid(context, record),
-  }
-  const columnOptions: ProcessOrderColumnOptions = {
+  }), [context, dialogCommands.openDiff, dialogCommands.openManageRoll, navigation])
+  const columnOptions = useMemo<ProcessOrderColumnOptions>(() => ({
     ...batchActions,
-    capabilities: params.capabilities,
-    customerEnum: params.customerEnum,
+    capabilities,
+    customerEnum,
     onDetail: navigation.openDetail,
     onEditDraft: navigation.editDraft,
-  }
+  }), [batchActions, capabilities, customerEnum, navigation])
   return { batchActions, columnOptions, onCreate: navigation.create }
 }
 

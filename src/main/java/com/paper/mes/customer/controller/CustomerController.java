@@ -8,8 +8,12 @@ import com.paper.mes.customer.dto.CustomerQuery;
 import com.paper.mes.customer.dto.CustomerSaveDTO;
 import com.paper.mes.customer.dto.CustomerVO;
 import com.paper.mes.customer.service.CustomerService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,19 +26,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/customers")
 @RequiredArgsConstructor
+@Tag(name = "Customers", description = "Customer master data")
 public class CustomerController {
 
     private final CustomerService customerService;
 
     @GetMapping
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<PageResult<CustomerVO>> page(CustomerQuery query) {
+    @Operation(operationId = "listCustomers", summary = "List customers")
+    public R<PageResult<CustomerVO>> page(@ParameterObject CustomerQuery query) {
         return R.success(customerService.pageCustomers(query));
     }
 
     @GetMapping("/{uuid}")
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<CustomerVO> detail(@PathVariable String uuid) {
+    @Operation(operationId = "getCustomer", summary = "Get a customer profile")
+    public R<CustomerVO> detail(@Parameter(description = "Customer UUID", required = true)
+                                @PathVariable String uuid) {
         return R.success(customerService.getProfile(uuid));
     }
 

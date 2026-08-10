@@ -1,17 +1,16 @@
 import request from './request'
-import type { PageResult } from '../types/common'
-import type { Customer, CustomerQuery, CustomerSaveDTO } from '../types/customer'
+import {
+  getCustomer as getGeneratedCustomer,
+  listCustomers,
+} from './generated/customerReadOnly'
+import type { CustomerQuery, CustomerSaveDTO } from '../types/customer'
 
 export function pageCustomers(query: CustomerQuery) {
-  return request<PageResult<Customer>>({
-    url: '/api/customers',
-    method: 'get',
-    params: query,
-  })
+  return listCustomers(query)
 }
 
 export function getCustomer(uuid: string) {
-  return request<Customer>({ url: `/api/customers/${uuid}`, method: 'get' })
+  return getGeneratedCustomer(uuid)
 }
 
 export function createCustomer(dto: CustomerSaveDTO) {

@@ -18,6 +18,7 @@ export default function PaperProfileForm({ editing, form, onFinish, onValuesChan
       layout="vertical"
       onFinish={onFinish}
       onValuesChange={onValuesChange}
+      scrollToFirstError={{ focus: true }}
     >
       <section className="paper-profile-form__section">
         <h3>基础信息</h3>

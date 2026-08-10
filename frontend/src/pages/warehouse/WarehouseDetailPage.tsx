@@ -1,13 +1,13 @@
 import { Button, Card, Descriptions, Empty, Skeleton, Space, Tag } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { getWarehouse } from '../../api/warehouse'
+import { isNotFoundError } from '../../api/request'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { PERMISSIONS } from '../../constants/permissions'
+import { useWarehouseDetail } from '../../features/warehouse/hooks/useWarehouseDetail'
 import { useHasPermission } from '../../stores/authStore'
-import type { Warehouse } from '../../types/warehouse'
 import '../documentModule.css'
 import './WarehouseProfile.css'
 
@@ -16,22 +16,31 @@ const STATUS: Record<number, string> = { 1: '启用', 2: '停用' }
 export default function WarehouseDetailPage() {
   const { uuid } = useParams()
   const navigate = useNavigate()
-  const [warehouse, setWarehouse] = useState<Warehouse>()
-  const [loading, setLoading] = useState(true)
+  const {
+    data: warehouse,
+    error: warehouseError,
+    isError: isWarehouseError,
+    isPending: isLoadingWarehouse,
+    refetch: refetchWarehouse,
+  } = useWarehouseDetail(uuid)
   const canManageBase = useHasPermission(PERMISSIONS.baseManage)
 
-  useEffect(() => {
-    if (!uuid) return
-    setLoading(true)
-    getWarehouse(uuid)
-      .then(setWarehouse)
-      .finally(() => setLoading(false))
-  }, [uuid])
-
-  if (loading) {
+  if (isLoadingWarehouse) {
     return (
       <div className="document-module-page warehouse-profile-page">
         <Skeleton active paragraph={{ rows: 8 }} />
+      </div>
+    )
+  }
+
+  if (isWarehouseError && !isNotFoundError(warehouseError)) {
+    return (
+      <div className="document-module-page warehouse-profile-page">
+        <QueryLoadErrorAlert
+          message="仓库档案加载失败"
+          description="请检查网络或服务状态后重新加载。"
+          onRetry={() => { void refetchWarehouse() }}
+        />
       </div>
     )
   }

@@ -24,6 +24,7 @@ export default function WarehouseProfileForm({ editing, form, onFinish, onValues
       layout="vertical"
       onFinish={onFinish}
       onValuesChange={onValuesChange}
+      scrollToFirstError={{ focus: true }}
     >
       <section className="warehouse-profile-form__section">
         <h3>基础信息</h3>

@@ -1,8 +1,13 @@
-import { Button, Card, Form, Skeleton, Space, message } from 'antd'
+import { Button, Card, Empty, Form, Skeleton, Space, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { createWarehouse, getWarehouse, updateWarehouse } from '../../api/warehouse'
+import { useQueryClient } from '@tanstack/react-query'
+import { createWarehouse, updateWarehouse } from '../../api/warehouse'
+import { isNotFoundError } from '../../api/request'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import { useWarehouseDetail } from '../../features/warehouse/hooks/useWarehouseDetail'
+import { warehouseKeys } from '../../features/warehouse/queries/warehouseKeys'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { Warehouse, WarehouseSaveDTO } from '../../types/warehouse'
 import '../documentModule.css'
@@ -16,25 +21,31 @@ interface Props {
 export default function WarehouseFormPage({ mode }: Props) {
   const [form] = Form.useForm<WarehouseSaveDTO>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { uuid } = useParams()
-  const [loading, setLoading] = useState(mode === 'edit')
   const [submitting, setSubmitting] = useState(false)
   const isEdit = mode === 'edit'
   const { clearDirty, markDirty } = useUnsavedChangesGuard()
+  const {
+    data: warehouse,
+    error: warehouseError,
+    isError: isWarehouseError,
+    isPending: isLoadingWarehouse,
+    refetch: refetchWarehouse,
+  } = useWarehouseDetail(isEdit ? uuid : undefined)
 
   useEffect(() => {
-    if (!isEdit || !uuid) return
-    setLoading(true)
-    getWarehouse(uuid)
-      .then((data) => form.setFieldsValue(toFormValues(data)))
-      .finally(() => setLoading(false))
-  }, [form, isEdit, uuid])
+    if (warehouse) form.setFieldsValue(toFormValues(warehouse))
+  }, [form, warehouse])
 
   const submit = async (values: WarehouseSaveDTO) => {
     setSubmitting(true)
     try {
       const savedUuid = isEdit && uuid ? uuid : await createWarehouse(values)
       if (isEdit && uuid) await updateWarehouse(uuid, values)
+      if (isEdit && uuid) {
+        await queryClient.invalidateQueries({ queryKey: warehouseKeys.detail(uuid).queryKey })
+      }
       clearDirty()
       message.success(isEdit ? '仓库档案已保存' : '仓库档案已新增')
       navigate(`/warehouses/${savedUuid}`)
@@ -61,8 +72,16 @@ export default function WarehouseFormPage({ mode }: Props) {
       />
 
       <Card className="document-module-card warehouse-profile-card" title="仓库资料">
-        {loading ? (
+        {isLoadingWarehouse ? (
           <Skeleton active paragraph={{ rows: 6 }} />
+        ) : isWarehouseError && !isNotFoundError(warehouseError) ? (
+          <QueryLoadErrorAlert
+            message="仓库档案加载失败"
+            description="请检查网络或服务状态后重新加载。"
+            onRetry={() => { void refetchWarehouse() }}
+          />
+        ) : isWarehouseError || (isEdit && !warehouse) ? (
+          <Empty description="仓库档案不存在" />
         ) : (
           <WarehouseProfileForm editing={isEdit} form={form} onFinish={submit} onValuesChange={markDirty} />
         )}

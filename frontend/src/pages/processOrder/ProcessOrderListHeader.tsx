@@ -32,7 +32,7 @@ export default function ProcessOrderListHeader({
 
   return (
     <Card
-      title="加工单"
+      title={<h1 className="process-order-shell__title">加工单</h1>}
       className="process-order-shell"
     >
       {search && <div className="process-order-shell__search">{search}</div>}

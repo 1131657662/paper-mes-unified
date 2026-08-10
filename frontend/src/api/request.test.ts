@@ -3,6 +3,7 @@ import axios from 'axios'
 import {
   BizError,
   businessErrorFromResponse,
+  isNotFoundError,
   isUncertainRequestError,
   shouldNotifyBusinessError,
 } from './request'
@@ -37,6 +38,11 @@ describe('HTTP 认证错误解包', () => {
     const error = new BizError('任务中心暂不可用', 503)
 
     expect(shouldNotifyBusinessError(error, { silentError: true })).toBe(false)
+  })
+
+  it('只把 404 视为资源不存在', () => {
+    expect(isNotFoundError(new BizError('不存在', 404, undefined, 404))).toBe(true)
+    expect(isNotFoundError(new BizError('服务异常', 500, undefined, 500))).toBe(false)
   })
 
   it('只把网络异常、超时和服务端异常视为提交结果不确定', () => {

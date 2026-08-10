@@ -1,0 +1,258 @@
+{
+  "components": {
+    "schemas": {
+      "CustomerProcessPriceVO": {
+        "properties": {
+          "billingBasis": {
+            "enum": [
+              "PIECE",
+              "TON",
+              "FIXED"
+            ],
+            "type": "string"
+          },
+          "billingUnitName": {
+            "type": "string"
+          },
+          "catalogUuid": {
+            "type": "string"
+          },
+          "defaultOption": {
+            "type": "boolean"
+          },
+          "price": {
+            "type": "number"
+          },
+          "processCode": {
+            "type": "string"
+          },
+          "processName": {
+            "type": "string"
+          },
+          "stepType": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "billingBasis",
+          "catalogUuid",
+          "defaultOption",
+          "price"
+        ],
+        "type": "object"
+      },
+      "CustomerVO": {
+        "properties": {
+          "bankAccount": {
+            "type": "string"
+          },
+          "contact": {
+            "type": "string"
+          },
+          "createTime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "customerCode": {
+            "type": "string"
+          },
+          "customerLevel": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "defaultInvoice": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "deliveryAddress": {
+            "type": "string"
+          },
+          "exportTemplate": {
+            "type": "string"
+          },
+          "invoiceAddress": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "priceIncludeTax": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "processPrices": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerProcessPriceVO"
+            },
+            "type": "array"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "rewindPrice": {
+            "type": "number"
+          },
+          "sawPrice": {
+            "type": "number"
+          },
+          "settleDay": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "settleType": {
+            "enum": [
+              1,
+              2
+            ],
+            "format": "int32",
+            "type": "integer"
+          },
+          "taxNo": {
+            "type": "string"
+          },
+          "taxRate": {
+            "type": "number"
+          },
+          "updateTime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "customerName",
+          "uuid"
+        ],
+        "type": "object"
+      },
+      "PageResultCustomerVO": {
+        "properties": {
+          "current": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerVO"
+            },
+            "type": "array"
+          },
+          "size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current",
+          "records",
+          "size",
+          "total"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Generated read-only client contract. Responses are unwrapped by request.ts.",
+    "title": "Paper MES Customer Read API",
+    "version": "v1"
+  },
+  "openapi": "3.0.1",
+  "paths": {
+    "/api/customers": {
+      "get": {
+        "operationId": "listCustomers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "keyword",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "current",
+            "required": false,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResultCustomerVO"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "List customers",
+        "tags": [
+          "Customers"
+        ]
+      }
+    },
+    "/api/customers/{uuid}": {
+      "get": {
+        "operationId": "getCustomer",
+        "parameters": [
+          {
+            "description": "Customer UUID",
+            "in": "path",
+            "name": "uuid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerVO"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get a customer profile",
+        "tags": [
+          "Customers"
+        ]
+      }
+    }
+  }
+}

@@ -1,35 +1,44 @@
 import { Button, Card, Descriptions, Empty, Skeleton, Space, Tag } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { getPaper } from '../../api/paper'
+import { isNotFoundError } from '../../api/request'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { PERMISSIONS } from '../../constants/permissions'
+import { usePaperDetail } from '../../features/paper/hooks/usePaperDetail'
 import { useHasPermission } from '../../stores/authStore'
-import type { Paper } from '../../types/paper'
 import '../documentModule.css'
 import './PaperProfile.css'
 
 export default function PaperDetailPage() {
   const { uuid } = useParams()
   const navigate = useNavigate()
-  const [paper, setPaper] = useState<Paper>()
-  const [loading, setLoading] = useState(true)
+  const {
+    data: paper,
+    error: paperError,
+    isError: isPaperError,
+    isPending: isLoadingPaper,
+    refetch: refetchPaper,
+  } = usePaperDetail(uuid)
   const canManageBase = useHasPermission(PERMISSIONS.baseManage)
 
-  useEffect(() => {
-    if (!uuid) return
-    setLoading(true)
-    getPaper(uuid)
-      .then(setPaper)
-      .finally(() => setLoading(false))
-  }, [uuid])
-
-  if (loading) {
+  if (isLoadingPaper) {
     return (
       <div className="document-module-page paper-profile-page">
         <Skeleton active paragraph={{ rows: 8 }} />
+      </div>
+    )
+  }
+
+  if (isPaperError && !isNotFoundError(paperError)) {
+    return (
+      <div className="document-module-page paper-profile-page">
+        <QueryLoadErrorAlert
+          message="纸张档案加载失败"
+          description="请检查网络或服务状态后重新加载。"
+          onRetry={() => { void refetchPaper() }}
+        />
       </div>
     )
   }

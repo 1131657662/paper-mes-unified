@@ -36,6 +36,7 @@ export default function CustomerProfileForm({ editing, form, onFinish, onValuesC
       initialValues={customerFormDefaults}
       onFinish={onFinish}
       onValuesChange={onValuesChange}
+      scrollToFirstError={{ focus: true }}
     >
       <section className="customer-profile-form__section">
         <h3>基础信息</h3>

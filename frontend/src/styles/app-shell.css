@@ -202,14 +202,14 @@ body,
 }
 
 .app-shell__user-role {
-  color: #86909c;
+  color: #526579;
   font-size: 11px;
   line-height: 1.3;
 }
 
 .app-shell__user-caret {
   flex: none;
-  color: #98a2b3;
+  color: #526579;
   font-size: 10px;
   transition: transform .16s ease;
 }
@@ -396,7 +396,7 @@ body,
   justify-content: center;
   margin-left: 8px;
   border-radius: 4px;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 10px;
   line-height: 16px;
   transition: background .12s ease, color .12s ease;

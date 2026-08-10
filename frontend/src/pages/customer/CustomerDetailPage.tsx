@@ -1,13 +1,14 @@
 import { Button, Card, Descriptions, Empty, Skeleton, Space, Tag } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
 import { DISPLAY_TERMS } from '../../constants/displayTerms'
-import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { getCustomer } from '../../api/customer'
+import { isNotFoundError } from '../../api/request'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { PERMISSIONS } from '../../constants/permissions'
 import { DICT_TYPES, invoiceFallbackOptions, settleFallbackOptions } from '../../features/systemConfig/configFallbacks'
 import { useNumberDictOptions } from '../../features/systemConfig/hooks/useRuntimeDictOptions'
+import { useCustomerDetail } from '../../features/customer/hooks/useCustomerDetail'
 import { useHasPermission } from '../../stores/authStore'
 import type { Customer } from '../../types/customer'
 import CustomerServicePriceSummary from './CustomerServicePriceSummary'
@@ -19,24 +20,33 @@ const PRICE_TAX_TYPE: Record<number, string> = { 1: '含税价', 2: '未税价' 
 export default function CustomerDetailPage() {
   const { uuid } = useParams()
   const navigate = useNavigate()
-  const [customer, setCustomer] = useState<Customer>()
-  const [loading, setLoading] = useState(true)
+  const {
+    data: customer,
+    error: customerError,
+    isError: isCustomerError,
+    isPending: isLoadingCustomer,
+    refetch: refetchCustomer,
+  } = useCustomerDetail(uuid)
   const canManageBase = useHasPermission(PERMISSIONS.baseManage)
   const { options: invoiceOptions } = useNumberDictOptions(DICT_TYPES.invoiceType, invoiceFallbackOptions)
   const { options: settleOptions } = useNumberDictOptions(DICT_TYPES.settleType, settleFallbackOptions)
 
-  useEffect(() => {
-    if (!uuid) return
-    setLoading(true)
-    getCustomer(uuid)
-      .then(setCustomer)
-      .finally(() => setLoading(false))
-  }, [uuid])
-
-  if (loading) {
+  if (isLoadingCustomer) {
     return (
       <div className="document-module-page customer-profile-page">
         <Skeleton active paragraph={{ rows: 10 }} />
+      </div>
+    )
+  }
+
+  if (isCustomerError && !isNotFoundError(customerError)) {
+    return (
+      <div className="document-module-page customer-profile-page">
+        <QueryLoadErrorAlert
+          message="客户档案加载失败"
+          description="请检查网络或服务状态后重新加载。"
+          onRetry={() => { void refetchCustomer() }}
+        />
       </div>
     )
   }

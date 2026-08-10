@@ -17,6 +17,14 @@ npm run test:e2e
 npm run test:e2e:install
 ```
 
+WCAG 关键路径门禁使用 axe 检查 `serious` 和 `critical` 级问题：
+
+```powershell
+npm run test:e2e:a11y
+```
+
+登录页始终执行。未配置测试账号时，登录后的仪表盘、加工单列表和个人中心用例会明确标记为 skipped，不能计为通过。
+
 登录后核心页面测试只从环境变量读取测试账号，不在仓库保存凭据：
 
 ```powershell

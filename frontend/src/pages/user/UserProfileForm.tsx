@@ -25,6 +25,7 @@ export default function UserProfileForm({ editing, form, onFinish, onValuesChang
       layout="vertical"
       onFinish={onFinish}
       onValuesChange={onValuesChange}
+      scrollToFirstError={{ focus: true }}
     >
       <section className="user-profile-form__section">
         <h3>账号信息</h3>

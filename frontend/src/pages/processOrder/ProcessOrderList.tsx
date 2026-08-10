@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import type { ActionType } from '@ant-design/pro-components'
 import { buildProcessOrderColumns } from './processOrderListColumns'
 import ProcessOrderListHeader from './ProcessOrderListHeader'
@@ -45,7 +45,10 @@ export default function ProcessOrderList() {
     rowSelection.clear()
   }
 
-  const columns = buildProcessOrderColumns(commands.columnOptions)
+  const columns = useMemo(
+    () => buildProcessOrderColumns(commands.columnOptions),
+    [commands.columnOptions],
+  )
 
   return (
     <>

@@ -279,6 +279,12 @@
   font-weight: 650;
 }
 
+.process-order-shell__title {
+  margin: 0;
+  color: inherit;
+  font: inherit;
+}
+
 .process-order-shell__tools {
   flex-wrap: nowrap;
 }

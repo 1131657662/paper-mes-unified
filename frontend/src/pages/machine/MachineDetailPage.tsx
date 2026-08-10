@@ -1,11 +1,12 @@
 import { Button, Card, Descriptions, Empty, Skeleton, Space, Tag } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { getMachine } from '../../api/machine'
+import { isNotFoundError } from '../../api/request'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import { PERMISSIONS } from '../../constants/permissions'
+import { useMachineDetail } from '../../features/machine/hooks/useMachineDetail'
 import { useHasPermission } from '../../stores/authStore'
 import type { Machine } from '../../types/machine'
 import '../documentModule.css'
@@ -16,22 +17,31 @@ import './MachineProfile.css'
 export default function MachineDetailPage() {
   const { uuid } = useParams()
   const navigate = useNavigate()
-  const [machine, setMachine] = useState<Machine>()
-  const [loading, setLoading] = useState(true)
+  const {
+    data: machine,
+    error: machineError,
+    isError: isMachineError,
+    isPending: isLoadingMachine,
+    refetch: refetchMachine,
+  } = useMachineDetail(uuid)
   const canManageBase = useHasPermission(PERMISSIONS.baseManage)
 
-  useEffect(() => {
-    if (!uuid) return
-    setLoading(true)
-    getMachine(uuid)
-      .then(setMachine)
-      .finally(() => setLoading(false))
-  }, [uuid])
-
-  if (loading) {
+  if (isLoadingMachine) {
     return (
       <div className="document-module-page machine-profile-page">
         <Skeleton active paragraph={{ rows: 8 }} />
+      </div>
+    )
+  }
+
+  if (isMachineError && !isNotFoundError(machineError)) {
+    return (
+      <div className="document-module-page machine-profile-page">
+        <QueryLoadErrorAlert
+          message="机台档案加载失败"
+          description="请检查网络或服务状态后重新加载。"
+          onRetry={() => { void refetchMachine() }}
+        />
       </div>
     )
   }

@@ -1,4 +1,4 @@
-import { useState, type Key, type MouseEvent } from 'react'
+import { useCallback, useMemo, useState, type Key, type MouseEvent } from 'react'
 import type { TableRowSelection } from 'antd/es/table/interface'
 import type { ProcessOrder } from '../../types/processOrder'
 
@@ -25,18 +25,18 @@ export function useProcessOrderRowSelection() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([])
   const [selectedRows, setSelectedRows] = useState<ProcessOrder[]>([])
 
-  const clear = () => {
+  const clear = useCallback(() => {
     setSelectedRowKeys([])
     setSelectedRows([])
-  }
+  }, [])
 
-  const toggleRecord = (record: ProcessOrder) => {
+  const toggleRecord = useCallback((record: ProcessOrder) => {
     const selected = selectedRowKeys.includes(record.uuid)
     setSelectedRowKeys(selected ? [] : [record.uuid])
     setSelectedRows(selected ? [] : [record])
-  }
+  }, [selectedRowKeys])
 
-  const rowSelection: TableRowSelection<ProcessOrder> = {
+  const rowSelection = useMemo<TableRowSelection<ProcessOrder>>(() => ({
     type: 'radio',
     selectedRowKeys,
     columnWidth: 42,
@@ -44,19 +44,25 @@ export function useProcessOrderRowSelection() {
       setSelectedRowKeys(keys)
       setSelectedRows(rows)
     },
-  }
+  }), [selectedRowKeys])
+
+  const rowClassName = useCallback(
+    (record: ProcessOrder) => selectedRowKeys.includes(record.uuid) ? 'process-order-list__row--selected' : '',
+    [selectedRowKeys],
+  )
+  const onRow = useCallback((record: ProcessOrder) => ({
+    onClick: (event: MouseEvent<HTMLElement>) => {
+      if (!shouldToggleRow(event.target)) return
+      toggleRecord(record)
+    },
+  }), [toggleRecord])
 
   return {
     clear,
-    rowClassName: (record: ProcessOrder) => selectedRowKeys.includes(record.uuid) ? 'process-order-list__row--selected' : '',
+    rowClassName,
     rowSelection,
     selectedRows,
-    onRow: (record: ProcessOrder) => ({
-      onClick: (event: MouseEvent<HTMLElement>) => {
-        if (!shouldToggleRow(event.target)) return
-        toggleRecord(record)
-      },
-    }),
+    onRow,
   }
 }
 

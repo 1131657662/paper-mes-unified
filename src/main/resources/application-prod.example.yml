@@ -20,7 +20,17 @@ spring:
       max-file-size: 10MB
       max-request-size: 50MB
 
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 app:
+  rum:
+    enabled: ${PAPER_MES_RUM_ENABLED:false}
+    max-events-per-minute: ${PAPER_MES_RUM_MAX_EVENTS_PER_MINUTE:300}
+    max-tracked-clients: ${PAPER_MES_RUM_MAX_TRACKED_CLIENTS:10000}
   schema-bootstrap:
     enabled: false
   schema-readiness:

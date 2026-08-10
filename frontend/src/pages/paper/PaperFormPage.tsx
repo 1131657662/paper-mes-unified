@@ -1,8 +1,13 @@
-import { Button, Card, Form, Skeleton, Space, message } from 'antd'
+import { Button, Card, Empty, Form, Skeleton, Space, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { createPaper, getPaper, updatePaper } from '../../api/paper'
+import { useQueryClient } from '@tanstack/react-query'
+import { createPaper, updatePaper } from '../../api/paper'
+import { isNotFoundError } from '../../api/request'
+import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
 import MesPageHeader from '../../components/layout/MesPageHeader'
+import { usePaperDetail } from '../../features/paper/hooks/usePaperDetail'
+import { paperKeys } from '../../features/paper/queries/paperKeys'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import type { Paper, PaperSaveDTO } from '../../types/paper'
 import '../documentModule.css'
@@ -16,25 +21,31 @@ interface Props {
 export default function PaperFormPage({ mode }: Props) {
   const [form] = Form.useForm<PaperSaveDTO>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { uuid } = useParams()
-  const [loading, setLoading] = useState(mode === 'edit')
   const [submitting, setSubmitting] = useState(false)
   const isEdit = mode === 'edit'
   const { clearDirty, markDirty } = useUnsavedChangesGuard()
+  const {
+    data: paper,
+    error: paperError,
+    isError: isPaperError,
+    isPending: isLoadingPaper,
+    refetch: refetchPaper,
+  } = usePaperDetail(isEdit ? uuid : undefined)
 
   useEffect(() => {
-    if (!isEdit || !uuid) return
-    setLoading(true)
-    getPaper(uuid)
-      .then((data) => form.setFieldsValue(toFormValues(data)))
-      .finally(() => setLoading(false))
-  }, [form, isEdit, uuid])
+    if (paper) form.setFieldsValue(toFormValues(paper))
+  }, [form, paper])
 
   const submit = async (values: PaperSaveDTO) => {
     setSubmitting(true)
     try {
       const savedUuid = isEdit && uuid ? uuid : await createPaper(values)
       if (isEdit && uuid) await updatePaper(uuid, values)
+      if (isEdit && uuid) {
+        await queryClient.invalidateQueries({ queryKey: paperKeys.detail(uuid).queryKey })
+      }
       clearDirty()
       message.success(isEdit ? '纸张档案已保存' : '纸张档案已新增')
       navigate(`/papers/${savedUuid}`)
@@ -61,8 +72,16 @@ export default function PaperFormPage({ mode }: Props) {
       />
 
       <Card className="document-module-card paper-profile-card" title="纸张资料">
-        {loading ? (
+        {isLoadingPaper ? (
           <Skeleton active paragraph={{ rows: 6 }} />
+        ) : isPaperError && !isNotFoundError(paperError) ? (
+          <QueryLoadErrorAlert
+            message="纸张档案加载失败"
+            description="请检查网络或服务状态后重新加载。"
+            onRetry={() => { void refetchPaper() }}
+          />
+        ) : isPaperError || (isEdit && !paper) ? (
+          <Empty description="纸张档案不存在" />
         ) : (
           <PaperProfileForm editing={isEdit} form={form} onFinish={submit} onValuesChange={markDirty} />
         )}

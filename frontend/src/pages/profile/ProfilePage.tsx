@@ -75,7 +75,14 @@ function PasswordCard() {
   return (
     <Card className="document-module-card profile-password-card" title="修改密码">
       <p className="profile-password-card__note">密码修改成功后，其他设备上的登录会失效。</p>
-      <Form className="profile-password-form" form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
+      <Form
+        className="profile-password-form"
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        requiredMark={false}
+        scrollToFirstError={{ focus: true }}
+      >
         <PasswordFields />
         <div className="profile-password-form__actions">
           <Button type="primary" htmlType="submit" loading={isChangingPassword}>保存新密码</Button>

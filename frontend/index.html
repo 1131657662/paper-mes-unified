@@ -9,11 +9,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      window.process = window.process || { env: { NODE_ENV: 'development' } }
-      window.process.env = window.process.env || { NODE_ENV: 'development' }
-      window.process.env.NODE_ENV = window.process.env.NODE_ENV || 'development'
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 interface PrintState {
   uuid: string
@@ -14,22 +14,29 @@ export function useProcessOrderListDialogs() {
   const [manageRollUuid, setManageRollUuid] = useState<string | null>(null)
   const [manageRollOpen, setManageRollOpen] = useState(false)
 
-  return {
-    state: { diffOpen, diffUuid, manageRollOpen, manageRollUuid, printOpen, printState },
-    openPrint: (state: PrintState) => {
+  const openPrint = useCallback((state: PrintState) => {
       setPrintState(state)
       setPrintOpen(true)
-    },
-    openDiff: (uuid: string) => {
+  }, [])
+  const openDiff = useCallback((uuid: string) => {
       setDiffUuid(uuid)
       setDiffOpen(true)
-    },
-    openManageRoll: (uuid: string) => {
+  }, [])
+  const openManageRoll = useCallback((uuid: string) => {
       setManageRollUuid(uuid)
       setManageRollOpen(true)
-    },
-    closeDiff: () => setDiffOpen(false),
-    closeManageRoll: () => setManageRollOpen(false),
-    closePrint: () => setPrintOpen(false),
-  }
+  }, [])
+  const closeDiff = useCallback(() => setDiffOpen(false), [])
+  const closeManageRoll = useCallback(() => setManageRollOpen(false), [])
+  const closePrint = useCallback(() => setPrintOpen(false), [])
+
+  return useMemo(() => ({
+    state: { diffOpen, diffUuid, manageRollOpen, manageRollUuid, printOpen, printState },
+    openPrint,
+    openDiff,
+    openManageRoll,
+    closeDiff,
+    closeManageRoll,
+    closePrint,
+  }), [closeDiff, closeManageRoll, closePrint, diffOpen, diffUuid, manageRollOpen, manageRollUuid, openDiff, openManageRoll, openPrint, printOpen, printState])
 }
