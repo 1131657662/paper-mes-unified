@@ -2,6 +2,7 @@ import { Breadcrumb } from 'antd'
 import { HomeOutlined } from '@ant-design/icons'
 import { useLocation, useNavigate } from 'react-router'
 import { findRouteMeta } from '../router/routeMeta'
+import './AppBreadcrumb.css'
 
 export default function AppBreadcrumb() {
   const location = useLocation()
