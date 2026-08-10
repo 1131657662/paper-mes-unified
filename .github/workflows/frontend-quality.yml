@@ -7,6 +7,9 @@ on:
       - "pom.xml"
       - "src/main/**"
       - "src/test/java/com/paper/mes/openapi/**"
+      - "deploy/nginx-paper-mes.example.conf"
+      - "deploy/nginx-paper-mes-https.example.conf"
+      - "deploy/test-nginx-paper-mes-config.sh"
       - ".github/workflows/frontend-quality.yml"
   push:
     branches: [main]
@@ -15,6 +18,9 @@ on:
       - "pom.xml"
       - "src/main/**"
       - "src/test/java/com/paper/mes/openapi/**"
+      - "deploy/nginx-paper-mes.example.conf"
+      - "deploy/nginx-paper-mes-https.example.conf"
+      - "deploy/test-nginx-paper-mes-config.sh"
       - ".github/workflows/frontend-quality.yml"
 
 concurrency:
@@ -37,6 +43,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+
+      - run: bash deploy/test-nginx-paper-mes-config.sh
+        working-directory: .
 
       - uses: actions/setup-java@v5
         with:
