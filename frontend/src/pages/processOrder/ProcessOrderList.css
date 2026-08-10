@@ -499,6 +499,10 @@
   min-height: 180px;
 }
 
+.process-order-table .ant-table-placeholder .ant-table-expanded-row-fixed {
+  color: #595959;
+}
+
 .process-order-table--empty .ant-table-placeholder > .ant-table-cell {
   padding: 42px 16px;
 }

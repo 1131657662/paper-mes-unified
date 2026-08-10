@@ -41,7 +41,7 @@ function TrendSummary({ model }: { model: DashboardTrendModel }) {
 }
 
 function TrendChartLoading() {
-  return <div className="dashboard-trend__chart-loading" aria-label="趋势图加载中" />
+  return <div className="dashboard-trend__chart-loading" aria-label="趋势图加载中" role="status" />
 }
 
 function TrendEmptyState() {

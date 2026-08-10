@@ -46,18 +46,16 @@ export default function PageTabs() {
             if (action === 'remove' && typeof targetKey === 'string') actions.closeCurrent(targetKey)
           }}
           tabBarGutter={4}
-          tabBarExtraContent={(
-            <PageTabTools
-              canScroll={scrollState.canScroll}
-              canScrollRight={scrollState.canScrollRight}
-              items={activeMenuItems}
-              onAction={actions.handleMenuAction}
-              onScrollRight={() => handleScroll(220)}
-            />
-          )}
           type="editable-card"
         />
       </div>
+      <PageTabTools
+        canScroll={scrollState.canScroll}
+        canScrollRight={scrollState.canScrollRight}
+        items={activeMenuItems}
+        onAction={actions.handleMenuAction}
+        onScrollRight={() => handleScroll(220)}
+      />
     </div>
   )
 }

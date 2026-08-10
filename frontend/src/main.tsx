@@ -26,8 +26,8 @@ const antdLocale = {
 
 const appTheme = {
   token: {
-    colorPrimary: '#1677ff',
-    colorPrimaryHover: '#4096ff',
+    colorPrimary: '#0958d9',
+    colorPrimaryHover: '#0b63e5',
     colorText: '#172033',
     colorTextSecondary: '#526579',
     colorBorder: '#d9e2ec',

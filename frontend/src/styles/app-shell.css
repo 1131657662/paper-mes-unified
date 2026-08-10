@@ -354,7 +354,7 @@ body,
 .app-shell__tabs-control.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active {
   z-index: 2;
   background: #eef6ff;
-  color: #1677ff;
+  color: #0958d9;
   font-weight: 600;
 }
 
@@ -365,7 +365,7 @@ body,
   width: calc(100% - 16px);
   height: 2px;
   border-radius: 999px;
-  background: #1677ff;
+  background: #0958d9;
   content: '';
   animation: app-shell-tab-line-in 180ms ease-out;
 }
@@ -424,6 +424,7 @@ body,
 
 .app-shell__tabs-tools {
   display: flex;
+  flex: none;
   height: 34px;
   align-items: center;
   margin-left: 8px;
@@ -448,7 +449,7 @@ body,
 
 .app-shell__tabs-more:hover {
   background: #f3f7fd;
-  color: #1677ff;
+  color: #0958d9;
 }
 
 .app-shell__offline {

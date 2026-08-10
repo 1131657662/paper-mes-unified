@@ -12,7 +12,7 @@ test.describe('新建出库单冻结操作区', () => {
 
   test('内容区滚动到底部时操作区保持可见且不覆盖表格', async ({ page }) => {
     const scrollRegion = page.locator('.delivery-create-page__scroll')
-    const footer = page.getByRole('contentinfo', { name: '出库单提交操作' })
+    const footer = page.getByRole('group', { name: '出库单提交操作' })
     await expect(scrollRegion).toBeVisible()
     await expect(footer).toBeVisible()
 
