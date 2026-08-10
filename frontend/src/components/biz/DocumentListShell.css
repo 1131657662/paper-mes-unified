@@ -25,6 +25,14 @@
   font-weight: 650;
 }
 
+.document-list-shell__title {
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
 .document-list-shell__search {
   margin-bottom: 14px;
   padding-bottom: 14px;

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { Button, Card } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import DocumentListSkeleton from './DocumentListSkeleton'
@@ -11,7 +12,7 @@ interface QueueOption<T extends string> {
 }
 
 interface Props<T extends string> {
-  title: string
+  title: ReactNode
   createText: string
   queue: T
   queueOptions: QueueOption<T>[]
@@ -44,7 +45,10 @@ export default function DocumentListShell<T extends string>({
   const [toolsHost, setToolsHost] = useState<HTMLDivElement | null>(null)
 
   return (
-    <Card title={title} className="document-list-shell">
+    <Card
+      title={<h1 className="document-list-shell__title">{title}</h1>}
+      className="document-list-shell"
+    >
       {search && <div className="document-list-shell__search">{search}</div>}
       {summary && <div className="document-list-shell__summary">{summary}</div>}
       <div className="document-list-shell__toolbar">
