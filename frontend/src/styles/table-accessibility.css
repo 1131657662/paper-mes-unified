@@ -31,3 +31,9 @@
 .mes-data-tag.ant-tag-green {
   color: #237804;
 }
+
+.ant-btn-primary.ant-btn-loading {
+  color: #ffffff;
+  background: #0958d9;
+  opacity: 1;
+}
