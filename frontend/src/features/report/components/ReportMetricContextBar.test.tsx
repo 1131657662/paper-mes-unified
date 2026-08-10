@@ -1,7 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { ReportMetricContextVO, ReportQueryExecutionMetaVO } from '../../../types/report'
+import type {
+  ReportMetricContextVO,
+  ReportQueryExecutionMetaVO,
+} from '../../../types/report'
 import ReportMetricContextBar from './ReportMetricContextBar'
 
 describe('报表指标版本状态条', () => {
@@ -23,10 +26,17 @@ describe('报表指标版本状态条', () => {
 })
 
 function renderBar(compact: boolean) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
   return renderToStaticMarkup(
     <QueryClientProvider client={queryClient}>
-      <ReportMetricContextBar compact={compact} context={context} execution={execution} loading={false} />
+      <ReportMetricContextBar
+        compact={compact}
+        context={context}
+        execution={execution}
+        loading={false}
+      />
     </QueryClientProvider>,
   )
 }
@@ -55,7 +65,7 @@ const context: ReportMetricContextVO = {
 const execution: ReportQueryExecutionMetaVO = {
   consistencyMode: 'LIVE_DB_READ',
   coverage: 'LIVE_ONLY',
-  dataAsOf: '2026-07-21T16:20:00+08:00',
+  dataAsOf: '2026-07-21T08:20:00Z',
   metricReleaseUuid: 'release-v2',
   metricVersionMap: {},
   queryHash: 'query-hash',
