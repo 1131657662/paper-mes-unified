@@ -1,5 +1,6 @@
 package com.paper.mes.observability.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -16,6 +17,7 @@ public class RumRateLimiter {
     private final Clock clock;
     private final ConcurrentMap<String, Window> windows = new ConcurrentHashMap<>();
 
+    @Autowired
     public RumRateLimiter(RumProperties properties) {
         this(properties, Clock.systemUTC());
     }
