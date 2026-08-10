@@ -30,6 +30,7 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (!id.includes('node_modules')) return undefined
+            if (isAntdIcon(id)) return 'vendor-icons'
             if (id.includes('@ant-design/pro-components')) return 'vendor-pro-components'
             if (id.includes('@tanstack/react-query')) return 'vendor-react-query'
             if (isReactRuntime(id)) return 'vendor-react'
@@ -67,5 +68,12 @@ function isReactRuntime(id: string) {
     '/node_modules/react-router/',
     '/node_modules/react-router-dom/',
     '/node_modules/scheduler/',
+  ].some((packagePath) => id.includes(packagePath))
+}
+
+function isAntdIcon(id: string) {
+  return [
+    '/node_modules/@ant-design/icons/',
+    '/node_modules/@ant-design/icons-svg/',
   ].some((packagePath) => id.includes(packagePath))
 }
