@@ -53,7 +53,8 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level=high
       - run: npm run openapi:check
-      - run: sh ../mvnw -q -Dtest=RumRateLimiterTest test
+      - run: sh mvnw -q -Dtest=RumRateLimiterTest test
+        working-directory: .
       - run: npm run lint
       - run: npm test
       - run: npm run build
