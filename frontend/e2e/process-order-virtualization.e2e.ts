@@ -31,6 +31,27 @@ test('加工单页面在 pageSize=50 时仅渲染可视行并保留操作列', a
   await expect(renderedRows.first().getByRole('button', { name: '创建出库' })).toBeVisible()
 })
 
+test('加工单关键控件支持键盘焦点和标签菜单操作', async ({ page }) => {
+  await mockProcessOrderPage(page)
+
+  await page.goto('/process-orders')
+
+  await expect(page.getByRole('main')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '加工单' })).toBeFocused()
+
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('textbox', { name: '关键字' })).toBeFocused()
+
+  const tabActions = page.getByRole('button', { name: '标签操作' })
+  await tabActions.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('menuitem', { name: '刷新当前' })).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menuitem', { name: '刷新当前' })).toBeHidden()
+  await expect(tabActions).toBeFocused()
+})
+
 async function mockProcessOrderPage(page: Page): Promise<void> {
   await page.route('**/api/**', (route) => fulfillApi(route))
 }

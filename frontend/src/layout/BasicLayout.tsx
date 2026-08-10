@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Alert, Dropdown, Layout, Menu } from 'antd'
 import {
   DownOutlined,
@@ -23,6 +23,7 @@ import { buildMenuItems } from './appMenuItems'
 import { isEdgeScrollRoute } from './layoutRouteMode'
 import { defaultOpenMenuKeys } from './menuOpenKeys'
 import { roleLabel } from './roleLabel'
+import { useRouteFocus } from './useRouteFocus'
 import RuntimeVersionModal from '../features/runtime/components/RuntimeVersionModal'
 import '../styles/app-shell.css'
 
@@ -44,11 +45,7 @@ export default function BasicLayout() {
   ].filter(Boolean).join(' ')
 
   useDocumentTitle(routeTitle)
-
-  useEffect(() => {
-    contentRef.current?.scrollTo({ top: 0, left: 0 })
-    contentRef.current?.focus({ preventScroll: true })
-  }, [location.pathname, location.search])
+  useRouteFocus(contentRef, `${location.pathname}${location.search}`)
 
   return (
     <Layout className="app-shell">
