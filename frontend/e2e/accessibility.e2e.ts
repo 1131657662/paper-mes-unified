@@ -28,4 +28,20 @@ test.describe('登录后关键路径无障碍门禁', () => {
       await expectNoBlockingA11yViolations(page)
     })
   }
+
+  test('页面标签的关闭操作不会伪装成 tab 角色', async ({ page }) => {
+    await page.goto('/process-orders')
+    await expect(page.getByRole('main')).toBeVisible()
+
+    const tabSemantics = await page.locator('[role="tablist"]').evaluateAll((tablists) => tablists.flatMap((tablist) =>
+      [...tablist.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => ({
+        ariaSelected: tab.getAttribute('aria-selected'),
+        tagName: tab.tagName,
+      })),
+    ))
+
+    expect(tabSemantics.length).toBeGreaterThan(0)
+    expect(tabSemantics.every(({ ariaSelected, tagName }) => ariaSelected !== null && tagName !== 'BUTTON')).toBe(true)
+    await expect(page.locator('[role="tablist"] button[role="tab"]')).toHaveCount(0)
+  })
 })

@@ -17,9 +17,10 @@ interface ToTabItemsOptions {
 }
 
 export function toTabItems({ currentPath, onAction, tabs }: ToTabItemsOptions): TabsProps['items'] {
-  const onlyOneTab = tabs.length <= 1
   return tabs.map((tab) => ({
-    closable: tab.closable && !onlyOneTab,
+    // rc-tabs renders its editable-card close control as role="tab".
+    // Keep closing available through the accessible tab-actions menu instead.
+    closable: false,
     key: tab.path,
     label: <PageTabLabel label={tab.label} menuItems={createMenuItems({ activePath: tab.path, currentPath, tabs })} onAction={(key) => onAction(key, tab.path)} />,
   }))

@@ -42,9 +42,6 @@ export default function PageTabs() {
           items={toTabItems({ currentPath: activePath, onAction: actions.handleMenuAction, tabs: tabState.tabs })}
           more={{ icon: <MoreOutlined aria-label="更多标签" />, trigger: 'hover' }}
           onChange={navigate}
-          onEdit={(targetKey, action) => {
-            if (action === 'remove' && typeof targetKey === 'string') actions.closeCurrent(targetKey)
-          }}
           tabBarGutter={4}
           type="editable-card"
         />
