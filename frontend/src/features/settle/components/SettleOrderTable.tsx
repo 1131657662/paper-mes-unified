@@ -45,13 +45,16 @@ export default function SettleOrderTable({
   const columns = buildColumns({ canReceiveSettle, collectionMode, onDetail, onReceive, onRemind })
   const columnsState = useTableColumnsState('table-columns-settle-orders')
   const resizable = useResizableTableColumns<SettleOrder, ProColumns<SettleOrder>>(columns, 'settle-orders')
+  const displayColumns = data.length
+    ? resizable.columns
+    : resizable.columns.map((column) => ({ ...column, fixed: undefined, minWidth: undefined, width: undefined }))
 
   return (
     <ProTable<SettleOrder>
       className="settle-order-table mes-table-card"
       rowKey="uuid"
       loading={loading}
-      columns={resizable.columns}
+      columns={displayColumns}
       columnsState={columnsState}
       components={resizable.components}
       dataSource={data}

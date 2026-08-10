@@ -1,4 +1,5 @@
 .mes-table-card .ant-table-placeholder,
+.mes-table-card .ant-table-placeholder > .ant-table-cell,
 .mes-table-card .ant-empty-description {
   color: #526579;
 }

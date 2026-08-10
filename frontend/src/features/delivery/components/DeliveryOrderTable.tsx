@@ -45,13 +45,16 @@ export default function DeliveryOrderTable({
   const columns = buildColumns({ canConfirmDelivery, canManageDelivery, onConfirm, onDetail, onEdit })
   const columnsState = useTableColumnsState('table-columns-delivery-orders')
   const resizable = useResizableTableColumns<DeliveryOrder, ProColumns<DeliveryOrder>>(columns, 'delivery-orders')
+  const displayColumns = data.length
+    ? resizable.columns
+    : resizable.columns.map((column) => ({ ...column, fixed: undefined, minWidth: undefined, width: undefined }))
 
   return (
     <ProTable<DeliveryOrder>
       className="delivery-order-table mes-table-card"
       rowKey="uuid"
       loading={loading}
-      columns={resizable.columns}
+      columns={displayColumns}
       columnsState={columnsState}
       components={resizable.components}
       dataSource={data}
