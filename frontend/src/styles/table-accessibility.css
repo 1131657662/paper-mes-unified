@@ -1,0 +1,32 @@
+.mes-table-card .ant-table-placeholder,
+.mes-table-card .ant-empty-description {
+  color: #526579;
+}
+
+.mes-action-buttons .ant-btn-link:not(.ant-btn-dangerous, :disabled),
+.mes-table-actions .ant-btn-link:not(.ant-btn-dangerous, :disabled) {
+  color: #0958d9;
+}
+
+.mes-action-buttons .ant-btn-link:not(.ant-btn-dangerous, :disabled):hover,
+.mes-action-buttons .ant-btn-link:not(.ant-btn-dangerous, :disabled):focus-visible,
+.mes-table-actions .ant-btn-link:not(.ant-btn-dangerous, :disabled):hover,
+.mes-table-actions .ant-btn-link:not(.ant-btn-dangerous, :disabled):focus-visible {
+  color: #003eb3;
+}
+
+.mes-action-buttons .ant-btn-link.ant-btn-dangerous:not(:disabled),
+.mes-table-actions .ant-btn-link.ant-btn-dangerous:not(:disabled) {
+  color: #cf1322;
+}
+
+.mes-action-buttons .ant-btn-link.ant-btn-dangerous:not(:disabled):hover,
+.mes-action-buttons .ant-btn-link.ant-btn-dangerous:not(:disabled):focus-visible,
+.mes-table-actions .ant-btn-link.ant-btn-dangerous:not(:disabled):hover,
+.mes-table-actions .ant-btn-link.ant-btn-dangerous:not(:disabled):focus-visible {
+  color: #a8071a;
+}
+
+.mes-data-tag.ant-tag-green {
+  color: #237804;
+}

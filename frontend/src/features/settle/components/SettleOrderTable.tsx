@@ -66,7 +66,7 @@ export default function SettleOrderTable({
       options={mesProTableOptions(onReload)}
       optionsRender={renderTableToolbarPortal}
       search={false}
-      scroll={{ x: resizable.scrollX, ...(fixedHeader ? { y: '100%' } : {}) }}
+      scroll={{ ...(data.length ? { x: resizable.scrollX } : {}), ...(fixedHeader ? { y: '100%' } : {}) }}
       tableAlertRender={false}
       tableAlertOptionRender={false}
       tableLayout="fixed"
