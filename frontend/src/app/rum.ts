@@ -30,6 +30,7 @@ interface NavigatorWithSignals extends Navigator {
 }
 
 const endpoint = '/api/rum'
+const publicRouteTemplates = new Set(['/login'])
 let installed = false
 
 export function installRum() {
@@ -63,6 +64,7 @@ export function createPayload(
 
 export function resolveRouteTemplate(pathname: string): string {
   const safePathname = pathname.split(/[?#]/, 1)[0] || '/'
+  if (publicRouteTemplates.has(safePathname)) return safePathname
   return findRouteMeta(safePathname)?.path ?? '*'
 }
 

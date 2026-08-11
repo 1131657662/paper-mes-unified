@@ -11,6 +11,10 @@ describe('first-party RUM payload', () => {
     )
   })
 
+  it('maps the public login route without retaining redirect data', () => {
+    expect(resolveRouteTemplate('/login?from=/process-orders')).toBe('/login')
+  })
+
   it('contains only the approved anonymous fields', () => {
     const payload = createPayload(
       { name: 'LCP', value: 842.5, rating: 'good' },
