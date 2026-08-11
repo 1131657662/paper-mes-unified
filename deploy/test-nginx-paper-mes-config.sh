@@ -12,6 +12,15 @@ fail() {
   exit 1
 }
 
+assert_exact_line_once() {
+  local template="$1"
+  local directive="$2"
+  local count
+
+  count="$(awk -v expected="${directive}" '{ sub(/\r$/, "", $0) } $0 == expected { count++ } END { print count + 0 }' "${template}")"
+  [ "${count}" = "1" ] || fail "${template} must contain exactly one: ${directive}"
+}
+
 for template in "${templates[@]}"; do
   awk '
     { sub(/\r$/, "", $0) }
@@ -40,5 +49,9 @@ for template in "${templates[@]}"; do
     END { if (!blocked) exit 1 }
   ' "${template}" || fail "${template} must return 404 for /actuator"
 done
+
+https_template="${script_dir}/nginx-paper-mes-https.example.conf"
+assert_exact_line_once "${https_template}" "    ssl_session_timeout 1d;"
+assert_exact_line_once "${https_template}" "    ssl_session_tickets off;"
 
 echo "nginx template tests passed"
