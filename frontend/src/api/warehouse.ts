@@ -1,17 +1,13 @@
 import request from './request'
-import type { PageResult } from '../types/common'
-import type { Warehouse, WarehouseQuery, WarehouseSaveDTO } from '../types/warehouse'
+import { getWarehouse as getGeneratedWarehouse, listWarehouses } from './generated/warehouseReadOnly'
+import type { WarehouseQuery, WarehouseSaveDTO } from '../types/warehouse'
 
 export function pageWarehouses(query: WarehouseQuery) {
-  return request<PageResult<Warehouse>>({
-    url: '/api/warehouses',
-    method: 'get',
-    params: query,
-  })
+  return listWarehouses(query)
 }
 
 export function getWarehouse(uuid: string) {
-  return request<Warehouse>({ url: `/api/warehouses/${uuid}`, method: 'get' })
+  return getGeneratedWarehouse(uuid)
 }
 
 export function createWarehouse(dto: WarehouseSaveDTO) {

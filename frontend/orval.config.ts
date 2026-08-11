@@ -49,4 +49,20 @@ export default defineConfig({
       },
     },
   },
+  warehouseReadOnly: {
+    input: './openapi/warehouse-readonly.json',
+    output: {
+      target: './src/api/generated/warehouseReadOnly.ts',
+      client: 'axios-functions',
+      clean: false,
+      formatter: 'prettier',
+      override: {
+        header: false,
+        mutator: {
+          path: './src/api/orvalRequest.ts',
+          name: 'orvalRequest',
+        },
+      },
+    },
+  },
 })

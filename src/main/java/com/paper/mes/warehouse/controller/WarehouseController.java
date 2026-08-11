@@ -8,8 +8,12 @@ import com.paper.mes.warehouse.dto.WarehouseQuery;
 import com.paper.mes.warehouse.dto.WarehouseSaveDTO;
 import com.paper.mes.warehouse.entity.Warehouse;
 import com.paper.mes.warehouse.service.WarehouseService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,19 +26,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/warehouses")
 @RequiredArgsConstructor
+@Tag(name = "Warehouses", description = "Warehouse master data")
 public class WarehouseController {
 
     private final WarehouseService warehouseService;
 
     @GetMapping
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<PageResult<Warehouse>> page(WarehouseQuery query) {
+    @Operation(operationId = "listWarehouses", summary = "List warehouses")
+    public R<PageResult<Warehouse>> page(@ParameterObject WarehouseQuery query) {
         return R.success(warehouseService.pageWarehouses(query));
     }
 
     @GetMapping("/{uuid}")
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<Warehouse> detail(@PathVariable String uuid) {
+    @Operation(operationId = "getWarehouse", summary = "Get a warehouse profile")
+    public R<Warehouse> detail(@Parameter(description = "Warehouse UUID", required = true)
+                               @PathVariable String uuid) {
         return R.success(warehouseService.getByUuid(uuid));
     }
 
