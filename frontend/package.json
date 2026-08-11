@@ -19,6 +19,7 @@
     "test:e2e": "playwright test",
     "test:e2e:a11y": "playwright test accessibility.e2e.ts",
     "test:e2e:install": "playwright install chromium",
+    "test:e2e:performance": "node scripts/run-process-order-performance.mjs",
     "test:watch": "vitest",
     "preview": "vite preview"
   },

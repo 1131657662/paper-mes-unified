@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { fileURLToPath } from 'node:url'
 
 const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:8081'
 const apiProxy = {
@@ -12,6 +13,7 @@ const apiProxy = {
 export default defineConfig(({ mode }) => {
   const nodeEnv = process.env.NODE_ENV ?? (mode === 'development' ? 'development' : 'production')
   const shouldAnalyze = mode === 'analyze' || process.env.ANALYZE === 'true'
+  const shouldProfile = process.env.VITE_PERF_PROFILER_ENABLED === 'true'
   const allowedHosts = parseAllowedHosts(process.env.VITE_ALLOWED_HOSTS)
 
   return {
@@ -42,6 +44,11 @@ export default defineConfig(({ mode }) => {
     define: {
       process: { env: { NODE_ENV: nodeEnv } },
       'process.env.NODE_ENV': JSON.stringify(nodeEnv),
+    },
+    resolve: {
+      alias: shouldProfile
+        ? [{ find: 'react-dom/client', replacement: fileURLToPath(new URL('./node_modules/react-dom/profiling.js', import.meta.url)) }]
+        : [],
     },
     server: {
       port: 5173,

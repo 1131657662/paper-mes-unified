@@ -71,4 +71,11 @@ jobs:
       - run: npm run check:dependencies
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - run: npm run test:e2e:performance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: process-order-performance-${{ github.run_id }}
+          path: frontend/test-results/performance
+          if-no-files-found: ignore
       - run: node scripts/run-lighthouse-ci.mjs

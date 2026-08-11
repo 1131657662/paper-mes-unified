@@ -1,6 +1,7 @@
 import { useState, type RefObject } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components'
+import { PerfProfiler } from '../../app/perfProfiler'
 import { mesProTableOptions } from '../../components/biz/mesProTableOptions'
 import { renderTableToolbarPortal } from '../../components/biz/tableToolbarPortalUtils'
 import QueryLoadErrorAlert from '../../components/feedback/QueryLoadErrorAlert'
@@ -41,38 +42,40 @@ export default function ProcessOrderListTable({ actionRef, columns, listState, o
           onRetry={() => actionRef.current?.reload()}
         />
       )}
-      <ProTable<ProcessOrder>
-        actionRef={actionRef}
-        bordered
-        cardProps={false}
-        className={`process-order-table process-order-table--${density}`}
-        columns={resizableTable.columns}
-        columnsState={columnsState}
-        components={resizableTable.components}
-        headerTitle={false}
-        locale={{ emptyText: '暂无加工单' }}
-        onRow={rowSelection.onRow}
-        options={mesProTableOptions()}
-        optionsRender={renderTableToolbarPortal}
-        pagination={false}
-        params={{ ...listState.filters, page: listState.page, pageSize: listState.pageSize, quickStatus: listState.quickStatus }}
-        request={(params) => loadOrders({ listState, params, queryClient, setLoadError, setTotal, setVisibleRowCount })}
-        rowClassName={rowSelection.rowClassName}
-        rowKey="uuid"
-        rowSelection={rowSelection.rowSelection}
-        scroll={{
-          x: resizableTable.scrollX,
-          ...(virtual
-            ? { y: VIRTUAL_TABLE_BODY_HEIGHT }
-            : density === 'fill' ? { y: '100%' } : {}),
-        }}
-        search={false}
-        tableAlertOptionRender={false}
-        tableAlertRender={false}
-        tableLayout="fixed"
-        toolBarRender={() => []}
-        virtual={virtual}
-      />
+      <PerfProfiler id="process-order-list-table">
+        <ProTable<ProcessOrder>
+          actionRef={actionRef}
+          bordered
+          cardProps={false}
+          className={`process-order-table process-order-table--${density}`}
+          columns={resizableTable.columns}
+          columnsState={columnsState}
+          components={resizableTable.components}
+          headerTitle={false}
+          locale={{ emptyText: '暂无加工单' }}
+          onRow={rowSelection.onRow}
+          options={mesProTableOptions()}
+          optionsRender={renderTableToolbarPortal}
+          pagination={false}
+          params={{ ...listState.filters, page: listState.page, pageSize: listState.pageSize, quickStatus: listState.quickStatus }}
+          request={(params) => loadOrders({ listState, params, queryClient, setLoadError, setTotal, setVisibleRowCount })}
+          rowClassName={rowSelection.rowClassName}
+          rowKey="uuid"
+          rowSelection={rowSelection.rowSelection}
+          scroll={{
+            x: resizableTable.scrollX,
+            ...(virtual
+              ? { y: VIRTUAL_TABLE_BODY_HEIGHT }
+              : density === 'fill' ? { y: '100%' } : {}),
+          }}
+          search={false}
+          tableAlertOptionRender={false}
+          tableAlertRender={false}
+          tableLayout="fixed"
+          toolBarRender={() => []}
+          virtual={virtual}
+        />
+      </PerfProfiler>
       <ProcessOrderPaginationBar
         current={listState.page}
         pageSize={listState.pageSize}
