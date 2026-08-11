@@ -1,17 +1,13 @@
 import request from './request'
-import type { PageResult } from '../types/common'
-import type { Machine, MachineQuery, MachineSaveDTO } from '../types/machine'
+import { getMachine as getGeneratedMachine, listMachines } from './generated/machineReadOnly'
+import type { MachineQuery, MachineSaveDTO } from '../types/machine'
 
 export function pageMachines(query: MachineQuery) {
-  return request<PageResult<Machine>>({
-    url: '/api/machines',
-    method: 'get',
-    params: query,
-  })
+  return listMachines(query)
 }
 
 export function getMachine(uuid: string) {
-  return request<Machine>({ url: `/api/machines/${uuid}`, method: 'get' })
+  return getGeneratedMachine(uuid)
 }
 
 export function createMachine(dto: MachineSaveDTO) {

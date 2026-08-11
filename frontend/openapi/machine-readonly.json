@@ -1,0 +1,242 @@
+{
+  "components": {
+    "schemas": {
+      "MachineCapabilityVO": {
+        "properties": {
+          "catalogUuid": {
+            "type": "string"
+          },
+          "defaultCapability": {
+            "type": "boolean"
+          },
+          "maxDiameter": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxRollWeight": {
+            "type": "number"
+          },
+          "maxWidth": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "minWidth": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "priority": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "processCategory": {
+            "type": "string"
+          },
+          "processCode": {
+            "type": "string"
+          },
+          "processName": {
+            "type": "string"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "stepType": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "catalogUuid",
+          "defaultCapability",
+          "priority",
+          "processCategory",
+          "processCode",
+          "processName",
+          "stepType"
+        ],
+        "type": "object"
+      },
+      "MachineVO": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/MachineCapabilityVO"
+            },
+            "type": "array"
+          },
+          "createTime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "machineCode": {
+            "type": "string"
+          },
+          "machineName": {
+            "type": "string"
+          },
+          "machineType": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "resourceKind": {
+            "enum": [
+              "MACHINE",
+              "WORKSTATION"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "updateTime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "machineName",
+          "uuid"
+        ],
+        "type": "object"
+      },
+      "PageResultMachineVO": {
+        "properties": {
+          "current": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/MachineVO"
+            },
+            "type": "array"
+          },
+          "size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current",
+          "records",
+          "size",
+          "total"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Generated read-only client contract. Responses are unwrapped by request.ts.",
+    "title": "Paper MES Machine Read API",
+    "version": "v1"
+  },
+  "openapi": "3.0.1",
+  "paths": {
+    "/api/machines": {
+      "get": {
+        "operationId": "listMachines",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "keyword",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "current",
+            "required": false,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResultMachineVO"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "List machines",
+        "tags": [
+          "Machines"
+        ]
+      }
+    },
+    "/api/machines/{uuid}": {
+      "get": {
+        "operationId": "getMachine",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "uuid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineVO"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get a machine profile",
+        "tags": [
+          "Machines"
+        ]
+      }
+    }
+  }
+}

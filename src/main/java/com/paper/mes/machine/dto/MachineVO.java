@@ -1,15 +1,17 @@
 package com.paper.mes.machine.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
 public record MachineVO(
-        String uuid,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String uuid,
         Integer version,
         String machineCode,
-        String machineName,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String machineName,
         Integer machineType,
-        String resourceKind,
+        @Schema(allowableValues = {"MACHINE", "WORKSTATION"}) String resourceKind,
         Integer status,
         String remark,
         LocalDateTime createTime,

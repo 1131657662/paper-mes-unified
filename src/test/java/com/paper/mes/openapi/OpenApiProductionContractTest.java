@@ -1,6 +1,7 @@
 package com.paper.mes.openapi;
 
 import com.paper.mes.customer.service.CustomerService;
+import com.paper.mes.machine.service.MachineService;
 import com.paper.mes.paper.service.PaperService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,9 @@ class OpenApiProductionContractTest {
 
     @MockitoBean
     private PaperService paperService;
+
+    @MockitoBean
+    private MachineService machineService;
 
     @Test
     void production_does_not_expose_api_schema() throws Exception {

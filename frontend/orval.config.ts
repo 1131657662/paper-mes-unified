@@ -33,4 +33,20 @@ export default defineConfig({
       },
     },
   },
+  machineReadOnly: {
+    input: './openapi/machine-readonly.json',
+    output: {
+      target: './src/api/generated/machineReadOnly.ts',
+      client: 'axios-functions',
+      clean: false,
+      formatter: 'prettier',
+      override: {
+        header: false,
+        mutator: {
+          path: './src/api/orvalRequest.ts',
+          name: 'orvalRequest',
+        },
+      },
+    },
+  },
 })

@@ -72,6 +72,6 @@ npm run build
 
 The browser sends only the metric name/value/rating, a route template from `src/router/routeMeta.ts`, browser major version, device tier, and effective network type to `/api/rum`. It never sends query parameters, form values, response bodies, usernames, document identifiers, or raw URLs. The backend keeps no business-table data; accepted events are written to the existing application log and are protected by an in-memory per-client rate limit. Set `PAPER_MES_RUM_ENABLED=true` only after the log collection and retention process has been reviewed.
 
-`openapi:generate` 会运行后端 `OpenApiEnabledContractTest`，抽取 Customer GET 契约并更新 `openapi/customer-readonly.json` 与 `src/api/generated/customerReadOnly.ts`。不要手工编辑生成文件。CI 使用 `openapi:check` 阻止 Schema 或生成代码未同步的提交。
+`openapi:generate` 会运行后端 `OpenApiEnabledContractTest`，抽取 Customer、Paper、Machine 的 GET 契约并更新 `openapi/*-readonly.json` 与 `src/api/generated/*ReadOnly.ts`。不要手工编辑生成文件。CI 使用 `openapi:check` 阻止 Schema 或生成代码未同步的提交。
 
 OpenAPI 与 Swagger UI 默认关闭；仅 `dev`、`test`、`internal` profile 开启，`prod` profile 明确关闭。

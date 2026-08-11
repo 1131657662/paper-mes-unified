@@ -8,8 +8,12 @@ import com.paper.mes.machine.dto.MachineQuery;
 import com.paper.mes.machine.dto.MachineSaveDTO;
 import com.paper.mes.machine.dto.MachineVO;
 import com.paper.mes.machine.service.MachineService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,19 +26,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/machines")
 @RequiredArgsConstructor
+@Tag(name = "Machines", description = "Machine master data")
 public class MachineController {
 
     private final MachineService machineService;
 
     @GetMapping
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<PageResult<MachineVO>> page(MachineQuery query) {
+    @Operation(operationId = "listMachines", summary = "List machines")
+    public R<PageResult<MachineVO>> page(@ParameterObject MachineQuery query) {
         return R.success(machineService.pageMachines(query));
     }
 
     @GetMapping("/{uuid}")
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<MachineVO> detail(@PathVariable String uuid) {
+    @Operation(operationId = "getMachine", summary = "Get a machine profile")
+    public R<MachineVO> detail(@Parameter(description = "Machine UUID", required = true)
+                               @PathVariable String uuid) {
         return R.success(machineService.getProfile(uuid));
     }
 
