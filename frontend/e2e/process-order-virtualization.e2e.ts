@@ -2,6 +2,9 @@ import { expect, test, type Page, type Route } from '@playwright/test'
 
 const PAGE_RECORD_COUNT = 50
 const TOTAL_ORDER_COUNT = 59
+const CPU_THROTTLE_RATE = 4
+const FRAME_SAMPLE_COUNT = 60
+const FRAME_P95_REVIEW_MS = 120
 
 test('加工单页面在 pageSize=50 时仅渲染可视行并保留操作列', async ({ page }) => {
   await mockProcessOrderPage(page)
@@ -51,6 +54,67 @@ test('加工单关键控件支持键盘焦点和标签菜单操作', async ({ pa
   await expect(page.getByRole('menuitem', { name: '刷新当前' })).toBeHidden()
   await expect(tabActions).toBeFocused()
 })
+
+test('记录加工单虚拟表格四倍 CPU 降速滚动基线', async ({ context, page }, testInfo) => {
+  test.slow()
+  await mockProcessOrderPage(page)
+  await page.goto('/process-orders?size=50')
+
+  const tableBody = page.locator('.process-order-table .ant-table-tbody-virtual-holder')
+  await expect(tableBody).toBeVisible()
+  const cdp = await context.newCDPSession(page)
+
+  try {
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU_THROTTLE_RATE })
+    const metrics = await measureVirtualScroll(page)
+    await testInfo.attach('virtual-scroll-metrics.json', {
+      body: Buffer.from(JSON.stringify(metrics, null, 2)),
+      contentType: 'application/json',
+    })
+    console.info('[virtual-scroll-metrics]', JSON.stringify({
+      project: testInfo.project.name,
+      reviewRequired: metrics.p95FrameGapMs > FRAME_P95_REVIEW_MS,
+      reviewThresholdMs: FRAME_P95_REVIEW_MS,
+      ...metrics,
+    }))
+
+    expect(metrics.scrollTop).toBeGreaterThan(0)
+    expect(metrics.renderedRows).toBeLessThan(PAGE_RECORD_COUNT)
+  } finally {
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+    await cdp.detach()
+  }
+})
+
+async function measureVirtualScroll(page: Page) {
+  return page.evaluate(async ({ cpuThrottleRate, sampleCount }) => {
+    const holder = document.querySelector<HTMLElement>('.ant-table-tbody-virtual-holder')
+    if (!holder) throw new Error('Virtual table scroll holder is missing')
+
+    const frameTimes: number[] = []
+    const maxScrollTop = holder.scrollHeight - holder.clientHeight
+    await new Promise<void>((resolve) => {
+      const sample = (now: number) => {
+        frameTimes.push(now)
+        holder.scrollTop = maxScrollTop * (frameTimes.length / sampleCount)
+        if (frameTimes.length >= sampleCount) requestAnimationFrame(() => resolve())
+        else requestAnimationFrame(sample)
+      }
+      requestAnimationFrame(sample)
+    })
+
+    const gaps = frameTimes.slice(1).map((time, index) => time - frameTimes[index]).sort((a, b) => a - b)
+    const p95Index = Math.max(0, Math.ceil(gaps.length * 0.95) - 1)
+    return {
+      cpuThrottleRate,
+      domElements: document.getElementsByTagName('*').length,
+      p95FrameGapMs: gaps[p95Index] ?? 0,
+      renderedRows: document.querySelectorAll('.ant-table-tbody .ant-table-row').length,
+      sampleCount: gaps.length,
+      scrollTop: holder.scrollTop,
+    }
+  }, { cpuThrottleRate: CPU_THROTTLE_RATE, sampleCount: FRAME_SAMPLE_COUNT })
+}
 
 async function mockProcessOrderPage(page: Page): Promise<void> {
   await page.route('**/api/**', (route) => fulfillApi(route))
