@@ -85,6 +85,7 @@ export default function UserList() {
     <>
       <ProTable<SystemUser>
         className="mes-pro-table-page"
+        tableClassName="user-list__table"
         rowKey="uuid"
         actionRef={actionRef}
         columns={resizable.columns}
@@ -125,6 +126,7 @@ export default function UserList() {
             success: true,
           }
         }}
+        onLoad={makeUserTableBodyFocusable}
         bordered
         pagination={mesTablePagination(10)}
         search={{ labelWidth: 'auto' }}
@@ -151,6 +153,12 @@ export default function UserList() {
       />
     </>
   )
+}
+
+function makeUserTableBodyFocusable() {
+  document
+    .querySelector<HTMLElement>('.user-list__table .ant-table-body')
+    ?.setAttribute('tabindex', '0')
 }
 
 function userExportColumns() {

@@ -37,3 +37,8 @@
   background: #0958d9;
   opacity: 1;
 }
+
+.mes-pro-table-page .ant-table-body:focus-visible {
+  outline: 2px solid #0958d9;
+  outline-offset: -2px;
+}
