@@ -13,15 +13,27 @@ fail() {
 }
 
 for template in "${templates[@]}"; do
-  actuator_count="$(grep -c '^    location \^~ /actuator {$' "${template}" || true)"
+  awk '
+    { sub(/\r$/, "", $0) }
+    $0 == "server {" { in_server = 1; token_count = 0; server_count++; next }
+    in_server && $0 == "    server_tokens off;" { token_count++ }
+    in_server && $0 == "}" {
+      if (token_count != 1) exit 1
+      in_server = 0
+    }
+    END { if (in_server || server_count == 0) exit 1 }
+  ' "${template}" || fail "${template} must disable server tokens in every server block"
+
+  actuator_count="$(awk '{ sub(/\r$/, "", $0) } $0 == "    location ^~ /actuator {" { count++ } END { print count + 0 }' "${template}")"
   [ "${actuator_count}" = "1" ] || fail "${template} must block /actuator exactly once"
 
-  actuator_line="$(awk '$0 == "    location ^~ /actuator {" { print NR }' "${template}")"
-  fallback_line="$(awk '$0 == "    location / {" { print NR }' "${template}")"
+  actuator_line="$(awk '{ sub(/\r$/, "", $0) } $0 == "    location ^~ /actuator {" { print NR }' "${template}")"
+  fallback_line="$(awk '{ sub(/\r$/, "", $0) } $0 == "    location / {" { print NR }' "${template}")"
   [ -n "${fallback_line}" ] || fail "${template} has no SPA fallback"
   [ "${actuator_line}" -lt "${fallback_line}" ] || fail "${template} blocks /actuator after SPA fallback"
 
   awk '
+    { sub(/\r$/, "", $0) }
     $0 == "    location ^~ /actuator {" { in_actuator = 1; next }
     in_actuator && $0 == "        return 404;" { blocked = 1 }
     in_actuator && $0 == "    }" { exit blocked ? 0 : 1 }
