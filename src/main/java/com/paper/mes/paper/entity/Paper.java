@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.paper.mes.common.BaseEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -16,9 +17,11 @@ import lombok.EqualsAndHashCode;
 public class Paper extends BaseEntity {
 
     @TableId(type = IdType.ASSIGN_UUID)
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private String uuid;
 
     private String paperCode;
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private String paperName;
     /** 常用克重 g/㎡ */
     private Integer gramWeight;

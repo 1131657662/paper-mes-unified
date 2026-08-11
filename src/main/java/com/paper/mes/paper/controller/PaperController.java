@@ -8,8 +8,12 @@ import com.paper.mes.paper.dto.PaperQuery;
 import com.paper.mes.paper.dto.PaperSaveDTO;
 import com.paper.mes.paper.entity.Paper;
 import com.paper.mes.paper.service.PaperService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,19 +26,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/papers")
 @RequiredArgsConstructor
+@Tag(name = "Papers", description = "Paper master data")
 public class PaperController {
 
     private final PaperService paperService;
 
     @GetMapping
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<PageResult<Paper>> page(PaperQuery query) {
+    @Operation(operationId = "listPapers", summary = "List papers")
+    public R<PageResult<Paper>> page(@ParameterObject PaperQuery query) {
         return R.success(paperService.pagePapers(query));
     }
 
     @GetMapping("/{uuid}")
     @RequirePermission(Permissions.BASE_VIEW)
-    public R<Paper> detail(@PathVariable String uuid) {
+    @Operation(operationId = "getPaper", summary = "Get a paper profile")
+    public R<Paper> detail(@Parameter(description = "Paper UUID", required = true)
+                           @PathVariable String uuid) {
         return R.success(paperService.getByUuid(uuid));
     }
 

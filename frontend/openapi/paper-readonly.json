@@ -1,0 +1,186 @@
+{
+  "components": {
+    "schemas": {
+      "PageResultPaper": {
+        "properties": {
+          "current": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/Paper"
+            },
+            "type": "array"
+          },
+          "size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current",
+          "records",
+          "size",
+          "total"
+        ],
+        "type": "object"
+      },
+      "Paper": {
+        "properties": {
+          "createBy": {
+            "type": "string"
+          },
+          "createTime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "extNum1": {
+            "type": "number"
+          },
+          "extNum2": {
+            "type": "number"
+          },
+          "extStr1": {
+            "type": "string"
+          },
+          "extStr2": {
+            "type": "string"
+          },
+          "gramWeight": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "isDeleted": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "paperCode": {
+            "type": "string"
+          },
+          "paperName": {
+            "type": "string"
+          },
+          "paperType": {
+            "type": "string"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "updateBy": {
+            "type": "string"
+          },
+          "updateTime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "paperName",
+          "uuid"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Generated read-only client contract. Responses are unwrapped by request.ts.",
+    "title": "Paper MES Paper Read API",
+    "version": "v1"
+  },
+  "openapi": "3.0.1",
+  "paths": {
+    "/api/papers": {
+      "get": {
+        "operationId": "listPapers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "keyword",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "current",
+            "required": false,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResultPaper"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "List papers",
+        "tags": [
+          "Papers"
+        ]
+      }
+    },
+    "/api/papers/{uuid}": {
+      "get": {
+        "operationId": "getPaper",
+        "parameters": [
+          {
+            "description": "Paper UUID",
+            "in": "path",
+            "name": "uuid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paper"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get a paper profile",
+        "tags": [
+          "Papers"
+        ]
+      }
+    }
+  }
+}

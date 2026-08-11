@@ -1,17 +1,13 @@
 import request from './request'
-import type { PageResult } from '../types/common'
-import type { Paper, PaperQuery, PaperSaveDTO } from '../types/paper'
+import { getPaper as getGeneratedPaper, listPapers } from './generated/paperReadOnly'
+import type { PaperQuery, PaperSaveDTO } from '../types/paper'
 
 export function pagePapers(query: PaperQuery) {
-  return request<PageResult<Paper>>({
-    url: '/api/papers',
-    method: 'get',
-    params: query,
-  })
+  return listPapers(query)
 }
 
 export function getPaper(uuid: string) {
-  return request<Paper>({ url: `/api/papers/${uuid}`, method: 'get' })
+  return getGeneratedPaper(uuid)
 }
 
 export function createPaper(dto: PaperSaveDTO) {

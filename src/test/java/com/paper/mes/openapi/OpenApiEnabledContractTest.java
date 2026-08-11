@@ -3,6 +3,7 @@ package com.paper.mes.openapi;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.customer.service.CustomerService;
+import com.paper.mes.paper.service.PaperService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -37,8 +38,11 @@ class OpenApiEnabledContractTest {
     @MockitoBean
     private CustomerService customerService;
 
+    @MockitoBean
+    private PaperService paperService;
+
     @Test
-    void schema_contains_stable_customer_read_operation_ids() throws Exception {
+    void schema_contains_stable_master_data_read_operation_ids() throws Exception {
         String content = mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -47,6 +51,9 @@ class OpenApiEnabledContractTest {
         assertOperationId(schema, "/api/customers", "listCustomers");
         assertOperationId(schema, "/api/customers/{uuid}", "getCustomer");
         assertThat(schema.at("/components/schemas/CustomerVO").isObject()).isTrue();
+        assertOperationId(schema, "/api/papers", "listPapers");
+        assertOperationId(schema, "/api/papers/{uuid}", "getPaper");
+        assertThat(schema.at("/components/schemas/Paper").isObject()).isTrue();
         writeSchema(content);
     }
 

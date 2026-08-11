@@ -1,6 +1,7 @@
 package com.paper.mes.openapi;
 
 import com.paper.mes.customer.service.CustomerService;
+import com.paper.mes.paper.service.PaperService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -25,6 +26,9 @@ class OpenApiProductionContractTest {
 
     @MockitoBean
     private CustomerService customerService;
+
+    @MockitoBean
+    private PaperService paperService;
 
     @Test
     void production_does_not_expose_api_schema() throws Exception {
