@@ -26,6 +26,8 @@ import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.dto.ProcessOrderPrintViewVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
 import com.paper.mes.processorder.dto.ProcessOrderIssueVersionVO;
+import com.paper.mes.processorder.dto.ProcessOrderIssueConsistencyVO;
+import com.paper.mes.processorder.dto.ProcessOrderPostProductionNoteDTO;
 import com.paper.mes.processorder.dto.ProcessOrderReissueDTO;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessOrderRollbackDTO;
@@ -91,6 +93,19 @@ public class ProcessOrderController {
         return R.success(processOrderService.getPrintView(uuid, version));
     }
 
+    @GetMapping("/{uuid}/issue-consistency")
+    @RequirePermission(Permissions.ORDER_VIEW)
+    public R<ProcessOrderIssueConsistencyVO> issueConsistency(@PathVariable String uuid) {
+        return R.success(processOrderService.getIssueConsistency(uuid));
+    }
+
+    @GetMapping("/{uuid}/issue-versions/{issueVersion}/print-view")
+    @RequirePermission(Permissions.ORDER_VIEW)
+    public R<ProcessOrderPrintViewVO> historicalIssuePrintView(@PathVariable String uuid,
+                                                                @PathVariable Integer issueVersion) {
+        return R.success(processOrderService.getHistoricalIssuePrintView(uuid, issueVersion));
+    }
+
     @PostMapping
     @RequirePermission(Permissions.ORDER_CREATE)
     public R<String> create(@Valid @RequestBody ProcessOrderCreateDTO dto) {
@@ -105,10 +120,18 @@ public class ProcessOrderController {
     }
 
     @PutMapping("/{uuid}/remarks")
-    @RequirePermission(Permissions.ORDER_CREATE)
+    @RequirePermission(Permissions.ORDER_MANAGE)
     public R<Void> updateOrderRemark(@PathVariable String uuid,
                                      @Valid @RequestBody ProcessOrderRemarkDTO dto) {
         processOrderService.updateOrderRemark(uuid, dto);
+        return R.success();
+    }
+
+    @PutMapping("/{uuid}/post-production-note")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<Void> updatePostProductionNote(@PathVariable String uuid,
+                                            @Valid @RequestBody ProcessOrderPostProductionNoteDTO dto) {
+        processOrderService.updatePostProductionNote(uuid, dto);
         return R.success();
     }
 
@@ -244,6 +267,15 @@ public class ProcessOrderController {
     public R<Void> prepareReissue(@PathVariable String uuid,
                                   @Valid @RequestBody ProcessOrderReissueDTO dto) {
         processOrderService.prepareReissue(uuid, dto);
+        return R.success();
+    }
+
+    @PutMapping("/{uuid}/reissue/cancel")
+    @RequirePermission(Permissions.ORDER_MANAGE)
+    public R<Void> cancelPendingReissue(@PathVariable String uuid,
+                                        @RequestParam Integer expectedVersion,
+                                        @RequestParam String reason) {
+        processOrderService.cancelPendingReissue(uuid, expectedVersion, reason);
         return R.success();
     }
 

@@ -17,7 +17,7 @@ class SchemaReadinessServiceTest {
         SchemaReadinessReport report = service.refresh();
 
         assertThat(report.ready()).isTrue();
-        assertThat(report.databaseVersion()).isEqualTo("3.63");
+        assertThat(report.databaseVersion()).isEqualTo("3.64");
         assertThat(report.missingStructures()).isEmpty();
     }
 
@@ -48,32 +48,32 @@ class SchemaReadinessServiceTest {
     @Test
     void selectsTheHighestSemanticMigrationVersion() {
         SchemaReadinessService service = service(
-                new ReadinessJdbcTemplate(null, List.of("3.61", "3.9", "3.62")));
+                new ReadinessJdbcTemplate(null, List.of("3.61", "3.9", "3.63")));
 
         SchemaReadinessReport report = service.refresh();
 
-        assertThat(report.databaseVersion()).isEqualTo("3.62");
+        assertThat(report.databaseVersion()).isEqualTo("3.63");
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures())
-                .contains("migration:expected=3.63,actual=3.62");
+                .contains("migration:expected=3.64,actual=3.63");
     }
 
     @Test
     void marksTheDatabaseUntrackedWhenAppliedVersionIsInvalid() {
         SchemaReadinessService service = service(
-                new ReadinessJdbcTemplate(null, List.of("3.62", "legacy")));
+                new ReadinessJdbcTemplate(null, List.of("3.63", "legacy")));
 
         SchemaReadinessReport report = service.refresh();
 
         assertThat(report.databaseVersion()).isEqualTo("UNTRACKED");
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures())
-                .contains("migration:expected=3.63,actual=UNTRACKED");
+                .contains("migration:expected=3.64,actual=UNTRACKED");
     }
 
     private SchemaReadinessService service(JdbcTemplate jdbcTemplate) {
         SchemaReadinessService service = new SchemaReadinessService(jdbcTemplate);
-        ReflectionTestUtils.setField(service, "expectedVersion", "3.63");
+        ReflectionTestUtils.setField(service, "expectedVersion", "3.64");
         ReflectionTestUtils.setField(service, "requireMigrationHistory", true);
         return service;
     }
@@ -83,7 +83,7 @@ class SchemaReadinessServiceTest {
         private final List<String> versions;
 
         private ReadinessJdbcTemplate(String missingName) {
-            this(missingName, List.of("3.63"));
+            this(missingName, List.of("3.64"));
         }
 
         private ReadinessJdbcTemplate(String missingName, List<String> versions) {

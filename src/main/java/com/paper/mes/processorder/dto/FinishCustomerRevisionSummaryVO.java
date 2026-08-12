@@ -17,4 +17,6 @@ public class FinishCustomerRevisionSummaryVO {
     private BigDecimal customerTotalWeight;
     private String operator;
     private LocalDateTime createdAt;
+    private boolean reissued;
+    private Integer issueVersion;
 }

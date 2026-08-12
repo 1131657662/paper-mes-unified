@@ -19,10 +19,25 @@ public class FinishCustomerRevisionSchemaBootstrap implements ApplicationRunner 
 
     @Override
     public void run(ApplicationArguments args) {
+        addPostProductionNote();
         addCustomerDisplayWeight();
         createRevisionTable();
         createRevisionItemTable();
         addWeightOperand();
+    }
+
+    private void addPostProductionNote() {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema=DATABASE() AND table_name='biz_process_order'
+                  AND column_name='post_production_note'
+                """, Integer.class);
+        if (count == null || count == 0) {
+            jdbcTemplate.execute("""
+                    ALTER TABLE biz_process_order ADD COLUMN post_production_note TEXT DEFAULT NULL
+                    COMMENT 'Post-production operational note; excluded from issued snapshots' AFTER remark_long
+                    """);
+        }
     }
 
     private void addCustomerDisplayWeight() {

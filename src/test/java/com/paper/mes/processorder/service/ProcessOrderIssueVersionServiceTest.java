@@ -101,4 +101,34 @@ class ProcessOrderIssueVersionServiceTest {
         });
         verify(mapper).selectList(any(LambdaQueryWrapper.class));
     }
+
+    @Test
+    void requireHistoricalReadable_rejectsPendingOrArchivedChangeThatWasNeverIssued() {
+        ProcessOrderIssueVersion pending = new ProcessOrderIssueVersion();
+        pending.setStatus(ProcessOrderIssueVersion.STATUS_PENDING);
+        when(mapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(pending);
+
+        assertThatThrownBy(() -> service.requireHistoricalReadable("order-1", 2))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Only applied issue versions");
+
+        ProcessOrderIssueVersion archived = new ProcessOrderIssueVersion();
+        archived.setStatus(ProcessOrderIssueVersion.STATUS_ARCHIVED);
+        archived.setSnapshotBefore("prior-issued-snapshot");
+        when(mapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(archived);
+
+        assertThatThrownBy(() -> service.requireHistoricalReadable("order-1", 3))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Only applied issue versions");
+    }
+
+    @Test
+    void requireHistoricalReadable_allowsAppliedVersionWithFinalSnapshot() {
+        ProcessOrderIssueVersion applied = new ProcessOrderIssueVersion();
+        applied.setStatus(ProcessOrderIssueVersion.STATUS_APPLIED);
+        applied.setSnapshotAfter("issued-snapshot");
+        when(mapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(applied);
+
+        assertThat(service.requireHistoricalReadable("order-1", 2)).isSameAs(applied);
+    }
 }

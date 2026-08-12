@@ -22,6 +22,8 @@ import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.dto.ProcessOrderPrintViewVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
 import com.paper.mes.processorder.dto.ProcessOrderIssueVersionVO;
+import com.paper.mes.processorder.dto.ProcessOrderIssueConsistencyVO;
+import com.paper.mes.processorder.dto.ProcessOrderPostProductionNoteDTO;
 import com.paper.mes.processorder.dto.ProcessOrderReissueDTO;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
@@ -45,6 +47,10 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
     /** 读取下发冻结版本或完工实际版本的只读打印详情。 */
     ProcessOrderPrintViewVO getPrintView(String uuid, PrintViewVersion version);
 
+    ProcessOrderPrintViewVO getHistoricalIssuePrintView(String uuid, Integer issueVersion);
+
+    ProcessOrderIssueConsistencyVO getIssueConsistency(String uuid);
+
     /** 导出加工单详情资料 Excel。 */
     String create(ProcessOrderCreateDTO dto);
 
@@ -53,6 +59,8 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
 
     /** 轻量修改主单备注，不改动客户、日期、金额、状态等核心字段。 */
     void updateOrderRemark(String uuid, ProcessOrderRemarkDTO dto);
+
+    void updatePostProductionNote(String uuid, ProcessOrderPostProductionNoteDTO dto);
 
     /** 修改一条原纸明细。 */
     void updateRoll(String rollUuid, OriginalRollDTO dto);
@@ -120,6 +128,8 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
 
     /** Archive the current issued snapshot and reopen a controlled pending edit for reissue. */
     void prepareReissue(String uuid, ProcessOrderReissueDTO dto);
+
+    void cancelPendingReissue(String uuid, Integer expectedVersion, String reason);
 
     /** List retained issued versions without exposing raw snapshots to ordinary list views. */
     List<ProcessOrderIssueVersionVO> listIssueVersions(String uuid);

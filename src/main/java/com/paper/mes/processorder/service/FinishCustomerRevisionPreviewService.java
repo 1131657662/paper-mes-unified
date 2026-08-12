@@ -30,6 +30,8 @@ public class FinishCustomerRevisionPreviewService {
     private final FinishRollMapper finishMapper;
     private final FinishCustomerRevisionMapper revisionMapper;
     private final FinishCustomerSpecPlanner planner;
+    private final FinishCustomerRevisionPolicy revisionPolicy;
+    private final ProcessOrderDeliveryImpactCounter deliveryImpactCounter;
 
     @Transactional(readOnly = true)
     public FinishCustomerRevisionPreviewVO current(String orderUuid) {
@@ -53,6 +55,11 @@ public class FinishCustomerRevisionPreviewService {
         return summary(order, nextRevisionNo(orderUuid), rows);
     }
 
+    public void requirePublishAllowed(String orderUuid, FinishCustomerRevisionPreviewVO preview) {
+        ProcessOrder order = requireOrder(orderUuid);
+        revisionPolicy.requirePublishAllowed(order, preview.getItems());
+    }
+
     private FinishCustomerSpecVO planRow(FinishRoll finish, FinishCustomerSpecItemDTO item) {
         try {
             return planner.plan(finish, item);
@@ -67,9 +74,7 @@ public class FinishCustomerRevisionPreviewService {
     private ProcessOrder requireOrder(String orderUuid) {
         ProcessOrder order = orderMapper.selectById(orderUuid);
         if (order == null) throw new BusinessException(ErrorCode.E002, "加工单不存在");
-        if (order.getOrderStatus() != null && order.getOrderStatus() == 6) {
-            throw new BusinessException(ErrorCode.E001, "已作废加工单不能维护客户规格");
-        }
+        revisionPolicy.requireReadable(order);
         return order;
     }
 
@@ -128,6 +133,7 @@ public class FinishCustomerRevisionPreviewService {
         preview.setOrderUuid(order.getUuid());
         preview.setOrderNo(order.getOrderNo());
         preview.setOrderVersion(order.getVersion());
+        preview.setSourceStage(sourceStage(order.getOrderStatus()));
         preview.setNextRevisionNo(nextRevisionNo);
         int itemCount = items.size();
         int validItemCount = (int) items.stream().filter(FinishCustomerSpecVO::isValid).count();
@@ -137,6 +143,8 @@ public class FinishCustomerRevisionPreviewService {
         preview.setCustomerTotalWeight(customerTotal);
         preview.setDifferenceWeight(customerTotal.subtract(physicalTotal).setScale(3));
         preview.setHasErrors(validItemCount != itemCount);
+        preview.setReissueRequired(revisionPolicy.requiresReissue(order, items));
+        preview.setPendingDeliveryCount(deliveryImpactCounter.pendingDeliveryCount(order.getUuid()));
         preview.setItems(items);
         return preview;
     }
@@ -148,5 +156,17 @@ public class FinishCustomerRevisionPreviewService {
                 .filter(java.util.Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(3);
+    }
+
+    private String sourceStage(Integer status) {
+        return switch (status == null ? -1 : status) {
+            case 0 -> "DRAFT";
+            case 1 -> "PENDING";
+            case 2 -> "PROCESSING";
+            case 3 -> "BACK_RECORD";
+            case 4 -> "COMPLETED";
+            case 5 -> "SETTLED";
+            default -> "UNKNOWN";
+        };
     }
 }

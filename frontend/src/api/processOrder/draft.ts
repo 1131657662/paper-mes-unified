@@ -15,6 +15,7 @@ import type {
   ProcessOrderCreateDTO,
   ProcessOrderDetailVO,
   ProcessOrderPrintViewVO,
+  ProcessOrderIssueConsistency,
   ProcessOrderQuery,
   ProcessOrderRemarkDTO,
 } from '../../types/processOrder'
@@ -42,6 +43,20 @@ export function getProcessOrderPrintView(
     url: `/api/process-orders/${uuid}/print-view`,
     method: 'get',
     params: { version },
+  })
+}
+
+export function getProcessOrderIssueConsistency(uuid: string) {
+  return request<ProcessOrderIssueConsistency>({
+    url: `/api/process-orders/${uuid}/issue-consistency`,
+    method: 'get',
+  })
+}
+
+export function getHistoricalProcessOrderIssuePrintView(uuid: string, issueVersion: number) {
+  return request<ProcessOrderPrintViewVO>({
+    url: `/api/process-orders/${uuid}/issue-versions/${issueVersion}/print-view`,
+    method: 'get',
   })
 }
 
@@ -143,6 +158,17 @@ export function updateProcessOrderRemark(
 ) {
   return request<void>({
     url: `/api/process-orders/${uuid}/remarks`,
+    method: 'put',
+    data: dto,
+  })
+}
+
+export function updateProcessOrderPostProductionNote(
+  uuid: string,
+  dto: import('../../types/processOrder').ProcessOrderPostProductionNoteDTO,
+) {
+  return request<void>({
+    url: `/api/process-orders/${uuid}/post-production-note`,
     method: 'put',
     data: dto,
   })

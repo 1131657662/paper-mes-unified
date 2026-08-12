@@ -69,7 +69,7 @@ class ProcessRelationshipIntegritySchemaContractTest {
         String schema = read("sql/01_schema_v4.1.sql");
         String version = read("sql/schema-baseline.version").trim();
 
-        assertThat(version).isEqualTo("3.63");
+        assertThat(version).isEqualTo("3.64");
         assertThat(schema).contains(
                 "uk_process_step_stage_scope",
                 "uk_stage_output_source_scope",

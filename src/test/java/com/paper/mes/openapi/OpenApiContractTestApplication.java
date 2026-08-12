@@ -9,8 +9,10 @@ import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Profile;
 
 @SpringBootConfiguration
+@Profile("openapi-contract")
 @EnableAutoConfiguration(exclude = DataSourceAutoConfiguration.class)
 @Import({CustomerController.class, PaperController.class, MachineController.class,
         WarehouseController.class, OpenApiConfig.class})

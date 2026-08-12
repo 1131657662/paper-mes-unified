@@ -3,6 +3,7 @@ package com.paper.mes.integration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.customerdisplay.formula.CustomerWeightCalculationMode;
 import com.paper.mes.customerdisplay.formula.CustomerWeightZeroPolicy;
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.dto.*;
 import com.paper.mes.processorder.entity.FinishCustomerRevision;
 import com.paper.mes.processorder.entity.FinishRoll;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
@@ -38,7 +40,7 @@ class FinishCustomerRevisionBusinessFlowIT {
     @Autowired private ProcessOrderMapper orderMapper;
 
     @Test
-    void publishCustomerRevision_keepsPhysicalInventoryAndSettlementFactsUntouched() {
+    void completedOrder_whenOnlyCustomerDisplayWeightChanges_keepsPhysicalAndSettlementFactsUntouched() {
         BusinessFlowFixtureFactory.Scenario scenario = fixtures.createCompletedOrderWithTwoFinishes();
         FinishRoll beforeFinish = finishMapper.selectById(scenario.first().getUuid());
         ProcessOrder beforeOrder = orderMapper.selectById(scenario.order().getUuid());
@@ -54,6 +56,18 @@ class FinishCustomerRevisionBusinessFlowIT {
         assertSettlementFacts(orderMapper.selectById(scenario.order().getUuid()), baseline);
         assertCustomerCache(finishMapper.selectById(scenario.first().getUuid()));
         assertRevisionDetail(scenario.order().getUuid(), published.getUuid(), scenario.first().getFinishRollNo());
+    }
+
+    @Test
+    void completedOrder_whenPrintedCustomerSpecificationChanges_rejectsPublishing() {
+        BusinessFlowFixtureFactory.Scenario scenario = fixtures.createCompletedOrderWithTwoFinishes();
+        FinishCustomerRevisionPreviewVO current = previewService.current(scenario.order().getUuid());
+        FinishCustomerRevisionRequestDTO request = request(current.getItems().getFirst(), current.getOrderVersion());
+        request.getItems().getFirst().setCustomerPaperName("不允许改变的生产规格");
+
+        assertThatThrownBy(() -> publisher.publish(scenario.order().getUuid(), request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不能修改已下发的客户品名、克重或门幅");
     }
 
     private void assertPublishedOnce(String orderUuid, FinishCustomerRevisionSummaryVO published,
@@ -78,9 +92,9 @@ class FinishCustomerRevisionBusinessFlowIT {
     }
 
     private void assertCustomerCache(FinishRoll finish) {
-        assertThat(finish.getCustomerPaperName()).isEqualTo("食品卡");
-        assertThat(finish.getCustomerGramWeight()).isEqualTo(100);
-        assertThat(finish.getCustomerFinishWidth()).isEqualTo(500);
+        assertThat(finish.getCustomerPaperName()).isEqualTo("integration-paper");
+        assertThat(finish.getCustomerGramWeight()).isEqualTo(80);
+        assertThat(finish.getCustomerFinishWidth()).isEqualTo(1000);
         assertThat(finish.getCustomerDisplayWeight()).isEqualByComparingTo("125.000");
     }
 
@@ -88,7 +102,7 @@ class FinishCustomerRevisionBusinessFlowIT {
         FinishCustomerRevisionDetailVO detail = reader.detail(orderUuid, revisionUuid);
         assertThat(detail.getItems()).hasSize(1);
         assertThat(detail.getItems().getFirst().getFinishRollNo()).isEqualTo(finishRollNo);
-        assertThat(detail.getItems().getFirst().getCustomerPaperName()).isEqualTo("食品卡");
+        assertThat(detail.getItems().getFirst().getCustomerPaperName()).isEqualTo("integration-paper");
         assertThat(detail.getItems().getFirst().getCustomerDisplayWeight()).isEqualByComparingTo("125.000");
         assertThat(detail.getItems().getFirst().getFormulaVariables())
                 .containsEntry("adjustment", new BigDecimal("25"));
@@ -98,9 +112,6 @@ class FinishCustomerRevisionBusinessFlowIT {
         FinishCustomerSpecItemDTO item = new FinishCustomerSpecItemDTO();
         item.setFinishUuid(row.getFinishUuid());
         item.setExpectedVersion(row.getFinishVersion());
-        item.setCustomerPaperName("食品卡");
-        item.setCustomerGramWeight(100);
-        item.setCustomerFinishWidth(500);
         item.setCalculationMode(CustomerWeightCalculationMode.FORMULA);
         item.setFormulaExpression("physicalWeight + adjustment");
         item.setFormulaVariables(Map.of("adjustment", new BigDecimal("25")));

@@ -184,12 +184,24 @@ class BusinessFlowConcurrencyContractTest {
     }
 
     @Test
-    void processOrderRemark_whenFinishedBeforeSettlement_allowsSafeRemarkEdits() throws IOException {
+    void processOrderRemarks_freezeProductionInstructionsAndSeparatePostProductionNotes() throws IOException {
         String source = source(PROCESS_ORDER_SERVICE);
         String editableRule = slice(source, "private void validateRemarkEditable", "private void recordFieldIfChanged");
 
-        assertContainsAll(editableRule, "STATUS_SETTLED", "STATUS_VOIDED");
-        assertFalse(editableRule.contains("STATUS_FINISHED"), "已完成未结算的加工单应允许直接修改备注");
+        assertContainsAll(editableRule,
+                "status >= STATUS_PROCESSING",
+                "生产备注已随下发版本冻结",
+                "validatePostProductionNoteEditable",
+                "status < STATUS_TO_RECORD",
+                "status == STATUS_VOIDED");
+        assertContainsAll(slice(source, "public void updateOrderRemark", "public void updatePostProductionNote"),
+                "businessLockService.lockProcessOrders(List.of(uuid));",
+                "requireExpectedVersion(order, dto.getExpectedVersion());",
+                ".eq(ProcessOrder::getVersion, dto.getExpectedVersion())");
+        assertContainsAll(slice(source, "public void updatePostProductionNote", "public void updateRoll"),
+                "validatePostProductionNoteEditable(order);",
+                "ProcessOrder::getPostProductionNote",
+                ".setSql(\"version = version + 1\")");
     }
 
     @Test

@@ -61,7 +61,7 @@ public class FinishCustomerRevisionWriter {
         revision.setRevisionNo(preview.getNextRevisionNo());
         revision.setRequestId(request.getRequestId().trim());
         revision.setRequestHash(requestHash);
-        revision.setSourceStage(sourceStage(order.getOrderStatus()));
+        revision.setSourceStage(preview.getSourceStage());
         revision.setReason(request.getReason().trim());
         revision.setItemCount(preview.getItemCount());
         revision.setCustomerTotalWeight(positiveOrNull(preview.getCustomerTotalWeight()));
@@ -120,18 +120,6 @@ public class FinishCustomerRevisionWriter {
         } catch (JsonProcessingException exception) {
             throw new BusinessException("客户重量公式参数无法保存");
         }
-    }
-
-    private String sourceStage(Integer status) {
-        return switch (status == null ? -1 : status) {
-            case 0 -> "DRAFT";
-            case 1 -> "PENDING";
-            case 2 -> "PROCESSING";
-            case 3 -> "BACK_RECORD";
-            case 4 -> "COMPLETED";
-            case 5 -> "SETTLED";
-            default -> "UNKNOWN";
-        };
     }
 
     private BigDecimal positiveOrNull(BigDecimal value) {

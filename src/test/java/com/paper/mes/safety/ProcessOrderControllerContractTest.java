@@ -13,7 +13,9 @@ import com.paper.mes.processorder.dto.PrintDTO;
 import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderIssueVersionVO;
+import com.paper.mes.processorder.dto.ProcessOrderPostProductionNoteDTO;
 import com.paper.mes.processorder.dto.ProcessOrderReissueDTO;
+import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingAdjustmentDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingBatchDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingBatchPreviewVO;
@@ -246,6 +248,55 @@ class ProcessOrderControllerContractTest {
                 .andExpect(jsonPath("$.code").value(403));
 
         verify(processOrderService, never()).print(any(), any());
+    }
+
+    @Test
+    void productionRemark_withOperatorRole_returnsForbidden() throws Exception {
+        authorizeAs("operator");
+
+        mvc.perform(put("/api/process-orders/order-uuid/remarks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\":7,\"remark\":\"current instruction\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+
+        verify(processOrderService, never()).updateOrderRemark(any(), any());
+    }
+
+    @Test
+    void productionRemark_withOrderClerkRole_bindsOptimisticVersion() throws Exception {
+        authorizeAs("order_clerk");
+
+        mvc.perform(put("/api/process-orders/order-uuid/remarks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\":7,\"remark\":\"current instruction\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        ArgumentCaptor<ProcessOrderRemarkDTO> captor = ArgumentCaptor.forClass(ProcessOrderRemarkDTO.class);
+        verify(processOrderService).updateOrderRemark(eq("order-uuid"), captor.capture());
+        assertEquals(7, captor.getValue().getExpectedVersion());
+        assertEquals("current instruction", captor.getValue().getRemark());
+    }
+
+    @Test
+    void postProductionNote_withOrderClerkRole_bindsOptimisticVersion() throws Exception {
+        authorizeAs("order_clerk");
+
+        mvc.perform(put("/api/process-orders/order-uuid/post-production-note")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\":8,\"postProductionNote\":\"delivery follow-up\"}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        ArgumentCaptor<ProcessOrderPostProductionNoteDTO> captor =
+                ArgumentCaptor.forClass(ProcessOrderPostProductionNoteDTO.class);
+        verify(processOrderService).updatePostProductionNote(eq("order-uuid"), captor.capture());
+        assertEquals(8, captor.getValue().getExpectedVersion());
+        assertEquals("delivery follow-up", captor.getValue().getPostProductionNote());
     }
 
     @Test

@@ -8,7 +8,7 @@ import { useFinishCustomerSpecs } from '../../processOrderCustomerSpec/useFinish
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import OrderDetailContent from './OrderDetailContent'
 import OrderDetailRemarkModals from './OrderDetailRemarkModals'
-import { useOrderRemarkEditor, useRollRemarkEditor } from './useOrderDetailRemarkEditors'
+import { useOrderRemarkEditor, usePostProductionNoteEditor, useRollRemarkEditor } from './useOrderDetailRemarkEditors'
 import './OrderDetailView.css'
 import './OrderDetailOverview.css'
 
@@ -36,6 +36,7 @@ export default function OrderDetailView({
   const exportMutation = useCreateProcessOrderExportTask()
   const customerSpecs = useFinishCustomerSpecs(detail?.order.uuid)
   const orderRemark = useOrderRemarkEditor(detail)
+  const postProductionNote = usePostProductionNoteEditor(detail)
   const rollRemark = useRollRemarkEditor(detail)
 
   const handleExport = async () => {
@@ -56,12 +57,13 @@ export default function OrderDetailView({
         actions={{
           exporting: exportMutation.isPending, onAddStep, onBack, onConfigureRoute, onDeleteStep,
           onEditOrderRemark: orderRemark.show,
+          onEditPostProductionNote: postProductionNote.show,
           onEditRollRemark: rollRemark.show,
           onEditStep, onExport: handleExport,
           onAdjustPricing,
         }}
       />
-      <OrderDetailRemarkModals detail={detail} orderEditor={orderRemark} rollEditor={rollRemark} />
+      <OrderDetailRemarkModals detail={detail} orderEditor={orderRemark} postProductionEditor={postProductionNote} rollEditor={rollRemark} />
     </div>
   )
 }

@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Drawer, Form, Input, InputNumber, Spin, message } from 'antd'
+import { Alert, Drawer, Form, Input, InputNumber, Spin, message } from 'antd'
 import QueryLoadErrorAlert from '../../../components/feedback/QueryLoadErrorAlert'
 import { notifyErrorOnce } from '../../../api/request'
 import type { PrintDTO, PrintResultVO, ProcessOrderDetailVO, ProcessOrderPrintViewVO, PrintViewVersion } from '../../../types/processOrder'
 import { useIssueProcessOrder, usePhysicalReprintProcessOrder, usePrintProcessOrder } from '../hooks/usePrintProcessOrder'
 import { useProcessOrderPrintView } from '../hooks/useProcessOrderPrintView'
+import { useProcessOrderIssueConsistency } from '../hooks/useProcessOrderIssueConsistency'
 import { printIssueDrawerTitle, resolvePrintIssueMode, type PrintIssueMode } from '../printIssueMode'
 import { printVersionProps } from '../printVersionModel'
 import PrintOnlySheet from './PrintOnlySheet'
@@ -37,6 +38,7 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted, onP
     isLoading: isLoadingPrintView,
     refetch: refetchPrintView,
   } = useProcessOrderPrintView(detail.order.uuid, version, open)
+  const { data: consistency } = useProcessOrderIssueConsistency(detail.order.uuid, open)
   const mode = resolvePrintIssueMode(
     detail.order.orderStatus,
     detail.order.printCount,
@@ -45,9 +47,12 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted, onP
     detail.printStage,
   )
   const printDetail = printView?.detail ?? detail
-  const disabledReason = isLoadingPrintView
+  const consistencyReason = version === 'ISSUED' && consistency?.status === 'REISSUE_REQUIRED'
+    ? consistency.blockingReason ?? '当前数据与下发版本不一致，请先完成重新下发'
+    : undefined
+  const disabledReason = consistencyReason ?? (isLoadingPrintView
     ? '正在加载打印版本，请稍候'
-    : isPrintViewError ? '打印版本加载失败，请重新加载' : undefined
+    : isPrintViewError ? '打印版本加载失败，请重新加载' : undefined)
 
   const openBrowserPrint = () => window.setTimeout(() => window.print(), 0)
 
@@ -147,10 +152,15 @@ export default function PrintIssueDrawer({ detail, open, onClose, onPrinted, onP
             onRetry={() => void refetchPrintView()}
           />
         ) : (
-          <PrintDrawerContent copies={copies} detail={printDetail} form={form} loading={isLoadingPrintView}
-            mode={mode} pendingConfirmation={pendingConfirmation} result={result} version={version}
-            view={printView} onCopiesChange={setCopies}
-            onVersionChange={setVersion} />
+          <>
+            {consistencyReason && <Alert className="print-issue__screen-only" showIcon type="error"
+              message="当前生产数据与下发版本不一致"
+              description={consistencyReason} />}
+            <PrintDrawerContent copies={copies} detail={printDetail} form={form} loading={isLoadingPrintView}
+              mode={mode} pendingConfirmation={pendingConfirmation} result={result} version={version}
+              view={printView} onCopiesChange={setCopies}
+              onVersionChange={setVersion} />
+          </>
         )}
       </Drawer>
       {open && !isLoadingPrintView && !isPrintViewError

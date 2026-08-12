@@ -1,6 +1,6 @@
 -- =============================================================================
 -- 卷筒纸加工管理系统 V4.1  数据库建表脚本
--- Canonical schema version: 3.63
+-- Canonical schema version: 3.64
 -- Phase 1 / P0-1  数据库建表
 -- 引擎: InnoDB   字符集: utf8mb4   排序规则: utf8mb4_general_ci
 -- 规范依据: 开发文档 第三章 + 3.4 节 DDL 统一规范
@@ -226,6 +226,7 @@ CREATE TABLE `biz_process_order` (
   `snap_finish`           JSON          DEFAULT NULL            COMMENT '【V4.1】完成快照JSON，根节点必含 schema_version:1.0',
   `remark`                VARCHAR(255)  DEFAULT NULL            COMMENT '简短备注',
   `remark_long`           TEXT          DEFAULT NULL            COMMENT '长文本工艺/异常说明',
+  `post_production_note`  TEXT          DEFAULT NULL            COMMENT '后生产运营备注，不进入下发快照',
   `is_deleted`            TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
   `create_by`             VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
   `update_by`             VARCHAR(50)   DEFAULT NULL            COMMENT '更新人',

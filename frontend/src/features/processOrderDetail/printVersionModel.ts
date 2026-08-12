@@ -18,7 +18,9 @@ export function printVersionProps(version: PrintViewVersion, view?: ProcessOrder
   return {
     ...printVersionMetadata(view),
     version,
-    versionLabel: paperVersionText(version, view?.source),
+    versionLabel: view?.historicalIssueVersion != null
+      ? `历史下发 V${view.historicalIssueVersion}（只读追溯）`
+      : paperVersionText(version, view?.source),
   }
 }
 

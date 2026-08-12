@@ -16,6 +16,7 @@ final class SchemaRequirementCatalog {
                 index("biz_process_order_issue_version", "uk_process_order_issue_request"),
                 trigger("trg_process_order_issue_version_no_terminal_update"),
                 trigger("trg_process_order_issue_version_no_terminal_delete"),
+                column("biz_process_order", "post_production_note"),
                 table("biz_process_order_append_session"),
                 table("biz_process_order_append_roll"),
                 column("biz_process_order_append_session", "commit_request_id"),

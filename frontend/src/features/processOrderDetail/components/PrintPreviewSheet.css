@@ -12,6 +12,26 @@
   font-size: 14px;
 }
 
+.print-preview-sheet--historical {
+  position: relative;
+}
+
+.print-preview-sheet__historical-watermark {
+  align-items: center;
+  color: rgba(190, 35, 24, 0.16);
+  display: flex;
+  font-size: 34px;
+  font-weight: 700;
+  inset: 0;
+  justify-content: center;
+  letter-spacing: 0;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+  transform: rotate(-24deg);
+  z-index: 4;
+}
+
 .print-preview-sheet__header {
   display: flex;
   align-items: flex-end;

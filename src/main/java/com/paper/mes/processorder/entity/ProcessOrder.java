@@ -96,6 +96,8 @@ public class ProcessOrder extends BaseEntity {
 
     private String remark;
     private String remarkLong;
+    /** Non-production operational note allowed after completion; never included in issued print snapshots. */
+    private String postProductionNote;
 
     @TableField(exist = false)
     private Integer originalRollCount;

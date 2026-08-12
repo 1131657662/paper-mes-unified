@@ -53,7 +53,10 @@ import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.service.ProcessOrderPrintStageResolver;
 import com.paper.mes.processorder.service.ProcessOrderPrintConfirmationPolicy;
+import com.paper.mes.processorder.service.ProcessOrderDeliveryImpactCounter;
 import com.paper.mes.processorder.dto.ProcessOrderIssueVersionVO;
+import com.paper.mes.processorder.dto.ProcessOrderIssueConsistencyVO;
+import com.paper.mes.processorder.dto.ProcessOrderPostProductionNoteDTO;
 import com.paper.mes.processorder.dto.ProcessOrderPrintViewVO;
 import com.paper.mes.processorder.dto.ProcessOrderQuery;
 import com.paper.mes.processorder.dto.ProcessOrderReissueDTO;
@@ -240,6 +243,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private final InventoryLedgerBusinessRecorder inventoryLedgerRecorder;
     @Autowired
     private ProcessOrderIssueVersionService issueVersionService;
+    @Autowired
+    private ProcessOrderDeliveryImpactCounter deliveryImpactCounter;
 
     @Override
     public PageResult<ProcessOrder> pageOrders(ProcessOrderQuery query) {
@@ -399,6 +404,25 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             throw new BusinessException("打印版本不能为空");
         }
         return ProcessOrderPrintViewReader.read(getDetail(uuid), version, objectMapper);
+    }
+
+    @Override
+    public ProcessOrderPrintViewVO getHistoricalIssuePrintView(String uuid, Integer issueVersion) {
+        if (issueVersion == null || issueVersion < 1) {
+            throw new BusinessException(ErrorCode.E001, "下发版本号无效");
+        }
+        ProcessOrderIssueVersion history = issueVersionService.requireHistoricalReadable(uuid, issueVersion);
+        return ProcessOrderPrintViewReader.readHistoricalIssue(
+                getDetail(uuid), history.getSnapshotAfter(), issueVersion, objectMapper);
+    }
+
+    @Override
+    public ProcessOrderIssueConsistencyVO getIssueConsistency(String uuid) {
+        ProcessOrderDetailVO detail = getDetail(uuid);
+        ProcessOrderIssueConsistencyVO result = ProcessOrderIssueConsistencyReader.read(detail, objectMapper);
+        result.setCurrentIssueVersion(currentIssueVersion(uuid));
+        result.setPendingDeliveryCount(deliveryImpactCounter.pendingDeliveryCount(uuid));
+        return result;
     }
 
     private List<ProcessOrderDetailVO.RollProductionVO> buildRollProductions(List<OriginalRoll> rolls,
@@ -695,11 +719,13 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         businessLockService.lockProcessOrders(List.of(uuid));
         ProcessOrder order = requireOrder(uuid);
         validateRemarkEditable(order);
+        requireExpectedVersion(order, dto.getExpectedVersion());
         String operator = currentOperator();
         LocalDateTime now = LocalDateTime.now();
         ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null,
                 new LambdaUpdateWrapper<ProcessOrder>()
                         .eq(ProcessOrder::getUuid, uuid)
+                        .eq(ProcessOrder::getVersion, dto.getExpectedVersion())
                         .set(ProcessOrder::getRemark, dto.getRemark())
                         .set(ProcessOrder::getRemarkLong, dto.getRemarkLong())
                         .set(ProcessOrder::getUpdateBy, operator)
@@ -707,6 +733,27 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                         .setSql("version = version + 1")));
         recordFieldIfChanged(order.getUuid(), order.getOrderNo(), "主单备注", order.getRemark(), dto.getRemark(), operator);
         recordFieldIfChanged(order.getUuid(), order.getOrderNo(), "主单详细备注", order.getRemarkLong(), dto.getRemarkLong(), operator);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updatePostProductionNote(String uuid, ProcessOrderPostProductionNoteDTO dto) {
+        businessLockService.lockProcessOrders(List.of(uuid));
+        ProcessOrder order = requireOrder(uuid);
+        validatePostProductionNoteEditable(order);
+        requireExpectedVersion(order, dto.getExpectedVersion());
+        String operator = currentOperator();
+        LocalDateTime now = LocalDateTime.now();
+        ConcurrencyGuard.requireRowUpdated(getBaseMapper().update(null,
+                new LambdaUpdateWrapper<ProcessOrder>()
+                        .eq(ProcessOrder::getUuid, uuid)
+                        .eq(ProcessOrder::getVersion, dto.getExpectedVersion())
+                        .set(ProcessOrder::getPostProductionNote, trimToNull(dto.getPostProductionNote()))
+                        .set(ProcessOrder::getUpdateBy, operator)
+                        .set(ProcessOrder::getUpdateTime, now)
+                        .setSql("version = version + 1")));
+        recordFieldIfChanged(order.getUuid(), order.getOrderNo(), "后生产备注",
+                order.getPostProductionNote(), trimToNull(dto.getPostProductionNote()), operator);
     }
 
     @Override
@@ -1596,6 +1643,34 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         ProcessOrder order = requireOrder(uuid);
         validateReissueOrder(order, dto.getExpectedVersion());
         completeReissue(order, request);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelPendingReissue(String uuid, Integer expectedVersion, String reason) {
+        businessLockService.lockProcessOrders(List.of(uuid));
+        ProcessOrder order = requireOrder(uuid);
+        requireExpectedVersion(order, expectedVersion);
+        ProcessOrderIssueVersion pending = issueVersionService.findPending(uuid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.E002, "没有待重新下发的变更"));
+        if (!Integer.valueOf(STATUS_PENDING).equals(order.getOrderStatus())
+                || !StringUtils.hasText(pending.getSnapshotBefore())) {
+            throw new BusinessException(ErrorCode.E003, "当前状态不能取消重新下发变更");
+        }
+        String operator = currentOperator();
+        String cancelReason = requireRollbackReason(reason);
+        order.setSnapPrint(pending.getSnapshotBefore());
+        order.setSnapFinish(null);
+        order.setOrderStatus(STATUS_PROCESSING);
+        order.setPrintStatus(PRINT_STATUS_UNPRINTED);
+        order.setPrintCount(0);
+        order.setLastPrintTime(null);
+        order.setLastPrintUser(null);
+        ConcurrencyGuard.requireUpdated(updateById(order));
+        issueVersionService.cancelPending(uuid, cancelReason, operator, LocalDateTime.now());
+        operationLogService.record(BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
+                OperationLogService.ACTION_REISSUE, operator,
+                "取消待重新下发变更，恢复原下发版本，原因：" + cancelReason);
     }
 
     @Override
@@ -5039,10 +5114,33 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
     private void validateRemarkEditable(ProcessOrder order) {
         Integer status = order.getOrderStatus();
-        if (status != null && (status == STATUS_SETTLED || status == STATUS_VOIDED)) {
-            throw new BusinessException(ErrorCode.E003, "当前状态不允许直接修改备注");
+        if (status != null && status >= STATUS_PROCESSING) {
+            throw new BusinessException(ErrorCode.E003, "生产备注已随下发版本冻结；完工后请填写后生产备注");
         }
     }
+
+    private void validatePostProductionNoteEditable(ProcessOrder order) {
+        Integer status = order.getOrderStatus();
+        if (status == null || status < STATUS_TO_RECORD || status == STATUS_VOIDED) {
+            throw new BusinessException(ErrorCode.E003, "当前状态不允许维护后生产备注");
+        }
+    }
+
+    private void requireExpectedVersion(ProcessOrder order, Integer expectedVersion) {
+        if (!Objects.equals(order.getVersion(), expectedVersion)) {
+            throw new BusinessException(ErrorCode.E006, "加工单已被其他人修改，请刷新后重试");
+        }
+    }
+
+    private Integer currentIssueVersion(String orderUuid) {
+        return issueVersionService.list(orderUuid, false).stream()
+                .filter(version -> ProcessOrderIssueVersion.STATUS_APPLIED.equals(version.getStatus()))
+                .map(ProcessOrderIssueVersionVO::getVersionNo)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(null);
+    }
+
 
     private record LockedRoll(OriginalRoll roll, ProcessOrder order) {
     }
@@ -5070,6 +5168,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
     private String currentOperator() {
         return AuthContextHolder.currentDisplayName();
+    }
+
+    private String trimToNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     /**

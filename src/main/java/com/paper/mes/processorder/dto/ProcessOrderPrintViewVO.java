@@ -16,5 +16,7 @@ public class ProcessOrderPrintViewVO {
     private String snapshotTime;
     private String snapshotUser;
     private String warning;
+    private boolean historical;
+    private Integer historicalIssueVersion;
     private ProcessOrderDetailVO detail;
 }

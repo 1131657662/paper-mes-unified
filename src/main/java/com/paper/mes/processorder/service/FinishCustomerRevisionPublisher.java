@@ -6,6 +6,7 @@ import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.processorder.dto.FinishCustomerRevisionPreviewVO;
 import com.paper.mes.processorder.dto.FinishCustomerRevisionRequestDTO;
 import com.paper.mes.processorder.dto.FinishCustomerRevisionSummaryVO;
+import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.entity.FinishCustomerRevision;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class FinishCustomerRevisionPublisher {
     private final FinishCustomerRevisionPreviewService previewService;
     private final FinishCustomerRevisionReader reader;
     private final FinishCustomerRevisionWriter writer;
+    private final ProcessOrderCustomerSpecReissueService reissueService;
     private final OperationLogService operationLogService;
 
     @Transactional(rollbackFor = Exception.class)
@@ -32,10 +34,17 @@ public class FinishCustomerRevisionPublisher {
         if (replay != null) return verifyReplay(replay, requestHash);
         FinishCustomerRevisionPreviewVO preview = previewService.preview(orderUuid, request);
         if (preview.isHasErrors()) throw new BusinessException("客户规格预览存在错误，不能发布");
+        previewService.requirePublishAllowed(orderUuid, preview);
+        boolean preparedReissue = reissueService.prepareIfRequired(
+                orderUuid, request, preview.isReissueRequired());
         FinishCustomerRevision revision = writer.write(
                 new FinishCustomerRevisionWriteCommand(orderUuid, requestHash, preview, request));
         recordOperation(preview, revision, request);
-        return reader.summary(revision);
+        PrintResultVO reissue = reissueService.issuePreparedVersion(orderUuid, preparedReissue);
+        FinishCustomerRevisionSummaryVO summary = reader.summary(revision);
+        summary.setReissued(preparedReissue);
+        if (reissue != null) summary.setIssueVersion(reissue.getIssueVersion());
+        return summary;
     }
 
     private FinishCustomerRevisionSummaryVO verifyReplay(

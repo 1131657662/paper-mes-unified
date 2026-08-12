@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         properties = "management.endpoint.health.validate-group-membership=false"
 )
 @AutoConfigureMockMvc
-@ActiveProfiles("prod")
+@ActiveProfiles({"prod", "openapi-contract"})
 class OpenApiProductionContractTest {
 
     @Autowired

@@ -1,4 +1,4 @@
-import { Button, Drawer, Form, Input, Space, message } from 'antd'
+import { Alert, Button, Drawer, Form, Input, Space, message } from 'antd'
 import { useState } from 'react'
 import { DISPLAY_TERMS } from '../../constants/displayTerms'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
@@ -72,7 +72,9 @@ export default function CustomerSpecEditorDrawer({ data, open, orderUuid, onClos
   const publish = async () => {
     if (!bundle || bundle.result.hasErrors) return
     const result = await publishMutation.mutateAsync({ orderUuid, values: bundle.request })
-    message.success(`${DISPLAY_TERMS.customerSpecification} V${result.revisionNo} 已发布`)
+    message.success(result.reissued
+      ? `${DISPLAY_TERMS.customerSpecification} V${result.revisionNo} 已发布，并已自动下发生产 V${result.issueVersion ?? '?'}`
+      : `${DISPLAY_TERMS.customerSpecification} V${result.revisionNo} 已发布`)
     clearDirty()
     onClose()
   }
@@ -86,6 +88,14 @@ export default function CustomerSpecEditorDrawer({ data, open, orderUuid, onClos
         open={open} placement="right" title={`批量维护${DISPLAY_TERMS.customerSpecification} · ${data.orderNo ?? ''}`} width="min(1280px, calc(100vw - 24px))" onClose={guardedClose}
       >
         <div className="customer-spec-editor__body">
+          {bundle?.result.reissueRequired && (
+            <Alert
+              showIcon
+              type="warning"
+              message="本次修改会生成新的下发版本"
+              description="客户品名、克重或门幅已不同于当前下发单。发布后系统将保留旧版追溯记录，并自动下发新的生产版本。"
+            />
+          )}
           <CustomerSpecBatchToolbar disabled={!selected.length} values={bulk} onChange={setBulk} onApply={() => changeRows(applyBulkSpecification(rows, selected, bulk))} onFillDown={() => changeRows(fillSelectedFromFirst(rows, selected))} onSameSpec={() => changeRows(applyToSamePhysicalSpec(rows, selected))} onPaste={() => setPasteOpen(true)} />
           <CustomerWeightRulePanel disabled={!selected.length} pending={weightRulePending} value={weightRule} onChange={changeWeightRule} onApply={applyCurrentWeightRule} />
           <CustomerSpecEditTable rows={rows} selected={selected} previewItems={bundle?.result.items} onSelect={setSelected} onUpdate={(uuid, values) => changeRows(updateCustomerSpecDraft(rows, uuid, values))} />
@@ -105,7 +115,8 @@ export default function CustomerSpecEditorDrawer({ data, open, orderUuid, onClos
 }
 
 function Footer({ bundle, previewing, publishing, onCancel, onPreview, onPublish }: { bundle?: PreviewBundle; previewing: boolean; publishing: boolean; onCancel: () => void; onPreview: () => void; onPublish: () => void }) {
-  return <div className="customer-spec-editor__footer"><Button onClick={onCancel}>取消</Button><Space><Button loading={previewing} onClick={onPreview}>预览计算</Button><Button type="primary" disabled={!bundle || bundle.result.hasErrors} loading={publishing} onClick={onPublish}>发布版本</Button></Space></div>
+  const publishLabel = bundle?.result.reissueRequired ? '发布并自动重新下发' : '发布版本'
+  return <div className="customer-spec-editor__footer"><Button onClick={onCancel}>取消</Button><Space><Button loading={previewing} onClick={onPreview}>预览计算</Button><Button type="primary" disabled={!bundle || bundle.result.hasErrors} loading={publishing} onClick={onPublish}>{publishLabel}</Button></Space></div>
 }
 
 function validate(values: PreviewValidation) {

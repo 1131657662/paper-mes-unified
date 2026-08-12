@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.dto;
 
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -8,6 +9,9 @@ import lombok.Data;
  */
 @Data
 public class ProcessOrderRemarkDTO {
+
+    @NotNull(message = "加工单版本不能为空")
+    private Integer expectedVersion;
 
     @Size(max = 255, message = "备注不能超过255个字符")
     private String remark;

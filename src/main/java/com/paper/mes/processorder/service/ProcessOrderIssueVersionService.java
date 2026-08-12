@@ -141,6 +141,25 @@ public class ProcessOrderIssueVersionService {
         return ProcessOrderIssueVersionViewFactory.views(orderUuid, rows, hasLegacySnapshot);
     }
 
+    public Optional<ProcessOrderIssueVersion> findVersion(String orderUuid, int versionNo) {
+        return Optional.ofNullable(mapper.selectOne(new LambdaQueryWrapper<ProcessOrderIssueVersion>()
+                .eq(ProcessOrderIssueVersion::getOrderUuid, orderUuid)
+                .eq(ProcessOrderIssueVersion::getVersionNo, versionNo)
+                .last("LIMIT 1")));
+    }
+
+    /** Only a version with its own issued snapshot may be previewed as a production instruction. */
+    public ProcessOrderIssueVersion requireHistoricalReadable(String orderUuid, int versionNo) {
+        ProcessOrderIssueVersion row = findVersion(orderUuid, versionNo)
+                .orElseThrow(() -> new BusinessException(ErrorCode.E002, "Issue version does not exist"));
+        if (!ProcessOrderIssueVersion.STATUS_APPLIED.equals(row.getStatus())
+                || !StringUtils.hasText(row.getSnapshotAfter())) {
+            throw new BusinessException(ErrorCode.E003,
+                    "Only applied issue versions with a final snapshot may be previewed");
+        }
+        return row;
+    }
+
     private ProcessOrderIssueVersion newRow(String orderUuid, int versionNo,
                                             String operator, LocalDateTime changeTime) {
         ProcessOrderIssueVersion row = new ProcessOrderIssueVersion();

@@ -34,7 +34,7 @@ class ProcessOrderIssueVersionSchemaContractTest {
         String baselineVersion = Files.readString(
                 Path.of("sql/schema-baseline.version"), StandardCharsets.UTF_8).trim();
 
-        assertThat(baselineVersion).isEqualTo("3.63");
+        assertThat(baselineVersion).isEqualTo("3.64");
         assertThat(schema).contains(
                 "CREATE TABLE `biz_process_order_issue_version`",
                 "UNIQUE KEY `uk_process_order_issue_version` (`order_uuid`, `version_no`)",
@@ -61,5 +61,22 @@ class ProcessOrderIssueVersionSchemaContractTest {
                 "trg_process_order_issue_version_no_terminal_delete",
                 "OLD.`status` IN ('APPLIED', 'ARCHIVED')",
                 "V3_54_MIGRATION_LOCK_NOT_ACQUIRED");
+    }
+
+    @Test
+    void v364SeparatesPostProductionNotesFromIssuedProductionSnapshots() throws IOException {
+        String migration = Files.readString(
+                Path.of("sql/V3.64__add_process_order_post_production_note.sql"), StandardCharsets.UTF_8);
+        String schema = Files.readString(
+                Path.of("sql/01_schema_v4.1.sql"), StandardCharsets.UTF_8);
+
+        assertThat(migration).contains(
+                "paper_mes_process_order_post_production_note",
+                "V3_64_MIGRATION_LOCK_NOT_ACQUIRED",
+                "post_production_note",
+                "AFTER `remark_long`");
+        assertThat(schema).contains(
+                "`post_production_note`  TEXT          DEFAULT NULL",
+                "后生产运营备注，不进入下发快照");
     }
 }

@@ -16,6 +16,7 @@ export interface OrderDetailContentActions {
   onConfigureRoute: (target: ProcessRouteConfigTarget) => void
   onDeleteStep: (stepUuid: string) => void
   onEditOrderRemark: () => void
+  onEditPostProductionNote: () => void
   onEditRollRemark: (roll: RollProductionVO) => void
   onEditStep: (step: ProcessStep) => void
   onAdjustPricing: (step: ProcessStep) => void
@@ -31,15 +32,22 @@ interface Props {
 export default function OrderDetailContent({ actions, detail, mode }: Props) {
   const canManageOrder = useHasPermission(PERMISSIONS.orderManage)
   const canAdjustPricing = useHasPermission(PERMISSIONS.orderPricing)
-  const canEditRemark = canManageOrder
-    && (detail?.order.orderStatus == null || ![4, 5, 6].includes(detail.order.orderStatus))
+  const status = detail?.order.orderStatus
+  const canEditRemark = canManageOrder && (status == null || status <= 1)
+  const canEditPostProductionNote = canManageOrder && status != null && [3, 4, 5].includes(status)
 
   return (
     <div className={`order-detail-view order-detail-view--${mode}`}>
       <OrderDetailHeader exporting={actions.exporting} order={detail?.order} onBack={actions.onBack} onExport={actions.onExport} />
       <OrderExecutionHost detail={detail} />
       <IssueVersionHistoryPanel orderUuid={detail?.order.uuid} />
-      <OrderInfoSection canEditRemark={canEditRemark} detail={detail} onEditRemark={actions.onEditOrderRemark} />
+      <OrderInfoSection
+        canEditPostProductionNote={canEditPostProductionNote}
+        canEditRemark={canEditRemark}
+        detail={detail}
+        onEditPostProductionNote={actions.onEditPostProductionNote}
+        onEditRemark={actions.onEditOrderRemark}
+      />
       <ProductionTree
         canManageOrder={canManageOrder}
         canEditRemark={canEditRemark}

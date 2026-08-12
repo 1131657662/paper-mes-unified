@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         properties = "management.endpoint.health.validate-group-membership=false"
 )
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "openapi-contract"})
 class OpenApiEnabledContractTest {
 
     private static final Path OUTPUT = Path.of("target", "openapi", "paper-mes.json");

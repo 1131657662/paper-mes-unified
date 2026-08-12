@@ -17,8 +17,28 @@ export interface ProcessOrderRollbackDTO {
 
 /** 主单备注轻量编辑入参。 */
 export interface ProcessOrderRemarkDTO {
+  expectedVersion: number
   remark?: string
   remarkLong?: string
+}
+
+export interface ProcessOrderPostProductionNoteDTO {
+  expectedVersion: number
+  postProductionNote?: string
+}
+
+export type ProcessOrderIssueConsistencyStatus =
+  | 'IN_SYNC'
+  | 'REISSUE_REQUIRED'
+  | 'PENDING_REISSUE'
+  | 'NOT_APPLICABLE'
+
+export interface ProcessOrderIssueConsistency {
+  status: ProcessOrderIssueConsistencyStatus
+  currentIssueVersion?: number
+  changedGroups: string[]
+  blockingReason?: string
+  pendingDeliveryCount?: number
 }
 
 /** 原纸明细备注类字段轻量编辑入参。 */

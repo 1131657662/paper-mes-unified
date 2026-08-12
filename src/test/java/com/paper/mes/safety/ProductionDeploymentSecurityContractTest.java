@@ -25,6 +25,7 @@ class ProductionDeploymentSecurityContractTest {
             "src/main/java/com/paper/mes/system/config/config/ProcessParamIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/ProcessRouteIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/processorder/config/BackRecordProductionSchemaBootstrap.java",
+            "src/main/java/com/paper/mes/processorder/config/FinishCustomerRevisionSchemaBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/ReportIntegrityBootstrap.java",
             "src/main/java/com/paper/mes/system/config/config/SettleIntegrityBootstrap.java"
     );
@@ -51,7 +52,7 @@ class ProductionDeploymentSecurityContractTest {
                 "enabled: ${PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED:false}");
         assertContainsAll(environment,
                 "PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED=false",
-                "PAPER_MES_EXPECTED_SCHEMA_VERSION=3.63",
+                "PAPER_MES_EXPECTED_SCHEMA_VERSION=3.64",
                 "PAPER_MES_BACKEND_VERSION=CHANGE_ME_RELEASE_VERSION",
                 "PAPER_MES_FRONTEND_VERSION=CHANGE_ME_RELEASE_VERSION",
                 "PAPER_MES_GIT_SHA=CHANGE_ME_GIT_SHA",

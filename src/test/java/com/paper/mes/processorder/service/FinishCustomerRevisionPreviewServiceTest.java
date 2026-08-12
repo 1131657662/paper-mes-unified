@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class FinishCustomerRevisionPreviewServiceTest {
 
@@ -36,7 +37,8 @@ class FinishCustomerRevisionPreviewServiceTest {
         when(planner.current(any())).thenAnswer(ignored -> validCustomerSpec());
 
         var result = new FinishCustomerRevisionPreviewService(
-                orderMapper, finishMapper, revisionMapper, planner).current("order-1");
+                orderMapper, finishMapper, revisionMapper, planner,
+                new FinishCustomerRevisionPolicy(), mock(ProcessOrderDeliveryImpactCounter.class)).current("order-1");
 
         assertThat(result.getItemCount()).isEqualTo(128);
         assertThat(result.getValidItemCount()).isEqualTo(128);
@@ -54,11 +56,68 @@ class FinishCustomerRevisionPreviewServiceTest {
                 orderMapper,
                 mock(FinishRollMapper.class),
                 mock(FinishCustomerRevisionMapper.class),
-                mock(FinishCustomerSpecPlanner.class));
+                mock(FinishCustomerSpecPlanner.class),
+                new FinishCustomerRevisionPolicy(), mock(ProcessOrderDeliveryImpactCounter.class));
 
         assertThatThrownBy(() -> service.current("order-1"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("已作废加工单");
+    }
+
+    @Test
+    void processingOrder_withDisplayWeightOnlyChange_doesNotRequireReissue() {
+        FinishCustomerRevisionPolicy policy = new FinishCustomerRevisionPolicy();
+        ProcessOrder order = new ProcessOrder();
+        order.setOrderStatus(2);
+        FinishCustomerSpecVO row = validCustomerSpec();
+        row.setPreviousCustomerPaperName("customer-paper");
+        row.setCustomerPaperName("customer-paper");
+        row.setPreviousCustomerGramWeight(80);
+        row.setCustomerGramWeight(80);
+        row.setPreviousCustomerFinishWidth(500);
+        row.setCustomerFinishWidth(500);
+        row.setPreviousCustomerDisplayWeight(new BigDecimal("100"));
+        row.setCustomerDisplayWeight(new BigDecimal("105"));
+
+        assertThat(policy.requiresReissue(order, List.of(row))).isFalse();
+    }
+
+    @Test
+    void processingOrder_withPrintedSpecificationChange_requiresReissue() {
+        FinishCustomerRevisionPolicy policy = new FinishCustomerRevisionPolicy();
+        ProcessOrder order = new ProcessOrder();
+        order.setOrderStatus(2);
+        FinishCustomerSpecVO row = validCustomerSpec();
+        row.setPreviousCustomerPaperName("customer-paper");
+        row.setCustomerPaperName("new-customer-paper");
+
+        assertThat(policy.requiresReissue(order, List.of(row))).isTrue();
+    }
+
+    @Test
+    void completedOrder_withPrintedSpecificationChange_rejectsPublishing() {
+        FinishCustomerRevisionPolicy policy = new FinishCustomerRevisionPolicy();
+        ProcessOrder order = new ProcessOrder();
+        order.setOrderStatus(4);
+        FinishCustomerSpecVO row = validCustomerSpec();
+        row.setPreviousCustomerFinishWidth(500);
+        row.setCustomerFinishWidth(520);
+
+        assertThatThrownBy(() -> policy.requirePublishAllowed(order, List.of(row)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不能修改已下发的客户品名、克重或门幅");
+    }
+
+    @Test
+    void settledOrder_withDisplayWeightOnlyChange_allowsPublishing() {
+        FinishCustomerRevisionPolicy policy = new FinishCustomerRevisionPolicy();
+        ProcessOrder order = new ProcessOrder();
+        order.setOrderStatus(5);
+        FinishCustomerSpecVO row = validCustomerSpec();
+        row.setPreviousCustomerDisplayWeight(new BigDecimal("100"));
+        row.setCustomerDisplayWeight(new BigDecimal("105"));
+
+        policy.requirePublishAllowed(order, List.of(row));
     }
 
     private FinishRoll finish(int index) {

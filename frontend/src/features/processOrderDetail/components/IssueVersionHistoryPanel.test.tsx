@@ -6,7 +6,8 @@ import { IssueVersionHistoryContent } from './IssueVersionHistoryPanel'
 describe('下发版本历史', () => {
   it('加载期间不展示零条或空记录状态', () => {
     const markup = renderToStaticMarkup(
-      <IssueVersionHistoryContent isError={false} loading versions={[]} onRetry={() => undefined} />,
+      <IssueVersionHistoryContent isError={false} loading versions={[]}
+        onRetry={() => undefined} onViewHistorical={() => undefined} />,
     )
 
     expect(markup).toContain('正在加载下发版本历史')
@@ -24,7 +25,7 @@ describe('下发版本历史', () => {
 
     const markup = renderToStaticMarkup(
       <IssueVersionHistoryContent isError={false} loading={false}
-        versions={[legacy]} onRetry={() => undefined} />,
+        versions={[legacy]} onRetry={() => undefined} onViewHistorical={() => undefined} />,
     )
 
     expect(markup).toContain('历史未版本化')
@@ -44,7 +45,7 @@ describe('下发版本历史', () => {
 
     const markup = renderToStaticMarkup(
       <IssueVersionHistoryContent isError={false} loading={false}
-        versions={[applied]} onRetry={() => undefined} />,
+        versions={[applied]} onRetry={() => undefined} onViewHistorical={() => undefined} />,
     )
 
     expect(markup).toContain('V2')

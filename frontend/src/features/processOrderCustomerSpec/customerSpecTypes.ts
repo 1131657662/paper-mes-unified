@@ -54,6 +54,7 @@ export interface FinishCustomerRevisionPreview {
   orderUuid: string
   orderNo?: string
   orderVersion: number
+  sourceStage?: string
   nextRevisionNo: number
   itemCount: number
   validItemCount: number
@@ -61,6 +62,8 @@ export interface FinishCustomerRevisionPreview {
   customerTotalWeight: number
   differenceWeight: number
   hasErrors: boolean
+  reissueRequired: boolean
+  pendingDeliveryCount: number
   items: FinishCustomerSpec[]
 }
 
@@ -74,6 +77,8 @@ export interface FinishCustomerRevisionSummary {
   customerTotalWeight?: number
   operator?: string
   createdAt?: string
+  reissued: boolean
+  issueVersion?: number
 }
 
 export interface FinishCustomerRevisionItem {

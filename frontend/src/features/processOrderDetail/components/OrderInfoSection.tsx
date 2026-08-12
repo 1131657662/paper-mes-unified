@@ -5,8 +5,10 @@ import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import { buildBillingInfo } from './orderBillingInfo'
 
 interface Props {
+  canEditPostProductionNote?: boolean
   canEditRemark?: boolean
   detail?: ProcessOrderDetailVO
+  onEditPostProductionNote?: () => void
   onEditRemark?: () => void
 }
 
@@ -15,7 +17,7 @@ interface InfoItemProps {
   value?: ReactNode
 }
 
-export default function OrderInfoSection({ canEditRemark, detail, onEditRemark }: Props) {
+export default function OrderInfoSection({ canEditPostProductionNote, canEditRemark, detail, onEditPostProductionNote, onEditRemark }: Props) {
   const order = detail?.order
 
   return (
@@ -32,6 +34,11 @@ export default function OrderInfoSection({ canEditRemark, detail, onEditRemark }
           remarkLong={order?.remarkLong}
           canEditRemark={canEditRemark}
           onEditRemark={onEditRemark}
+        />
+        <PostProductionNoteNotice
+          canEdit={canEditPostProductionNote}
+          note={order?.postProductionNote}
+          onEdit={onEditPostProductionNote}
         />
       </div>
     </section>
@@ -90,4 +97,17 @@ function RemarkTitle() {
 function RemarkEditButton({ enabled, onEdit }: { enabled?: boolean; onEdit?: () => void }) {
   if (!enabled) return null
   return <Button type="link" size="small" icon={<EditOutlined />} onClick={onEdit}>编辑备注</Button>
+}
+
+function PostProductionNoteNotice({ canEdit, note, onEdit }: { canEdit?: boolean; note?: string; onEdit?: () => void }) {
+  return (
+    <div className={`order-detail-remark ${note ? 'order-detail-remark--active' : 'order-detail-remark--empty'}`}>
+      <div className="order-detail-remark__head">
+        <span><PushpinOutlined />后生产备注</span>
+        <RemarkEditButton enabled={canEdit} onEdit={onEdit} />
+      </div>
+      {note ? <div className="order-detail-remark__content"><p>{note}</p></div>
+        : <span className="order-detail-remark__empty">暂无后生产备注</span>}
+    </div>
+  )
 }

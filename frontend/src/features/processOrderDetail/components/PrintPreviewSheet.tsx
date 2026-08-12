@@ -24,16 +24,18 @@ interface Props {
   snapshotUser?: string
   versionLabel?: string
   version?: PrintViewVersion
+  historical?: boolean
 }
 
-export default function PrintPreviewSheet({ detail, snapshotTime, snapshotUser, version, versionLabel }: Props) {
+export default function PrintPreviewSheet({ detail, historical, snapshotTime, snapshotUser, version, versionLabel }: Props) {
   const { blocks, orderAnnotations } = buildPrintSheetModel(detail)
   const summary = buildPrintSummary(detail)
   const { value: printTitle } = useSystemConfigValue(CONFIG_KEYS.processOrderTitle, '车间加工单')
   const remark = orderRemark(detail)
 
   return (
-    <div className="print-preview-sheet">
+    <div className={`print-preview-sheet${historical ? ' print-preview-sheet--historical' : ''}`}>
+      {historical && <div aria-hidden className="print-preview-sheet__historical-watermark">历史版本 - 禁止作为当前生产指令</div>}
       <PrintHeader detail={detail} title={printTitle} snapshotTime={snapshotTime} snapshotUser={snapshotUser} versionLabel={versionLabel} />
       <OrderRemarkBlock remark={remark} annotations={orderAnnotations} />
       <SummaryStrip items={summary} />

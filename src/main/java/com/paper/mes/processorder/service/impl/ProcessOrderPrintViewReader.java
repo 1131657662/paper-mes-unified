@@ -43,6 +43,17 @@ final class ProcessOrderPrintViewReader {
         }
     }
 
+    static ProcessOrderPrintViewVO readHistoricalIssue(ProcessOrderDetailVO live, String snapshot,
+                                                        Integer issueVersion, ObjectMapper objectMapper) {
+        ProcessOrderDetailVO carrier = ProcessOrderSnapshotDetailCodec.copy(live, objectMapper);
+        carrier.getOrder().setSnapPrint(snapshot);
+        ProcessOrderPrintViewVO result = read(carrier, PrintViewVersion.ISSUED, objectMapper);
+        result.setHistoricalIssueVersion(issueVersion);
+        result.setHistorical(true);
+        result.setWarning("历史下发版本，仅用于追溯或审计；不得作为当前生产指令。");
+        return result;
+    }
+
     private static ProcessOrderPrintViewVO readWithoutSnapshot(ProcessOrderDetailVO live,
                                                                PrintViewVersion version,
                                                                ObjectMapper objectMapper) {

@@ -1,4 +1,4 @@
-import { Alert, Form, Input, Modal } from 'antd'
+import { Form, Input, Modal } from 'antd'
 import type { ProcessOrder, ProcessOrderRemarkDTO } from '../../../types/processOrder'
 
 interface Props {
@@ -21,14 +21,6 @@ export default function OrderRemarkModal({ loading, open, order, onCancel, onSub
       onCancel={onCancel}
       onOk={() => form.submit()}
     >
-      {order?.printStatus === 1 && (
-        <Alert
-          showIcon
-          type="warning"
-          className="order-detail-note-alert"
-          message="本单已打印，修改会影响打印备注，请确认是否需要重新打印。"
-        />
-      )}
       <Form
         form={form}
         layout="vertical"

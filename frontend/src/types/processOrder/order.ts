@@ -58,6 +58,7 @@ export interface ProcessOrder {
   processNames?: string[]
   remark?: string
   remarkLong?: string
+  postProductionNote?: string
   voidTime?: string
   voidUser?: string
   voidReason?: string

@@ -140,5 +140,7 @@ export interface ProcessOrderPrintViewVO {
   snapshotTime?: string
   snapshotUser?: string
   warning?: string
+  historical?: boolean
+  historicalIssueVersion?: number
   detail: ProcessOrderDetailVO
 }
