@@ -22,6 +22,8 @@ assert_email() {
   local status_cn
   case "${status}" in
     FAILED) status_cn='故障告警' ;;
+    WARNING) status_cn='容量预警' ;;
+    CRITICAL) status_cn='容量紧急告警' ;;
     RECOVERED) status_cn='恢复通知' ;;
     TEST) status_cn='测试通知' ;;
   esac
@@ -45,6 +47,10 @@ assert_email() {
 
 assert_email TEST 'SMTP integration check' '邮件通知通道测试'
 assert_email FAILED 'backend health is not UP' '后端健康状态不是 UP'
+assert_email WARNING 'Backblaze B2 storage usage warning: 8100000000 bytes used; warning threshold is 8000000000 bytes' \
+  'Backblaze B2 存储空间预警：已使用 8100000000 字节；预警阈值为 8000000000 字节。'
+assert_email CRITICAL 'Backblaze B2 storage usage critical: 9100000000 bytes used; critical threshold is 9000000000 bytes' \
+  'Backblaze B2 存储空间紧急告警：已使用 9100000000 字节；紧急阈值为 9000000000 字节。'
 assert_email RECOVERED 'all checks are healthy' '所有检查均正常'
 
 echo "email alert test passed"

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run encrypted Backblaze B2 backup sync daily
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Shanghai
+RandomizedDelaySec=5m
+Persistent=true
+Unit=paper-mes-offsite-backup.service
+
+[Install]
+WantedBy=timers.target

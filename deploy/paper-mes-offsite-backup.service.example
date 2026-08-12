@@ -1,0 +1,36 @@
+[Unit]
+Description=Encrypted off-site backup sync to Backblaze B2
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+Environment=OFFSITE_RETENTION_APPLY=true
+Environment=DAILY_RETENTION_YEARS=3
+Environment=WEEKLY_RETENTION_YEARS=5
+Environment=MAX_DELETE_COUNT=50
+Environment=CAPACITY_REMOTE=b2_paper_mes:paper-mes-backups-1131657662/encrypted
+Environment=INCLUDE_B2_VERSIONS=true
+Environment=WARNING_BYTES=8000000000
+Environment=CRITICAL_BYTES=9000000000
+ExecStart=/usr/local/sbin/sync-offsite-backups
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_CHOWN CAP_FOWNER
+ReadWritePaths=/opt/backups/paper-mes /opt/backups/business-projects /var/lib/paper-mes /run
