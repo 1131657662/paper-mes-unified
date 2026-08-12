@@ -45,6 +45,33 @@ class HealthMonitoringContractTest {
     }
 
     @Test
+    void sharedServerMonitor_checksAllProjectsInfrastructureAndAlertTransitions() throws Exception {
+        String script = source("deploy/monitor-server.example.sh");
+        String checks = source("deploy/server-monitor-checks.example.sh");
+        String state = source("deploy/server-monitor-state.example.sh");
+        String behaviorTest = source("deploy/test-monitor-server.sh");
+
+        assertThat(script).contains("paper-mes.service", "paper-mes-test.service", "pm2-root.service");
+        assertThat(script).contains("jimureport", "127.0.0.1:3000", "127.0.0.1:3001");
+        assertThat(script).contains("mes.nbsmzwl.cn", "erp.nbsmzwl.cn", "wms.nbsmzwl.cn");
+        assertThat(checks).contains("check_mysql", "check_host_resources", "check_certificates", "check_backups");
+        assertThat(checks).contains("check_remote_statuses", "check_fresh_files", "systemctl is-active");
+        assertThat(state).contains("REMINDER_HOURS", "fingerprint", "RECOVERY_PENDING");
+        assertThat(behaviorTest).contains("server monitor state transition test passed");
+        assertThat(script + checks + state).doesNotContain("CHANGE_ME", "eval ");
+    }
+
+    @Test
+    void sharedServerMonitor_runsOnTimerWithRestrictedSystemdSettings() throws Exception {
+        String service = source("deploy/server-monitor.service.example");
+        String timer = source("deploy/server-monitor.timer.example");
+
+        assertThat(service).contains("NoNewPrivileges=true", "ProtectSystem=strict");
+        assertThat(service).contains("CapabilityBoundingSet=", "ReadWritePaths=/var/lib/server-monitor");
+        assertThat(timer).contains("OnUnitActiveSec=5min", "Persistent=true");
+    }
+
+    @Test
     void deploymentGuide_includesMonitorInstallFailureDrillAndRollbackChecks() throws Exception {
         String guide = source("docs/生产部署指南.md");
 

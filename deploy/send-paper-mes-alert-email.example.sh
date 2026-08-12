@@ -16,6 +16,8 @@ set +a
 
 status="${1:-}"
 message="${2:-}"
+source="${3:-paper-mes}"
+provided_message_zh="${4:-}"
 : "${ALERT_EMAIL_FROM:?set ALERT_EMAIL_FROM}"
 : "${ALERT_EMAIL_TO:?set ALERT_EMAIL_TO}"
 
@@ -23,12 +25,16 @@ case "${status}" in
   FAILED|WARNING|CRITICAL|RECOVERED|TEST) ;;
   *) echo "unsupported alert status" >&2; exit 2 ;;
 esac
+case "${source}" in
+  paper-mes|server) ;;
+  *) echo "unsupported alert source" >&2; exit 2 ;;
+esac
 
 status_zh() {
   case "$1" in
     FAILED) printf '%s' '故障告警' ;;
-    WARNING) printf '%s' '容量预警' ;;
-    CRITICAL) printf '%s' '容量紧急告警' ;;
+    WARNING) printf '%s' '预警通知' ;;
+    CRITICAL) printf '%s' '紧急告警' ;;
     RECOVERED) printf '%s' '恢复通知' ;;
     TEST) printf '%s' '测试通知' ;;
   esac
@@ -37,8 +43,8 @@ status_zh() {
 summary_zh() {
   case "$1" in
     FAILED) printf '%s' '系统监控检测到异常，请查看下方英文技术详情并尽快处理。' ;;
-    WARNING) printf '%s' '异地备份空间已达到预警阈值，请关注容量增长。' ;;
-    CRITICAL) printf '%s' '异地备份空间已达到紧急阈值，请尽快处理。' ;;
+    WARNING) printf '%s' '系统监控达到预警阈值，请查看详情并及时关注。' ;;
+    CRITICAL) printf '%s' '系统监控达到紧急阈值，请查看详情并尽快处理。' ;;
     RECOVERED) printf '%s' '系统监控确认相关异常已经恢复，当前检查正常。' ;;
     TEST) printf '%s' '这是一封告警测试邮件，收到即表示邮件通知通道正常。' ;;
   esac
@@ -104,21 +110,35 @@ host="$(hostname)"
 timestamp="$(date --iso-8601=seconds)"
 status_cn="$(status_zh "${status}")"
 encoded_status_cn="$(printf '%s' "${status_cn}" | base64 | tr -d '\n')"
+if [ "${source}" = server ]; then
+  subject_prefix='Server Monitor'
+  sender_label='Server Monitor'
+  title_zh='服务器统一监控通知'
+  title_en='Shared server monitoring notification'
+  service_name='shared-server'
+else
+  subject_prefix='Paper MES'
+  sender_label='Paper MES Monitor'
+  title_zh='Paper MES 系统监控通知'
+  title_en='Paper MES monitoring notification'
+  service_name='paper-mes'
+fi
+detail_zh="${provided_message_zh:-$(message_zh "${message}")}"
 
 {
-  printf 'From: Paper MES Monitor <%s>\n' "${ALERT_EMAIL_FROM}"
+  printf 'From: %s <%s>\n' "${sender_label}" "${ALERT_EMAIL_FROM}"
   printf 'To: %s\n' "${ALERT_EMAIL_TO}"
-  printf 'Subject: [Paper MES] =?UTF-8?B?%s?= / %s - %s\n' \
-    "${encoded_status_cn}" "${status}" "${host}"
+  printf 'Subject: [%s] =?UTF-8?B?%s?= / %s - %s\n' \
+    "${subject_prefix}" "${encoded_status_cn}" "${status}" "${host}"
   printf 'Date: %s\n' "$(LC_ALL=C date -R)"
   printf 'Content-Type: text/plain; charset=UTF-8\n'
   printf 'Content-Transfer-Encoding: 8bit\n\n'
-  printf 'Paper MES 系统监控通知\n\n'
+  printf '%s\n\n' "${title_zh}"
   printf '状态：%s / %s\n服务器：%s\n时间：%s\n说明：%s\n' \
     "${status_cn}" "${status}" "${host}" "${timestamp}" "$(summary_zh "${status}")"
-  printf '详情：%s\n' "$(message_zh "${message}")"
+  printf '详情：%s\n' "${detail_zh}"
   printf '\n--------------------------------------------------\n\n'
-  printf 'Paper MES monitoring notification\n\n'
-  printf 'Service: paper-mes\nStatus: %s\nHost: %s\nTime: %s\nMessage: %s\n' \
-    "${status}" "${host}" "${timestamp}" "${message}"
+  printf '%s\n\n' "${title_en}"
+  printf 'Service: %s\nStatus: %s\nHost: %s\nTime: %s\nMessage: %s\n' \
+    "${service_name}" "${status}" "${host}" "${timestamp}" "${message}"
 } | "${MSMTP_BIN}" -- "${ALERT_EMAIL_TO}"

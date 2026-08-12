@@ -1,0 +1,27 @@
+[Unit]
+Description=Shared server and business systems monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+Environment=MONITOR_ENV_FILE=/etc/paper-mes/server-monitor.env
+ExecStart=/usr/local/sbin/monitor-server
+StateDirectory=server-monitor
+StateDirectoryMode=0750
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/server-monitor
