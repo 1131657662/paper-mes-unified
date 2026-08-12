@@ -24,6 +24,38 @@ case "${status}" in
   *) echo "unsupported alert status" >&2; exit 2 ;;
 esac
 
+status_zh() {
+  case "$1" in
+    FAILED) printf '%s' '故障告警' ;;
+    RECOVERED) printf '%s' '恢复通知' ;;
+    TEST) printf '%s' '测试通知' ;;
+  esac
+}
+
+summary_zh() {
+  case "$1" in
+    FAILED) printf '%s' '系统监控检测到异常，请查看下方英文技术详情并尽快处理。' ;;
+    RECOVERED) printf '%s' '系统监控确认相关异常已经恢复，当前检查正常。' ;;
+    TEST) printf '%s' '这是一封告警测试邮件，收到即表示邮件通知通道正常。' ;;
+  esac
+}
+
+message_zh() {
+  local translated="$1"
+  translated="${translated//SMTP integration check/邮件通知通道测试}"
+  translated="${translated//all checks are healthy/所有检查均正常}"
+  translated="${translated//backend health request failed:/后端健康检查请求失败：}"
+  translated="${translated//backend health is not UP/后端健康状态不是 UP}"
+  translated="${translated//public URL request failed/公网地址请求失败}"
+  translated="${translated//backup root not found/备份根目录不存在}"
+  translated="${translated//no completed backup found/未找到已完成的备份}"
+  translated="${translated//latest backup has no checksum manifest/最新备份缺少校验清单}"
+  translated="${translated//Backblaze B2 encrypted off-site backup sync recovered/Backblaze B2 加密异地备份同步已恢复}"
+  translated="${translated//Backblaze B2 encrypted off-site backup sync failed/Backblaze B2 加密异地备份同步失败}"
+  [ "${translated}" != "$1" ] || translated='请查看下方英文技术详情。'
+  printf '%s' "${translated}"
+}
+
 email_pattern='^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
 [[ "${ALERT_EMAIL_FROM}" =~ ${email_pattern} ]] || {
   echo "invalid sender address" >&2
@@ -38,13 +70,25 @@ email_pattern='^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
   exit 2
 }
 
+host="$(hostname)"
+timestamp="$(date --iso-8601=seconds)"
+status_cn="$(status_zh "${status}")"
+encoded_status_cn="$(printf '%s' "${status_cn}" | base64 | tr -d '\n')"
+
 {
   printf 'From: Paper MES Monitor <%s>\n' "${ALERT_EMAIL_FROM}"
   printf 'To: %s\n' "${ALERT_EMAIL_TO}"
-  printf 'Subject: [Paper MES] %s on %s\n' "${status}" "$(hostname)"
+  printf 'Subject: [Paper MES] =?UTF-8?B?%s?= / %s - %s\n' \
+    "${encoded_status_cn}" "${status}" "${host}"
   printf 'Date: %s\n' "$(LC_ALL=C date -R)"
   printf 'Content-Type: text/plain; charset=UTF-8\n'
   printf 'Content-Transfer-Encoding: 8bit\n\n'
+  printf 'Paper MES 系统监控通知\n\n'
+  printf '状态：%s / %s\n服务器：%s\n时间：%s\n说明：%s\n' \
+    "${status_cn}" "${status}" "${host}" "${timestamp}" "$(summary_zh "${status}")"
+  printf '详情：%s\n' "$(message_zh "${message}")"
+  printf '\n--------------------------------------------------\n\n'
+  printf 'Paper MES monitoring notification\n\n'
   printf 'Service: paper-mes\nStatus: %s\nHost: %s\nTime: %s\nMessage: %s\n' \
-    "${status}" "$(hostname)" "$(date --iso-8601=seconds)" "${message}"
+    "${status}" "${host}" "${timestamp}" "${message}"
 } | "${MSMTP_BIN}" -- "${ALERT_EMAIL_TO}"
