@@ -30,6 +30,7 @@ encoded_subject="$(printf '%s' "${subject}" | base64 | tr -d '\n')"
   printf 'Date: %s\n' "$(LC_ALL=C date -R)"
   printf 'MIME-Version: 1.0\n'
   printf 'Content-Type: text/html; charset=UTF-8\n'
-  printf 'Content-Transfer-Encoding: 8bit\n\n'
-  cat "${html_file}"
+  printf 'Content-Transfer-Encoding: base64\n\n'
+  base64 -w 76 "${html_file}"
+  printf '\n'
 } | "${MSMTP_BIN}" -- "${REPORT_EMAIL_TO}"

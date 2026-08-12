@@ -17,9 +17,13 @@ MOCK_MESSAGE_FILE="${temp_dir}/message" REPORT_ENV_FILE="${temp_dir}/report.env"
   MSMTP_BIN="${temp_dir}/msmtp" bash "${script_dir}/send-server-daily-report-email.example.sh" \
   "${temp_dir}/report.html" 2026-08-12
 grep -Fq 'Content-Type: text/html; charset=UTF-8' "${temp_dir}/message"
-grep -Fq '中文日报' "${temp_dir}/message"
+grep -Fq 'Content-Transfer-Encoding: base64' "${temp_dir}/message"
 grep -Fq 'receiver@example.com' "${temp_dir}/message"
 ! grep -Fq 'password' "${temp_dir}/message"
+body_start="$(grep -n '^$' "${temp_dir}/message" | head -1 | cut -d: -f1)"
+tail -n "+$((body_start + 1))" "${temp_dir}/message" | base64 -d > "${temp_dir}/decoded.html"
+cmp -s "${temp_dir}/report.html" "${temp_dir}/decoded.html"
+awk 'length($0) > 998 { exit 1 }' "${temp_dir}/message"
 
 cat > "${temp_dir}/generate" <<EOF
 #!/usr/bin/env bash
