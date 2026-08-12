@@ -18,6 +18,7 @@ HTTP_TIMEOUT_SECONDS="${HTTP_TIMEOUT_SECONDS:-10}"
 STATE_FILE="${STATE_FILE:-/var/lib/paper-mes/monitor.state}"
 ALERT_WEBHOOK_URL="${ALERT_WEBHOOK_URL:-}"
 ALERT_WEBHOOK_BEARER_TOKEN="${ALERT_WEBHOOK_BEARER_TOKEN:-}"
+ALERT_EMAIL_COMMAND="${ALERT_EMAIL_COMMAND:-}"
 
 errors=()
 
@@ -118,6 +119,23 @@ send_webhook() {
   fi
 }
 
+send_email_alert() {
+  local status="$1"
+  local message="$2"
+  [ -n "${ALERT_EMAIL_COMMAND}" ] || return 0
+  "${ALERT_EMAIL_COMMAND}" "${status}" "${message}" || {
+    echo "failed to send monitoring email" >&2
+    return 1
+  }
+}
+
+send_alerts() {
+  local failed=0
+  send_webhook "$1" "$2" || failed=1
+  send_email_alert "$1" "$2" || failed=1
+  return "${failed}"
+}
+
 write_state() {
   install -d -m 0750 "$(dirname "${STATE_FILE}")"
   printf '%s\n' "$1" > "${STATE_FILE}"
@@ -131,7 +149,7 @@ record_failure() {
       write_state FAILED
       ;;
     *)
-      if send_webhook FAILED "${message}"; then
+      if send_alerts FAILED "${message}"; then
         write_state FAILED
       else
         write_state ALERT_PENDING
@@ -144,7 +162,7 @@ record_success() {
   local previous_state="$1"
   case "${previous_state}" in
     FAILED|RECOVERY_PENDING)
-      if send_webhook RECOVERED "all checks are healthy"; then
+      if send_alerts RECOVERED "all checks are healthy"; then
         write_state UP
       else
         write_state RECOVERY_PENDING

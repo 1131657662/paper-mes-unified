@@ -1,0 +1,18 @@
+# Install as /etc/msmtprc with mode 0640 and group paper-mes.
+# Store the SMTP authorization code separately with the same ownership and mode.
+defaults
+auth on
+tls on
+tls_starttls off
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+timeout 20
+set_from_header on
+
+account qq
+host smtp.qq.com
+port 465
+from mes-alert@example.com
+user mes-alert@example.com
+passwordeval "cat /etc/paper-mes/qq-smtp-auth"
+
+account default : qq

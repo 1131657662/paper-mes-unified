@@ -41,6 +41,7 @@ run_monitor() {
   HTTP_TIMEOUT_SECONDS=2 \
   HEALTH_URL="$1" \
   ALERT_WEBHOOK_URL="$2" \
+  ALERT_EMAIL_COMMAND="${3:-}" \
   "${monitor_script}"
 }
 
@@ -64,5 +65,11 @@ assert_state FAILED
 assert_state RECOVERY_PENDING
 run_monitor http://127.0.0.1:18991/health http://127.0.0.1:18991/ok
 assert_state UP
+
+printf '%s\n' '#!/usr/bin/env bash' 'exit 1' > "${temp_dir}/failing-email-alert"
+chmod 700 "${temp_dir}/failing-email-alert"
+rm -f "${temp_dir}/state"
+! run_monitor http://127.0.0.1:1/health '' "${temp_dir}/failing-email-alert" >/dev/null 2>&1
+assert_state ALERT_PENDING
 
 echo "monitor state transition test passed"
