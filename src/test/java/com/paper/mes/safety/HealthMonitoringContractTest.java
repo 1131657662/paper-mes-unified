@@ -67,7 +67,9 @@ class HealthMonitoringContractTest {
         String timer = source("deploy/server-monitor.timer.example");
 
         assertThat(service).contains("NoNewPrivileges=true", "ProtectSystem=strict");
-        assertThat(service).contains("CapabilityBoundingSet=", "ReadWritePaths=/var/lib/server-monitor");
+        assertThat(service).contains("CapabilityBoundingSet=CAP_DAC_READ_SEARCH");
+        assertThat(service).contains("AmbientCapabilities=CAP_DAC_READ_SEARCH");
+        assertThat(service).contains("ReadWritePaths=/var/lib/server-monitor");
         assertThat(timer).contains("OnUnitActiveSec=5min", "Persistent=true");
     }
 
