@@ -55,7 +55,8 @@ class HealthMonitoringContractTest {
         assertThat(script).contains("jimureport", "127.0.0.1:3000", "127.0.0.1:3001");
         assertThat(script).contains("mes.nbsmzwl.cn", "erp.nbsmzwl.cn", "wms.nbsmzwl.cn");
         assertThat(checks).contains("check_mysql", "check_host_resources", "check_certificates", "check_backups");
-        assertThat(checks).contains("check_remote_statuses", "check_fresh_files", "systemctl is-active");
+        assertThat(checks).contains("check_remote_statuses", "check_fresh_files", "tail -n 1");
+        assertThat(checks).contains("systemctl is-active");
         assertThat(state).contains("REMINDER_HOURS", "fingerprint", "RECOVERY_PENDING");
         assertThat(behaviorTest).contains("server monitor state transition test passed");
         assertThat(script + checks + state).doesNotContain("CHANGE_ME", "eval ");

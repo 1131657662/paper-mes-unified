@@ -193,7 +193,7 @@ check_fresh_files() {
     age_hours=$(( ($(date +%s) - $(stat -c %Y "${file}")) / 3600 ))
     (( age_hours <= MAX_CHECK_FILE_AGE_HOURS )) || add_issue "result:${name}:stale" \
       "${name} result is ${age_hours} hours old" "${name} 结果距今已有 ${age_hours} 小时"
-    tail -20 "${file}" | grep -Fq "${expected}" || add_issue "result:${name}:failed" \
+    tail -n 1 "${file}" | grep -Fq "${expected}" || add_issue "result:${name}:failed" \
       "${name} latest result did not pass" "${name} 最近一次检查未通过"
   done <<< "${FRESH_CHECK_FILES}"
 }
