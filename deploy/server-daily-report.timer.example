@@ -1,0 +1,11 @@
+[Unit]
+Description=Send the server daily report at 07:30 Asia/Shanghai
+
+[Timer]
+OnCalendar=*-*-* 07:30:00 Asia/Shanghai
+RandomizedDelaySec=2m
+Persistent=true
+Unit=server-daily-report.service
+
+[Install]
+WantedBy=timers.target

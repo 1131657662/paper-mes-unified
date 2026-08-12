@@ -18,6 +18,8 @@ Thumbs.db
 target/
 *.class
 *.log
+__pycache__/
+*.py[cod]
 
 # 本地数据库连接配置（含口令，不上传）
 src/main/resources/application-dev.yml

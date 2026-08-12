@@ -9,6 +9,9 @@ on:
       - "deploy/test-notify-server-monitor-internal.sh"
       - "deploy/send-paper-mes-alert-email.example.sh"
       - "deploy/test-send-paper-mes-alert-email.sh"
+      - "deploy/*server-daily-report*"
+      - "deploy/server_daily_report_*.py"
+      - "deploy/daily-report.env.example"
       - "src/test/java/com/paper/mes/safety/HealthMonitoringContractTest.java"
       - "docs/生产部署指南.md"
       - ".github/workflows/server-monitor-quality.yml"
@@ -21,6 +24,9 @@ on:
       - "deploy/test-notify-server-monitor-internal.sh"
       - "deploy/send-paper-mes-alert-email.example.sh"
       - "deploy/test-send-paper-mes-alert-email.sh"
+      - "deploy/*server-daily-report*"
+      - "deploy/server_daily_report_*.py"
+      - "deploy/daily-report.env.example"
       - "src/test/java/com/paper/mes/safety/HealthMonitoringContractTest.java"
       - "docs/生产部署指南.md"
       - ".github/workflows/server-monitor-quality.yml"
@@ -38,6 +44,8 @@ jobs:
       - run: bash deploy/test-monitor-server.sh
       - run: bash deploy/test-notify-server-monitor-internal.sh
       - run: bash deploy/test-send-paper-mes-alert-email.sh
+      - run: python3 deploy/test-server-daily-report.py
+      - run: bash deploy/test-server-daily-report-delivery.sh
       - uses: actions/setup-java@v5
         with:
           cache: maven

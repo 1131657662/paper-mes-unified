@@ -37,7 +37,7 @@ DEAD_MAN_SWITCH_URL="${DEAD_MAN_SWITCH_URL:-}"
 INTERNAL_FAILURE_COMMAND="${INTERNAL_FAILURE_COMMAND-/usr/local/sbin/notify-server-monitor-internal}"
 
 SYSTEMD_UNITS="${SYSTEMD_UNITS:-nginx.service mysql.service docker.service paper-mes.service paper-mes-test.service pm2-root.service}"
-SYSTEMD_TIMERS="${SYSTEMD_TIMERS:-certbot.timer paper-mes-offsite-backup.timer}"
+SYSTEMD_TIMERS="${SYSTEMD_TIMERS:-certbot.timer paper-mes-offsite-backup.timer server-daily-report.timer}"
 DOCKER_CONTAINERS="${DOCKER_CONTAINERS:-jimureport jimureport-mysql}"
 HTTP_PROBES="${HTTP_PROBES:-MES production API|json-up|http://127.0.0.1:8081/actuator/health|200
 MES test API|json-up|http://127.0.0.1:8082/actuator/health|200
