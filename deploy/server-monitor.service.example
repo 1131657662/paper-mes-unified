@@ -2,7 +2,7 @@
 Description=Shared server and business systems monitor
 After=network-online.target
 Wants=network-online.target
-OnFailure=server-monitor-failure@%n.service
+OnFailure=server-monitor-failure@server-monitor.service
 
 [Service]
 Type=oneshot

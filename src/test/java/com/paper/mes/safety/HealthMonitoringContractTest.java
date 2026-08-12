@@ -73,7 +73,7 @@ class HealthMonitoringContractTest {
         String notifier = source("deploy/notify-server-monitor-internal.example.sh");
 
         assertThat(service).contains("NoNewPrivileges=true", "ProtectSystem=strict");
-        assertThat(service).contains("SuccessExitStatus=3", "OnFailure=server-monitor-failure@%n.service");
+        assertThat(service).contains("SuccessExitStatus=3", "OnFailure=server-monitor-failure@server-monitor.service");
         assertThat(service).contains("CapabilityBoundingSet=CAP_DAC_READ_SEARCH");
         assertThat(service).contains("AmbientCapabilities=CAP_DAC_READ_SEARCH");
         assertThat(service).contains("ReadWritePaths=/var/lib/server-monitor");
