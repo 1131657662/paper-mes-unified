@@ -52,6 +52,7 @@ public class FinishCustomerRevisionPreviewService {
         List<FinishCustomerSpecVO> rows = requested.values().stream()
                 .map(item -> planRow(finishes.get(item.getFinishUuid()), item))
                 .toList();
+        revisionPolicy.requirePublishAllowed(order, rows);
         return summary(order, nextRevisionNo(orderUuid), rows);
     }
 

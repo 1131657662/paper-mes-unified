@@ -26,11 +26,11 @@ import CustomerWeightRulePanel from './CustomerWeightRulePanel'
 import { usePreviewFinishCustomerSpecs, usePublishFinishCustomerSpecs } from './useFinishCustomerSpecs'
 import './CustomerSpecEditor.css'
 
-interface Props { data: FinishCustomerRevisionPreview; open: boolean; orderUuid: string; onClose: () => void }
+interface Props { allowPrintedSpecificationEdit?: boolean; data: FinishCustomerRevisionPreview; open: boolean; orderUuid: string; onClose: () => void }
 interface PreviewBundle { result: FinishCustomerRevisionPreview; request: FinishCustomerRevisionRequest }
 interface PreviewValidation { reason: string; selected: string[]; rule: WeightRule; rulePending: boolean }
 
-export default function CustomerSpecEditorDrawer({ data, open, orderUuid, onClose }: Props) {
+export default function CustomerSpecEditorDrawer({ allowPrintedSpecificationEdit = true, data, open, orderUuid, onClose }: Props) {
   const [rows, setRows] = useState(() => createCustomerSpecDrafts(data.items))
   const [selected, setSelectedState] = useState(() => data.items.map((item) => item.finishUuid))
   const [bulk, setBulk] = useState<BulkSpecificationValues>({})
@@ -96,9 +96,10 @@ export default function CustomerSpecEditorDrawer({ data, open, orderUuid, onClos
               description="客户品名、克重或门幅已不同于当前下发单。发布后系统将保留旧版追溯记录，并自动下发新的生产版本。"
             />
           )}
-          <CustomerSpecBatchToolbar disabled={!selected.length} values={bulk} onChange={setBulk} onApply={() => changeRows(applyBulkSpecification(rows, selected, bulk))} onFillDown={() => changeRows(fillSelectedFromFirst(rows, selected))} onSameSpec={() => changeRows(applyToSamePhysicalSpec(rows, selected))} onPaste={() => setPasteOpen(true)} />
+          {!allowPrintedSpecificationEdit && <Alert showIcon type="info" message="当前阶段仅允许维护客户显示重量，客户品名、克重和门幅已冻结" />}
+          <CustomerSpecBatchToolbar disabled={!selected.length} specificationDisabled={!allowPrintedSpecificationEdit} values={bulk} onChange={setBulk} onApply={() => changeRows(applyBulkSpecification(rows, selected, bulk))} onFillDown={() => changeRows(fillSelectedFromFirst(rows, selected))} onSameSpec={() => changeRows(applyToSamePhysicalSpec(rows, selected))} onPaste={() => setPasteOpen(true)} />
           <CustomerWeightRulePanel disabled={!selected.length} pending={weightRulePending} value={weightRule} onChange={changeWeightRule} onApply={applyCurrentWeightRule} />
-          <CustomerSpecEditTable rows={rows} selected={selected} previewItems={bundle?.result.items} onSelect={setSelected} onUpdate={(uuid, values) => changeRows(updateCustomerSpecDraft(rows, uuid, values))} />
+          <CustomerSpecEditTable allowPrintedSpecificationEdit={allowPrintedSpecificationEdit} rows={rows} selected={selected} previewItems={bundle?.result.items} onSelect={setSelected} onUpdate={(uuid, values) => changeRows(updateCustomerSpecDraft(rows, uuid, values))} />
           <div className="customer-spec-editor__review">
             <Form form={reasonForm} initialValues={{ reason }} onValuesChange={(_, values) => setReason(values.reason ?? '')}>
               <Form.Item name="reason" label="本次调整原因" rules={[{ required: true, whitespace: true, message: '请填写本次调整原因' }]}>

@@ -2,6 +2,8 @@ package com.paper.mes.processorder.service;
 
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.dto.FinishCustomerSpecVO;
+import com.paper.mes.processorder.dto.FinishCustomerRevisionRequestDTO;
+import com.paper.mes.processorder.dto.FinishCustomerSpecItemDTO;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.mapper.FinishCustomerRevisionMapper;
@@ -118,6 +120,40 @@ class FinishCustomerRevisionPreviewServiceTest {
         row.setCustomerDisplayWeight(new BigDecimal("105"));
 
         policy.requirePublishAllowed(order, List.of(row));
+    }
+
+    @Test
+    void previewToRecordOrder_withPrintedSpecificationChange_rejectsBeforePublish() {
+        ProcessOrderMapper orderMapper = mock(ProcessOrderMapper.class);
+        FinishRollMapper finishMapper = mock(FinishRollMapper.class);
+        FinishCustomerSpecPlanner planner = mock(FinishCustomerSpecPlanner.class);
+        ProcessOrder order = new ProcessOrder();
+        order.setUuid("order-1");
+        order.setVersion(8);
+        order.setOrderStatus(3);
+        FinishRoll finish = finish(1);
+        FinishCustomerSpecVO changed = validCustomerSpec();
+        changed.setPreviousCustomerPaperName("old-name");
+        changed.setCustomerPaperName("new-name");
+        when(orderMapper.selectById("order-1")).thenReturn(order);
+        when(finishMapper.selectList(any())).thenReturn(List.of(finish));
+        when(planner.plan(any(), any())).thenReturn(changed);
+        FinishCustomerRevisionPreviewService service = new FinishCustomerRevisionPreviewService(
+                orderMapper, finishMapper, mock(FinishCustomerRevisionMapper.class), planner,
+                new FinishCustomerRevisionPolicy(), mock(ProcessOrderDeliveryImpactCounter.class));
+
+        assertThatThrownBy(() -> service.preview("order-1", revisionRequest(finish.getUuid())))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不能修改已下发的客户品名、克重或门幅");
+    }
+
+    private FinishCustomerRevisionRequestDTO revisionRequest(String finishUuid) {
+        FinishCustomerSpecItemDTO item = new FinishCustomerSpecItemDTO();
+        item.setFinishUuid(finishUuid);
+        FinishCustomerRevisionRequestDTO request = new FinishCustomerRevisionRequestDTO();
+        request.setExpectedOrderVersion(8);
+        request.setItems(List.of(item));
+        return request;
     }
 
     private FinishRoll finish(int index) {

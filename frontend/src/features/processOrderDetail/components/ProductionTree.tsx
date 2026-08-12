@@ -126,7 +126,7 @@ export default function ProductionTree({
         )}
       </div>
       {customerEditorOpen && orderUuid && customerSpecs.data && (
-        <CustomerSpecEditorDrawer data={customerSpecs.data} open orderUuid={orderUuid} onClose={() => setCustomerEditorOpen(false)} />
+        <CustomerSpecEditorDrawer allowPrintedSpecificationEdit={!isPrintedSpecificationFrozen(orderStatus)} data={customerSpecs.data} open orderUuid={orderUuid} onClose={() => setCustomerEditorOpen(false)} />
       )}
       <CustomerSpecRevisionHistoryDrawer open={customerHistoryOpen} orderUuid={orderUuid} onClose={() => setCustomerHistoryOpen(false)} />
     </section>
@@ -139,6 +139,10 @@ function customerEditorHint(orderStatus?: number, reissueRequired?: boolean) {
       ? '当前客户规格已与下发版本不一致，重新打开后请确认新的下发版本'
       : '加工中允许维护客户显示重量；客户品名、克重或门幅变更会自动生成新的下发版本'
   }
-  if ([3, 4, 5].includes(orderStatus ?? -1)) return '仅维护客户商业展示信息，不影响已完成生产、库存或结算'
+  if ([3, 4, 5].includes(orderStatus ?? -1)) return '仅允许维护客户显示重量；已下发的客户品名、克重和门幅保持冻结'
   return undefined
+}
+
+function isPrintedSpecificationFrozen(orderStatus?: number) {
+  return [3, 4, 5].includes(orderStatus ?? -1)
 }
