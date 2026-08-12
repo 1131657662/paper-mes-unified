@@ -50,12 +50,28 @@ read_state_value() {
   sed -n "s/^$1=//p" "${STATE_FILE}" 2>/dev/null | head -1 || true
 }
 
-write_state() {
-  local status="$1" fingerprint="$2" last_alert="$3" temp
+valid_epoch_or_zero() {
+  [[ "$1" =~ ^[0-9]+$ ]] && printf '%s' "$1" || printf '0'
+}
+
+load_monitor_state() {
+  state_status="$(read_state_value status)"
+  state_fingerprint="$(read_state_value fingerprint)"
+  state_last_run="$(valid_epoch_or_zero "$(read_state_value last_run_epoch)")"
+  state_last_success="$(valid_epoch_or_zero "$(read_state_value last_success_epoch)")"
+  state_last_alert="$(valid_epoch_or_zero "$(read_state_value last_alert_epoch)")"
+  state_status="${state_status:-UNKNOWN}"
+  state_fingerprint="${state_fingerprint:-none}"
+}
+
+save_monitor_state() {
+  local temp
   install -d -m 0750 "$(dirname "${STATE_FILE}")"
   temp="$(mktemp "$(dirname "${STATE_FILE}")/.state.XXXXXX")"
-  printf 'status=%s\nfingerprint=%s\nlast_alert_epoch=%s\n' \
-    "${status}" "${fingerprint}" "${last_alert}" > "${temp}"
+  printf 'version=2\nstatus=%s\nfingerprint=%s\n' \
+    "${state_status}" "${state_fingerprint}" > "${temp}"
+  printf 'last_run_epoch=%s\nlast_success_epoch=%s\nlast_alert_epoch=%s\n' \
+    "${state_last_run}" "${state_last_success}" "${state_last_alert}" >> "${temp}"
   chmod 0600 "${temp}"
   mv -f "${temp}" "${STATE_FILE}"
 }
@@ -74,54 +90,72 @@ failure_fingerprint() {
   printf '%s\n' "${issue_keys[@]}" | sha256sum | awk '{print $1}'
 }
 
+failure_notification_due() {
+  local fingerprint="$1" now="$2" remind_after
+  [ "${state_status}" = FAILED ] || return 0
+  [ "${state_fingerprint}" = "${fingerprint}" ] || return 0
+  remind_after=$((REMINDER_HOURS * 3600))
+  (( now - state_last_alert >= remind_after ))
+}
+
 record_failure_state() {
-  local message_en="$1" message_zh="$2" previous_status="$3"
-  local previous_fingerprint="$4" previous_alert="$5" fingerprint now remind_after
+  local message_en="$1" message_zh="$2" fingerprint now
   fingerprint="$(failure_fingerprint)"
   now="$(date +%s)"
-  remind_after=$((REMINDER_HOURS * 3600))
-  if [ "${previous_status}" = FAILED ] && [ "${previous_fingerprint}" = "${fingerprint}" ] \
-    && [[ "${previous_alert}" =~ ^[0-9]+$ ]] && (( now - previous_alert < remind_after )); then
-    write_state FAILED "${fingerprint}" "${previous_alert}"
-    return
+  state_last_run="${now}"
+  if ! failure_notification_due "${fingerprint}" "${now}"; then
+    state_status=FAILED
+    state_fingerprint="${fingerprint}"
+    save_monitor_state
+    return 0
   fi
   if send_notifications FAILED "${message_en}" "${message_zh}"; then
-    write_state FAILED "${fingerprint}" "${now}"
-  else
-    write_state ALERT_PENDING "${fingerprint}" "${previous_alert:-0}"
+    state_status=FAILED
+    state_fingerprint="${fingerprint}"
+    state_last_alert="${now}"
+    save_monitor_state
+    return 0
   fi
+  state_status=ALERT_PENDING
+  state_fingerprint="${fingerprint}"
+  save_monitor_state
+  return 1
 }
 
 record_success_state() {
-  local previous_status="$1" now
+  local previous_status now
+  previous_status="${state_status}"
   now="$(date +%s)"
+  state_last_run="${now}"
+  state_last_success="${now}"
+  state_fingerprint=none
   case "${previous_status}" in
     FAILED|ALERT_PENDING|RECOVERY_PENDING)
       if send_notifications RECOVERED "all server checks are healthy" \
         "服务器全部检查项均已恢复正常"; then
-        write_state UP none "${now}"
+        state_status=UP
+        state_last_alert="${now}"
+        save_monitor_state
       else
-        write_state RECOVERY_PENDING none "${now}"
+        state_status=RECOVERY_PENDING
+        save_monitor_state
         return 1
       fi
       ;;
-    *) write_state UP none "${now}" ;;
+    *) state_status=UP; save_monitor_state ;;
   esac
 }
 
 process_monitor_result() {
-  local previous_status previous_fingerprint previous_alert message_en message_zh
-  previous_status="$(read_state_value status)"
-  previous_fingerprint="$(read_state_value fingerprint)"
-  previous_alert="$(read_state_value last_alert_epoch)"
+  local message_en message_zh
+  load_monitor_state
   if (( ${#issues_en[@]} > 0 )); then
     message_en="server monitor detected ${#issues_en[@]} issue(s): $(join_issues issues_en)"
     message_zh="服务器统一监控发现 ${#issues_zh[@]} 项异常：$(join_issues issues_zh)"
-    record_failure_state "${message_en}" "${message_zh}" "${previous_status}" \
-      "${previous_fingerprint}" "${previous_alert}"
+    record_failure_state "${message_en}" "${message_zh}" || return 1
     echo "server monitor failed: ${message_en}" >&2
-    return 1
+    return 3
   fi
-  record_success_state "${previous_status}" || return 1
+  record_success_state || return 1
   echo "server monitor ok"
 }

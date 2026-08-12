@@ -1,0 +1,46 @@
+name: Server monitor quality
+
+on:
+  pull_request:
+    paths:
+      - "deploy/*monitor-server*"
+      - "deploy/server-monitor*"
+      - "deploy/notify-server-monitor-internal.example.sh"
+      - "deploy/test-notify-server-monitor-internal.sh"
+      - "deploy/send-paper-mes-alert-email.example.sh"
+      - "deploy/test-send-paper-mes-alert-email.sh"
+      - "src/test/java/com/paper/mes/safety/HealthMonitoringContractTest.java"
+      - "docs/生产部署指南.md"
+      - ".github/workflows/server-monitor-quality.yml"
+  push:
+    branches: [main]
+    paths:
+      - "deploy/*monitor-server*"
+      - "deploy/server-monitor*"
+      - "deploy/notify-server-monitor-internal.example.sh"
+      - "deploy/test-notify-server-monitor-internal.sh"
+      - "deploy/send-paper-mes-alert-email.example.sh"
+      - "deploy/test-send-paper-mes-alert-email.sh"
+      - "src/test/java/com/paper/mes/safety/HealthMonitoringContractTest.java"
+      - "docs/生产部署指南.md"
+      - ".github/workflows/server-monitor-quality.yml"
+
+concurrency:
+  group: server-monitor-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  monitor-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - run: bash deploy/test-monitor-server.sh
+      - run: bash deploy/test-notify-server-monitor-internal.sh
+      - run: bash deploy/test-send-paper-mes-alert-email.sh
+      - uses: actions/setup-java@v5
+        with:
+          cache: maven
+          distribution: temurin
+          java-version: 21
+      - run: sh mvnw -q -Dtest=HealthMonitoringContractTest test

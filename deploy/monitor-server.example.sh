@@ -15,6 +15,8 @@ fi
 . "${MONITOR_LIB_DIR}/server-monitor-checks.sh"
 # shellcheck disable=SC1091
 . "${MONITOR_LIB_DIR}/server-monitor-state.sh"
+# shellcheck disable=SC1091
+. "${MONITOR_LIB_DIR}/server-monitor-heartbeat.sh"
 
 HTTP_TIMEOUT_SECONDS="${HTTP_TIMEOUT_SECONDS:-10}"
 HTTP_MAX_SECONDS="${HTTP_MAX_SECONDS:-5}"
@@ -26,11 +28,13 @@ MAX_INODE_USED_PERCENT="${MAX_INODE_USED_PERCENT:-85}"
 MAX_BACKUP_AGE_HOURS="${MAX_BACKUP_AGE_HOURS:-48}"
 MAX_REMOTE_SYNC_AGE_HOURS="${MAX_REMOTE_SYNC_AGE_HOURS:-48}"
 MAX_CHECK_FILE_AGE_HOURS="${MAX_CHECK_FILE_AGE_HOURS:-48}"
-REMINDER_HOURS="${REMINDER_HOURS:-24}"
+REMINDER_HOURS="${REMINDER_HOURS:-2}"
 STATE_FILE="${STATE_FILE:-/var/lib/server-monitor/state}"
 ALERT_WEBHOOK_URL="${ALERT_WEBHOOK_URL:-}"
 ALERT_WEBHOOK_BEARER_TOKEN="${ALERT_WEBHOOK_BEARER_TOKEN:-}"
 ALERT_EMAIL_COMMAND="${ALERT_EMAIL_COMMAND:-}"
+DEAD_MAN_SWITCH_URL="${DEAD_MAN_SWITCH_URL:-}"
+INTERNAL_FAILURE_COMMAND="${INTERNAL_FAILURE_COMMAND-/usr/local/sbin/notify-server-monitor-internal}"
 
 SYSTEMD_UNITS="${SYSTEMD_UNITS:-nginx.service mysql.service docker.service paper-mes.service paper-mes-test.service pm2-root.service}"
 SYSTEMD_TIMERS="${SYSTEMD_TIMERS:-certbot.timer paper-mes-offsite-backup.timer}"
@@ -75,4 +79,14 @@ check_host_resources
 check_backups
 check_remote_statuses
 check_fresh_files
-process_monitor_result
+
+monitor_result=0
+process_monitor_result || monitor_result=$?
+if (( monitor_result != 0 && monitor_result != 3 )); then
+  exit "${monitor_result}"
+fi
+if [ -n "${INTERNAL_FAILURE_COMMAND}" ]; then
+  "${INTERNAL_FAILURE_COMMAND}" recovered
+fi
+send_dead_man_switch
+exit "${monitor_result}"

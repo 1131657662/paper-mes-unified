@@ -26,7 +26,7 @@ case "${status}" in
   *) echo "unsupported alert status" >&2; exit 2 ;;
 esac
 case "${source}" in
-  paper-mes|server) ;;
+  paper-mes|server|monitor-internal) ;;
   *) echo "unsupported alert source" >&2; exit 2 ;;
 esac
 
@@ -116,6 +116,12 @@ if [ "${source}" = server ]; then
   title_zh='服务器统一监控通知'
   title_en='Shared server monitoring notification'
   service_name='shared-server'
+elif [ "${source}" = monitor-internal ]; then
+  subject_prefix='Monitor Watchdog'
+  sender_label='Monitor Watchdog'
+  title_zh='服务器监控器自检通知'
+  title_en='Server monitor watchdog notification'
+  service_name='server-monitor-watchdog'
 else
   subject_prefix='Paper MES'
   sender_label='Paper MES Monitor'

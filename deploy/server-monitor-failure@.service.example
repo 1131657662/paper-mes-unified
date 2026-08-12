@@ -1,16 +1,14 @@
 [Unit]
-Description=Shared server and business systems monitor
+Description=Notify that the shared server monitor itself failed (%i)
 After=network-online.target
 Wants=network-online.target
-OnFailure=server-monitor-failure@%n.service
 
 [Service]
 Type=oneshot
-SuccessExitStatus=3
 User=root
 Group=root
 Environment=MONITOR_ENV_FILE=/etc/paper-mes/server-monitor.env
-ExecStart=/usr/local/sbin/monitor-server
+ExecStart=/usr/local/sbin/notify-server-monitor-internal failed %i
 StateDirectory=server-monitor
 StateDirectoryMode=0750
 UMask=0077
@@ -25,6 +23,6 @@ ProtectControlGroups=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-CapabilityBoundingSet=CAP_DAC_READ_SEARCH
-AmbientCapabilities=CAP_DAC_READ_SEARCH
+CapabilityBoundingSet=
+AmbientCapabilities=
 ReadWritePaths=/var/lib/server-monitor

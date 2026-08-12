@@ -29,7 +29,7 @@ assert_email() {
     RECOVERED) status_cn='恢复通知' ;;
     TEST) status_cn='测试通知' ;;
   esac
-  if [ "${source}" = server ]; then
+  if [ "${source}" = server ] || [ "${source}" = monitor-internal ]; then
     MOCK_ARGS_FILE="${temp_dir}/args" MOCK_MESSAGE_FILE="${temp_dir}/message" \
     EMAIL_ALERT_ENV_FILE="${temp_dir}/email-alert.env" MSMTP_BIN="${temp_dir}/msmtp" \
       "${email_script}" "${status}" "${message}" "${source}" "${detail_cn}"
@@ -43,6 +43,7 @@ assert_email() {
   grep -Fx 'receiver@example.com' "${temp_dir}/args"
   local encoded_status
   [ "${source}" != server ] || subject_prefix='Server Monitor'
+  [ "${source}" != monitor-internal ] || subject_prefix='Monitor Watchdog'
   encoded_status="$(sed -n "s/^Subject: \[${subject_prefix}\] =?UTF-8?B?\([^?]*\)?= \/ ${status} - .*$/\1/p" "${temp_dir}/message")"
   [ -n "${encoded_status}" ]
   printf '%s' "${encoded_status}" | base64 --decode | grep -Fx "${status_cn}"
@@ -61,5 +62,7 @@ assert_email CRITICAL 'Backblaze B2 storage usage critical: 9100000000 bytes use
 assert_email RECOVERED 'all checks are healthy' '所有检查均正常'
 assert_email FAILED 'server monitor detected 1 issue(s): nginx is down' \
   '服务器统一监控发现 1 项异常：Nginx 未运行' server
+assert_email CRITICAL 'server monitor unit server-monitor.service failed; inspect its systemd journal' \
+  '服务器统一监控器自身运行失败，请检查 server-monitor.service 的 systemd 日志。' monitor-internal
 
 echo "email alert test passed"

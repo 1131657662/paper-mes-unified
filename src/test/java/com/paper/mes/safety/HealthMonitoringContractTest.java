@@ -49,6 +49,7 @@ class HealthMonitoringContractTest {
         String script = source("deploy/monitor-server.example.sh");
         String checks = source("deploy/server-monitor-checks.example.sh");
         String state = source("deploy/server-monitor-state.example.sh");
+        String heartbeat = source("deploy/server-monitor-heartbeat.example.sh");
         String behaviorTest = source("deploy/test-monitor-server.sh");
 
         assertThat(script).contains("paper-mes.service", "paper-mes-test.service", "pm2-root.service");
@@ -58,20 +59,28 @@ class HealthMonitoringContractTest {
         assertThat(checks).contains("check_remote_statuses", "check_fresh_files", "tail -n 1");
         assertThat(checks).contains("systemctl is-active");
         assertThat(state).contains("REMINDER_HOURS", "fingerprint", "RECOVERY_PENDING");
+        assertThat(state).contains("version=2", "last_run_epoch", "last_success_epoch", "last_alert_epoch");
+        assertThat(heartbeat).contains("DEAD_MAN_SWITCH_URL", "proto = \"=https\"");
         assertThat(behaviorTest).contains("server monitor state transition test passed");
-        assertThat(script + checks + state).doesNotContain("CHANGE_ME", "eval ");
+        assertThat(script + checks + state + heartbeat).doesNotContain("CHANGE_ME", "eval ");
     }
 
     @Test
     void sharedServerMonitor_runsOnTimerWithRestrictedSystemdSettings() throws Exception {
         String service = source("deploy/server-monitor.service.example");
         String timer = source("deploy/server-monitor.timer.example");
+        String failureService = source("deploy/server-monitor-failure@.service.example");
+        String notifier = source("deploy/notify-server-monitor-internal.example.sh");
 
         assertThat(service).contains("NoNewPrivileges=true", "ProtectSystem=strict");
+        assertThat(service).contains("SuccessExitStatus=3", "OnFailure=server-monitor-failure@%n.service");
         assertThat(service).contains("CapabilityBoundingSet=CAP_DAC_READ_SEARCH");
         assertThat(service).contains("AmbientCapabilities=CAP_DAC_READ_SEARCH");
         assertThat(service).contains("ReadWritePaths=/var/lib/server-monitor");
         assertThat(timer).contains("OnUnitActiveSec=5min", "Persistent=true");
+        assertThat(failureService).contains("notify-server-monitor-internal failed %i");
+        assertThat(failureService).contains("CapabilityBoundingSet=", "AmbientCapabilities=");
+        assertThat(notifier).contains("INTERNAL_FAILURE_REMINDER_HOURS", "monitor-internal");
     }
 
     @Test
