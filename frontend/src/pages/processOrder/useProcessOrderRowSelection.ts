@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type Key, type MouseEvent } from 'react'
+import { cloneElement, useCallback, useMemo, useState, type Key, type MouseEvent, type ReactElement } from 'react'
 import type { TableRowSelection } from 'antd/es/table/interface'
 import type { ProcessOrder } from '../../types/processOrder'
 
@@ -40,6 +40,10 @@ export function useProcessOrderRowSelection() {
     type: 'radio',
     selectedRowKeys,
     columnWidth: 42,
+    renderCell: (_checked, record, _index, originNode) => cloneElement(
+      originNode as ReactElement<{ 'aria-label'?: string }>,
+      { 'aria-label': `选择加工单 ${record.orderNo || '未编号'}` },
+    ),
     onChange: (keys, rows) => {
       setSelectedRowKeys(keys)
       setSelectedRows(rows)

@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { expectNoBlockingA11yViolations } from './accessibility'
-import { hasE2eCredentials, signIn } from './auth'
+import { hasE2eCredentials, openLogin, signIn } from './auth'
 
 test('登录页没有 serious 或 critical 级无障碍问题', async ({ page }) => {
-  await page.goto('/login')
+  await openLogin(page)
   await expect(page.getByRole('main')).toBeVisible()
 
   await expectNoBlockingA11yViolations(page)

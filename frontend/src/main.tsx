@@ -29,6 +29,8 @@ const appTheme = {
   token: {
     colorPrimary: '#0958d9',
     colorPrimaryHover: '#0b63e5',
+    colorLink: '#0958d9',
+    colorLinkHover: '#003eb3',
     colorText: '#172033',
     colorTextSecondary: '#526579',
     colorBorder: '#d9e2ec',

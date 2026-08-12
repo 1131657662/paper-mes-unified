@@ -35,8 +35,14 @@
 .process-order-list__order-link {
   justify-self: start;
   overflow: hidden;
+  color: #0958d9;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.process-order-list__order-link:hover,
+.process-order-list__order-link:focus-visible {
+  color: #003eb3;
 }
 
 .process-order-list__copy-slot {
@@ -132,6 +138,10 @@
 
 .process-order-list__status .ant-tag {
   margin-inline-end: 0;
+}
+
+.process-order-list__status .ant-tag-orange {
+  color: #ad4e00;
 }
 
 .process-order-list__status span {
