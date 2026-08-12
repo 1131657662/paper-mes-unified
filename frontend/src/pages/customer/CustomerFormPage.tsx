@@ -31,9 +31,10 @@ export default function CustomerFormPage({ mode }: Props) {
     data: customer,
     error: customerError,
     isError: isCustomerError,
-    isPending: isLoadingCustomer,
+    isPending: isCustomerPending,
     refetch: refetchCustomer,
   } = useCustomerDetail(isEdit ? uuid : undefined)
+  const isLoadingCustomer = isEdit && isCustomerPending
 
   useEffect(() => {
     if (customer) form.setFieldsValue(toFormValues(customer))
