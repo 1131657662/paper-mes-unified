@@ -85,8 +85,8 @@ process_monitor_result || monitor_result=$?
 if (( monitor_result != 0 && monitor_result != 3 )); then
   exit "${monitor_result}"
 fi
+send_dead_man_switch
 if [ -n "${INTERNAL_FAILURE_COMMAND}" ]; then
   "${INTERNAL_FAILURE_COMMAND}" recovered
 fi
-send_dead_man_switch
 exit "${monitor_result}"
