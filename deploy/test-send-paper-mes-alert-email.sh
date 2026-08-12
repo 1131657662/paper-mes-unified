@@ -32,11 +32,11 @@ assert_email() {
   if [ "${source}" = server ] || [ "${source}" = monitor-internal ]; then
     MOCK_ARGS_FILE="${temp_dir}/args" MOCK_MESSAGE_FILE="${temp_dir}/message" \
     EMAIL_ALERT_ENV_FILE="${temp_dir}/email-alert.env" MSMTP_BIN="${temp_dir}/msmtp" \
-      "${email_script}" "${status}" "${message}" "${source}" "${detail_cn}"
+      bash "${email_script}" "${status}" "${message}" "${source}" "${detail_cn}"
   else
     MOCK_ARGS_FILE="${temp_dir}/args" MOCK_MESSAGE_FILE="${temp_dir}/message" \
     EMAIL_ALERT_ENV_FILE="${temp_dir}/email-alert.env" MSMTP_BIN="${temp_dir}/msmtp" \
-      "${email_script}" "${status}" "${message}"
+      bash "${email_script}" "${status}" "${message}"
   fi
 
   grep -Fx -- '--' "${temp_dir}/args"
