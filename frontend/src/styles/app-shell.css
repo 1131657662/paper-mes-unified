@@ -358,6 +358,10 @@ body,
   font-weight: 600;
 }
 
+.ai-assistant__trigger {
+  color: var(--mes-color-primary);
+}
+
 .app-shell__tabs-control.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active::after {
   position: absolute;
   bottom: 0;

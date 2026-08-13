@@ -25,6 +25,7 @@ import { defaultOpenMenuKeys } from './menuOpenKeys'
 import { roleLabel } from './roleLabel'
 import { useRouteFocus } from './useRouteFocus'
 import RuntimeVersionModal from '../features/runtime/components/RuntimeVersionModal'
+import AiAssistantEntry from '../features/ai/components/AiAssistantEntry'
 import '../styles/app-shell.css'
 
 const { Sider, Header, Content } = Layout
@@ -71,6 +72,7 @@ export default function BasicLayout() {
           <div className="app-shell__header-actions">
             <DownloadTaskCenter />
             <NotificationBell />
+            <AiAssistantEntry />
             <Dropdown
             menu={{
               items: [

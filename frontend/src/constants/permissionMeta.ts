@@ -24,6 +24,7 @@ export interface RoleProfile {
 }
 
 export const PERMISSION_ITEMS: PermissionItem[] = [
+  { code: PERMISSIONS.aiAssist, label: '智能助手', description: '只读解释业务规则和错误，不执行任何业务操作' },
   { code: PERMISSIONS.baseView, label: '基础档案查看', description: '查看客户、纸张、机台、仓库档案' },
   { code: PERMISSIONS.baseManage, label: '基础档案维护', description: '新增、编辑、删除基础档案' },
   { code: PERMISSIONS.orderView, label: '加工单查看', description: '查看加工单列表、详情、打印快照' },
@@ -127,6 +128,7 @@ export const ROLE_PROFILES: Record<UserRoleCode, RoleProfile> = {
     permissions: [
       PERMISSIONS.baseView,
       PERMISSIONS.orderView,
+      PERMISSIONS.aiAssist,
       PERMISSIONS.orderCreate,
       PERMISSIONS.orderManage,
       PERMISSIONS.orderPricing,
@@ -140,7 +142,7 @@ export const ROLE_PROFILES: Record<UserRoleCode, RoleProfile> = {
     tone: 'geekblue',
     summary: '生产数据回录',
     description: '负责查看加工单并填写母卷、成品、切边、异常和实际加工结果。',
-    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.orderBackRecord, PERMISSIONS.reportView,
+    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.aiAssist, PERMISSIONS.orderBackRecord, PERMISSIONS.reportView,
       PERMISSIONS.exportTaskView],
   },
   finance: {
@@ -151,6 +153,7 @@ export const ROLE_PROFILES: Record<UserRoleCode, RoleProfile> = {
     description: '负责查看出库、办理结算、登记收款并查看经营报表。',
     permissions: [
       PERMISSIONS.baseView,
+      PERMISSIONS.aiAssist,
       PERMISSIONS.orderView,
       PERMISSIONS.deliveryView,
       PERMISSIONS.deliveryRelease,
@@ -171,7 +174,7 @@ export const ROLE_PROFILES: Record<UserRoleCode, RoleProfile> = {
     tone: 'green',
     summary: '出库办理',
     description: '负责查看加工单、办理出库、确认签收和出库回退。',
-    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.deliveryView, PERMISSIONS.deliveryManage,
+    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.aiAssist, PERMISSIONS.deliveryView, PERMISSIONS.deliveryManage,
       PERMISSIONS.reportView, PERMISSIONS.exportTaskView],
   },
   viewer: {
@@ -189,7 +192,7 @@ export const ROLE_PROFILES: Record<UserRoleCode, RoleProfile> = {
     tone: 'default',
     summary: '历史兼容角色',
     description: '保留现有账号原权限，不再作为新岗位的推荐选择。',
-    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.orderCreate, PERMISSIONS.orderBackRecord,
+    permissions: [PERMISSIONS.baseView, PERMISSIONS.orderView, PERMISSIONS.aiAssist, PERMISSIONS.orderCreate, PERMISSIONS.orderBackRecord,
       PERMISSIONS.reportView, PERMISSIONS.exportTaskView],
   },
 }

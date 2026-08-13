@@ -10,7 +10,7 @@ class PermissionsTest {
     void orderClerk_canCreateAndManageOrdersButCannotBackRecord() {
         var permissions = Permissions.resolve(RoleCodes.ORDER_CLERK);
 
-        assertThat(permissions).contains(Permissions.ORDER_CREATE, Permissions.ORDER_MANAGE);
+        assertThat(permissions).contains(Permissions.AI_ASSIST, Permissions.ORDER_CREATE, Permissions.ORDER_MANAGE);
         assertThat(permissions).doesNotContain(Permissions.ORDER_BACK_RECORD);
         assertThat(permissions).doesNotContain(Permissions.ORDER_PRICING_APPROVE);
     }
@@ -18,7 +18,7 @@ class PermissionsTest {
     @Test
     void finance_canApproveLargePricingAdjustments() {
         assertThat(Permissions.resolve(RoleCodes.FINANCE))
-                .contains(Permissions.ORDER_PRICING, Permissions.ORDER_PRICING_APPROVE,
+                .contains(Permissions.AI_ASSIST, Permissions.ORDER_PRICING, Permissions.ORDER_PRICING_APPROVE,
                         Permissions.SETTLE_DISCOUNT_APPROVE)
                 .doesNotContain(Permissions.SETTLE_DISCOUNT_ADMIN_APPROVE);
         assertThat(Permissions.resolve(RoleCodes.FINANCE)).contains(Permissions.DELIVERY_RELEASE);
@@ -27,7 +27,7 @@ class PermissionsTest {
     @Test
     void warehouse_canManageDeliveryButCannotReleaseCashSettlementRisk() {
         assertThat(Permissions.resolve(RoleCodes.WAREHOUSE))
-                .contains(Permissions.DELIVERY_MANAGE)
+                .contains(Permissions.AI_ASSIST, Permissions.DELIVERY_MANAGE)
                 .doesNotContain(Permissions.DELIVERY_RELEASE);
     }
 
@@ -35,7 +35,7 @@ class PermissionsTest {
     void recorder_canBackRecordButCannotCreateOrManageOrders() {
         var permissions = Permissions.resolve(RoleCodes.RECORDER);
 
-        assertThat(permissions).contains(Permissions.ORDER_VIEW, Permissions.ORDER_BACK_RECORD);
+        assertThat(permissions).contains(Permissions.AI_ASSIST, Permissions.ORDER_VIEW, Permissions.ORDER_BACK_RECORD);
         assertThat(permissions).doesNotContain(Permissions.ORDER_CREATE, Permissions.ORDER_MANAGE);
     }
 
@@ -48,13 +48,13 @@ class PermissionsTest {
                 Permissions.SETTLE_VIEW, Permissions.REPORT_VIEW, Permissions.EXPORT_TASK_VIEW);
         assertThat(permissions).noneMatch(permission -> permission.endsWith(":manage"));
         assertThat(permissions).doesNotContain(Permissions.ORDER_CREATE, Permissions.ORDER_BACK_RECORD,
-                Permissions.SETTLE_RECEIVE, Permissions.SYSTEM_CONFIG);
+                Permissions.SETTLE_RECEIVE, Permissions.SYSTEM_CONFIG, Permissions.AI_ASSIST);
     }
 
     @Test
     void legacyOperator_keepsExistingPermissionSet() {
         assertThat(Permissions.resolve(RoleCodes.OPERATOR)).containsExactly(
-                Permissions.BASE_VIEW, Permissions.ORDER_VIEW, Permissions.ORDER_CREATE,
+                Permissions.AI_ASSIST, Permissions.BASE_VIEW, Permissions.ORDER_VIEW, Permissions.ORDER_CREATE,
                 Permissions.ORDER_BACK_RECORD, Permissions.REPORT_VIEW, Permissions.EXPORT_TASK_VIEW);
     }
 }

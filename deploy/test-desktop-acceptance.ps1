@@ -1,7 +1,8 @@
 param(
     [string]$Database = "paper_mes_desktop_test",
     [int]$BackendPort = 18085,
-    [int]$FrontendPort = 5177
+    [int]$FrontendPort = 5177,
+    [string]$E2eSpec = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,9 +40,11 @@ $environmentNames = @(
     "SPRING_DATASOURCE_USERNAME", "SPRING_DATASOURCE_PASSWORD",
     "APP_SCHEMA_BOOTSTRAP_ENABLED", "APP_INITIAL_ADMIN_PASSWORD",
     "APP_INITIAL_OPERATOR_PASSWORD", "PAPER_MES_BACKUP_ENABLED",
+    "PAPER_MES_AI_DATA_MODE", "PAPER_MES_AI_PROVIDER",
     "PAPER_MES_DATA_HEALTH_INITIAL_DELAY_MS", "VITE_API_PROXY_TARGET",
     "PAPER_MES_E2E_BASE_URL", "PAPER_MES_E2E_USERNAME", "PAPER_MES_E2E_PASSWORD",
-    "PAPER_MES_E2E_LIMITED_USERNAME", "PAPER_MES_E2E_LIMITED_PASSWORD", "MYSQL_PWD"
+    "PAPER_MES_E2E_LIMITED_USERNAME", "PAPER_MES_E2E_LIMITED_PASSWORD",
+    "PAPER_MES_E2E_AI_ENABLED", "MYSQL_PWD"
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentNames) {
@@ -109,6 +112,8 @@ try {
     $env:APP_INITIAL_ADMIN_PASSWORD = $adminPassword
     $env:APP_INITIAL_OPERATOR_PASSWORD = $operatorPassword
     $env:PAPER_MES_BACKUP_ENABLED = "false"
+    $env:PAPER_MES_AI_DATA_MODE = "FAQ_ONLY"
+    $env:PAPER_MES_AI_PROVIDER = "LOCAL_RULES"
     $env:PAPER_MES_DATA_HEALTH_INITIAL_DELAY_MS = "3600000"
     $backend = Start-Process -FilePath $java -ArgumentList @("-jar", $jar) -WorkingDirectory $repoRoot `
         -RedirectStandardOutput $logs[0] -RedirectStandardError $logs[1] -WindowStyle Hidden -PassThru
@@ -126,8 +131,11 @@ try {
     $env:PAPER_MES_E2E_PASSWORD = $adminPassword
     $env:PAPER_MES_E2E_LIMITED_USERNAME = "operator"
     $env:PAPER_MES_E2E_LIMITED_PASSWORD = $operatorPassword
+    $env:PAPER_MES_E2E_AI_ENABLED = "true"
     Push-Location $frontendRoot
-    try { & $npm run test:e2e -- --workers=1 } finally { Pop-Location }
+    $e2eArguments = @("run", "test:e2e", "--", "--workers=1")
+    if ($E2eSpec) { $e2eArguments += $E2eSpec }
+    try { & $npm @e2eArguments } finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) { throw "Desktop acceptance E2E failed: $LASTEXITCODE" }
     $testPassed = $true
     Write-Output "desktop acceptance passed at 1366, 1440 and 1920"

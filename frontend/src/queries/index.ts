@@ -21,6 +21,7 @@ import { settleKeys } from '../features/settle/queries/settleKeys'
 import { systemConfigKeys } from '../features/systemConfig/queries/systemConfigKeys'
 import { userKeys } from '../features/user/queries/userKeys'
 import { runtimeKeys } from '../features/runtime/queries/runtimeKeys'
+import { aiKeys } from '../features/ai/queries/aiKeys'
 
 export const queries = mergeQueryKeys(
   authKeys,
@@ -45,4 +46,5 @@ export const queries = mergeQueryKeys(
   userKeys,
   systemConfigKeys,
   runtimeKeys,
+  aiKeys,
 )

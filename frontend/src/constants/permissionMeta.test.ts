@@ -8,6 +8,7 @@ describe('岗位权限矩阵', () => {
   })
 
   it('制单员可以制单和下发但不能生产回录', () => {
+    expect(roleHasPermission('order_clerk', PERMISSIONS.aiAssist)).toBe(true)
     expect(roleHasPermission('order_clerk', PERMISSIONS.orderCreate)).toBe(true)
     expect(roleHasPermission('order_clerk', PERMISSIONS.orderManage)).toBe(true)
     expect(roleHasPermission('order_clerk', PERMISSIONS.orderBackRecord)).toBe(false)
@@ -27,6 +28,7 @@ describe('岗位权限矩阵', () => {
     expect(roleHasPermission('viewer', PERMISSIONS.settleView)).toBe(true)
     expect(roleHasPermission('viewer', PERMISSIONS.deliveryManage)).toBe(false)
     expect(roleHasPermission('viewer', PERMISSIONS.settleManage)).toBe(false)
+    expect(roleHasPermission('viewer', PERMISSIONS.aiAssist)).toBe(false)
   })
 
   it('财务可以结算收款但不能办理出库或生产回录', () => {
