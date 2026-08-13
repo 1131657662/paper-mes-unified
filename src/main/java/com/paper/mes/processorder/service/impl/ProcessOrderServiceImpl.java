@@ -1603,7 +1603,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (order.getOrderStatus() != STATUS_PENDING) {
             throw new BusinessException("仅待下发状态可执行下发");
         }
-        ProcessOrderPrintableConfigValidator.validate(rolls, finishRolls, steps, finishOriginalRels);
+        ProcessOrderPrintableConfigValidator.validate(rolls, finishRolls,
+                new ProcessOrderPrintableConfigValidator.ProcessEvidence(
+                        steps, processParams, finishOriginalRels));
         StateMachine.assertTransition(OrderStatus.of(order.getOrderStatus()), OrderStatus.PROCESSING);
         LocalDateTime now = LocalDateTime.now();
         String printUser = currentOperator();

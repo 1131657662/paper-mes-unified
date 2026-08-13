@@ -4,6 +4,7 @@ import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
+import com.paper.mes.processorder.entity.ProcessParam;
 import com.paper.mes.processorder.entity.ProcessStep;
 import org.junit.jupiter.api.Test;
 
@@ -22,8 +23,8 @@ class ProcessOrderPrintableConfigValidatorTest {
 
         assertThatCode(() -> ProcessOrderPrintableConfigValidator.validate(
                 List.of(first, second), List.of(finish),
-                List.of(step("roll-1"), step("roll-2")),
-                List.of(relation("finish-1", "roll-1"), relation("finish-1", "roll-2"))))
+                evidence(List.of(step("roll-1"), step("roll-2")), List.of(),
+                        List.of(relation("finish-1", "roll-1"), relation("finish-1", "roll-2")))))
                 .doesNotThrowAnyException();
     }
 
@@ -34,8 +35,8 @@ class ProcessOrderPrintableConfigValidatorTest {
 
         assertThatThrownBy(() -> ProcessOrderPrintableConfigValidator.validate(
                 List.of(first, second), List.of(finish("finish-1", "R001")),
-                List.of(step("roll-1"), step("roll-2")),
-                List.of(relation("finish-1", "roll-1"))))
+                evidence(List.of(step("roll-1"), step("roll-2")), List.of(),
+                        List.of(relation("finish-1", "roll-1")))))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("R002");
     }
@@ -47,7 +48,7 @@ class ProcessOrderPrintableConfigValidatorTest {
 
         assertThatCode(() -> ProcessOrderPrintableConfigValidator.validate(
                 List.of(serviceRoll), List.of(finish("finish-1", "R001")),
-                List.of(), List.of(relation("finish-1", "roll-1"))))
+                evidence(List.of(), List.of(), List.of(relation("finish-1", "roll-1")))))
                 .doesNotThrowAnyException();
     }
 
@@ -58,8 +59,9 @@ class ProcessOrderPrintableConfigValidatorTest {
         finish.setFinishStatus(4);
 
         assertThatThrownBy(() -> ProcessOrderPrintableConfigValidator.validate(
-                List.of(roll), List.of(finish), List.of(step("roll-1")),
-                List.of(relation("finish-1", "roll-1"))))
+                List.of(roll), List.of(finish),
+                evidence(List.of(step("roll-1")), List.of(),
+                        List.of(relation("finish-1", "roll-1")))))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("R001");
     }
@@ -94,5 +96,11 @@ class ProcessOrderPrintableConfigValidatorTest {
         relation.setFinishUuid(finishUuid);
         relation.setOriginalUuid(originalUuid);
         return relation;
+    }
+
+    private ProcessOrderPrintableConfigValidator.ProcessEvidence evidence(
+            List<ProcessStep> steps, List<ProcessParam> params,
+            List<FinishOriginalRel> relations) {
+        return new ProcessOrderPrintableConfigValidator.ProcessEvidence(steps, params, relations);
     }
 }

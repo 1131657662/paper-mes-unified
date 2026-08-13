@@ -36,7 +36,14 @@ function buildPrintableWarnings(productions: RollProductionVO[], officialCount: 
   const warnings: string[] = []
   const processRolls = productions.filter((roll) => roll.processMode !== 3)
   const mainProcessRolls = productions.filter((roll) => processModeRequiresMain(roll.processMode))
-  const missingStep = mainProcessRolls.filter((roll) => !(roll.steps ?? []).some((step) => step.isMain === 1))
+  const mergedSources = mergedRewindSourceIds(productions)
+  const missingStep = mainProcessRolls.filter((roll) => {
+    const hasMainStep = (roll.steps ?? []).some((step) => step.isMain === 1)
+    const coveredByMergedRewind = roll.mainStepType === 2
+      && roll.originalUuid != null
+      && mergedSources.has(roll.originalUuid)
+    return !hasMainStep && !coveredByMergedRewind
+  })
 
   if (missingStep.length > 0) {
     warnings.push(`${missingStep.length} 卷缺少主工序，打印下发会被后端拦截`)
@@ -45,6 +52,28 @@ function buildPrintableWarnings(productions: RollProductionVO[], officialCount: 
     warnings.push('尚未看到正式成品卷号，请先确认加工方案或管理成品号')
   }
   return warnings
+}
+
+function mergedRewindSourceIds(productions: RollProductionVO[]): Set<string> {
+  const sourceIds = new Set<string>()
+  for (const production of productions) {
+    const mergedPlan = (production.rewindParams ?? []).some((param) => param.paramMode === 5)
+    const rewindMain = (production.steps ?? []).some((step) => step.isMain === 1 && step.stepType === 2)
+    if (!mergedPlan || !rewindMain) continue
+    for (const finish of production.finishes ?? []) {
+      if (!isFormalFinish(finish)) continue
+      const sources = [...new Set((finish.sources ?? []).flatMap((source) => source.originalUuid ?? []))]
+      if (sources.length > 1) sources.forEach((sourceUuid) => sourceIds.add(sourceUuid))
+    }
+  }
+  return sourceIds
+}
+
+function isFormalFinish(finish: NonNullable<RollProductionVO['finishes']>[number]): boolean {
+  return finish.isSpare !== 1
+    && finish.isRemain !== 1
+    && finish.rollNoStatus !== 3
+    && finish.finishStatus !== 4
 }
 
 function buildStatusHint(detail?: ProcessOrderDetailVO): string {

@@ -38,4 +38,75 @@ describe('加工单执行完整性', () => {
       '该历史加工单没有人工确认打印记录，请完成补打确认后再出库或结算',
     ])
   })
+
+  it('合并复卷来源母卷不要求重复保存主工序', () => {
+    const mergedFinish = {
+      uuid: 'finish-1',
+      isSpare: 0,
+      isRemain: 0,
+      rollNoStatus: 1,
+      finishStatus: 1,
+      sources: [{ originalUuid: 'roll-1' }, { originalUuid: 'roll-2' }],
+    }
+    const summary = buildExecutionSummary({
+      order: { uuid: 'order-1', orderStatus: 1 },
+      originalRolls: [],
+      rolls: [],
+      steps: [],
+      finishRolls: [{ uuid: 'finish-1', isSpare: 0, isRemain: 0, rollNoStatus: 1 }],
+      rollProductions: [
+        {
+          originalUuid: 'roll-1', processMode: 1, mainStepType: 2,
+          steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stepType: 2, isMain: 1 }],
+          rewindParams: [{ paramMode: 5 }], finishes: [mergedFinish],
+        },
+        {
+          originalUuid: 'roll-2', processMode: 1, mainStepType: 2,
+          steps: [], finishes: [mergedFinish],
+        },
+      ],
+    })
+
+    expect(summary.printableWarnings).toEqual([])
+  })
+
+  it('普通多来源成品仍提示缺少主工序', () => {
+    const summary = buildExecutionSummary({
+      order: { uuid: 'order-1', orderStatus: 1 },
+      originalRolls: [],
+      rolls: [],
+      steps: [],
+      finishRolls: [{ uuid: 'finish-1', isSpare: 0, isRemain: 0, rollNoStatus: 1 }],
+      rollProductions: [{
+        originalUuid: 'roll-2', processMode: 1, mainStepType: 2, steps: [],
+        finishes: [{
+          uuid: 'finish-1', isSpare: 0, isRemain: 0, rollNoStatus: 1,
+          sources: [{ originalUuid: 'roll-1' }, { originalUuid: 'roll-2' }],
+        }],
+      }],
+    })
+
+    expect(summary.printableWarnings).toContain('1 卷缺少主工序，打印下发会被后端拦截')
+  })
+
+  it('重复来源关系不视为多母卷合并复卷', () => {
+    const summary = buildExecutionSummary({
+      order: { uuid: 'order-1', orderStatus: 1 },
+      originalRolls: [], rolls: [], steps: [],
+      finishRolls: [{ uuid: 'finish-1', isSpare: 0, isRemain: 0, rollNoStatus: 1 }],
+      rollProductions: [{
+        originalUuid: 'roll-2', processMode: 1, mainStepType: 2,
+        steps: [{ uuid: 'step-1', originalUuid: 'roll-2', stepType: 2, isMain: 1 }],
+        rewindParams: [{ paramMode: 5 }],
+        finishes: [{
+          uuid: 'finish-1', isSpare: 0, isRemain: 0, rollNoStatus: 1,
+          sources: [{ originalUuid: 'roll-1' }, { originalUuid: 'roll-1' }],
+        }],
+      }, {
+        originalUuid: 'roll-1', processMode: 1, mainStepType: 2, steps: [], finishes: [],
+      }],
+    })
+
+    expect(summary.printableWarnings).toContain('1 卷缺少主工序，打印下发会被后端拦截')
+  })
 })

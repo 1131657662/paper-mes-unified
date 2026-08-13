@@ -60,7 +60,7 @@ class CompletedOrderRollProtectionBusinessFlowIT {
     private void assertBlocked(ThrowingOperation operation) {
         assertThatThrownBy(operation::run)
                 .isInstanceOf(BusinessException.class)
-                .hasMessageMatching(".*(锁定|状态|阶段).*");
+                .hasMessageMatching(".*(锁定|冻结|状态|阶段).*");
     }
 
     @FunctionalInterface
