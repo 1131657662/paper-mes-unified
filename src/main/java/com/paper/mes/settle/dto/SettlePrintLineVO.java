@@ -29,6 +29,8 @@ public class SettlePrintLineVO {
     private Integer coreDiameter;
     private Integer originalLength;
     private BigDecimal originalWeight;
+    /** UNKNOWN / ESTIMATED / MEASURED; null only for legacy frozen snapshots. */
+    private String originalWeightStatus;
     private Integer processMode;
     private Integer mainStepType;
     private String machineUuid;
@@ -39,6 +41,9 @@ public class SettlePrintLineVO {
     private String finishDetailSummary;
     private Integer finishCount;
     private BigDecimal finishWeight;
+    /** Unique deliverable-finish totals for the whole process order. */
+    private Integer orderFinishCount;
+    private BigDecimal orderFinishWeight;
     private BigDecimal trimWeight;
     private String trimSummary;
     private BigDecimal sawWeight;

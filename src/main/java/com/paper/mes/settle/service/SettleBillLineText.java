@@ -33,6 +33,24 @@ final class SettleBillLineText {
         return value.toString();
     }
 
+    static String originalWeightText(SettlePrintLineVO line) {
+        String status = line.getOriginalWeightStatus();
+        if ("UNKNOWN".equalsIgnoreCase(status)) {
+            return "未知（待称重）";
+        }
+        if ("ESTIMATED".equalsIgnoreCase(status)) {
+            return line.getOriginalWeight() == null
+                    ? "参考重量缺失（未实测）"
+                    : "参考 " + weightText(line.getOriginalWeight()) + "（未实测）";
+        }
+        if ("MEASURED".equalsIgnoreCase(status)) {
+            return line.getOriginalWeight() == null
+                    ? "实测重量缺失"
+                    : "实测 " + weightText(line.getOriginalWeight());
+        }
+        return weightText(line.getOriginalWeight());
+    }
+
     static String processNames(SettlePrintLineVO line) {
         Set<String> names = processFees(line).stream()
                 .map(SettleFeeLineVO::getFeeName)

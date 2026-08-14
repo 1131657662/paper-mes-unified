@@ -808,6 +808,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         Map<String, List<ProcessStep>> stepsByOriginal = groupStepsByOriginal(steps);
         Map<String, List<ProcessStageOutput>> outputsByOriginal = groupStageOutputsByOriginal(stageOutputs);
         Map<String, List<FinishRoll>> finishesByOriginal = groupFinishesByOriginal(finishes, rels, rolls);
+        Map<String, List<FinishRoll>> finishesByOrder = finishes.stream()
+                .collect(Collectors.groupingBy(FinishRoll::getOrderUuid, LinkedHashMap::new, Collectors.toList()));
         Map<String, String> machineNameByUuid = loadMachineNames(rolls);
         Map<String, SettleDetail> detailByOrderUuid = new LinkedHashMap<>();
         for (SettleDetail detail : details) {
@@ -826,6 +828,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         List<SettlePrintLineVO> lines = new ArrayList<>(rolls.size());
         for (Map.Entry<String, List<SettlePrintLineVO>> entry : linesByOrderUuid.entrySet()) {
             SettleDetail detail = detailByOrderUuid.get(entry.getKey());
+            SettleOrderFinishTotals.apply(entry.getValue(),
+                    finishesByOrder.getOrDefault(entry.getKey(), List.of()));
             applyOrderAmountClosure(entry.getValue(), detail, orderByUuid.get(entry.getKey()), settle.getIsInvoice());
             lines.addAll(entry.getValue());
         }
@@ -929,6 +933,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setCoreDiameter(roll.getCoreDiameter());
         line.setOriginalLength(roll.getOriginalLength());
         line.setOriginalWeight(originalWeight(roll));
+        line.setOriginalWeightStatus(SettleOriginalWeightStatus.resolve(roll));
         line.setProcessMode(roll.getProcessMode());
         line.setMainStepType(roll.getMainStepType());
         line.setMachineUuid(roll.getMachineUuid());

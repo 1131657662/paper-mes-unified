@@ -21,13 +21,13 @@ export interface SettleBillGroup {
 
 export function buildSettleBillGroups(lines: SettlePrintLine[]): SettleBillGroup[] {
   const map = new Map<string, SettleBillGroup>()
+  const orderFinishTotals = new Set<string>()
   for (const line of lines) {
     const key = line.orderUuid || line.orderNo || line.originalUuid
     const group = map.get(key) ?? emptyGroup(key, line)
     group.lines.push(line)
     group.originalWeight += line.originalWeight ?? 0
-    group.finishCount += line.finishCount ?? 0
-    group.finishWeight += line.finishWeight ?? 0
+    applyFinishTotals({ group, line, key, orderFinishTotals })
     group.trimWeight += line.trimWeight ?? 0
     group.processAmount += line.processAmount ?? 0
     group.standardProcessAmount += line.standardProcessAmount ?? line.processAmount ?? 0
@@ -40,6 +40,25 @@ export function buildSettleBillGroups(lines: SettlePrintLine[]): SettleBillGroup
     map.set(key, group)
   }
   return Array.from(map.values())
+}
+
+interface FinishTotalsOptions {
+  group: SettleBillGroup
+  line: SettlePrintLine
+  key: string
+  orderFinishTotals: Set<string>
+}
+
+function applyFinishTotals({ group, line, key, orderFinishTotals }: FinishTotalsOptions): void {
+  if (line.orderFinishCount != null || line.orderFinishWeight != null) {
+    group.finishCount = line.orderFinishCount ?? 0
+    group.finishWeight = line.orderFinishWeight ?? 0
+    orderFinishTotals.add(key)
+    return
+  }
+  if (orderFinishTotals.has(key)) return
+  group.finishCount += line.finishCount ?? 0
+  group.finishWeight += line.finishWeight ?? 0
 }
 
 function lineTaxAmount(line: SettlePrintLine) {

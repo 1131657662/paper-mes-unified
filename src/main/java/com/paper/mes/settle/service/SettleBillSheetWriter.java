@@ -14,6 +14,7 @@ import static com.paper.mes.settle.service.SettleBillLineText.feeBasis;
 import static com.paper.mes.settle.service.SettleBillLineText.finishResult;
 import static com.paper.mes.settle.service.SettleBillLineText.originalSpec;
 import static com.paper.mes.settle.service.SettleBillLineText.originalText;
+import static com.paper.mes.settle.service.SettleBillLineText.originalWeightText;
 import static com.paper.mes.settle.service.SettleBillLineText.processNames;
 import static com.paper.mes.settle.service.SettleBillLineText.text;
 import static com.paper.mes.settle.service.SettleBillLineText.trimText;
@@ -106,7 +107,7 @@ final class SettleBillSheetWriter {
     private static void writeLine(Row row, SettlePrintLineVO line, CellStyle style) {
         row.createCell(0).setCellValue(originalText(line));
         row.createCell(1).setCellValue(originalSpec(line));
-        row.createCell(2).setCellValue(weightText(line.getOriginalWeight()));
+        row.createCell(2).setCellValue(originalWeightText(line));
         row.createCell(3).setCellValue(processNames(line));
         row.createCell(4).setCellValue(feeBasis(line));
         row.createCell(5).setCellValue(finishResult(line));
@@ -117,7 +118,7 @@ final class SettleBillSheetWriter {
 
     private static void writeSubtotalRow(Row row, SettleExportSubtotal subtotal, CellStyle style) {
         row.createCell(0).setCellValue(text(subtotal.orderNo) + " 小计");
-        row.createCell(2).setCellValue(weightText(subtotal.originalWeight));
+        row.createCell(2).setCellValue(subtotal.originalWeightText());
         row.createCell(5).setCellValue(subtotal.finishCount + " 卷 / " + weightText(subtotal.finishWeight));
         row.createCell(6).setCellValue(weightText(subtotal.trimWeight));
         row.createCell(7).setCellValue(text(subtotal.processAmount));

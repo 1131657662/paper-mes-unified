@@ -62,6 +62,8 @@ export interface SettleDetail {
   remark?: string
 }
 
+export type OriginalWeightStatus = 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
+
 export interface SettlePrintLine {
   settleUuid: string
   orderUuid: string
@@ -80,6 +82,8 @@ export interface SettlePrintLine {
   coreDiameter?: number
   originalLength?: number
   originalWeight?: number
+  /** Missing only on historical frozen settlement snapshots. */
+  originalWeightStatus?: OriginalWeightStatus
   processMode?: number
   mainStepType?: number
   machineUuid?: string
@@ -90,6 +94,8 @@ export interface SettlePrintLine {
   finishDetailSummary?: string
   finishCount?: number
   finishWeight?: number
+  orderFinishCount?: number
+  orderFinishWeight?: number
   trimWeight?: number
   trimSummary?: string
   sawWeight?: number

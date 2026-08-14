@@ -6,6 +6,7 @@ import MesTooltip from '../../../components/biz/MesTooltip'
 import { MAX_SOURCE_PIECES } from '../../../constants/processOrder'
 import type { RollDraft } from '../types'
 import { newRollDraft } from '../draftMappers'
+import { updateRollWeightStatus } from '../rollWeightStatus'
 
 interface Props {
   onChange: (rolls: RollDraft[]) => void
@@ -25,7 +26,7 @@ export default function RollInputTable({ onChange, rolls }: Props) {
     textColumn('母卷号', 'rollNo', 120, setField),
     textColumn('编号', 'extraNo', 110, setField),
     numberColumn('件数', 'pieceNum', 80, setField, undefined, MAX_SOURCE_PIECES),
-    weightColumn(setField),
+    weightColumn(rolls, onChange),
     textColumn('备注', 'remark', 140, setField),
     actionColumn(rolls, onChange),
   ]
@@ -59,19 +60,21 @@ function optionalNumberColumn(key: string, field: 'originalDiameter' | 'coreDiam
   ) }
 }
 
-function weightColumn(setField: SetField): ColumnType<RollDraft> {
-  return { title: '重量', dataIndex: 'rollWeight', width: 180, render: (_, roll, index) => (
+function weightColumn(rolls: RollDraft[], onChange: Props['onChange']): ColumnType<RollDraft> {
+  return { title: '重量', dataIndex: 'rollWeight', width: 260, render: (_, roll, index) => (
     <Space.Compact>
       <Select aria-label={`母卷 ${index + 1} 重量状态`} value={roll.weightStatus ?? (roll.rollWeight == null ? 'UNKNOWN' : 'ESTIMATED')}
-        options={[{ value: 'UNKNOWN', label: '未知' }, { value: 'ESTIMATED', label: '估算' }]}
+        options={[{ value: 'UNKNOWN', label: '未知（无参考）' }, { value: 'ESTIMATED', label: '参考（未实测）' }]}
         onChange={(value) => {
-          setField(roll, 'weightStatus', value)
-          if (value === 'UNKNOWN') setField(roll, 'rollWeight', undefined)
+          if (value === 'MEASURED') return
+          onChange(updateRollWeightStatus(rolls, roll.localId, value))
         }} />
       <InputNumber aria-label={`母卷 ${index + 1} 单重`} min={0.001} precision={3}
         disabled={roll.weightStatus === 'UNKNOWN'} value={positiveValue(roll.rollWeight)}
         placeholder={roll.weightStatus === 'UNKNOWN' ? '未知' : 'kg'}
-        onChange={(value) => setField(roll, 'rollWeight', value ?? undefined)} />
+        onChange={(value) => onChange(rolls.map((item) => item.localId === roll.localId
+          ? { ...item, rollWeight: value ?? undefined }
+          : item))} />
     </Space.Compact>
   ) }
 }

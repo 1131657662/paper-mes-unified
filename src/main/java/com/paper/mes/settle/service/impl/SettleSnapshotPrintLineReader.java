@@ -90,6 +90,7 @@ final class SettleSnapshotPrintLineReader {
             line.setCoreDiameter(integer(itemNode, "core_diameter"));
             line.setOriginalLength(integer(itemNode, "original_length"));
             line.setOriginalWeight(decimal(itemNode, "original_weight"));
+            line.setOriginalWeightStatus(text(itemNode, "original_weight_status"));
             line.setProcessMode(integer(itemNode, "process_mode"));
             line.setMainStepType(integer(itemNode, "main_step_type"));
             line.setMachineUuid(text(itemNode, "machine_uuid"));
@@ -100,6 +101,8 @@ final class SettleSnapshotPrintLineReader {
             line.setFinishDetailSummary(text(itemNode, "finish_detail_summary"));
             line.setFinishCount(integer(itemNode, "finish_count"));
             line.setFinishWeight(decimal(itemNode, "finish_weight"));
+            line.setOrderFinishCount(integer(itemNode, "order_finish_count"));
+            line.setOrderFinishWeight(decimal(itemNode, "order_finish_weight"));
             line.setTrimWeight(decimal(itemNode, "trim_weight"));
             line.setTrimSummary(text(itemNode, "trim_summary"));
             line.setSawWeight(decimal(itemNode, "saw_weight"));

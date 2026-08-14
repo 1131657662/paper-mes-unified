@@ -60,4 +60,29 @@ describe('buildSettleBillGroups', () => {
     expect(group?.taxAmount).toBe(0)
     expect(group?.historicalDifferenceAmount).toBe(846)
   })
+
+  it('uses unique order finish totals for a shared multi-source output', () => {
+    const lines = ['roll-1', 'roll-2', 'roll-3'].map((originalUuid) => line({
+      originalUuid,
+      finishCount: 1,
+      finishWeight: 3,
+      orderFinishCount: 1,
+      orderFinishWeight: 3,
+    }))
+
+    const [group] = buildSettleBillGroups(lines)
+
+    expect(group?.finishCount).toBe(1)
+    expect(group?.finishWeight).toBe(3)
+  })
+
+  it('keeps legacy per-line finish aggregation when order totals are absent', () => {
+    const [group] = buildSettleBillGroups([
+      line({ finishCount: 1, finishWeight: 3 }),
+      line({ originalUuid: 'roll-2', finishCount: 2, finishWeight: 4 }),
+    ])
+
+    expect(group?.finishCount).toBe(3)
+    expect(group?.finishWeight).toBe(7)
+  })
 })

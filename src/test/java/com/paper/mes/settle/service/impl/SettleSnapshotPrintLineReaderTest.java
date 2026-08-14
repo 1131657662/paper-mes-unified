@@ -41,6 +41,7 @@ class SettleSnapshotPrintLineReaderTest {
                       "coreDiameter": 76,
                       "originalLength": 6000,
                       "originalWeight": 3255.000,
+                      "originalWeightStatus": "MEASURED",
                       "machineUuid": "machine-1",
                       "machineName": "锯纸机1号",
                       "processText": "锯纸+复卷",
@@ -49,6 +50,8 @@ class SettleSnapshotPrintLineReaderTest {
                       "finishDetailSummary": "A000001（950mm / 1500.000kg）",
                       "finishCount": 2,
                       "finishWeight": 3000.000,
+                      "orderFinishCount": 2,
+                      "orderFinishWeight": 3000.000,
                       "trimWeight": 55.000,
                       "trimSummary": "100mm / 55.000kg",
                       "sawUnitPrice": 200.00,
@@ -87,6 +90,7 @@ class SettleSnapshotPrintLineReaderTest {
         assertEquals(1300, line.getOriginalDiameter());
         assertEquals(76, line.getCoreDiameter());
         assertEquals(6000, line.getOriginalLength());
+        assertEquals("MEASURED", line.getOriginalWeightStatus());
         assertEquals("machine-1", line.getMachineUuid());
         assertEquals("锯纸机1号", line.getMachineName());
         assertEquals("锯纸+复卷", line.getProcessText());
@@ -103,6 +107,8 @@ class SettleSnapshotPrintLineReaderTest {
         assertDecimal("66.00", line.getTaxAmount());
         assertDecimal("1176.00", line.getLineAmount());
         assertEquals(1, line.getIsInvoice());
+        assertEquals(2, line.getOrderFinishCount());
+        assertDecimal("3000.000", line.getOrderFinishWeight());
     }
 
     @Test
@@ -128,6 +134,7 @@ class SettleSnapshotPrintLineReaderTest {
                       "core_diameter": 76,
                       "original_length": 5800,
                       "original_weight": 2874.000,
+                      "original_weight_status": "ESTIMATED",
                       "process_mode": 1,
                       "main_step_type": 2,
                       "machine_uuid": "machine-2",
@@ -138,6 +145,8 @@ class SettleSnapshotPrintLineReaderTest {
                       "finish_detail_summary": "A000010（940mm / 1400.000kg）",
                       "finish_count": 2,
                       "finish_weight": 2800.000,
+                      "order_finish_count": 2,
+                      "order_finish_weight": 2800.000,
                       "trim_weight": 40.000,
                       "trim_summary": "80mm / 40.000kg",
                       "saw_weight": 0.000,
@@ -182,6 +191,7 @@ class SettleSnapshotPrintLineReaderTest {
         assertEquals(1200, line.getOriginalDiameter());
         assertEquals(76, line.getCoreDiameter());
         assertEquals(5800, line.getOriginalLength());
+        assertEquals("ESTIMATED", line.getOriginalWeightStatus());
         assertEquals("machine-2", line.getMachineUuid());
         assertEquals("复卷机2号", line.getMachineName());
         assertEquals("复卷（2874.000kg / 单价 180.00）", line.getProcessStepSummary());
@@ -196,6 +206,8 @@ class SettleSnapshotPrintLineReaderTest {
         assertDecimal("32.84", line.getTaxAmount());
         assertDecimal("580.16", line.getLineAmount());
         assertEquals("legacy print line", line.getRemark());
+        assertEquals(2, line.getOrderFinishCount());
+        assertDecimal("2800.000", line.getOrderFinishWeight());
     }
 
     @Test

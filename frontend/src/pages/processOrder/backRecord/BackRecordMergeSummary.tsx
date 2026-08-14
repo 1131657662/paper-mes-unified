@@ -56,7 +56,7 @@ interface ColumnOptions {
 function columns(options: ColumnOptions): ColumnsType<BackRecordSourceRoll> {
   return [
     { title: '来源母卷', width: 190, fixed: 'left', render: (_, source, index) => <SourceIdentity source={source} index={index} values={options.formValues} /> },
-    { title: '标称/估算', width: 110, render: (_, source) => formatOptionalKg(sourceEstimatedWeight(source)) },
+    { title: '标称/参考', width: 110, render: (_, source) => formatOptionalKg(sourceEstimatedWeight(source)) },
     { title: '实测克重', width: 150, render: (_, source) => <NumberField source={source} field="actualGramWeight" min={1} suffix="g" onFieldExhausted={options.onFieldExhausted} /> },
     { title: '实测门幅', width: 150, render: (_, source) => <NumberField source={source} field="actualWidth" min={1} suffix="mm" onFieldExhausted={options.onFieldExhausted} /> },
     { title: options.required ? '复称重量（必填）' : '复称重量（选填）', width: 175, render: (_, source) => <NumberField source={source} field="actualWeight" min={0.001} suffix="kg" required={options.required} onFieldExhausted={options.onFieldExhausted} /> },

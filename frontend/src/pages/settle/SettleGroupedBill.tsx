@@ -4,6 +4,7 @@ import { formatMoney, formatTon } from '../../features/settle/utils/settleFormat
 import type { SettlePrintLine } from '../../types/settle'
 import { buildSettleBillGroups, type SettleBillGroup } from './settleBillGroups'
 import { settlePrintLineColumns } from './settleDetailColumns'
+import { summarizeSettleOriginalWeights } from './settleOriginalWeight'
 
 interface Props {
   lines: SettlePrintLine[]
@@ -38,13 +39,14 @@ export default function SettleGroupedBill({ lines }: Props) {
 }
 
 function GroupHeader({ group }: { group: SettleBillGroup }) {
+  const original = summarizeSettleOriginalWeights(group.lines)
   return (
     <div className="settle-grouped-bill__header">
       <div className="settle-grouped-bill__title">
         <Typography.Text strong>{group.orderNo}</Typography.Text>
         {group.orderDate && <span>{group.orderDate}</span>}
       </div>
-      <Metric label="原纸" value={`${group.lines.length} 卷 / ${formatTon(group.originalWeight)}`} />
+      <Metric label={original.label} value={original.value} />
       <Metric label="成品" value={`${group.finishCount} 卷 / ${formatTon(group.finishWeight)}`} />
       <Metric label="切边" value={formatTon(group.trimWeight)} />
       <Metric label="标准加工费" value={formatMoney(group.standardProcessAmount)} />

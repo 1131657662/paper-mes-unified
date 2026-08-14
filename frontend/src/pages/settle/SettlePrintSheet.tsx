@@ -3,6 +3,7 @@ import { formatKg, formatMoney, formatTon } from '../../features/settle/utils/se
 import type { SettleDetailVO, SettleFeeLine, SettlePrintLine } from '../../types/settle'
 import { formatGram, formatMm } from '../../utils/numberFormatters'
 import { buildSettleBillGroups, type SettleBillGroup } from './settleBillGroups'
+import { formatSettleOriginalWeight, summarizeSettleOriginalWeights } from './settleOriginalWeight'
 import '../documentModule.css'
 
 interface Props {
@@ -56,12 +57,13 @@ export default function SettlePrintSheet({ detail }: Props) {
 }
 
 function PrintGroup({ group }: { group: SettleBillGroup }) {
+  const original = summarizeSettleOriginalWeights(group.lines)
   return (
     <div className="document-print-group">
       <div className="document-print-group__head">
         <strong>{group.orderNo}</strong>
         {group.orderDate && <span>日期：{group.orderDate}</span>}
-        <span>原纸：{group.lines.length} 卷 / {formatTon(group.originalWeight)}</span>
+        <span>{original.label}：{original.value}</span>
         <span>成品：{group.finishCount} 卷 / {formatTon(group.finishWeight)}</span>
       </div>
       <table className="document-print-table document-print-table--settle">
@@ -89,7 +91,7 @@ function PrintLine({ line }: { line: SettlePrintLine }) {
     <tr>
       <td>{originalLabel(line)}</td>
       <td>{originalSpec(line)}</td>
-      <td>{formatKg(line.originalWeight)}</td>
+      <td>{formatSettleOriginalWeight(line)}</td>
       <td>{processNames(line)}</td>
       <td><PrintFeeBasis line={line} /></td>
       <td>{finishResult(line)}</td>

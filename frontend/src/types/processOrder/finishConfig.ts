@@ -13,6 +13,7 @@ export interface OriginalRollDTO {
   coreDiameter?: number
   originalLength?: number
   rollWeight?: number
+  /** UNKNOWN has no reference value; ESTIMATED is a positive, not-yet-weighed reference value. */
   weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
   pieceNum?: number
   batchNo?: string
