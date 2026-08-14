@@ -94,7 +94,15 @@ function renderSources(sources: FinishSourceVO[]) {
 
 function sourceShareText(source: FinishSourceVO) {
   const ratio = source.shareRatio == null ? '-' : formatPercent(source.shareRatio)
-  return `分摊 ${ratio} / ${formatOptionalKg(source.shareWeight)}`
+  const planned = `计划分摊 ${ratio} / ${formatOptionalKg(source.shareWeight)}`
+  return isMeasuredSource(source)
+    ? `${planned} · 来源实测 ${formatOptionalKg(source.actualWeight)}`
+    : planned
+}
+
+function isMeasuredSource(source: FinishSourceVO) {
+  if (source.actualWeight == null || source.actualWeight <= 0) return false
+  return source.weightStatus == null || source.weightStatus === 'MEASURED'
 }
 
 function renderStatus(finish: FinishProductionVO) {

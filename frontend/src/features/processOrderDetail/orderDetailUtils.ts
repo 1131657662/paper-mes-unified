@@ -103,7 +103,9 @@ function countOfficialFinishes(finishes: FinishRoll[]): number {
 
 function sumOriginalWeight(rolls: OriginalRoll[]): number {
   return rolls.reduce((sum, roll) => {
-    const weight = roll.totalWeight ?? (roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)
+    const weight = roll.actualWeight
+      ?? roll.totalWeight
+      ?? (roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)
     return sum + weight
   }, 0)
 }
