@@ -45,6 +45,7 @@ class SettleExportServiceTest {
             assertEquals("100（装卸费 80.00；运费 30.00）", text(sheet.getRow(13).getCell(4)));
             assertEquals("税费 66", text(sheet.getRow(13).getCell(5)));
             assertEquals("1176", text(sheet.getRow(13).getCell(7)));
+            assertTrue(sheet.getColumnWidth(6) >= 12 * 256);
         }
     }
 

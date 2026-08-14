@@ -203,6 +203,7 @@ final class SettleBillSheetWriter {
             sheet.autoSizeColumn(i);
             sheet.setColumnWidth(i, Math.min(sheet.getColumnWidth(i) + 512, 16000));
         }
+        sheet.setColumnWidth(6, Math.max(sheet.getColumnWidth(6), 12 * 256));
     }
 
 }
