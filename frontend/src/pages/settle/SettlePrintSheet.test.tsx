@@ -20,6 +20,25 @@ describe('客户结算单预览', () => {
     expect(markup).not.toContain('直径 1300')
     expect(markup).not.toContain('纸芯 76')
   })
+
+  it('合并复卷共享成品只在首条母卷展示完整结果', () => {
+    const value = detail()
+    const first = value.printLines?.[0]
+    if (!first) throw new Error('测试数据缺少首条结算明细')
+    value.printLines = [first, {
+      ...first,
+      originalUuid: 'roll-2',
+      originalLabel: '母卷2',
+      sharedFinishResult: true,
+      processAmount: 0,
+      lineAmount: 0,
+      feeLines: [],
+    }]
+
+    const markup = renderToStaticMarkup(<SettlePrintSheet detail={value} />)
+
+    expect(markup).toContain('同一合并成品（见首条关联母卷）')
+  })
 })
 
 function detail(): SettleDetailVO {

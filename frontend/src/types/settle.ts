@@ -94,6 +94,8 @@ export interface SettlePrintLine {
   finishDetailSummary?: string
   finishCount?: number
   finishWeight?: number
+  /** This row references the same merged finish already shown on an earlier source-roll line. */
+  sharedFinishResult?: boolean
   orderFinishCount?: number
   orderFinishWeight?: number
   trimWeight?: number

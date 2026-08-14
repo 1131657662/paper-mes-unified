@@ -13,7 +13,7 @@ class SettleOrderFinishTotalsTest {
 
     @Test
     void apply_sharedFinishAcrossMultipleSources_countsItOnce() {
-        List<SettlePrintLineVO> lines = List.of(new SettlePrintLineVO(), new SettlePrintLineVO(), new SettlePrintLineVO());
+        List<SettlePrintLineVO> lines = List.of(line("A001", "3"), line("A001", "3"), line("A001", "3"));
         FinishRoll shared = finish("finish-1", "3");
 
         SettleOrderFinishTotals.apply(lines, List.of(shared, shared, shared));
@@ -22,6 +22,8 @@ class SettleOrderFinishTotalsTest {
             assertThat(line.getOrderFinishCount()).isEqualTo(1);
             assertThat(line.getOrderFinishWeight()).isEqualByComparingTo("3");
         });
+        assertThat(lines).extracting(SettlePrintLineVO::getSharedFinishResult)
+                .containsExactly(false, true, true);
     }
 
     @Test
@@ -45,5 +47,14 @@ class SettleOrderFinishTotalsTest {
         finish.setUuid(uuid);
         finish.setActualWeight(new BigDecimal(weight));
         return finish;
+    }
+
+    private SettlePrintLineVO line(String finishSummary, String finishWeight) {
+        SettlePrintLineVO line = new SettlePrintLineVO();
+        line.setFinishSummary(finishSummary);
+        line.setFinishDetailSummary(finishSummary + "（1000mm）");
+        line.setFinishCount(1);
+        line.setFinishWeight(new BigDecimal(finishWeight));
+        return line;
     }
 }

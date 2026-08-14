@@ -21,6 +21,17 @@ class SettleBillLineTextTest {
                 .isEqualTo("3 kg");
     }
 
+    @Test
+    void finishResult_whenMergedFinishAlreadyShown_returnsReferenceText() {
+        SettlePrintLineVO line = new SettlePrintLineVO();
+        line.setSharedFinishResult(true);
+        line.setFinishCount(1);
+        line.setFinishWeight(new BigDecimal("3"));
+
+        assertThat(SettleBillLineText.finishResult(line))
+                .isEqualTo("同一合并成品（见首条关联母卷）");
+    }
+
     private SettlePrintLineVO line(String status, String weight) {
         SettlePrintLineVO line = new SettlePrintLineVO();
         line.setOriginalWeightStatus(status);

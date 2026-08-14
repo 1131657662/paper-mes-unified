@@ -159,6 +159,7 @@ function feeFormula(fee: SettleFeeLine) {
 }
 
 function finishResult(line: SettlePrintLine) {
+  if (line.sharedFinishResult) return '同一合并成品（见首条关联母卷）'
   const summary = `${line.finishCount ?? 0} 卷 / ${formatKg(line.finishWeight)}`
   return line.finishSummary && line.finishSummary !== '-' ? `${summary}（${line.finishSummary}）` : summary
 }

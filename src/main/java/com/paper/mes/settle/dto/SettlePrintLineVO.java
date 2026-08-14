@@ -41,6 +41,8 @@ public class SettlePrintLineVO {
     private String finishDetailSummary;
     private Integer finishCount;
     private BigDecimal finishWeight;
+    /** True when this source roll points to the same merged finish already shown on an earlier line. */
+    private Boolean sharedFinishResult;
     /** Unique deliverable-finish totals for the whole process order. */
     private Integer orderFinishCount;
     private BigDecimal orderFinishWeight;

@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SettleExportServiceTest {
@@ -31,6 +32,8 @@ class SettleExportServiceTest {
             assertEquals("加工项目", text(sheet.getRow(9).getCell(3)));
             assertEquals("计费依据", text(sheet.getRow(9).getCell(4)));
             assertEquals("加工费", text(sheet.getRow(9).getCell(7)));
+            assertNull(sheet.getRow(8).getCell(3));
+            assertNull(sheet.getRow(8).getCell(4));
             assertEquals("JG202607010001", text(sheet.getRow(10).getCell(1)));
             assertEquals("母卷1", text(sheet.getRow(11).getCell(0)));
             assertEquals("牛卡纸 / 450 g / 2500 mm", text(sheet.getRow(11).getCell(1)));
@@ -56,6 +59,19 @@ class SettleExportServiceTest {
     }
 
     @Test
+    void buildWorkbook_whenMergedFinishRepeats_referencesTheFirstSourceLine() throws IOException {
+        SettleDetailVO detail = detail();
+        detail.setPrintLines(List.of(detail.getPrintLines().getFirst(), sharedFinishLine()));
+
+        try (Workbook workbook = new SettleExportService().buildWorkbook(detail)) {
+            assertEquals("2 卷 / 3000 kg（A000001、A000002）",
+                    text(workbook.getSheetAt(0).getRow(11).getCell(5)));
+            assertEquals("同一合并成品（见首条关联母卷）",
+                    text(workbook.getSheetAt(0).getRow(12).getCell(5)));
+        }
+    }
+
+    @Test
     void buildWorkbook_whenExportingSettle_includesReceiveSheetWithScrapOffset() throws IOException {
         SettleExportService service = new SettleExportService();
 
@@ -73,6 +89,7 @@ class SettleExportServiceTest {
             assertEquals("676", text(billSheet.getRow(6).getCell(4)));
 
             var receiveSheet = workbook.getSheet("收款流水");
+            assertTrue(receiveSheet.getColumnWidth(14) >= 24 * 256);
             assertEquals("收款流水", text(receiveSheet.getRow(0).getCell(0)));
             assertEquals("类型", text(receiveSheet.getRow(3).getCell(2)));
             assertEquals("本次结清", text(receiveSheet.getRow(3).getCell(3)));
@@ -103,6 +120,7 @@ class SettleExportServiceTest {
 
         try (Workbook workbook = new SettleExportService().buildWorkbook(detail)) {
             var sheet = workbook.getSheet("费用来源");
+            assertTrue(sheet.getColumnWidth(17) >= 48 * 256);
             assertEquals("标准金额", text(sheet.getRow(0).getCell(10)));
             assertEquals("计价调整", text(sheet.getRow(0).getCell(11)));
             assertEquals("800", text(sheet.getRow(1).getCell(10)));
@@ -158,6 +176,16 @@ class SettleExportServiceTest {
         line.setIsInvoice(1);
         line.setLineAmount(new BigDecimal("1176"));
         line.setFeeLines(List.of(sawFee(), rewindFee()));
+        return line;
+    }
+
+    private SettlePrintLineVO sharedFinishLine() {
+        SettlePrintLineVO line = line();
+        line.setOriginalLabel("母卷2");
+        line.setSharedFinishResult(true);
+        line.setProcessAmount(BigDecimal.ZERO);
+        line.setLineAmount(BigDecimal.ZERO);
+        line.setFeeLines(List.of());
         return line;
     }
 

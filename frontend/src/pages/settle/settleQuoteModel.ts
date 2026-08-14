@@ -13,6 +13,8 @@ export function applyQuoteLines(
       sawAmount: quote.sawAmount,
       rewindAmount: quote.rewindAmount,
       serviceAmount: quote.serviceAmount,
+      standardProcessAmount: quote.standardProcessAmount ?? candidate.standardProcessAmount,
+      pricingAdjustmentAmount: quote.pricingAdjustmentAmount ?? candidate.pricingAdjustmentAmount,
       extraAmount: quote.extraAmount,
       totalAmount: quote.totalAmount,
     }

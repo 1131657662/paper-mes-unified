@@ -69,6 +69,9 @@ final class SettleBillLineText {
     }
 
     static String finishResult(SettlePrintLineVO line) {
+        if (Boolean.TRUE.equals(line.getSharedFinishResult())) {
+            return "同一合并成品（见首条关联母卷）";
+        }
         int finishCount = line.getFinishCount() == null ? 0 : line.getFinishCount();
         String result = finishCount + " 卷 / " + weightText(line.getFinishWeight());
         String summary = line.getFinishSummary();

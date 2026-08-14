@@ -55,6 +55,14 @@ export function SettleFeeBasisCell({ line }: Props) {
 }
 
 export function SettleFinishResultCell({ line }: Props) {
+  if (line.sharedFinishResult) {
+    return (
+      <div className="settle-cell-stack mes-cell-stack">
+        <Typography.Text strong>同一合并成品</Typography.Text>
+        <span>见首条关联母卷</span>
+      </div>
+    )
+  }
   return (
     <div className="settle-cell-stack mes-cell-stack">
       <Typography.Text strong>{line.finishCount ?? 0} 卷 / {formatKg(line.finishWeight)}</Typography.Text>

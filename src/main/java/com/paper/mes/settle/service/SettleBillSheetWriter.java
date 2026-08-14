@@ -167,8 +167,12 @@ final class SettleBillSheetWriter {
         Row row = sheet.createRow(rowIndex);
         row.createCell(0).setCellValue(k1);
         row.createCell(1).setCellValue(text(v1));
-        row.createCell(3).setCellValue(k2);
-        row.createCell(4).setCellValue(text(v2));
+        if (k2 != null && !k2.isBlank()) {
+            row.createCell(3).setCellValue(k2);
+        }
+        if (v2 != null && !v2.isBlank()) {
+            row.createCell(4).setCellValue(text(v2));
+        }
     }
 
     private static String periodText(SettleOrder order) {

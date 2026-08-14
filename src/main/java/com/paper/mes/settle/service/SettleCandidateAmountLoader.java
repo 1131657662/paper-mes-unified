@@ -85,9 +85,16 @@ public class SettleCandidateAmountLoader {
             return this;
         }
 
-        public BigDecimal effectiveTotal() {
-            if (total.signum() > 0) return total;
-            return saw.add(rewind).add(service).add(extra).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        public BigDecimal effectiveTotal(Integer isInvoice) {
+            BigDecimal currentBase = saw.add(rewind).add(service).add(extra)
+                    .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            boolean hasCurrentPricing = currentBase.signum() != 0
+                    || standardProcess.signum() != 0
+                    || pricingAdjustment.signum() != 0;
+            if (!Integer.valueOf(1).equals(isInvoice) && hasCurrentPricing) {
+                return currentBase;
+            }
+            return total.signum() > 0 ? total : currentBase;
         }
     }
 }

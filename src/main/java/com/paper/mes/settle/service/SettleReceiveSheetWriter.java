@@ -14,6 +14,9 @@ import java.util.List;
 final class SettleReceiveSheetWriter {
 
     private static final int COLUMN_COUNT = 15;
+    private static final int[] MIN_COLUMN_WIDTHS = {
+            8, 20, 12, 12, 12, 12, 12, 14, 12, 12, 16, 12, 10, 20, 24
+    };
 
     private SettleReceiveSheetWriter() {
     }
@@ -138,7 +141,8 @@ final class SettleReceiveSheetWriter {
     private static void autosize(Sheet sheet) {
         for (int i = 0; i < COLUMN_COUNT; i++) {
             sheet.autoSizeColumn(i);
-            sheet.setColumnWidth(i, Math.min(sheet.getColumnWidth(i) + 512, 12000));
+            int width = Math.max(sheet.getColumnWidth(i) + 512, MIN_COLUMN_WIDTHS[i] * 256);
+            sheet.setColumnWidth(i, Math.min(width, 12000));
         }
     }
 

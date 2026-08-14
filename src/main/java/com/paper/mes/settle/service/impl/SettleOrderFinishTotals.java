@@ -4,9 +4,11 @@ import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.settle.dto.SettlePrintLineVO;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 final class SettleOrderFinishTotals {
 
@@ -21,10 +23,35 @@ final class SettleOrderFinishTotals {
         BigDecimal weight = unique.values().stream()
                 .map(SettleOrderFinishTotals::weight)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Set<String> shownFinishResults = new LinkedHashSet<>();
         for (SettlePrintLineVO line : lines) {
             line.setOrderFinishCount(unique.size());
             line.setOrderFinishWeight(weight);
+            markSharedFinishResult(line, shownFinishResults);
         }
+    }
+
+    private static void markSharedFinishResult(SettlePrintLineVO line, Set<String> shownFinishResults) {
+        String identity = finishIdentity(line);
+        boolean repeated = identity != null && !shownFinishResults.add(identity);
+        line.setSharedFinishResult(repeated);
+    }
+
+    private static String finishIdentity(SettlePrintLineVO line) {
+        if (line.getFinishCount() == null || line.getFinishCount() == 0) return null;
+        return String.join("|",
+                text(line.getFinishSummary()),
+                text(line.getFinishDetailSummary()),
+                String.valueOf(line.getFinishCount()),
+                decimalText(line.getFinishWeight()));
+    }
+
+    private static String text(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static String decimalText(BigDecimal value) {
+        return value == null ? "" : value.stripTrailingZeros().toPlainString();
     }
 
     private static Map<String, FinishRoll> uniqueDeliverableFinishes(List<FinishRoll> finishes) {

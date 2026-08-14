@@ -235,7 +235,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
             vo.setStandardProcessAmount(amount == null ? BigDecimal.ZERO : amount.standardProcess());
             vo.setPricingAdjustmentAmount(amount == null ? BigDecimal.ZERO : amount.pricingAdjustment());
             vo.setExtraAmount(amount == null ? BigDecimal.ZERO : amount.extra());
-            vo.setTotalAmount(amount == null ? BigDecimal.ZERO : amount.effectiveTotal());
+            vo.setTotalAmount(amount == null ? BigDecimal.ZERO : amount.effectiveTotal(order.getIsInvoice()));
             result.add(vo);
         }
         Page<SettleCandidateVO> resultPage = Page.of(page.getCurrent(), page.getSize(), page.getTotal());

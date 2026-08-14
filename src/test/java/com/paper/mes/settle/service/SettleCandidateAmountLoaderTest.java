@@ -27,7 +27,7 @@ class SettleCandidateAmountLoaderTest {
 
         assertThat(result.get("order-1").saw()).isEqualByComparingTo("30.00");
         assertThat(result.get("order-1").rewind()).isEqualByComparingTo("20.00");
-        assertThat(result.get("order-2").effectiveTotal()).isEqualByComparingTo("40.00");
+        assertThat(result.get("order-2").effectiveTotal(2)).isEqualByComparingTo("40.00");
         verify(mapper).selectList(any());
     }
 
@@ -44,7 +44,7 @@ class SettleCandidateAmountLoaderTest {
 
         assertThat(amount.standardProcess()).isEqualByComparingTo("370.00");
         assertThat(amount.pricingAdjustment()).isEqualByComparingTo("-270.00");
-        assertThat(amount.effectiveTotal()).isEqualByComparingTo("100.00");
+        assertThat(amount.effectiveTotal(2)).isEqualByComparingTo("100.00");
     }
 
     @Test
@@ -57,7 +57,43 @@ class SettleCandidateAmountLoaderTest {
                 .load(List.of(order("order-1", "0"))).get("order-1");
 
         assertThat(amount.service()).isEqualByComparingTo("100.00");
-        assertThat(amount.effectiveTotal()).isEqualByComparingTo("100.00");
+        assertThat(amount.effectiveTotal(2)).isEqualByComparingTo("100.00");
+    }
+
+    @Test
+    void load_whenNonInvoiceStoredTotalIsStale_usesCurrentStepAmounts() {
+        ProcessStepMapper mapper = mock(ProcessStepMapper.class);
+        when(mapper.selectList(any())).thenReturn(List.of(step("order-1", 2, "123.45")));
+
+        var amount = new SettleCandidateAmountLoader(mapper)
+                .load(List.of(order("order-1", "123.00"))).get("order-1");
+
+        assertThat(amount.effectiveTotal(2)).isEqualByComparingTo("123.45");
+    }
+
+    @Test
+    void load_whenInvoiceTotalIncludesTax_keepsStoredInvoiceTotal() {
+        ProcessStepMapper mapper = mock(ProcessStepMapper.class);
+        when(mapper.selectList(any())).thenReturn(List.of(step("order-1", 2, "100")));
+
+        var amount = new SettleCandidateAmountLoader(mapper)
+                .load(List.of(order("order-1", "113"))).get("order-1");
+
+        assertThat(amount.effectiveTotal(1)).isEqualByComparingTo("113.00");
+    }
+
+    @Test
+    void load_whenNonInvoicePricingWaivesAllFees_returnsZero() {
+        ProcessStepMapper mapper = mock(ProcessStepMapper.class);
+        ProcessStep step = step("order-1", 2, "0");
+        step.setStandardStepAmount(new BigDecimal("100"));
+        step.setPricingAdjustmentAmount(new BigDecimal("-100"));
+        when(mapper.selectList(any())).thenReturn(List.of(step));
+
+        var amount = new SettleCandidateAmountLoader(mapper)
+                .load(List.of(order("order-1", "100"))).get("order-1");
+
+        assertThat(amount.effectiveTotal(2)).isEqualByComparingTo("0.00");
     }
 
     private ProcessOrder order(String uuid, String total) {

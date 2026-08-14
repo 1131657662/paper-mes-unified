@@ -15,6 +15,9 @@ import java.util.List;
 final class SettleFeeSourceSheetWriter {
 
     private static final int COLUMN_COUNT = 17;
+    private static final int[] MIN_COLUMN_WIDTHS = {
+            8, 16, 12, 12, 10, 14, 24, 12, 10, 12, 12, 12, 14, 10, 10, 16, 24, 48
+    };
 
     private SettleFeeSourceSheetWriter() {
     }
@@ -22,7 +25,7 @@ final class SettleFeeSourceSheetWriter {
     static void write(Workbook workbook, SettleDetailVO detail) {
         Sheet sheet = workbook.createSheet("费用来源");
         writeHeader(sheet, headerStyle(workbook));
-        writeRows(sheet, detail.getPrintLines());
+        writeRows(sheet, detail.getPrintLines(), SettleSheetStyles.wrapStyle(workbook));
         autosize(sheet);
     }
 
@@ -39,7 +42,7 @@ final class SettleFeeSourceSheetWriter {
         }
     }
 
-    private static void writeRows(Sheet sheet, List<SettlePrintLineVO> lines) {
+    private static void writeRows(Sheet sheet, List<SettlePrintLineVO> lines, CellStyle detailStyle) {
         int rowIndex = 1;
         int index = 1;
         if (lines == null) {
@@ -50,7 +53,9 @@ final class SettleFeeSourceSheetWriter {
                 continue;
             }
             for (SettleFeeLineVO feeLine : line.getFeeLines()) {
-                writeRow(sheet.createRow(rowIndex++), index++, line, feeLine);
+                Row row = sheet.createRow(rowIndex++);
+                writeRow(row, index++, line, feeLine);
+                applyStyle(row, detailStyle);
             }
         }
     }
@@ -87,7 +92,14 @@ final class SettleFeeSourceSheetWriter {
     private static void autosize(Sheet sheet) {
         for (int i = 0; i <= COLUMN_COUNT; i++) {
             sheet.autoSizeColumn(i);
-            sheet.setColumnWidth(i, Math.min(sheet.getColumnWidth(i) + 512, 16000));
+            int width = Math.max(sheet.getColumnWidth(i) + 512, MIN_COLUMN_WIDTHS[i] * 256);
+            sheet.setColumnWidth(i, Math.min(width, 16000));
+        }
+    }
+
+    private static void applyStyle(Row row, CellStyle style) {
+        for (int i = 0; i <= COLUMN_COUNT; i++) {
+            row.getCell(i).setCellStyle(style);
         }
     }
 
