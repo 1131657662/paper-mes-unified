@@ -15,7 +15,7 @@ export function showBackRecordResult(result: BackRecordResultVO) {
         <Descriptions className="back-record-result-summary" column={2} size="small">
           <Descriptions.Item label="单号">{result.orderNo}</Descriptions.Item>
           <Descriptions.Item label="状态">{result.orderCompleted ? '已完成' : '待回录（部分完成）'}</Descriptions.Item>
-          <Descriptions.Item label="本批母卷">{result.recordedRollCount ?? 0} 组</Descriptions.Item>
+          <Descriptions.Item label="本批母卷">{result.recordedRollCount ?? 0} 卷</Descriptions.Item>
           <Descriptions.Item label="剩余母卷">{result.remainingRollCount ?? 0} 卷</Descriptions.Item>
           <Descriptions.Item label="闭合结果">
             <Tag color={CLOSE_LEVEL[check?.level ?? 'PASS']?.color}>{CLOSE_LEVEL[check?.level ?? 'PASS']?.text}</Tag>
