@@ -2,6 +2,7 @@ import { ArrowLeftOutlined, ArrowRightOutlined, CopyOutlined } from '@ant-design
 import { Button, Form, Space, Tag, Typography } from 'antd'
 import type { BackRecordFormValues } from './backRecordUtils'
 import { theoreticalItemFinishValues } from './backRecordTheoryFill'
+import { storedMeasuredWeight, workItemSourceRolls } from './backRecordSourceRolls'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 
 interface Props {
@@ -42,14 +43,14 @@ export default function BackRecordCurrentToolbar({ item, onDirty, onNext, onPrev
 }
 
 function fillRoll(form: ReturnType<typeof Form.useForm<BackRecordFormValues>>[0], item: BackRecordWorkItem) {
-  const roll = item.roll
-  if (!roll) return
-  form.setFieldValue(['rolls', roll.uuid], {
-    actualGramWeight: roll.actualGramWeight ?? roll.gramWeight,
-    actualWidth: roll.actualWidth ?? roll.originalWidth,
-    actualWeight: roll.actualWeight,
-    remark: roll.remark,
-  })
+  for (const roll of workItemSourceRolls(item)) {
+    form.setFieldValue(['rolls', roll.uuid], {
+      actualGramWeight: roll.actualGramWeight ?? roll.gramWeight,
+      actualWidth: roll.actualWidth ?? roll.originalWidth,
+      actualWeight: storedMeasuredWeight(roll),
+      remark: roll.remark,
+    })
+  }
 }
 
 function fillFinishes(form: ReturnType<typeof Form.useForm<BackRecordFormValues>>[0], item: BackRecordWorkItem) {

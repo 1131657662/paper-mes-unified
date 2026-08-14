@@ -14,7 +14,7 @@ export default function BackRecordClosurePanel({ item, items, values }: Props) {
   const active = buildWorkItemMetrics(item, values)
   const totalMissing = items.reduce((sum, current) => {
     const metrics = buildWorkItemMetrics(current, values)
-    return sum + (metrics.missingRoll ? 1 : 0) + metrics.missingFinishes + metrics.missingFinishWidths
+    return sum + metrics.missingRolls + metrics.missingFinishes + metrics.missingFinishWidths
   }, 0)
 
   return (
@@ -37,10 +37,11 @@ export default function BackRecordClosurePanel({ item, items, values }: Props) {
         倒挤尾差 = 原纸复称 - 成品实重 - 工序损耗 - 报废重量。
       </Typography.Text>
       <div className="back-record-close__tags">
-        {active.missingRoll && <Tag color="warning">母卷复称未填</Tag>}
+        {active.missingRolls > 0 && <Tag color="warning">母卷 {active.missingRolls} 卷待复称</Tag>}
+        {active.unverifiedRolls > 0 && <Tag color="default">{active.unverifiedRolls} 卷重量未核验</Tag>}
         {active.missingFinishes > 0 && <Tag color="warning">成品 {active.missingFinishes} 项未填</Tag>}
         {active.missingFinishWidths > 0 && <Tag color="warning">门幅 {active.missingFinishWidths} 项未填</Tag>}
-        {!active.missingRoll && active.missingFinishes === 0 && active.missingFinishWidths === 0 && <Tag color="success">当前项已填完</Tag>}
+        {!active.missingRoll && active.missingFinishes === 0 && active.missingFinishWidths === 0 && <Tag color="success">当前项可提交</Tag>}
       </div>
       <Alert
         showIcon

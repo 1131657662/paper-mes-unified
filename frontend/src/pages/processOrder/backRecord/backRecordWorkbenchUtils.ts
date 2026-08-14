@@ -7,6 +7,8 @@ import { formatGram, formatMm } from '../../../utils/numberFormatters'
 import { activeFinishRolls, type BackRecordFormValues } from './backRecordUtils'
 import type { BackRecordWorkItem, BackRecordWorkbenchData, WorkbenchFinish } from './backRecordWorkbenchTypes'
 import { addedFinishEntities, isFinishProduced, normalizeFinishAdjustment } from './backRecordFinishAdjustment'
+import { sourceWeightSummary } from './backRecordSourceRolls'
+import { requiresMeasuredSourceWeights } from './backRecordWeightPolicy'
 
 export interface WorkItemMetrics {
   rollActual?: number
@@ -16,6 +18,8 @@ export interface WorkItemMetrics {
   loss: number
   scrap: number
   missingRoll: boolean
+  missingRolls: number
+  unverifiedRolls: number
   missingFinishes: number
   missingFinishWidths: number
   diff?: number
@@ -37,7 +41,9 @@ export function buildWorkItemMetrics(
   values: BackRecordFormValues,
 ): WorkItemMetrics {
   if (item.roll?.processMode === 2) return buildOnSiteMetrics(item, values)
-  const rollActual = item.roll ? values.rolls?.[item.roll.uuid]?.actualWeight ?? item.roll.actualWeight : undefined
+  const sourceWeights = sourceWeightSummary(item, values)
+  const rollActual = sourceWeights.completeTotal
+  const requiredWeight = requiresMeasuredSourceWeights(item)
   const adjustment = normalizeFinishAdjustment(item, values.finishAdjustments?.[item.key])
   const official = item.finishes.filter(({ finish }) => finish.isSpare !== 1 && isFinishProduced(finish.uuid, adjustment))
   const products = official.filter(({ finish }) => finish.isRemain !== 1)
@@ -68,7 +74,9 @@ export function buildWorkItemMetrics(
     trimActual,
     loss,
     scrap,
-    missingRoll: item.kind === 'roll' && !positive(rollActual),
+    missingRoll: item.kind === 'roll' && requiredWeight && sourceWeights.missingCount > 0,
+    missingRolls: requiredWeight ? sourceWeights.missingCount : 0,
+    unverifiedRolls: requiredWeight ? 0 : sourceWeights.missingCount,
     missingFinishes,
     missingFinishWidths: missingFinishWidths + missingTrimWidths,
     diff,
@@ -77,7 +85,9 @@ export function buildWorkItemMetrics(
 }
 
 function buildOnSiteMetrics(item: BackRecordWorkItem, values: BackRecordFormValues): WorkItemMetrics {
-  const rollActual = item.roll ? values.rolls?.[item.roll.uuid]?.actualWeight ?? item.roll.actualWeight : undefined
+  const sourceWeights = sourceWeightSummary(item, values)
+  const rollActual = sourceWeights.completeTotal
+  const requiredWeight = requiresMeasuredSourceWeights(item)
   const outputs = (values.onSiteOutputs?.[item.key] ?? [])
     .filter((output): output is NonNullable<typeof output> => output != null)
   const products = outputs.filter((output) => output.outputType === 'FINISH')
@@ -97,7 +107,9 @@ function buildOnSiteMetrics(item: BackRecordWorkItem, values: BackRecordFormValu
     trimActual,
     loss,
     scrap,
-    missingRoll: !positive(rollActual),
+    missingRoll: requiredWeight && sourceWeights.missingCount > 0,
+    missingRolls: requiredWeight ? sourceWeights.missingCount : 0,
+    unverifiedRolls: requiredWeight ? 0 : sourceWeights.missingCount,
     missingFinishes: products.length === 0 ? missingRows + 1 : missingRows,
     missingFinishWidths: missingWidths,
     diff,

@@ -21,14 +21,14 @@ export default function BackRecordQuickActions({ detail, form, onDirty, onOpenCh
     const values = theoreticalBackRecordValues(detail)
     applyBackRecordFilledValues({ form, onDirty, onValuesFilled, values })
     form.validateFields().catch(() => undefined)
-    message.success('已按标称/预估回填整单，可继续逐卷微调')
+    message.success('已带入现有实测参数和成品预估；母卷估算重量仍需现场复称')
   }
 
   return (
     <Space wrap size={[8, 8]} className="back-record-quick-actions">
-      <MesTooltip title="母卷复称带入标称值，正式成品优先带入预估值；没有预估时按母卷理论重量兜底分配，备用号未用会保持空白。">
+      <MesTooltip title="带入母卷已有实测参数和成品预估值；标称/估算母卷重量不会被伪装成实测，备用号未用会保持空白。">
         <Button icon={<CopyOutlined />} disabled={!detail} onClick={handleTheoryFill}>
-          整单按理论回录
+          带入现有参数与预估
         </Button>
       </MesTooltip>
       <Button icon={<SwapOutlined />} disabled={!detail} onClick={onOpenChange}>

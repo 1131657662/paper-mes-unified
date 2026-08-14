@@ -34,8 +34,16 @@ export default function BackRecordSummaryPanel({ detail, values }: Props) {
           message={`还有 ${missingCount} 项关键数据未填写，提交前需要补齐门幅、重量或确认备用号未使用。`}
         />
       )}
+      {metrics.optionalPendingRollWeight > 0 && (
+        <Alert
+          showIcon
+          type="info"
+          className="back-record-summary__alert"
+          message={`${metrics.optionalPendingRollWeight} 卷母卷尚未复称；当前计价模式不依赖重量，完成后闭合状态将记为“未核验”。`}
+        />
+      )}
       <Typography.Text type="secondary" className="back-record-summary__hint">
-        闭合以原纸复称重量为基准，后端会按母卷逐卷校验倒挤尾差；偏差超过 5% 需要授权放行。
+        已复称母卷按实际重量逐卷校验倒挤尾差；非吨位计价且未复称的母卷不会伪造闭合结论。
       </Typography.Text>
     </div>
   )

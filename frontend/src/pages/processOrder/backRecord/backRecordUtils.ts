@@ -12,6 +12,7 @@ import type {
   ProcessOrderDetailVO,
 } from '../../../types/processOrder'
 import { buildOnSiteOutputSubmission, toLegacyTrimDTOs, type OnSiteOutputRecordValues } from './backRecordOnSiteOutputModel'
+import { storedMeasuredWeight } from './backRecordSourceRolls'
 export type { OnSiteOutputRecordValues } from './backRecordOnSiteOutputModel'
 
 export interface RollRecordValues {
@@ -202,7 +203,7 @@ export function fillRollActuals(detail: ProcessOrderDetailVO): BackRecordFormVal
   return Object.fromEntries(detail.originalRolls.map((roll) => [roll.uuid, {
     actualGramWeight: roll.actualGramWeight ?? roll.gramWeight,
     actualWidth: roll.actualWidth ?? roll.originalWidth,
-    actualWeight: roll.actualWeight,
+    actualWeight: storedMeasuredWeight(roll),
     remark: roll.remark,
   }]))
 }
@@ -222,6 +223,7 @@ export function worstRollCheck(result?: BackRecordResultVO | null) {
   const checks = result?.rollChecks ?? []
   return checks.find((check) => check.level === 'BLOCK')
     ?? checks.find((check) => check.level === 'WARN')
+    ?? checks.find((check) => check.level === 'UNVERIFIED')
     ?? checks[0]
 }
 

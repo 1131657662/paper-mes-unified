@@ -14,6 +14,7 @@ import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 import type { BackRecordSourceOption } from './BackRecordFinishFields'
 import BackRecordCurrentToolbar from './BackRecordCurrentToolbar'
 import BackRecordMergeSummary from './BackRecordMergeSummary'
+import { requiresMeasuredSourceWeights } from './backRecordWeightPolicy'
 
 interface Props {
   item: BackRecordWorkItem
@@ -28,9 +29,9 @@ export default function BackRecordActivePanel({ item, onDirty, onNext, onPreviou
   return (
     <main className="back-record-active">
       <BackRecordCurrentToolbar item={item} onDirty={onDirty} onNext={onNext} onPrevious={onPrevious} />
-      <BackRecordMergeSummary item={item} />
+      <BackRecordMergeSummary item={item} onFieldExhausted={onNext} />
 
-      {item.kind === 'roll' && <RollActualPanel item={item} onFieldExhausted={onNext} />}
+      {item.kind === 'roll' && !item.isMergeGroup && <RollActualPanel item={item} onFieldExhausted={onNext} />}
       <ProcessPanel item={item} onFieldExhausted={onNext} onProcessChange={onProcessChange} />
       {item.roll?.processMode === 2 ? (
         <BackRecordOnSiteOutputList item={item} onDirty={onDirty} sourceOptions={sourceOptions} onFieldExhausted={onNext} />
@@ -53,6 +54,7 @@ function RollActualPanel({
 }) {
   const roll = item.roll
   if (!roll) return null
+  const required = requiresMeasuredSourceWeights(item)
 
   return (
     <section className="back-record-panel">
@@ -74,7 +76,7 @@ function RollActualPanel({
         <Form.Item name={['rolls', roll.uuid, 'actualWidth']} label="实测门幅">
           <InputNumber data-back-record-field="true" min={1} placeholder="mm" suffix="mm" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
-        <Form.Item name={['rolls', roll.uuid, 'actualWeight']} label="复称重量" rules={[{ required: true, message: '必填' }]}>
+        <Form.Item name={['rolls', roll.uuid, 'actualWeight']} label={required ? '复称重量' : '复称重量（选填）'} rules={required ? [{ required: true, message: '必填' }] : undefined}>
           <InputNumber data-back-record-field="true" min={0.001} placeholder="kg" suffix="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['rolls', roll.uuid, 'remark']} label="复核说明">

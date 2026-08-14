@@ -33,7 +33,7 @@ public class BackRecordResultVO {
     public static class RollCheck {
         private String originalUuid;
         private String rollNo;
-        /** PASS / WARN / BLOCK */
+        /** PASS / WARN / BLOCK / UNVERIFIED */
         private String level;
         private BigDecimal actualWeight;
         private BigDecimal theoreticalWeight;

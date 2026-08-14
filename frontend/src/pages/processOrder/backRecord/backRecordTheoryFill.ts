@@ -8,6 +8,7 @@ import {
   type RollRecordValues,
 } from './backRecordUtils'
 import { autoTrimWeights } from './backRecordAutoTrim'
+import { storedMeasuredWeight } from './backRecordSourceRolls'
 import { buildBackRecordWorkbench } from './backRecordWorkbenchUtils'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 
@@ -66,7 +67,7 @@ function theoreticalRollValue(roll: OriginalRoll): RollRecordValues {
   return {
     actualGramWeight: roll.actualGramWeight ?? roll.gramWeight,
     actualWidth: roll.actualWidth ?? roll.originalWidth,
-    actualWeight: roll.actualWeight ?? nominalRollWeight(roll),
+    actualWeight: storedMeasuredWeight(roll),
     remark: roll.remark,
   }
 }

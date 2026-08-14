@@ -97,11 +97,12 @@ export const TRANSITION_LABEL: Record<string, string> = {
   '4-3': '回退待回录',
 }
 
-/** 三级闭合校验结果等级：PASS/WARN/BLOCK。 */
+/** 闭合校验结果：未称重的非吨位工艺使用 UNVERIFIED，不伪造通过结论。 */
 export const CLOSE_LEVEL: Record<string, { text: string; color: string }> = {
   PASS: { text: '闭合通过', color: 'success' },
   WARN: { text: '强警告', color: 'warning' },
   BLOCK: { text: '超差拦截', color: 'error' },
+  UNVERIFIED: { text: '重量未核验', color: 'default' },
 }
 
 /** 是否正品/边角余料：0正品 1边角余料。 */

@@ -103,6 +103,34 @@
   margin-top: 8px;
 }
 
+.back-record-merge-summary .ant-alert {
+  margin-bottom: 8px;
+}
+
+.back-record-merge-summary .ant-form-item {
+  margin-bottom: 0;
+}
+
+.back-record-merge-summary .ant-input-number-group-wrapper,
+.back-record-merge-summary .ant-input-number-affix-wrapper {
+  width: 100%;
+}
+
+.back-record-merge-source {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.back-record-merge-source .ant-typography {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .back-record-summary__metrics {
   display: grid;
   grid-template-columns: repeat(6, minmax(110px, 1fr));

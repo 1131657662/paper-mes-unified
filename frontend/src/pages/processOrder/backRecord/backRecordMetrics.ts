@@ -1,6 +1,9 @@
 import type { ProcessOrderDetailVO } from '../../../types/processOrder'
 import { activeFinishRolls, type BackRecordFormValues } from './backRecordUtils'
 import { buildOnSiteOutputSubmission } from './backRecordOnSiteOutputModel'
+import { storedMeasuredWeight } from './backRecordSourceRolls'
+import { buildBackRecordWorkbench } from './backRecordWorkbenchUtils'
+import { requiredWeightRollUuids } from './backRecordWeightPolicy'
 
 export interface BackRecordMetrics {
   rollCount: number
@@ -14,6 +17,7 @@ export interface BackRecordMetrics {
   lossTotal: number
   scrapTotal: number
   missingRollWeight: number
+  optionalPendingRollWeight: number
   missingOfficialFinishWeight: number
   missingOnSiteFinishWidth: number
   missingTrimData: number
@@ -24,6 +28,9 @@ export function buildBackRecordMetrics(
   values: BackRecordFormValues,
 ): BackRecordMetrics {
   const rolls = detail?.originalRolls ?? []
+  const requiredRollUuids = detail
+    ? requiredWeightRollUuids(buildBackRecordWorkbench(detail).items)
+    : new Set<string>()
   const onSite = detail ? buildOnSiteOutputSubmission(detail, values.onSiteOutputs) : null
   const finishes = activeFinishRolls(detail).filter((finish) => !onSite?.configuredUuids.has(finish.uuid))
   const adjustments = Object.values(values.finishAdjustments ?? {})
@@ -40,8 +47,10 @@ export function buildBackRecordMetrics(
     finishCount: products.filter((finish) => finish.isSpare !== 1).length + added.length + outputProducts.length,
     directShipCount: rolls.filter((roll) => roll.processMode === 3).length,
     serviceOnlyCount: rolls.filter((roll) => roll.processMode === 4).length,
-    originalActualTotal: sum(rolls.map((roll) => values.rolls?.[roll.uuid]?.actualWeight ?? roll.actualWeight)),
-    originalWeightPending: rolls.some((roll) => !positive(values.rolls?.[roll.uuid]?.actualWeight ?? roll.actualWeight)),
+    originalActualTotal: sum(rolls.map((roll) => values.rolls?.[roll.uuid]?.actualWeight ?? storedMeasuredWeight(roll))),
+    originalWeightPending: rolls.some((roll) => !positive(
+      values.rolls?.[roll.uuid]?.actualWeight ?? storedMeasuredWeight(roll),
+    )),
     finishActualTotal: sum(products.map((finish) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight))
       + sum(added.map((finish) => values.finishes?.[finish.uuid]?.actualWeight))
       + sum(outputProducts.map((finish) => finish.actualWeight)),
@@ -50,7 +59,10 @@ export function buildBackRecordMetrics(
     lossTotal: sum((detail?.steps ?? []).map((step) => values.steps?.[step.uuid]?.lossWeight ?? step.lossWeight)),
     scrapTotal: sum(finishes.map((finish) => values.finishes?.[finish.uuid]?.scrapWeight ?? finish.scrapWeight))
       + sum(added.map((finish) => values.finishes?.[finish.uuid]?.scrapWeight)),
-    missingRollWeight: rolls.filter((roll) => !positive(values.rolls?.[roll.uuid]?.actualWeight ?? roll.actualWeight)).length,
+    missingRollWeight: rolls.filter((roll) => requiredRollUuids.has(roll.uuid)
+      && !positive(values.rolls?.[roll.uuid]?.actualWeight ?? storedMeasuredWeight(roll))).length,
+    optionalPendingRollWeight: rolls.filter((roll) => !requiredRollUuids.has(roll.uuid)
+      && !positive(values.rolls?.[roll.uuid]?.actualWeight ?? storedMeasuredWeight(roll))).length,
     missingOfficialFinishWeight: products.filter((finish) => finish.isSpare !== 1 && !positive(values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight)).length
       + added.filter((finish) => !positive(values.finishes?.[finish.uuid]?.actualWeight)).length
       + outputProducts.filter((finish) => !positive(finish.actualWeight)).length,

@@ -98,6 +98,8 @@ import com.paper.mes.processorder.service.BackRecordScope;
 import com.paper.mes.processorder.service.BackRecordScopeResolver;
 import com.paper.mes.processorder.service.BackRecordReopenService;
 import com.paper.mes.processorder.service.BackRecordWarehousePolicy;
+import com.paper.mes.processorder.service.BackRecordRollMeasurementPolicy;
+import com.paper.mes.processorder.service.BackRecordWeightRequirementPolicy;
 import com.paper.mes.processorder.service.FinishRollSourceBinder;
 import com.paper.mes.processorder.service.FinishCustomerSpecificationPolicy;
 import com.paper.mes.processorder.service.FinishConfigQuantityValidator;
@@ -188,6 +190,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private static final int ROLL_NO_PRE = 1;
     private static final int PROCESS_MODE_DIRECT_SHIP = 3;
     private static final int SOURCE_DIRECT_SHIP = 2;
+    private static final String CLOSURE_UNVERIFIED = "UNVERIFIED";
     private static final int FINISH_STATUS_PENDING = 1;
     private static final int FINISH_STATUS_IN_STOCK = 2;
     private static final int FINISH_STATUS_OUT = 3;
@@ -2069,7 +2072,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         Map<String, OriginalRoll> scopeRolls = scope.rolls().stream().collect(
                 java.util.stream.Collectors.toMap(OriginalRoll::getUuid, roll -> roll));
 
-        writeRollActuals(dto.getRolls(), scopeRolls);
+        Set<String> requiredWeightRollUuids = BackRecordWeightRequirementPolicy.requiredRollUuids(
+                scope.rolls(), scope.steps(), scope.relations());
+        writeRollActuals(dto.getRolls(), scopeRolls, requiredWeightRollUuids);
         markPricingDirty(scope.steps(), scope.rolls(), scope.relations());
         BackRecordOnSiteFinishRecorder.Result onSiteResult = backRecordOnSiteFinishRecorder.record(
                 dto.getFinishes(), new BackRecordOnSiteFinishRecorder.Context(
@@ -2379,8 +2384,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         additions.stream().filter(finish -> existing.add(finish.getUuid())).forEach(target::add);
     }
 
-    /** 写入原纸复称实际克重/门幅/重量。actualWeight 是闭合与计费基准，必须大于0。 */
-    private void writeRollActuals(List<BackRecordRollDTO> rollDtos, Map<String, OriginalRoll> rollByUuid) {
+    /** 写入原纸实测参数；只有标准吨位复卷强制要求实际重量。 */
+    private void writeRollActuals(List<BackRecordRollDTO> rollDtos, Map<String, OriginalRoll> rollByUuid,
+                                  Set<String> requiredWeightRollUuids) {
         if (rollDtos == null) {
             return;
         }
@@ -2389,22 +2395,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             if (roll == null) {
                 throw new BusinessException("原纸单卷不存在：" + d.getUuid());
             }
-            if (d.getActualWeight() == null || d.getActualWeight().signum() <= 0) {
-                throw new BusinessException("原纸复称实际重量必须大于0：" + roll.getRollNo());
+            boolean measured = BackRecordRollMeasurementPolicy.apply(
+                    roll, d, requiredWeightRollUuids.contains(roll.getUuid()));
+            if (measured) {
+                roll.setWeightRecordedAt(LocalDateTime.now());
+                roll.setWeightRecordedBy(currentOperator());
             }
-            if (d.getActualGramWeight() != null && d.getActualGramWeight() <= 0) {
-                throw new BusinessException("原纸实际克重必须大于0：" + roll.getRollNo());
-            }
-            if (d.getActualWidth() != null && d.getActualWidth() <= 0) {
-                throw new BusinessException("原纸实际门幅必须大于0：" + roll.getRollNo());
-            }
-            roll.setActualGramWeight(d.getActualGramWeight());
-            roll.setActualWidth(d.getActualWidth());
-            roll.setActualWeight(d.getActualWeight());
-            roll.setWeightStatus(WeightStatus.MEASURED.name());
-            roll.setWeightSource("SCALE");
-            roll.setWeightRecordedAt(LocalDateTime.now());
-            roll.setWeightRecordedBy(currentOperator());
             if (StringUtils.hasText(d.getRemark())) {
                 roll.setRemark(d.getRemark());
             }
@@ -2588,8 +2584,16 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                                                                     List<FinishRoll> finishRolls,
                                                                     List<ProcessStep> steps,
                                                                     List<FinishOriginalRel> rels) {
+        Set<String> requiredWeightRollUuids = BackRecordWeightRequirementPolicy.requiredRollUuids(
+                rolls, steps, rels);
+        requireMeasuredRewindInputs(rolls, steps, rels);
         if (rels == null || rels.isEmpty()) {
-            return List.of(toRollCheck(null, order, computeOrderClosure(rolls, finishRolls, steps)));
+            WeightCheckCalculator.CheckResult check = computeOrderClosure(rolls, finishRolls, steps);
+            boolean hasUnverified = rolls.stream().anyMatch(roll -> !requiredWeightRollUuids.contains(roll.getUuid())
+                    && !hasValidActualWeight(roll));
+            return hasUnverified
+                    ? List.of(toUnverifiedRollCheck(null, order, check.theoreticalWeight))
+                    : List.of(toRollCheck(null, order, check));
         }
 
         Map<String, OriginalRoll> rollByUuid = new LinkedHashMap<>();
@@ -2630,6 +2634,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         WeightCheckCalculator.Thresholds thresholds = weightCheckThresholdService.currentThresholds();
         List<BackRecordResultVO.RollCheck> checks = new ArrayList<>(buckets.size());
         for (ClosureBucket bucket : buckets.values()) {
+            if (!hasValidActualWeight(bucket.roll)) {
+                checks.add(toUnverifiedRollCheck(bucket.roll, null, bucket.theoreticalWeight()));
+                continue;
+            }
             WeightCheckCalculator.CheckResult check = WeightCheckCalculator.check(
                     bucket.roll.getActualWeight(), bucket.finishSum, bucket.lossSum, bucket.scrapSum,
                     bucket.trimSum, thresholds);
@@ -2651,21 +2659,24 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         BigDecimal theoretical = BigDecimal.ZERO;
         boolean hasBlock = false;
         boolean hasWarn = false;
+        boolean hasUnverified = false;
         for (BackRecordResultVO.RollCheck check : checks) {
             actual = actual.add(check.getActualWeight() == null ? BigDecimal.ZERO : check.getActualWeight());
             theoretical = theoretical.add(check.getTheoreticalWeight() == null ? BigDecimal.ZERO : check.getTheoreticalWeight());
             hasBlock = hasBlock || WeightCheckCalculator.Level.BLOCK.name().equals(check.getLevel());
             hasWarn = hasWarn || WeightCheckCalculator.Level.WARN.name().equals(check.getLevel());
+            hasUnverified = hasUnverified || CLOSURE_UNVERIFIED.equals(check.getLevel());
         }
-        BigDecimal diff = actual.subtract(theoretical);
-        BigDecimal ratio = actual.signum() == 0 ? BigDecimal.ZERO
+        BigDecimal diff = hasUnverified ? null : actual.subtract(theoretical);
+        BigDecimal ratio = hasUnverified || actual.signum() == 0 ? null
                 : diff.abs().divide(actual, 6, RoundingMode.HALF_UP).multiply(new BigDecimal("100"));
         summary.setLevel(hasBlock ? WeightCheckCalculator.Level.BLOCK.name()
-                : hasWarn ? WeightCheckCalculator.Level.WARN.name() : WeightCheckCalculator.Level.PASS.name());
+                : hasWarn ? WeightCheckCalculator.Level.WARN.name()
+                : hasUnverified ? CLOSURE_UNVERIFIED : WeightCheckCalculator.Level.PASS.name());
         summary.setActualWeight(actual.setScale(3, RoundingMode.HALF_UP));
         summary.setTheoreticalWeight(theoretical.setScale(3, RoundingMode.HALF_UP));
-        summary.setDiffWeight(diff.setScale(3, RoundingMode.HALF_UP));
-        summary.setDiffRatioPct(ratio.setScale(2, RoundingMode.HALF_UP));
+        summary.setDiffWeight(diff == null ? null : diff.setScale(3, RoundingMode.HALF_UP));
+        summary.setDiffRatioPct(ratio == null ? null : ratio.setScale(2, RoundingMode.HALF_UP));
         return summary;
     }
 
@@ -2700,6 +2711,17 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         return rc;
     }
 
+    private BackRecordResultVO.RollCheck toUnverifiedRollCheck(OriginalRoll roll, ProcessOrder order,
+                                                                BigDecimal theoreticalWeight) {
+        BackRecordResultVO.RollCheck check = new BackRecordResultVO.RollCheck();
+        check.setOriginalUuid(roll == null ? order.getUuid() : roll.getUuid());
+        check.setRollNo(roll == null ? order.getOrderNo() : roll.getRollNo());
+        check.setLevel(CLOSURE_UNVERIFIED);
+        check.setTheoreticalWeight(theoreticalWeight == null ? BigDecimal.ZERO
+                : theoreticalWeight.setScale(3, RoundingMode.HALF_UP));
+        return check;
+    }
+
     private static final class ClosureBucket {
         private final OriginalRoll roll;
         private BigDecimal finishSum = BigDecimal.ZERO;
@@ -2709,6 +2731,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
         private ClosureBucket(OriginalRoll roll) {
             this.roll = roll;
+        }
+
+        private BigDecimal theoreticalWeight() {
+            return finishSum.add(lossSum).add(scrapSum).add(trimSum);
         }
     }
 
@@ -3370,7 +3396,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     private boolean hasValidActualWeight(OriginalRoll roll) {
-        return roll != null && roll.getActualWeight() != null && roll.getActualWeight().signum() > 0;
+        return BackRecordRollMeasurementPolicy.isMeasured(roll);
     }
 
     private String resolveBillingWeightBasis(ProcessStep step, OriginalRoll primary,
@@ -3403,17 +3429,11 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
     private void requireMeasuredRewindInputs(List<OriginalRoll> rolls, List<ProcessStep> steps,
                                              List<FinishOriginalRel> relations) {
-        Map<String, OriginalRoll> rollByUuid = rolls.stream().collect(java.util.stream.Collectors.toMap(
-                OriginalRoll::getUuid, roll -> roll, (left, right) -> left, LinkedHashMap::new));
-        Set<String> missing = new LinkedHashSet<>();
-        for (ProcessStep step : steps) {
-            if (!requiresSourceWeightForPricing(step)) continue;
-            OriginalRoll primary = rollByUuid.get(step.getOriginalUuid());
-            sourceRollsForStep(step, primary, rollByUuid, relations).stream()
-                    .filter(source -> !hasValidActualWeight(source))
-                    .map(source -> StringUtils.hasText(source.getRollNo()) ? source.getRollNo() : source.getUuid())
-                    .forEach(missing::add);
-        }
+        Set<String> required = BackRecordWeightRequirementPolicy.requiredRollUuids(rolls, steps, relations);
+        Set<String> missing = rolls.stream()
+                .filter(roll -> required.contains(roll.getUuid()) && !hasValidActualWeight(roll))
+                .map(roll -> StringUtils.hasText(roll.getRollNo()) ? roll.getRollNo() : roll.getUuid())
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
         if (!missing.isEmpty()) {
             throw new BusinessException(ErrorCode.E003,
                     "标准复卷完成整单前必须补齐来源母卷实测重量：" + String.join("、", missing));
