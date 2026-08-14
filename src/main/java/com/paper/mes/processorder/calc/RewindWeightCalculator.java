@@ -105,13 +105,14 @@ public final class RewindWeightCalculator {
         if (n == 0) {
             return List.of();
         }
+        BigDecimal actual = wActual == null ? BigDecimal.ZERO : wActual;
         BigDecimal loss = totalLoss == null ? BigDecimal.ZERO : totalLoss;
 
         // 修边总重与单件分摊：trim_total = (总修边宽度 / 原纸门幅) × W_actual；share = trim_total / N。
         BigDecimal trimTotal = BigDecimal.ZERO;
         if (trimTotalWidth != null && trimTotalWidth.signum() > 0
                 && originalWidth != null && originalWidth.signum() > 0) {
-            trimTotal = trimTotalWidth.divide(originalWidth, MC).multiply(wActual, MC);
+            trimTotal = trimTotalWidth.divide(originalWidth, MC).multiply(actual, MC);
         }
         BigDecimal trimShare = trimTotal.divide(BigDecimal.valueOf(n), MC);
 
@@ -130,7 +131,7 @@ public final class RewindWeightCalculator {
         }
         // 未实称件可分配的总量 = W_actual − 已实称合计 − 总损耗 − 修边总重。
         // 修边重量是整卷损耗，从分配池整体扣除；非末件再各自减 trimShare 体现到件重。
-        BigDecimal distributable = wActual.subtract(measuredSum).subtract(loss).subtract(trimTotal);
+        BigDecimal distributable = actual.subtract(measuredSum).subtract(loss).subtract(trimTotal);
         requireValidDistributable(distributable, lastUnmeasuredIndex);
 
         List<PieceResult> results = new ArrayList<>(n);

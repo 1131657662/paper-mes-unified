@@ -1,7 +1,7 @@
 import { Alert, Button, Space, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { PlanPreviewVO, ProcessPlanDTO } from '../../../types/processOrder'
-import { formatKg, formatMm } from '../../../utils/numberFormatters'
+import { formatKgWithMaxDecimals, formatMm } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
 
 export interface PreviewStatusDisplay {
@@ -54,6 +54,14 @@ export function SinglePlanPreview({ plan, preview, roll }: SinglePlanPreviewProp
       {plan?.processMode === 4 && preview?.summary && (
         <Typography.Text type="secondary">{preview.summary}</Typography.Text>
       )}
+      {preview?.weightPending && (
+        <Alert
+          type="warning"
+          showIcon
+          message="来源母卷重量待称重"
+          description="当前仅展示工艺排布，正式吨位计费需完成逐卷实测后重新核定。"
+        />
+      )}
       {preview?.errors?.length ? <Typography.Text type="danger">{preview.errors.join('；')}</Typography.Text> : null}
       <Table
         size="small"
@@ -89,9 +97,13 @@ function planLabel(plan?: ProcessPlanDTO) {
 const finishColumns: ColumnsType<NonNullable<PlanPreviewVO['finishes']>[number]> = [
   { title: '段', dataIndex: 'segmentSort' },
   { title: '门幅', dataIndex: 'finishWidth', render: (value) => formatMm(value ?? 0) },
-  { title: '预估重量', dataIndex: 'estimateWeight', render: (value) => formatKg(Number(value ?? 0)) },
+  { title: '预估重量', dataIndex: 'estimateWeight', render: optionalPreviewWeight },
   { title: '来源', dataIndex: 'sourceSummary' },
 ]
+
+function optionalPreviewWeight(value?: number | null) {
+  return value == null ? '待称重' : formatKgWithMaxDecimals(value, 2)
+}
 
 interface PreviewActionsProps {
   disabled: boolean

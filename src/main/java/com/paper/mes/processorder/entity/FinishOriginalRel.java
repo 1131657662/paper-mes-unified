@@ -25,5 +25,7 @@ public class FinishOriginalRel extends BaseEntity {
     private String orderUuid;
     private BigDecimal shareRatio;
     private BigDecimal shareWeight;
+    /** Source consumption ratio for multi-source rewind; distinct from output share ratio. */
+    private BigDecimal consumeRatio;
     private String remark;
 }

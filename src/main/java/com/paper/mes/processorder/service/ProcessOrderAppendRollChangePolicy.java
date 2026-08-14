@@ -24,6 +24,8 @@ final class ProcessOrderAppendRollChangePolicy {
                 || !Objects.equals(current.getOriginalDiameter(), requested.getOriginalDiameter())
                 || !Objects.equals(current.getCoreDiameter(), requested.getCoreDiameter())
                 || !Objects.equals(current.getOriginalLength(), requested.getOriginalLength())
+                || !Objects.equals(current.getWeightStatus(), requested.getWeightStatus() == null
+                ? null : requested.getWeightStatus().name())
                 || !sameDecimal(current.getRollWeight(), requested.getRollWeight())
                 || !Objects.equals(current.getPieceNum(), requestedPieces);
     }

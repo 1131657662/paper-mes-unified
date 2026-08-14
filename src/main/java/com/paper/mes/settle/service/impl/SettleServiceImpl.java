@@ -36,6 +36,7 @@ import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.ProcessOrderPrintConfirmationPolicy;
+import com.paper.mes.processorder.service.RewindPricingFinalizationPolicy;
 import com.paper.mes.processorder.service.ServicePricingFinalizationPolicy;
 import com.paper.mes.settle.dto.ReceiveDTO;
 import com.paper.mes.settle.dto.SettleActionReasonDTO;
@@ -1372,6 +1373,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
                 .in(ProcessStep::getOrderUuid, orderUuids)
                 .in(ProcessStep::getStepType, List.of(STEP_TYPE_STRIP_SORT, STEP_TYPE_REPACKAGE)));
         ServicePricingFinalizationPolicy.requireFinalized(steps);
+        List<ProcessStep> rewindSteps = processStepMapper.selectList(new LambdaQueryWrapper<ProcessStep>()
+                .in(ProcessStep::getOrderUuid, orderUuids)
+                .eq(ProcessStep::getStepType, 2));
+        RewindPricingFinalizationPolicy.requireFinalizedForSettlement(rewindSteps);
     }
 
     private void ensureOrderNotSettled(String orderUuid) {

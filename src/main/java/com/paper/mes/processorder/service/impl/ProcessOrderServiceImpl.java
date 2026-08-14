@@ -77,6 +77,7 @@ import com.paper.mes.processorder.entity.ProcessParam;
 import com.paper.mes.processorder.entity.ProcessStageInputRel;
 import com.paper.mes.processorder.entity.ProcessStageOutput;
 import com.paper.mes.processorder.entity.ProcessStep;
+import com.paper.mes.processorder.model.WeightStatus;
 import com.paper.mes.processorder.mapper.FinishOriginalRelMapper;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
@@ -105,12 +106,14 @@ import com.paper.mes.processorder.service.ProcessMixProcessResolver;
 import com.paper.mes.processorder.service.ProcessModePolicy;
 import com.paper.mes.processorder.service.ProcessCatalogStepValidator;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.OriginalRollWeightPolicy;
 import com.paper.mes.processorder.service.ProcessOrderIssueVersionService;
 import com.paper.mes.processorder.service.ProcessOrderReissueFingerprint;
 import com.paper.mes.processorder.service.ProcessOrderSettlementPolicy;
 import com.paper.mes.processorder.service.RewindPlanPreviewContext;
 import com.paper.mes.processorder.service.RewindWidthDifferenceCalculator;
 import com.paper.mes.processorder.service.RewindSourceWidthValidator;
+import com.paper.mes.processorder.service.RewindPricingFinalizationPolicy;
 import com.paper.mes.processorder.model.WidthDifferencePolicy;
 import com.paper.mes.processorder.service.ProcessRouteCleanupService;
 import com.paper.mes.processorder.service.ProcessRouteContext;
@@ -457,6 +460,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             item.setOriginalWidth(roll.getOriginalWidth());
             item.setActualWidth(roll.getActualWidth());
             item.setRollWeight(roll.getRollWeight());
+            item.setWeightStatus(roll.getWeightStatus());
             item.setActualWeight(roll.getActualWeight());
             item.setProcessAmount(roll.getProcessAmount());
             item.setPieceNum(roll.getPieceNum());
@@ -653,10 +657,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             item.setOriginalWidth(roll == null ? null : roll.getOriginalWidth());
             item.setActualWidth(roll == null ? null : roll.getActualWidth());
             item.setRollWeight(roll == null ? null : roll.getRollWeight());
+            item.setWeightStatus(roll == null ? null : roll.getWeightStatus());
             item.setPieceNum(roll == null ? null : roll.getPieceNum());
             item.setActualWeight(roll == null ? null : roll.getActualWeight());
             item.setTotalWeight(roll == null ? null : roll.getTotalWeight());
             item.setShareRatio(rel.getShareRatio());
+            item.setConsumeRatio(rel.getConsumeRatio());
             item.setShareWeight(rel.getShareWeight());
             item.setRemark(rel.getRemark());
             result.add(item);
@@ -779,6 +785,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (updated.getProcessMode() == null) {
             updated.setProcessMode(DEFAULT_PROCESS_MODE);
         }
+        updated.setWeightStatus(OriginalRollWeightPolicy.normalizeEntryStatus(
+                dto.getWeightStatus(), updated.getRollWeight()));
+        if (WeightStatus.UNKNOWN.name().equals(updated.getWeightStatus())) {
+            updated.setRollWeight(null);
+        }
+        updated.setWeightSource(WeightStatus.UNKNOWN.name().equals(updated.getWeightStatus()) ? null : "MANUAL");
         updated.setTotalWeight(calcTotalWeight(updated.getRollWeight(), updated.getPieceNum()));
         validateMainStepType(updated);
         validateMainProcessCatalog(updated);
@@ -1398,6 +1410,11 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 .set(OriginalRoll::getActualGramWeight, null)
                 .set(OriginalRoll::getActualWidth, null)
                 .set(OriginalRoll::getActualWeight, null)
+                .setSql("weight_status = CASE WHEN roll_weight IS NULL OR roll_weight <= 0 "
+                        + "THEN 'UNKNOWN' ELSE 'ESTIMATED' END")
+                .set(OriginalRoll::getWeightSource, null)
+                .set(OriginalRoll::getWeightRecordedAt, null)
+                .set(OriginalRoll::getWeightRecordedBy, null)
                 .set(OriginalRoll::getTotalLossWeight, null)
                 .set(OriginalRoll::getTotalLossRatio, ZERO_AMOUNT)
                 .set(OriginalRoll::getIsChecked, 0)
@@ -1603,6 +1620,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (order.getOrderStatus() != STATUS_PENDING) {
             throw new BusinessException("仅待下发状态可执行下发");
         }
+        validateIssueWeightReadiness(steps, finishOriginalRels);
         ProcessOrderPrintableConfigValidator.validate(rolls, finishRolls,
                 new ProcessOrderPrintableConfigValidator.ProcessEvidence(
                         steps, processParams, finishOriginalRels));
@@ -1632,6 +1650,22 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         PrintResultVO result = buildPrintResult(order, finishRolls, 0, now);
         result.setIssueVersion(appliedVersion.getVersionNo());
         return result;
+    }
+
+    /** Issue allows unknown/estimated weight, but a merged consumption plan must be complete. */
+    private void validateIssueWeightReadiness(List<ProcessStep> steps,
+                                              List<FinishOriginalRel> relations) {
+        for (ProcessStep step : steps) {
+            if (!Integer.valueOf(FeeCalculator.STEP_TYPE_REWIND).equals(step.getStepType())) {
+                continue;
+            }
+            if (!requiresSourceWeightForPricing(step)) {
+                continue;
+            }
+            if (hasIncompleteConsumptionPlan(step, relations)) {
+                throw new BusinessException("合并复卷来源消耗比例不完整，不能正式下发或按吨位计费");
+            }
+        }
     }
 
     @Override
@@ -1825,6 +1859,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             m.put("original_diameter", r.getOriginalDiameter());
             m.put("core_diameter", r.getCoreDiameter());
             m.put("roll_weight", r.getRollWeight());
+            m.put("weight_status", r.getWeightStatus());
+            m.put("weight_source", r.getWeightSource());
             m.put("piece_num", r.getPieceNum());
             m.put("process_mode", r.getProcessMode());
             m.put("main_step_type", r.getMainStepType());
@@ -1905,6 +1941,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             snap.put("is_main", step.getIsMain());
             snap.put("knife_count", step.getKnifeCount());
             snap.put("process_weight", step.getProcessWeight());
+            snap.put("billing_weight_status", step.getBillingWeightStatus());
+            snap.put("billing_weight_basis", step.getBillingWeightBasis());
+            snap.put("pricing_dirty", step.getPricingDirty());
             snap.put("unit_price", step.getUnitPrice());
             snap.put("billing_unit_price", step.getBillingUnitPrice());
             snap.put("step_amount", step.getStepAmount());
@@ -1956,6 +1995,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             snap.put("uuid", rel.getUuid());
             snap.put("original_uuid", rel.getOriginalUuid());
             snap.put("share_ratio", rel.getShareRatio());
+            snap.put("consume_ratio", rel.getConsumeRatio());
             snap.put("share_weight", rel.getShareWeight());
             snap.put("remark", rel.getRemark());
             snaps.add(snap);
@@ -1999,6 +2039,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     public BackRecordResultVO backRecord(String uuid, BackRecordDTO dto) {
         businessLockService.lockProcessOrders(List.of(uuid));
         ProcessOrder order = requireBackRecordOrder(uuid, dto.getExpectedVersion());
+        ensureOrderNotReferencedBySettle(order.getUuid(), "加工单已被结算单引用，不能修改回录重量");
         BackRecordWarehousePolicy.WarehouseSnapshot warehouse =
                 backRecordWarehousePolicy.requireEnabled(dto.getWarehouseUuid());
         requireConsistentBackRecordWarehouse(order, warehouse.uuid());
@@ -2029,6 +2070,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 java.util.stream.Collectors.toMap(OriginalRoll::getUuid, roll -> roll));
 
         writeRollActuals(dto.getRolls(), scopeRolls);
+        markPricingDirty(scope.steps(), scope.rolls(), scope.relations());
         BackRecordOnSiteFinishRecorder.Result onSiteResult = backRecordOnSiteFinishRecorder.record(
                 dto.getFinishes(), new BackRecordOnSiteFinishRecorder.Context(
                         order, scope.rolls(), scope.finishes(), scope.relations()));
@@ -2116,6 +2158,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (!Objects.equals(order.getVersion(), dto.getExpectedVersion())) {
             throw new BusinessException(ErrorCode.E006, "加工单已被其他页面修改，请刷新后重试");
         }
+        ensureOrderNotReferencedBySettle(order.getUuid(), "加工单已被结算单引用，不能撤回回录");
         String operator = currentOperator();
         int reopened = backRecordReopenService.reopen(
                 order.getUuid(), dto.getRollUuids(), operator, order.getVersion());
@@ -2172,14 +2215,25 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         List<FinishOriginalRel> relations = finishOriginalRelMapper.selectList(
                 new LambdaQueryWrapper<FinishOriginalRel>()
                         .eq(FinishOriginalRel::getOrderUuid, order.getUuid()));
+        requireMeasuredRewindInputs(rolls, steps, relations);
         List<BackRecordResultVO.RollCheck> checks = computeClosureChecks(
                 order, rolls, finishes, steps, relations);
         order.setOrderStatus(STATUS_FINISHED);
         order.setBackRecordTime(now);
         order.setBackRecordUser(operator);
-        order.setSnapFinish(buildSnapFinish(order, rolls, finishes, now, checks, warehouse));
         ConcurrencyGuard.requireUpdated(updateById(order));
         calcFee(order.getUuid());
+        List<ProcessStep> pricedSteps = processStepMapper.selectList(new LambdaQueryWrapper<ProcessStep>()
+                .eq(ProcessStep::getOrderUuid, order.getUuid()));
+        RewindPricingFinalizationPolicy.requireFinalized(pricedSteps);
+        ProcessOrder pricedOrder = requireOrder(order.getUuid());
+        List<OriginalRoll> pricedRolls = originalRollMapper.selectList(new LambdaQueryWrapper<OriginalRoll>()
+                .eq(OriginalRoll::getOrderUuid, order.getUuid()).orderByAsc(OriginalRoll::getRowSort));
+        List<FinishRoll> pricedFinishes = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
+                .eq(FinishRoll::getOrderUuid, order.getUuid()).orderByAsc(FinishRoll::getRowSort));
+        pricedOrder.setSnapFinish(buildSnapFinish(pricedOrder, pricedRolls, pricedFinishes,
+                now, checks, warehouse));
+        ConcurrencyGuard.requireUpdated(updateById(pricedOrder));
         return checks;
     }
 
@@ -2347,6 +2401,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             roll.setActualGramWeight(d.getActualGramWeight());
             roll.setActualWidth(d.getActualWidth());
             roll.setActualWeight(d.getActualWeight());
+            roll.setWeightStatus(WeightStatus.MEASURED.name());
+            roll.setWeightSource("SCALE");
+            roll.setWeightRecordedAt(LocalDateTime.now());
+            roll.setWeightRecordedBy(currentOperator());
             if (StringUtils.hasText(d.getRemark())) {
                 roll.setRemark(d.getRemark());
             }
@@ -2958,6 +3016,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         for (OriginalRoll r : rolls) {
             rollByUuid.put(r.getUuid(), r);
         }
+        List<FinishOriginalRel> finishOriginalRels = finishOriginalRelMapper.selectList(
+                new LambdaQueryWrapper<FinishOriginalRel>().eq(FinishOriginalRel::getOrderUuid, uuid));
 
         List<FeeResultVO.StepFee> stepFees = new ArrayList<>(steps.size());
         Map<String, BigDecimal> processAmountByRoll = new LinkedHashMap<>();
@@ -2969,7 +3029,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             BigDecimal unitPrice = resolveUnitPrice(order, step, sawPrice, rewindPrice);
             BigDecimal effectiveUnitPrice = ProcessStepPricingBatchCalculator.effectivePrice(
                     unitPrice, step.getBillingUnitPrice());
-            BigDecimal tonnage = resolveTonnage(step, roll);
+            BigDecimal tonnage = resolveTonnage(step, roll, rollByUuid, finishOriginalRels);
             BigDecimal feeQuantity = resolveFeeQuantity(step, roll, tonnage);
             BigDecimal standardQuantity = standardQuantity(step, feeQuantity);
             BigDecimal standardAmount = FeeCalculator.stepAmount(
@@ -2987,7 +3047,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                     || !bdEquals(step.getBillingQuantity(), pricing.billingQuantity())
                     || !bdEquals(step.getStandardStepAmount(), pricing.standardAmount())
                     || !bdEquals(step.getPricingAdjustmentAmount(), pricing.adjustmentAmount())
-                    || !bdEquals(step.getStepAmount(), amount);
+                    || !bdEquals(step.getStepAmount(), amount)
+                    || (step.getStepType() != null && step.getStepType() == FeeCalculator.STEP_TYPE_REWIND
+                    && (!Objects.equals(step.getBillingWeightStatus(), resolveBillingWeightStatus(step, roll, tonnage,
+                    rollByUuid, finishOriginalRels))
+                    || !Objects.equals(step.getBillingWeightBasis(), resolveBillingWeightBasis(step, roll, finishOriginalRels))
+                    || !Objects.equals(step.getPricingDirty(), pricingDirtyValue(step, tonnage))));
 
             step.setUnitPrice(unitPrice);
             if (isServiceStep(step.getStepType())) {
@@ -2995,6 +3060,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             }
             if (step.getStepType() != null && step.getStepType() == FeeCalculator.STEP_TYPE_REWIND) {
                 step.setProcessWeight(tonnage);
+                step.setBillingWeightStatus(resolveBillingWeightStatus(step, roll, tonnage,
+                        rollByUuid, finishOriginalRels));
+                step.setBillingWeightBasis(resolveBillingWeightBasis(step, roll, finishOriginalRels));
+                step.setPricingDirty(pricingDirtyValue(step, tonnage));
             }
             step.setBillingMode(pricing.mode());
             step.setStandardQuantity(pricing.standardQuantity());
@@ -3193,17 +3262,193 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     /** 复卷吨位：step.process_weight 非空优先；为空取原纸 actual_weight/1000 折吨。 */
-    private BigDecimal resolveTonnage(ProcessStep step, OriginalRoll roll) {
+    private BigDecimal resolveTonnage(ProcessStep step, OriginalRoll roll,
+                                      Map<String, OriginalRoll> rollByUuid,
+                                      List<FinishOriginalRel> relations) {
         if (step.getStepType() == null || step.getStepType() != FeeCalculator.STEP_TYPE_REWIND) {
             return null;
         }
-        if (step.getProcessWeight() != null && step.getProcessWeight().signum() > 0) {
-            return step.getProcessWeight();
+        List<OriginalRoll> sources = sourceRollsForStep(step, roll, rollByUuid, relations);
+        if (!sources.isEmpty()) {
+            if (hasIncompleteConsumptionPlan(step, relations)) return null;
+            return resolveSourceTonnage(step, sources, relations);
         }
-        if (roll != null && roll.getActualWeight() != null) {
+        if (roll != null && hasValidActualWeight(roll)) {
             return roll.getActualWeight().divide(FeeCalculator.TON_DIVISOR, 3, RoundingMode.HALF_UP);
         }
+        if (roll != null && !WeightStatus.UNKNOWN.name().equalsIgnoreCase(roll.getWeightStatus())
+                && step.getProcessWeight() != null && step.getProcessWeight().signum() > 0) {
+            return step.getProcessWeight();
+        }
         return null;
+    }
+
+    private BigDecimal resolveSourceTonnage(ProcessStep step, List<OriginalRoll> sources,
+                                            List<FinishOriginalRel> relations) {
+        Map<String, BigDecimal> consumption = sourceConsumptionRatios(step, relations);
+        BigDecimal total = BigDecimal.ZERO;
+        for (OriginalRoll source : sources) {
+            BigDecimal weight = effectiveSourceWeight(source);
+            if (weight == null) return null;
+            BigDecimal ratio = consumption.get(source.getUuid());
+            total = total.add(ratio == null
+                    ? weight
+                    : weight.multiply(ratio).divide(new BigDecimal("100.00"), 6, RoundingMode.HALF_UP));
+        }
+        return total.divide(FeeCalculator.TON_DIVISOR, 3, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal effectiveSourceWeight(OriginalRoll source) {
+        if (hasValidActualWeight(source)) return source.getActualWeight();
+        BigDecimal total = source.getTotalWeight();
+        if (total != null && total.signum() > 0) return total;
+        return calcTotalWeight(source.getRollWeight(), source.getPieceNum());
+    }
+
+    private Map<String, BigDecimal> sourceConsumptionRatios(ProcessStep step,
+                                                             List<FinishOriginalRel> relations) {
+        Map<String, BigDecimal> result = new LinkedHashMap<>();
+        Set<String> finishIds = relations.stream()
+                .filter(rel -> Objects.equals(rel.getOriginalUuid(), step.getOriginalUuid()))
+                .map(FinishOriginalRel::getFinishUuid)
+                .collect(java.util.stream.Collectors.toSet());
+        for (FinishOriginalRel relation : relations) {
+            if (!finishIds.contains(relation.getFinishUuid()) || relation.getConsumeRatio() == null) continue;
+            result.merge(relation.getOriginalUuid(), relation.getConsumeRatio(), BigDecimal::add);
+        }
+        return result;
+    }
+
+    private void markPricingDirty(List<ProcessStep> steps, List<OriginalRoll> rolls,
+                                  List<FinishOriginalRel> relations) {
+        Set<String> rollIds = rolls.stream().map(OriginalRoll::getUuid).collect(java.util.stream.Collectors.toSet());
+        for (ProcessStep step : steps) {
+            if (!Integer.valueOf(FeeCalculator.STEP_TYPE_REWIND).equals(step.getStepType())
+                    || !requiresSourceWeightForPricing(step)
+                    || !stepUsesAnyRoll(step, rollIds, relations)) continue;
+            step.setPricingDirty(1);
+            ConcurrencyGuard.requireRowUpdated(processStepMapper.updateById(step));
+        }
+    }
+
+    private boolean stepUsesAnyRoll(ProcessStep step, Set<String> rollIds,
+                                    List<FinishOriginalRel> relations) {
+        if (rollIds.contains(step.getOriginalUuid())) return true;
+        if (relations == null || relations.isEmpty()) return false;
+        Set<String> finishIds = relations.stream()
+                .filter(rel -> Objects.equals(rel.getOriginalUuid(), step.getOriginalUuid()))
+                .map(FinishOriginalRel::getFinishUuid)
+                .collect(java.util.stream.Collectors.toSet());
+        return relations.stream()
+                .filter(rel -> finishIds.contains(rel.getFinishUuid()))
+                .anyMatch(rel -> rollIds.contains(rel.getOriginalUuid()));
+    }
+
+    private List<OriginalRoll> sourceRollsForStep(ProcessStep step, OriginalRoll primary,
+                                                   Map<String, OriginalRoll> rolls,
+                                                   List<FinishOriginalRel> relations) {
+        if (primary == null || relations == null || relations.isEmpty()) return primary == null ? List.of() : List.of(primary);
+        Set<String> finishIds = relations.stream()
+                .filter(rel -> Objects.equals(rel.getOriginalUuid(), step.getOriginalUuid()))
+                .map(FinishOriginalRel::getFinishUuid).collect(java.util.stream.Collectors.toSet());
+        if (finishIds.isEmpty()) return List.of(primary);
+        Set<String> sourceIds = relations.stream().filter(rel -> finishIds.contains(rel.getFinishUuid()))
+                .map(FinishOriginalRel::getOriginalUuid).collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        List<OriginalRoll> result = sourceIds.stream().map(rolls::get).filter(Objects::nonNull).toList();
+        return result.isEmpty() ? List.of(primary) : result;
+    }
+
+    private String resolveBillingWeightStatus(ProcessStep step, OriginalRoll primary,
+                                              BigDecimal tonnage, Map<String, OriginalRoll> rolls,
+                                              List<FinishOriginalRel> relations) {
+        if (!requiresSourceWeightForPricing(step)) return null;
+        if (hasIncompleteConsumptionPlan(step, relations)) return "BLOCKED";
+        if (tonnage == null) return "PENDING";
+        List<OriginalRoll> sources = sourceRollsForStep(step, primary, rolls, relations);
+        return sources.stream().allMatch(this::hasValidActualWeight)
+                ? "MEASURED" : "ESTIMATED";
+    }
+
+    private boolean hasValidActualWeight(OriginalRoll roll) {
+        return roll != null && roll.getActualWeight() != null && roll.getActualWeight().signum() > 0;
+    }
+
+    private String resolveBillingWeightBasis(ProcessStep step, OriginalRoll primary,
+                                             List<FinishOriginalRel> relations) {
+        if (!requiresSourceWeightForPricing(step)) return "FIXED";
+        Set<String> finishIds = relations.stream()
+                .filter(rel -> Objects.equals(rel.getOriginalUuid(), step.getOriginalUuid()))
+                .map(FinishOriginalRel::getFinishUuid)
+                .collect(java.util.stream.Collectors.toSet());
+        boolean merged = relations.stream()
+                .filter(rel -> finishIds.contains(rel.getFinishUuid()))
+                .map(FinishOriginalRel::getOriginalUuid)
+                .distinct()
+                .count() > 1;
+        if (!merged) return "INPUT_TOTAL";
+        return hasConsumptionPlan(step, relations) ? "SOURCE_CONSUMPTION" : "INPUT_TOTAL";
+    }
+
+    private boolean requiresSourceWeightForPricing(ProcessStep step) {
+        if (step == null || !Integer.valueOf(FeeCalculator.STEP_TYPE_REWIND).equals(step.getStepType())) {
+            return false;
+        }
+        int mode = step.getBillingMode() == null ? ProcessStepPricingPolicy.STANDARD : step.getBillingMode();
+        return mode == ProcessStepPricingPolicy.STANDARD;
+    }
+
+    private int pricingDirtyValue(ProcessStep step, BigDecimal tonnage) {
+        return requiresSourceWeightForPricing(step) && tonnage == null ? 1 : 0;
+    }
+
+    private void requireMeasuredRewindInputs(List<OriginalRoll> rolls, List<ProcessStep> steps,
+                                             List<FinishOriginalRel> relations) {
+        Map<String, OriginalRoll> rollByUuid = rolls.stream().collect(java.util.stream.Collectors.toMap(
+                OriginalRoll::getUuid, roll -> roll, (left, right) -> left, LinkedHashMap::new));
+        Set<String> missing = new LinkedHashSet<>();
+        for (ProcessStep step : steps) {
+            if (!requiresSourceWeightForPricing(step)) continue;
+            OriginalRoll primary = rollByUuid.get(step.getOriginalUuid());
+            sourceRollsForStep(step, primary, rollByUuid, relations).stream()
+                    .filter(source -> !hasValidActualWeight(source))
+                    .map(source -> StringUtils.hasText(source.getRollNo()) ? source.getRollNo() : source.getUuid())
+                    .forEach(missing::add);
+        }
+        if (!missing.isEmpty()) {
+            throw new BusinessException(ErrorCode.E003,
+                    "标准复卷完成整单前必须补齐来源母卷实测重量：" + String.join("、", missing));
+        }
+    }
+
+    private boolean hasConsumptionPlan(ProcessStep step, List<FinishOriginalRel> relations) {
+        if (relations == null || relations.isEmpty()) return false;
+        Set<String> finishIds = relations.stream()
+                .filter(rel -> Objects.equals(rel.getOriginalUuid(), step.getOriginalUuid()))
+                .map(FinishOriginalRel::getFinishUuid)
+                .collect(java.util.stream.Collectors.toSet());
+        return !finishIds.isEmpty() && relations.stream()
+                .filter(rel -> finishIds.contains(rel.getFinishUuid()))
+                .anyMatch(rel -> rel.getConsumeRatio() != null);
+    }
+
+    private boolean hasIncompleteConsumptionPlan(ProcessStep step, List<FinishOriginalRel> relations) {
+        if (!hasConsumptionPlan(step, relations)) return false;
+        Set<String> finishIds = relations.stream()
+                .filter(rel -> Objects.equals(rel.getOriginalUuid(), step.getOriginalUuid()))
+                .map(FinishOriginalRel::getFinishUuid)
+                .collect(java.util.stream.Collectors.toSet());
+        List<FinishOriginalRel> scoped = relations.stream()
+                .filter(rel -> finishIds.contains(rel.getFinishUuid()))
+                .toList();
+        if (scoped.stream().anyMatch(rel -> rel.getConsumeRatio() == null
+                || rel.getConsumeRatio().signum() <= 0)) {
+            return true;
+        }
+        Map<String, BigDecimal> totals = new LinkedHashMap<>();
+        scoped.forEach(rel -> totals.merge(rel.getOriginalUuid(), rel.getConsumeRatio(), BigDecimal::add));
+        BigDecimal hundred = new BigDecimal("100.00");
+        return totals.values().stream()
+                .anyMatch(total -> total.subtract(hundred).abs().compareTo(new BigDecimal("0.01")) > 0);
     }
 
     private BigDecimal resolveFeeQuantity(ProcessStep step, OriginalRoll roll, BigDecimal tonnage) {
@@ -3262,6 +3507,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             roll.setProcessMode(DEFAULT_PROCESS_MODE);
         }
         validateMainStepType(roll);
+        roll.setWeightStatus(OriginalRollWeightPolicy.normalizeEntryStatus(
+                dto.getWeightStatus(), roll.getRollWeight()));
+        if (WeightStatus.UNKNOWN.name().equals(roll.getWeightStatus())) {
+            roll.setRollWeight(null);
+        }
+        roll.setWeightSource(roll.getWeightStatus().equals(WeightStatus.UNKNOWN.name()) ? null : "MANUAL");
         roll.setTotalWeight(calcTotalWeight(roll.getRollWeight(), roll.getPieceNum()));
         return roll;
     }
@@ -3423,10 +3674,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         boolean consumptionPlan = dto.getRewindMode() != null && dto.getRewindMode() == 5
                 && MultiSourceConsumptionNormalizer.hasConsumption(dto.getSegments());
         int sourcePieceCount = rewindExpansionPieceCount(roll, dto);
-        BigDecimal totalWeight = consumptionPlan
+        BigDecimal resolvedTotalWeight = consumptionPlan
                 ? MultiSourceConsumptionNormalizer.totalConsumedWeight(dto.getSegments(), sourceRolls)
                 : previewTotalWeight(roll, dto, sourceRolls);
-        BigDecimal ratioTotal = consumptionPlan ? totalWeight : dto.getSegments().stream()
+        boolean weightPending = resolvedTotalWeight == null;
+        BigDecimal totalWeight = weightPending ? BigDecimal.ZERO : resolvedTotalWeight;
+        BigDecimal ratioTotal = consumptionPlan && !weightPending ? totalWeight : dto.getSegments().stream()
                 .map(segment -> segment.getSegmentRatio() == null ? BigDecimal.ONE : segment.getSegmentRatio())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal weightedTrimWidth = BigDecimal.ZERO;
@@ -3521,13 +3774,25 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         vo.setOriginalUuid(roll.getUuid());
         vo.setRewindMode(dto.getRewindMode());
         vo.setOriginalWidth(originalWidth);
+        vo.setWeightPending(weightPending);
         vo.setFinishCount(finishes.size());
         vo.setTrimCount(trimCount);
         vo.setSpareCount(dto.getSpareCount() == null ? 0 : dto.getSpareCount());
-        vo.setTotalEstimateWeight(finishes.stream()
-                .map(FinishPreviewVO.FinishItemPreview::getEstimateWeight)
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
-        vo.setTotalTrimWeight(previewTrimWeight);
+        if (weightPending) {
+            finishes.forEach(finish -> {
+                finish.setEstimateWeight(null);
+                finish.setTrimWeight(null);
+            });
+            vo.setTotalEstimateWeight(null);
+            vo.setTotalTrimWeight(null);
+            totalDifferenceWeight = BigDecimal.ZERO;
+            totalLossWeight = BigDecimal.ZERO;
+        } else {
+            vo.setTotalEstimateWeight(finishes.stream()
+                    .map(FinishPreviewVO.FinishItemPreview::getEstimateWeight)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+            vo.setTotalTrimWeight(previewTrimWeight);
+        }
         if (RewindWidthDifferenceCalculator.supportsWidthPolicy(dto.getRewindMode())) {
             vo.setWidthDifferencePolicy(WidthDifferencePolicy.resolve(
                     dto.getWidthDifferencePolicy()).name());
@@ -3544,7 +3809,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                                     BigDecimal totalWeight, BigDecimal trimWeight,
                                     BigDecimal lossWeight) {
         if (finishes.isEmpty()) return;
-        BigDecimal expected = totalWeight.subtract(trimWeight).subtract(lossWeight);
+        BigDecimal expected = (totalWeight == null ? BigDecimal.ZERO : totalWeight)
+                .subtract(trimWeight).subtract(lossWeight);
         BigDecimal actual = finishes.stream().map(FinishPreviewVO.FinishItemPreview::getEstimateWeight)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         FinishPreviewVO.FinishItemPreview last = finishes.getLast();
@@ -3628,10 +3894,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         for (String sourceUuid : sourceUuids) {
             OriginalRoll sourceRoll = sourceRolls.get(sourceUuid);
             if (sourceRoll != null) {
-                total = total.add(calcTotalWeight(sourceRoll.getRollWeight(), sourceRoll.getPieceNum()));
+                BigDecimal sourceWeight = calcTotalWeight(sourceRoll.getRollWeight(), sourceRoll.getPieceNum());
+                if (sourceWeight != null) total = total.add(sourceWeight);
             }
         }
-        return total.signum() == 0 ? calcTotalWeight(roll.getRollWeight(), roll.getPieceNum()) : total;
+        if (total.signum() > 0) return total;
+        return calcTotalWeight(roll.getRollWeight(), roll.getPieceNum());
     }
 
     private String sourceSummary(Integer rewindMode, RewindPlanPreviewDTO.RewindSegmentDTO segment,
@@ -3738,11 +4006,22 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private BigDecimal resolveConsumedSegmentRatio(RewindPlanPreviewDTO.RewindSegmentDTO segment,
                                                    Map<String, OriginalRoll> sourceRolls,
                                                    BigDecimal totalWeight) {
-        if (totalWeight.signum() == 0) {
+        if (totalWeight == null || totalWeight.signum() == 0) {
+            return fallbackSegmentRatio(segment);
+        }
+        BigDecimal segmentWeight = MultiSourceConsumptionNormalizer.segmentConsumedWeight(segment, sourceRolls);
+        if (segmentWeight == null) {
+            return fallbackSegmentRatio(segment);
+        }
+        return segmentWeight.divide(totalWeight, 6, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal fallbackSegmentRatio(RewindPlanPreviewDTO.RewindSegmentDTO segment) {
+        BigDecimal ratio = segment.getSegmentRatio() == null ? BigDecimal.ONE : segment.getSegmentRatio();
+        if (ratio.signum() <= 0) {
             return BigDecimal.ZERO;
         }
-        return MultiSourceConsumptionNormalizer.segmentConsumedWeight(segment, sourceRolls)
-                .divide(totalWeight, 6, RoundingMode.HALF_UP);
+        return ratio;
     }
 
     private int calcLayoutWidth(RewindPlanPreviewDTO.RewindSegmentDTO segment, String itemType) {
@@ -4101,7 +4380,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         if (dto.getRewindMode() != null && dto.getRewindMode() == 5) {
             totalWeight = multiSourceProcessWeight(orderUuid, roll, dto);
         }
-        return totalWeight.divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
+        return totalWeight == null ? null
+                : totalWeight.divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
     }
 
     private BigDecimal multiSourceProcessWeight(String orderUuid, OriginalRoll roll, FinishConfigSaveDTO dto) {
@@ -4375,6 +4655,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 rel.setFinishUuid(finish.getUuid());
                 rel.setOriginalUuid(source.getOriginalUuid());
                 rel.setShareRatio(source.getShareRatio());
+                rel.setConsumeRatio(source.getConsumeRatio());
                 rel.setShareWeight(spec.getEstimateWeight() == null ? null : spec.getEstimateWeight()
                         .multiply(source.getShareRatio())
                         .divide(new BigDecimal("100.00"), 3, RoundingMode.HALF_UP));
@@ -4557,7 +4838,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         for (String sourceUuid : sourceUuids) {
             OriginalRoll sourceRoll = rollByUuid.get(sourceUuid);
             if (sourceRoll != null) {
-                total = total.add(calcTotalWeight(sourceRoll.getRollWeight(), sourceRoll.getPieceNum()));
+                BigDecimal sourceWeight = calcTotalWeight(sourceRoll.getRollWeight(), sourceRoll.getPieceNum());
+                if (sourceWeight != null) total = total.add(sourceWeight);
             }
         }
         return total;
@@ -4741,7 +5023,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     private BigDecimal calcTotalWeight(BigDecimal rollWeight, Integer pieceNum) {
-        return rollWeight.multiply(BigDecimal.valueOf(pieceNum));
+        if (rollWeight == null || rollWeight.signum() <= 0) return null;
+        return rollWeight.multiply(BigDecimal.valueOf(pieceNum == null ? 1 : pieceNum));
     }
 
     private int sourcePieceCount(OriginalRoll roll) {

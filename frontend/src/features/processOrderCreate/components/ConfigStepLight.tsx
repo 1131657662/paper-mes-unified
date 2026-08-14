@@ -1,6 +1,6 @@
 import { Card, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
+import { formatGram, formatMm, formatOptionalKg } from '../../../utils/numberFormatters'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
 import { configStepProgress } from '../configStepProgress'
 import type { RollDraft } from '../types'
@@ -43,7 +43,7 @@ function lightColumns(lockedRolls: ReturnType<typeof mergedSourceLocks>): Column
     { title: '母卷', width: 170, render: (_, roll) => rollNoText(roll) },
     { title: '品名', dataIndex: 'paperName', width: 130 },
     { title: '规格', width: 150, render: (_, roll) => `${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}` },
-    { title: '重量', width: 120, align: 'right', render: (_, roll) => formatKg(rollTotalWeight(roll)) },
+    { title: '重量', width: 120, align: 'right', render: (_, roll) => roll.weightStatus === 'UNKNOWN' ? '待称重' : formatOptionalKg(rollTotalWeight(roll)) },
     { title: '处理方式', width: 140, render: (_, roll) => lightRollStatus(roll, lockedRolls) },
     { title: '说明', width: 220, render: (_, roll) => lightRollHint(roll, lockedRolls) },
   ]
@@ -66,6 +66,7 @@ function rollNoText(roll: RollDraft) {
   return [roll.rollNo, roll.extraNo].filter(Boolean).join(' / ') || roll.paperName || '未编号母卷'
 }
 
-function rollTotalWeight(roll: RollDraft) {
-  return Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)
+function rollTotalWeight(roll: RollDraft): number | undefined {
+  if (roll.weightStatus === 'UNKNOWN' || roll.rollWeight == null) return undefined
+  return roll.rollWeight * Number(roll.pieceNum ?? 1)
 }

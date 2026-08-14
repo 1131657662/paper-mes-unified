@@ -44,6 +44,38 @@ class MultiSourceConsumptionNormalizerTest {
         assertThrows(BusinessException.class, () -> MultiSourceConsumptionNormalizer.normalize(segments, rolls));
     }
 
+    @Test
+    void normalize_whenSourceConsumptionTotalsExceedOneHundredPercent_throws() {
+        List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(
+                segment(source("roll-3", "70")),
+                segment(source("roll-3", "40")));
+        Map<String, OriginalRoll> rolls = Map.of("roll-3", roll("roll-3", "1000"));
+
+        assertThrows(BusinessException.class, () -> MultiSourceConsumptionNormalizer.normalize(segments, rolls));
+    }
+
+    @Test
+    void totalConsumedWeight_prefersMeasuredWeightOverEstimatedWeight() {
+        List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(segment(source("roll-1", "100")));
+        OriginalRoll roll = roll("roll-1", "1");
+        roll.setActualWeight(new BigDecimal("2000"));
+        roll.setWeightStatus("MEASURED");
+
+        assertEquals(new BigDecimal("2000.000"),
+                MultiSourceConsumptionNormalizer.totalConsumedWeight(segments, Map.of("roll-1", roll)));
+    }
+
+    @Test
+    void totalConsumedWeight_returnsNullWhenSourceWeightIsUnknown() {
+        List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(segment(source("roll-1", "100")));
+        OriginalRoll roll = roll("roll-1", "1");
+        roll.setRollWeight(null);
+        roll.setWeightStatus("UNKNOWN");
+
+        assertEquals(null,
+                MultiSourceConsumptionNormalizer.totalConsumedWeight(segments, Map.of("roll-1", roll)));
+    }
+
     private RewindPlanPreviewDTO.RewindSegmentDTO segment(FinishConfigSpecDTO.FinishSourceDTO... sources) {
         RewindPlanPreviewDTO.RewindSegmentDTO segment = new RewindPlanPreviewDTO.RewindSegmentDTO();
         segment.setSources(List.of(sources));

@@ -69,7 +69,7 @@ class ProcessRelationshipIntegritySchemaContractTest {
         String schema = read("sql/01_schema_v4.1.sql");
         String version = read("sql/schema-baseline.version").trim();
 
-        assertThat(version).isEqualTo("3.64");
+        assertThat(version).isEqualTo("3.65");
         assertThat(schema).contains(
                 "uk_process_step_stage_scope",
                 "uk_stage_output_source_scope",
@@ -81,6 +81,20 @@ class ProcessRelationshipIntegritySchemaContractTest {
         int blockStart = schema.indexOf("-- V3.55-V3.58");
         int blockEnd = schema.indexOf("-- 三、出库模块", blockStart);
         assertRestrictOnly(schema.substring(blockStart, blockEnd));
+    }
+
+    @Test
+    void canonicalSchemaAllowsUnknownSourceWeightAndStoresBillingSemantics() throws IOException {
+        String schema = read("sql/01_schema_v4.1.sql");
+
+        assertThat(schema).contains(
+                "`roll_weight`        DECIMAL(10,3) DEFAULT NULL",
+                "`weight_status`      VARCHAR(16) NOT NULL DEFAULT 'ESTIMATED'",
+                "`weight_source`      VARCHAR(16) DEFAULT NULL",
+                "`billing_weight_status` VARCHAR(16) DEFAULT NULL",
+                "`billing_weight_basis` VARCHAR(32) DEFAULT NULL",
+                "`pricing_dirty` TINYINT NOT NULL DEFAULT 0",
+                "`consume_ratio` DECIMAL(5,2)");
     }
 
     private void assertRestrictOnly(String sql) {

@@ -23,6 +23,7 @@ public final class ServiceStepQuantityResolver {
 
     private static BigDecimal sourceWeight(OriginalRoll roll) {
         if (roll.getActualWeight() != null && roll.getActualWeight().signum() > 0) return roll.getActualWeight();
+        if ("UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
         if (roll.getTotalWeight() != null && roll.getTotalWeight().signum() > 0) return roll.getTotalWeight();
         if (roll.getRollWeight() == null) return null;
         int pieces = roll.getPieceNum() == null ? 1 : roll.getPieceNum();

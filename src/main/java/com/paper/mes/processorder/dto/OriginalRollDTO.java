@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import com.paper.mes.processorder.model.WeightStatus;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -41,9 +42,11 @@ public class OriginalRollDTO {
     @Positive(message = "原卷长度必须大于0")
     private Integer originalLength;
 
-    @NotNull(message = "单件重量不能为空")
-    @Positive(message = "单件重量必须大于0")
+    /** 标称/估算单件重量；UNKNOWN 时允许为空。 */
     private BigDecimal rollWeight;
+
+    /** UNKNOWN / ESTIMATED / MEASURED. 未传时由服务端按数值兼容推断。 */
+    private WeightStatus weightStatus;
 
     /** 件数，默认 1。 */
     @Min(value = 1, message = "件数至少为1")

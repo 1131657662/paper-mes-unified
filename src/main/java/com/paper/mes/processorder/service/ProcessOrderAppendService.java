@@ -143,6 +143,7 @@ public class ProcessOrderAppendService {
         roll.setSessionUuid(sessionUuid);
         roll.setRowSort(sort);
         roll.setPieceNum(dto.getPieceNum() == null ? 1 : dto.getPieceNum());
+        normalizeAppendWeight(roll);
         roll.setConfigStatus(0);
         roll.setConfigType("singlePlan");
         rollMapper.insert(roll);
@@ -156,8 +157,18 @@ public class ProcessOrderAppendService {
         BeanUtils.copyProperties(dto, roll, "uuid");
         roll.setRowSort(sort);
         roll.setPieceNum(dto.getPieceNum() == null ? 1 : dto.getPieceNum());
+        normalizeAppendWeight(roll);
         applyServiceSteps(roll, dto);
         ConcurrencyGuard.requireRowUpdated(rollMapper.updateById(roll));
+    }
+
+    private void normalizeAppendWeight(ProcessOrderAppendRoll roll) {
+        String status = OriginalRollWeightPolicy.normalizeEntryStatus(
+                roll.getWeightStatus(), roll.getRollWeight());
+        roll.setWeightStatus(status);
+        if ("UNKNOWN".equals(status)) {
+            roll.setRollWeight(null);
+        }
     }
 
     private void applyServiceSteps(ProcessOrderAppendRoll roll, ProcessOrderAppendDTO.AppendRoll dto) {
@@ -369,7 +380,14 @@ public class ProcessOrderAppendService {
         roll.setOrderNo(order.getOrderNo());
         roll.setCustomerName(order.getCustomerName());
         roll.setRollStatus(ROLL_STATUS_PENDING);
-        roll.setTotalWeight(draft.getRollWeight().multiply(java.math.BigDecimal.valueOf(draft.getPieceNum())));
+        roll.setWeightStatus(OriginalRollWeightPolicy.normalizeEntryStatus(
+                draft.getWeightStatus(), draft.getRollWeight()));
+        if ("UNKNOWN".equals(roll.getWeightStatus())) {
+            roll.setRollWeight(null);
+        }
+        roll.setWeightSource("UNKNOWN".equals(roll.getWeightStatus()) ? null : "MANUAL");
+        roll.setTotalWeight(draft.getRollWeight() == null ? null
+                : draft.getRollWeight().multiply(java.math.BigDecimal.valueOf(draft.getPieceNum())));
         originalRollMapper.insert(roll);
         if (ProcessModePolicy.requiresMainProcess(draft.getProcessMode())) {
             ProcessStep step = new ProcessStep();
@@ -455,8 +473,8 @@ public class ProcessOrderAppendService {
         target.setOrderUuid(order.getUuid());
         target.setOrderNo(order.getOrderNo());
         target.setCustomerName(order.getCustomerName());
-        target.setTotalWeight(source.getRollWeight()
-                .multiply(java.math.BigDecimal.valueOf(source.getPieceNum())));
+        target.setTotalWeight(source.getRollWeight() == null ? null
+                : source.getRollWeight().multiply(java.math.BigDecimal.valueOf(source.getPieceNum())));
         return target;
     }
 

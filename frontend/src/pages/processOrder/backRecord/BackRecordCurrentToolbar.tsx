@@ -24,7 +24,7 @@ export default function BackRecordCurrentToolbar({ item, onDirty, onNext, onPrev
       <Space wrap size={8} className="back-record-active__toolbar-actions">
         {item.roll && (
           <Button size="small" icon={<CopyOutlined />} onClick={() => { fillRoll(form, item); onDirty?.() }}>
-            带入标称
+            带入标称（待复称）
           </Button>
         )}
         {canFillFinishes && (
@@ -47,7 +47,7 @@ function fillRoll(form: ReturnType<typeof Form.useForm<BackRecordFormValues>>[0]
   form.setFieldValue(['rolls', roll.uuid], {
     actualGramWeight: roll.actualGramWeight ?? roll.gramWeight,
     actualWidth: roll.actualWidth ?? roll.originalWidth,
-    actualWeight: roll.actualWeight ?? (roll.rollWeight ?? 0) * (roll.pieceNum ?? 1),
+    actualWeight: roll.actualWeight,
     remark: roll.remark,
   })
 }

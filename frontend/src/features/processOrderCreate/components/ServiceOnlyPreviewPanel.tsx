@@ -1,7 +1,7 @@
 import { Alert, Empty, Spin, Tag, Typography } from 'antd'
 import { STEP_TYPE } from '../../../constants/processOrder'
 import type { ProcessStep } from '../../../types/processOrder'
-import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
+import { formatGram, formatMm, formatOptionalKg } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
 import { formatMoney } from '../../processOrderDetail/orderDetailUtils'
 import './ServiceOnlyPreviewPanel.css'
@@ -25,7 +25,7 @@ export default function ServiceOnlyPreviewPanel({ loading, pending, roll, steps 
           卷号：{roll.rollNo || '-'} / 编号：{roll.extraNo || '-'}
         </Typography.Text>
         <Typography.Text type="secondary">
-          {formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)} / {formatKg(totalWeight(roll))}
+          {formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)} / {formatOptionalKg(totalWeight(roll))}
         </Typography.Text>
       </div>
       {pending?.dirty && <PendingState status={pending} />}
@@ -97,6 +97,7 @@ function pricingText(step: ProcessStep) {
   return `${basis} · ${formatMoney(unitPrice)}`
 }
 
-function totalWeight(roll: RollDraft) {
-  return Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)
+function totalWeight(roll: RollDraft): number | undefined {
+  if (roll.weightStatus === 'UNKNOWN' || roll.rollWeight == null) return undefined
+  return roll.rollWeight * Number(roll.pieceNum ?? 1)
 }

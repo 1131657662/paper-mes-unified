@@ -12,7 +12,8 @@ export interface OriginalRollDTO {
   originalDiameter?: number
   coreDiameter?: number
   originalLength?: number
-  rollWeight: number
+  rollWeight?: number
+  weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
   pieceNum?: number
   batchNo?: string
   damageDesc?: string
@@ -153,6 +154,7 @@ export interface FinishPreviewVO {
   spareCount?: number
   totalEstimateWeight?: number
   totalTrimWeight?: number
+  weightPending?: boolean
   widthDifferencePolicy?: WidthDifferencePolicy
   widthDifference?: number
   widthDifferenceWeight?: number

@@ -7,7 +7,7 @@ export interface SourceUsageRow {
   label: string
   consumeRatio: number
   remainingRatio: number
-  consumeWeight: number
+  consumeWeight?: number
   status: 'ok' | 'warning' | 'error'
 }
 
@@ -42,8 +42,10 @@ export function equalConsumptionSources(values: string[]): RewindSourcePlanDTO[]
   return values.map((value, index) => ({ originalUuid: value, consumeRatio: ratio, sourceSort: index + 1 }))
 }
 
-export function segmentConsumedWeight(sources: RewindSourcePlanDTO[], options: SourceRollOption[]): number {
+export function segmentConsumedWeight(sources: RewindSourcePlanDTO[], options: SourceRollOption[]): number | undefined {
   const weights = weightMap(options)
+  const selected = sources.map((source) => options.find((option) => option.value === source.originalUuid))
+  if (selected.some((option) => option && !option.weightKnown)) return undefined
   return sources.reduce((sum, source) => {
     const sourceWeight = source.originalUuid ? weights.get(source.originalUuid) ?? 0 : 0
     return sum + sourceWeight * sourceConsumptionValue(source) / 100
@@ -56,7 +58,7 @@ export function sourceCompositionRatio(
   options: SourceRollOption[],
 ): number {
   const total = segmentConsumedWeight(sources, options)
-  if (!source.originalUuid || total <= 0) return 0
+  if (!source.originalUuid || total == null || total <= 0) return 0
   const sourceWeight = weightMap(options).get(source.originalUuid) ?? 0
   return roundRatio(sourceWeight * sourceConsumptionValue(source) / total)
 }
@@ -75,7 +77,7 @@ export function sourceUsageRows(segments: RewindSegmentPlanDTO[], options: Sourc
       label: option?.label ?? originalUuid,
       consumeRatio,
       remainingRatio,
-      consumeWeight: (option?.weight ?? 0) * consumeRatio / 100,
+      consumeWeight: option?.weightKnown ? option.weight * consumeRatio / 100 : undefined,
       status: usageStatus(consumeRatio),
     }
   })

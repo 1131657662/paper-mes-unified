@@ -125,7 +125,7 @@ function RollNavItem({
       <span className="back-record-nav-item__sub">{item.roll ? rollSpec(item.roll) : item.subtitle || mode}</span>
       <span className="back-record-nav-item__meta">
         <span>{mode}</span>
-        {item.roll && <span>{formatKg((item.roll.rollWeight ?? 0) * (item.roll.pieceNum ?? 1))}</span>}
+        {item.roll && <span>{rollWeightText(item.roll)}</span>}
         <span>{item.finishes.filter(({ finish }) => finish.isSpare !== 1 && finish.isRemain !== 1).length} 件成品</span>
         {shouldShowDiff && metrics.diff != null && <span>差 {formatOptionalKg(metrics.diff)}</span>}
       </span>
@@ -154,4 +154,10 @@ function rollSpec(roll: OriginalRoll) {
   const gram = formatGram(roll.gramWeight)
   const width = formatMm(roll.originalWidth)
   return `${paper} / ${gram} / ${width}`
+}
+
+function rollWeightText(roll: OriginalRoll) {
+  if (roll.weightStatus === 'UNKNOWN' && !(roll.actualWeight && roll.actualWeight > 0)) return '来料重量待称重'
+  const weight = roll.actualWeight ?? roll.totalWeight ?? roll.rollWeight
+  return weight == null ? '来料重量待称重' : formatKg(weight)
 }

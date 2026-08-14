@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DocumentDtoValidationTest {
@@ -136,7 +137,7 @@ class DocumentDtoValidationTest {
 
         assertTrue(messages.contains("克重必须大于0"));
         assertTrue(messages.contains("门幅必须大于0"));
-        assertTrue(messages.contains("单件重量必须大于0"));
+        assertFalse(messages.contains("单件重量必须大于0"));
         assertTrue(messages.contains("件数至少为1"));
     }
 

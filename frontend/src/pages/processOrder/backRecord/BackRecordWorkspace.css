@@ -95,6 +95,14 @@
   box-shadow: 0 4px 14px rgb(15 23 42 / 2%);
 }
 
+.back-record-merge-summary {
+  padding: 10px 12px;
+}
+
+.back-record-merge-summary .ant-table-wrapper {
+  margin-top: 8px;
+}
+
 .back-record-summary__metrics {
   display: grid;
   grid-template-columns: repeat(6, minmax(110px, 1fr));

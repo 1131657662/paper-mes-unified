@@ -46,7 +46,8 @@ export default function PreviewStep(props: Props) {
   const lockedRolls = mergedSourceLocks(props.rolls, props.plans)
   const balances = rollBalances(props, lockedRolls)
   const orderBalance = summarizeWeightBalances(Object.values(balances))
-  const blockers = blockingStatuses(props, lockedRolls).length + orderBalance.unbalancedCount
+  const blockers = blockingStatuses(props, lockedRolls).length
+    + orderBalance.unbalancedCount
   const columns = previewColumns(props, lockedRolls, balances)
 
   return (
@@ -108,7 +109,8 @@ function previewColumns(
   return [
     { title: '母卷', width: 150, render: (_, roll) => roll.rollNo || roll.paperName || '-' },
     { title: '原纸规格', width: 160, render: (_, roll) => `${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}` },
-    { title: '重量', width: 120, render: (_, roll) => formatKg(Number(roll.rollWeight) * (roll.pieceNum ?? 1)) },
+    { title: '重量', width: 120, render: (_, roll) => roll.weightStatus === 'UNKNOWN' || roll.rollWeight == null
+      ? '待称重' : formatKg(Number(roll.rollWeight) * (roll.pieceNum ?? 1)) },
     { title: '加工方式', width: 110, render: (_, roll) => <Tag>{PROCESS_MODE[roll.processMode ?? 1]}</Tag> },
     {
       title: '主工艺',

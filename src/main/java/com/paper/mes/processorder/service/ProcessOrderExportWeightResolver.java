@@ -69,6 +69,9 @@ final class ProcessOrderExportWeightResolver {
             return null;
         }
         BigDecimal available = productionAvailableWeight(production, allFinishes);
+        if (available == null) {
+            return null;
+        }
         BigDecimal widthBasis = finishWidthBasis(official);
         if (isPositive(widthBasis) && finish.getFinishWidth() != null) {
             return available.multiply(BigDecimal.valueOf(finish.getFinishWidth()))
@@ -79,7 +82,16 @@ final class ProcessOrderExportWeightResolver {
 
     private static BigDecimal productionAvailableWeight(ProcessOrderDetailVO.RollProductionVO production,
                                                         List<ProcessOrderDetailVO.FinishProductionVO> finishes) {
-        BigDecimal rollWeight = production.getRollWeight() == null ? BigDecimal.ZERO : production.getRollWeight();
+        if ("UNKNOWN".equalsIgnoreCase(production.getWeightStatus())
+                && !isPositive(production.getActualWeight())) {
+            return null;
+        }
+        BigDecimal rollWeight = production.getActualWeight() != null && production.getActualWeight().signum() > 0
+                ? production.getActualWeight()
+                : production.getRollWeight();
+        if (!isPositive(rollWeight)) {
+            return null;
+        }
         BigDecimal pieces = BigDecimal.valueOf(production.getPieceNum() == null ? 1 : production.getPieceNum());
         BigDecimal trimWeight = finishes.stream()
                 .filter(ProcessOrderExportWeightResolver::countsTowardLoss)

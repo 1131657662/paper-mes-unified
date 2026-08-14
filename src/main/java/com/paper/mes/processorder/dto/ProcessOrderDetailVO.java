@@ -43,6 +43,7 @@ public class ProcessOrderDetailVO {
         private Integer originalWidth;
         private Integer actualWidth;
         private BigDecimal rollWeight;
+        private String weightStatus;
         private BigDecimal actualWeight;
         private BigDecimal processAmount;
         private Integer pieceNum;
@@ -131,10 +132,12 @@ public class ProcessOrderDetailVO {
         private Integer originalWidth;
         private Integer actualWidth;
         private BigDecimal rollWeight;
+        private String weightStatus;
         private Integer pieceNum;
         private BigDecimal actualWeight;
         private BigDecimal totalWeight;
         private BigDecimal shareRatio;
+        private BigDecimal consumeRatio;
         private BigDecimal shareWeight;
         private String remark;
     }

@@ -17,7 +17,7 @@ export default function BackRecordSummaryPanel({ detail, values }: Props) {
   return (
     <div className="back-record-summary">
       <div className="back-record-summary__metrics">
-        <Metric label="原纸复称" value={formatKg(metrics.originalActualTotal)} />
+        <Metric label="原纸复称" value={metrics.originalWeightPending ? '待称重' : formatKg(metrics.originalActualTotal)} />
         <Metric label="成品实重" value={formatKg(metrics.finishActualTotal)} />
         <Metric label="余料实重" value={formatKg(metrics.trimActualTotal)} />
         <Metric label="工序损耗" value={formatKg(metrics.lossTotal)} />

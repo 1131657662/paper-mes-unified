@@ -18,6 +18,8 @@ public class PlanPreviewVO {
     private Integer spareCount;
     private BigDecimal totalEstimateWeight;
     private BigDecimal totalTrimWeight;
+    /** True when formal weight output awaits source weighing. */
+    private boolean weightPending;
     private String widthDifferencePolicy;
     private Integer widthDifference;
     /** 理论门幅差额对应的重量，不代表一定会从成品重量中扣除。 */

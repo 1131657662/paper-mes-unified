@@ -16,6 +16,8 @@ public class FinishPreviewVO {
     private Integer spareCount;
     private BigDecimal totalEstimateWeight;
     private BigDecimal totalTrimWeight;
+    /** True when one or more source rolls still have UNKNOWN weight. */
+    private boolean weightPending;
     private String widthDifferencePolicy;
     private Integer widthDifference;
     private BigDecimal widthDifferenceWeight;

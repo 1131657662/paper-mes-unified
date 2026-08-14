@@ -42,6 +42,9 @@ final class RewindTrimSaveSpecBuilder {
             result.addAll(buildSegment(dto, segments.get(index), previews.get(index), totalWeight, sourceWidth,
                     sourcePieceCount));
         }
+        if (preview.isWeightPending()) {
+            result.forEach(spec -> spec.setEstimateWeight(null));
+        }
         return result;
     }
 

@@ -27,6 +27,7 @@ import com.paper.mes.processorder.dto.ProcessOrderSubmitVO;
 import com.paper.mes.processorder.dto.RewindPlanPreviewDTO;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
+import com.paper.mes.processorder.model.WeightStatus;
 import com.paper.mes.processorder.entity.ProcessConfigDraft;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.entity.ProcessStep;
@@ -42,6 +43,7 @@ import com.paper.mes.processorder.service.ProcessPlanMapper;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.ProcessOrderSettlementPolicy;
+import com.paper.mes.processorder.service.OriginalRollWeightPolicy;
 import com.paper.mes.processorder.service.ProcessModePolicy;
 import com.paper.mes.processorder.service.ProcessRouteDraftManager;
 import com.paper.mes.system.config.constant.NoRuleBizType;
@@ -399,11 +401,18 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         roll.setRowSort(rowSort);
         roll.setRollStatus(ROLL_STATUS_PENDING);
         roll.setPieceNum(dto.getPieceNum() == null ? 1 : dto.getPieceNum());
+        roll.setWeightStatus(OriginalRollWeightPolicy.normalizeEntryStatus(
+                dto.getWeightStatus(), roll.getRollWeight()));
+        if (WeightStatus.UNKNOWN.name().equals(roll.getWeightStatus())) {
+            roll.setRollWeight(null);
+        }
+        roll.setWeightSource(WeightStatus.UNKNOWN.name().equals(roll.getWeightStatus()) ? null : "MANUAL");
         roll.setTotalWeight(totalWeight(roll.getRollWeight(), roll.getPieceNum()));
         return roll;
     }
 
     private BigDecimal totalWeight(BigDecimal weight, Integer pieces) {
+        if (weight == null || weight.signum() <= 0) return null;
         return weight.multiply(BigDecimal.valueOf(pieces == null ? 1 : pieces));
     }
 

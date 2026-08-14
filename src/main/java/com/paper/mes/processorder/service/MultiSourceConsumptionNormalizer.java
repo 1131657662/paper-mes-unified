@@ -43,7 +43,9 @@ public final class MultiSourceConsumptionNormalizer {
                                                  Map<String, OriginalRoll> rollByUuid) {
         BigDecimal total = BigDecimal.ZERO;
         for (RewindPlanPreviewDTO.RewindSegmentDTO segment : segments) {
-            total = total.add(segmentConsumedWeight(segment, rollByUuid));
+            BigDecimal segmentWeight = segmentConsumedWeight(segment, rollByUuid);
+            if (segmentWeight == null) return null;
+            total = total.add(segmentWeight);
         }
         return total.setScale(3, RoundingMode.HALF_UP);
     }
@@ -52,7 +54,9 @@ public final class MultiSourceConsumptionNormalizer {
                                                    Map<String, OriginalRoll> rollByUuid) {
         BigDecimal total = BigDecimal.ZERO;
         for (FinishConfigSpecDTO.FinishSourceDTO source : safeSources(segment)) {
-            total = total.add(sourceConsumedWeight(source, rollByUuid));
+            BigDecimal sourceWeight = sourceConsumedWeight(source, rollByUuid);
+            if (sourceWeight == null) return null;
+            total = total.add(sourceWeight);
         }
         return total;
     }
@@ -61,8 +65,9 @@ public final class MultiSourceConsumptionNormalizer {
                                          Map<String, OriginalRoll> rollByUuid) {
         List<FinishConfigSpecDTO.FinishSourceDTO> sources = safeSources(segment);
         BigDecimal segmentWeight = segmentConsumedWeight(segment, rollByUuid);
-        if (segmentWeight.signum() <= 0) {
-            throw new BusinessException("多母卷合并复卷每个分段必须填写来源消耗比例");
+        if (segmentWeight == null || segmentWeight.signum() <= 0) {
+            requireShareRatioTotal(sources);
+            return;
         }
         BigDecimal allocated = BigDecimal.ZERO;
         for (int i = 0; i < sources.size(); i++) {
@@ -105,15 +110,29 @@ public final class MultiSourceConsumptionNormalizer {
                                                    Map<String, OriginalRoll> rollByUuid) {
         OriginalRoll roll = rollByUuid.get(source.getOriginalUuid());
         if (roll == null || source.getConsumeRatio() == null) {
-            return BigDecimal.ZERO;
+            return null;
         }
-        return totalWeight(roll).multiply(source.getConsumeRatio()).divide(HUNDRED, 6, RoundingMode.HALF_UP);
+        BigDecimal totalWeight = totalWeight(roll);
+        return totalWeight == null ? null
+                : totalWeight.multiply(source.getConsumeRatio()).divide(HUNDRED, 6, RoundingMode.HALF_UP);
     }
 
     private static BigDecimal totalWeight(OriginalRoll roll) {
-        BigDecimal weight = roll.getRollWeight() == null ? BigDecimal.ZERO : roll.getRollWeight();
+        BigDecimal weight = roll.getActualWeight() != null && roll.getActualWeight().signum() > 0
+                ? roll.getActualWeight() : roll.getRollWeight();
+        if (weight == null || weight.signum() <= 0
+                || "UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
         int pieceNum = roll.getPieceNum() == null ? 1 : roll.getPieceNum();
         return weight.multiply(BigDecimal.valueOf(pieceNum));
+    }
+
+    private static void requireShareRatioTotal(List<FinishConfigSpecDTO.FinishSourceDTO> sources) {
+        BigDecimal total = sources.stream()
+                .map(FinishConfigSpecDTO.FinishSourceDTO::getShareRatio)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (total.compareTo(HUNDRED) != 0) {
+            throw new BusinessException("重量未知时，合并复卷来源分摊比例合计必须等于100%");
+        }
     }
 
     private static List<FinishConfigSpecDTO.FinishSourceDTO> safeSources(RewindPlanPreviewDTO.RewindSegmentDTO segment) {

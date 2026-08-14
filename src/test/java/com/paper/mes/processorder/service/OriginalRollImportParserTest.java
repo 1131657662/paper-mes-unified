@@ -42,7 +42,7 @@ class OriginalRollImportParserTest {
 
         OriginalRollImportPreviewVO preview = parser.parse(file);
 
-        assertEquals(4, preview.getErrors().size());
+        assertEquals(3, preview.getErrors().size());
     }
 
     @Test

@@ -42,8 +42,13 @@ export function calculateRollWeightBalance(options: RollBalanceOptions): RollWei
   if (options.roll.processMode === 3) return excludedBalance('直发母卷不生成加工成品')
   if (options.roll.processMode === 4) return excludedBalance('仅附加工艺，重量在回录时确认')
   if (options.roll.processMode === 2) return excludedBalance('现场定尺，重量在回录时确认')
+  if (!isKnownRollWeight(options.roll)) {
+    return pendingBalance('来源母卷重量待称重', false)
+  }
   if (options.routePreview) return routeBalance(options.roll, options.routePreview)
-  if (!options.preview?.ready) return pendingBalance(options.preview ? '当前预览未通过' : '尚未取得后端预览')
+  if (!options.preview?.ready) {
+    return pendingBalance(options.preview ? '当前预览未通过' : '尚未取得后端预览', true)
+  }
   return previewBalance(options)
 }
 
@@ -68,6 +73,9 @@ export function summarizeWeightBalances(balances: RollWeightBalance[]): OrderWei
 }
 
 function previewBalance(options: RollBalanceOptions): RollWeightBalance {
+  if (options.preview?.weightPending) {
+    return pendingBalance('来源母卷重量待称重', options.plan?.mainStepType === 2)
+  }
   const inputWeight = planInputWeight(options)
   const preview = options.preview
   return resolvedBalance({
@@ -124,6 +132,8 @@ function planInputWeight(options: RollBalanceOptions): number {
   if (options.plan?.rewindMode !== 5) return rollTotalWeight(options.roll)
   const sources = options.plan.segments?.flatMap((segment) => segment.sources ?? []) ?? []
   if (!sources.length) return rollTotalWeight(options.roll)
+  const sourceIds = new Set(sources.map((source) => source.originalUuid).filter(Boolean))
+  if (options.rolls.some((roll) => sourceIds.has(roll.uuid ?? '') && !isKnownRollWeight(roll))) return 0
   const weights = new Map(options.rolls.filter(hasUuid).map((roll) => [roll.uuid, rollTotalWeight(roll)]))
   const usesConsumption = sources.some((source) => source.consumeRatio != null)
   if (usesConsumption) {
@@ -147,15 +157,15 @@ function roundedTotals(weights: WeightTotals) {
   return { inputWeight, finishWeight, trimWeight, difference: roundKg(inputWeight - finishWeight - trimWeight) }
 }
 
-function pendingBalance(detail: string): RollWeightBalance {
-  return emptyBalance('pending', '等待重量校验', detail)
+function pendingBalance(detail: string, blocking: boolean): RollWeightBalance {
+  return emptyBalance('pending', '等待重量校验', detail, blocking)
 }
 
 function excludedBalance(detail: string): RollWeightBalance {
   return emptyBalance('excluded', '无需开单校验', detail)
 }
 
-function emptyBalance(status: WeightBalanceStatus, label: string, detail: string): RollWeightBalance {
+function emptyBalance(status: WeightBalanceStatus, label: string, detail: string, blocking = false): RollWeightBalance {
   return {
     status,
     inputWeight: 0,
@@ -165,7 +175,7 @@ function emptyBalance(status: WeightBalanceStatus, label: string, detail: string
     outputWeightLabel: '修边/余料',
     label,
     detail,
-    blocking: false,
+    blocking,
   }
 }
 
@@ -188,6 +198,11 @@ function roundKg(value: number): number {
 function hasUuid(roll: RollDraft): roll is RollDraft & { uuid: string } {
   return Boolean(roll.uuid)
 }
+
+function isKnownRollWeight(roll: RollDraft): boolean {
+  return roll.weightStatus !== 'UNKNOWN' && roll.rollWeight != null && roll.rollWeight > 0
+}
+
 
 interface WeightTotals {
   inputWeight: number

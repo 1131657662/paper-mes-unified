@@ -1,6 +1,6 @@
 -- =============================================================================
 -- 卷筒纸加工管理系统 V4.1  数据库建表脚本
--- Canonical schema version: 3.64
+-- Canonical schema version: 3.65
 -- Phase 1 / P0-1  数据库建表
 -- 引擎: InnoDB   字符集: utf8mb4   排序规则: utf8mb4_general_ci
 -- 规范依据: 开发文档 第三章 + 3.4 节 DDL 统一规范
@@ -278,10 +278,14 @@ CREATE TABLE `biz_original_roll` (
   `original_diameter`  INT           DEFAULT NULL            COMMENT '原卷直径 英寸',
   `core_diameter`      INT           DEFAULT NULL            COMMENT '纸芯直径 英寸',
   `original_length`    INT           DEFAULT NULL            COMMENT '来料长度 米',
-  `roll_weight`        DECIMAL(10,3) NOT NULL                COMMENT '标称单件重量 kg',
+  `roll_weight`        DECIMAL(10,3) DEFAULT NULL            COMMENT '标称/估算单件重量 kg',
   `actual_weight`      DECIMAL(10,3) DEFAULT NULL            COMMENT '车间复称实际重量 kg（计费基准）',
   `piece_num`          INT           NOT NULL DEFAULT 1      COMMENT '件数固定默认1',
-  `total_weight`       DECIMAL(10,3) NOT NULL DEFAULT 0.000  COMMENT '标称总重=件重*件数',
+  `total_weight`       DECIMAL(10,3) DEFAULT NULL  COMMENT '标称/估算总重=件重*件数',
+  `weight_status`      VARCHAR(16) NOT NULL DEFAULT 'ESTIMATED' COMMENT 'UNKNOWN/ESTIMATED/MEASURED',
+  `weight_source`      VARCHAR(16) DEFAULT NULL COMMENT 'MANUAL/SCALE/IMPORT/INFERRED/LEGACY',
+  `weight_recorded_at` DATETIME DEFAULT NULL,
+  `weight_recorded_by` VARCHAR(50) DEFAULT NULL,
   `batch_no`           VARCHAR(100)  DEFAULT NULL            COMMENT '来料批次号',
   `damage_desc`        VARCHAR(255)  DEFAULT NULL            COMMENT '破损、水湿文字描述',
   `damage_images`      JSON          DEFAULT NULL            COMMENT '多图片路径数组',
@@ -503,6 +507,9 @@ CREATE TABLE `biz_process_step` (
   `is_main`        TINYINT       NOT NULL DEFAULT 1      COMMENT '1本卷主工艺 0车间追加工序',
   `knife_count`    INT           DEFAULT 0               COMMENT '锯纸专用：实际加工刀数',
     `process_weight` DECIMAL(10,3) DEFAULT NULL            COMMENT '复卷专用：加工吨位',
+    `billing_weight_status` VARCHAR(16) DEFAULT NULL COMMENT 'PENDING/ESTIMATED/MEASURED/BLOCKED',
+    `billing_weight_basis` VARCHAR(32) DEFAULT NULL COMMENT 'SOURCE_CONSUMPTION/INPUT_TOTAL/FINISH_ACTUAL/FIXED',
+    `pricing_dirty` TINYINT NOT NULL DEFAULT 0 COMMENT '1需要重新核定计费',
     `billing_basis` VARCHAR(16) DEFAULT NULL                COMMENT '服务计费基准 TON按吨 PIECE按件',
     `service_quantity` DECIMAL(12,3) DEFAULT NULL           COMMENT '整理或包装服务数量',
     `unit_price`     DECIMAL(10,2) DEFAULT NULL            COMMENT '本工序单价（元/刀 / 元/吨）',
@@ -764,6 +771,7 @@ CREATE TABLE `biz_finish_original_rel` (
   `original_uuid` VARCHAR(36)   NOT NULL                COMMENT '关联原纸 biz_original_roll.uuid',
   `order_uuid`    VARCHAR(36)   NOT NULL                COMMENT '关联加工单',
   `share_ratio`   DECIMAL(5,2)  DEFAULT NULL            COMMENT '本原卷对本成品的重量分摊比例%',
+  `consume_ratio` DECIMAL(5,2)  DEFAULT NULL            COMMENT '本原卷在合并复卷中的消耗比例%',
   `share_weight`  DECIMAL(10,3) DEFAULT NULL            COMMENT '本原卷分摊到本成品的重量 kg',
   `remark`        VARCHAR(255)  DEFAULT NULL            COMMENT '备注',
   `is_deleted`    TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
@@ -2513,7 +2521,8 @@ CREATE TABLE `biz_process_order_append_roll` (
   `original_diameter` INT DEFAULT NULL,
   `core_diameter` INT DEFAULT NULL,
   `original_length` INT DEFAULT NULL,
-  `roll_weight` DECIMAL(12,3) NOT NULL,
+  `roll_weight` DECIMAL(12,3) DEFAULT NULL,
+  `weight_status` VARCHAR(16) DEFAULT 'ESTIMATED',
   `piece_num` INT NOT NULL DEFAULT 1,
   `batch_no` VARCHAR(100) DEFAULT NULL,
   `damage_desc` VARCHAR(255) DEFAULT NULL,

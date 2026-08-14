@@ -50,6 +50,12 @@ public class OriginalRoll extends BaseEntity {
     private Integer pieceNum;
     /** 标称总重=件重*件数 */
     private BigDecimal totalWeight;
+    /** UNKNOWN / ESTIMATED / MEASURED. */
+    private String weightStatus;
+    /** MANUAL / SCALE / IMPORT / INFERRED / LEGACY. */
+    private String weightSource;
+    private LocalDateTime weightRecordedAt;
+    private String weightRecordedBy;
 
     private String batchNo;
     private String damageDesc;

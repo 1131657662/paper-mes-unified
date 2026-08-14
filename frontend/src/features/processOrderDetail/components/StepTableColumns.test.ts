@@ -3,7 +3,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ProcessOrderDetailVO, ProcessStep } from '../../../types/processOrder'
 import RollFilterDropdown from './RollFilterDropdown'
-import { renderProcessingQuantity, renderRollCell } from './StepTableCells'
+import { renderAmountCell, renderPricingBasisCell, renderProcessingQuantity, renderRollCell } from './StepTableCells'
 import { buildStepTableColumns, stepMatchesRollFilter } from './StepTableColumns'
 
 describe('工序表母卷筛选', () => {
@@ -50,6 +50,25 @@ describe('工序表母卷筛选', () => {
   it('锯纸按刀数、复卷按吨位显示加工量', () => {
     expect(renderProcessingQuantity({ uuid: 'saw', stepType: 1, knifeCount: 3 })).toBe('3 刀')
     expect(renderProcessingQuantity({ uuid: 'rewind', stepType: 2, processWeight: 3.7 })).toBe('3.700 t')
+  })
+
+  it('计费脏时不显示旧金额，明确提示重新核定', () => {
+    const html = renderToStaticMarkup(renderAmountCell({
+      uuid: 'rewind', stepType: 2, stepAmount: 200, pricingDirty: 1,
+    }))
+
+    expect(html).toContain('待重新核定')
+    expect(html).not.toContain('200.00')
+  })
+
+  it('估算重量费用明确标记为暂估且不可结算', () => {
+    const step = {
+      uuid: 'rewind', stepType: 2, stepAmount: 200, billingWeightStatus: 'ESTIMATED', pricingDirty: 0,
+    } satisfies ProcessStep
+    const html = renderToStaticMarkup(renderPricingBasisCell(step))
+
+    expect(html).toContain('暂估计费')
+    expect(html).toContain('不可作为最终应收或结算依据')
   })
 
   it('移除无业务意义的序列并合并重复工序列', () => {

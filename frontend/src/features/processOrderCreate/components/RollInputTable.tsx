@@ -1,4 +1,4 @@
-import { Button, Input, InputNumber, Space } from 'antd'
+import { Button, Input, InputNumber, Select, Space } from 'antd'
 import { CopyOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { ColumnType } from 'antd/es/table'
 import ResizableTable from '../../../components/ResizableTable'
@@ -60,9 +60,19 @@ function optionalNumberColumn(key: string, field: 'originalDiameter' | 'coreDiam
 }
 
 function weightColumn(setField: SetField): ColumnType<RollDraft> {
-  return { title: '单重(kg)', dataIndex: 'rollWeight', width: 100, render: (_, roll, index) => (
-    <InputNumber aria-label={`母卷 ${index + 1} 单重`} min={0.001} precision={3}
-      value={positiveValue(roll.rollWeight)} onChange={(value) => setField(roll, 'rollWeight', value ?? 0)} />
+  return { title: '重量', dataIndex: 'rollWeight', width: 180, render: (_, roll, index) => (
+    <Space.Compact>
+      <Select aria-label={`母卷 ${index + 1} 重量状态`} value={roll.weightStatus ?? (roll.rollWeight == null ? 'UNKNOWN' : 'ESTIMATED')}
+        options={[{ value: 'UNKNOWN', label: '未知' }, { value: 'ESTIMATED', label: '估算' }]}
+        onChange={(value) => {
+          setField(roll, 'weightStatus', value)
+          if (value === 'UNKNOWN') setField(roll, 'rollWeight', undefined)
+        }} />
+      <InputNumber aria-label={`母卷 ${index + 1} 单重`} min={0.001} precision={3}
+        disabled={roll.weightStatus === 'UNKNOWN'} value={positiveValue(roll.rollWeight)}
+        placeholder={roll.weightStatus === 'UNKNOWN' ? '未知' : 'kg'}
+        onChange={(value) => setField(roll, 'rollWeight', value ?? undefined)} />
+    </Space.Compact>
   ) }
 }
 

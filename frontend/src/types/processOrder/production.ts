@@ -12,10 +12,12 @@ export interface FinishSourceVO {
   originalWidth?: number
   actualWidth?: number
   rollWeight?: number
+  weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
   pieceNum?: number
   actualWeight?: number
   totalWeight?: number
   shareRatio?: number
+  consumeRatio?: number
   shareWeight?: number
   remark?: string
 }
@@ -91,6 +93,7 @@ export interface RollProductionVO {
   originalWidth?: number
   actualWidth?: number
   rollWeight?: number
+  weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
   actualWeight?: number
   processAmount?: number
   pieceNum?: number

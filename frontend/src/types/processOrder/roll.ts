@@ -16,6 +16,10 @@ export interface OriginalRoll {
   coreDiameter?: number
   originalLength?: number
   rollWeight?: number
+  weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
+  weightSource?: string
+  weightRecordedAt?: string
+  weightRecordedBy?: string
   actualWeight?: number
   pieceNum?: number
   totalWeight?: number
@@ -97,6 +101,12 @@ export interface ProcessStep {
   isMain?: number
   knifeCount?: number
   processWeight?: number
+  /** PENDING / ESTIMATED / MEASURED / BLOCKED. */
+  billingWeightStatus?: 'PENDING' | 'ESTIMATED' | 'MEASURED' | 'BLOCKED'
+  /** SOURCE_CONSUMPTION / INPUT_TOTAL / FINISH_ACTUAL / FIXED. */
+  billingWeightBasis?: 'SOURCE_CONSUMPTION' | 'INPUT_TOTAL' | 'FINISH_ACTUAL' | 'FIXED'
+  /** 1 表示回录后需要重新核定计费。 */
+  pricingDirty?: number
   /** 服务工序计费基准。 */
   billingBasis?: string
   serviceQuantity?: number

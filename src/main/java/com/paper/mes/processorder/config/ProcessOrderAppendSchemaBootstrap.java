@@ -32,6 +32,9 @@ public class ProcessOrderAppendSchemaBootstrap implements ApplicationRunner {
                         + "`uk_process_append_active_order` (`active_order_uuid`)");
         addBaseExtensionColumns("biz_process_order_append_session");
         addBaseExtensionColumns("biz_process_order_append_roll");
+        addColumn("biz_process_order_append_roll", "weight_status",
+                "ALTER TABLE `biz_process_order_append_roll` ADD COLUMN `weight_status` varchar(16) DEFAULT 'ESTIMATED' AFTER `roll_weight`");
+        jdbcTemplate.execute("ALTER TABLE `biz_process_order_append_roll` MODIFY COLUMN `roll_weight` decimal(12,3) DEFAULT NULL");
         addColumn("biz_process_order_append_roll", "service_steps_json",
                 "ALTER TABLE `biz_process_order_append_roll` ADD COLUMN `service_steps_json` json DEFAULT NULL AFTER `config_type`");
     }
@@ -87,7 +90,8 @@ public class ProcessOrderAppendSchemaBootstrap implements ApplicationRunner {
                   `original_diameter` int DEFAULT NULL,
                   `core_diameter` int DEFAULT NULL,
                   `original_length` int DEFAULT NULL,
-                  `roll_weight` decimal(12,3) NOT NULL,
+                  `roll_weight` decimal(12,3) DEFAULT NULL,
+                  `weight_status` varchar(16) DEFAULT 'ESTIMATED',
                   `piece_num` int NOT NULL DEFAULT 1,
                   `batch_no` varchar(100) DEFAULT NULL,
                   `damage_desc` varchar(255) DEFAULT NULL,

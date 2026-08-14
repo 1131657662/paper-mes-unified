@@ -3,6 +3,7 @@ package com.paper.mes.processorder.service;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
 import com.paper.mes.processorder.dto.OriginalRollImportPreviewVO;
+import com.paper.mes.processorder.model.WeightStatus;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
@@ -137,7 +138,10 @@ public class OriginalRollImportParser {
             addError(preview, rowNumber, "门幅", "门幅必须大于0", raw);
         }
         if (dto.getRollWeight() == null || dto.getRollWeight().signum() <= 0) {
-            addError(preview, rowNumber, "单重", "单重必须大于0", raw);
+            dto.setRollWeight(null);
+            dto.setWeightStatus(WeightStatus.UNKNOWN);
+        } else {
+            dto.setWeightStatus(WeightStatus.ESTIMATED);
         }
         if (dto.getPieceNum() == null || dto.getPieceNum() < 1 || dto.getPieceNum() > 500) {
             addError(preview, rowNumber, "件数", "件数必须在1到500之间", raw);

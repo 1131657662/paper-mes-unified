@@ -8,6 +8,7 @@ export interface BackRecordMetrics {
   directShipCount: number
   serviceOnlyCount: number
   originalActualTotal: number
+  originalWeightPending: boolean
   finishActualTotal: number
   trimActualTotal: number
   lossTotal: number
@@ -40,6 +41,7 @@ export function buildBackRecordMetrics(
     directShipCount: rolls.filter((roll) => roll.processMode === 3).length,
     serviceOnlyCount: rolls.filter((roll) => roll.processMode === 4).length,
     originalActualTotal: sum(rolls.map((roll) => values.rolls?.[roll.uuid]?.actualWeight ?? roll.actualWeight)),
+    originalWeightPending: rolls.some((roll) => !positive(values.rolls?.[roll.uuid]?.actualWeight ?? roll.actualWeight)),
     finishActualTotal: sum(products.map((finish) => values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight))
       + sum(added.map((finish) => values.finishes?.[finish.uuid]?.actualWeight))
       + sum(outputProducts.map((finish) => finish.actualWeight)),

@@ -17,7 +17,7 @@ class SchemaReadinessServiceTest {
         SchemaReadinessReport report = service.refresh();
 
         assertThat(report.ready()).isTrue();
-        assertThat(report.databaseVersion()).isEqualTo("3.64");
+        assertThat(report.databaseVersion()).isEqualTo("3.65");
         assertThat(report.missingStructures()).isEmpty();
     }
 
@@ -55,7 +55,7 @@ class SchemaReadinessServiceTest {
         assertThat(report.databaseVersion()).isEqualTo("3.63");
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures())
-                .contains("migration:expected=3.64,actual=3.63");
+                .contains("migration:expected=3.65,actual=3.63");
     }
 
     @Test
@@ -68,12 +68,12 @@ class SchemaReadinessServiceTest {
         assertThat(report.databaseVersion()).isEqualTo("UNTRACKED");
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures())
-                .contains("migration:expected=3.64,actual=UNTRACKED");
+                .contains("migration:expected=3.65,actual=UNTRACKED");
     }
 
     private SchemaReadinessService service(JdbcTemplate jdbcTemplate) {
         SchemaReadinessService service = new SchemaReadinessService(jdbcTemplate);
-        ReflectionTestUtils.setField(service, "expectedVersion", "3.64");
+        ReflectionTestUtils.setField(service, "expectedVersion", "3.65");
         ReflectionTestUtils.setField(service, "requireMigrationHistory", true);
         return service;
     }
@@ -83,7 +83,7 @@ class SchemaReadinessServiceTest {
         private final List<String> versions;
 
         private ReadinessJdbcTemplate(String missingName) {
-            this(missingName, List.of("3.64"));
+            this(missingName, List.of("3.65"));
         }
 
         private ReadinessJdbcTemplate(String missingName, List<String> versions) {

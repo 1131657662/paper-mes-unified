@@ -3,7 +3,7 @@ import { Button, Input, InputNumber, Space, Tag, Typography } from 'antd'
 import { PROCESS_MODE, STEP_TYPE, processModeRequiresMain } from '../../../constants/processOrder'
 import type { Machine } from '../../../types/machine'
 import type { ProcessPlanDTO } from '../../../types/processOrder'
-import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
+import { formatGram, formatMm, formatOptionalKg } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
 import OnSiteCountEditor from './OnSiteCountEditor'
 import ProcessMachineSelect from './ProcessMachineSelect'
@@ -51,7 +51,7 @@ export default function ProcessPlanEditor({
           mainStepType={mainStepType}
           diameter={roll.originalDiameter}
           width={roll.originalWidth}
-          weight={Number(roll.rollWeight ?? 0)}
+          weight={roll.rollWeight}
           value={plan.machineUuid}
           onChange={(machineUuid) => patch({ machineUuid })}
         />
@@ -84,11 +84,11 @@ export default function ProcessPlanEditor({
 }
 
 function RollContextHeader({ roll }: { roll: RollDraft }) {
-  const weight = Number(roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)
+  const weight = roll.weightStatus === 'UNKNOWN' ? undefined : Number(roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)
   return (
     <div className="process-plan-context">
       <Typography.Text strong className="process-plan-context__spec">
-        {roll.paperName || '未命名品名'} / {formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)} / {formatKg(weight)}
+        {roll.paperName || '未命名品名'} / {formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)} / {formatOptionalKg(weight)}
       </Typography.Text>
       <Typography.Text type="secondary" className="process-plan-context__identity">
         卷号：{roll.rollNo || '-'} / 编号：{roll.extraNo || '-'}

@@ -13,6 +13,7 @@ import { processLines } from './backRecordWorkbenchUtils'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 import type { BackRecordSourceOption } from './BackRecordFinishFields'
 import BackRecordCurrentToolbar from './BackRecordCurrentToolbar'
+import BackRecordMergeSummary from './BackRecordMergeSummary'
 
 interface Props {
   item: BackRecordWorkItem
@@ -27,6 +28,7 @@ export default function BackRecordActivePanel({ item, onDirty, onNext, onPreviou
   return (
     <main className="back-record-active">
       <BackRecordCurrentToolbar item={item} onDirty={onDirty} onNext={onNext} onPrevious={onPrevious} />
+      <BackRecordMergeSummary item={item} />
 
       {item.kind === 'roll' && <RollActualPanel item={item} onFieldExhausted={onNext} />}
       <ProcessPanel item={item} onFieldExhausted={onNext} onProcessChange={onProcessChange} />
@@ -61,7 +63,8 @@ function RollActualPanel({
         <Fact label="批次" value={roll.batchNo || '-'} />
         <Fact label="件数" value={`${roll.pieceNum ?? 1} 件`} />
         <Fact label="标称" value={`${roll.paperName || '-'} / ${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}`} />
-        <Fact label="来料重量" value={formatKg((roll.rollWeight ?? 0) * (roll.pieceNum ?? 1))} />
+        <Fact label="来料重量" value={roll.rollWeight == null ? '未知' : formatKg(roll.rollWeight * (roll.pieceNum ?? 1))} />
+        <Fact label="重量状态" value={roll.weightStatus === 'MEASURED' ? '实测' : roll.weightStatus === 'ESTIMATED' ? '估算' : '未知'} />
         <Fact label="加工方式" value={PROCESS_MODE[roll.processMode ?? 1] ?? '-'} />
       </div>
       <div className="back-record-input-grid">

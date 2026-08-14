@@ -82,6 +82,7 @@ export interface PlanPreviewVO {
   spareCount?: number
   totalEstimateWeight?: number
   totalTrimWeight?: number
+  weightPending?: boolean
   widthDifferencePolicy?: WidthDifferencePolicy
   widthDifference?: number
   widthDifferenceWeight?: number

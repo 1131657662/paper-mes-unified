@@ -31,6 +31,7 @@ public class ProcessOrderAppendVO {
         private Integer coreDiameter;
         private Integer originalLength;
         private BigDecimal rollWeight;
+        private String weightStatus;
         private Integer pieceNum;
         private String batchNo;
         private String damageDesc;

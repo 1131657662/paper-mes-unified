@@ -47,7 +47,7 @@ const finishColumns: ColumnsType<RewindFinishItemPreview> = [
   { title: '门幅', dataIndex: 'finishWidth', width: 72, render: (value) => formatMm(value ?? 0) },
   { title: '直径', dataIndex: 'finishDiameter', width: 102, render: formatStoredDiameter },
   { title: '纸芯', dataIndex: 'finishCoreDiameter', width: 102, render: formatStoredCoreDiameter },
-  { title: '预估重', dataIndex: 'estimateWeight', width: 92, render: (value) => formatKgWithMaxDecimals(Number(value ?? 0), 2) },
+  { title: '预估重', dataIndex: 'estimateWeight', width: 92, render: optionalPreviewWeight },
   { title: '修边重', dataIndex: 'trimWeight', width: 92, render: (value) => formatKgWithMaxDecimals(Number(value ?? 0), 2) },
   { title: '来源', dataIndex: 'sourceSummary', width: 160, render: textCell },
 ]
@@ -89,6 +89,7 @@ function PreviewContent({ preview, balance }: { preview: PlanPreviewVO; balance?
       <Typography.Paragraph className="plan-preview-panel__summary">
         {preview.summary || '暂无摘要'}
       </Typography.Paragraph>
+      {preview.weightPending && <Alert type="warning" showIcon message="来源母卷重量待称重" description="当前仅展示工艺排布，正式吨位计费需完成逐卷实测后重新核定。" />}
       {balance && <WeightBalanceStrip balance={balance} compact />}
       <PreviewStats preview={preview} />
       <PreviewTableSection
@@ -112,8 +113,8 @@ function PreviewStats({ preview }: { preview: PlanPreviewVO }) {
       <Descriptions.Item label="成品">{preview.finishCount ?? 0}</Descriptions.Item>
       <Descriptions.Item label="修边">{preview.trimCount ?? 0}</Descriptions.Item>
       <Descriptions.Item label="备用">{preview.spareCount ?? 0}</Descriptions.Item>
-      <Descriptions.Item label="成品重">{formatKgWithMaxDecimals(preview.totalEstimateWeight, 2)}</Descriptions.Item>
-      <Descriptions.Item label="修边重">{formatKgWithMaxDecimals(preview.totalTrimWeight, 2)}</Descriptions.Item>
+      <Descriptions.Item label="成品重">{optionalPreviewWeight(preview.totalEstimateWeight)}</Descriptions.Item>
+      <Descriptions.Item label="修边重">{optionalPreviewWeight(preview.totalTrimWeight)}</Descriptions.Item>
     </Descriptions>
   )
 }
@@ -208,4 +209,8 @@ interface SectionProps {
 
 function textCell(value?: string | number) {
   return <TooltipText value={value} />
+}
+
+function optionalPreviewWeight(value?: number | null) {
+  return value == null ? '待称重' : formatKgWithMaxDecimals(value, 2)
 }

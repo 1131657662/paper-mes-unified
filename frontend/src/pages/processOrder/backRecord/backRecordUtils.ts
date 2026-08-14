@@ -202,7 +202,7 @@ export function fillRollActuals(detail: ProcessOrderDetailVO): BackRecordFormVal
   return Object.fromEntries(detail.originalRolls.map((roll) => [roll.uuid, {
     actualGramWeight: roll.actualGramWeight ?? roll.gramWeight,
     actualWidth: roll.actualWidth ?? roll.originalWidth,
-    actualWeight: roll.actualWeight ?? nominalRollWeight(roll),
+    actualWeight: roll.actualWeight,
     remark: roll.remark,
   }]))
 }
@@ -364,11 +364,6 @@ function toStepDTO(step: ProcessStep, values?: StepRecordValues): BackRecordStep
       ? values.knifeCount
       : undefined,
   }
-}
-
-function nominalRollWeight(roll: OriginalRoll): number | undefined {
-  if (roll.rollWeight == null) return undefined
-  return roll.rollWeight * (roll.pieceNum ?? 1)
 }
 
 function positive(value?: number) {

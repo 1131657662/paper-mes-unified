@@ -64,6 +64,7 @@ public class ProcessPlanMapper {
         vo.setTrimCount(preview.getTrimCount());
         vo.setTotalEstimateWeight(preview.getTotalEstimateWeight());
         vo.setTotalTrimWeight(preview.getTotalTrimWeight());
+        vo.setWeightPending(preview.isWeightPending());
         vo.setWidthDifferencePolicy(preview.getWidthDifferencePolicy());
         vo.setWidthDifference(preview.getWidthDifference());
         vo.setWidthDifferenceWeight(preview.getWidthDifferenceWeight());
@@ -222,6 +223,9 @@ public class ProcessPlanMapper {
     }
 
     private String summary(PlanPreviewVO vo) {
+        if (vo.isWeightPending()) {
+            return "工艺排布已通过，来源母卷重量待称重；暂不生成正式吨位计费";
+        }
         return "预计生成 " + vo.getFinishCount() + " 个正式号，"
                 + vo.getSpareCount() + " 个备用号，修边 "
                 + (vo.getTotalTrimWeight() == null ? BigDecimal.ZERO : vo.getTotalTrimWeight()) + " kg";

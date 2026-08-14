@@ -39,6 +39,12 @@ public class ProcessStep extends BaseEntity {
     private Integer knifeCount;
     /** 复卷专用：加工吨位 */
     private BigDecimal processWeight;
+    /** PENDING / ESTIMATED / MEASURED / BLOCKED. */
+    private String billingWeightStatus;
+    /** SOURCE_CONSUMPTION / INPUT_TOTAL / FINISH_ACTUAL / FIXED. */
+    private String billingWeightBasis;
+    /** 1 when actual input changed and a fee recalculation is required. */
+    private Integer pricingDirty;
     /** TON=按吨，PIECE=按件；固定金额和免费由 billingMode 控制。 */
     private String billingBasis;
     private BigDecimal serviceQuantity;

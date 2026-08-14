@@ -6,6 +6,7 @@ export interface SourceRollOption {
   value: string
   label: string
   weight: number
+  weightKnown: boolean
   roll: RollDraft
 }
 
@@ -16,6 +17,7 @@ export function sourceOptionsFromRolls(rolls: RollDraft[]): SourceRollOption[] {
       value: roll.uuid!,
       label: sourceRollLabel(roll, index),
       weight: rollTotalWeight(roll),
+      weightKnown: isKnownWeight(roll),
       roll,
     }))
 }
@@ -31,6 +33,9 @@ export function equalSources(values: string[]): RewindSourcePlanDTO[] {
 
 export function weightSources(values: string[], options: SourceRollOption[]): RewindSourcePlanDTO[] {
   const weights = new Map(options.map((option) => [option.value, option.weight]))
+  if (options.filter((option) => values.includes(option.value)).some((option) => !option.weightKnown)) {
+    return equalSources(values)
+  }
   const total = values.reduce((sum, value) => sum + (weights.get(value) ?? 0), 0)
   if (total <= 0) return equalSources(values)
   return normalizeRatio(values.map((value, index) => ({
@@ -85,6 +90,10 @@ function roundRatio(value: number): number {
 function sourceRollLabel(roll: RollDraft, index: number): string {
   const identity = roll.rollNo || roll.extraNo || '无卷号'
   const spec = `${roll.paperName || '-'} / ${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}`
-  const weight = formatKg(rollTotalWeight(roll))
+  const weight = isKnownWeight(roll) ? formatKg(rollTotalWeight(roll)) : '待称重'
   return `母卷${index + 1}｜${identity}｜${spec}｜${weight}`
+}
+
+function isKnownWeight(roll: RollDraft): boolean {
+  return roll.weightStatus !== 'UNKNOWN' && roll.rollWeight != null
 }
