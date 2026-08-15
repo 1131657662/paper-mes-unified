@@ -88,6 +88,8 @@ const rollColumns: ColumnsType<RollDiff> = [
     {row.printGramWeight ?? '-'} → {diffCell(row.gramWeightChanged, row.finishGramWeight)}</> },
   { title: '门幅(下发→完成)', width: 160, render: (_, row) => <>
     {row.printWidth ?? '-'} → {diffCell(row.widthChanged, row.finishWidth)}</> },
+  { title: '重量(kg)', width: 160, render: (_, row) => <>
+    {row.printWeight ?? '-'} → {diffCell(row.weightChanged, row.finishWeight)}</> },
 ]
 
 const finishColumns: ColumnsType<FinishDiff> = [

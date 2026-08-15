@@ -2947,6 +2947,11 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             d.setPrintWidth(printWidth);
             d.setFinishWidth(finishWidth);
             d.setWidthChanged(!java.util.Objects.equals(printWidth, finishWidth));
+            BigDecimal printWeight = toBigDecimal(p.get("roll_weight"));
+            BigDecimal finishWeight = f == null ? null : toBigDecimal(f.get("actual_weight"));
+            d.setPrintWeight(printWeight);
+            d.setFinishWeight(finishWeight);
+            d.setWeightChanged(!bdEquals(printWeight, finishWeight));
             rollDiffs.add(d);
         }
         vo.setRollDiffs(rollDiffs);

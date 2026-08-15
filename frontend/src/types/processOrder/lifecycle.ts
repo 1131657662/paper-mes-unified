@@ -168,6 +168,9 @@ export interface RollDiff {
   printWidth?: number
   finishWidth?: number
   widthChanged?: boolean
+  printWeight?: number
+  finishWeight?: number
+  weightChanged?: boolean
 }
 
 /** 成品快照差异项。 */

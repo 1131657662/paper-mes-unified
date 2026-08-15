@@ -31,6 +31,11 @@ public class SnapshotDiffVO {
         /** 实际门幅 mm */
         private Integer finishWidth;
         private boolean widthChanged;
+        /** 下发标称重量 kg；未知重量时允许为空。 */
+        private BigDecimal printWeight;
+        /** 完工复称实际重量 kg；未回录时为空。 */
+        private BigDecimal finishWeight;
+        private boolean weightChanged;
     }
 
     @Data
