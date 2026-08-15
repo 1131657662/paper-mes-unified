@@ -203,6 +203,14 @@
   font-weight: 500;
 }
 
+.mes-status-tag.ant-tag-warning {
+  color: var(--mes-color-warning-strong);
+}
+
+.mes-status-tag.ant-tag-error {
+  color: var(--mes-color-danger-strong);
+}
+
 .mes-table-card {
   min-width: 0;
 }

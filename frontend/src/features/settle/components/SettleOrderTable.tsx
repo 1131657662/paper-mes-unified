@@ -134,7 +134,7 @@ function buildColumns(actions: SettleTableActions): ProColumns<SettleOrder>[] {
         return (
           <Space size={4} wrap>
             <Tag className="mes-status-tag" color={status.color}>{status.text}</Tag>
-            {isOverdue(record) && <Tag color="error">已逾期</Tag>}
+            {isOverdue(record) && <Tag className="mes-status-tag" color="error">已逾期</Tag>}
           </Space>
         )
       },
