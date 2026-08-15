@@ -2,6 +2,7 @@ package com.paper.mes.ai.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.ai.memory.ProjectMemoryManagementService;
+import com.paper.mes.ai.memory.ProjectMemoryVersionQueryService;
 import com.paper.mes.ai.memory.dto.ProjectMemoryResponse;
 import com.paper.mes.auth.config.AuthInterceptor;
 import com.paper.mes.auth.dto.CurrentUser;
@@ -18,6 +19,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -26,13 +28,15 @@ class ProjectMemoryControllerContractTest {
     private static final String TOKEN = "memory-contract-token";
     private AuthService authService;
     private ProjectMemoryManagementService service;
+    private ProjectMemoryVersionQueryService versionQueryService;
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         authService = mock(AuthService.class);
         service = mock(ProjectMemoryManagementService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new ProjectMemoryController(service))
+        versionQueryService = mock(ProjectMemoryVersionQueryService.class);
+        mvc = MockMvcBuilders.standaloneSetup(new ProjectMemoryController(service, versionQueryService))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -68,6 +72,29 @@ class ProjectMemoryControllerContractTest {
                 .andExpect(status().isOk());
 
         verify(service).patch(any());
+    }
+
+    @Test
+    void operatorCanViewMemoryVersions() throws Exception {
+        authorizeAs("operator");
+        when(versionQueryService.versions()).thenReturn(java.util.List.of());
+
+        mvc.perform(get("/api/ai/project-memory/versions")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk());
+
+        verify(versionQueryService).versions();
+    }
+
+    @Test
+    void viewerCannotViewMemoryVersions() throws Exception {
+        authorizeAs("viewer");
+
+        mvc.perform(get("/api/ai/project-memory/versions")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(versionQueryService);
     }
 
     private void authorizeAs(String roleCode) {

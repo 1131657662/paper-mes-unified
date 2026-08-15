@@ -37,6 +37,15 @@ public class ProjectMemoryDocumentRepository {
             WHERE doc_version = ?
             FOR UPDATE
             """;
+    private static final String VERSION_LIST_SQL = """
+            SELECT doc_version, schema_version, checksum, status, patch_notes,
+                   created_by, approved_by, created_at
+            FROM biz_project_memory_doc
+            ORDER BY created_at DESC,
+                     CAST(SUBSTRING_INDEX(doc_version, '.', 1) AS UNSIGNED) DESC,
+                     CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(doc_version, '.', 2), '.', -1) AS UNSIGNED) DESC,
+                     CAST(SUBSTRING_INDEX(doc_version, '.', -1) AS UNSIGNED) DESC
+            """;
     private static final String AUDIT_BY_KEY_SQL = """
             SELECT uuid, idempotency_key, operation_type, expected_memory_version,
                    old_doc_version, new_doc_version, old_checksum, new_checksum,
@@ -71,6 +80,10 @@ public class ProjectMemoryDocumentRepository {
     public Optional<ProjectMemoryDocumentRow> findVersionForUpdate(String version) {
         return one(jdbcTemplate.query(VERSION_SQL,
                 (resultSet, rowNumber) -> map(resultSet), version));
+    }
+
+    public List<ProjectMemoryVersionRow> findVersions() {
+        return jdbcTemplate.query(VERSION_LIST_SQL, (resultSet, rowNumber) -> mapVersion(resultSet));
     }
 
     public boolean existsVersion(String version) {
@@ -130,6 +143,18 @@ public class ProjectMemoryDocumentRepository {
                 resultSet.getString("patch_notes"),
                 resultSet.getString("created_by"),
                 resultSet.getString("approved_by"));
+    }
+
+    private ProjectMemoryVersionRow mapVersion(ResultSet resultSet) throws SQLException {
+        return new ProjectMemoryVersionRow(
+                resultSet.getString("doc_version"),
+                resultSet.getString("schema_version"),
+                resultSet.getString("checksum"),
+                resultSet.getString("status"),
+                resultSet.getString("patch_notes"),
+                resultSet.getString("created_by"),
+                resultSet.getString("approved_by"),
+                resultSet.getTimestamp("created_at").toLocalDateTime());
     }
 
     private <T> Optional<T> one(List<T> rows) {

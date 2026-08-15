@@ -1,6 +1,7 @@
 export const PERMISSIONS = {
   all: '*',
   aiAssist: 'ai:assist',
+  aiMemoryManage: 'ai:memory-manage',
   baseManage: 'base:manage',
   baseView: 'base:view',
   deliveryManage: 'delivery:manage',

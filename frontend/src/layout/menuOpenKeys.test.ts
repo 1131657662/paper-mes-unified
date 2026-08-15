@@ -8,6 +8,7 @@ describe('default open menu keys', () => {
     ['/delivery-orders/inventory', ['delivery']],
     ['/customers/customer-1', ['base']],
     ['/operation-logs', ['system']],
+    ['/project-memory', ['system']],
     ['/dashboard', []],
   ])('opens only the group owning %s', (pathname, expected) => {
     expect(defaultOpenMenuKeys(pathname)).toEqual(expected)

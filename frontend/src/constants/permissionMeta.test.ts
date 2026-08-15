@@ -7,6 +7,12 @@ describe('岗位权限矩阵', () => {
     expect(PERMISSION_ITEMS.every(({ code }) => roleHasPermission('admin', code))).toBe(true)
   })
 
+  it('项目记忆维护权限只由管理员通配权限获得', () => {
+    expect(roleHasPermission('admin', PERMISSIONS.aiMemoryManage)).toBe(true)
+    expect(roleHasPermission('order_clerk', PERMISSIONS.aiMemoryManage)).toBe(false)
+    expect(roleHasPermission('operator', PERMISSIONS.aiMemoryManage)).toBe(false)
+  })
+
   it('制单员可以制单和下发但不能生产回录', () => {
     expect(roleHasPermission('order_clerk', PERMISSIONS.aiAssist)).toBe(true)
     expect(roleHasPermission('order_clerk', PERMISSIONS.orderCreate)).toBe(true)

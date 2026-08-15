@@ -3,6 +3,7 @@ import {
   AlertOutlined,
   AppstoreOutlined,
   BarChartOutlined,
+  BookOutlined,
   ContainerOutlined,
   ControlOutlined,
   DashboardOutlined,
@@ -96,6 +97,7 @@ function systemMenuItems(can: (permissions: string[]) => boolean): MenuItem[] {
     can([PERMISSIONS.userManage]) && menu('/users', <TeamOutlined />, '用户权限'),
     can([PERMISSIONS.systemConfig, PERMISSIONS.dataBackup, PERMISSIONS.dataHealth])
       && menu('/system-config', <ControlOutlined />, '系统配置'),
+    can([PERMISSIONS.aiAssist]) && menu('/project-memory', <BookOutlined />, '项目记忆'),
     can([PERMISSIONS.systemAudit]) && menu('/operation-logs', <FileTextOutlined />, '操作日志'),
   ].filter(Boolean) as MenuItem[]
 }

@@ -52,6 +52,7 @@ export const routeMeta: AppRouteMeta[] = [
   { path: '/users/:uuid', label: '用户详情', parentLabel: '用户权限', menuKey: '/users' },
   { path: '/users/:uuid/edit', label: '编辑用户', parentLabel: '用户权限', menuKey: '/users' },
   { path: '/system-config', label: '系统配置', parentLabel: '系统管理', group: 'system' },
+  { path: '/project-memory', label: '项目记忆', parentLabel: '系统管理', group: 'system' },
   { path: '/process-orders/create', label: '新建加工单', parentLabel: '加工单', menuKey: '/process-orders' },
   { path: '/process-orders/create/:uuid/routes/:rollUuid', label: '链式工艺设计', parentLabel: '加工单', menuKey: '/process-orders' },
   { path: '/process-orders/:uuid', label: '加工单详情', parentLabel: '加工单', menuKey: '/process-orders' },

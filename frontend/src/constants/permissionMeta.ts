@@ -25,6 +25,7 @@ export interface RoleProfile {
 
 export const PERMISSION_ITEMS: PermissionItem[] = [
   { code: PERMISSIONS.aiAssist, label: '智能助手', description: '只读解释业务规则和错误，不执行任何业务操作' },
+  { code: PERMISSIONS.aiMemoryManage, label: '项目记忆维护', description: '提交项目记忆补丁和执行历史版本回滚' },
   { code: PERMISSIONS.baseView, label: '基础档案查看', description: '查看客户、纸张、机台、仓库档案' },
   { code: PERMISSIONS.baseManage, label: '基础档案维护', description: '新增、编辑、删除基础档案' },
   { code: PERMISSIONS.orderView, label: '加工单查看', description: '查看加工单列表、详情、打印快照' },
@@ -104,6 +105,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     description: '用户、配置、数据安全和操作审计',
     permissions: [
       PERMISSIONS.userManage,
+      PERMISSIONS.aiMemoryManage,
       PERMISSIONS.systemConfig,
       PERMISSIONS.dataBackup,
       PERMISSIONS.dataHealth,

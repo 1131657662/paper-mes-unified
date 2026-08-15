@@ -1,9 +1,11 @@
 package com.paper.mes.ai.controller;
 
 import com.paper.mes.ai.memory.ProjectMemoryManagementService;
+import com.paper.mes.ai.memory.ProjectMemoryVersionQueryService;
 import com.paper.mes.ai.memory.dto.ProjectMemoryPatchRequest;
 import com.paper.mes.ai.memory.dto.ProjectMemoryResponse;
 import com.paper.mes.ai.memory.dto.ProjectMemoryRollbackRequest;
+import com.paper.mes.ai.memory.dto.ProjectMemoryVersionResponse;
 import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.common.R;
@@ -16,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @Validated
 @RestController
 @RequestMapping("/api/ai/project-memory")
@@ -23,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProjectMemoryController {
 
     private final ProjectMemoryManagementService service;
+    private final ProjectMemoryVersionQueryService versionQueryService;
 
     @GetMapping("/current")
     @RequirePermission(Permissions.AI_ASSIST)
@@ -34,6 +39,12 @@ public class ProjectMemoryController {
     @RequirePermission(Permissions.AI_ASSIST)
     public R<ProjectMemoryResponse> reload() {
         return R.success(service.reload());
+    }
+
+    @GetMapping("/versions")
+    @RequirePermission(Permissions.AI_ASSIST)
+    public R<List<ProjectMemoryVersionResponse>> versions() {
+        return R.success(versionQueryService.versions());
     }
 
     @PostMapping("/patch")

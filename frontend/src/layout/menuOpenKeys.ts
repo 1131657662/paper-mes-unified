@@ -1,5 +1,5 @@
 const BASE_PATHS = ['/customers', '/papers', '/machines', '/warehouses']
-const SYSTEM_PATHS = ['/users', '/system-config', '/operation-logs']
+const SYSTEM_PATHS = ['/users', '/system-config', '/project-memory', '/operation-logs']
 
 export function defaultOpenMenuKeys(pathname: string): string[] {
   if (pathname.startsWith('/reports/management/')) return ['reports', 'report-management']
