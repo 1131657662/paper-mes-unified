@@ -18,6 +18,7 @@ describe('SettleOrderTable 收款进度', () => {
 
     expect(markup).toContain('已收 ¥0.00 / 未收 ¥2274.00')
     expect(markup).toContain('实际到账 ¥0.00 / 废纸 ¥0.00 / 优惠 ¥0.00')
+    expect(markup).toContain('aria-label="收款进度"')
     expect(markup).not.toContain('已结清 ¥0.00')
   })
 })

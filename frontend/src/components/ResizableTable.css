@@ -37,3 +37,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Ant Design's hidden width-measure row must not expose focusable controls. */
+.ant-table-measure-row input {
+  display: none;
+}

@@ -186,7 +186,7 @@ export function ReceiveProgress({ record }: { record: SettleOrder }) {
   const percent = Number(formatPercent(record.receivedAmount ?? 0, record.totalAmount ?? 0).replace('%', ''))
   return (
     <div className="settle-cell-stack mes-cell-stack">
-      <Progress percent={percent} size="small" />
+      <Progress aria-label="收款进度" percent={percent} size="small" />
       <span>已收 {formatMoney(record.receivedAmount)} / 未收 {formatMoney(record.unreceivedAmount)}</span>
       <span>实际到账 {formatMoney(record.cashReceivedAmount)} / 废纸 {formatMoney(record.scrapOffsetAmount)} / 优惠 {formatMoney(record.discountAmount)}</span>
     </div>
