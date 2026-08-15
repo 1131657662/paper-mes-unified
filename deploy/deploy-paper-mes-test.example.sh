@@ -14,6 +14,10 @@ app_root=/opt/paper-mes-test/app
 env_file=/etc/paper-mes-test/paper-mes-test.env
 service=paper-mes-test.service
 backup_root=/opt/paper-mes-test/backups
+backend_version=""
+frontend_version=""
+build_time=""
+release_id=""
 
 fail() {
   echo "MES test deployment failed: $1" >&2
@@ -36,6 +40,15 @@ checkout_ci_commit() {
   git -C "${source_root}" pull --ff-only origin main
   [ "$(git -C "${source_root}" rev-parse HEAD)" = "${deploy_sha}" ] \
     || fail "test source checkout does not match the CI-tested commit"
+}
+
+prepare_release_metadata() {
+  local release_time
+  release_time="$(date -u +%Y%m%d-%H%M%S)"
+  backend_version="${deploy_sha:0:7}"
+  release_id="${backend_version}-${release_time}"
+  frontend_version="${release_id}"
+  build_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 
 backup_runtime() {
@@ -61,17 +74,40 @@ update_runtime() {
     "${jar_path}" "${app_root}/paper-mes.jar.next"
   mv -f "${app_root}/paper-mes.jar.next" "${app_root}/paper-mes.jar"
 
+  update_runtime_metadata
+}
+
+render_runtime_env() {
+  local output_file="$1"
+  awk -v sha="${deploy_sha}" -v backend="${backend_version}" \
+      -v frontend="${frontend_version}" -v built="${build_time}" '
+    BEGIN {
+      FS = "="; OFS = "="
+      values["PAPER_MES_GIT_SHA"] = sha
+      values["PAPER_MES_BACKEND_VERSION"] = backend
+      values["PAPER_MES_FRONTEND_VERSION"] = frontend
+      values["PAPER_MES_BUILD_TIME"] = built
+    }
+    {
+      key = $1
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+      if (key in values) {
+        if (!seen[key]) print key, values[key]
+        seen[key] = 1
+        next
+      }
+      print
+    }
+    END {
+      for (key in values) if (!seen[key]) print key, values[key]
+    }
+  ' "${env_file}" > "${output_file}"
+}
+
+update_runtime_metadata() {
   local env_tmp
   env_tmp="$(mktemp "${env_file}.XXXXXX")"
-  awk -v sha="${deploy_sha}" '
-    BEGIN { updated = 0 }
-    /^[[:space:]]*PAPER_MES_GIT_SHA=/ {
-      if (!updated) { print "PAPER_MES_GIT_SHA=" sha; updated = 1 }
-      next
-    }
-    { print }
-    END { if (!updated) print "PAPER_MES_GIT_SHA=" sha }
-  ' "${env_file}" > "${env_tmp}"
+  render_runtime_env "${env_tmp}"
   chown root:root "${env_tmp}"
   chmod 600 "${env_tmp}"
   mv -f "${env_tmp}" "${env_file}"
@@ -96,9 +132,6 @@ restart_and_check() {
 }
 
 publish_frontend() {
-  local release_time release_id
-  release_time="$(date -u +%Y%m%d-%H%M%S)"
-  release_id="${deploy_sha:0:7}-${release_time}"
   FRONTEND_ROOT="${frontend_root}" KEEP_RELEASES=3 MIN_RETENTION_HOURS=72 \
     bash "${source_root}/deploy/publish-paper-mes-frontend.example.sh" \
     publish "${source_root}/frontend/dist" "${release_id}"
@@ -108,6 +141,7 @@ publish_frontend() {
 
 require_root
 checkout_ci_commit
+prepare_release_metadata
 backup_runtime
 build_artifacts
 update_runtime
@@ -115,5 +149,8 @@ restart_and_check
 publish_frontend
 [ "$(git -C "${source_root}" rev-parse HEAD)" = "${deploy_sha}" ]
 [ "$(grep -E '^PAPER_MES_GIT_SHA=' "${env_file}")" = "PAPER_MES_GIT_SHA=${deploy_sha}" ]
+[ "$(grep -E '^PAPER_MES_BACKEND_VERSION=' "${env_file}")" = "PAPER_MES_BACKEND_VERSION=${backend_version}" ]
+[ "$(grep -E '^PAPER_MES_FRONTEND_VERSION=' "${env_file}")" = "PAPER_MES_FRONTEND_VERSION=${frontend_version}" ]
+[ "$(grep -E '^PAPER_MES_BUILD_TIME=' "${env_file}")" = "PAPER_MES_BUILD_TIME=${build_time}" ]
 systemctl is-active --quiet "${service}"
 echo "MES test deployment passed: ${deploy_sha}"
