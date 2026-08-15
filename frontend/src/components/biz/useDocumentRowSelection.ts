@@ -1,4 +1,4 @@
-import { cloneElement, isValidElement, useState, type Key, type MouseEvent, type ReactElement, type ReactNode } from 'react'
+import { useState, type Key, type MouseEvent } from 'react'
 import type { TableRowSelection } from 'antd/es/table/interface'
 
 const IGNORE_ROW_TOGGLE_SELECTOR = [
@@ -23,6 +23,8 @@ interface RowWithUuid {
   uuid: string
 }
 
+const ROW_SELECTION_LABEL = '选择当前单据'
+
 export function useDocumentRowSelection<RecordType extends RowWithUuid>() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([])
   const [selectedRows, setSelectedRows] = useState<RecordType[]>([])
@@ -41,8 +43,10 @@ export function useDocumentRowSelection<RecordType extends RowWithUuid>() {
   const rowSelection: TableRowSelection<RecordType> = {
     selectedRowKeys,
     columnWidth: 42,
-    getCheckboxProps: () => ({ title: '选择当前单据' }),
-    renderCell: (_checked, _record, _index, originNode) => addCheckboxLabel(originNode),
+    getCheckboxProps: () => ({
+      'aria-label': ROW_SELECTION_LABEL,
+      title: ROW_SELECTION_LABEL,
+    }),
     onChange: (keys, rows) => {
       setSelectedRowKeys(keys)
       setSelectedRows(rows)
@@ -61,14 +65,6 @@ export function useDocumentRowSelection<RecordType extends RowWithUuid>() {
       },
     }),
   }
-}
-
-function addCheckboxLabel(originNode: ReactNode) {
-  if (!isValidElement(originNode)) return originNode
-  return cloneElement(originNode as ReactElement<Record<string, unknown>>, {
-    'aria-label': '选择当前单据',
-    title: '选择当前单据',
-  })
 }
 
 function shouldToggleRow(target: EventTarget | null) {
