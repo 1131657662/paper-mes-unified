@@ -43,6 +43,7 @@
           ON r.uuid = ps.original_uuid
          AND r.is_deleted = 0
          AND COALESCE(r.process_mode, 0) != 3
+         AND r.disposition_action IS NULL
         LEFT JOIN sys_machine stepMachine ON stepMachine.uuid = ps.machine_uuid
         LEFT JOIN sys_machine rollMachine ON rollMachine.uuid = r.machine_uuid
         JOIN biz_process_order o
@@ -132,6 +133,7 @@
                 FROM biz_original_roll
                 WHERE is_deleted = 0
                   AND COALESCE(process_mode, 0) != 3
+                  AND disposition_action IS NULL
                 GROUP BY order_uuid
             ) orig ON orig.order_uuid = o.uuid
             LEFT JOIN (
@@ -196,6 +198,7 @@
             FROM biz_original_roll
             WHERE is_deleted = 0
               AND COALESCE(process_mode, 0) != 3
+              AND disposition_action IS NULL
             GROUP BY order_uuid
         ) orig ON orig.order_uuid = o.uuid
         WHERE o.is_deleted = 0
@@ -217,6 +220,7 @@
             FROM biz_original_roll
             WHERE is_deleted = 0
               AND COALESCE(process_mode, 0) != 3
+              AND disposition_action IS NULL
             GROUP BY order_uuid
         ) orig ON orig.order_uuid = o.uuid
         LEFT JOIN (
@@ -251,6 +255,7 @@
             FROM biz_original_roll
             WHERE is_deleted = 0
               AND COALESCE(process_mode, 0) != 3
+              AND disposition_action IS NULL
             GROUP BY order_uuid
         ) orig ON orig.order_uuid = o.uuid
         LEFT JOIN (
@@ -279,6 +284,7 @@
             FROM biz_original_roll
             WHERE is_deleted = 0
               AND COALESCE(process_mode, 0) != 3
+              AND disposition_action IS NULL
             GROUP BY order_uuid
         ) orig ON orig.order_uuid = o.uuid
         LEFT JOIN (
@@ -342,6 +348,7 @@
             FROM biz_original_roll
             WHERE is_deleted = 0
               AND COALESCE(process_mode, 0) != 3
+              AND disposition_action IS NULL
             GROUP BY order_uuid
         ) orig ON orig.order_uuid = o.uuid
         LEFT JOIN (

@@ -61,6 +61,28 @@ describe('工序表母卷筛选', () => {
     expect(html).not.toContain('200.00')
   })
 
+  it('未回录的待称重复卷不误报回录重量已变化', () => {
+    const step = {
+      uuid: 'rewind', stepType: 2, billingWeightStatus: 'PENDING', pricingDirty: 1,
+    } satisfies ProcessStep
+
+    const html = renderToStaticMarkup(renderPricingBasisCell(step))
+
+    expect(html).toContain('来源母卷重量待实测，完成回录后重新核定计费')
+    expect(html).not.toContain('回录重量已变化')
+  })
+
+  it('未回录的待称重复卷不显示待重新核定金额', () => {
+    const step = {
+      uuid: 'rewind', stepType: 2, billingWeightStatus: 'BLOCKED', pricingDirty: 1,
+    } satisfies ProcessStep
+
+    const html = renderToStaticMarkup(renderAmountCell(step))
+
+    expect(html).toContain('待称重/计费')
+    expect(html).not.toContain('待重新核定')
+  })
+
   it('估算重量费用明确标记为暂估且不可结算', () => {
     const step = {
       uuid: 'rewind', stepType: 2, stepAmount: 200, billingWeightStatus: 'ESTIMATED', pricingDirty: 0,

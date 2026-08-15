@@ -39,7 +39,7 @@ class ProcessPlanDraftStore {
     private Map<String, OriginalRoll> requireTargetRows(String orderUuid, List<String> rollUuids) {
         Map<String, OriginalRoll> result = new HashMap<>();
         for (OriginalRoll roll : rollMapper.selectBatchIds(rollUuids)) {
-            if (orderUuid.equals(roll.getOrderUuid())) {
+            if (orderUuid.equals(roll.getOrderUuid()) && roll.getDispositionAction() == null) {
                 result.put(roll.getUuid(), roll);
             }
         }
@@ -51,7 +51,8 @@ class ProcessPlanDraftStore {
 
     private Map<String, OriginalRoll> orderRollMap(String orderUuid) {
         List<OriginalRoll> rolls = rollMapper.selectList(new LambdaQueryWrapper<OriginalRoll>()
-                .eq(OriginalRoll::getOrderUuid, orderUuid));
+                .eq(OriginalRoll::getOrderUuid, orderUuid)
+                .isNull(OriginalRoll::getDispositionAction));
         Map<String, OriginalRoll> result = new HashMap<>();
         rolls.forEach(roll -> result.put(roll.getUuid(), roll));
         return result;

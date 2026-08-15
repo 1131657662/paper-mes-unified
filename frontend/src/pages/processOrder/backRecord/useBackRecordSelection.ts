@@ -34,7 +34,9 @@ export function useBackRecordSelection(detail?: ProcessOrderDetailVO) {
   }
 
   return {
-    allRemainingSelected: remainingItems.length > 0 && selectedItems.length === remainingItems.length,
+    // An empty remaining set is a valid completion state after every mother
+    // roll has been recorded or explicitly disposed.
+    allRemainingSelected: selectedItems.length === remainingItems.length,
     remainingCount: remainingItems.length,
     selectedCount: selectedItems.length,
     selectedFinishUuids,

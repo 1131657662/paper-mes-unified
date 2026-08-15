@@ -35,6 +35,10 @@ public class OriginalRollDTO {
     @Positive(message = "门幅必须大于0")
     private Integer originalWidth;
 
+    /** 回录后的实测门幅；草稿更新未传入时由服务端保留已有值。 */
+    @Positive(message = "实测门幅必须大于0")
+    private Integer actualWidth;
+
     @Positive(message = "原卷直径必须大于0")
     private Integer originalDiameter;
     @Positive(message = "纸芯直径必须大于0")

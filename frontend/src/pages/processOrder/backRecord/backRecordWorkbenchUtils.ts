@@ -44,6 +44,8 @@ export function buildWorkItemMetrics(
   const sourceWeights = sourceWeightSummary(item, values)
   const rollActual = sourceWeights.completeTotal
   const requiredWeight = requiresMeasuredSourceWeights(item)
+  const measuredMissing = sourceWeights.measuredMissingCount
+  const weightMissing = requiredWeight ? measuredMissing : sourceWeights.missingCount
   const adjustment = normalizeFinishAdjustment(item, values.finishAdjustments?.[item.key])
   const official = item.finishes.filter(({ finish }) => finish.isSpare !== 1 && isFinishProduced(finish.uuid, adjustment))
   const products = official.filter(({ finish }) => finish.isRemain !== 1)
@@ -74,9 +76,9 @@ export function buildWorkItemMetrics(
     trimActual,
     loss,
     scrap,
-    missingRoll: item.kind === 'roll' && requiredWeight && sourceWeights.missingCount > 0,
-    missingRolls: requiredWeight ? sourceWeights.missingCount : 0,
-    unverifiedRolls: requiredWeight ? 0 : sourceWeights.missingCount,
+    missingRoll: item.kind === 'roll' && requiredWeight && weightMissing > 0,
+    missingRolls: requiredWeight ? weightMissing : 0,
+    unverifiedRolls: requiredWeight ? 0 : measuredMissing,
     missingFinishes,
     missingFinishWidths: missingFinishWidths + missingTrimWidths,
     diff,
@@ -88,6 +90,8 @@ function buildOnSiteMetrics(item: BackRecordWorkItem, values: BackRecordFormValu
   const sourceWeights = sourceWeightSummary(item, values)
   const rollActual = sourceWeights.completeTotal
   const requiredWeight = requiresMeasuredSourceWeights(item)
+  const measuredMissing = sourceWeights.measuredMissingCount
+  const weightMissing = requiredWeight ? measuredMissing : sourceWeights.missingCount
   const outputs = (values.onSiteOutputs?.[item.key] ?? [])
     .filter((output): output is NonNullable<typeof output> => output != null)
   const products = outputs.filter((output) => output.outputType === 'FINISH')
@@ -107,9 +111,9 @@ function buildOnSiteMetrics(item: BackRecordWorkItem, values: BackRecordFormValu
     trimActual,
     loss,
     scrap,
-    missingRoll: requiredWeight && sourceWeights.missingCount > 0,
-    missingRolls: requiredWeight ? sourceWeights.missingCount : 0,
-    unverifiedRolls: requiredWeight ? 0 : sourceWeights.missingCount,
+    missingRoll: requiredWeight && weightMissing > 0,
+    missingRolls: requiredWeight ? weightMissing : 0,
+    unverifiedRolls: requiredWeight ? 0 : measuredMissing,
     missingFinishes: products.length === 0 ? missingRows + 1 : missingRows,
     missingFinishWidths: missingWidths,
     diff,
@@ -119,6 +123,9 @@ function buildOnSiteMetrics(item: BackRecordWorkItem, values: BackRecordFormValu
 
 export function workItemStatus(item: BackRecordWorkItem, values: BackRecordFormValues) {
   if (item.kind === 'pool') return { text: '待核对', color: 'warning' }
+  if (item.roll?.dispositionAction === 'CANCEL') return { text: '已取消', color: 'default' }
+  if (item.roll?.dispositionAction === 'SPLIT_TO_ORDER') return { text: '已转代加工', color: 'cyan' }
+  if (item.roll?.dispositionAction === 'DIRECT_SHIP') return { text: '已转直发', color: 'blue' }
   if (workItemRecorded(item)) return { text: '已入库', color: 'default' }
   if (item.roll?.processMode === 3) return { text: '直发', color: 'blue' }
   const metrics = buildWorkItemMetrics(item, values)

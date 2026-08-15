@@ -156,6 +156,7 @@ public class ProcessRouteDraftManager {
         OriginalRoll roll = rollMapper.selectOne(new LambdaQueryWrapper<OriginalRoll>()
                 .eq(OriginalRoll::getOrderUuid, orderUuid)
                 .eq(OriginalRoll::getUuid, rollUuid)
+                .isNull(OriginalRoll::getDispositionAction)
                 .last("LIMIT 1"));
         if (roll == null) {
             throw new BusinessException(ErrorCode.E002, "原纸明细不存在");
@@ -170,7 +171,7 @@ public class ProcessRouteDraftManager {
         }
         Map<String, OriginalRoll> result = new HashMap<>();
         for (OriginalRoll roll : rollMapper.selectBatchIds(ids)) {
-            if (orderUuid.equals(roll.getOrderUuid())) {
+            if (orderUuid.equals(roll.getOrderUuid()) && roll.getDispositionAction() == null) {
                 result.put(roll.getUuid(), roll);
             }
         }

@@ -40,7 +40,8 @@ public class SettleCandidateStatsLoader {
 
     private Map<String, List<OriginalRoll>> loadOriginalsByOrder(List<String> orderUuids) {
         List<OriginalRoll> rolls = originalRollMapper.selectList(new LambdaQueryWrapper<OriginalRoll>()
-                .in(OriginalRoll::getOrderUuid, orderUuids));
+                .in(OriginalRoll::getOrderUuid, orderUuids)
+                .isNull(OriginalRoll::getDispositionAction));
         Map<String, List<OriginalRoll>> grouped = new LinkedHashMap<>();
         for (OriginalRoll roll : rolls) {
             grouped.computeIfAbsent(roll.getOrderUuid(), key -> new ArrayList<>()).add(roll);

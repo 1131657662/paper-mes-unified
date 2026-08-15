@@ -23,6 +23,18 @@ describe('完工打印模型', () => {
     expect(blocks[0]?.sourceItems).toContainEqual({ label: '标重', value: '1000 kg' })
   })
 
+  it('未知重量的下发内容显示待称重而不是零重量', () => {
+    const issued = production()
+    issued.actualWeight = undefined
+    issued.rollWeight = undefined
+    issued.weightStatus = 'UNKNOWN'
+
+    const blocks = buildPrintRollBlocks({ ...detail(), rollProductions: [issued] })
+
+    expect(blocks[0]?.sourceItems).toContainEqual({ label: '标重', value: '待称重' })
+    expect(blocks[0]?.sourceItems).not.toContainEqual({ label: '标重', value: '0 kg' })
+  })
+
   it('仅附加工艺按服务步骤打印且不显示锯纸或复卷', () => {
     const serviceOnly = production()
     serviceOnly.processMode = 4

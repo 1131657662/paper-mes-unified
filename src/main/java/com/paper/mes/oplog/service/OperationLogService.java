@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class OperationLogService {
 
+    public static final String ACTION_ROLL_DISPOSITION = "ROLL_DISPOSITION";
+
     /** 动作类型常量，对齐 DDL 注释枚举。 */
     public static final String ACTION_REPRINT = "补打";
     public static final String ACTION_REISSUE = "变更重新下发";

@@ -11,6 +11,7 @@ import {
   defaultLayoutItem,
   defaultSegment,
   equalizeSourceRatios,
+  sameSpecRewindError,
   toFinishSpecs,
   toPreviewDto,
   type LayoutItemForm,
@@ -122,6 +123,11 @@ export default function RewindingConfigForm(props: Props) {
     }))
   }
   const changeRewindMode = (nextRewindMode: number) => {
+    const error = nextRewindMode === 6 ? sameSpecRewindError(roll) : undefined
+    if (error) {
+      message.error(error)
+      return
+    }
     const nextSegments = nextRewindMode === 6
       ? buildSameSpecSegments(roll)
       : nextRewindMode === 2

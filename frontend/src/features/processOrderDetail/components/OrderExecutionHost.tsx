@@ -21,6 +21,7 @@ import OrderExecutionPanel from './OrderExecutionPanel'
 import PrintIssueDrawer from './PrintIssueDrawer'
 import { processOrderReturnTarget } from '../../../pages/processOrder/processOrderNavigation'
 import { createProcessOrderAppendSession } from '../../../api/processOrder'
+import ProcessRollDispositionModal from './ProcessRollDispositionModal'
 
 interface Props {
   detail?: ProcessOrderDetailVO
@@ -34,6 +35,7 @@ export default function OrderExecutionHost({ detail }: Props) {
   const [printOpen, setPrintOpen] = useState(false)
   const [diffOpen, setDiffOpen] = useState(false)
   const [manageRollOpen, setManageRollOpen] = useState(false)
+  const [rollDispositionOpen, setRollDispositionOpen] = useState(false)
   const [startingAppend, setStartingAppend] = useState(false)
   const { mutateAsync: changeStatus, isPending: isChangingStatus } = useChangeOrderStatus()
   const { mutateAsync: completeProcessing, isPending: isCompletingProcessing } = useCompleteProcessing()
@@ -48,6 +50,7 @@ export default function OrderExecutionHost({ detail }: Props) {
     canBackRecord: useHasPermission(PERMISSIONS.orderBackRecord),
     canManageDelivery: useHasPermission(PERMISSIONS.deliveryManage),
     canManageSettlement: useHasPermission(PERMISSIONS.settleManage),
+    canManageRollDisposition: useHasPermission(PERMISSIONS.orderRollDisposition),
   }
 
   if (!detail || !orderUuid) return null
@@ -231,6 +234,7 @@ export default function OrderExecutionHost({ detail }: Props) {
             state: { initialOrderUuids: [detail.order.uuid], from: returnTo },
           }),
           onVoidOrder: handleVoidOrder,
+          onRollDisposition: () => setRollDispositionOpen(true),
         }}
         loading={{
           changingStatus: isChangingStatus || isCompletingProcessing,
@@ -257,6 +261,12 @@ export default function OrderExecutionHost({ detail }: Props) {
         orderUuid={orderUuid}
         open={manageRollOpen}
         onClose={() => setManageRollOpen(false)}
+        onSuccess={refreshDetail}
+      />
+      <ProcessRollDispositionModal
+        detail={detail}
+        open={rollDispositionOpen}
+        onClose={() => setRollDispositionOpen(false)}
         onSuccess={refreshDetail}
       />
     </>

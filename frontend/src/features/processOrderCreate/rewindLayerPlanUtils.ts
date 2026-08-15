@@ -8,6 +8,22 @@ import type { RollDraft } from './types'
 import { DEFAULT_WIDTH_DIFFERENCE_POLICY } from '../../constants/processOrder'
 import { rewindWidthPolicy } from './rewindWidthUsage'
 
+export function effectiveRollWidth(roll: Pick<RollDraft, 'actualWidth' | 'originalWidth'>): number {
+  return roll.actualWidth != null && roll.actualWidth > 0 ? roll.actualWidth : roll.originalWidth
+}
+
+export function sameSpecRewindError(
+  roll: Pick<RollDraft, 'originalDiameter' | 'coreDiameter'>,
+): string | undefined {
+  if (roll.originalDiameter == null || roll.originalDiameter <= 0) {
+    return '母卷直径未维护，不能配置同规格复卷'
+  }
+  if (roll.coreDiameter == null || roll.coreDiameter <= 0) {
+    return '母卷纸芯未维护，不能配置同规格复卷'
+  }
+  return undefined
+}
+
 export function defaultRewindSegment(roll: RollDraft, sort = 1): RewindSegmentPlanDTO {
   return {
     segmentSort: sort,
@@ -16,16 +32,21 @@ export function defaultRewindSegment(roll: RollDraft, sort = 1): RewindSegmentPl
     finishCoreDiameter: roll.coreDiameter ?? 3,
     repeatCount: 1,
     sources: roll.uuid ? [{ originalUuid: roll.uuid, shareRatio: 100, consumeRatio: 100, sourceSort: 1 }] : [],
-    layoutItems: [{ width: roll.originalWidth, quantity: 1, itemType: 'FINISH' }],
+    layoutItems: [{ width: effectiveRollWidth(roll), quantity: 1, itemType: 'FINISH' }],
   }
 }
 
 export function sameSpecRewindPlan(plan: ProcessPlanDTO, roll: RollDraft): ProcessPlanDTO {
+  const segment = defaultRewindSegment(roll)
   return {
     ...plan,
     rewindMode: 6,
     widthDifferencePolicy: undefined,
-    segments: [defaultRewindSegment(roll)],
+    segments: [{
+      ...segment,
+      finishCoreDiameter: roll.coreDiameter,
+      layoutItems: [{ width: effectiveRollWidth(roll), quantity: 1, itemType: 'FINISH' }],
+    }],
   }
 }
 
@@ -148,7 +169,7 @@ function normalizeDiameterSegment(
   return {
     ...segment,
     layoutItems: [{
-      width: roll.originalWidth ?? 1,
+      width: effectiveRollWidth(roll),
       quantity: 1,
       itemType: 'FINISH',
       customerPaperName: source?.customerPaperName,

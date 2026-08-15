@@ -54,6 +54,14 @@ export function renderProcessingQuantity(step: ProcessStep): string {
 }
 
 export function renderPricingBasisCell(step: ProcessStep) {
+  if (step.billingWeightStatus === 'PENDING' || step.billingWeightStatus === 'BLOCKED') {
+    return (
+      <div className="order-detail-step-pricing-cell">
+        <Tag color="orange">待称重</Tag>
+        <span>来源母卷重量待实测，完成回录后重新核定计费</span>
+      </div>
+    )
+  }
   if (step.pricingDirty === 1) {
     return (
       <div className="order-detail-step-pricing-cell">
@@ -61,14 +69,6 @@ export function renderPricingBasisCell(step: ProcessStep) {
         <span>{step.billingWeightStatus === 'ESTIMATED'
           ? '当前为暂估费用；完成整单前需逐卷实测并重新核定'
           : '回录重量已变化，请重新核定计费'}</span>
-      </div>
-    )
-  }
-  if (step.billingWeightStatus === 'PENDING' || step.billingWeightStatus === 'BLOCKED') {
-    return (
-      <div className="order-detail-step-pricing-cell">
-        <Tag color="orange">待称重</Tag>
-        <span>复卷正式吨位计费需完成来源母卷实测</span>
       </div>
     )
   }
@@ -110,10 +110,10 @@ export function renderUnitPriceCell(step: ProcessStep) {
 }
 
 export function renderAmountCell(step: ProcessStep) {
-  if (step.pricingDirty === 1) return <Tag color="orange">{step.billingWeightStatus === 'ESTIMATED' ? '暂估，待实测' : '待重新核定'}</Tag>
   if (step.billingWeightStatus === 'PENDING' || step.billingWeightStatus === 'BLOCKED') {
     return <Tag color="orange">待称重/计费</Tag>
   }
+  if (step.pricingDirty === 1) return <Tag color="orange">{step.billingWeightStatus === 'ESTIMATED' ? '暂估，待实测' : '待重新核定'}</Tag>
   if (isPendingServicePricing(step)) return <Tag color="orange">待定价</Tag>
   if (step.stepAmount == null) return '-'
   const standardAmount = step.standardStepAmount ?? step.stepAmount

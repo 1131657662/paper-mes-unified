@@ -6,6 +6,7 @@ public final class Permissions {
 
     public static final String ALL = "*";
     public static final String AI_ASSIST = "ai:assist";
+    public static final String AI_MEMORY_MANAGE = "ai:memory-manage";
     public static final String BASE_MANAGE = "base:manage";
     public static final String BASE_VIEW = "base:view";
     public static final String DELIVERY_MANAGE = "delivery:manage";
@@ -17,6 +18,7 @@ public final class Permissions {
     public static final String ORDER_MANAGE = "order:manage";
     public static final String ORDER_PRICING = "order:pricing";
     public static final String ORDER_PRICING_APPROVE = "order:pricing-approve";
+    public static final String ORDER_ROLL_DISPOSITION = "order:roll-disposition";
     public static final String ORDER_VIEW = "order:view";
     public static final String REPORT_VIEW = "report:view";
     public static final String EXPORT_TASK_VIEW = "export-task:view";
@@ -40,7 +42,7 @@ public final class Permissions {
             return List.of(ALL);
         }
         if (RoleCodes.ORDER_CLERK.equals(roleCode)) {
-            return List.of(AI_ASSIST, BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_MANAGE, ORDER_PRICING, REPORT_VIEW,
+            return List.of(AI_ASSIST, BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_MANAGE, ORDER_ROLL_DISPOSITION, ORDER_PRICING, REPORT_VIEW,
                     EXPORT_TASK_VIEW);
         }
         if (RoleCodes.RECORDER.equals(roleCode)) {

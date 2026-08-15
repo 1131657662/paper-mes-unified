@@ -24,7 +24,9 @@ final class ProcessOrderListStats {
     }
 
     static void apply(ProcessOrder order, List<OriginalRoll> originals, List<FinishRoll> finishes) {
-        List<OriginalRoll> originalRows = originals == null ? List.of() : originals;
+        List<OriginalRoll> originalRows = originals == null ? List.of() : originals.stream()
+                .filter(ProcessOrderListStats::isProductionOriginal)
+                .toList();
         List<FinishRoll> finishRows = finishes == null ? List.of() : finishes;
         order.setOriginalRollCount(originalRows.size());
         order.setOriginalPieceCount(sumOriginalPieces(originalRows));
@@ -63,6 +65,11 @@ final class ProcessOrderListStats {
         return rolls != null && !rolls.isEmpty()
                 && rolls.stream().allMatch(roll -> Integer.valueOf(PROCESS_MODE_DIRECT_SHIP)
                 .equals(roll.getProcessMode()));
+    }
+
+    private static boolean isProductionOriginal(OriginalRoll roll) {
+        return roll.getDispositionAction() == null
+                && !Integer.valueOf(PROCESS_MODE_DIRECT_SHIP).equals(roll.getProcessMode());
     }
 
     private static int sumOriginalPieces(List<OriginalRoll> rolls) {

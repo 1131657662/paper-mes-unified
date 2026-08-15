@@ -52,7 +52,7 @@ class ProductionDeploymentSecurityContractTest {
                 "enabled: ${PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED:false}");
         assertContainsAll(environment,
                 "PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED=false",
-                "PAPER_MES_EXPECTED_SCHEMA_VERSION=3.65",
+                "PAPER_MES_EXPECTED_SCHEMA_VERSION=3.68",
                 "PAPER_MES_BACKEND_VERSION=CHANGE_ME_RELEASE_VERSION",
                 "PAPER_MES_FRONTEND_VERSION=CHANGE_ME_RELEASE_VERSION",
                 "PAPER_MES_GIT_SHA=CHANGE_ME_GIT_SHA",
@@ -154,6 +154,7 @@ class ProductionDeploymentSecurityContractTest {
                 "limit_req zone=paper_mes_login");
         assertContainsAll(source("deploy/paper-mes.service.example"),
                 "EnvironmentFile=/etc/paper-mes/paper-mes.env",
+                "install -d -o paper-mes -g paper-mes -m 0750 /etc/paper-mes/ai-memory",
                 "PrivateTmp=true", "RuntimeDirectory=paper-mes",
                 "ExecStartPre=+/usr/bin/bash /opt/paper-mes/source/deploy/verify-paper-mes-source.example.sh",
                 "ExecStartPre=+/usr/bin/bash /usr/local/bin/verify-paper-mes-migration-state",

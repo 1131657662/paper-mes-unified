@@ -53,7 +53,7 @@ public class ZhipuAiClient implements AiModelClient {
             return objectMapper.writeValueAsString(new ChatRequest(
                     properties.getZhipuModel(),
                     List.of(new Message("system", systemPrompt()),
-                            new Message("user", promptText(prompt))),
+                            new Message("user", promptText(prompt) + memorySuffix(prompt))),
                     0.0,
                     properties.getZhipuMaxOutputTokens()));
         } catch (Exception ex) {
@@ -93,6 +93,11 @@ public class ZhipuAiClient implements AiModelClient {
         return "页面=" + prompt.pageTemplate() + "；规则ID=" + String.join(",", prompt.ruleIds())
                 + "；标题=" + prompt.ruleTitle() + "；确定性结论=" + prompt.ruleAnswer()
                 + "；安全下一步=" + String.join("、", prompt.safeNextSteps());
+    }
+
+    private String memorySuffix(AiModelPrompt prompt) {
+        if (prompt.memoryContext() == null || prompt.memoryContext().isBlank()) return "";
+        return "\napprovedProjectMemory=" + prompt.memoryContext();
     }
 
     private record ChatRequest(String model, List<Message> messages, double temperature, int max_tokens) {

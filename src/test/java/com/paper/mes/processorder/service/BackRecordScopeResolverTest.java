@@ -85,6 +85,36 @@ class BackRecordScopeResolverTest {
     }
 
     @Test
+    void resolve_completeOrder_allRollsAlreadyTerminal_allowsEmptyBatch() {
+        BackRecordDTO dto = new BackRecordDTO();
+        dto.setCompleteOrder(true);
+        dto.setRolls(List.of());
+
+        BackRecordScope scope = resolver.resolve(
+                List.of(terminalRoll("roll-1"), terminalRoll("roll-2")),
+                List.of(), List.of(), List.of(), dto);
+
+        assertThat(scope.rolls()).isEmpty();
+        assertThat(scope.finishes()).isEmpty();
+        assertThat(scope.steps()).isEmpty();
+    }
+
+    @Test
+    void resolve_completeOrder_afterRecordedRolls_keepsAllStepsForFinalization() {
+        BackRecordDTO dto = new BackRecordDTO();
+        dto.setCompleteOrder(true);
+        dto.setRolls(List.of());
+
+        BackRecordScope scope = resolver.resolve(
+                List.of(roll("roll-1", 1), roll("roll-2", 1)),
+                List.of(), List.of(step("step-1", "roll-1"), step("step-2", "roll-2")), List.of(), dto);
+
+        assertThat(scope.rolls()).isEmpty();
+        assertThat(scope.steps()).extracting(ProcessStep::getUuid)
+                .containsExactly("step-1", "step-2");
+    }
+
+    @Test
     void resolve_unlinkedFinishWithExplicitSource_includesItInSelectedBatch() {
         BackRecordDTO dto = request("roll-1");
         dto.setCompleteOrder(false);
@@ -100,6 +130,22 @@ class BackRecordScopeResolverTest {
         assertThat(scope.finishes()).extracting(FinishRoll::getUuid).containsExactly("finish-1");
     }
 
+    @Test
+    void resolve_completeBatch_excludesUnlinkedDirectShipFinish() {
+        BackRecordDTO dto = request("roll-1");
+        dto.setCompleteOrder(true);
+        FinishRoll directShip = finish("finish-direct");
+        directShip.setSourceType(2);
+        FinishRoll processFinish = finish("finish-process");
+
+        BackRecordScope scope = resolver.resolve(
+                List.of(roll("roll-1", 0), terminalRoll("roll-2")),
+                List.of(directShip, processFinish), List.of(), List.of(), dto);
+
+        assertThat(scope.finishes()).extracting(FinishRoll::getUuid)
+                .containsExactly("finish-process");
+    }
+
     private BackRecordDTO request(String rollUuid) {
         BackRecordRollDTO row = new BackRecordRollDTO();
         row.setUuid(rollUuid);
@@ -113,6 +159,12 @@ class BackRecordScopeResolverTest {
         OriginalRoll roll = new OriginalRoll();
         roll.setUuid(uuid);
         roll.setIsChecked(checked);
+        return roll;
+    }
+
+    private OriginalRoll terminalRoll(String uuid) {
+        OriginalRoll roll = roll(uuid, 1);
+        roll.setRollStatus(5);
         return roll;
     }
 

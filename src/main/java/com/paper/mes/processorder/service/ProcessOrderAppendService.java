@@ -445,7 +445,8 @@ public class ProcessOrderAppendService {
         ProcessOrder order = requireOrder(orderUuid);
         Map<String, OriginalRoll> sourceRolls = new LinkedHashMap<>();
         originalRollMapper.selectList(new LambdaQueryWrapper<OriginalRoll>()
-                        .eq(OriginalRoll::getOrderUuid, orderUuid))
+                        .eq(OriginalRoll::getOrderUuid, orderUuid)
+                        .isNull(OriginalRoll::getDispositionAction))
                 .forEach(source -> sourceRolls.put(source.getUuid(), source));
         for (ProcessOrderAppendRoll draft : listRolls(sessionUuid)) {
             sourceRolls.put(draft.getUuid(), toOriginalRoll(order, draft));

@@ -34,6 +34,7 @@ import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessStageOutputMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
+import com.paper.mes.processorder.model.ProcessRollDispositionAction;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.ProcessOrderPrintConfirmationPolicy;
 import com.paper.mes.processorder.service.RewindPricingFinalizationPolicy;
@@ -102,6 +103,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
 
     private static final int ORDER_STATUS_FINISHED = 4;
     private static final int ORDER_STATUS_SETTLED = 5;
+    private static final int PROCESS_MODE_DIRECT_SHIP = 3;
 
     private static final int SETTLE_TYPE_BY_ORDER = 1;
     private static final int SETTLE_TYPE_BY_MONTH = 2;
@@ -790,6 +792,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         }
         List<OriginalRoll> rolls = originalRollMapper.selectList(new LambdaQueryWrapper<OriginalRoll>()
                 .in(OriginalRoll::getOrderUuid, orderUuids)
+                .and(w -> w.isNull(OriginalRoll::getDispositionAction)
+                        .or().eq(OriginalRoll::getDispositionAction,
+                                ProcessRollDispositionAction.DIRECT_SHIP))
                 .orderByAsc(OriginalRoll::getOrderUuid)
                 .orderByAsc(OriginalRoll::getRowSort));
         List<ProcessStep> steps = processStepMapper.selectList(new LambdaQueryWrapper<ProcessStep>()
@@ -999,10 +1004,13 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private void applyNonInvoiceAmountClosure(List<SettlePrintLineVO> lines, BigDecimal difference) {
-        if (difference.signum() == 0 || lines.isEmpty()) {
+        if (difference.signum() == 0) {
             return;
         }
-        SettlePrintLineVO line = lines.get(lines.size() - 1);
+        SettlePrintLineVO line = lastChargeableLine(lines);
+        if (line == null) {
+            return;
+        }
         line.setLineAmount(nz(line.getLineAmount()).add(difference));
         line.setHistoricalDifferenceAmount(nz(line.getHistoricalDifferenceAmount()).add(difference));
     }
@@ -1050,21 +1058,41 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private void applyInvoiceIncrease(List<SettlePrintLineVO> lines, BigDecimal invoiceIncrease) {
-        if (invoiceIncrease.signum() == 0) {
+        List<SettlePrintLineVO> chargeableLines = lines.stream().filter(this::isChargeableLine).toList();
+        if (invoiceIncrease.signum() == 0 || chargeableLines.isEmpty()) {
             return;
         }
         BigDecimal assigned = BigDecimal.ZERO;
-        BigDecimal baseTotal = sumLineAmount(lines);
+        BigDecimal baseTotal = sumLineAmount(chargeableLines);
         for (int i = 0; i < lines.size(); i++) {
             SettlePrintLineVO line = lines.get(i);
-            BigDecimal share = i == lines.size() - 1
+            if (!isChargeableLine(line)) {
+                continue;
+            }
+            boolean lastChargeable = line == chargeableLines.get(chargeableLines.size() - 1);
+            BigDecimal share = lastChargeable
                     ? invoiceIncrease.subtract(assigned)
-                    : proportionalShare(invoiceIncrease, nz(line.getLineAmount()), baseTotal, lines.size());
+                    : proportionalShare(invoiceIncrease, nz(line.getLineAmount()), baseTotal, chargeableLines.size());
             assigned = assigned.add(share);
             line.setTaxAmount(share);
             line.setLineAmount(nz(line.getLineAmount()).add(share));
             SettleFeeLineBuilder.appendTaxLine(line, share);
         }
+    }
+
+    private SettlePrintLineVO lastChargeableLine(List<SettlePrintLineVO> lines) {
+        for (int i = lines.size() - 1; i >= 0; i--) {
+            if (isChargeableLine(lines.get(i))) {
+                return lines.get(i);
+            }
+        }
+        return null;
+    }
+
+    private boolean isChargeableLine(SettlePrintLineVO line) {
+        return !Integer.valueOf(PROCESS_MODE_DIRECT_SHIP).equals(line.getProcessMode())
+                || nz(line.getExtraAmount()).signum() != 0
+                || nz(line.getProcessAmount()).signum() != 0;
     }
 
     private BigDecimal proportionalShare(BigDecimal total, BigDecimal base, BigDecimal baseTotal, int count) {

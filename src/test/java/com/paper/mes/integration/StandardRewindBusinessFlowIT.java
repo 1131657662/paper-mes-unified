@@ -31,7 +31,8 @@ class StandardRewindBusinessFlowIT {
             "1, 4, 1",
             "2, 1, 0",
             "3, 2, 0",
-            "4, 1, 0"
+            "4, 1, 0",
+            "6, 1, 0"
     })
     void standardRewind_eachCoreMode_completesWithExpectedOutputs(int mode, int outputCount,
                                                                   int remainCount) {

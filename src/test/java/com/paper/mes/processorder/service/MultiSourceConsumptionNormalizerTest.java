@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MultiSourceConsumptionNormalizerTest {
@@ -76,6 +77,36 @@ class MultiSourceConsumptionNormalizerTest {
                 MultiSourceConsumptionNormalizer.totalConsumedWeight(segments, Map.of("roll-1", roll)));
     }
 
+    @Test
+    void normalize_whenSourceWeightsAreUnknown_keepsCompositionPending() {
+        FinishConfigSpecDTO.FinishSourceDTO first = source("roll-1", "100");
+        FinishConfigSpecDTO.FinishSourceDTO second = source("roll-2", "100");
+        List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(segment(first, second));
+        Map<String, OriginalRoll> rolls = Map.of(
+                "roll-1", unknownRoll("roll-1"),
+                "roll-2", unknownRoll("roll-2"));
+
+        MultiSourceConsumptionNormalizer.normalize(segments, rolls);
+
+        assertNull(first.getShareRatio());
+        assertNull(second.getShareRatio());
+        assertNull(MultiSourceConsumptionNormalizer.totalConsumedWeight(segments, rolls));
+    }
+
+    @Test
+    void normalize_whenUnknownWeightsHavePartialExplicitShares_throwsBusinessError() {
+        FinishConfigSpecDTO.FinishSourceDTO first = source("roll-1", "100");
+        first.setShareRatio(new BigDecimal("50"));
+        List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(
+                segment(first, source("roll-2", "100")));
+        Map<String, OriginalRoll> rolls = Map.of(
+                "roll-1", unknownRoll("roll-1"),
+                "roll-2", unknownRoll("roll-2"));
+
+        assertThrows(BusinessException.class,
+                () -> MultiSourceConsumptionNormalizer.normalize(segments, rolls));
+    }
+
     private RewindPlanPreviewDTO.RewindSegmentDTO segment(FinishConfigSpecDTO.FinishSourceDTO... sources) {
         RewindPlanPreviewDTO.RewindSegmentDTO segment = new RewindPlanPreviewDTO.RewindSegmentDTO();
         segment.setSources(List.of(sources));
@@ -94,6 +125,13 @@ class MultiSourceConsumptionNormalizerTest {
         roll.setUuid(uuid);
         roll.setRollWeight(new BigDecimal(weight));
         roll.setPieceNum(1);
+        return roll;
+    }
+
+    private OriginalRoll unknownRoll(String uuid) {
+        OriginalRoll roll = roll(uuid, "1");
+        roll.setRollWeight(null);
+        roll.setWeightStatus("UNKNOWN");
         return roll;
     }
 }

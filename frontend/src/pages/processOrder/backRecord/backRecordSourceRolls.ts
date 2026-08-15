@@ -16,12 +16,14 @@ export interface BackRecordSourceRoll {
   remark?: string
   rollNo?: string
   rollWeight?: number
+  totalWeight?: number
   weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
 }
 
 export interface SourceWeightSummary {
   completeTotal?: number
   missingCount: number
+  measuredMissingCount: number
   recordedTotal: number
   sources: BackRecordSourceRoll[]
 }
@@ -41,10 +43,12 @@ export function sourceWeightSummary(
   const sources = workItemSourceRolls(item)
   const weights = sources.map((source) => sourceActualWeight(source, values))
   const missingCount = weights.filter((weight) => !positive(weight)).length
+  const measuredMissingCount = sources.filter((source) => !sourceIsMeasured(source, values)).length
   const recordedTotal = weights.reduce<number>((sum, weight) => sum + (weight ?? 0), 0)
   return {
     completeTotal: sources.length > 0 && missingCount === 0 ? recordedTotal : undefined,
     missingCount,
+    measuredMissingCount,
     recordedTotal,
     sources,
   }
@@ -63,8 +67,23 @@ export function storedMeasuredWeight(source: BackRecordSourceRoll): number | und
   return source.actualWeight
 }
 
+export function storedEstimatedWeight(source: BackRecordSourceRoll): number | undefined {
+  if (source.weightStatus !== 'ESTIMATED' || !positive(source.actualWeight)) return undefined
+  return source.actualWeight
+}
+
+export function sourceIsMeasured(source: BackRecordSourceRoll, values: BackRecordFormValues): boolean {
+  const mode = values.rolls?.[source.uuid]?.weightEntryMode
+  if (mode) return mode === 'MEASURED' && positive(values.rolls?.[source.uuid]?.actualWeight)
+  if (source.weightStatus === 'UNKNOWN' || source.weightStatus === 'ESTIMATED') return false
+  if (positive(values.rolls?.[source.uuid]?.actualWeight)) return true
+  return storedMeasuredWeight(source) != null
+}
+
 export function sourceEstimatedWeight(source: BackRecordSourceRoll): number | undefined {
-  if (source.rollWeight == null) return undefined
+  if (source.weightStatus === 'UNKNOWN') return undefined
+  if (source.totalWeight != null && source.totalWeight > 0) return source.totalWeight
+  if (source.rollWeight == null || source.rollWeight <= 0) return undefined
   return source.rollWeight * (source.pieceNum ?? 1)
 }
 

@@ -17,7 +17,7 @@ class SchemaReadinessServiceTest {
         SchemaReadinessReport report = service.refresh();
 
         assertThat(report.ready()).isTrue();
-        assertThat(report.databaseVersion()).isEqualTo("3.65");
+        assertThat(report.databaseVersion()).isEqualTo("3.68");
         assertThat(report.missingStructures()).isEmpty();
     }
 
@@ -46,6 +46,54 @@ class SchemaReadinessServiceTest {
     }
 
     @Test
+    void reportsMissingDispositionIndex() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("idx_original_roll_disposition"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "index:biz_original_roll.idx_original_roll_disposition");
+    }
+
+    @Test
+    void reportsMissingDispositionSourceUniquenessIndex() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("uk_process_roll_disposition_source"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "index:biz_process_roll_disposition.uk_process_roll_disposition_source");
+    }
+
+    @Test
+    void reportsMissingDispositionRequestUniquenessIndex() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("uk_process_roll_disposition_request"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "index:biz_process_roll_disposition.uk_process_roll_disposition_request");
+    }
+
+    @Test
+    void reportsMissingDispositionTargetFinishUuidColumn() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("target_finish_uuids"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "column:biz_process_roll_disposition.target_finish_uuids");
+    }
+
+    @Test
     void selectsTheHighestSemanticMigrationVersion() {
         SchemaReadinessService service = service(
                 new ReadinessJdbcTemplate(null, List.of("3.61", "3.9", "3.63")));
@@ -55,7 +103,7 @@ class SchemaReadinessServiceTest {
         assertThat(report.databaseVersion()).isEqualTo("3.63");
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures())
-                .contains("migration:expected=3.65,actual=3.63");
+                .contains("migration:expected=3.68,actual=3.63");
     }
 
     @Test
@@ -68,12 +116,12 @@ class SchemaReadinessServiceTest {
         assertThat(report.databaseVersion()).isEqualTo("UNTRACKED");
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures())
-                .contains("migration:expected=3.65,actual=UNTRACKED");
+                .contains("migration:expected=3.68,actual=UNTRACKED");
     }
 
     private SchemaReadinessService service(JdbcTemplate jdbcTemplate) {
         SchemaReadinessService service = new SchemaReadinessService(jdbcTemplate);
-        ReflectionTestUtils.setField(service, "expectedVersion", "3.65");
+        ReflectionTestUtils.setField(service, "expectedVersion", "3.68");
         ReflectionTestUtils.setField(service, "requireMigrationHistory", true);
         return service;
     }
@@ -83,7 +131,7 @@ class SchemaReadinessServiceTest {
         private final List<String> versions;
 
         private ReadinessJdbcTemplate(String missingName) {
-            this(missingName, List.of("3.65"));
+            this(missingName, List.of("3.68"));
         }
 
         private ReadinessJdbcTemplate(String missingName, List<String> versions) {

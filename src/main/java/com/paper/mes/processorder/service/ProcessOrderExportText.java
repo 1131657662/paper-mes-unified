@@ -4,6 +4,7 @@ import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessStep;
+import com.paper.mes.processorder.model.ProcessRollDispositionAction;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -82,6 +83,15 @@ final class ProcessOrderExportText {
     static String rollStatusText(Integer value) {
         if (value == null) return "-";
         return switch (value) { case 1 -> "待加工"; case 2 -> "加工中"; case 3 -> "完成"; case 4 -> "直发"; case 5 -> "报废"; default -> value.toString(); };
+    }
+
+    static String dispositionText(ProcessRollDispositionAction value) {
+        if (value == null) return "-";
+        return switch (value) {
+            case DIRECT_SHIP -> "转直发";
+            case CANCEL -> "取消本次加工";
+            case SPLIT_TO_ORDER -> "拆分代加工单";
+        };
     }
 
     static String finishStatusText(Integer value) {

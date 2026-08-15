@@ -3,6 +3,7 @@ package com.paper.mes.processorder.service.impl;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
+import com.paper.mes.processorder.model.ProcessRollDispositionAction;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -53,6 +54,22 @@ class ProcessOrderListStatsTest {
         assertEquals(BigDecimal.ZERO, order.getEstimateFinishWeight());
         assertEquals(BigDecimal.ZERO, order.getActualFinishWeight());
         assertEquals(0, order.getSpareRollCount());
+    }
+
+    @Test
+    void apply_excludesDisposedAndDirectOriginalRollsFromProductionTotals() {
+        ProcessOrder order = new ProcessOrder();
+        OriginalRoll active = original(1, "100", "90");
+        OriginalRoll cancelled = original(1, "200", "180");
+        cancelled.setDispositionAction(ProcessRollDispositionAction.CANCEL);
+        OriginalRoll direct = original(1, "300", "270");
+        direct.setProcessMode(3);
+
+        ProcessOrderListStats.apply(order, List.of(active, cancelled, direct), List.of());
+
+        assertEquals(1, order.getOriginalRollCount());
+        assertEquals(1, order.getOriginalPieceCount());
+        assertEquals(new BigDecimal("90"), order.getOriginalRollWeight());
     }
 
     private OriginalRoll original(Integer pieces, String totalWeight, String actualWeight) {

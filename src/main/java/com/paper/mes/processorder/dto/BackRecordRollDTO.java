@@ -1,5 +1,6 @@
 package com.paper.mes.processorder.dto;
 
+import com.paper.mes.processorder.model.WeightEntryMode;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -26,6 +27,9 @@ public class BackRecordRollDTO {
     /** 复称实际重量 kg（闭合唯一基准、计费基准） */
     @DecimalMin(value = "0.001", message = "原纸复称实际重量必须大于0")
     private BigDecimal actualWeight;
+
+    /** Weight entry intent; the server derives carried nominal weight itself. */
+    private WeightEntryMode weightEntryMode;
 
     @Size(max = 255, message = "原纸回录备注不能超过255个字符")
     private String remark;

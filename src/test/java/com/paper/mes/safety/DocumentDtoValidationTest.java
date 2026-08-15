@@ -141,6 +141,16 @@ class DocumentDtoValidationTest {
         assertTrue(messages.contains("件数至少为1"));
     }
 
+    @Test
+    void originalRoll_whenActualWidthIsNotPositive_reportsValidationError() {
+        OriginalRollDTO dto = new OriginalRollDTO();
+        dto.setActualWidth(0);
+
+        Set<String> messages = validateMessages(dto);
+
+        assertTrue(messages.contains("实测门幅必须大于0"));
+    }
+
     private Set<String> validateMessages(Object dto) {
         return validator.validate(dto).stream()
                 .map(violation -> violation.getMessage())

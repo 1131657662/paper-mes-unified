@@ -32,6 +32,8 @@ export interface OriginalRoll {
   mainStepType?: number
   /** 1待加工 2加工中 3完成 4直发 5报废 */
   rollStatus?: number
+  /** 下发后处置动作，与报废状态分离。 */
+  dispositionAction?: 'DIRECT_SHIP' | 'CANCEL' | 'SPLIT_TO_ORDER'
   /** 0未回录 1已完成回录 */
   isChecked?: number
   checkUser?: string

@@ -18,6 +18,7 @@ const actions: ExecutionActionHandlers = {
   onPrepareReissue: () => undefined,
   onSnapshotDiff: () => undefined,
   onVoidOrder: () => undefined,
+  onRollDisposition: () => undefined,
 }
 
 const noCapabilities: ExecutionCapabilities = {
@@ -26,6 +27,7 @@ const noCapabilities: ExecutionCapabilities = {
   canManageDelivery: false,
   canManageOrder: false,
   canManageSettlement: false,
+  canManageRollDisposition: false,
 }
 
 describe('加工单详情执行操作', () => {
@@ -72,6 +74,16 @@ describe('加工单详情执行操作', () => {
 
     expect(markup).not.toContain('暂无可执行动作')
     expect(markup).not.toContain('创建出库')
+  })
+
+  it('加工中且具备处置权限时显示未加工母卷处置入口', () => {
+    const markup = renderActions(2, {
+      ...noCapabilities,
+      canManageOrder: true,
+      canManageRollDisposition: true,
+    })
+
+    expect(markup).toContain('处置未加工母卷')
   })
 })
 

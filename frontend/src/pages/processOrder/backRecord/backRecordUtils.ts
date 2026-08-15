@@ -10,15 +10,17 @@ import type {
   OriginalRoll,
   ProcessStep,
   ProcessOrderDetailVO,
+  WeightEntryMode,
 } from '../../../types/processOrder'
 import { buildOnSiteOutputSubmission, toLegacyTrimDTOs, type OnSiteOutputRecordValues } from './backRecordOnSiteOutputModel'
-import { storedMeasuredWeight } from './backRecordSourceRolls'
+import { storedEstimatedWeight, storedMeasuredWeight } from './backRecordSourceRolls'
 export type { OnSiteOutputRecordValues } from './backRecordOnSiteOutputModel'
 
 export interface RollRecordValues {
   actualGramWeight?: number
   actualWidth?: number
   actualWeight?: number
+  weightEntryMode?: WeightEntryMode
   remark?: string
 }
 
@@ -203,7 +205,8 @@ export function fillRollActuals(detail: ProcessOrderDetailVO): BackRecordFormVal
   return Object.fromEntries(detail.originalRolls.map((roll) => [roll.uuid, {
     actualGramWeight: roll.actualGramWeight ?? roll.gramWeight,
     actualWidth: roll.actualWidth ?? roll.originalWidth,
-    actualWeight: storedMeasuredWeight(roll),
+    actualWeight: storedMeasuredWeight(roll) ?? nominalWeight(roll),
+    weightEntryMode: storedMeasuredWeight(roll) != null ? 'MEASURED' : nominalWeight(roll) != null ? 'CARRY_NOMINAL' : undefined,
     remark: roll.remark,
   }]))
 }
@@ -228,10 +231,16 @@ export function worstRollCheck(result?: BackRecordResultVO | null) {
 }
 
 function rollValues(roll: OriginalRoll): RollRecordValues {
+  const measured = storedMeasuredWeight(roll)
+  const estimated = storedEstimatedWeight(roll)
+  const nominal = nominalWeight(roll)
   return {
     actualGramWeight: roll.actualGramWeight,
     actualWidth: roll.actualWidth,
-    actualWeight: roll.actualWeight,
+    actualWeight: measured ?? estimated ?? nominal,
+    weightEntryMode: measured != null ? 'MEASURED'
+      : estimated != null ? 'USER_ESTIMATE'
+        : nominal != null ? 'CARRY_NOMINAL' : undefined,
     remark: roll.remark,
   }
 }
@@ -263,8 +272,16 @@ function toRollDTO(roll: OriginalRoll, values?: RollRecordValues): BackRecordRol
     actualGramWeight: values?.actualGramWeight,
     actualWidth: values?.actualWidth,
     actualWeight: values?.actualWeight,
+    weightEntryMode: values?.weightEntryMode,
     remark: values?.remark,
   }
+}
+
+function nominalWeight(roll: OriginalRoll): number | undefined {
+  if (roll.weightStatus === 'UNKNOWN') return undefined
+  if (roll.totalWeight != null && roll.totalWeight > 0) return roll.totalWeight
+  if (roll.rollWeight == null || roll.rollWeight <= 0) return undefined
+  return roll.rollWeight * (roll.pieceNum ?? 1)
 }
 
 function toFinishDTO(

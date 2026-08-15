@@ -1097,6 +1097,7 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         }
         List<OriginalRoll> originals = originalRollMapper.selectList(new LambdaQueryWrapper<OriginalRoll>()
                 .in(OriginalRoll::getOrderUuid, orderUuids)
+                .isNull(OriginalRoll::getDispositionAction)
                 .orderByAsc(OriginalRoll::getOrderUuid)
                 .orderByAsc(OriginalRoll::getRowSort));
         return originals.stream().collect(Collectors.groupingBy(OriginalRoll::getOrderUuid,

@@ -43,6 +43,7 @@
                 FROM biz_original_roll rf
                 WHERE rf.order_uuid = o.uuid
                   AND rf.is_deleted = 0
+                  AND rf.disposition_action IS NULL
                   AND rf.paper_name LIKE CONCAT('%', #{q.paperName}, '%')
             )
         </if>
@@ -52,6 +53,7 @@
                 FROM biz_original_roll rf
                 WHERE rf.order_uuid = o.uuid
                   AND rf.is_deleted = 0
+                  AND rf.disposition_action IS NULL
                   AND rf.main_step_type = #{q.mainStepType}
             )
         </if>
@@ -61,6 +63,7 @@
                 FROM biz_original_roll rf
                 WHERE rf.order_uuid = o.uuid
                   AND rf.is_deleted = 0
+                  AND rf.disposition_action IS NULL
                   AND rf.process_mode = #{q.processMode}
             )
         </if>
@@ -71,6 +74,7 @@
                 WHERE rf.order_uuid = o.uuid
                   AND rf.is_deleted = 0
                   AND COALESCE(rf.process_mode, 0) != 3
+                  AND rf.disposition_action IS NULL
                   AND (
                       EXISTS (
                           SELECT 1
@@ -106,6 +110,7 @@
         <include refid="RollSpecFilters"/>
         <if test="q.processStepType != null or q.machineUuid != null and q.machineUuid != ''">
             AND COALESCE(r.process_mode, 0) != 3
+            AND r.disposition_action IS NULL
             AND (
                 EXISTS (
                     SELECT 1
@@ -216,10 +221,12 @@
                     FROM biz_original_roll
                     WHERE is_deleted = 0
                       AND COALESCE(process_mode, 0) != 3
+                      AND disposition_action IS NULL
                     GROUP BY order_uuid
                 ) orderBase ON orderBase.order_uuid = r.order_uuid
                 WHERE r.is_deleted = 0
                   AND COALESCE(r.process_mode, 0) != 3
+                  AND r.disposition_action IS NULL
                 <include refid="RollFilters"/>
             ) rb
             GROUP BY rb.order_uuid
@@ -232,6 +239,7 @@
             SELECT DISTINCT r.paper_name AS paperName
             FROM biz_original_roll r
             WHERE r.is_deleted = 0
+              AND r.disposition_action IS NULL
               AND r.paper_name IS NOT NULL
               AND TRIM(r.paper_name) != ''
               AND r.paper_name LIKE CONCAT(#{keyword}, '%')
@@ -320,6 +328,7 @@
             FROM biz_original_roll r
             WHERE r.is_deleted = 0
               AND COALESCE(r.process_mode, 0) != 3
+              AND r.disposition_action IS NULL
             <include refid="RollFilters"/>
             GROUP BY r.order_uuid
         ) orig ON orig.order_uuid = o.uuid
@@ -339,8 +348,10 @@
                    SUM(COALESCE(ps.knife_count, 0)) AS knifeCount,
                    SUM(CASE WHEN ps.step_type = 1 THEN COALESCE(ps.step_amount, 0) ELSE 0 END) AS sawAmount,
                    SUM(CASE WHEN ps.step_type = 2 THEN COALESCE(ps.step_amount, 0) ELSE 0 END) AS rewindAmount
-            FROM biz_process_step ps
-            JOIN biz_original_roll r ON r.uuid = ps.original_uuid AND r.is_deleted = 0
+                       FROM biz_process_step ps
+                    JOIN biz_original_roll r ON r.uuid = ps.original_uuid
+                        AND r.is_deleted = 0
+                        AND r.disposition_action IS NULL
             WHERE ps.is_deleted = 0
             <include refid="RollFilters"/>
             <include refid="StepFilters"/>
@@ -446,6 +457,7 @@
                       ON r.uuid = ps.original_uuid
                      AND r.is_deleted = 0
                      AND COALESCE(r.process_mode, 0) != 3
+                     AND r.disposition_action IS NULL
                     LEFT JOIN biz_process_stage_output inputOutput
                       ON inputOutput.uuid = ps.input_output_uuid
                      AND inputOutput.is_deleted = 0
@@ -495,6 +507,7 @@
                           ON r.uuid = psb.original_uuid
                          AND r.is_deleted = 0
                          AND COALESCE(r.process_mode, 0) != 3
+                         AND r.disposition_action IS NULL
                         WHERE psb.is_deleted = 0
                         <include refid="RollFilters"/>
                         GROUP BY psb.order_uuid
@@ -593,6 +606,7 @@
                       ON r.uuid = ps.original_uuid
                      AND r.is_deleted = 0
                      AND COALESCE(r.process_mode, 0) != 3
+                     AND r.disposition_action IS NULL
                     LEFT JOIN sys_machine stepMachine ON stepMachine.uuid = ps.machine_uuid
                     LEFT JOIN sys_machine rollMachine ON rollMachine.uuid = r.machine_uuid
                     LEFT JOIN biz_process_stage_output inputOutput
@@ -644,6 +658,7 @@
                           ON r.uuid = psb.original_uuid
                          AND r.is_deleted = 0
                          AND COALESCE(r.process_mode, 0) != 3
+                         AND r.disposition_action IS NULL
                         WHERE psb.is_deleted = 0
                         <include refid="RollSpecFilters"/>
                         GROUP BY psb.order_uuid
@@ -796,6 +811,7 @@
                             FROM biz_original_roll
                             WHERE is_deleted = 0
                               AND COALESCE(process_mode, 0) != 3
+                              AND disposition_action IS NULL
                             GROUP BY order_uuid
                         ) orderBase ON orderBase.order_uuid = r.order_uuid
                         LEFT JOIN (
@@ -824,6 +840,7 @@
                         <where>
                             r.is_deleted = 0
                             AND COALESCE(r.process_mode, 0) != 3
+                            AND r.disposition_action IS NULL
                             AND <include refid="OrderFilters"/>
                             <include refid="RollFilters"/>
                         </where>
@@ -951,6 +968,7 @@
                      FROM biz_original_roll r
                      WHERE r.is_deleted = 0
                        AND COALESCE(r.process_mode, 0) != 3
+                       AND r.disposition_action IS NULL
                      <include refid="RollFilters"/>
                      GROUP BY r.order_uuid
                 ) orig ON orig.order_uuid = o.uuid
@@ -968,7 +986,9 @@
                            SUM(CASE WHEN ps.step_type = 1 THEN COALESCE(ps.step_amount, 0) ELSE 0 END) AS sawAmount,
                            SUM(CASE WHEN ps.step_type = 2 THEN COALESCE(ps.step_amount, 0) ELSE 0 END) AS rewindAmount
                     FROM biz_process_step ps
-                    JOIN biz_original_roll r ON r.uuid = ps.original_uuid AND r.is_deleted = 0
+            JOIN biz_original_roll r ON r.uuid = ps.original_uuid
+                AND r.is_deleted = 0
+                AND r.disposition_action IS NULL
                     WHERE ps.is_deleted = 0
                     <include refid="RollFilters"/>
                     <include refid="StepFilters"/>
@@ -1075,10 +1095,13 @@
         FROM biz_process_order o
         LEFT JOIN (
             SELECT r.order_uuid,
-                   COUNT(CASE WHEN COALESCE(r.process_mode, 0) != 3 THEN 1 END) AS originalRollCount,
+                   COUNT(CASE WHEN COALESCE(r.process_mode, 0) != 3
+                                   AND r.disposition_action IS NULL THEN 1 END) AS originalRollCount,
                    SUM(CASE WHEN COALESCE(r.process_mode, 0) != 3
+                                   AND r.disposition_action IS NULL
                        THEN COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0) ELSE 0 END) AS originalWeight,
                    SUM(CASE WHEN COALESCE(r.process_mode, 0) != 3
+                                   AND r.disposition_action IS NULL
                        THEN COALESCE(r.total_loss_weight, 0) ELSE 0 END) AS lossWeight,
                    GROUP_CONCAT(DISTINCT CONCAT(r.paper_name, '/', r.gram_weight, 'g/', r.original_width, 'mm')
                                 ORDER BY r.paper_name SEPARATOR '；') AS paperSummary,
@@ -1090,6 +1113,7 @@
                    END ORDER BY r.main_step_type SEPARATOR '、') AS processSummary
             FROM biz_original_roll r
             WHERE r.is_deleted = 0
+              AND r.disposition_action IS NULL
             <include refid="RollFilters"/>
             GROUP BY r.order_uuid
         ) orig ON orig.order_uuid = o.uuid
@@ -1110,7 +1134,9 @@
                    SUM(CASE WHEN ps.step_type = 1 THEN COALESCE(ps.step_amount, 0) ELSE 0 END) AS sawAmount,
                    SUM(CASE WHEN ps.step_type = 2 THEN COALESCE(ps.step_amount, 0) ELSE 0 END) AS rewindAmount
             FROM biz_process_step ps
-            JOIN biz_original_roll r ON r.uuid = ps.original_uuid AND r.is_deleted = 0
+            JOIN biz_original_roll r ON r.uuid = ps.original_uuid
+                AND r.is_deleted = 0
+                AND r.disposition_action IS NULL
             WHERE ps.is_deleted = 0
             <include refid="RollFilters"/>
             <include refid="StepFilters"/>

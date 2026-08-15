@@ -22,6 +22,30 @@ export interface ProcessOrderRemarkDTO {
   remarkLong?: string
 }
 
+export type ProcessRollDispositionAction = 'DIRECT_SHIP' | 'CANCEL' | 'SPLIT_TO_ORDER'
+
+export interface ProcessRollDispositionDTO {
+  action: ProcessRollDispositionAction
+  requestId: string
+  reason: string
+  expectedOrderVersion: number
+  warehouseUuid?: string
+  actualWeight?: number
+}
+
+export interface ProcessRollDispositionVO {
+  sourceOrderUuid?: string
+  sourceOrderNo?: string
+  sourceRollUuid?: string
+  action?: ProcessRollDispositionAction
+  targetOrderUuid?: string
+  targetOrderNo?: string
+  targetRollUuid?: string
+  targetFinishUuid?: string
+  targetFinishUuids?: string[]
+  operatedAt?: string
+}
+
 export interface ProcessOrderPostProductionNoteDTO {
   expectedVersion: number
   postProductionNote?: string

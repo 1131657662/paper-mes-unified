@@ -9,6 +9,7 @@ export interface OriginalRollDTO {
   paperName: string
   gramWeight: number
   originalWidth: number
+  actualWidth?: number
   originalDiameter?: number
   coreDiameter?: number
   originalLength?: number

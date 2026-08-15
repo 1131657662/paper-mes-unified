@@ -32,6 +32,7 @@ export const PERMISSION_ITEMS: PermissionItem[] = [
   { code: PERMISSIONS.orderManage, label: '加工单下发维护', description: '打印下发、维护工序和成品卷号' },
   { code: PERMISSIONS.orderBackRecord, label: '生产回录', description: '填写实际成品、异常和回录结果' },
   { code: PERMISSIONS.orderPricing, label: '加工费计价调整', description: '调整待回录或已完成加工单的工序计价' },
+  { code: PERMISSIONS.orderRollDisposition, label: '未加工母卷处置', description: '对已下发但尚未回录的母卷执行取消、转直发或拆分代加工单' },
   { code: PERMISSIONS.orderPricingApprove, label: '大额计价优惠审批', description: '批准超过免审额度的负向计价调整' },
   { code: PERMISSIONS.deliveryView, label: '出库查看', description: '查看出库单、打印和导出出库单' },
   { code: PERMISSIONS.deliveryManage, label: '出库办理', description: '新建出库、确认签收、回退改单' },
@@ -69,6 +70,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       PERMISSIONS.orderBackRecord,
       PERMISSIONS.orderPricing,
       PERMISSIONS.orderPricingApprove,
+      PERMISSIONS.orderRollDisposition,
     ],
   },
   {
@@ -132,6 +134,7 @@ export const ROLE_PROFILES: Record<UserRoleCode, RoleProfile> = {
       PERMISSIONS.orderCreate,
       PERMISSIONS.orderManage,
       PERMISSIONS.orderPricing,
+      PERMISSIONS.orderRollDisposition,
       PERMISSIONS.reportView,
       PERMISSIONS.exportTaskView,
     ],

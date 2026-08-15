@@ -64,13 +64,25 @@ export function buildDefaultSegments(originalWidth: number, sourceUuid: string, 
 }
 
 export function buildSameSpecSegments(roll: OriginalRoll): SegmentForm[] {
+  const width = roll.actualWidth != null && roll.actualWidth > 0
+    ? roll.actualWidth : roll.originalWidth ?? 1000
   return [{
     ...defaultSegment(1, roll.originalWidth ?? 1000, roll.uuid, 6),
     targetDiameter: toCm(roll.originalDiameter),
-    finishCoreDiameter: roll.coreDiameter ?? 3,
+    finishCoreDiameter: roll.coreDiameter,
     repeatCount: 1,
-    layoutItems: [defaultLayoutItem(roll.originalWidth ?? 1000)],
+    layoutItems: [defaultLayoutItem(width)],
   }]
+}
+
+export function sameSpecRewindError(roll: Pick<OriginalRoll, 'originalDiameter' | 'coreDiameter'>) {
+  if (roll.originalDiameter == null || roll.originalDiameter <= 0) {
+    return '母卷直径未维护，不能配置同规格复卷'
+  }
+  if (roll.coreDiameter == null || roll.coreDiameter <= 0) {
+    return '母卷纸芯未维护，不能配置同规格复卷'
+  }
+  return undefined
 }
 
 export const toCm = (inch?: number) => (inch != null ? Math.round(inch * 2.54) : undefined)
@@ -112,6 +124,7 @@ export function buildSegmentFromDto(
 export function buildInitialSegments(roll: OriginalRoll, config?: FinishConfigSaveDTO): SegmentForm[] {
   const originalWidth = roll.originalWidth ?? 1000
   const initialRewindMode = config?.rewindMode ?? 2
+  if (initialRewindMode === 6) return buildSameSpecSegments(roll)
   if (config?.rewindSegments?.length) {
     return config.rewindSegments.map((segment, index) =>
       buildSegmentFromDto(segment, index, originalWidth, roll.uuid, initialRewindMode),

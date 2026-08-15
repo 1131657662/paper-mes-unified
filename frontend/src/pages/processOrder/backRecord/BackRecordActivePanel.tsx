@@ -52,6 +52,7 @@ function RollActualPanel({
   item: BackRecordWorkItem
   onFieldExhausted: () => void
 }) {
+  const form = Form.useFormInstance()
   const roll = item.roll
   if (!roll) return null
   const required = requiresMeasuredSourceWeights(item)
@@ -65,11 +66,12 @@ function RollActualPanel({
         <Fact label="批次" value={roll.batchNo || '-'} />
         <Fact label="件数" value={`${roll.pieceNum ?? 1} 件`} />
         <Fact label="标称" value={`${roll.paperName || '-'} / ${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}`} />
-        <Fact label="来料重量" value={roll.rollWeight == null ? '未知' : formatKg(roll.rollWeight * (roll.pieceNum ?? 1))} />
+        <Fact label="来料重量" value={roll.weightStatus === 'UNKNOWN' || roll.rollWeight == null ? '未知' : formatKg(roll.rollWeight * (roll.pieceNum ?? 1))} />
         <Fact label="重量状态" value={roll.weightStatus === 'MEASURED' ? '实测' : roll.weightStatus === 'ESTIMATED' ? '参考（未实测）' : '未知（无参考）'} />
         <Fact label="加工方式" value={PROCESS_MODE[roll.processMode ?? 1] ?? '-'} />
       </div>
       <div className="back-record-input-grid">
+        <Form.Item name={['rolls', roll.uuid, 'weightEntryMode']} hidden><Input /></Form.Item>
         <Form.Item name={['rolls', roll.uuid, 'actualGramWeight']} label="实测克重">
           <InputNumber data-back-record-field="true" min={1} placeholder="g" suffix="g" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
@@ -77,7 +79,9 @@ function RollActualPanel({
           <InputNumber data-back-record-field="true" min={1} placeholder="mm" suffix="mm" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['rolls', roll.uuid, 'actualWeight']} label={required ? '复称重量' : '复称重量（选填）'} rules={required ? [{ required: true, message: '必填' }] : undefined}>
-          <InputNumber data-back-record-field="true" min={0.001} placeholder="kg" suffix="kg" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
+          <InputNumber data-back-record-field="true" min={0.001} placeholder="kg" suffix="kg"
+            onChange={(value) => queueMicrotask(() => form.setFieldValue(['rolls', roll.uuid, 'weightEntryMode'], value != null && value > 0 ? 'MEASURED' : undefined))}
+            onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />
         </Form.Item>
         <Form.Item name={['rolls', roll.uuid, 'remark']} label="复核说明">
           <Input data-back-record-field="true" placeholder="破损、水湿、复称差异" onPressEnter={(event) => focusNextBackRecordField(event, onFieldExhausted)} />

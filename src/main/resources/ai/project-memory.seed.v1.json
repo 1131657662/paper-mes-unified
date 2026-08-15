@@ -1,0 +1,561 @@
+{
+  "$schema": "paper-mes-project-memory-1.0",
+  "schemaVersion": "1.0",
+  "memoryVersion": "1.0.0",
+  "documentKind": "PROJECT_MEMORY_SEED",
+  "project": "paper-mes-unified",
+  "checksum": "sha256:0b3adc2555979722756877b61a41ed630216057911111e964763b920aea87d2b",
+  "checksumSpecification": {
+    "algorithm": "SHA-256",
+    "excludeFields": ["checksum"],
+    "excludeFieldScope": "root object only",
+    "canonicalization": "递归按对象key的Unicode码点升序排序；数组保持原顺序；不输出空白；UTF-8编码；对规范化JSON文本计算SHA-256并输出小写hex。",
+    "verification": "加载器必须按同一规则重算并与checksum比对；不一致时拒绝新文件并保留最后有效快照。",
+    "schemaIdentifier": "$schema字段是本地标识，schemaVersion是校验依据。"
+  },
+  "retrieval": {
+    "strategy": "STRUCTURED_KEYWORD_PREFIX",
+    "vectorIndex": false,
+    "codeIndex": false,
+    "externalMaterialIngestion": false,
+    "maxPromptContextTokens": 4000,
+    "notes": "V1 使用结构化字段、关键词和前缀匹配；后端确定性代码优先于本文件。"
+  },
+  "rules": {
+    "rule-diameter-weight-split": {
+      "type": "RULE",
+      "scope": "REWIND",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "keywords": ["直径一分为二", "分成两卷", "一分为二"],
+      "intent": "WEIGHT_SPLIT",
+      "parts": 2,
+      "ratios": [50, 50],
+      "content": "直径一分为二表示成品重量按50%+50%分成两件，不计算等面积，不把直径数值除以二。",
+      "targetDiameter": {
+        "requiredForCompiledPlan": true,
+        "defaultRef": "#/rules/rule-default-target-diameter/constraints",
+        "sourceWhenMissing": "DEFAULT",
+        "editableBeforeApply": true
+      },
+      "backendInvariant": "比例和必须为100；目标直径不参与重量比例计算。",
+      "source": "business-confirmation-2026-08-15"
+    },
+    "rule-default-target-diameter": {
+      "type": "RULE",
+      "scope": "REWIND",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "keywords": ["目标直径", "未指定直径", "默认直径"],
+      "content": "客户未指定目标直径时，后端注入1200mm；操作员在应用前可以改为1000mm至1350mm范围内的值。",
+      "constraints": {
+        "value": 1200,
+        "unit": "mm",
+        "min": 1000,
+        "max": 1350,
+        "historicalOrdersUnaffected": true
+      },
+      "source": "business-confirmation-2026-08-15"
+    },
+    "rule-saw-cut-count": {
+      "type": "RULE",
+      "scope": "SAW",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "keywords": ["切刀", "切几刀", "切2刀", "锯2刀", "平均分"],
+      "intent": "SAW_CUTS",
+      "content": "切N刀表示N道刀口，生成N+1件，不是生成N件。",
+      "widthAlgorithm": {
+        "unit": "mm",
+        "integerDivision": true,
+        "remainderPolicy": "BALANCED_DETERMINISTIC",
+        "remainderDirection": "BACK_FIRST_ROUND_ROBIN",
+        "businessMeaning": "前件或后件没有业务偏好；固定算法只为保证重放一致，门幅成品数值最多相差1mm。",
+        "weightAllocation": "EQUAL_BY_FINISH_COUNT",
+        "weightAllocationStatus": "BUSINESS_TARGET_REQUIRES_BACKEND_CHANGE",
+        "businessConfirmed": true,
+        "currentImplementation": {
+          "class": "src/main/java/com/paper/mes/processorder/service/SawPlanCalculator.java",
+          "configuredWeight": "按成品门幅占已用门幅比例分配",
+          "remainderWeight": "ALLOCATE模式将余料重量均分到输出后仍按三位小数舍入",
+          "roundingRemainder": "applyRoundingRemainder将最终尾差加到最后一个成品",
+          "notEqualByFinishCount": true
+        },
+        "weightRounding": "BALANCED_QUOTIENT_REMAINDER",
+        "weightRoundingDetail": "总重量除以成品件数后保留3位小数；舍入余数以0.001kg为单位均匀分散到不同成品，任意两件重量最多相差0.001kg，不允许由最后一件独占尾差。",
+        "maxPieceWeightDifferenceKg": 0.001,
+        "sumMustEqualOriginalWidth": true
+      },
+      "examples": [
+        { "input": "2000mm切2刀", "finishCount": 3, "outputWidthsMm": [666, 667, 667], "weightAllocation": "EQUAL_BY_FINISH_COUNT_BUSINESS_TARGET", "weightRounding": "BALANCED_QUOTIENT_REMAINDER", "deterministic": true },
+        { "input": "2000mm切3刀", "outputWidthsMm": [500, 500, 500, 500] }
+      ],
+      "source": "business-confirmation-2026-08-15"
+    },
+    "rule-core-default-3-inch": {
+      "type": "RULE",
+      "scope": "REWIND",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "keywords": ["纸芯", "芯管", "3英寸", "6英寸"],
+      "content": "普通复卷客户明确给纸芯时按显式单位转换；未指定纸芯时成品默认使用3英寸纸芯，不继承母卷纸芯作为默认值。客户原话可写入remarkLong，后端仍必须编译到finishCoreDiameter。rewindMode=6同规格复卷除外，必须使用并校验母卷纸芯。",
+      "defaultValue": 3,
+      "defaultUnit": "inch",
+      "defaultSource": "DEFAULT",
+      "exception": {
+        "when": "rewindMode=6 KEEP_SPEC",
+        "behavior": "成品纸芯必须等于母卷纸芯；母卷纸芯缺失时后端阻断，不使用3英寸默认值。",
+        "source": "src/main/java/com/paper/mes/processorder/service/impl/ProcessOrderServiceImpl.java:3715-3738"
+      },
+      "units": ["mm", "inch"],
+      "conversion": "1 inch = 25.4 mm",
+      "source": "business-confirmation-2026-08-15"
+    },
+    "rule-diameter-storage-compatibility": {
+      "type": "RULE",
+      "scope": "REWIND",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "keywords": ["直径单位", "毫米存储", "英寸存储", "成品直径"],
+      "content": "AI先按显式单位转换为mm，再按现有整数DTO存储契约写回；不能把小于100的mm值直接写入targetDiameter。",
+      "storageContract": {
+        "field": "segments[].targetDiameter",
+        "readerBehavior": "storedDiameterToMm对0<storedValue<100按英寸解释，其余按mm解释。",
+        "mmValueBelow100": "只有当mm值可无损表示为整数英寸（mm=25.4*n，n为正整数）时，才存整数英寸n；否则禁止自动编译并转人工澄清。",
+        "example": "3 inch -> 76.2mm -> 存3；76mm不能直接存76，否则读取会被解释为76英寸。",
+        "mmValueAtLeast100": "存整数mm，按现有DTO舍入规则执行。",
+        "coreDiameterIsSeparate": "纸芯使用storedCoreDiameterToMm阈值10，76mm纸芯可直接存76；不能把纸芯规则套到成品直径。默认成品纸芯为3英寸。"
+      },
+      "source": "src/main/java/com/paper/mes/processorder/calc/RewindWeightCalculator.java"
+    },
+    "rule-rewind-mode-semantics": {
+      "type": "RULE",
+      "scope": "REWIND",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "keywords": ["改门幅", "改直径", "分层", "多来源", "不下刀", "直接走一遍", "同规格复卷"],
+      "content": "复卷模式必须按1至6的既有语义解释，不得只识别多来源模式5；模式1只改门幅，不设置目标直径，模式2/3才要求目标直径，模式6保持母卷直径、门幅和纸芯。",
+      "source": "project-plan-section-4.3"
+    },
+    "rule-label-no-process-step": {
+      "type": "RULE",
+      "scope": "ORDER_REQUIREMENT",
+      "status": "ACTIVE",
+      "risk": "MEDIUM",
+      "keywords": ["标签", "贴标签", "标签品牌"],
+      "intent": "LABEL_ONLY",
+      "content": "贴标签不创建附加工序；写入加工单备注，明确品牌时可以同步写入labelBrand，并随打印快照下发。",
+      "createsServiceStep": false,
+      "source": "business-confirmation-2026-08-15"
+    },
+    "rule-packaging-service-step": {
+      "type": "RULE",
+      "scope": "PACKAGING",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "keywords": ["包膜", "缠膜", "装盒", "包装", "每件", "每吨"],
+      "intent": "REPACK",
+      "content": "明确要求包膜、缠膜或装盒等包装服务时生成stepType=4重新包装；包装文字仍写入加工单备注。",
+      "stepType": 4,
+      "billing": {
+        "allowedBasis": ["PIECE", "TON"],
+        "unitPriceFromText": false,
+        "unitPriceExtraction": "本地脱敏器先提取金额并保存到受控后端字段；模型只接收金额占位符。",
+        "outboundRedaction": "包膜加20元每件 -> 包膜加[金额]每件",
+        "quantityRequiresBackendCalculation": true,
+        "pieceBasis": "owner assignment实际成品件数",
+        "ambiguousQuantityAction": "CLARIFY"
+      },
+      "source": "business-confirmation-2026-08-15"
+    },
+    "rule-customer-original-text-storage": {
+      "type": "RULE",
+      "scope": "ORDER",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "keywords": ["客户原话", "加工要求", "详细备注", "remarkLong"],
+      "content": "客户加工要求原文统一保存到remarkLong；remark只保存短摘要或人工短备注。",
+      "fieldMapping": {
+        "api": "remarkLong",
+        "java": "remarkLong",
+        "database": "biz_process_order.remark_long",
+        "maxLength": 2000
+      },
+      "prohibited": ["把完整客户原话塞入remark", "新建同义备注字段"],
+      "source": "sql/01_schema_v4.1.sql:228; DraftOrderBaseDTO.remarkLong"
+    },
+    "rule-owner-covered-assignment": {
+      "type": "RULE",
+      "scope": "MULTI_SOURCE_REWIND",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "keywords": ["合卷", "多母卷", "owner", "covered", "一起加工"],
+      "content": "owner是保存多母卷方案的originalUuid草稿；sourceRollRefs列出全部来源，coveredRollRefs列出同一方案覆盖但不单独保存主工艺的来源卷。",
+      "constraints": {
+        "ownerMustBeInSourceRollRefs": true,
+        "coveredEqualsSourceMinusOwner": true,
+        "oneCoveredRollAtMostOneOwner": true,
+        "ownerIsNotCustomer": true,
+        "modelCannotUseDatabaseUuid": true,
+        "unresolvedOverlapAction": "BLOCK"
+      },
+      "currentImplementation": "ProcessOrderDraftServiceImpl模式5草稿来源会推导covered卷；重复覆盖阻断和显式owner字段仍需新增。",
+      "source": "src/main/java/com/paper/mes/processorder/service/impl/ProcessOrderDraftServiceImpl.java:456-545"
+    },
+    "rule-source-priority": {
+      "type": "RULE",
+      "scope": "PROJECT",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "content": "本地确定性代码和后端校验优先于云端当前事实，云端当前事实优先于已审核项目记忆，项目记忆优先于模型推测。冲突时必须阻断或澄清。",
+      "priority": ["LOCAL_DETERMINISTIC_CODE", "CLOUD_DB_CURRENT_FACT", "APPROVED_PROJECT_MEMORY", "MODEL_GUESS"],
+      "source": "project-baseline"
+    },
+    "rule-ai-is-draft-only": {
+      "type": "RULE",
+      "scope": "AI_PROCESS_PARSE",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "content": "模型只抽取意图和证据；后端绑定母卷、计算重量/门幅/刀数并调用plan-preview。AI不得直接写工艺、改变订单状态或绕过现有保存接口。",
+      "requiredGates": ["STRICT_JSON_SCHEMA", "SOURCE_BINDING", "BACKEND_INVARIANTS", "PLAN_PREVIEW", "USER_CONFIRMATION"],
+      "source": "project-baseline"
+    },
+    "rule-memory-safety": {
+      "type": "RULE",
+      "scope": "PROJECT_MEMORY",
+      "status": "ACTIVE",
+      "risk": "HIGH",
+      "content": "项目记忆只保存脱敏、归纳后的规则和术语，不保存客户身份、联系方式、订单号、卷号、价格、API Key或完整订单原文。",
+      "autoPromotion": false,
+      "candidateThreshold": {
+        "differentOrders": 5,
+        "windowDays": 7,
+        "confirmedEachTime": true,
+        "conflictFree": true,
+        "readyRequiresAdminApproval": true
+      },
+      "highRiskNeverAutoPromote": ["RULE", "PRICING", "PERMISSION", "EXTERNAL_FACT", "EPISODE"],
+      "source": "project-memory-policy"
+    }
+  },
+  "terms": {
+    "term-diameter-half": {
+      "type": "TERM",
+      "scope": "REWIND",
+      "status": "ACTIVE",
+      "phrase": "直径一分为二",
+      "aliases": ["直径分两卷", "一卷分两卷"],
+      "intent": "WEIGHT_SPLIT",
+      "notMeaning": ["直径数值除以二", "等面积分卷"]
+    },
+    "term-saw-two-cuts": {
+      "type": "TERM",
+      "scope": "SAW",
+      "status": "ACTIVE",
+      "phrase": "切2刀",
+      "aliases": ["锯2刀", "两刀"],
+      "intent": "SAW_CUTS",
+      "meaning": "3件"
+    },
+    "term-film-wrap": {
+      "type": "TERM",
+      "scope": "PACKAGING",
+      "status": "ACTIVE",
+      "phrase": "缠膜",
+      "aliases": ["包膜", "裹膜"],
+      "intent": "REPACK"
+    },
+    "term-label-only": {
+      "type": "TERM",
+      "scope": "ORDER_REQUIREMENT",
+      "status": "ACTIVE",
+      "phrase": "贴标签",
+      "aliases": ["标签", "贴牌"],
+      "intent": "LABEL_ONLY"
+    },
+    "term-owner": {
+      "type": "TERM",
+      "scope": "MULTI_SOURCE_REWIND",
+      "status": "ACTIVE",
+      "phrase": "owner",
+      "meaning": "保存多母卷方案的原纸草稿，不是客户或仓库"
+    },
+    "term-covered": {
+      "type": "TERM",
+      "scope": "MULTI_SOURCE_REWIND",
+      "status": "ACTIVE",
+      "phrase": "covered",
+      "meaning": "被owner方案覆盖、不单独保存主工艺但仍参与来源消耗的母卷"
+    }
+  },
+  "fieldMappings": {
+    "order.customerOriginalText": {
+      "apiField": "remarkLong",
+      "javaField": "remarkLong",
+      "databaseColumn": "biz_process_order.remark_long",
+      "maxLength": 2000,
+      "currentUiStatus": "BaseInfoFormSections缺少输入框，必须补齐"
+    },
+    "order.shortRemark": {
+      "apiField": "remark",
+      "javaField": "remark",
+      "databaseColumn": "biz_process_order.remark",
+      "databaseMaxLength": 255,
+      "currentDtoMaxLength": 500,
+      "targetDtoMaxLength": 255,
+      "useForCustomerOriginalText": false
+    },
+    "originalRoll": {
+      "uuid": "数据库主键，仅后端使用",
+      "rowSort": "订单内排序行号",
+      "rollNo": "母卷号，脱敏后才可出域",
+      "paperName": "品名",
+      "gramWeight": "标称克重，g/m2",
+      "originalWidth": "标称门幅，mm",
+      "originalDiameter": "原卷直径，现行mm，历史小值兼容英寸",
+      "coreDiameter": "纸芯直径，支持inch历史值和mm值",
+      "rollWeight": "标称单件重量，kg",
+      "actualWeight": "实际重量，kg，计费基准",
+      "pieceNum": "母卷件数，缺省1",
+      "processMode": "1标准加工/2现场定尺/3不加工直发/4仅附加工艺",
+      "mainStepType": "1锯纸/2复卷",
+      "machineUuid": "机台标识，不发送给模型"
+    },
+    "processPlan": {
+      "processMode": "ProcessPlanDTO.processMode",
+      "mainStepType": "ProcessPlanDTO.mainStepType",
+      "rewindMode": "ProcessPlanDTO.rewindMode",
+      "knifeCount": "ProcessPlanDTO.knifeCount",
+      "widthDifferencePolicy": "LOSS/ALLOCATE/REMAINDER",
+      "finishSpecs": "锯纸成品规格；finishWidth/count由后端计算和校验",
+      "segments": "复卷段；segmentRatio/targetDiameter/finishCoreDiameter/repeatCount/sources/layoutItems",
+      "allocationRule": "待新增字段；WEIGHT_SPLIT必须持久化，不能只存在AI意图"
+    },
+    "rewindSegment": {
+      "segmentRatio": "输出段比例，和WEIGHT_SPLIT成品50/50同维度但不等同来源消耗比例",
+      "targetDiameter": "AI必须先显式unit转换为mm；mm值小于100时按rule-diameter-storage-compatibility存整数英寸或转人工，不能直接存原始mm；其余存整数mm",
+      "finishCoreDiameter": "客户未指定时默认3inch；客户明确指定时必须有显式unit，再按纸芯存储兼容规则写回",
+      "sources.originalUuid": "后端来源标识；模型只使用R1/R2短代号",
+      "sources.shareRatio": "该成品段来源占比，合计100",
+      "sources.consumeRatio": "来源跨段消耗比例，不替代成品50/50"
+    },
+    "packaging": {
+      "serviceStepType": 4,
+      "catalogCode": "REPACK",
+      "labelBehavior": "不创建工序，写remark/remarkLong和打印快照"
+    }
+  },
+  "enumMappings": {
+    "processMode": {
+      "1": "STANDARD_PROCESSING",
+      "2": "ON_SITE_SIZING",
+      "3": "DIRECT_SHIP",
+      "4": "SERVICE_ONLY"
+    },
+    "mainStepType": {
+      "1": "SAW",
+      "2": "REWIND"
+    },
+    "rewindMode": {
+      "1": { "name": "CHANGE_WIDTH", "keywords": ["改门幅", "改宽度"], "meaning": "只改变门幅，不设置目标直径" },
+      "2": { "name": "CHANGE_DIAMETER", "keywords": ["改直径", "换直径"], "meaning": "改变目标直径" },
+      "3": { "name": "CHANGE_DIAMETER_AND_WIDTH", "keywords": ["改直径改门幅", "直径门幅都改"], "meaning": "同时改变目标直径和门幅" },
+      "4": { "name": "LAYERED", "keywords": ["分层", "多层", "内外层"], "meaning": "按layers保存分层外径和纸芯" },
+      "5": { "name": "MULTI_SOURCE", "keywords": ["多来源", "合卷", "多母卷"], "meaning": "多个母卷来源合并，owner/covered约束生效" },
+      "6": { "name": "KEEP_SPEC", "keywords": ["不下刀不改直径", "直接走一遍", "同规格复卷", "不改规格"], "meaning": "保持母卷直径、纸芯和门幅，直接复卷" }
+    },
+    "stepType": {
+      "1": "SAW",
+      "2": "REWIND",
+      "3": "STRIP_SORT",
+      "4": "REPACK"
+    }
+  },
+  "units": {
+    "diameter": "mm",
+    "coreDiameter": "mm",
+    "width": "mm",
+    "weight": "kg",
+    "gramWeight": "g/m2",
+    "price": "CNY",
+    "explicitConversions": {
+      "inchToMm": 25.4
+    },
+    "legacyStorageNote": "RewindWeightCalculator.storedDiameterToMm/storedCoreDiameterToMm包含历史小值英寸兼容；AI不得仅凭数值大小猜测客户原话单位。"
+  },
+  "limits": {
+    "customerOriginalTextChars": 2000,
+    "aiOrderRollCount": 100,
+    "maxSourcePieces": 500,
+      "maxExpandedTotalItems": 500,
+    "quantityLimitSemantics": "单母卷展开后的成品+余料+备用总数不得超过500；母卷件数范围为1至500。",
+    "quantityLimitSource": "FinishConfigQuantityValidator.MAX_TOTAL_FINISHES=500; MAX_SOURCE_PIECES=500",
+    "memoryPatchOperationsMax": 20,
+    "memoryDocumentBytesMax": 524288,
+    "conversationTtlMinutes": 30
+  },
+  "prohibited": {
+    "modelMustNot": [
+      "直接写入数据库或工艺草稿",
+      "改变订单状态",
+      "绕过plan-preview和用户确认",
+      "计算等面积分卷",
+      "把直径数值除以二",
+      "把切N刀解释为N件",
+      "猜测缺少单位的直径或使用未定义的纸芯值",
+      "使用客户UUID、订单号、卷号作为出域字段",
+      "把标签创建为stepType=4",
+      "把完整客户原话、身份、价格或API Key写入项目记忆"
+    ],
+    "cloudRequestMustNotContain": [
+      "customerName",
+      "contact",
+      "phone",
+      "address",
+      "orderUuid",
+      "rollUuid",
+      "rollNo",
+      "price",
+      "tax",
+      "apiKey",
+      "sql",
+      "logs"
+    ]
+  },
+  "outboundRedaction": {
+    "packagingAmount": {
+      "enabled": true,
+      "pattern": "金额表达式由本地规则提取，不交给模型识别具体数值。",
+      "replacement": "[金额]",
+      "backendRetention": "原始金额只在当前订单受控字段和审计哈希中保留，不写入项目记忆。"
+    }
+  },
+  "examples": {
+    "example-weight-split-1500": {
+      "type": "EXAMPLE",
+      "status": "ACTIVE",
+      "input": "母卷直径1500mm，客户说直径一分为二",
+      "expected": {
+        "intent": "WEIGHT_SPLIT",
+        "parts": 2,
+        "ratios": [50, 50],
+        "targetDiameter": { "value": 1200, "unit": "mm", "source": "DEFAULT" },
+        "doNotCalculateBy": ["crossSectionArea", "diameterDivideByTwo"]
+      },
+      "evidenceRequired": true
+    },
+    "example-saw-two-cuts": {
+      "type": "EXAMPLE",
+      "status": "ACTIVE",
+      "input": "门幅2000mm，切2刀",
+      "expected": {
+        "knifeCount": 2,
+        "finishCount": 3,
+        "finishWidthsMm": [666, 667, 667],
+        "sumMm": 2000,
+        "remainderDirection": "BACK_FIRST_ROUND_ROBIN",
+        "weightAllocation": "EQUAL_BY_FINISH_COUNT_BUSINESS_TARGET",
+        "autoApply": false,
+        "requiresBackendBranch": "SAW_EQUAL_WEIGHT_P2"
+      },
+      "evidenceRequired": true
+    },
+    "example-label-only": {
+      "type": "EXAMPLE",
+      "status": "ACTIVE",
+      "input": "贴鼎森标签",
+      "expected": {
+        "intent": "LABEL_ONLY",
+        "createsServiceStep": false,
+        "remarkLongRequired": true,
+        "labelBrand": "鼎森"
+      }
+    },
+    "example-film-wrap-piece-price": {
+      "type": "EXAMPLE",
+      "status": "ACTIVE",
+      "input": "包膜加20元每件",
+      "redactedInput": "包膜加[金额]每件",
+      "expected": {
+        "modelOutput": {
+          "intent": "REPACK",
+          "stepType": 4,
+          "billingBasis": "PIECE",
+          "amountToken": "[金额]"
+        },
+        "backendResult": {
+          "unitPrice": 20,
+          "unitPriceSource": "LOCAL_EXTRACTED_NOT_MODEL_OUTPUT",
+          "quantitySource": "ownerAssignmentFinishedPieceCount",
+          "requiresUserConfirmation": true
+        }
+      }
+    },
+    "example-owner-r1-r2": {
+      "type": "EXAMPLE",
+      "status": "ACTIVE",
+      "input": "R1和R2合并加工，方案保存到R1",
+      "expected": {
+        "ownerRollRef": "R1",
+        "sourceRollRefs": ["R1", "R2"],
+        "coveredRollRefs": ["R2"]
+      },
+      "prohibited": ["为R2再保存第二套主工艺", "让模型输出数据库UUID"]
+    }
+  },
+  "sources": {
+    "localCode": [
+      "src/main/java/com/paper/mes/processorder/dto/DraftOrderBaseDTO.java",
+      "src/main/java/com/paper/mes/processorder/dto/ProcessPlanDTO.java",
+      "src/main/java/com/paper/mes/processorder/dto/FinishConfigSaveDTO.java",
+      "src/main/java/com/paper/mes/processorder/dto/RewindPlanPreviewDTO.java",
+      "src/main/java/com/paper/mes/processorder/dto/FinishConfigSpecDTO.java",
+      "src/main/java/com/paper/mes/processorder/calc/RewindWeightCalculator.java",
+      "src/main/java/com/paper/mes/processorder/service/FinishConfigQuantityValidator.java",
+      "src/main/java/com/paper/mes/processorder/service/ProcessPlanMapper.java",
+      "src/main/java/com/paper/mes/processorder/service/impl/ProcessOrderDraftServiceImpl.java",
+      "frontend/src/features/processOrderCreate/components/BaseInfoFormSections.tsx",
+      "frontend/src/constants/processOrder.ts",
+      "src/main/resources/ai/rules-v1.0.0.json"
+    ],
+    "localSchema": [
+      "sql/01_schema_v4.1.sql:228",
+      "sql/V3.37__add_process_catalog.sql:75",
+      "sql/V3.64__add_process_order_post_production_note.sql:24"
+    ],
+    "businessConfirmation": [
+      "business-confirmation-2026-08-15: diameter split is weight 50/50",
+      "business-confirmation-2026-08-15: two cuts produce three pieces",
+      "business-confirmation-2026-08-15: cut remainder direction is business-neutral; use balanced deterministic distribution",
+      "business-confirmation-2026-08-15: unspecified finished core defaults to 3 inch",
+      "business-confirmation-2026-08-15: default target diameter is 1200mm",
+      "business-confirmation-2026-08-15: labels are remarks, packaging service is conditional",
+      "business-confirmation-2026-08-15: saw finished weight must be allocated equally by finish count, not by width proportion",
+      "business-confirmation-2026-08-15: customer original text may be stored in remarkLong; backend compiles the core into finishCoreDiameter, defaulting to 3 inch when unspecified"
+    ]
+  },
+  "resolvedDecisions": {
+    "sawRemainderDirection": {
+      "status": "RESOLVED_BUSINESS_NEUTRAL",
+      "decision": "BACK_FIRST_ROUND_ROBIN",
+      "meaning": "前后分配无所谓，固定算法仅用于可重放；门幅只差1mm，重量按成品件数均匀分摊且任意两件最多差0.001kg。"
+    },
+    "sawEqualWeightAllocation": {
+      "status": "RESOLVED_BUSINESS",
+      "decision": "EQUAL_BY_FINISH_COUNT_REQUIRED",
+      "requiresBackendBranch": "SAW_EQUAL_WEIGHT_P2",
+      "meaning": "锯纸成品重量必须按成品件数均匀分摊，任意两件最多相差0.001kg；当前后端按门幅占比分摊，需新增分支后才可自动应用。"
+    },
+    "missingCoreBehavior": {
+      "status": "RESOLVED_BUSINESS",
+      "decision": "DEFAULT_3_INCH_ORDINARY_REWIND_WITH_KEEP_SPEC_EXCEPTION",
+      "meaning": "普通复卷客户未指定纸芯时成品默认使用3英寸纸芯；客户原话可存入remarkLong，但后端必须编译到finishCoreDiameter。rewindMode=6同规格复卷必须使用并校验母卷纸芯，缺失时阻断，不使用3英寸默认值。"
+    },
+    "packagingAmountOutbound": {
+      "status": "RESOLVED_ENGINEERING_POLICY",
+      "decision": "LOCAL_EXTRACT_REDACT_BACKEND_REFILL",
+      "autoApply": true
+    }
+  },
+  "disabled": {}
+}

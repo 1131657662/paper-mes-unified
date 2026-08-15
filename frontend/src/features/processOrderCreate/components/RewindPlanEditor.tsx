@@ -1,4 +1,4 @@
-import { Button, Segmented, Select } from 'antd'
+import { Button, message, Segmented, Select } from 'antd'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import MesTooltip from '../../../components/biz/MesTooltip'
 import type { ProcessPlanDTO, RewindSegmentPlanDTO } from '../../../types/processOrder'
@@ -7,6 +7,8 @@ import { sourceOptionsFromRolls } from '../rewindSourceUtils'
 import { appendRemainingTrim, rewindWidthPolicy } from '../rewindWidthUsage'
 import {
   defaultRewindSegment,
+  effectiveRollWidth,
+  sameSpecRewindError,
   normalizeRewindPlan,
   planWithRewindMode,
 } from '../rewindLayerPlanUtils'
@@ -34,6 +36,7 @@ export default function RewindPlanEditor({ plan, roll, rolls, onChange }: Props)
   const mode = plan.rewindMode ?? 2
   const normalized = normalizeRewindPlan({ ...plan, rewindMode: mode }, roll)
   const segments = normalized.segments ?? [defaultRewindSegment(roll)]
+  const sourceWidth = effectiveRollWidth(roll)
   const sourceOptions = sourceOptionsFromRolls(rolls)
   const widthPolicy = plan.widthDifferencePolicy ?? DEFAULT_WIDTH_DIFFERENCE_POLICY
   const widthPolicyEnabled = rewindWidthPolicy(mode).enabled
@@ -44,13 +47,21 @@ export default function RewindPlanEditor({ plan, roll, rolls, onChange }: Props)
     if (value !== 'REMAINDER' && value !== 'ALLOCATE' && value !== 'LOSS') return
     onChange({ ...normalized, widthDifferencePolicy: value })
   }
+  const changeMode = (nextMode: number) => {
+    const error = nextMode === 6 ? sameSpecRewindError(roll) : undefined
+    if (error) {
+      message.error(error)
+      return
+    }
+    onChange(planWithRewindMode(plan, roll, nextMode))
+  }
 
   return (
     <div className="rewind-editor">
       <label className="rewind-mode-field">
         <span>复卷类型</span>
         <Select aria-label="复卷模式" value={mode} options={modeOptions}
-          onChange={(value) => onChange(planWithRewindMode(plan, roll, value))} />
+          onChange={changeMode} />
       </label>
       {widthPolicyEnabled && (
         <Segmented aria-label="复卷门幅差额处理" value={widthPolicy}
@@ -59,7 +70,7 @@ export default function RewindPlanEditor({ plan, roll, rolls, onChange }: Props)
       )}
       {mode === 5 && <RewindSourceUsageSummary segments={segments} sourceOptions={sourceOptions} />}
       {segments.map((segment, index) => <SegmentSection key={index}
-        index={index} mode={mode} roll={roll} rolls={rolls} segment={segment}
+        index={index} mode={mode} roll={roll} rolls={rolls} segment={segment} sourceWidth={sourceWidth}
         widthDifferencePolicy={widthPolicy}
         segments={segments} sourceOptions={sourceOptions}
         onChange={(next) => updateSegments(patchSegment(segments, index, next))}
@@ -83,9 +94,9 @@ function SegmentSection(props: SegmentProps) {
     </div>
     <RewindSegmentFields index={index} mode={mode} roll={roll} segment={segment}
       segments={segments} onChange={onChange} />
-    {mode !== 6 && <RewindWidthSummary mode={mode} originalWidth={roll.originalWidth}
+    {mode !== 6 && <RewindWidthSummary mode={mode} originalWidth={props.sourceWidth}
       segment={segment} widthDifferencePolicy={widthDifferencePolicy}
-      onFillTrim={() => onChange(appendRemainingTrim(segment, roll.originalWidth))} />}
+      onFillTrim={() => onChange(appendRemainingTrim(segment, props.sourceWidth))} />}
     {mode !== 6 && <RewindLayoutEditor mode={mode} roll={roll} segment={segment} onChange={onChange} />}
     {mode === 5 && <RewindSourceEditor segment={segment} roll={roll} rolls={rolls}
       sourceOptions={sourceOptions} onChange={onChange} />}
@@ -102,6 +113,7 @@ interface SegmentProps {
   roll: RollDraft
   rolls: RollDraft[]
   segment: RewindSegmentPlanDTO
+  sourceWidth: number
   segments: RewindSegmentPlanDTO[]
   sourceOptions: ReturnType<typeof sourceOptionsFromRolls>
   widthDifferencePolicy: NonNullable<ProcessPlanDTO['widthDifferencePolicy']>

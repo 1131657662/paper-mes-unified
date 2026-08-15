@@ -5,6 +5,7 @@ import com.paper.mes.processorder.dto.PrintViewVersion;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.dto.ProcessOrderIssueConsistencyVO;
 import com.paper.mes.processorder.entity.FinishRoll;
+import com.paper.mes.processorder.entity.OriginalRoll;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +54,24 @@ final class ProcessOrderIssueConsistencyReader {
         if (printedCustomerSpecificationChanged(live.getFinishRolls(), issued.getFinishRolls())) {
             groups.add("客户品名/克重/门幅");
         }
+        if (rollDispositionChanged(live.getOriginalRolls(), issued.getOriginalRolls())) {
+            groups.add("母卷处置");
+        }
         return List.copyOf(groups);
+    }
+
+    private static boolean rollDispositionChanged(List<OriginalRoll> live, List<OriginalRoll> issued) {
+        Map<String, OriginalRoll> issuedByUuid = issued.stream().collect(Collectors.toMap(
+                OriginalRoll::getUuid, Function.identity(), (left, right) -> left));
+        for (OriginalRoll current : live) {
+            OriginalRoll frozen = issuedByUuid.get(current.getUuid());
+            if (frozen == null) {
+                if (current.getDispositionAction() != null) return true;
+                continue;
+            }
+            if (!Objects.equals(current.getDispositionAction(), frozen.getDispositionAction())) return true;
+        }
+        return false;
     }
 
     private static boolean printedCustomerSpecificationChanged(

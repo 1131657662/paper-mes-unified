@@ -26,6 +26,7 @@ export interface ExecutionActionHandlers {
   onGoDelivery: () => void
   onGoSettle: () => void
   onVoidOrder: () => void
+  onRollDisposition: () => void
 }
 
 export interface ExecutionLoading {
@@ -44,6 +45,7 @@ export interface ExecutionCapabilities {
   canBackRecord: boolean
   canManageDelivery: boolean
   canManageSettlement: boolean
+  canManageRollDisposition: boolean
 }
 
 interface Props {
@@ -115,6 +117,9 @@ function SecondaryActions({ actions, capabilities, hasPrinted, loading, status }
         && <Button icon={<PrinterOutlined />} onClick={actions.onPrint}>{status === 2 && !hasPrinted ? '重新打开打印' : '打印预览'}</Button>}
       {capabilities.canManageOrder && status >= 1 && status <= 3 && <Button onClick={actions.onManageRolls}>管理成品号</Button>}
       {capabilities.canManageOrder && status >= 2 && status <= 4 && <Button icon={<CalculatorOutlined />} loading={loading.calculatingFee} onClick={actions.onCalcFee}>重算计费</Button>}
+      {capabilities.canManageRollDisposition && status >= 2 && status <= 3 && (
+        <Button icon={<StopOutlined />} onClick={actions.onRollDisposition}>处置未加工母卷</Button>
+      )}
       {(status === 4 || status === 5) && <Button icon={<DiffOutlined />} onClick={actions.onSnapshotDiff}>快照差异</Button>}
       {moreItems.length > 0 && (
         <Dropdown menu={{ items: moreItems }} placement="bottomRight" trigger={['click']}>

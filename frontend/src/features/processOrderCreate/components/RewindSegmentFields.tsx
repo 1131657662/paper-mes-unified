@@ -8,7 +8,7 @@ import {
   storedCoreDiameterUnit,
   storedDiameterUnit,
 } from '../../../utils/numberFormatters'
-import { segmentRatioPercent } from '../rewindLayerPlanUtils'
+import { effectiveRollWidth, segmentRatioPercent } from '../rewindLayerPlanUtils'
 import type { RollDraft } from '../types'
 
 interface Props {
@@ -84,7 +84,7 @@ function CoreDiameterField(props: Props) {
 
 function SameSpecSummary({ roll }: { roll: RollDraft }) {
   const items = [
-    roll.paperName || '-', formatGram(roll.gramWeight), formatMm(roll.originalWidth),
+    roll.paperName || '-', formatGram(roll.gramWeight), formatMm(effectiveRollWidth(roll)),
     `卷径 ${formatStoredDiameter(roll.originalDiameter)}`,
     `纸芯 ${formatStoredCoreDiameter(roll.coreDiameter)}`,
   ]

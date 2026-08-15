@@ -59,6 +59,23 @@ describe('rewindingConfigModel', () => {
     expect(segment?.layoutItems[0]?.width).toBe(1200)
   })
 
+  it('uses the measured width and does not invent a paper core for same-spec mode', () => {
+    const [segment] = buildSameSpecSegments(roll({ actualWidth: 1180, coreDiameter: undefined }))
+
+    expect(segment?.layoutItems[0]?.width).toBe(1180)
+    expect(segment?.finishCoreDiameter).toBeUndefined()
+  })
+
+  it('rebuilds an existing same-spec config from the current source specification', () => {
+    const [segment] = buildInitialSegments(roll({ actualWidth: 1180 }), {
+      processMode: 1,
+      rewindMode: 6,
+      rewindSegments: [{ layoutItems: [{ width: 1200, itemType: 'FINISH' }] }],
+    })
+
+    expect(segment?.layoutItems[0]?.width).toBe(1180)
+  })
+
   it('equalizes source ratios in one update while preserving a total of 100', () => {
     const sources = equalizeSourceRatios([
       { originalUuid: 'roll-1', shareRatio: 0 },

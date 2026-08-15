@@ -21,7 +21,7 @@ export default function BackRecordQuickActions({ detail, form, onDirty, onOpenCh
     const values = theoreticalBackRecordValues(detail)
     applyBackRecordFilledValues({ form, onDirty, onValuesFilled, values })
     form.validateFields().catch(() => undefined)
-    message.success('已带入现有实测参数和成品预估；母卷参考重量仍需现场复称')
+    message.success('已带入现有实测参数、母卷标称重量和成品预估；标称重量仍需现场复称')
   }
 
   return (

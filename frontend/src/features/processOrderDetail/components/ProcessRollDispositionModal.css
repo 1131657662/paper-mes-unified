@@ -1,0 +1,197 @@
+.process-roll-disposition-modal {
+  max-width: calc(100vw - 24px);
+}
+
+.process-roll-disposition-modal .ant-modal-body {
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  padding: 18px 24px 10px;
+}
+
+.process-roll-disposition__intro.ant-alert,
+.process-roll-disposition__selection-alert.ant-alert {
+  align-items: flex-start;
+  border-radius: var(--mes-radius);
+}
+
+.process-roll-disposition__section {
+  margin-top: 20px;
+}
+
+.process-roll-disposition__section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.process-roll-disposition__section-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.process-roll-disposition__section-heading strong {
+  color: var(--mes-color-text);
+  font-size: 14px;
+}
+
+.process-roll-disposition__section-heading > span,
+.process-roll-disposition__excluded-note {
+  color: var(--mes-color-text-secondary);
+  font-size: 12px;
+}
+
+.process-roll-disposition__count-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: var(--mes-color-primary);
+  background: var(--mes-color-surface-selected);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.process-roll-disposition__excluded-note {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.process-roll-disposition__selection-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.process-roll-disposition__selection-toolbar > .ant-input-affix-wrapper {
+  min-width: 0;
+  flex: 1;
+}
+
+.process-roll-disposition__selection-actions {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+  white-space: nowrap;
+}
+
+.process-roll-disposition__roll-list {
+  display: block;
+  padding: 1px 3px 1px 1px;
+}
+
+.process-roll-disposition__roll-option.ant-checkbox-wrapper {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  margin-inline-end: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--mes-color-border);
+  border-radius: var(--mes-radius);
+  background: var(--mes-color-panel);
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.process-roll-disposition__roll-option.ant-checkbox-wrapper:hover {
+  border-color: #91caff;
+  background: #f7fbff;
+}
+
+.process-roll-disposition__roll-option.ant-checkbox-wrapper-checked {
+  border-color: #69b1ff;
+  background: #f0f7ff;
+  box-shadow: 0 0 0 2px rgb(22 119 255 / 8%);
+}
+
+.process-roll-disposition__roll-option .ant-checkbox {
+  margin-top: 3px;
+}
+
+.process-roll-disposition__roll-option > span:last-child {
+  display: block;
+  min-width: 0;
+  flex: 1;
+}
+
+.process-roll-disposition__roll-content {
+  display: block;
+  min-width: 0;
+}
+
+.process-roll-disposition__roll-head,
+.process-roll-disposition__roll-title,
+.process-roll-disposition__roll-paper,
+.process-roll-disposition__action-title {
+  display: flex;
+  align-items: center;
+}
+
+.process-roll-disposition__roll-head {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.process-roll-disposition__roll-title {
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.process-roll-disposition__roll-title strong {
+  color: var(--mes-color-text);
+  font-size: 14px;
+}
+
+.process-roll-disposition__roll-paper {
+  gap: 6px;
+  margin-top: 5px;
+  color: var(--mes-color-text);
+  font-size: 13px;
+}
+
+.process-roll-disposition__roll-paper .anticon {
+  color: var(--mes-color-primary);
+}
+
+.process-roll-disposition__roll-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px 14px;
+  margin-top: 9px;
+}
+
+.process-roll-disposition__roll-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.process-roll-disposition__roll-field small {
+  color: var(--mes-color-text-muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.process-roll-disposition__roll-field > span {
+  overflow-wrap: anywhere;
+  color: var(--mes-color-text);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.process-roll-disposition__empty-search {
+  display: block;
+  padding: 20px 0;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .process-roll-disposition-modal .ant-modal-body { padding-inline: 16px; }
+  .process-roll-disposition__section-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .process-roll-disposition__selection-toolbar { align-items: stretch; flex-direction: column; }
+  .process-roll-disposition__selection-actions { justify-content: flex-end; }
+  .process-roll-disposition__roll-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

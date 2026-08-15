@@ -33,6 +33,7 @@ public final class RewindPricingFinalizationPolicy {
 
     public static boolean isPending(ProcessStep step) {
         if (!Integer.valueOf(FeeCalculator.STEP_TYPE_REWIND).equals(step.getStepType())) return false;
+        if ("FIXED".equalsIgnoreCase(step.getBillingWeightBasis())) return false;
         int mode = step.getBillingMode() == null ? ProcessStepPricingPolicy.STANDARD : step.getBillingMode();
         if (mode != ProcessStepPricingPolicy.STANDARD) return false;
         return !"MEASURED".equalsIgnoreCase(step.getBillingWeightStatus())

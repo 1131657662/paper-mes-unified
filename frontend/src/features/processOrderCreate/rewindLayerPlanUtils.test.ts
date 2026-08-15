@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   normalizeRewindPlan,
   planWithRewindMode,
+  sameSpecRewindError,
   sameSpecRewindPlan,
   segmentRatioPercent,
 } from './rewindLayerPlanUtils'
@@ -35,6 +36,36 @@ describe('sameSpecRewindPlan', () => {
       sources: [{ originalUuid: 'roll-1', shareRatio: 100, consumeRatio: 100, sourceSort: 1 }],
       layoutItems: [{ width: 1702, quantity: 1, itemType: 'FINISH' }],
     }])
+  })
+
+  it('uses the measured width when rebuilding a same-spec plan', () => {
+    const roll = {
+      localId: 'local-1', uuid: 'roll-1', paperName: '牛卡纸', gramWeight: 265,
+      originalWidth: 1702, actualWidth: 1680, originalDiameter: 48, coreDiameter: 6,
+      rollWeight: 850, pieceNum: 1, processMode: 1, mainStepType: 2,
+    } satisfies RollDraft
+
+    const result = sameSpecRewindPlan({ processMode: 1 }, roll)
+
+    expect(result.segments?.[0]?.layoutItems?.[0]?.width).toBe(1680)
+  })
+
+  it('uses the measured width for a diameter-only plan', () => {
+    const roll = {
+      localId: 'local-1', uuid: 'roll-1', paperName: '牛卡纸', gramWeight: 265,
+      originalWidth: 1702, actualWidth: 1680, originalDiameter: 48, coreDiameter: 6,
+      rollWeight: 850, pieceNum: 1, processMode: 1, mainStepType: 2,
+    } satisfies RollDraft
+
+    const result = planWithRewindMode({ processMode: 1 }, roll, 2)
+
+    expect(result.segments?.[0]?.layoutItems?.[0]?.width).toBe(1680)
+  })
+
+  it('blocks same-spec mode when a source specification is missing', () => {
+    expect(sameSpecRewindError({ originalDiameter: 48, coreDiameter: undefined })).toContain('纸芯')
+    expect(sameSpecRewindError({ originalDiameter: undefined, coreDiameter: 6 })).toContain('直径')
+    expect(sameSpecRewindError({ originalDiameter: 48, coreDiameter: 6 })).toBeUndefined()
   })
 })
 

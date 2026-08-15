@@ -12,6 +12,7 @@ const capabilities: ExecutionCapabilities = {
   canManageDelivery: false,
   canManageOrder: true,
   canManageSettlement: false,
+  canManageRollDisposition: false,
 }
 
 const actions: ExecutionActionHandlers = {
@@ -27,6 +28,7 @@ const actions: ExecutionActionHandlers = {
   onPrint: () => undefined,
   onSnapshotDiff: () => undefined,
   onVoidOrder: () => undefined,
+  onRollDisposition: () => undefined,
 }
 
 describe('下发后变更入口', () => {

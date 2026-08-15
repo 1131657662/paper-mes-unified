@@ -87,7 +87,8 @@ public class AiAssistService {
             return response(requestId, "CLARIFY", "LOW", "当前规则库不足以安全判断。请补充错误码、页面或业务状态。", List.of());
         }
         AiRule selected = matched.getFirst();
-        AiAnswerComposer.Result answer = answerComposer.compose(request.pageTemplate(), selected);
+        AiAnswerComposer.Result answer = answerComposer.compose(request.pageTemplate(), selected,
+                inspection.sanitizedQuestion());
         return response(requestId, selected.decision(), "HIGH", answer, selected);
     }
 

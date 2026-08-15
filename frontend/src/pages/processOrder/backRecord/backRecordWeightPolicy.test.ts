@@ -43,10 +43,12 @@ describe('母卷重量回录策略', () => {
 
   it('理论回填不会把标称重量伪装成实测重量', () => {
     const detail = detailFixture()
+    detail.originalRolls = detail.originalRolls.map((roll) => ({ ...roll, weightStatus: 'UNKNOWN' }))
 
     const values = theoreticalBackRecordValues(detail)
 
     expect(values.rolls?.['roll-1']?.actualWeight).toBeUndefined()
+    expect(values.rolls?.['roll-1']?.weightEntryMode).toBeUndefined()
   })
 
   it('汇总不会把 ESTIMATED 的正重量当作已复称', () => {
@@ -62,6 +64,67 @@ describe('母卷重量回录策略', () => {
     expect(metrics.originalActualTotal).toBe(0)
     expect(metrics.originalWeightPending).toBe(true)
     expect(metrics.missingRollWeight).toBe(3)
+  })
+
+  it('preserves stored estimated weight as provisional during theory fill', () => {
+    const detail = detailFixture()
+    detail.originalRolls = detail.originalRolls.map((roll) => ({
+      ...roll,
+      actualWeight: 700,
+      weightStatus: 'ESTIMATED',
+    }))
+
+    const values = theoreticalBackRecordValues(detail)
+
+    expect(values.rolls?.['roll-1']?.actualWeight).toBe(700)
+    expect(values.rolls?.['roll-1']?.weightEntryMode).toBe('USER_ESTIMATE')
+  })
+
+  it('keeps estimated standard-tonnage sources pending until measured', () => {
+    const item = mergeItem(1)
+    const values = {
+      rolls: {
+        'roll-1': { actualWeight: 600, weightEntryMode: 'USER_ESTIMATE' as const },
+        'roll-2': { actualWeight: 700, weightEntryMode: 'USER_ESTIMATE' as const },
+        'roll-3': { actualWeight: 700, weightEntryMode: 'USER_ESTIMATE' as const },
+      },
+    }
+
+    const metrics = buildWorkItemMetrics(item, values)
+
+    expect(metrics.missingRoll).toBe(true)
+    expect(metrics.missingRolls).toBe(3)
+    expect(metrics.unverifiedRolls).toBe(0)
+  })
+
+  it('does not infer measurement from an estimated source when form mode is absent', () => {
+    const item = mergeItem(1)
+    item.rollProductions = item.rollProductions.map((production) => ({
+      ...production,
+      weightStatus: 'ESTIMATED',
+    }))
+
+    const metrics = buildWorkItemMetrics(item, rollValues(600, 700, 700))
+
+    expect(metrics.missingRoll).toBe(true)
+    expect(metrics.missingRolls).toBe(3)
+  })
+
+  it('marks nominal optional sources as unverified without blocking completion', () => {
+    const item = mergeItem(2)
+    const values = {
+      rolls: {
+        'roll-1': { actualWeight: 600, weightEntryMode: 'CARRY_NOMINAL' as const },
+        'roll-2': { actualWeight: 700, weightEntryMode: 'CARRY_NOMINAL' as const },
+        'roll-3': { actualWeight: 700, weightEntryMode: 'CARRY_NOMINAL' as const },
+      },
+    }
+
+    const metrics = buildWorkItemMetrics(item, values)
+
+    expect(metrics.missingRoll).toBe(false)
+    expect(metrics.missingRolls).toBe(0)
+    expect(metrics.unverifiedRolls).toBe(3)
   })
 
   it('合并组提交包含每个来源卷的独立实测重量', () => {

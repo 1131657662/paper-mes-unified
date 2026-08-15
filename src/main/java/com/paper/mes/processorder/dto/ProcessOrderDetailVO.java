@@ -50,6 +50,7 @@ public class ProcessOrderDetailVO {
         private Integer processMode;
         private Integer mainStepType;
         private Integer rollStatus;
+        private com.paper.mes.processorder.model.ProcessRollDispositionAction dispositionAction;
         private Integer isChecked;
         private String checkUser;
         private java.time.LocalDateTime checkTime;

@@ -24,22 +24,28 @@ import java.util.Set;
 @Component
 public class BackRecordScopeResolver {
 
+    private static final int SOURCE_DIRECT_SHIP = 2;
+
     public BackRecordScope resolve(List<OriginalRoll> allRolls, List<FinishRoll> allFinishes,
                                    List<ProcessStep> allSteps, List<FinishOriginalRel> allRelations,
                                    BackRecordDTO dto) {
         Map<String, OriginalRoll> rollByUuid = indexRolls(allRolls);
-        Set<String> selectedIds = selectedRollIds(dto.getRolls(), rollByUuid);
+        Set<String> selectedIds = selectedRollIds(
+                dto.getRolls(), rollByUuid, Boolean.TRUE.equals(dto.getCompleteOrder()));
         requireValidCompletionIntent(allRolls, selectedIds, dto);
         Map<String, Set<String>> sourcesByFinish = sourcesByFinish(allRelations);
         Set<String> finishIds = relatedFinishIds(selectedIds, sourcesByFinish);
         includeLegacyFinishes(dto.getFinishes(), allFinishes, sourcesByFinish, selectedIds, finishIds);
-        if (selectedIds.size() == allRolls.size()) {
+        long activeRollCount = allRolls.stream().filter(this::isActiveRoll).count();
+        if (selectedIds.size() == activeRollCount) {
             includeUnlinkedFinishes(allFinishes, sourcesByFinish, finishIds);
         }
         List<OriginalRoll> rolls = allRolls.stream().filter(roll -> selectedIds.contains(roll.getUuid())).toList();
         List<FinishRoll> finishes = new java.util.ArrayList<>(
                 allFinishes.stream().filter(finish -> finishIds.contains(finish.getUuid())).toList());
-        List<ProcessStep> steps = allSteps.stream().filter(step -> selectedIds.contains(step.getOriginalUuid())).toList();
+        List<ProcessStep> steps = selectedIds.isEmpty() && Boolean.TRUE.equals(dto.getCompleteOrder())
+                ? allSteps
+                : allSteps.stream().filter(step -> selectedIds.contains(step.getOriginalUuid())).toList();
         List<FinishOriginalRel> relations = new java.util.ArrayList<>(allRelations.stream()
                 .filter(relation -> finishIds.contains(relation.getFinishUuid()))
                 .toList());
@@ -49,6 +55,7 @@ public class BackRecordScopeResolver {
     private void requireValidCompletionIntent(List<OriginalRoll> rolls, Set<String> selectedIds,
                                               BackRecordDTO dto) {
         List<OriginalRoll> unselected = rolls.stream()
+                .filter(this::isActiveRoll)
                 .filter(roll -> !Integer.valueOf(1).equals(roll.getIsChecked()))
                 .filter(roll -> !selectedIds.contains(roll.getUuid()))
                 .toList();
@@ -76,7 +83,8 @@ public class BackRecordScopeResolver {
     }
 
     private Set<String> selectedRollIds(List<BackRecordRollDTO> rows,
-                                        Map<String, OriginalRoll> rollByUuid) {
+                                        Map<String, OriginalRoll> rollByUuid,
+                                        boolean completeOrder) {
         Set<String> result = new LinkedHashSet<>();
         for (BackRecordRollDTO row : rows == null ? List.<BackRecordRollDTO>of() : rows) {
             String uuid = row == null ? null : row.getUuid();
@@ -87,11 +95,17 @@ public class BackRecordScopeResolver {
             if (roll == null) {
                 throw new BusinessException(ErrorCode.E002, "回录母卷不属于当前加工单");
             }
+            if (!isActiveRoll(roll)) {
+                throw new BusinessException(ErrorCode.E004, "母卷已处置为终态，不能重复回录");
+            }
             if (Integer.valueOf(1).equals(roll.getIsChecked())) {
                 throw new BusinessException(ErrorCode.E004, "母卷已完成回录，不允许重复覆盖：" + rollLabel(roll));
             }
         }
-        if (result.isEmpty()) {
+        boolean noRemainingRolls = rollByUuid.values().stream()
+                .filter(this::isActiveRoll)
+                .noneMatch(roll -> !Integer.valueOf(1).equals(roll.getIsChecked()));
+        if (result.isEmpty() && (!completeOrder || !noRemainingRolls)) {
             throw new BusinessException("请至少选择一卷母卷回录");
         }
         return result;
@@ -161,9 +175,16 @@ public class BackRecordScopeResolver {
                                          Map<String, Set<String>> sourcesByFinish,
                                          Set<String> finishIds) {
         finishes.stream()
+                .filter(finish -> !Integer.valueOf(SOURCE_DIRECT_SHIP).equals(finish.getSourceType()))
                 .filter(finish -> !sourcesByFinish.containsKey(finish.getUuid()))
                 .map(FinishRoll::getUuid)
                 .forEach(finishIds::add);
+    }
+
+    private boolean isActiveRoll(OriginalRoll roll) {
+        Integer status = roll.getRollStatus();
+        return roll.getDispositionAction() == null
+                && !Integer.valueOf(4).equals(status) && !Integer.valueOf(5).equals(status);
     }
 
     private String rollLabel(OriginalRoll roll) {

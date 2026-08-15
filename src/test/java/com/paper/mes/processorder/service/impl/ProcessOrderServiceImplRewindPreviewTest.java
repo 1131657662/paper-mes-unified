@@ -338,6 +338,34 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 service(), "validateSameSpecRewind", dto, roll()));
     }
 
+    @Test
+    void validateSameSpecRewind_usesMeasuredWidthWhenItDiffersFromOriginalWidth() {
+        OriginalRoll roll = roll();
+        roll.setActualWidth(1490);
+
+        RewindPlanPreviewDTO dto = sameSpecPlan(1490, 48, 6);
+
+        ReflectionTestUtils.invokeMethod(service(), "validateSameSpecRewind", dto, roll);
+    }
+
+    @Test
+    void validateSameSpecRewind_rejectsMissingSourceDiameter() {
+        OriginalRoll roll = roll();
+        roll.setOriginalDiameter(null);
+
+        assertThrows(BusinessException.class, () -> ReflectionTestUtils.invokeMethod(
+                service(), "validateSameSpecRewind", sameSpecPlan(1500, 48, 6), roll));
+    }
+
+    @Test
+    void validateSameSpecRewind_rejectsMissingSourceCore() {
+        OriginalRoll roll = roll();
+        roll.setCoreDiameter(null);
+
+        assertThrows(BusinessException.class, () -> ReflectionTestUtils.invokeMethod(
+                service(), "validateSameSpecRewind", sameSpecPlan(1500, 48, 6), roll));
+    }
+
     private RewindPlanPreviewDTO sameSpecPlan(int width, int diameter, int coreDiameter) {
         RewindPlanPreviewDTO.RewindSegmentDTO segment = segment(item("FINISH", width, 1));
         segment.setTargetDiameter(diameter);

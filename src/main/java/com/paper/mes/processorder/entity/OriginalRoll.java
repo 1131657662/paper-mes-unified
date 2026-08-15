@@ -68,6 +68,8 @@ public class OriginalRoll extends BaseEntity {
     private Integer mainStepType;
     /** 1待加工 2加工中 3完成 4直发 5报废 */
     private Integer rollStatus;
+    /** Post-issue disposition is independent from the physical roll status (for example scrap). */
+    private com.paper.mes.processorder.model.ProcessRollDispositionAction dispositionAction;
     /** 0未复核 1复核完成 */
     private Integer isChecked;
     private String checkUser;

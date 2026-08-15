@@ -53,7 +53,7 @@ public class ProcessOrderExportService {
     private void writeOriginals(Sheet sheet, List<OriginalRoll> rolls, Styles styles) {
         header(sheet, styles, "序号", "编号", "卷号", "批号", "品名", "克重", "实测克重", "门幅",
                 "实测门幅", "直径", "纸芯", "长度m", "件重kg", "实重kg", "件数", "总重kg",
-                "加工模式", "主工艺", "机台", "操作人", "加工费", "损耗kg", "损耗率", "状态", "备注");
+                "加工模式", "主工艺", "机台", "操作人", "加工费", "损耗kg", "损耗率", "状态", "处置动作", "备注");
         int rowIndex = 1;
         for (OriginalRoll roll : rolls) {
             Row row = sheet.createRow(rowIndex++);
@@ -63,7 +63,8 @@ public class ProcessOrderExportService {
                     roll.getActualWeight(), roll.getPieceNum(), roll.getTotalWeight(), processModeText(roll.getProcessMode()),
                     stepTypeText(roll.getMainStepType()), roll.getMachineUuid(), roll.getOperator(),
                     roll.getProcessAmount(), roll.getTotalLossWeight(), roll.getTotalLossRatio(),
-                    rollStatusText(roll.getRollStatus()), join(roll.getRemark(), roll.getDamageDesc()));
+                    rollStatusText(roll.getRollStatus()), dispositionText(roll.getDispositionAction()),
+                    join(roll.getRemark(), roll.getDamageDesc()));
         }
         autosize(sheet, 25);
     }

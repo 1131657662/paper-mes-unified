@@ -2,7 +2,9 @@ package com.paper.mes.processorder.service;
 
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.entity.FinishRoll;
+import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
+import com.paper.mes.processorder.model.ProcessRollDispositionAction;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.jupiter.api.Test;
 
@@ -90,6 +92,24 @@ class ProcessOrderExportServiceTest {
             assertEquals("1288", sheet.getRow(1).getCell(20).getStringCellValue());
             assertEquals("已调整", sheet.getRow(1).getCell(21).getStringCellValue());
             assertEquals("客户要求改标签", sheet.getRow(1).getCell(22).getStringCellValue());
+        }
+    }
+
+    @Test
+    void buildWorkbook_whenRollWasDisposed_exportsPhysicalStatusAndDispositionSeparately() throws IOException {
+        ProcessOrderDetailVO detail = detailWithMissingFinishWeight();
+        OriginalRoll roll = new OriginalRoll();
+        roll.setUuid("roll-1");
+        roll.setRollStatus(2);
+        roll.setDispositionAction(ProcessRollDispositionAction.CANCEL);
+        detail.setOriginalRolls(List.of(roll));
+
+        try (Workbook workbook = service.buildWorkbook(detail)) {
+            var sheet = workbook.getSheet("原卷信息");
+
+            assertEquals("处置动作", sheet.getRow(0).getCell(24).getStringCellValue());
+            assertEquals("加工中", sheet.getRow(1).getCell(23).getStringCellValue());
+            assertEquals("取消本次加工", sheet.getRow(1).getCell(24).getStringCellValue());
         }
     }
 

@@ -27,6 +27,7 @@ export function consumptionSources(values: string[], current: RewindSourcePlanDT
     return {
       ...existing,
       originalUuid: value,
+      shareRatio: undefined,
       consumeRatio: existing ? sourceConsumptionValue(existing) : 100,
       sourceSort: index + 1,
     }

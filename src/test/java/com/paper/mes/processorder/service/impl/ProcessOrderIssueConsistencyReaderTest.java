@@ -3,6 +3,7 @@ package com.paper.mes.processorder.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.entity.FinishRoll;
+import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import org.junit.jupiter.api.Test;
 
@@ -43,6 +44,37 @@ class ProcessOrderIssueConsistencyReaderTest {
         assertThat(result.getChangedGroups()).containsExactly("客户品名/克重/门幅");
     }
 
+    @Test
+    void postIssueRollDisposition_requiresReissue() throws Exception {
+        OriginalRoll issuedRoll = originalRoll("roll-1");
+        ProcessOrderDetailVO issued = detailWithRolls(List.of(issuedRoll));
+        OriginalRoll liveRoll = originalRoll("roll-1");
+        liveRoll.setDispositionAction(com.paper.mes.processorder.model.ProcessRollDispositionAction.CANCEL);
+        ProcessOrderDetailVO live = detailWithRolls(List.of(liveRoll));
+        live.getOrder().setSnapPrint(objectMapper.writeValueAsString(snapshot(issued)));
+
+        var result = ProcessOrderIssueConsistencyReader.read(live, objectMapper);
+
+        assertThat(result.getStatus()).isEqualTo("REISSUE_REQUIRED");
+        assertThat(result.getChangedGroups()).containsExactly("母卷处置");
+    }
+
+    @Test
+    void legacyIssuedSnapshot_withPostIssueDisposition_requiresReissue() throws Exception {
+        ProcessOrderDetailVO live = detailWithRolls(List.of(disposedRoll("roll-1")));
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("schema_version", "1.1");
+        root.put("print_time", "2026-08-12T10:00:00");
+        root.put("original_rolls", List.of(Map.of("uuid", "roll-1", "paper_name", "paper")));
+        root.put("finish_rolls", List.of());
+        live.getOrder().setSnapPrint(objectMapper.writeValueAsString(root));
+
+        var result = ProcessOrderIssueConsistencyReader.read(live, objectMapper);
+
+        assertThat(result.getStatus()).isEqualTo("REISSUE_REQUIRED");
+        assertThat(result.getChangedGroups()).containsExactly("母卷处置");
+    }
+
     private Map<String, Object> snapshot(ProcessOrderDetailVO detail) {
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("schema_version", "2.0");
@@ -70,6 +102,31 @@ class ProcessOrderIssueConsistencyReaderTest {
             finish.setCustomerFinishWidth(width);
         });
         return detail;
+    }
+
+    private ProcessOrderDetailVO detailWithRolls(List<OriginalRoll> rolls) {
+        ProcessOrder order = new ProcessOrder();
+        order.setUuid("order-1");
+        order.setOrderStatus(4);
+        ProcessOrderDetailVO detail = new ProcessOrderDetailVO();
+        detail.setOrder(order);
+        detail.setOriginalRolls(rolls);
+        detail.setFinishRolls(List.of());
+        detail.setSteps(List.of());
+        detail.setRollProductions(List.of());
+        return detail;
+    }
+
+    private OriginalRoll originalRoll(String uuid) {
+        OriginalRoll roll = new OriginalRoll();
+        roll.setUuid(uuid);
+        return roll;
+    }
+
+    private OriginalRoll disposedRoll(String uuid) {
+        OriginalRoll roll = originalRoll(uuid);
+        roll.setDispositionAction(com.paper.mes.processorder.model.ProcessRollDispositionAction.CANCEL);
+        return roll;
     }
 
     private FinishRoll finish(String uuid) {

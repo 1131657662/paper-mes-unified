@@ -66,7 +66,7 @@ public final class MultiSourceConsumptionNormalizer {
         List<FinishConfigSpecDTO.FinishSourceDTO> sources = safeSources(segment);
         BigDecimal segmentWeight = segmentConsumedWeight(segment, rollByUuid);
         if (segmentWeight == null || segmentWeight.signum() <= 0) {
-            requireShareRatioTotal(sources);
+            validatePendingShares(sources);
             return;
         }
         BigDecimal allocated = BigDecimal.ZERO;
@@ -126,10 +126,18 @@ public final class MultiSourceConsumptionNormalizer {
         return weight.multiply(BigDecimal.valueOf(pieceNum));
     }
 
-    private static void requireShareRatioTotal(List<FinishConfigSpecDTO.FinishSourceDTO> sources) {
-        BigDecimal total = sources.stream()
-                .map(FinishConfigSpecDTO.FinishSourceDTO::getShareRatio)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    private static void validatePendingShares(List<FinishConfigSpecDTO.FinishSourceDTO> sources) {
+        boolean hasExplicitShare = sources.stream().anyMatch(source -> source.getShareRatio() != null);
+        if (!hasExplicitShare) return;
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (FinishConfigSpecDTO.FinishSourceDTO source : sources) {
+            BigDecimal share = source.getShareRatio();
+            if (share == null || share.signum() <= 0) {
+                throw new BusinessException("重量未知时，来源分摊比例必须全部填写或全部留空");
+            }
+            total = total.add(share);
+        }
         if (total.compareTo(HUNDRED) != 0) {
             throw new BusinessException("重量未知时，合并复卷来源分摊比例合计必须等于100%");
         }

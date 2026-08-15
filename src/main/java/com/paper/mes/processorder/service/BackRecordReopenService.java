@@ -40,6 +40,7 @@ public class BackRecordReopenService {
     private static final int RESULT_PLANNED = 1;
     private static final int RESULT_NOT_PRODUCED = 3;
     private static final int RESULT_ADDED = 4;
+    private static final int SOURCE_DIRECT_SHIP = 2;
 
     private final OriginalRollMapper rollMapper;
     private final FinishRollMapper finishRollMapper;
@@ -61,11 +62,14 @@ public class BackRecordReopenService {
                        String operator, String batchKey) {
         List<OriginalRoll> allRolls = rolls(orderUuid);
         List<OriginalRoll> checkedRolls = allRolls.stream()
-                .filter(roll -> Integer.valueOf(CHECKED).equals(roll.getIsChecked())).toList();
+                .filter(roll -> Integer.valueOf(CHECKED).equals(roll.getIsChecked()))
+                .filter(this::isActiveRoll)
+                .toList();
         Set<String> selected = requireSelectedRolls(checkedRolls, requestedRollUuids);
         List<FinishOriginalRel> relations = relations(orderUuid);
         Set<String> finishUuids = relatedFinishUuids(selected, relations);
-        if (selected.size() == allRolls.size()) {
+        long activeRollCount = allRolls.stream().filter(this::isActiveRoll).count();
+        if (selected.size() == activeRollCount) {
             includeUnlinkedFinishes(orderUuid, relations, finishUuids);
         }
         businessLockService.lockFinishRolls(finishUuids);
@@ -165,9 +169,19 @@ public class BackRecordReopenService {
         Set<String> linked = relations.stream().map(FinishOriginalRel::getFinishUuid)
                 .collect(java.util.stream.Collectors.toSet());
         finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
-                        .eq(FinishRoll::getOrderUuid, orderUuid))
-                .stream().map(FinishRoll::getUuid).filter(uuid -> !linked.contains(uuid))
+                        .eq(FinishRoll::getOrderUuid, orderUuid)
+                        .and(wrapper -> wrapper.isNull(FinishRoll::getSourceType)
+                                .or().ne(FinishRoll::getSourceType, SOURCE_DIRECT_SHIP)))
+                .stream()
+                .map(FinishRoll::getUuid).filter(uuid -> !linked.contains(uuid))
                 .forEach(finishUuids::add);
+    }
+
+    private boolean isActiveRoll(OriginalRoll roll) {
+        Integer status = roll.getRollStatus();
+        return roll.getDispositionAction() == null
+                && !Integer.valueOf(4).equals(status)
+                && !Integer.valueOf(5).equals(status);
     }
 
     private List<FinishRoll> lockedFinishes(String orderUuid, Set<String> finishUuids) {

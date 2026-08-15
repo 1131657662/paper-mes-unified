@@ -22,6 +22,14 @@ public class AiProperties {
     @NotBlank
     private String rulesResource = "classpath:ai/rules-v1.0.0.json";
 
+    private String memoryDir = "/etc/paper-mes/ai-memory";
+
+    private String memorySeedResource = "classpath:ai/project-memory.seed.v1.json";
+
+    @Min(1_000)
+    @Max(86_400_000)
+    private long memoryCachePollMs = 60_000;
+
     @Min(100)
     @Max(2_000)
     private int maxQuestionChars = 1_000;

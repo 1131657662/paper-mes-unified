@@ -38,6 +38,7 @@ public class FinishRollSourceBinder {
         List<OriginalRoll> candidates = originalRollMapper.selectList(
                 new LambdaQueryWrapper<OriginalRoll>()
                         .eq(OriginalRoll::getOrderUuid, orderUuid)
+                        .isNull(OriginalRoll::getDispositionAction)
                         .ne(OriginalRoll::getProcessMode, DIRECT_SHIP)
                         .orderByAsc(OriginalRoll::getRowSort));
         if (StringUtils.hasText(requestedUuid)) {

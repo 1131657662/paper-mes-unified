@@ -8,8 +8,6 @@ export function printSourceItems(
 ): Array<{ label: string; value: string }> {
   const gramWeight = production.actualGramWeight ?? production.gramWeight
   const width = production.actualWidth ?? production.originalWidth
-  const weight = production.actualWeight
-    ?? (production.rollWeight ?? 0) * (production.pieceNum ?? 1)
   const gramText = `${formatGram(gramWeight)}${production.actualGramWeight == null ? '' : '（实）'}`
   const widthText = `${formatMm(width)}${production.actualWidth == null ? '' : '（实）'}`
   return [
@@ -21,7 +19,7 @@ export function printSourceItems(
     { label: '克重/门幅', value: `${gramText} / ${widthText}` },
     {
       label: production.actualWeight == null ? '标重' : '实重',
-      value: formatProductionKg(weight, production),
+      value: sourceWeight(production),
     },
     { label: '方式', value: sourceProcessText(production) },
   ]
@@ -65,8 +63,12 @@ function sourceName(production: RollProductionVO, index: number) {
 }
 
 function sourceWeight(production: RollProductionVO) {
-  const weight = production.actualWeight
-    ?? (production.rollWeight ?? 0) * (production.pieceNum ?? 1)
+  if (production.actualWeight != null) {
+    return formatProductionKg(production.actualWeight, production)
+  }
+  if (production.weightStatus === 'UNKNOWN') return '待称重'
+  if (production.rollWeight == null) return '-'
+  const weight = production.rollWeight * (production.pieceNum ?? 1)
   return formatProductionKg(weight, production)
 }
 

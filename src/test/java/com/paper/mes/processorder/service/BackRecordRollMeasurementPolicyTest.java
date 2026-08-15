@@ -3,6 +3,7 @@ package com.paper.mes.processorder.service;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.dto.BackRecordRollDTO;
 import com.paper.mes.processorder.entity.OriginalRoll;
+import com.paper.mes.processorder.model.WeightEntryMode;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -45,8 +46,102 @@ class BackRecordRollMeasurementPolicyTest {
     }
 
     @Test
+    void missingOptionalActualSpecs_preservePreviouslyRecordedValues() {
+        OriginalRoll roll = roll("ESTIMATED", "1");
+        roll.setActualGramWeight(180);
+        roll.setActualWidth(1250);
+
+        BackRecordRollMeasurementPolicy.apply(roll, dto("2000"), true);
+
+        assertThat(roll.getActualGramWeight()).isEqualTo(180);
+        assertThat(roll.getActualWidth()).isEqualTo(1250);
+    }
+
+    @Test
     void positiveLegacyWeightWithoutStatus_remainsCompatible() {
         assertThat(BackRecordRollMeasurementPolicy.isMeasured(roll(null, "1200"))).isTrue();
+    }
+
+    @Test
+    void carryNominalWeight_staysEstimatedAndUsesSourceTotal() {
+        OriginalRoll roll = roll("ESTIMATED", null);
+        roll.setRollWeight(new BigDecimal("2000"));
+        roll.setPieceNum(2);
+        roll.setWeightRecordedAt(java.time.LocalDateTime.now());
+        roll.setWeightRecordedBy("old-user");
+        BackRecordRollDTO dto = dto(null);
+        dto.setWeightEntryMode(WeightEntryMode.CARRY_NOMINAL);
+
+        boolean measured = BackRecordRollMeasurementPolicy.apply(roll, dto, true);
+
+        assertThat(measured).isFalse();
+        assertThat(roll.getActualWeight()).isEqualByComparingTo("4000");
+        assertThat(roll.getWeightStatus()).isEqualTo("ESTIMATED");
+        assertThat(roll.getWeightSource()).isEqualTo("CARRIED_NOMINAL");
+        assertThat(roll.getWeightRecordedAt()).isNull();
+        assertThat(roll.getWeightRecordedBy()).isNull();
+        assertThat(BackRecordRollMeasurementPolicy.isMeasured(roll)).isFalse();
+    }
+
+    @Test
+    void carryNominalWeight_withoutReference_isRejected() {
+        OriginalRoll roll = roll("UNKNOWN", null);
+        BackRecordRollDTO dto = dto(null);
+        dto.setWeightEntryMode(WeightEntryMode.CARRY_NOMINAL);
+
+        assertThatThrownBy(() -> BackRecordRollMeasurementPolicy.apply(roll, dto, false))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("实际重量");
+    }
+
+    @Test
+    void carryNominalWeight_doesNotUseLegacyPlaceholderForUnknownRoll() {
+        OriginalRoll roll = roll("UNKNOWN", null);
+        roll.setRollWeight(new BigDecimal("1"));
+        BackRecordRollDTO dto = dto(null);
+        dto.setWeightEntryMode(WeightEntryMode.CARRY_NOMINAL);
+
+        assertThatThrownBy(() -> BackRecordRollMeasurementPolicy.apply(roll, dto, false))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("实际重量");
+    }
+
+    @Test
+    void userEstimate_withoutPositiveWeight_isRejected() {
+        OriginalRoll roll = roll("UNKNOWN", null);
+        BackRecordRollDTO dto = dto(null);
+        dto.setWeightEntryMode(WeightEntryMode.USER_ESTIMATE);
+
+        assertThatThrownBy(() -> BackRecordRollMeasurementPolicy.apply(roll, dto, false))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("实际重量");
+    }
+
+    @Test
+    void userEstimate_clearsPreviousMeasurementAudit() {
+        OriginalRoll roll = roll("MEASURED", "1200");
+        roll.setWeightRecordedAt(java.time.LocalDateTime.now());
+        roll.setWeightRecordedBy("scale-user");
+        BackRecordRollDTO dto = dto("1300");
+        dto.setWeightEntryMode(WeightEntryMode.USER_ESTIMATE);
+
+        boolean measured = BackRecordRollMeasurementPolicy.apply(roll, dto, true);
+
+        assertThat(measured).isFalse();
+        assertThat(roll.getWeightStatus()).isEqualTo("ESTIMATED");
+        assertThat(roll.getWeightRecordedAt()).isNull();
+        assertThat(roll.getWeightRecordedBy()).isNull();
+    }
+
+    @Test
+    void measuredMode_withoutPositiveWeight_isRejected() {
+        OriginalRoll roll = roll("UNKNOWN", null);
+        BackRecordRollDTO dto = dto(null);
+        dto.setWeightEntryMode(WeightEntryMode.MEASURED);
+
+        assertThatThrownBy(() -> BackRecordRollMeasurementPolicy.apply(roll, dto, false))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("实际重量");
     }
 
     private OriginalRoll roll(String status, String actualWeight) {

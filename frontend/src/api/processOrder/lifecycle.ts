@@ -10,6 +10,8 @@ import type {
   PrintResultVO,
   ProcessOrderIssueVersion,
   ProcessOrderReissueDTO,
+  ProcessRollDispositionDTO,
+  ProcessRollDispositionVO,
   ProcessOrderRollbackDTO,
   ProcessOrderSubmitVO,
   ProcessOrderVoidDTO,
@@ -139,6 +141,14 @@ export function backRecordProcessOrder(uuid: string, dto: BackRecordDTO) {
 export function reopenBackRecordBatch(uuid: string, dto: BackRecordReopenDTO) {
   return request<void>({
     url: `/api/process-orders/${uuid}/back-record/reopen`,
+    method: 'post',
+    data: dto,
+  })
+}
+
+export function disposeProcessRoll(rollUuid: string, dto: ProcessRollDispositionDTO) {
+  return request<ProcessRollDispositionVO>({
+    url: `/api/process-orders/rolls/${rollUuid}/disposition`,
     method: 'post',
     data: dto,
   })

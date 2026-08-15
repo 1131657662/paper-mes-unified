@@ -1,6 +1,7 @@
 import type { RewindSourcePlanDTO } from '../../types/processOrder'
 import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
 import type { RollDraft } from './types'
+import { effectiveRollWidth } from './rewindLayerPlanUtils'
 
 export interface SourceRollOption {
   value: string
@@ -50,7 +51,7 @@ export function sameSpecSourceIds(target: RollDraft, rolls: RollDraft[]): string
     .filter((roll) => roll.uuid)
     .filter((roll) => roll.paperName === target.paperName)
     .filter((roll) => roll.gramWeight === target.gramWeight)
-    .filter((roll) => roll.originalWidth === target.originalWidth)
+    .filter((roll) => effectiveRollWidth(roll) === effectiveRollWidth(target))
     .map((roll) => roll.uuid!)
 }
 
@@ -89,7 +90,7 @@ function roundRatio(value: number): number {
 
 function sourceRollLabel(roll: RollDraft, index: number): string {
   const identity = roll.rollNo || roll.extraNo || '无卷号'
-  const spec = `${roll.paperName || '-'} / ${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}`
+  const spec = `${roll.paperName || '-'} / ${formatGram(roll.gramWeight)} / ${formatMm(effectiveRollWidth(roll))}`
   const weight = isKnownWeight(roll) ? formatKg(rollTotalWeight(roll)) : '待称重'
   return `母卷${index + 1}｜${identity}｜${spec}｜${weight}`
 }

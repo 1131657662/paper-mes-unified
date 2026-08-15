@@ -184,7 +184,8 @@ function validateSelection(
   selection: ReturnType<typeof useBackRecordSelection>,
   completeOrder: boolean,
 ) {
-  if (!selection.selectedCount) {
+  const noPendingRolls = selection.remainingCount === 0
+  if (!selection.selectedCount && !(completeOrder && noPendingRolls)) {
     message.warning('请至少选择一个未回录母卷组')
     return false
   }

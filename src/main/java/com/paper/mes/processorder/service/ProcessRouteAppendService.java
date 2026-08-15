@@ -80,6 +80,7 @@ public class ProcessRouteAppendService {
         OriginalRoll roll = originalRollMapper.selectOne(new LambdaQueryWrapper<OriginalRoll>()
                 .eq(OriginalRoll::getUuid, originalUuid)
                 .eq(OriginalRoll::getOrderUuid, orderUuid)
+                .isNull(OriginalRoll::getDispositionAction)
                 .last("LIMIT 1"));
         if (roll == null) {
             throw new BusinessException(ErrorCode.E002, "原纸明细不存在");

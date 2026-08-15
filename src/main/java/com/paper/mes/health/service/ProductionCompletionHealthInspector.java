@@ -85,7 +85,10 @@ public class ProductionCompletionHealthInspector {
             LEFT JOIN (
                 SELECT order_uuid, COUNT(*) original_count,
                        SUM(CASE WHEN COALESCE(actual_weight, 0) <= 0 THEN 1 ELSE 0 END) missing_weight
-                FROM biz_original_roll WHERE is_deleted = 0 GROUP BY order_uuid
+                FROM biz_original_roll
+                WHERE is_deleted = 0
+                  AND (disposition_action IS NULL OR disposition_action = 'DIRECT_SHIP')
+                GROUP BY order_uuid
             ) o ON o.order_uuid = p.uuid
             LEFT JOIN (
                 SELECT order_uuid, COUNT(*) finish_count,

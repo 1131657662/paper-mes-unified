@@ -88,7 +88,9 @@ public class ProductionHealthInspector implements DataHealthInspector {
             FROM biz_process_order p
             LEFT JOIN (
                 SELECT order_uuid, SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) original_weight
-                FROM biz_original_roll WHERE is_deleted = 0 GROUP BY order_uuid
+                FROM biz_original_roll
+                WHERE is_deleted = 0 AND disposition_action IS NULL
+                GROUP BY order_uuid
             ) o ON o.order_uuid = p.uuid
             LEFT JOIN (
                 SELECT order_uuid, SUM(COALESCE(actual_weight, estimate_weight, 0)) finish_weight
@@ -114,7 +116,10 @@ public class ProductionHealthInspector implements DataHealthInspector {
             FROM biz_process_order p
             INNER JOIN (
                 SELECT order_uuid, SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) original_weight
-                FROM biz_original_roll WHERE is_deleted = 0 GROUP BY order_uuid
+                FROM biz_original_roll
+                WHERE is_deleted = 0
+                  AND (disposition_action IS NULL OR disposition_action = 'DIRECT_SHIP')
+                GROUP BY order_uuid
             ) o ON o.order_uuid = p.uuid
             INNER JOIN (
                 SELECT order_uuid, SUM(COALESCE(actual_weight, estimate_weight, 0)) finish_weight
@@ -139,6 +144,7 @@ public class ProductionHealthInspector implements DataHealthInspector {
                   ON original.uuid = rel.original_uuid AND original.is_deleted = 0
                 WHERE rel.finish_uuid = f.uuid AND rel.is_deleted = 0
                   AND original.process_mode = 2
+                  AND original.disposition_action IS NULL
               )
             ORDER BY f.create_time DESC
             """;
@@ -160,6 +166,7 @@ public class ProductionHealthInspector implements DataHealthInspector {
             SELECT p.uuid, p.order_no, COUNT(*) missing_count
             FROM biz_process_order p
             INNER JOIN biz_original_roll r ON r.order_uuid = p.uuid AND r.is_deleted = 0
+              AND r.disposition_action IS NULL
             WHERE p.is_deleted = 0 AND p.order_status IN (1, 2, 3, 4, 5)
               AND (r.roll_no IS NULL OR TRIM(r.roll_no) = '')
             GROUP BY p.uuid, p.order_no

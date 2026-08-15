@@ -3,7 +3,10 @@ package com.paper.mes.processorder.service;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.dto.BackRecordRollDTO;
 import com.paper.mes.processorder.entity.OriginalRoll;
+import com.paper.mes.processorder.model.WeightEntryMode;
 import com.paper.mes.processorder.model.WeightStatus;
+
+import java.math.BigDecimal;
 
 /** Applies the measurement semantics of one source roll during back-recording. */
 public final class BackRecordRollMeasurementPolicy {
@@ -13,8 +16,30 @@ public final class BackRecordRollMeasurementPolicy {
 
     public static boolean apply(OriginalRoll roll, BackRecordRollDTO dto, boolean weightRequired) {
         validate(dto, roll, weightRequired);
-        roll.setActualGramWeight(dto.getActualGramWeight());
-        roll.setActualWidth(dto.getActualWidth());
+        if (dto.getActualGramWeight() != null) {
+            roll.setActualGramWeight(dto.getActualGramWeight());
+        }
+        if (dto.getActualWidth() != null) {
+            roll.setActualWidth(dto.getActualWidth());
+        }
+        if (dto.getWeightEntryMode() == WeightEntryMode.CARRY_NOMINAL) {
+            BigDecimal nominal = nominalWeight(roll);
+            if (!positive(nominal)) {
+                throw weightError(roll);
+            }
+            roll.setActualWeight(nominal);
+            roll.setWeightStatus(WeightStatus.ESTIMATED.name());
+            roll.setWeightSource("CARRIED_NOMINAL");
+            clearMeasurementAudit(roll);
+            return false;
+        }
+        if (dto.getWeightEntryMode() == WeightEntryMode.USER_ESTIMATE) {
+            roll.setActualWeight(dto.getActualWeight());
+            roll.setWeightStatus(WeightStatus.ESTIMATED.name());
+            roll.setWeightSource("MANUAL_ESTIMATE");
+            clearMeasurementAudit(roll);
+            return false;
+        }
         if (!positive(dto.getActualWeight())) return false;
         roll.setActualWeight(dto.getActualWeight());
         roll.setWeightStatus(WeightStatus.MEASURED.name());
@@ -29,10 +54,20 @@ public final class BackRecordRollMeasurementPolicy {
     }
 
     private static void validate(BackRecordRollDTO dto, OriginalRoll roll, boolean weightRequired) {
-        if (weightRequired && !positive(dto.getActualWeight())) {
+        if ((dto.getWeightEntryMode() == WeightEntryMode.USER_ESTIMATE
+                || dto.getWeightEntryMode() == WeightEntryMode.MEASURED)
+                && !positive(dto.getActualWeight())) {
             throw weightError(roll);
         }
-        if (dto.getActualWeight() != null && !positive(dto.getActualWeight())) {
+        if (weightRequired && !positive(dto.getActualWeight())
+                && dto.getWeightEntryMode() != WeightEntryMode.CARRY_NOMINAL) {
+            throw weightError(roll);
+        }
+        if (dto.getActualWeight() != null && !positive(dto.getActualWeight())
+                && dto.getWeightEntryMode() != WeightEntryMode.CARRY_NOMINAL) {
+            throw weightError(roll);
+        }
+        if (dto.getWeightEntryMode() == WeightEntryMode.CARRY_NOMINAL && !positive(nominalWeight(roll))) {
             throw weightError(roll);
         }
         if (dto.getActualGramWeight() != null && dto.getActualGramWeight() <= 0) {
@@ -45,6 +80,20 @@ public final class BackRecordRollMeasurementPolicy {
 
     private static boolean positive(java.math.BigDecimal value) {
         return value != null && value.signum() > 0;
+    }
+
+    private static BigDecimal nominalWeight(OriginalRoll roll) {
+        if (roll == null) return null;
+        if (WeightStatus.UNKNOWN.name().equalsIgnoreCase(roll.getWeightStatus())) return null;
+        if (positive(roll.getTotalWeight())) return roll.getTotalWeight();
+        if (!positive(roll.getRollWeight())) return null;
+        int pieces = roll.getPieceNum() == null || roll.getPieceNum() < 1 ? 1 : roll.getPieceNum();
+        return roll.getRollWeight().multiply(BigDecimal.valueOf(pieces));
+    }
+
+    private static void clearMeasurementAudit(OriginalRoll roll) {
+        roll.setWeightRecordedAt(null);
+        roll.setWeightRecordedBy(null);
     }
 
     private static BusinessException weightError(OriginalRoll roll) {

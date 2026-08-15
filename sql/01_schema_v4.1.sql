@@ -1,6 +1,6 @@
 -- =============================================================================
 -- 卷筒纸加工管理系统 V4.1  数据库建表脚本
--- Canonical schema version: 3.65
+-- Canonical schema version: 3.68
 -- Phase 1 / P0-1  数据库建表
 -- 引擎: InnoDB   字符集: utf8mb4   排序规则: utf8mb4_general_ci
 -- 规范依据: 开发文档 第三章 + 3.4 节 DDL 统一规范
@@ -292,6 +292,7 @@ CREATE TABLE `biz_original_roll` (
   `process_mode`       TINYINT       NOT NULL DEFAULT 1      COMMENT '1标准加工 2现场定尺 3不加工直发 4仅附加工艺',
   `main_step_type`     TINYINT       DEFAULT NULL            COMMENT '主工艺类型：1锯纸 2复卷（标准加工和现场定尺必填）',
   `roll_status`        TINYINT       NOT NULL DEFAULT 1      COMMENT '1待加工 2加工中 3完成 4直发 5报废',
+  `disposition_action` VARCHAR(32)  DEFAULT NULL            COMMENT '下发后处置动作，与报废状态分离',
   `is_checked`         TINYINT       NOT NULL DEFAULT 0      COMMENT '0未复核 1车间线下复核完成',
   `check_user`         VARCHAR(50)   DEFAULT NULL            COMMENT '复核人',
   `check_time`         DATETIME      DEFAULT NULL            COMMENT '复核时间',
@@ -317,6 +318,7 @@ CREATE TABLE `biz_original_roll` (
   KEY `idx_order_uuid` (`order_uuid`),
   KEY `idx_roll_no` (`roll_no`),
   KEY `idx_roll_status` (`roll_status`),
+  KEY `idx_original_roll_disposition` (`order_uuid`, `disposition_action`),
   KEY `idx_process_mode` (`process_mode`),
   KEY `idx_main_step_type` (`main_step_type`),
   KEY `idx_row_sort` (`order_uuid`, `row_sort`),
@@ -2616,6 +2618,103 @@ BEGIN
   END IF;
 END$$
 DELIMITER ;
+
+-- V3.66 canonical baseline: auditable post-issue source-roll disposition.
+CREATE TABLE `biz_process_roll_disposition` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `source_order_uuid` VARCHAR(36) NOT NULL,
+  `source_roll_uuid` VARCHAR(36) NOT NULL,
+  `action_type` VARCHAR(32) NOT NULL,
+  `status` VARCHAR(16) NOT NULL,
+  `target_order_uuid` VARCHAR(36) DEFAULT NULL,
+  `target_roll_uuid` VARCHAR(36) DEFAULT NULL,
+  `target_finish_uuid` VARCHAR(36) DEFAULT NULL,
+  `target_finish_uuids` JSON DEFAULT NULL COMMENT '直发生成的全部成品UUID数组',
+  `request_id` VARCHAR(64) NOT NULL,
+  `reason` VARCHAR(500) NOT NULL,
+  `operator` VARCHAR(128) NOT NULL,
+  `operate_time` DATETIME NOT NULL,
+  `source_order_version` INT DEFAULT NULL,
+  `source_roll_version` INT DEFAULT NULL,
+  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `create_by` VARCHAR(128) DEFAULT NULL,
+  `update_by` VARCHAR(128) DEFAULT NULL,
+  `create_time` DATETIME DEFAULT NULL,
+  `update_time` DATETIME DEFAULT NULL,
+  `version` INT NOT NULL DEFAULT 0,
+  `ext_str1` VARCHAR(255) DEFAULT NULL,
+  `ext_str2` VARCHAR(255) DEFAULT NULL,
+  `ext_num1` DECIMAL(20,6) DEFAULT NULL,
+  `ext_num2` DECIMAL(20,6) DEFAULT NULL,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_process_roll_disposition_source` (`source_roll_uuid`, `is_deleted`),
+  UNIQUE KEY `uk_process_roll_disposition_request` (`request_id`, `is_deleted`),
+  KEY `idx_process_roll_disposition_order` (`source_order_uuid`, `operate_time`),
+  CONSTRAINT `fk_process_roll_disposition_order` FOREIGN KEY (`source_order_uuid`)
+    REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_process_roll_disposition_roll` FOREIGN KEY (`source_roll_uuid`)
+    REFERENCES `biz_original_roll` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_process_roll_disposition_target_order` FOREIGN KEY (`target_order_uuid`)
+    REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_process_roll_disposition_target_roll` FOREIGN KEY (`target_roll_uuid`)
+    REFERENCES `biz_original_roll` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_process_roll_disposition_target_finish` FOREIGN KEY (`target_finish_uuid`)
+    REFERENCES `biz_finish_roll` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_process_roll_disposition_action`
+    CHECK (`action_type` IN ('DIRECT_SHIP', 'CANCEL', 'SPLIT_TO_ORDER')),
+  CONSTRAINT `chk_process_roll_disposition_status`
+    CHECK (`status` IN ('APPLIED', 'REJECTED')),
+  CONSTRAINT `chk_process_roll_disposition_reason`
+    CHECK (CHAR_LENGTH(TRIM(`reason`)) > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='涓嬪彂鍚庢湭鍔犲伐姣嶅嵎澶勭疆瀹¤';
+
+-- V3.67 canonical baseline: database-backed project memory snapshots.
+CREATE TABLE `biz_project_memory_doc` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `doc_version` VARCHAR(32) NOT NULL,
+  `schema_version` VARCHAR(16) NOT NULL,
+  `checksum` CHAR(71) NOT NULL,
+  `doc_json` JSON NOT NULL,
+  `status` VARCHAR(16) NOT NULL,
+  `patch_notes` VARCHAR(500) DEFAULT NULL,
+  `created_by` VARCHAR(64) NOT NULL,
+  `approved_by` VARCHAR(64) DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `active_status` VARCHAR(16) GENERATED ALWAYS AS (
+    CASE WHEN `status` = 'ACTIVE' THEN 'ACTIVE' ELSE NULL END
+  ) STORED,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_project_memory_doc_version` (`doc_version`),
+  UNIQUE KEY `uk_project_memory_doc_checksum` (`checksum`),
+  UNIQUE KEY `uk_project_memory_active_status` (`active_status`),
+  KEY `idx_project_memory_doc_status` (`status`, `created_at`),
+  CONSTRAINT `chk_project_memory_doc_status`
+    CHECK (`status` IN ('ACTIVE', 'SUPERSEDED', 'DRAFT')),
+  CONSTRAINT `chk_project_memory_doc_checksum`
+    CHECK (`checksum` LIKE 'sha256:%' AND CHAR_LENGTH(`checksum`) = 71)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI项目记忆全量版本快照';
+
+-- V3.68 canonical baseline: project-memory mutation audit and idempotency.
+CREATE TABLE `biz_project_memory_patch_audit` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `idempotency_key` VARCHAR(128) NOT NULL,
+  `operation_type` VARCHAR(16) NOT NULL,
+  `expected_memory_version` VARCHAR(32) DEFAULT NULL,
+  `old_doc_version` VARCHAR(32) DEFAULT NULL,
+  `new_doc_version` VARCHAR(32) DEFAULT NULL,
+  `old_checksum` CHAR(71) DEFAULT NULL,
+  `new_checksum` CHAR(71) DEFAULT NULL,
+  `operations_json` JSON NOT NULL,
+  `reason` VARCHAR(500) NOT NULL,
+  `operator` VARCHAR(64) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_project_memory_patch_idempotency` (`idempotency_key`),
+  KEY `idx_project_memory_patch_created` (`created_at`),
+  CONSTRAINT `chk_project_memory_patch_operation`
+    CHECK (`operation_type` IN ('PATCH', 'ROLLBACK', 'RELOAD'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI项目记忆变更审计';
 
 SET FOREIGN_KEY_CHECKS = 1;
 

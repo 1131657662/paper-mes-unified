@@ -100,6 +100,7 @@ export interface RollProductionVO {
   processMode?: number
   mainStepType?: number
   rollStatus?: number
+  dispositionAction?: 'DIRECT_SHIP' | 'CANCEL' | 'SPLIT_TO_ORDER'
   isChecked?: number
   checkUser?: string
   checkTime?: string

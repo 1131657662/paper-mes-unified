@@ -2,7 +2,7 @@ import { ArrowLeftOutlined, ArrowRightOutlined, CopyOutlined } from '@ant-design
 import { Button, Form, Space, Tag, Typography } from 'antd'
 import type { BackRecordFormValues } from './backRecordUtils'
 import { theoreticalItemFinishValues } from './backRecordTheoryFill'
-import { storedMeasuredWeight, workItemSourceRolls } from './backRecordSourceRolls'
+import { sourceEstimatedWeight, storedMeasuredWeight, workItemSourceRolls } from './backRecordSourceRolls'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 
 interface Props {
@@ -47,7 +47,8 @@ function fillRoll(form: ReturnType<typeof Form.useForm<BackRecordFormValues>>[0]
     form.setFieldValue(['rolls', roll.uuid], {
       actualGramWeight: roll.actualGramWeight ?? roll.gramWeight,
       actualWidth: roll.actualWidth ?? roll.originalWidth,
-      actualWeight: storedMeasuredWeight(roll),
+      actualWeight: storedMeasuredWeight(roll) ?? sourceEstimatedWeight(roll),
+      weightEntryMode: storedMeasuredWeight(roll) != null ? 'MEASURED' : sourceEstimatedWeight(roll) != null ? 'CARRY_NOMINAL' : undefined,
       remark: roll.remark,
     })
   }

@@ -31,6 +31,9 @@ app:
     data-mode: ${PAPER_MES_AI_DATA_MODE:DISABLED}
     provider: ${PAPER_MES_AI_PROVIDER:LOCAL_RULES}
     rules-resource: ${PAPER_MES_AI_RULES_RESOURCE:classpath:ai/rules-v1.0.0.json}
+    memory-dir: ${PAPER_MES_AI_MEMORY_DIR:/etc/paper-mes/ai-memory}
+    memory-seed-resource: ${PAPER_MES_AI_MEMORY_SEED_RESOURCE:classpath:ai/project-memory.seed.v1.json}
+    memory-cache-poll-ms: ${PAPER_MES_AI_MEMORY_CACHE_POLL_MS:60000}
     max-question-chars: ${PAPER_MES_AI_MAX_QUESTION_CHARS:1000}
     global-concurrent-requests: ${PAPER_MES_AI_GLOBAL_CONCURRENT_REQUESTS:1}
     zhipu-api-key: ${PAPER_MES_AI_ZHIPU_API_KEY:}
@@ -46,7 +49,7 @@ app:
   schema-bootstrap:
     enabled: false
   schema-readiness:
-    expected-version: ${PAPER_MES_EXPECTED_SCHEMA_VERSION:3.65}
+    expected-version: ${PAPER_MES_EXPECTED_SCHEMA_VERSION:3.68}
     require-migration-history: true
   runtime:
     backend-version: ${PAPER_MES_BACKEND_VERSION}

@@ -47,6 +47,15 @@ class RewindPricingFinalizationPolicyTest {
     }
 
     @Test
+    void mergedSourcePlaceholder_withFixedWeightBasis_isNotPending() {
+        ProcessStep source = rewind(ProcessStepPricingPolicy.STANDARD, "PENDING", 1);
+        source.setBillingWeightBasis("FIXED");
+
+        assertThatCode(() -> RewindPricingFinalizationPolicy.requireFinalized(List.of(source)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void legacyCompletedRewind_withoutNewStatus_remainsSettleableDuringMigration() {
         ProcessStep legacy = rewind(ProcessStepPricingPolicy.STANDARD, null, 0);
 

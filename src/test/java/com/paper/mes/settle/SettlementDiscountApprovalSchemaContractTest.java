@@ -27,7 +27,7 @@ class SettlementDiscountApprovalSchemaContractTest {
     @Test
     void canonicalSchemaMatchesMigrationBoundary() throws IOException {
         String schema = Files.readString(Path.of("sql/01_schema_v4.1.sql"));
-        assertThat(Files.readString(Path.of("sql/schema-baseline.version")).trim()).isEqualTo("3.65");
+        assertThat(Files.readString(Path.of("sql/schema-baseline.version")).trim()).isEqualTo("3.68");
         assertThat(schema).contains("uk_discount_approval_active_settle",
                 "idx_discount_approval_inbox", "chk_discount_approval_level");
     }

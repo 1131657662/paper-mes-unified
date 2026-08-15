@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Transactional
@@ -74,6 +75,20 @@ class ProcessOrderRollbackEditBusinessFlowIT {
 
         assertThat(processOrderService.getDetail(scenario.orderUuid()).getOrder().getOrderStatus()).isEqualTo(6);
         assertThat(criticalIssueTypes(scenario.orderUuid())).isEmpty();
+    }
+
+    @Test
+    void disposedRoll_preventsDeepRollbackWithoutAnInverseDispositionFlow() {
+        var scenario = fixture.createStandardSaw();
+        fixture.issueAndComplete(scenario);
+        jdbcTemplate.update("""
+                UPDATE biz_original_roll SET disposition_action = 'CANCEL'
+                WHERE order_uuid = ?
+                """, scenario.orderUuid());
+
+        assertThatThrownBy(() -> processOrderService.rollbackToDraft(
+                scenario.orderUuid(), "尝试回退已有处置记录的加工单"))
+                .hasMessageContaining("已有母卷处置记录");
     }
 
     @Test

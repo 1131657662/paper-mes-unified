@@ -83,7 +83,7 @@ function SegmentHeader({ actions, context, disabled, segment }: HeaderProps) {
       />
       <Select
         aria-label={`分段 ${context.index + 1} 成品纸芯`}
-        value={segment.finishCoreDiameter ?? 3}
+        value={segment.finishCoreDiameter}
         onChange={(finishCoreDiameter) => actions.onSegmentChange(segment.key, { finishCoreDiameter })}
         style={{ width: 100 }}
         disabled={context.rewindMode === 1 || disabled}

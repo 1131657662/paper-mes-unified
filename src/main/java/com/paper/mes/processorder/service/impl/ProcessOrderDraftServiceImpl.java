@@ -215,6 +215,9 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         updated.setUuid(current.getUuid());
         updated.setVersion(current.getVersion());
         updated.setRollStatus(current.getRollStatus());
+        if (dto.getActualWidth() == null) {
+            updated.setActualWidth(current.getActualWidth());
+        }
         if (!structuralChange) {
             updated.setProcessMode(current.getProcessMode());
             updated.setMainStepType(current.getMainStepType());

@@ -32,6 +32,8 @@ import com.paper.mes.processorder.dto.ProcessOrderReissueDTO;
 import com.paper.mes.processorder.dto.ProcessOrderRemarkDTO;
 import com.paper.mes.processorder.dto.ProcessOrderRollbackDTO;
 import com.paper.mes.processorder.dto.ProcessOrderVoidDTO;
+import com.paper.mes.processorder.dto.ProcessRollDispositionDTO;
+import com.paper.mes.processorder.dto.ProcessRollDispositionVO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.dto.ProcessStepDTO;
@@ -45,11 +47,11 @@ import com.paper.mes.processorder.dto.SnapshotDiffVO;
 import com.paper.mes.processorder.dto.StatusChangeDTO;
 import com.paper.mes.processorder.entity.ProcessOrder;
 import com.paper.mes.processorder.service.ProcessOrderService;
+import com.paper.mes.processorder.service.ProcessRollDispositionService;
 import com.paper.mes.processorder.service.ProcessRouteAppendService;
 import com.paper.mes.processorder.service.ProcessRouteSaveService;
 import com.paper.mes.processorder.service.ProcessStepPricingBatchService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -59,19 +61,42 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/process-orders")
-@RequiredArgsConstructor
 public class ProcessOrderController {
 
     private final ProcessOrderService processOrderService;
     private final ProcessRouteSaveService processRouteSaveService;
     private final ProcessRouteAppendService processRouteAppendService;
     private final ProcessStepPricingBatchService processStepPricingBatchService;
+    private final ProcessRollDispositionService processRollDispositionService;
+
+    @Autowired
+    public ProcessOrderController(ProcessOrderService processOrderService,
+                                  ProcessRouteSaveService processRouteSaveService,
+                                  ProcessRouteAppendService processRouteAppendService,
+                                  ProcessStepPricingBatchService processStepPricingBatchService,
+                                  ProcessRollDispositionService processRollDispositionService) {
+        this.processOrderService = processOrderService;
+        this.processRouteSaveService = processRouteSaveService;
+        this.processRouteAppendService = processRouteAppendService;
+        this.processStepPricingBatchService = processStepPricingBatchService;
+        this.processRollDispositionService = processRollDispositionService;
+    }
+
+    /** Keeps existing controller contract tests source-compatible. */
+    public ProcessOrderController(ProcessOrderService processOrderService,
+                                  ProcessRouteSaveService processRouteSaveService,
+                                  ProcessRouteAppendService processRouteAppendService,
+                                  ProcessStepPricingBatchService processStepPricingBatchService) {
+        this(processOrderService, processRouteSaveService, processRouteAppendService,
+                processStepPricingBatchService, null);
+    }
 
     @GetMapping
     @RequirePermission(Permissions.ORDER_VIEW)
@@ -268,6 +293,13 @@ public class ProcessOrderController {
                                   @Valid @RequestBody ProcessOrderReissueDTO dto) {
         processOrderService.prepareReissue(uuid, dto);
         return R.success();
+    }
+
+    @PostMapping("/rolls/{rollUuid}/disposition")
+    @RequirePermission(Permissions.ORDER_ROLL_DISPOSITION)
+    public R<ProcessRollDispositionVO> disposeRoll(@PathVariable String rollUuid,
+                                                   @Valid @RequestBody ProcessRollDispositionDTO dto) {
+        return R.success(processRollDispositionService.dispose(rollUuid, dto));
     }
 
     @PutMapping("/{uuid}/reissue/cancel")

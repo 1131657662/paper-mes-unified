@@ -6,6 +6,7 @@ import { formatMm } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
 import RewindCustomerSpecificationFields from './RewindCustomerSpecificationFields'
 import RewindLayerEditor from './RewindLayerEditor'
+import { effectiveRollWidth } from '../rewindLayerPlanUtils'
 
 interface Props {
   mode: number
@@ -69,7 +70,7 @@ function LayoutItem({ mode, roll, index, item, onChange, onDelete }: LayoutItemP
 function newLayoutItem(mode: number, roll: RollDraft): RewindLayoutItemPlanDTO {
   const layers: FinishLayerDTO[] | undefined = mode === 4
     ? [{ outDiameter: roll.originalDiameter, coreDiameter: roll.coreDiameter ?? 3 }] : undefined
-  return { width: Math.max(1, Math.floor(roll.originalWidth / 2)), quantity: 1, itemType: 'FINISH', layers }
+  return { width: Math.max(1, Math.floor(effectiveRollWidth(roll) / 2)), quantity: 1, itemType: 'FINISH', layers }
 }
 
 function patchItem(items: RewindLayoutItemPlanDTO[], index: number, patch: Partial<RewindLayoutItemPlanDTO>) {

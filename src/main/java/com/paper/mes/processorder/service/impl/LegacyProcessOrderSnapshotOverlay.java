@@ -82,6 +82,8 @@ final class LegacyProcessOrderSnapshotOverlay {
         roll.setPieceNum(integer(node.get("piece_num"), roll.getPieceNum()));
         roll.setProcessMode(integer(node.get("process_mode"), roll.getProcessMode()));
         roll.setMainStepType(integer(node.get("main_step_type"), roll.getMainStepType()));
+        // Legacy snapshots predate post-issue disposition; never inherit the live action.
+        roll.setDispositionAction(null);
     }
 
     private static void applyIssuedProduction(ProcessOrderDetailVO.RollProductionVO item, JsonNode node) {

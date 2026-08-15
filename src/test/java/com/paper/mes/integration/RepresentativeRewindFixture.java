@@ -8,6 +8,7 @@ import com.paper.mes.processorder.dto.OriginalRollDTO;
 import com.paper.mes.processorder.dto.ProcessOrderCreateDTO;
 import com.paper.mes.processorder.dto.RewindPlanPreviewDTO;
 import com.paper.mes.processorder.entity.OriginalRoll;
+import com.paper.mes.processorder.model.WeightStatus;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.warehouse.entity.Warehouse;
 import com.paper.mes.warehouse.mapper.WarehouseMapper;
@@ -42,6 +43,17 @@ class RepresentativeRewindFixture {
         String orderUuid = processOrderService.create(order);
         List<OriginalRoll> rolls = processOrderService.getDetail(orderUuid).getOriginalRolls();
         processOrderService.saveFinishConfig(orderUuid, rolls.getFirst().getUuid(), mergeConfig(rolls));
+        return new RepresentativeOrderFixture.Scenario(orderUuid, customer.getUuid());
+    }
+
+    RepresentativeOrderFixture.Scenario createUnknownMerge() {
+        Customer customer = createCustomer();
+        ProcessOrderCreateDTO order = order(customer);
+        order.setOriginalRolls(List.of(rewindRoll(WeightStatus.UNKNOWN), rewindRoll(WeightStatus.UNKNOWN),
+                rewindRoll(WeightStatus.UNKNOWN)));
+        String orderUuid = processOrderService.create(order);
+        List<OriginalRoll> rolls = processOrderService.getDetail(orderUuid).getOriginalRolls();
+        processOrderService.saveFinishConfig(orderUuid, rolls.getFirst().getUuid(), unknownMergeConfig(rolls));
         return new RepresentativeOrderFixture.Scenario(orderUuid, customer.getUuid());
     }
 
@@ -100,6 +112,10 @@ class RepresentativeRewindFixture {
     }
 
     private OriginalRollDTO rewindRoll() {
+        return rewindRoll(null);
+    }
+
+    private OriginalRollDTO rewindRoll(WeightStatus weightStatus) {
         OriginalRollDTO dto = new OriginalRollDTO();
         dto.setRollNo("IT-RW-" + token().substring(0, 8));
         dto.setPaperName("代表性复卷测试纸");
@@ -107,7 +123,8 @@ class RepresentativeRewindFixture {
         dto.setOriginalWidth(1500);
         dto.setOriginalDiameter(40);
         dto.setCoreDiameter(3);
-        dto.setRollWeight(new BigDecimal("800.000"));
+        dto.setRollWeight(weightStatus == WeightStatus.UNKNOWN ? null : new BigDecimal("800.000"));
+        dto.setWeightStatus(weightStatus);
         dto.setPieceNum(1);
         dto.setProcessMode(1);
         dto.setMainStepType(2);
@@ -128,7 +145,18 @@ class RepresentativeRewindFixture {
     private FinishConfigSaveDTO mergeConfig(List<OriginalRoll> rolls) {
         FinishConfigSaveDTO dto = config(5);
         RewindPlanPreviewDTO.RewindSegmentDTO segment = segment(5);
-        segment.setSources(List.of(source(rolls.get(0).getUuid()), source(rolls.get(1).getUuid())));
+        segment.setSources(List.of(source(rolls.get(0).getUuid(), new BigDecimal("50.00"), null),
+                source(rolls.get(1).getUuid(), new BigDecimal("50.00"), null)));
+        dto.setRewindSegments(List.of(segment));
+        return dto;
+    }
+
+    private FinishConfigSaveDTO unknownMergeConfig(List<OriginalRoll> rolls) {
+        FinishConfigSaveDTO dto = config(5);
+        RewindPlanPreviewDTO.RewindSegmentDTO segment = segment(5);
+        segment.setSources(rolls.stream()
+                .map(roll -> source(roll.getUuid(), null, new BigDecimal("100.00")))
+                .toList());
         dto.setRewindSegments(List.of(segment));
         return dto;
     }
@@ -140,6 +168,7 @@ class RepresentativeRewindFixture {
         dto.setRepeatCount(1);
         dto.setFinishCoreDiameter(3);
         if (rewindMode == 2 || rewindMode == 3) dto.setTargetDiameter(30);
+        if (rewindMode == 6) dto.setTargetDiameter(40);
         dto.setLayoutItems(layout(rewindMode));
         return dto;
     }
@@ -150,15 +179,18 @@ class RepresentativeRewindFixture {
             case 2 -> List.of(item(1500, 1));
             case 3 -> List.of(item(750, 2));
             case 4 -> List.of(layeredItem());
-            case 5 -> List.of(item(1500, 1));
+            case 5, 6 -> List.of(item(1500, 1));
             default -> throw new IllegalArgumentException("不支持的复卷模式：" + rewindMode);
         };
     }
 
-    private FinishConfigSpecDTO.FinishSourceDTO source(String originalUuid) {
+    private FinishConfigSpecDTO.FinishSourceDTO source(String originalUuid,
+                                                       BigDecimal shareRatio,
+                                                       BigDecimal consumeRatio) {
         FinishConfigSpecDTO.FinishSourceDTO dto = new FinishConfigSpecDTO.FinishSourceDTO();
         dto.setOriginalUuid(originalUuid);
-        dto.setShareRatio(new BigDecimal("50.00"));
+        dto.setShareRatio(shareRatio);
+        dto.setConsumeRatio(consumeRatio);
         return dto;
     }
 

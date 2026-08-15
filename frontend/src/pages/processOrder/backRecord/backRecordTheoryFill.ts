@@ -8,7 +8,7 @@ import {
   type RollRecordValues,
 } from './backRecordUtils'
 import { autoTrimWeights } from './backRecordAutoTrim'
-import { storedMeasuredWeight } from './backRecordSourceRolls'
+import { sourceEstimatedWeight, storedEstimatedWeight, storedMeasuredWeight } from './backRecordSourceRolls'
 import { buildBackRecordWorkbench } from './backRecordWorkbenchUtils'
 import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
 
@@ -64,10 +64,16 @@ function assignItemFinishes(
 }
 
 function theoreticalRollValue(roll: OriginalRoll): RollRecordValues {
+  const measured = storedMeasuredWeight(roll)
+  const estimated = storedEstimatedWeight(roll)
+  const nominal = sourceEstimatedWeight(roll)
   return {
     actualGramWeight: roll.actualGramWeight ?? roll.gramWeight,
     actualWidth: roll.actualWidth ?? roll.originalWidth,
-    actualWeight: storedMeasuredWeight(roll),
+    actualWeight: measured ?? estimated ?? nominal,
+    weightEntryMode: measured != null ? 'MEASURED'
+      : estimated != null ? 'USER_ESTIMATE'
+        : nominal != null ? 'CARRY_NOMINAL' : undefined,
     remark: roll.remark,
   }
 }
@@ -149,6 +155,7 @@ function firstPositive(...values: Array<number | undefined>) {
 }
 
 function nominalRollWeight(roll?: OriginalRoll) {
+  if (roll?.weightStatus === 'UNKNOWN') return undefined
   if (!roll?.rollWeight) return undefined
   return roll.rollWeight * (roll.pieceNum ?? 1)
 }

@@ -25,6 +25,24 @@ describe('加工单特殊生产模式打印', () => {
     expect(model.blocks[0]?.routeStages[0]?.outputs).toHaveLength(1)
   })
 
+  it('合并复卷分别展示参考重量和未知重量', () => {
+    const estimated = production('roll-1', 'MW-EST', 800)
+    estimated.weightStatus = 'ESTIMATED'
+    const unknown = production('roll-2', 'MW-UNKNOWN', 0)
+    unknown.weightStatus = 'UNKNOWN'
+    const mergedFinish = finishProduction('finish-1', 'A001', ['roll-1', 'roll-2'])
+    estimated.rewindParams = [{ paramMode: 5 }]
+    estimated.finishes = [mergedFinish]
+    unknown.finishes = [mergedFinish]
+
+    const model = buildPrintSheetModel(detail([estimated, unknown]))
+    const weightText = sourceValue(model.blocks[0], '标重')
+
+    expect(weightText).toContain('MW-EST：800 kg')
+    expect(weightText).toContain('MW-UNKNOWN：待称重')
+    expect(weightText).not.toContain('MW-UNKNOWN：0 kg')
+  })
+
   it('不加工直发打印正确工艺和交付产物', () => {
     const direct = production('roll-1', 'MW-001', 2400)
     direct.processMode = 3

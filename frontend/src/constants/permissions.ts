@@ -11,6 +11,7 @@ export const PERMISSIONS = {
   orderManage: 'order:manage',
   orderPricing: 'order:pricing',
   orderPricingApprove: 'order:pricing-approve',
+  orderRollDisposition: 'order:roll-disposition',
   orderView: 'order:view',
   reportView: 'report:view',
   exportTaskView: 'export-task:view',

@@ -14,8 +14,12 @@ export function confirmBackRecordSubmission({ completeOrder, orderNo, selectedCo
       content: (
         <div className="back-record-submit-confirmation">
           <Typography.Paragraph>
-            加工单 <Typography.Text strong>{orderNo ?? '-'}</Typography.Text> 本次选择的
-            <Typography.Text strong> {selectedCount} 个母卷组</Typography.Text>
+            加工单 <Typography.Text strong>{orderNo ?? '-'}</Typography.Text>{' '}
+            {selectedCount > 0 ? (
+              <>本次选择的<Typography.Text strong> {selectedCount} 个母卷组</Typography.Text></>
+            ) : (
+              <Typography.Text strong>当前没有待回录母卷</Typography.Text>
+            )}{' '}
             {completeOrder ? '将完成整单，相关成品与余料入库至：' : '将保存闭合结果，相关成品与余料立即入库至：'}
           </Typography.Paragraph>
           <Typography.Text strong>{warehouseName}</Typography.Text>

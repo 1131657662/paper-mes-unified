@@ -101,7 +101,13 @@ public class ProcessStepPricingBatchService {
                 .map(ProcessStep::getOriginalUuid).filter(java.util.Objects::nonNull).distinct().toList();
         if (ids.isEmpty()) return Map.of();
         Map<String, OriginalRoll> result = new LinkedHashMap<>();
-        originalRollMapper.selectBatchIds(ids).forEach(roll -> result.put(roll.getUuid(), roll));
+        originalRollMapper.selectList(new LambdaQueryWrapper<OriginalRoll>()
+                        .in(OriginalRoll::getUuid, ids)
+                        .isNull(OriginalRoll::getDispositionAction))
+                .forEach(roll -> result.put(roll.getUuid(), roll));
+        if (result.size() != ids.size()) {
+            throw new BusinessException(ErrorCode.E002, "宸ュ簭鍏宠仈鐨勬瘝鍗峰凡澶勭疆鎴栦笉瀛樺湪");
+        }
         return result;
     }
 

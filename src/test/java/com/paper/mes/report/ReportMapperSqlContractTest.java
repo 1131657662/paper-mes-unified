@@ -117,7 +117,8 @@ class ReportMapperSqlContractTest {
 
         assertEquals(12, count(sql, "COALESCE(r.process_mode, 0) != 3"));
         assertEquals(2, count(sql, "COALESCE(process_mode, 0) != 3"));
-        assertTrue(sql.contains("COUNT(CASE WHEN COALESCE(r.process_mode, 0) != 3 THEN 1 END) AS originalRollCount"));
+        assertEquals(23, count(sql, "disposition_action IS NULL"));
+        assertTrue(sql.contains("COUNT(CASE WHEN COALESCE(r.process_mode, 0) != 3\n                                   AND r.disposition_action IS NULL THEN 1 END) AS originalRollCount"));
     }
 
     @Test
@@ -150,6 +151,7 @@ class ReportMapperSqlContractTest {
 
         assertTrue(sql.contains("<select id=\"paperCandidates\""));
         assertTrue(sql.contains("FROM biz_original_roll r"));
+        assertTrue(sql.contains("FROM biz_original_roll r\n            WHERE r.is_deleted = 0\n              AND r.disposition_action IS NULL"));
         assertTrue(sql.contains("FROM sys_paper p"));
         assertTrue(sql.contains("LIKE CONCAT(#{keyword}, '%')"));
         assertTrue(sql.contains("LIMIT #{limit}"));

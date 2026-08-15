@@ -7,5 +7,11 @@ public record AiModelPrompt(
         List<String> ruleIds,
         String ruleTitle,
         String ruleAnswer,
-        List<String> safeNextSteps) {
+        List<String> safeNextSteps,
+        String memoryContext) {
+
+    public AiModelPrompt(String pageTemplate, List<String> ruleIds, String ruleTitle,
+                         String ruleAnswer, List<String> safeNextSteps) {
+        this(pageTemplate, ruleIds, ruleTitle, ruleAnswer, safeNextSteps, "");
+    }
 }
