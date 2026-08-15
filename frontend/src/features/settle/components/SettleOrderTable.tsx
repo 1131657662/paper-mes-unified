@@ -170,7 +170,9 @@ function CollectionDueCell({ record }: { record: SettleOrder }) {
   const due = resolveSettleCollectionDisplay(record)
   return (
     <div className="settle-cell-stack mes-cell-stack">
-      <Typography.Text type={due.tone}>{due.text}</Typography.Text>
+      <Typography.Text className={`settle-collection-text settle-collection-text--${due.tone}`}>
+        {due.text}
+      </Typography.Text>
       <span>{due.active ? reminderText(record) : due.detail}</span>
     </div>
   )

@@ -199,6 +199,22 @@
   font-size: 12px;
 }
 
+.settle-cell-stack .settle-collection-text {
+  color: var(--mes-color-text-secondary);
+}
+
+.settle-cell-stack .settle-collection-text--danger {
+  color: var(--mes-color-danger-strong);
+}
+
+.settle-cell-stack .settle-collection-text--warning {
+  color: var(--mes-color-warning-strong);
+}
+
+.settle-cell-stack .settle-collection-text--success {
+  color: var(--mes-color-success-strong);
+}
+
 .document-page-table .settle-order-table {
   display: flex;
   min-height: 0;
