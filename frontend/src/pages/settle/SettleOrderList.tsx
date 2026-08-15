@@ -145,7 +145,10 @@ export default function SettleOrderList() {
           rowClassName={rowSelection.rowClassName}
           rowSelection={{
             ...rowSelection.rowSelection,
-            getCheckboxProps: (record) => ({ disabled: !resolveSettleCollectionDisplay(record).active }),
+            getCheckboxProps: (record) => ({
+              ...rowSelection.rowSelection.getCheckboxProps?.(record),
+              disabled: !resolveSettleCollectionDisplay(record).active,
+            }),
           }}
           onDetail={(record) => navigate(`/settle-orders/${record.uuid}`, {
             state: { from: settleListLocation(location.pathname, location.search) },
