@@ -38,6 +38,17 @@ class RestoreVerificationScriptContractTest {
     }
 
     @Test
+    void linuxRestoreVerification_neutralizesDumpDefinersWithoutGlobalPrivileges() throws Exception {
+        String script = Files.readString(Path.of("deploy/verify-backup-restore.example.sh"));
+
+        assertContainsAll(script,
+                "sanitize_dump_definers",
+                "sed -E 's/DEFINER=",
+                "gzip -dc \"${sql_archive}\" | sanitize_dump_definers",
+                "mysql --defaults-extra-file=\"${mysql_cnf}\" \"${RESTORE_DB_NAME}\"");
+    }
+
+    @Test
     void productionRestore_preflightsArchiveBeforeDroppingTargetDatabase() throws Exception {
         String script = Files.readString(Path.of("deploy/restore-paper-mes.example.sh"));
 

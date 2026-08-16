@@ -61,12 +61,18 @@ require_non_negative_integer() {
   [[ "${value}" =~ ^[0-9]+$ ]] || fail "invalid ${name}: ${value}"
 }
 
+sanitize_dump_definers() {
+  # Restore verification must not require a server-wide SUPER privilege merely
+  # because mysqldump preserved the source owner of a trigger or routine.
+  sed -E 's/DEFINER=`[^`]+`@`[^`]+`//g'
+}
+
 require_safe_identifier "SOURCE_DB_NAME" "${SOURCE_DB_NAME}"
 require_safe_identifier "RESTORE_DB_NAME" "${RESTORE_DB_NAME}"
 require_safe_identifier "DB_ADMIN_USER" "${DB_ADMIN_USER}"
 require_non_negative_integer "DB_ADMIN_PORT" "${DB_ADMIN_PORT}"
 
-for command_name in mysql gzip tar sha256sum realpath flock; do
+for command_name in mysql gzip tar sha256sum realpath flock sed; do
   command -v "${command_name}" >/dev/null 2>&1 || fail "required command not found: ${command_name}"
 done
 
@@ -110,7 +116,8 @@ mysql --defaults-extra-file="${mysql_cnf}" \
   -e "DROP DATABASE IF EXISTS \`${RESTORE_DB_NAME}\`; CREATE DATABASE \`${RESTORE_DB_NAME}\` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_0900_ai_ci;"
 restore_created=true
 
-gzip -dc "${sql_archive}" | mysql --defaults-extra-file="${mysql_cnf}" "${RESTORE_DB_NAME}"
+gzip -dc "${sql_archive}" | sanitize_dump_definers \
+  | mysql --defaults-extra-file="${mysql_cnf}" "${RESTORE_DB_NAME}"
 
 table_count="$(mysql --defaults-extra-file="${mysql_cnf}" -N -B \
   -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${RESTORE_DB_NAME}';")"

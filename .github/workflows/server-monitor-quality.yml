@@ -16,10 +16,12 @@ on:
       - "deploy/*sync*backup*"
       - "deploy/backup-paper-mes.example.sh"
       - "deploy/test-backup-paper-mes.sh"
+      - "deploy/verify-backup-restore.example.sh"
       - "deploy/backup.env.example"
       - "deploy/paper-mes-backup.cron.example"
       - "src/test/java/com/paper/mes/safety/HealthMonitoringContractTest.java"
       - "src/test/java/com/paper/mes/safety/OffsiteBackupSyncContractTest.java"
+      - "src/test/java/com/paper/mes/safety/RestoreVerificationScriptContractTest.java"
       - "docs/生产部署指南.md"
       - ".github/workflows/server-monitor-quality.yml"
   push:
@@ -38,10 +40,12 @@ on:
       - "deploy/*sync*backup*"
       - "deploy/backup-paper-mes.example.sh"
       - "deploy/test-backup-paper-mes.sh"
+      - "deploy/verify-backup-restore.example.sh"
       - "deploy/backup.env.example"
       - "deploy/paper-mes-backup.cron.example"
       - "src/test/java/com/paper/mes/safety/HealthMonitoringContractTest.java"
       - "src/test/java/com/paper/mes/safety/OffsiteBackupSyncContractTest.java"
+      - "src/test/java/com/paper/mes/safety/RestoreVerificationScriptContractTest.java"
       - "docs/生产部署指南.md"
       - ".github/workflows/server-monitor-quality.yml"
 
@@ -70,4 +74,4 @@ jobs:
           cache: maven
           distribution: temurin
           java-version: 21
-      - run: sh mvnw -q '-Dtest=HealthMonitoringContractTest,OffsiteBackupSyncContractTest' test
+      - run: sh mvnw -q '-Dtest=HealthMonitoringContractTest,OffsiteBackupSyncContractTest,RestoreVerificationScriptContractTest' test
