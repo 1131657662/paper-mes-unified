@@ -42,6 +42,17 @@ checkout_ci_commit() {
     || fail "test source checkout does not match the CI-tested commit"
 }
 
+prepare_runtime_scripts() {
+  local script_path
+  for script_path in \
+    "${source_root}/deploy/backup-paper-mes.example.sh" \
+    "${source_root}/deploy/verify-backup-restore.example.sh"; do
+    [ -f "${script_path}" ] || fail "runtime backup script is missing: ${script_path}"
+    chown root:paper-mes-test "${script_path}"
+    chmod 0640 "${script_path}"
+  done
+}
+
 prepare_release_metadata() {
   local release_time
   release_time="$(date -u +%Y%m%d-%H%M%S)"
@@ -141,6 +152,7 @@ publish_frontend() {
 
 require_root
 checkout_ci_commit
+prepare_runtime_scripts
 prepare_release_metadata
 backup_runtime
 build_artifacts

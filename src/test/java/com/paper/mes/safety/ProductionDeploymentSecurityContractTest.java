@@ -162,6 +162,20 @@ class ProductionDeploymentSecurityContractTest {
     }
 
     @Test
+    void testDeployment_preservesServiceReadAccessToRuntimeBackupScripts() throws Exception {
+        String deployment = source("deploy/deploy-paper-mes-test.example.sh");
+
+        assertContainsAll(deployment,
+                "prepare_runtime_scripts",
+                "backup-paper-mes.example.sh",
+                "verify-backup-restore.example.sh",
+                "chown root:paper-mes-test",
+                "chmod 0640");
+        assertTrue(deployment.indexOf("prepare_runtime_scripts\n")
+                > deployment.indexOf("checkout_ci_commit\n"));
+    }
+
+    @Test
     void migrationStateGuard_blocksStartupWhenAnyScriptIsMissingOrNotApplied() throws Exception {
         String guard = source("deploy/verify-paper-mes-migration-state.example.sh");
         String verifier = source("deploy/verify-paper-mes-source.example.sh");
