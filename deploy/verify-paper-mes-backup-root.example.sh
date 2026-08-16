@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
+root_mysql_cnf=/etc/mysql/debian.cnf
 
 fail() {
   echo "backup verification wrapper refused: $1" >&2
@@ -41,6 +42,10 @@ esac
   || fail "installed verifier must be root:root 0700"
 [ -x /usr/sbin/runuser ] || fail "runuser is required"
 [ -x /usr/bin/tee ] || fail "tee is required"
+[ -x /usr/bin/mysql ] || fail "mysql is required"
+[ -f "${root_mysql_cnf}" ] || fail "root MySQL client configuration is missing"
+[ "$(stat -c '%U:%G:%a' "${root_mysql_cnf}")" = "root:root:600" ] \
+  || fail "root MySQL client configuration must be root:root 0600"
 [ -d "${backup_root}" ] || fail "fixed backup root is missing"
 [ ! -L "${backup_root}" ] || fail "fixed backup root must not be a symlink"
 
@@ -61,8 +66,29 @@ for required_file in "${SOURCE_DB_NAME}.sql.gz" SHA256SUMS restore-check.txt; do
   [ ! -L "${backup_dir}/${required_file}" ] || fail "backup files must not be symlinks"
 done
 
+original_trust="$(/usr/bin/mysql --defaults-extra-file="${root_mysql_cnf}" -N -B \
+  -e 'SELECT @@GLOBAL.log_bin_trust_function_creators')"
+[[ "${original_trust}" =~ ^[01]$ ]] || fail "invalid global binlog trust value"
+
+cleanup_wrapper() {
+  local exit_code=$?
+  trap - EXIT
+  set +e
+  /usr/bin/mysql --defaults-extra-file="${root_mysql_cnf}" \
+    -e "SET GLOBAL log_bin_trust_function_creators=${original_trust}"
+  local restore_code=$?
+  rm -f "${report_tmp:-}"
+  if [ "${exit_code}" -eq 0 ] && [ "${restore_code}" -ne 0 ]; then
+    echo "failed to restore log_bin_trust_function_creators" >&2
+    exit_code=${restore_code}
+  fi
+  exit "${exit_code}"
+}
+
 report_tmp="$(mktemp /run/paper-mes-restore-report.XXXXXX)"
-trap 'rm -f "${report_tmp}"' EXIT
+trap cleanup_wrapper EXIT
+/usr/bin/mysql --defaults-extra-file="${root_mysql_cnf}" \
+  -e 'SET GLOBAL log_bin_trust_function_creators=1'
 /usr/bin/env -i \
   PATH=/usr/bin:/bin \
   BACKUP_ENV_FILE=/dev/null \

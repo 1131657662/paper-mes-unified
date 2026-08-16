@@ -22,7 +22,11 @@ class BackupRootVerificationSecurityContractTest {
                 "RESTORE_DB_NAME=\"${restore_db}\"", "DROP_AFTER_VERIFY=true",
                 "VERIFY_LOCK_FILE=/run/lock/paper-mes-backup-verify.lock",
                 "VERIFY_REPORT_FILE=\"${report_tmp}\"", "/usr/bin/env -i",
-                "[ -x /usr/sbin/runuser ]", "/usr/sbin/runuser -u \"${service_user}\"");
+                "[ -x /usr/sbin/runuser ]", "root_mysql_cnf=/etc/mysql/debian.cnf",
+                "SELECT @@GLOBAL.log_bin_trust_function_creators",
+                "SET GLOBAL log_bin_trust_function_creators=1",
+                "SET GLOBAL log_bin_trust_function_creators=${original_trust}",
+                "/usr/sbin/runuser -u \"${service_user}\"");
         assertContainsAll(restoreEnv, "SOURCE_DB_NAME=paper_processing",
                 "DB_ADMIN_PASSWORD=CHANGE_ME_RESTORE_PASSWORD");
         assertFalse(restoreEnv.contains("RESTORE_DB_NAME="));

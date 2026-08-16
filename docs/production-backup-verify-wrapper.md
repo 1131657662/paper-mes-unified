@@ -3,7 +3,10 @@
 The application service account must not receive `SUPER`. MySQL with binary
 logging enabled and `log_bin_trust_function_creators=OFF` may require a global
 privilege while importing triggers, so isolated verification is launched through
-the root-owned wrapper only.
+the root-owned wrapper only. The wrapper uses the root-only
+`/etc/mysql/debian.cnf` to temporarily set
+`log_bin_trust_function_creators=1`, restores its original value in an EXIT
+trap, and fails the operation if that restoration fails.
 
 Before installation, create `/etc/paper-mes/backup-restore.env` with owner
 `root:root`, mode `0600`, and values from
@@ -24,6 +27,9 @@ GRANT ALL PRIVILEGES ON `paper_mes_restore_check`.*
 GRANT SESSION_VARIABLES_ADMIN ON *.*
   TO 'paper_mes_restore'@'127.0.0.1';
 ```
+
+The global trust switch is held only for the short restore window. It is not a
+permanent MySQL setting and is never written to the application environment.
 
 Install from the checked-out release:
 
