@@ -11,6 +11,7 @@ fi
 
 BACKUP_ROOT="${BACKUP_ROOT:-/opt/backups/paper-mes}"
 MONITOR_GROUP="${MONITOR_GROUP:-paper-mes}"
+BACKUP_GROUP="${BACKUP_GROUP:-${MONITOR_GROUP}}"
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-3306}"
 DB_NAME="${DB_NAME:-paper_processing}"
@@ -62,10 +63,10 @@ require_safe_backup_root
 require_safe_identifier "DB_NAME" "${DB_NAME}"
 require_safe_identifier "DB_USER" "${DB_USER}"
 require_non_negative_integer "DB_PORT" "${DB_PORT}"
-[[ "${MONITOR_GROUP}" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "invalid MONITOR_GROUP: ${MONITOR_GROUP}"
-getent group "${MONITOR_GROUP}" >/dev/null || fail "group not found: ${MONITOR_GROUP}"
+[[ "${BACKUP_GROUP}" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "invalid BACKUP_GROUP: ${BACKUP_GROUP}"
+getent group "${BACKUP_GROUP}" >/dev/null || fail "group not found: ${BACKUP_GROUP}"
 
-for command_name in mysqldump gzip tar sha256sum flock; do
+for command_name in mysqldump gzip tar sha256sum flock chgrp chmod getent; do
   command -v "${command_name}" >/dev/null 2>&1 || fail "required command not found: ${command_name}"
 done
 
@@ -118,11 +119,27 @@ fi
 mv "${temp_dir}" "${target_dir}"
 temp_dir=""
 
-# Keep archives private while exposing only checksum metadata to monitoring.
-chgrp "${MONITOR_GROUP}" "${target_dir}"
+# Keep archives private while allowing the configured service group to verify
+# and report on them without granting access to unrelated users.
+chgrp "${BACKUP_GROUP}" "${target_dir}"
 chmod 750 "${target_dir}"
-chgrp "${MONITOR_GROUP}" "${target_dir}/SHA256SUMS"
-chmod 640 "${target_dir}/SHA256SUMS"
+for backup_file in \
+  "${target_dir}/${DB_NAME}.sql.gz" \
+  "${target_dir}/upload.tar.gz" \
+  "${target_dir}/backup-info.txt" \
+  "${target_dir}/SHA256SUMS"; do
+  if [ -f "${backup_file}" ]; then
+    chgrp "${BACKUP_GROUP}" "${backup_file}"
+    chmod 640 "${backup_file}"
+  fi
+done
+
+# The application writes this non-sensitive verification result after an
+# isolated restore. Pre-create it so a root-created backup remains writable by
+# the service group without making the backup directory group-writable.
+: > "${target_dir}/restore-check.txt"
+chgrp "${BACKUP_GROUP}" "${target_dir}/restore-check.txt"
+chmod 660 "${target_dir}/restore-check.txt"
 
 echo "backup completed: ${target_dir}"
 echo "backup_id=${timestamp}"
