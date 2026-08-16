@@ -109,7 +109,12 @@ class FullLifecycleBusinessFlowIT extends AuthenticatedBusinessFlowIT {
                                               com.paper.mes.processorder.dto.ProcessOrderDetailVO detail) {
         DeliveryCreateDTO dto = new DeliveryCreateDTO();
         dto.setCustomerUuid(customerUuid);
-        dto.setWarehouseUuid(detail.getOrder().getWarehouseUuid());
+        String warehouseUuid = detail.getFinishRolls().stream()
+                .map(FinishRoll::getWarehouseUuid)
+                .filter(value -> value != null && !value.isBlank())
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("completed finish has no warehouse"));
+        dto.setWarehouseUuid(warehouseUuid);
         dto.setDeliveryDate(LocalDate.now());
         dto.setPickerName("业务流测试");
         dto.setItems(detail.getFinishRolls().stream().map(this::deliveryItem).toList());
