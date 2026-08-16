@@ -126,7 +126,11 @@ export default function UserList() {
             success: true,
           }
         }}
-        onLoad={makeUserTableBodyFocusable}
+        tableViewRender={(_tableProps, defaultTable) => (
+          <div ref={makeUserTableBodyFocusable} className="user-list__table-focus-anchor">
+            {defaultTable}
+          </div>
+        )}
         bordered
         pagination={mesTablePagination(10)}
         search={{ labelWidth: 'auto' }}
@@ -155,9 +159,9 @@ export default function UserList() {
   )
 }
 
-function makeUserTableBodyFocusable() {
-  document
-    .querySelector<HTMLElement>('.user-list__table .ant-table-body')
+function makeUserTableBodyFocusable(anchor: HTMLDivElement | null) {
+  anchor
+    ?.querySelector<HTMLElement>('.ant-table-body')
     ?.setAttribute('tabindex', '0')
 }
 
