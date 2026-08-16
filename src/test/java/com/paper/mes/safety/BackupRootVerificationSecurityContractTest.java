@@ -27,6 +27,10 @@ class BackupRootVerificationSecurityContractTest {
                 "SET GLOBAL log_bin_trust_function_creators=1",
                 "SET GLOBAL log_bin_trust_function_creators=${original_trust}",
                 "/usr/sbin/runuser -u \"${service_user}\"");
+        assertFalse(wrapper.contains("SHA256SUMS restore-check.txt"),
+                "restore-check.txt is created by verification and must not be a backup prerequisite");
+        assertContainsAll(wrapper, "status_file=\"${backup_dir}/restore-check.txt\"",
+                "status file must not be a symlink");
         assertContainsAll(restoreEnv, "SOURCE_DB_NAME=paper_processing",
                 "DB_ADMIN_PASSWORD=CHANGE_ME_RESTORE_PASSWORD");
         assertFalse(restoreEnv.contains("RESTORE_DB_NAME="));

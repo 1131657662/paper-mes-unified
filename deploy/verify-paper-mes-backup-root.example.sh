@@ -61,10 +61,12 @@ SOURCE_DB_NAME="${SOURCE_DB_NAME:-paper_processing}"
 backup_dir="${backup_root}/${backup_id}"
 [ -d "${backup_dir}" ] || fail "backup directory is missing"
 [ ! -L "${backup_dir}" ] || fail "backup directory must not be a symlink"
-for required_file in "${SOURCE_DB_NAME}.sql.gz" SHA256SUMS restore-check.txt; do
+for required_file in "${SOURCE_DB_NAME}.sql.gz" SHA256SUMS; do
   [ -f "${backup_dir}/${required_file}" ] || fail "required backup file is missing: ${required_file}"
   [ ! -L "${backup_dir}/${required_file}" ] || fail "backup files must not be symlinks"
 done
+status_file="${backup_dir}/restore-check.txt"
+[ ! -L "${status_file}" ] || fail "restore status file must not be a symlink"
 
 original_trust="$(/usr/bin/mysql --defaults-extra-file="${root_mysql_cnf}" -N -B \
   -e 'SELECT @@GLOBAL.log_bin_trust_function_creators')"
@@ -107,4 +109,4 @@ trap cleanup_wrapper EXIT
 
 [ -s "${report_tmp}" ] || fail "verification report was not generated"
 /usr/sbin/runuser -u "${service_user}" -- \
-  /usr/bin/tee "${backup_dir}/restore-check.txt" >/dev/null < "${report_tmp}"
+  /usr/bin/tee "${status_file}" >/dev/null < "${report_tmp}"

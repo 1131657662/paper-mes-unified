@@ -51,5 +51,6 @@ The test environment uses the `test` mode and its own root-only configuration.
 Its fixed schema is `paper_mes_test_restore_check`; grant the same privileges
 to that schema for the test-only restore account.
 Run the real isolation verification there before installing the production
-boundary. The wrapper writes the existing `restore-check.txt` evidence file and
-the verification database is removed on success or failure.
+boundary. The wrapper writes the `restore-check.txt` evidence file after
+verification, rejects an existing status-file symlink, and removes the
+verification database on success or failure.
