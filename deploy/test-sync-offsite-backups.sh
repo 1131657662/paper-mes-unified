@@ -36,7 +36,7 @@ run_sync() {
   CALLS_FILE="${temp_dir}/calls" \
   FAIL_COMMAND="${1:-}" \
   FAIL_EMAIL="${2:-false}" \
-    "${sync_script}"
+    bash "${sync_script}"
 }
 
 run_sync

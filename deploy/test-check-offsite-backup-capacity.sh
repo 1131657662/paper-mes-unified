@@ -32,7 +32,7 @@ run_check() {
   EMAIL_CALLS_FILE="${temp_dir}/email.calls" \
   RCLONE_ARGS_FILE="${temp_dir}/rclone.args" \
   MOCK_REMOTE_BYTES="$1" \
-    "${capacity_script}"
+    bash "${capacity_script}"
 }
 
 run_check 100000000 >/dev/null

@@ -42,7 +42,7 @@ run_prune() {
   RCLONE_PURGE_FILE="${temp_dir}/purged" \
   OFFSITE_RETENTION_APPLY="$1" \
   MAX_DELETE_COUNT="${2:-50}" \
-    "${prune_script}"
+    bash "${prune_script}"
 }
 
 run_prune false >/dev/null

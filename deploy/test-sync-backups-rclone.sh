@@ -50,7 +50,7 @@ run_sync() {
   CHGRP_GROUPS_FILE="${chgrp_groups}" \
   CHGRP_TEST_FAIL="${chgrp_fail}" \
   CHGRP_TEST_MAP_GROUP="${map_group}" \
-  "${sync_script}"
+  bash "${sync_script}"
 }
 
 assert_status() {
