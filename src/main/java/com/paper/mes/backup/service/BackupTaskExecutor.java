@@ -52,7 +52,7 @@ public class BackupTaskExecutor {
 
     public void startVerification(String backupId, Path backupDirectory, String operator) {
         submit("VERIFY", backupId, operator, () -> {
-            runner.verify(catalog.root(), backupDirectory);
+            runner.verify(catalog.root(), backupId, backupDirectory);
             return backupId;
         });
         operationLogService.record(OperationLogService.BIZ_TYPE_BACKUP, backupId, backupId,

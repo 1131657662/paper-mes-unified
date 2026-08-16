@@ -82,10 +82,11 @@ case "${backup_dir_real}" in
   "${backup_root_real}"/*) ;;
   *) fail "BACKUP_DIR must be inside BACKUP_ROOT" ;;
 esac
-VERIFY_REPORT_FILE="${backup_dir_real}/restore-check.txt"
+VERIFY_REPORT_FILE="${VERIFY_REPORT_FILE:-${backup_dir_real}/restore-check.txt}"
+VERIFY_LOCK_FILE="${VERIFY_LOCK_FILE:-${BACKUP_ROOT}/.restore-check.lock}"
 
 mkdir -p "${BACKUP_ROOT}"
-exec 9>"${BACKUP_ROOT}/.restore-check.lock"
+exec 9>"${VERIFY_LOCK_FILE}"
 flock -n 9 || fail "another restore check is already running"
 
 if [ "${SOURCE_DB_NAME}" = "${RESTORE_DB_NAME}" ]; then
@@ -112,12 +113,13 @@ gzip -t "${sql_archive}"
 
 (cd "${BACKUP_DIR}" && sha256sum -c SHA256SUMS)
 
+restore_created=true
 mysql --defaults-extra-file="${mysql_cnf}" \
   -e "DROP DATABASE IF EXISTS \`${RESTORE_DB_NAME}\`; CREATE DATABASE \`${RESTORE_DB_NAME}\` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_0900_ai_ci;"
-restore_created=true
 
 gzip -dc "${sql_archive}" | sanitize_dump_definers \
-  | mysql --defaults-extra-file="${mysql_cnf}" "${RESTORE_DB_NAME}"
+  | mysql --defaults-extra-file="${mysql_cnf}" \
+      --init-command="SET SESSION sql_log_bin=0" "${RESTORE_DB_NAME}"
 
 table_count="$(mysql --defaults-extra-file="${mysql_cnf}" -N -B \
   -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${RESTORE_DB_NAME}';")"

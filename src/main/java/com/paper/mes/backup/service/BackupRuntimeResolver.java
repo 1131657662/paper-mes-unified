@@ -89,6 +89,12 @@ public class BackupRuntimeResolver {
         List<String> missing = new ArrayList<>();
         if (!Files.isRegularFile(backupScript)) missing.add("backup-script");
         if (!Files.isRegularFile(verifyScript)) missing.add("verify-script");
+        if (!windows && StringUtils.hasText(properties.getVerifyWrapper())) {
+            if (!Files.isRegularFile(normalized(properties.getVerifyWrapper()))) {
+                missing.add("verify-wrapper");
+            }
+            if (!commandExists("sudo")) missing.add("sudo");
+        }
         if (windows && !commandExists("powershell.exe")) missing.add("powershell");
         if (!windows && !commandExists("bash")) missing.add("bash");
         for (String command : windows

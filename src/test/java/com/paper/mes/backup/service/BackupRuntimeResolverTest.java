@@ -31,4 +31,20 @@ class BackupRuntimeResolverTest {
         assertEquals(tempDir.resolve("backups"), runtime.root());
         assertTrue(runtime.platform().equals("WINDOWS") || runtime.platform().equals("LINUX"));
     }
+
+    @Test
+    void resolve_withMissingLinuxVerifyWrapper_reportsItAsUnavailable() throws Exception {
+        Path backupScript = Files.createFile(tempDir.resolve("backup-script"));
+        Path verifyScript = Files.createFile(tempDir.resolve("verify-script"));
+        BackupProperties properties = new BackupProperties();
+        properties.setBackupScript(backupScript.toString());
+        properties.setVerifyScript(verifyScript.toString());
+        properties.setVerifyWrapper(tempDir.resolve("missing-wrapper").toString());
+
+        BackupRuntime runtime = new BackupRuntimeResolver(properties).resolve();
+
+        if ("LINUX".equals(runtime.platform())) {
+            assertTrue(runtime.missingComponents().contains("verify-wrapper"));
+        }
+    }
 }

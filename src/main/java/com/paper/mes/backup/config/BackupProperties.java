@@ -15,6 +15,7 @@ public class BackupProperties {
     private String rootDir;
     private String backupScript;
     private String verifyScript;
+    private String verifyWrapper;
     private String envFile;
     private String sourceDbName = "paper_processing";
     private Duration commandTimeout = Duration.ofMinutes(30);

@@ -17,8 +17,16 @@ on:
       - "deploy/backup-paper-mes.example.sh"
       - "deploy/test-backup-paper-mes.sh"
       - "deploy/verify-backup-restore.example.sh"
+      - "deploy/*backup*verify*"
+      - "deploy/verify-paper-mes-backup-root.example.sh"
+      - "deploy/backup-restore.env.example"
       - "deploy/backup.env.example"
       - "deploy/paper-mes-backup.cron.example"
+      - "src/main/java/com/paper/mes/backup/**"
+      - "src/main/resources/application.yml"
+      - "src/test/java/com/paper/mes/backup/service/BackupCommandRunnerLinuxTest.java"
+      - "src/test/java/com/paper/mes/backup/service/BackupRuntimeResolverTest.java"
+      - "src/test/java/com/paper/mes/safety/BackupRootVerificationSecurityContractTest.java"
       - "src/test/java/com/paper/mes/safety/HealthMonitoringContractTest.java"
       - "src/test/java/com/paper/mes/safety/OffsiteBackupSyncContractTest.java"
       - "src/test/java/com/paper/mes/safety/RestoreVerificationScriptContractTest.java"
@@ -41,8 +49,16 @@ on:
       - "deploy/backup-paper-mes.example.sh"
       - "deploy/test-backup-paper-mes.sh"
       - "deploy/verify-backup-restore.example.sh"
+      - "deploy/*backup*verify*"
+      - "deploy/verify-paper-mes-backup-root.example.sh"
+      - "deploy/backup-restore.env.example"
       - "deploy/backup.env.example"
       - "deploy/paper-mes-backup.cron.example"
+      - "src/main/java/com/paper/mes/backup/**"
+      - "src/main/resources/application.yml"
+      - "src/test/java/com/paper/mes/backup/service/BackupCommandRunnerLinuxTest.java"
+      - "src/test/java/com/paper/mes/backup/service/BackupRuntimeResolverTest.java"
+      - "src/test/java/com/paper/mes/safety/BackupRootVerificationSecurityContractTest.java"
       - "src/test/java/com/paper/mes/safety/HealthMonitoringContractTest.java"
       - "src/test/java/com/paper/mes/safety/OffsiteBackupSyncContractTest.java"
       - "src/test/java/com/paper/mes/safety/RestoreVerificationScriptContractTest.java"
@@ -59,6 +75,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+      - run: bash -n deploy/verify-paper-mes-backup-root.example.sh deploy/install-paper-mes-backup-verify-root.example.sh
       - run: bash deploy/test-backup-paper-mes.sh
       - run: bash deploy/test-sync-backups-rclone.sh
       - run: bash deploy/test-sync-offsite-backups.sh
@@ -74,4 +91,4 @@ jobs:
           cache: maven
           distribution: temurin
           java-version: 21
-      - run: sh mvnw -q '-Dtest=HealthMonitoringContractTest,OffsiteBackupSyncContractTest,RestoreVerificationScriptContractTest' test
+      - run: sh mvnw -q '-Dtest=HealthMonitoringContractTest,OffsiteBackupSyncContractTest,RestoreVerificationScriptContractTest,BackupRootVerificationSecurityContractTest,BackupRuntimeResolverTest,BackupCommandRunnerLinuxTest' test

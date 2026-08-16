@@ -82,7 +82,7 @@ jobs:
       - run: bash deploy/check-ai-rules.sh
         working-directory: .
       - run: npm run openapi:check
-      - run: sh mvnw -q '-Dtest=RumRateLimiterTest,PermissionsTest,Ai*Test' test
+      - run: sh mvnw -q '-Dtest=RumRateLimiterTest,PermissionsTest,Ai*Test,BackupRootVerificationSecurityContractTest,BackupRuntimeResolverTest,BackupCommandRunnerLinuxTest,ProductionDeploymentSecurityContractTest' test
         working-directory: .
       - run: npm run lint
       - run: npm test

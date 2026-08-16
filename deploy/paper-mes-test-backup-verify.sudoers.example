@@ -1,0 +1,3 @@
+# Install as /etc/sudoers.d/paper-mes-test-backup-verify with mode 0440.
+# The wrapper validates the backup id and always targets an isolated database.
+paper-mes-test ALL=(root) NOPASSWD: /usr/local/sbin/verify-paper-mes-test-backup-root ????????-??????

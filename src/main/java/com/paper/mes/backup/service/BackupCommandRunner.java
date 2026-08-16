@@ -3,6 +3,7 @@ package com.paper.mes.backup.service;
 import com.paper.mes.backup.config.BackupProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -31,23 +32,26 @@ public class BackupCommandRunner {
     }
 
     public String backup(Path root) {
-        String output = run(runtimeResolver.resolve().backupScript(), Map.of("BACKUP_ROOT", root.toString()));
+        BackupRuntime runtime = runtimeResolver.resolve();
+        String output = run(runtime, runtime.backupScript(), null,
+                Map.of("BACKUP_ROOT", root.toString()));
         return parseBackupId(output);
     }
 
-    public void verify(Path root, Path backupDirectory) {
-        run(runtimeResolver.resolve().verifyScript(), Map.of(
+    public void verify(Path root, String backupId, Path backupDirectory) {
+        BackupRuntime runtime = runtimeResolver.resolve();
+        run(runtime, runtime.verifyScript(), requireBackupId(backupId), Map.of(
                 "BACKUP_ROOT", root.toString(),
                 "BACKUP_DIR", backupDirectory.toString()));
     }
 
-    private String run(Path script, Map<String, String> variables) {
-        BackupRuntime runtime = runtimeResolver.resolve();
+    private String run(BackupRuntime runtime, Path script, String backupId,
+                       Map<String, String> variables) {
         Path outputFile = createOutputFile();
         try {
             Process process;
             try {
-                process = startProcess(runtime, script, variables, outputFile);
+                process = startProcess(runtime, script, backupId, variables, outputFile);
             } catch (IOException ex) {
                 throw new IllegalStateException("无法启动备份脚本", ex);
             }
@@ -83,9 +87,10 @@ public class BackupCommandRunner {
         }
     }
 
-    private Process startProcess(BackupRuntime runtime, Path script, Map<String, String> variables,
+    private Process startProcess(BackupRuntime runtime, Path script, String backupId,
+                                 Map<String, String> variables,
                                  Path outputFile) throws IOException {
-        ProcessBuilder builder = new ProcessBuilder(command(runtime, script))
+        ProcessBuilder builder = new ProcessBuilder(command(runtime, script, backupId))
                 .redirectErrorStream(true).redirectOutput(outputFile.toFile());
         builder.environment().putAll(processVariables(runtime));
         builder.environment().put("BACKUP_ENV_FILE", runtime.envFile().toString());
@@ -102,12 +107,23 @@ public class BackupCommandRunner {
         return variables;
     }
 
-    private java.util.List<String> command(BackupRuntime runtime, Path script) {
+    private java.util.List<String> command(BackupRuntime runtime, Path script, String backupId) {
+        if (backupId != null && "LINUX".equals(runtime.platform())
+                && StringUtils.hasText(properties.getVerifyWrapper())) {
+            return java.util.List.of("sudo", "-n", properties.getVerifyWrapper(), requireBackupId(backupId));
+        }
         if ("WINDOWS".equals(runtime.platform())) {
             return java.util.List.of("powershell.exe", "-NoProfile", "-NonInteractive",
                     "-ExecutionPolicy", "Bypass", "-File", script.toString());
         }
         return java.util.List.of("bash", script.toString());
+    }
+
+    private String requireBackupId(String backupId) {
+        if (backupId == null || !BACKUP_ID.matcher(backupId).matches()) {
+            throw new IllegalArgumentException("invalid backup id");
+        }
+        return backupId;
     }
 
     private void waitFor(Process process) {

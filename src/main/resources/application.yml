@@ -93,6 +93,7 @@ app:
     root-dir: ${PAPER_MES_BACKUP_ROOT:}
     backup-script: ${PAPER_MES_BACKUP_SCRIPT:}
     verify-script: ${PAPER_MES_VERIFY_SCRIPT:}
+    verify-wrapper: ${PAPER_MES_BACKUP_VERIFY_WRAPPER:}
     env-file: ${PAPER_MES_BACKUP_ENV_FILE:}
     source-db-name: ${PAPER_MES_DB_NAME:paper_processing}
     command-timeout: ${PAPER_MES_BACKUP_TIMEOUT:30m}

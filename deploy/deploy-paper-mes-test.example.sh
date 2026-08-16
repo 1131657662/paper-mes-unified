@@ -12,6 +12,7 @@ source_root=/opt/paper-mes-test/source
 frontend_root=/opt/paper-mes-test/frontend
 app_root=/opt/paper-mes-test/app
 env_file=/etc/paper-mes-test/paper-mes-test.env
+restore_env_file=/etc/paper-mes-test/backup-restore.env
 service=paper-mes-test.service
 backup_root=/opt/paper-mes-test/backups
 backend_version=""
@@ -51,6 +52,28 @@ prepare_runtime_scripts() {
     chown root:paper-mes-test "${script_path}"
     chmod 0640 "${script_path}"
   done
+}
+
+install_restore_runtime() {
+  [ -f "${restore_env_file}" ] || fail "root-only restore configuration is missing"
+  [ "$(stat -c '%U:%G:%a' "${restore_env_file}")" = "root:root:600" ] \
+    || fail "root-only restore configuration must be root:root 0600"
+  install -o root -g root -m 0700 \
+    "${source_root}/deploy/verify-backup-restore.example.sh" \
+    /usr/local/bin/verify-paper-mes-test-backup
+  install -o root -g root -m 0700 \
+    "${source_root}/deploy/verify-paper-mes-backup-root.example.sh" \
+    /usr/local/sbin/verify-paper-mes-test-backup-root
+  local sudoers_tmp
+  sudoers_tmp="$(mktemp)"
+  install -o root -g root -m 0440 \
+    "${source_root}/deploy/paper-mes-test-backup-verify.sudoers.example" \
+    "${sudoers_tmp}"
+  if ! visudo -cf "${sudoers_tmp}"; then
+    rm -f "${sudoers_tmp}"
+    fail "backup verification sudoers validation failed"
+  fi
+  mv -f "${sudoers_tmp}" /etc/sudoers.d/paper-mes-test-backup-verify
 }
 
 prepare_release_metadata() {
@@ -98,6 +121,7 @@ render_runtime_env() {
       values["PAPER_MES_BACKEND_VERSION"] = backend
       values["PAPER_MES_FRONTEND_VERSION"] = frontend
       values["PAPER_MES_BUILD_TIME"] = built
+      values["PAPER_MES_BACKUP_VERIFY_WRAPPER"] = "/usr/local/sbin/verify-paper-mes-test-backup-root"
     }
     {
       key = $1
@@ -153,6 +177,7 @@ publish_frontend() {
 require_root
 checkout_ci_commit
 prepare_runtime_scripts
+install_restore_runtime
 prepare_release_metadata
 backup_runtime
 build_artifacts

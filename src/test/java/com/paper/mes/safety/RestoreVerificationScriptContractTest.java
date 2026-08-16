@@ -22,7 +22,7 @@ class RestoreVerificationScriptContractTest {
                 "restore_created=true",
                 "trap cleanup EXIT");
         assertTrue(script.indexOf("restore_created=true")
-                > script.indexOf("CREATE DATABASE"));
+                < script.indexOf("CREATE DATABASE"));
     }
 
     @Test
@@ -45,7 +45,8 @@ class RestoreVerificationScriptContractTest {
                 "sanitize_dump_definers",
                 "sed -E 's/DEFINER=",
                 "gzip -dc \"${sql_archive}\" | sanitize_dump_definers",
-                "mysql --defaults-extra-file=\"${mysql_cnf}\" \"${RESTORE_DB_NAME}\"");
+                "mysql --defaults-extra-file=\"${mysql_cnf}\"",
+                "--init-command=\"SET SESSION sql_log_bin=0\" \"${RESTORE_DB_NAME}\"");
     }
 
     @Test
