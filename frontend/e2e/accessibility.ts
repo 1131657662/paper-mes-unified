@@ -5,9 +5,8 @@ const BLOCKING_IMPACTS = new Set(['serious', 'critical'])
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 export async function expectNoBlockingA11yViolations(page: Page): Promise<void> {
-  await page.waitForLoadState('networkidle')
-  // React data queries start after navigation's network-idle event; let the
-  // table mount before asserting that the loading mask has disappeared.
+  // React data queries start after navigation; let the table mount before
+  // asserting that the loading mask has disappeared.
   await page.waitForTimeout(250)
   await expect(page.locator('.ant-spin-spinning')).toHaveCount(0)
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze()
