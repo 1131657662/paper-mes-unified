@@ -28,4 +28,21 @@ describe('showBackRecordResult', () => {
     expect(markup).toContain('3 卷')
     expect(markup).not.toContain('3 组')
   })
+
+  it('shows voided when all source rolls were cancelled or split', () => {
+    const info = vi.spyOn(Modal, 'info').mockReturnValue({
+      destroy: vi.fn(),
+      update: vi.fn(),
+    })
+
+    showBackRecordResult({
+      orderCompleted: true,
+      orderStatus: 6,
+      rollChecks: [],
+    })
+
+    const content = info.mock.calls[0]![0].content
+    const markup = renderToStaticMarkup(<>{content}</>)
+    expect(markup).toContain('已作废')
+  })
 })

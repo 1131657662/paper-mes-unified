@@ -11,6 +11,10 @@ BUSINESS_SYNC_COMMAND="${BUSINESS_SYNC_COMMAND:-/usr/local/sbin/business-project
 MES_SYNC_COMMAND="${MES_SYNC_COMMAND:-/usr/local/sbin/paper-mes-sync-rclone.sh}"
 RETENTION_COMMAND="${RETENTION_COMMAND:-/usr/local/sbin/prune-offsite-backups}"
 CAPACITY_COMMAND="${CAPACITY_COMMAND:-/usr/local/sbin/check-offsite-backup-capacity}"
+BUSINESS_STATUS_FILE_GROUP="${BUSINESS_STATUS_FILE_GROUP:-root}"
+BUSINESS_STATUS_FILE_MODE="${BUSINESS_STATUS_FILE_MODE:-0600}"
+MES_STATUS_FILE_GROUP="${MES_STATUS_FILE_GROUP:-paper-mes}"
+MES_STATUS_FILE_MODE="${MES_STATUS_FILE_MODE:-0640}"
 
 previous_state="$(cat "$STATE_FILE" 2>/dev/null || true)"
 completed=false
@@ -53,8 +57,10 @@ finish() {
 
 run_sync() {
   export RCLONE_CONFIG BACKUP_ENV_FILE=/dev/null RCLONE_REMOTE=paper_mes_archive
-  BACKUP_ROOT=/opt/backups/business-projects RCLONE_PATH=business-projects "$BUSINESS_SYNC_COMMAND"
-  BACKUP_ROOT=/opt/backups/paper-mes RCLONE_PATH=paper-mes "$MES_SYNC_COMMAND"
+  STATUS_FILE_GROUP="$BUSINESS_STATUS_FILE_GROUP" STATUS_FILE_MODE="$BUSINESS_STATUS_FILE_MODE" \
+    BACKUP_ROOT=/opt/backups/business-projects RCLONE_PATH=business-projects "$BUSINESS_SYNC_COMMAND"
+  STATUS_FILE_GROUP="$MES_STATUS_FILE_GROUP" STATUS_FILE_MODE="$MES_STATUS_FILE_MODE" \
+    BACKUP_ROOT=/opt/backups/paper-mes RCLONE_PATH=paper-mes "$MES_SYNC_COMMAND"
   "$RETENTION_COMMAND"
   "$CAPACITY_COMMAND"
 }

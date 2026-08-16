@@ -30,8 +30,7 @@ public class BackRecordScopeResolver {
                                    List<ProcessStep> allSteps, List<FinishOriginalRel> allRelations,
                                    BackRecordDTO dto) {
         Map<String, OriginalRoll> rollByUuid = indexRolls(allRolls);
-        Set<String> selectedIds = selectedRollIds(
-                dto.getRolls(), rollByUuid, Boolean.TRUE.equals(dto.getCompleteOrder()));
+        Set<String> selectedIds = selectedRollIds(dto.getRolls(), rollByUuid);
         requireValidCompletionIntent(allRolls, selectedIds, dto);
         Map<String, Set<String>> sourcesByFinish = sourcesByFinish(allRelations);
         Set<String> finishIds = relatedFinishIds(selectedIds, sourcesByFinish);
@@ -83,8 +82,7 @@ public class BackRecordScopeResolver {
     }
 
     private Set<String> selectedRollIds(List<BackRecordRollDTO> rows,
-                                        Map<String, OriginalRoll> rollByUuid,
-                                        boolean completeOrder) {
+                                        Map<String, OriginalRoll> rollByUuid) {
         Set<String> result = new LinkedHashSet<>();
         for (BackRecordRollDTO row : rows == null ? List.<BackRecordRollDTO>of() : rows) {
             String uuid = row == null ? null : row.getUuid();
@@ -102,12 +100,7 @@ public class BackRecordScopeResolver {
                 throw new BusinessException(ErrorCode.E004, "母卷已完成回录，不允许重复覆盖：" + rollLabel(roll));
             }
         }
-        boolean noRemainingRolls = rollByUuid.values().stream()
-                .filter(this::isActiveRoll)
-                .noneMatch(roll -> !Integer.valueOf(1).equals(roll.getIsChecked()));
-        if (result.isEmpty() && (!completeOrder || !noRemainingRolls)) {
-            throw new BusinessException("请至少选择一卷母卷回录");
-        }
+        if (result.isEmpty()) throw new BusinessException("请至少选择一卷母卷回录");
         return result;
     }
 

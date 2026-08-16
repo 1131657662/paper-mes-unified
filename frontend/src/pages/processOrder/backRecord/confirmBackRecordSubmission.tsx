@@ -1,4 +1,5 @@
-import { Modal, Typography } from 'antd'
+import { Modal } from 'antd'
+import { BackRecordConfirmationContent } from './BackRecordConfirmationContent'
 
 interface Params {
   completeOrder: boolean
@@ -7,23 +8,39 @@ interface Params {
   warehouseName: string
 }
 
-export function confirmBackRecordSubmission({ completeOrder, orderNo, selectedCount, warehouseName }: Params): Promise<boolean> {
+interface ConditionalParams extends Params {
+  skipConfirmation: boolean
+}
+
+export function confirmBackRecordIfRequired(
+  params: ConditionalParams,
+): Promise<boolean> {
+  if (params.skipConfirmation) return Promise.resolve(true)
+  return confirmBackRecordSubmission(params)
+}
+
+export function confirmBackRecordSubmission({
+  completeOrder,
+  orderNo,
+  selectedCount,
+  warehouseName,
+}: Params): Promise<boolean> {
+  const completionOnly = completeOrder && selectedCount === 0
   return new Promise((resolve) => {
     Modal.confirm({
-      title: completeOrder ? '确认完成整单并入库？' : '确认保存选中批次？',
+      title: completionOnly
+        ? '确认关闭整单？'
+        : completeOrder
+          ? '确认完成整单并入库？'
+          : '确认保存选中批次？',
       content: (
-        <div className="back-record-submit-confirmation">
-          <Typography.Paragraph>
-            加工单 <Typography.Text strong>{orderNo ?? '-'}</Typography.Text>{' '}
-            {selectedCount > 0 ? (
-              <>本次选择的<Typography.Text strong> {selectedCount} 个母卷组</Typography.Text></>
-            ) : (
-              <Typography.Text strong>当前没有待回录母卷</Typography.Text>
-            )}{' '}
-            {completeOrder ? '将完成整单，相关成品与余料入库至：' : '将保存闭合结果，相关成品与余料立即入库至：'}
-          </Typography.Paragraph>
-          <Typography.Text strong>{warehouseName}</Typography.Text>
-        </div>
+        <BackRecordConfirmationContent
+          completionOnly={completionOnly}
+          completeOrder={completeOrder}
+          orderNo={orderNo}
+          selectedCount={selectedCount}
+          warehouseName={warehouseName}
+        />
       ),
       okText: completeOrder ? '确认完成整单' : '确认保存本批',
       cancelText: '继续检查',

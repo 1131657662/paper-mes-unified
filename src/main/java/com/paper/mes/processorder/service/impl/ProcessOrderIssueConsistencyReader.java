@@ -36,7 +36,7 @@ final class ProcessOrderIssueConsistencyReader {
         }
         ProcessOrderDetailVO issued = ProcessOrderPrintViewReader.read(
                 live, PrintViewVersion.ISSUED, objectMapper).getDetail();
-        List<String> groups = changedGroups(live, issued);
+        List<String> groups = changedGroups(live, issued, status == 2);
         result.setChangedGroups(groups);
         result.setStatus(groups.isEmpty() ? "IN_SYNC" : "REISSUE_REQUIRED");
         if (!groups.isEmpty()) {
@@ -45,7 +45,9 @@ final class ProcessOrderIssueConsistencyReader {
         return result;
     }
 
-    private static List<String> changedGroups(ProcessOrderDetailVO live, ProcessOrderDetailVO issued) {
+    private static List<String> changedGroups(
+            ProcessOrderDetailVO live, ProcessOrderDetailVO issued,
+            boolean productionInstructionsStillActive) {
         List<String> groups = new ArrayList<>();
         if (!Objects.equals(live.getOrder().getRemark(), issued.getOrder().getRemark())
                 || !Objects.equals(live.getOrder().getRemarkLong(), issued.getOrder().getRemarkLong())) {
@@ -54,7 +56,8 @@ final class ProcessOrderIssueConsistencyReader {
         if (printedCustomerSpecificationChanged(live.getFinishRolls(), issued.getFinishRolls())) {
             groups.add("客户品名/克重/门幅");
         }
-        if (rollDispositionChanged(live.getOriginalRolls(), issued.getOriginalRolls())) {
+        if (productionInstructionsStillActive
+                && rollDispositionChanged(live.getOriginalRolls(), issued.getOriginalRolls())) {
             groups.add("母卷处置");
         }
         return List.copyOf(groups);

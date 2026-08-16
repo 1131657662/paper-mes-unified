@@ -11,7 +11,7 @@ for name in business mes retention capacity; do
   cat > "${temp_dir}/commands/${name}" <<'EOF'
 #!/usr/bin/env bash
 name="${0##*/}"
-printf '%s\n' "$name" >> "${CALLS_FILE}"
+printf '%s:%s:%s\n' "$name" "${STATUS_FILE_GROUP:--}" "${STATUS_FILE_MODE:--}" >> "${CALLS_FILE}"
 [ "${FAIL_COMMAND:-}" != "$name" ]
 EOF
   chmod 0700 "${temp_dir}/commands/${name}"
@@ -41,7 +41,8 @@ run_sync() {
 
 run_sync
 grep -Fx SUCCESS "${temp_dir}/state/sync.state"
-printf '%s\n' business mes retention capacity | diff - "${temp_dir}/calls"
+printf '%s\n' business:root:0600 mes:paper-mes:0640 retention:-:- capacity:-:- \
+  | diff - "${temp_dir}/calls"
 
 printf 'FAILED\n' > "${temp_dir}/state/sync.state"
 : > "${temp_dir}/calls"

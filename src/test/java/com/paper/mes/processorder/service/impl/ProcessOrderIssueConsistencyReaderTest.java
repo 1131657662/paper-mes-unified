@@ -45,12 +45,12 @@ class ProcessOrderIssueConsistencyReaderTest {
     }
 
     @Test
-    void postIssueRollDisposition_requiresReissue() throws Exception {
+    void processingOrder_postIssueRollDisposition_requiresReissue() throws Exception {
         OriginalRoll issuedRoll = originalRoll("roll-1");
-        ProcessOrderDetailVO issued = detailWithRolls(List.of(issuedRoll));
+        ProcessOrderDetailVO issued = detailWithRolls(2, List.of(issuedRoll));
         OriginalRoll liveRoll = originalRoll("roll-1");
         liveRoll.setDispositionAction(com.paper.mes.processorder.model.ProcessRollDispositionAction.CANCEL);
-        ProcessOrderDetailVO live = detailWithRolls(List.of(liveRoll));
+        ProcessOrderDetailVO live = detailWithRolls(2, List.of(liveRoll));
         live.getOrder().setSnapPrint(objectMapper.writeValueAsString(snapshot(issued)));
 
         var result = ProcessOrderIssueConsistencyReader.read(live, objectMapper);
@@ -60,8 +60,21 @@ class ProcessOrderIssueConsistencyReaderTest {
     }
 
     @Test
-    void legacyIssuedSnapshot_withPostIssueDisposition_requiresReissue() throws Exception {
-        ProcessOrderDetailVO live = detailWithRolls(List.of(disposedRoll("roll-1")));
+    void toRecordOrder_postIssueRollDisposition_isCompletionFact() throws Exception {
+        OriginalRoll issuedRoll = originalRoll("roll-1");
+        ProcessOrderDetailVO issued = detailWithRolls(3, List.of(issuedRoll));
+        ProcessOrderDetailVO live = detailWithRolls(3, List.of(disposedRoll("roll-1")));
+        live.getOrder().setSnapPrint(objectMapper.writeValueAsString(snapshot(issued)));
+
+        var result = ProcessOrderIssueConsistencyReader.read(live, objectMapper);
+
+        assertThat(result.getStatus()).isEqualTo("IN_SYNC");
+        assertThat(result.getChangedGroups()).isEmpty();
+    }
+
+    @Test
+    void finishedOrder_legacySnapshotDisposition_isCompletionFact() throws Exception {
+        ProcessOrderDetailVO live = detailWithRolls(4, List.of(disposedRoll("roll-1")));
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("schema_version", "1.1");
         root.put("print_time", "2026-08-12T10:00:00");
@@ -71,8 +84,8 @@ class ProcessOrderIssueConsistencyReaderTest {
 
         var result = ProcessOrderIssueConsistencyReader.read(live, objectMapper);
 
-        assertThat(result.getStatus()).isEqualTo("REISSUE_REQUIRED");
-        assertThat(result.getChangedGroups()).containsExactly("母卷处置");
+        assertThat(result.getStatus()).isEqualTo("IN_SYNC");
+        assertThat(result.getChangedGroups()).isEmpty();
     }
 
     private Map<String, Object> snapshot(ProcessOrderDetailVO detail) {
@@ -104,10 +117,10 @@ class ProcessOrderIssueConsistencyReaderTest {
         return detail;
     }
 
-    private ProcessOrderDetailVO detailWithRolls(List<OriginalRoll> rolls) {
+    private ProcessOrderDetailVO detailWithRolls(int status, List<OriginalRoll> rolls) {
         ProcessOrder order = new ProcessOrder();
         order.setUuid("order-1");
-        order.setOrderStatus(4);
+        order.setOrderStatus(status);
         ProcessOrderDetailVO detail = new ProcessOrderDetailVO();
         detail.setOrder(order);
         detail.setOriginalRolls(rolls);

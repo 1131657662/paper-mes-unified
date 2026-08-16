@@ -19,11 +19,69 @@ class OffsiteBackupSyncContractTest {
     }
 
     @Test
+    void syncScript_restrictsStatusToConfiguredReaderGroup() throws Exception {
+        String script = source("deploy/sync-backups-rclone.example.sh");
+
+        assertThat(script).contains(
+                "STATUS_FILE_GROUP=\"${STATUS_FILE_GROUP:-root}\"",
+                "STATUS_FILE_MODE=\"${STATUS_FILE_MODE:-0600}\"",
+                "getent group \"${STATUS_FILE_GROUP}\"",
+                "chgrp -- \"${STATUS_FILE_GROUP}\"",
+                "chmod -- \"${STATUS_FILE_MODE}\"");
+        assertThat(script).doesNotContain("write_status \"SUCCESS\" || true");
+    }
+
+    @Test
+    void orchestrator_scopesStatusPermissionsToEachBackup() throws Exception {
+        String script = source("deploy/sync-offsite-backups.example.sh");
+
+        assertThat(script).contains(
+                "BUSINESS_STATUS_FILE_GROUP:-root",
+                "BUSINESS_STATUS_FILE_MODE:-0600",
+                "MES_STATUS_FILE_GROUP:-paper-mes",
+                "MES_STATUS_FILE_MODE:-0640");
+    }
+
+    @Test
+    void fallbackCron_preservesMesStatusPermissions() throws Exception {
+        String cron = source("deploy/paper-mes-backup.cron.example");
+
+        assertThat(cron).contains(
+                "STATUS_FILE_GROUP=paper-mes STATUS_FILE_MODE=0640",
+                "/usr/local/sbin/paper-mes-sync-rclone.sh");
+    }
+
+    @Test
+    void qualityWorkflow_runsOffsiteBackupBehaviorAndContractTests() throws Exception {
+        String workflow = source(".github/workflows/server-monitor-quality.yml");
+
+        assertThat(workflow).contains(
+                "deploy/*offsite*",
+                "bash deploy/test-sync-backups-rclone.sh",
+                "bash deploy/test-sync-offsite-backups.sh",
+                "bash deploy/test-prune-offsite-backups.sh",
+                "bash deploy/test-check-offsite-backup-capacity.sh",
+                "HealthMonitoringContractTest,OffsiteBackupSyncContractTest");
+    }
+
+    @Test
+    void deploymentGuide_installsCompleteOffsiteRuntime() throws Exception {
+        String guide = source("docs/生产部署指南.md");
+
+        assertThat(guide).contains(
+                "/usr/local/sbin/paper-mes-sync-rclone.sh",
+                "/usr/local/sbin/business-projects-sync-rclone.sh",
+                "/usr/local/sbin/sync-offsite-backups",
+                "/etc/systemd/system/paper-mes-offsite-backup.service",
+                "systemctl start paper-mes-offsite-backup.service");
+    }
+
+    @Test
     void behaviorTest_coversSuccessfulAndFailedRemoteCopies() throws Exception {
         String script = source("deploy/test-sync-backups-rclone.sh");
 
         assertThat(script).contains("assert_status SUCCESS", "assert_status FAILED");
-        assertThat(script).contains("test_remote:paper-mes-backups", "--checksum");
+        assertThat(script).contains("test_remote:paper-mes-backups", "--checksum", "stat -c %a");
     }
 
     @Test

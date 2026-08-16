@@ -12,6 +12,8 @@ fi
 BACKUP_ROOT="${BACKUP_ROOT:-/opt/backups/paper-mes}"
 RCLONE_REMOTE="${RCLONE_REMOTE:?set RCLONE_REMOTE to a configured rclone remote name}"
 RCLONE_PATH="${RCLONE_PATH:-paper-mes-backups}"
+STATUS_FILE_GROUP="${STATUS_FILE_GROUP:-root}"
+STATUS_FILE_MODE="${STATUS_FILE_MODE:-0600}"
 STATUS_FILE="${BACKUP_ROOT}/.remote-sync-status"
 
 fail() {
@@ -23,34 +25,55 @@ fail() {
 [[ "${RCLONE_REMOTE}" =~ ^[A-Za-z0-9._-]+$ ]] || fail "invalid RCLONE_REMOTE"
 [[ "${RCLONE_PATH}" =~ ^[A-Za-z0-9._/-]+$ ]] || fail "invalid RCLONE_PATH"
 [[ "${RCLONE_PATH}" != /* && "${RCLONE_PATH}" != *".."* ]] || fail "unsafe RCLONE_PATH"
+[[ "${STATUS_FILE_GROUP}" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "invalid STATUS_FILE_GROUP"
+[[ "${STATUS_FILE_MODE}" = "0600" || "${STATUS_FILE_MODE}" = "0640" ]] \
+  || fail "invalid STATUS_FILE_MODE"
 [ -d "${BACKUP_ROOT}" ] || fail "backup root not found: ${BACKUP_ROOT}"
+command -v getent >/dev/null 2>&1 || fail "required command not found: getent"
+getent group "${STATUS_FILE_GROUP}" >/dev/null || fail "group not found: ${STATUS_FILE_GROUP}"
 
 write_status() {
   local result="$1"
   local temp_file="${STATUS_FILE}.tmp.$$"
-  {
+  if ! {
     printf 'version=1\n'
     printf 'status=%s\n' "${result}"
     printf 'completed_at=%s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
     printf 'remote_name=%s\n' "${RCLONE_REMOTE}"
-  } > "${temp_file}"
-  mv -f -- "${temp_file}" "${STATUS_FILE}"
+  } > "${temp_file}"; then
+    rm -f -- "${temp_file}"
+    return 1
+  fi
+  chgrp -- "${STATUS_FILE_GROUP}" "${temp_file}" || {
+    rm -f -- "${temp_file}"
+    return 1
+  }
+  chmod -- "${STATUS_FILE_MODE}" "${temp_file}" || {
+    rm -f -- "${temp_file}"
+    return 1
+  }
+  mv -f -- "${temp_file}" "${STATUS_FILE}" || {
+    rm -f -- "${temp_file}"
+    return 1
+  }
 }
 
 on_exit() {
   local code=$?
+  local result="FAILED"
   trap - EXIT
-  if [ "${code}" -eq 0 ]; then
-    write_status "SUCCESS" || true
-  else
-    write_status "FAILED" || true
+  [ "${code}" -ne 0 ] || result="SUCCESS"
+  if ! write_status "${result}"; then
+    echo "failed to update off-site backup status file" >&2
+    [ "${code}" -ne 0 ] || code=74
   fi
   exit "${code}"
 }
 
 trap on_exit EXIT
-command -v rclone >/dev/null 2>&1 || fail "required command not found: rclone"
-command -v flock >/dev/null 2>&1 || fail "required command not found: flock"
+for command_name in rclone flock chgrp chmod; do
+  command -v "${command_name}" >/dev/null 2>&1 || fail "required command not found: ${command_name}"
+done
 
 exec 9>"${BACKUP_ROOT}/.remote-sync.lock"
 flock -n 9 || fail "another remote sync is already running"

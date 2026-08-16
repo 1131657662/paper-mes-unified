@@ -41,6 +41,23 @@ class BackRecordWarehousePolicyTest {
                 .hasMessageContaining("不存在");
     }
 
+    @Test
+    void resolveStored_whenWarehouseDisabled_returnsHistoricalSnapshot() {
+        when(mapper.selectById("warehouse-1")).thenReturn(warehouse(2));
+
+        var result = policy.resolveStored("warehouse-1");
+
+        assertThat(result.name()).isEqualTo("成品仓");
+    }
+
+    @Test
+    void resolveStored_whenWarehouseDeleted_keepsStoredIdentifier() {
+        var result = policy.resolveStored("missing");
+
+        assertThat(result.uuid()).isEqualTo("missing");
+        assertThat(result.name()).contains("已删除");
+    }
+
     private Warehouse warehouse(int status) {
         Warehouse warehouse = new Warehouse();
         warehouse.setUuid("warehouse-1");

@@ -7,6 +7,7 @@ import com.paper.mes.common.ResultCode;
 import com.paper.mes.auth.permission.Permissions;
 import com.paper.mes.auth.permission.RequirePermission;
 import com.paper.mes.processorder.dto.BackRecordDTO;
+import com.paper.mes.processorder.dto.BackRecordCompleteDTO;
 import com.paper.mes.processorder.dto.BackRecordReopenDTO;
 import com.paper.mes.processorder.dto.BackRecordResultVO;
 import com.paper.mes.processorder.dto.FeeResultVO;
@@ -322,6 +323,14 @@ public class ProcessOrderController {
     public R<BackRecordResultVO> backRecord(@PathVariable String uuid,
                                             @Valid @RequestBody BackRecordDTO dto) {
         return R.success(processOrderService.backRecord(uuid, dto));
+    }
+
+    @PostMapping("/{uuid}/back-record/complete")
+    @RequirePermission(Permissions.ORDER_BACK_RECORD)
+    public R<BackRecordResultVO> completeBackRecord(
+            @PathVariable String uuid,
+            @Valid @RequestBody BackRecordCompleteDTO dto) {
+        return R.success(processOrderService.completeBackRecord(uuid, dto));
     }
 
     @PostMapping("/{uuid}/back-record/reopen")

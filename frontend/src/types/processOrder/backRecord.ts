@@ -89,6 +89,15 @@ export interface BackRecordDTO {
   steps?: BackRecordStepDTO[]
 }
 
+/** 仅关闭整单，不修改任何既有回录明细。 */
+export interface BackRecordCompleteDTO {
+  expectedVersion: number
+  releaseAdminUsername?: string
+  releaseAdminPassword?: string
+  releaseReason?: string
+  varianceReason?: string
+}
+
 export interface BackRecordReopenDTO {
   expectedVersion: number
   rollUuids: string[]

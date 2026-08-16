@@ -31,6 +31,8 @@ import com.paper.mes.processorder.calc.FeeCalculator;
 import com.paper.mes.processorder.calc.RewindWeightCalculator;
 import com.paper.mes.processorder.calc.WeightCheckCalculator;
 import com.paper.mes.processorder.dto.BackRecordDTO;
+import com.paper.mes.processorder.dto.BackRecordClosureApproval;
+import com.paper.mes.processorder.dto.BackRecordCompleteDTO;
 import com.paper.mes.processorder.dto.BackRecordReopenDTO;
 import com.paper.mes.processorder.dto.BackRecordFinishDTO;
 import com.paper.mes.processorder.dto.BackRecordResultVO;
@@ -89,6 +91,7 @@ import com.paper.mes.processorder.mapper.ProcessStepMapper;
 import com.paper.mes.processorder.service.DamageImageService;
 import com.paper.mes.processorder.service.DraftServiceStepPricingNormalizer;
 import com.paper.mes.processorder.service.BackRecordFinishRecorder;
+import com.paper.mes.processorder.service.BackRecordCompletionPolicy;
 import com.paper.mes.processorder.service.BackRecordDirectShipRecorder;
 import com.paper.mes.processorder.service.BackRecordStandardFinishAdditionRecorder;
 import com.paper.mes.processorder.service.BackRecordOnSiteFinishRecorder;
@@ -2157,13 +2160,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         int voided = finishProcessRollsAndVoidSpare(scope.finishes());
         updateRollLossSummaries(scope.rolls(), scope.steps(), scope.finishes(), scope.relations());
 
-        List<BackRecordResultVO.RollCheck> rollChecks = computeClosureChecks(
-                order, scope.rolls(), scope.finishes(), scope.steps(), scope.relations());
-        BackRecordResultVO.RollCheck blockCheck = firstBlockCheck(rollChecks);
-        if (blockCheck != null) {
-            authorizeBlockRelease(dto, order, blockCheck);
-        } else {
-            confirmWarnVariance(dto, order, firstWarnCheck(rollChecks));
+        boolean completeOrder = Boolean.TRUE.equals(dto.getCompleteOrder());
+        List<BackRecordResultVO.RollCheck> rollChecks = List.of();
+        if (!completeOrder) {
+            rollChecks = computeClosureChecks(
+                    order, scope.rolls(), scope.finishes(), scope.steps(), scope.relations());
+            authorizeClosure(dto, order, rollChecks);
         }
 
         assignBackRecordWarehouse(scope.finishes(), warehouse.uuid());
@@ -2173,10 +2175,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         markFirstStockInTime(scope.finishes(), now);
         recordInventoryReceipts(scope.finishes(), newlyStockedFinishUuids, order.getUuid(), order.getVersion());
         markRollsRecorded(scope.rolls(), backRecordUser, now);
-        boolean completeOrder = Boolean.TRUE.equals(dto.getCompleteOrder());
         if (completeOrder) {
             requireAllRollsRecorded(rolls);
-            rollChecks = completeBackRecordOrder(order, rolls, steps, now, backRecordUser, warehouse);
+            BackRecordFinalization finalization = prepareBackRecordFinalization(order);
+            rollChecks = finalization.checks();
+            authorizeClosure(dto, order, rollChecks);
+            order = finalizeBackRecordOrder(order, finalization, now, backRecordUser, warehouse);
         } else {
             ConcurrencyGuard.requireUpdated(updateById(order));
         }
@@ -2187,6 +2191,25 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
         return buildBackRecordResult(order, now, rollChecks, directResult.generated(), voided,
                 scope.rolls().size(), remainingRollCount(rolls));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BackRecordResultVO completeBackRecord(String uuid, BackRecordCompleteDTO dto) {
+        businessLockService.lockProcessOrders(List.of(uuid));
+        ProcessOrder order = requireBackRecordOrder(uuid, dto.getExpectedVersion());
+        ensureOrderNotReferencedBySettle(order.getUuid(), "加工单已被结算单引用，不能完成回录");
+        BackRecordFinalization finalization = prepareBackRecordFinalization(order);
+        authorizeClosure(dto, order, finalization.checks());
+
+        LocalDateTime now = LocalDateTime.now();
+        String operator = currentOperator();
+        BackRecordWarehousePolicy.WarehouseSnapshot warehouse =
+                backRecordWarehousePolicy.resolveStored(order.getWarehouseUuid());
+        order = finalizeBackRecordOrder(order, finalization, now, operator, warehouse);
+        operationLogService.record(BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
+                OperationLogService.ACTION_BACK_RECORD, operator, "关闭已完成或已处置的回录明细");
+        return buildBackRecordResult(order, now, finalization.checks(), 0, 0, 0, 0);
     }
 
     @Override
@@ -2258,42 +2281,104 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
     }
 
-    private List<BackRecordResultVO.RollCheck> completeBackRecordOrder(
-            ProcessOrder order, List<OriginalRoll> rolls, List<ProcessStep> steps,
-            LocalDateTime now, String operator,
-            BackRecordWarehousePolicy.WarehouseSnapshot warehouse) {
-        StateMachine.assertTransition(OrderStatus.of(order.getOrderStatus()), OrderStatus.FINISHED);
-        List<FinishRoll> finishes = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
-                .eq(FinishRoll::getOrderUuid, order.getUuid()).orderByAsc(FinishRoll::getRowSort));
+    private BackRecordFinalization prepareBackRecordFinalization(ProcessOrder order) {
+        List<OriginalRoll> rolls = loadOrderRolls(order.getUuid());
+        List<FinishRoll> finishes = loadAndLockOrderFinishes(order.getUuid());
+        List<ProcessStep> steps = processStepMapper.selectList(new LambdaQueryWrapper<ProcessStep>()
+                .eq(ProcessStep::getOrderUuid, order.getUuid()));
         List<FinishOriginalRel> relations = finishOriginalRelMapper.selectList(
                 new LambdaQueryWrapper<FinishOriginalRel>()
                         .eq(FinishOriginalRel::getOrderUuid, order.getUuid()));
+        requireAllRollsRecorded(rolls);
         List<OriginalRoll> activeRolls = activeOperationalRolls(rolls);
         Set<String> activeRollIds = activeRolls.stream().map(OriginalRoll::getUuid)
                 .collect(java.util.stream.Collectors.toSet());
         List<ProcessStep> activeSteps = steps.stream()
-                .filter(step -> activeRollIds.contains(step.getOriginalUuid()))
-                .toList();
+                .filter(step -> activeRollIds.contains(step.getOriginalUuid())).toList();
         requireMeasuredRewindInputs(activeRolls, activeSteps, relations);
         List<BackRecordResultVO.RollCheck> checks = computeClosureChecks(
                 order, activeRolls, finishes, activeSteps, relations);
-        order.setOrderStatus(STATUS_FINISHED);
+        return new BackRecordFinalization(activeRolls, finishes, checks);
+    }
+
+    private ProcessOrder finalizeBackRecordOrder(
+            ProcessOrder order, BackRecordFinalization finalization,
+            LocalDateTime now, String operator,
+            BackRecordWarehousePolicy.WarehouseSnapshot warehouse) {
+        boolean voided = BackRecordCompletionPolicy.shouldVoid(
+                finalization.activeRolls(), finalization.finishes());
+        if (!voided) {
+            StateMachine.assertTransition(OrderStatus.of(order.getOrderStatus()), OrderStatus.FINISHED);
+        }
+        calcFee(order.getUuid());
+        if (voided) {
+            archiveUnusedFinishNumbers(order.getUuid(), operator, now);
+            voidStageOutputs(order.getUuid(), operator, now);
+        }
+        requireFinalizedPricing(order.getUuid());
+        BackRecordSnapshotData snapshotData = loadBackRecordSnapshotData(order.getUuid());
+        applyBackRecordTerminalState(snapshotData.order(), voided, now, operator);
+        snapshotData.order().setSnapFinish(buildSnapFinish(
+                snapshotData.order(), snapshotData.rolls(), snapshotData.finishes(),
+                now, finalization.checks(), warehouse));
+        ConcurrencyGuard.requireUpdated(updateById(snapshotData.order()));
+        if (voided) {
+            operationLogService.record(BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
+                    OperationLogService.ACTION_VOID_ORDER, operator,
+                    "全部母卷已取消或转单，完成回录时自动作废");
+        }
+        return snapshotData.order();
+    }
+
+    private void requireFinalizedPricing(String orderUuid) {
+        List<ProcessStep> pricedSteps = processStepMapper.selectList(new LambdaQueryWrapper<ProcessStep>()
+                .eq(ProcessStep::getOrderUuid, orderUuid));
+        RewindPricingFinalizationPolicy.requireFinalized(pricedSteps);
+    }
+
+    private BackRecordSnapshotData loadBackRecordSnapshotData(String orderUuid) {
+        ProcessOrder pricedOrder = requireOrder(orderUuid);
+        List<OriginalRoll> pricedRolls = loadOrderRolls(orderUuid);
+        List<FinishRoll> pricedFinishes = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
+                .eq(FinishRoll::getOrderUuid, orderUuid).orderByAsc(FinishRoll::getRowSort));
+        return new BackRecordSnapshotData(pricedOrder, pricedRolls, pricedFinishes);
+    }
+
+    private void applyBackRecordTerminalState(
+            ProcessOrder order, boolean voided, LocalDateTime now, String operator) {
         order.setBackRecordTime(now);
         order.setBackRecordUser(operator);
-        ConcurrencyGuard.requireUpdated(updateById(order));
-        calcFee(order.getUuid());
-        List<ProcessStep> pricedSteps = processStepMapper.selectList(new LambdaQueryWrapper<ProcessStep>()
-                .eq(ProcessStep::getOrderUuid, order.getUuid()));
-        RewindPricingFinalizationPolicy.requireFinalized(pricedSteps);
-        ProcessOrder pricedOrder = requireOrder(order.getUuid());
-        List<OriginalRoll> pricedRolls = originalRollMapper.selectList(new LambdaQueryWrapper<OriginalRoll>()
-                .eq(OriginalRoll::getOrderUuid, order.getUuid()).orderByAsc(OriginalRoll::getRowSort));
-        List<FinishRoll> pricedFinishes = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
-                .eq(FinishRoll::getOrderUuid, order.getUuid()).orderByAsc(FinishRoll::getRowSort));
-        pricedOrder.setSnapFinish(buildSnapFinish(pricedOrder, pricedRolls, pricedFinishes,
-                now, checks, warehouse));
-        ConcurrencyGuard.requireUpdated(updateById(pricedOrder));
-        return checks;
+        if (!voided) {
+            order.setOrderStatus(STATUS_FINISHED);
+            return;
+        }
+        order.setOrderStatus(STATUS_VOIDED);
+        order.setVoidTime(now);
+        order.setVoidUser(operator);
+        order.setVoidReason("全部母卷已取消或转单，完成回录时自动作废");
+    }
+
+    private List<OriginalRoll> loadOrderRolls(String orderUuid) {
+        return originalRollMapper.selectList(new LambdaQueryWrapper<OriginalRoll>()
+                .eq(OriginalRoll::getOrderUuid, orderUuid).orderByAsc(OriginalRoll::getRowSort));
+    }
+
+    private List<FinishRoll> loadAndLockOrderFinishes(String orderUuid) {
+        List<FinishRoll> finishes = finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
+                .eq(FinishRoll::getOrderUuid, orderUuid).orderByAsc(FinishRoll::getRowSort));
+        businessLockService.lockFinishRolls(finishes.stream().map(FinishRoll::getUuid).toList());
+        return finishRollMapper.selectList(new LambdaQueryWrapper<FinishRoll>()
+                .eq(FinishRoll::getOrderUuid, orderUuid).orderByAsc(FinishRoll::getRowSort));
+    }
+
+    private record BackRecordFinalization(
+            List<OriginalRoll> activeRolls,
+            List<FinishRoll> finishes,
+            List<BackRecordResultVO.RollCheck> checks) {
+    }
+
+    private record BackRecordSnapshotData(
+            ProcessOrder order, List<OriginalRoll> rolls, List<FinishRoll> finishes) {
     }
 
     private void markRollsRecorded(List<OriginalRoll> rolls, String operator, LocalDateTime now) {
@@ -2386,7 +2471,17 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
     }
 
-    private void authorizeBlockRelease(BackRecordDTO dto, ProcessOrder order,
+    private void authorizeClosure(BackRecordClosureApproval approval, ProcessOrder order,
+                                  List<BackRecordResultVO.RollCheck> checks) {
+        BackRecordResultVO.RollCheck blockCheck = firstBlockCheck(checks);
+        if (blockCheck != null) {
+            authorizeBlockRelease(approval, order, blockCheck);
+            return;
+        }
+        confirmWarnVariance(approval, order, firstWarnCheck(checks));
+    }
+
+    private void authorizeBlockRelease(BackRecordClosureApproval dto, ProcessOrder order,
                                        BackRecordResultVO.RollCheck blockCheck) {
         if (!StringUtils.hasText(dto.getReleaseAdminUsername())
                 || !StringUtils.hasText(dto.getReleaseAdminPassword())
@@ -2405,7 +2500,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 OperationLogService.ACTION_OVER_TOLERANCE_RELEASE, admin.displayName(), detail);
     }
 
-    private void confirmWarnVariance(BackRecordDTO dto, ProcessOrder order,
+    private void confirmWarnVariance(BackRecordClosureApproval dto, ProcessOrder order,
                                      BackRecordResultVO.RollCheck warnCheck) {
         if (warnCheck == null) {
             return;
@@ -3078,7 +3173,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         vo.setOrderNo(order.getOrderNo());
         vo.setOrderStatus(order.getOrderStatus());
         vo.setBackRecordTime(recordTime);
-        vo.setOrderCompleted(order.getOrderStatus() != null && order.getOrderStatus() == STATUS_FINISHED);
+        vo.setOrderCompleted(order.getOrderStatus() != null
+                && (order.getOrderStatus() == STATUS_FINISHED || order.getOrderStatus() == STATUS_VOIDED));
         vo.setRecordedRollCount(recordedRollCount);
         vo.setRemainingRollCount(remainingRollCount);
         vo.setOverToleranceReleased(firstBlockCheck(rollChecks) != null);

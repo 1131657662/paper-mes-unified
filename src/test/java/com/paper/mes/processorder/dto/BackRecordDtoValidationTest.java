@@ -5,12 +5,32 @@ import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class BackRecordDtoValidationTest {
 
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+
+    @Test
+    void backRecord_emptyRolls_isRejected() {
+        BackRecordDTO dto = new BackRecordDTO();
+        dto.setExpectedVersion(1);
+        dto.setCompleteOrder(true);
+        dto.setWarehouseUuid("warehouse-1");
+        dto.setRolls(List.of());
+
+        assertInvalid(dto, "rolls");
+    }
+
+    @Test
+    void completeBackRecord_onlyRequiresVersion() {
+        BackRecordCompleteDTO dto = new BackRecordCompleteDTO();
+        dto.setExpectedVersion(1);
+
+        assertThat(validator.validate(dto)).isEmpty();
+    }
 
     @Test
     void finish_negativeScrapWeight_isRejected() {

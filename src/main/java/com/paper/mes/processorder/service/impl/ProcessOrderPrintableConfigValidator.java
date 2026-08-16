@@ -44,6 +44,7 @@ final class ProcessOrderPrintableConfigValidator {
     }
 
     private static void validateRoll(OriginalRoll roll, PrintEvidence evidence) {
+        if (roll.getDispositionAction() != null) return;
         if (roll.getProcessMode() != null && roll.getProcessMode() == PROCESS_MODE_DIRECT_SHIP) return;
         boolean missingMainStep = ProcessModePolicy.requiresMainProcess(roll.getProcessMode())
                 && !hasMainStep(roll, evidence.steps());

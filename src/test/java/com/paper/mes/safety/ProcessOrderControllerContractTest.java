@@ -8,6 +8,7 @@ import com.paper.mes.auth.service.AuthService;
 import com.paper.mes.common.GlobalExceptionHandler;
 import com.paper.mes.processorder.controller.ProcessOrderController;
 import com.paper.mes.processorder.dto.BackRecordDTO;
+import com.paper.mes.processorder.dto.BackRecordCompleteDTO;
 import com.paper.mes.processorder.dto.BackRecordResultVO;
 import com.paper.mes.processorder.dto.PrintDTO;
 import com.paper.mes.processorder.dto.PrintResultVO;
@@ -384,6 +385,27 @@ class ProcessOrderControllerContractTest {
         verify(processOrderService).backRecord(eq("order-uuid"), captor.capture());
         assertEquals("warehouse-1", captor.getValue().getWarehouseUuid());
         assertEquals(new BigDecimal("1198.00"), captor.getValue().getRolls().getFirst().getActualWeight());
+    }
+
+    @Test
+    void completeBackRecord_withOperatorRole_bindsOnlyClosureCommand() throws Exception {
+        authorizeAs("operator");
+        BackRecordResultVO result = new BackRecordResultVO();
+        result.setOrderUuid("order-uuid");
+        when(processOrderService.completeBackRecord(eq("order-uuid"), any())).thenReturn(result);
+
+        mvc.perform(post("/api/process-orders/order-uuid/back-record/complete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\":7}")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderUuid").value("order-uuid"));
+
+        ArgumentCaptor<BackRecordCompleteDTO> captor =
+                ArgumentCaptor.forClass(BackRecordCompleteDTO.class);
+        verify(processOrderService).completeBackRecord(eq("order-uuid"), captor.capture());
+        assertEquals(7, captor.getValue().getExpectedVersion());
+        verify(processOrderService, never()).backRecord(any(), any());
     }
 
     @Test

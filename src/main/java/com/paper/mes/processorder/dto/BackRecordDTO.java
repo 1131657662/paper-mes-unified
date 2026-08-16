@@ -17,7 +17,7 @@ import java.util.List;
  * 状态 待回录(3) → 已完成(4)。
  */
 @Data
-public class BackRecordDTO {
+public class BackRecordDTO implements BackRecordClosureApproval {
 
     @jakarta.validation.constraints.NotNull(message = "单据版本不能为空")
     @jakarta.validation.constraints.Min(value = 0, message = "单据版本不能小于0")

@@ -12,7 +12,12 @@ on:
       - "deploy/*server-daily-report*"
       - "deploy/server_daily_report_*.py"
       - "deploy/daily-report.env.example"
+      - "deploy/*offsite*"
+      - "deploy/*sync*backup*"
+      - "deploy/backup.env.example"
+      - "deploy/paper-mes-backup.cron.example"
       - "src/test/java/com/paper/mes/safety/HealthMonitoringContractTest.java"
+      - "src/test/java/com/paper/mes/safety/OffsiteBackupSyncContractTest.java"
       - "docs/生产部署指南.md"
       - ".github/workflows/server-monitor-quality.yml"
   push:
@@ -27,7 +32,12 @@ on:
       - "deploy/*server-daily-report*"
       - "deploy/server_daily_report_*.py"
       - "deploy/daily-report.env.example"
+      - "deploy/*offsite*"
+      - "deploy/*sync*backup*"
+      - "deploy/backup.env.example"
+      - "deploy/paper-mes-backup.cron.example"
       - "src/test/java/com/paper/mes/safety/HealthMonitoringContractTest.java"
+      - "src/test/java/com/paper/mes/safety/OffsiteBackupSyncContractTest.java"
       - "docs/生产部署指南.md"
       - ".github/workflows/server-monitor-quality.yml"
 
@@ -41,6 +51,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+      - run: bash deploy/test-sync-backups-rclone.sh
+      - run: bash deploy/test-sync-offsite-backups.sh
+      - run: bash deploy/test-prune-offsite-backups.sh
+      - run: bash deploy/test-check-offsite-backup-capacity.sh
       - run: bash deploy/test-monitor-server.sh
       - run: bash deploy/test-notify-server-monitor-internal.sh
       - run: bash deploy/test-send-paper-mes-alert-email.sh
@@ -51,4 +65,4 @@ jobs:
           cache: maven
           distribution: temurin
           java-version: 21
-      - run: sh mvnw -q -Dtest=HealthMonitoringContractTest test
+      - run: sh mvnw -q '-Dtest=HealthMonitoringContractTest,OffsiteBackupSyncContractTest' test

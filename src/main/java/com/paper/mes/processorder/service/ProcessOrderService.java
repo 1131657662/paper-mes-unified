@@ -3,6 +3,7 @@ package com.paper.mes.processorder.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.paper.mes.common.PageResult;
 import com.paper.mes.processorder.dto.BackRecordDTO;
+import com.paper.mes.processorder.dto.BackRecordCompleteDTO;
 import com.paper.mes.processorder.dto.BackRecordReopenDTO;
 import com.paper.mes.processorder.dto.BackRecordResultVO;
 import com.paper.mes.processorder.dto.FeeResultVO;
@@ -140,6 +141,9 @@ public interface ProcessOrderService extends IService<ProcessOrder> {
      * 状态 待回录(3) → 已完成(4)。>5% 超差需授权放行并写操作日志。
      */
     BackRecordResultVO backRecord(String uuid, BackRecordDTO dto);
+
+    /** Close an order whose remaining source rolls are already recorded or disposed. */
+    BackRecordResultVO completeBackRecord(String uuid, BackRecordCompleteDTO dto);
 
     /** 撤回尚未进入出库流程的一批回录，使该母卷组重新可编辑。 */
     void reopenBackRecordBatch(String uuid, BackRecordReopenDTO dto);

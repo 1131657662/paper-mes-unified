@@ -6,6 +6,7 @@ import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessParam;
 import com.paper.mes.processorder.entity.ProcessStep;
+import com.paper.mes.processorder.model.ProcessRollDispositionAction;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -64,6 +65,16 @@ class ProcessOrderPrintableConfigValidatorTest {
                         List.of(relation("finish-1", "roll-1")))))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("R001");
+    }
+
+    @Test
+    void disposedMotherRoll_withoutRouteOrFinish_isExcludedFromPrintScope() {
+        OriginalRoll disposed = roll("roll-1", "R001");
+        disposed.setDispositionAction(ProcessRollDispositionAction.CANCEL);
+
+        assertThatCode(() -> ProcessOrderPrintableConfigValidator.validate(
+                List.of(disposed), List.of(), evidence(List.of(), List.of(), List.of())))
+                .doesNotThrowAnyException();
     }
 
     private OriginalRoll roll(String uuid, String rollNo) {

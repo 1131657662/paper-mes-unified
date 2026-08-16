@@ -30,6 +30,18 @@ public class BackRecordWarehousePolicy {
                 warehouse.getUuid(), warehouse.getWarehouseName(), warehouse.getLocation());
     }
 
+    public WarehouseSnapshot resolveStored(String warehouseUuid) {
+        if (!StringUtils.hasText(warehouseUuid)) {
+            return new WarehouseSnapshot(null, "未指定仓库", null);
+        }
+        Warehouse warehouse = warehouseMapper.selectById(warehouseUuid);
+        if (warehouse == null) {
+            return new WarehouseSnapshot(warehouseUuid, "历史仓库（已删除）", null);
+        }
+        return new WarehouseSnapshot(
+                warehouse.getUuid(), warehouse.getWarehouseName(), warehouse.getLocation());
+    }
+
     public record WarehouseSnapshot(String uuid, String name, String location) {
     }
 }

@@ -85,33 +85,16 @@ class BackRecordScopeResolverTest {
     }
 
     @Test
-    void resolve_completeOrder_allRollsAlreadyTerminal_allowsEmptyBatch() {
+    void resolve_completeOrder_allRollsAlreadyTerminal_rejectsOrdinaryEmptyBatch() {
         BackRecordDTO dto = new BackRecordDTO();
         dto.setCompleteOrder(true);
         dto.setRolls(List.of());
 
-        BackRecordScope scope = resolver.resolve(
+        assertThatThrownBy(() -> resolver.resolve(
                 List.of(terminalRoll("roll-1"), terminalRoll("roll-2")),
-                List.of(), List.of(), List.of(), dto);
-
-        assertThat(scope.rolls()).isEmpty();
-        assertThat(scope.finishes()).isEmpty();
-        assertThat(scope.steps()).isEmpty();
-    }
-
-    @Test
-    void resolve_completeOrder_afterRecordedRolls_keepsAllStepsForFinalization() {
-        BackRecordDTO dto = new BackRecordDTO();
-        dto.setCompleteOrder(true);
-        dto.setRolls(List.of());
-
-        BackRecordScope scope = resolver.resolve(
-                List.of(roll("roll-1", 1), roll("roll-2", 1)),
-                List.of(), List.of(step("step-1", "roll-1"), step("step-2", "roll-2")), List.of(), dto);
-
-        assertThat(scope.rolls()).isEmpty();
-        assertThat(scope.steps()).extracting(ProcessStep::getUuid)
-                .containsExactly("step-1", "step-2");
+                List.of(), List.of(), List.of(), dto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("至少选择一卷");
     }
 
     @Test

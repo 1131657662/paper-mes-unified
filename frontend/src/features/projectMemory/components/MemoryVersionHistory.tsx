@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Input, Modal, Table, Tag, Typography } from 'antd'
+import { Button, Form, Input, Modal, Table, Tag, Typography } from 'antd'
 import { RollbackOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import type { ColumnsType } from 'antd/es/table'
@@ -45,7 +45,11 @@ export default function MemoryVersionHistory({ activeVersion, canManage, items, 
       <Modal title={`回滚到 ${target?.memoryVersion ?? ''}`} open={Boolean(target)} confirmLoading={isRollingBack}
         okButtonProps={{ disabled: !reason.trim() }} okText="确认回滚" cancelText="取消"
         onCancel={closeRollback} onOk={confirmRollback}>
-        <Input.TextArea value={reason} maxLength={500} rows={4} showCount onChange={(event) => setReason(event.target.value)} />
+        <Form.Item htmlFor="project-memory-rollback-reason" label="回滚原因" required>
+          <Input.TextArea id="project-memory-rollback-reason" aria-label="回滚原因" value={reason}
+            maxLength={500} placeholder="请说明恢复到该版本的原因" rows={4} showCount
+            onChange={(event) => setReason(event.target.value)} />
+        </Form.Item>
       </Modal>
     </section>
   )

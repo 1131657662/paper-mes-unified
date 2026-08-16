@@ -63,6 +63,7 @@ class RolePermissionMatrixContractTest {
 
     private boolean isBackRecordWrite(Method method) {
         return method.getName().equals("backRecord")
+                || method.getName().equals("completeBackRecord")
                 || method.getName().equals("reopenBackRecordBatch");
     }
 

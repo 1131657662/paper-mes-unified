@@ -1,6 +1,7 @@
 import request from '../request'
 import type {
   BackRecordDTO,
+  BackRecordCompleteDTO,
   BackRecordReopenDTO,
   BackRecordResultVO,
   DraftSubmitDTO,
@@ -146,7 +147,21 @@ export function reopenBackRecordBatch(uuid: string, dto: BackRecordReopenDTO) {
   })
 }
 
-export function disposeProcessRoll(rollUuid: string, dto: ProcessRollDispositionDTO) {
+export function completeBackRecordOrder(
+  uuid: string,
+  dto: BackRecordCompleteDTO,
+) {
+  return request<BackRecordResultVO>({
+    url: `/api/process-orders/${uuid}/back-record/complete`,
+    method: 'post',
+    data: dto,
+  })
+}
+
+export function disposeProcessRoll(
+  rollUuid: string,
+  dto: ProcessRollDispositionDTO,
+) {
   return request<ProcessRollDispositionVO>({
     url: `/api/process-orders/rolls/${rollUuid}/disposition`,
     method: 'post',
