@@ -12,11 +12,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
+
 @Service
 @RequiredArgsConstructor
 public class AiProviderSettingsService {
-
-    private static final AiProvider PROVIDER = AiProvider.DEEPSEEK;
 
     private final AiProviderSecretRepository repository;
     private final AiProviderSecretCipher cipher;
@@ -25,34 +25,57 @@ public class AiProviderSettingsService {
     private final AiProperties properties;
 
     @Transactional(readOnly = true)
-    public AiProviderSettingsResponse get() {
+    public AiProviderSettingsResponse get(String providerValue) {
         permissionChecker.require(Permissions.SYSTEM_CONFIG);
-        return response(resolver.status(PROVIDER));
+        AiProvider provider = managedProvider(providerValue);
+        return response(resolver.status(provider));
     }
 
     @Transactional
-    public AiProviderSettingsResponse update(AiProviderKeyUpdateRequest request) {
+    public AiProviderSettingsResponse update(String providerValue, AiProviderKeyUpdateRequest request) {
         permissionChecker.require(Permissions.SYSTEM_CONFIG);
+        AiProvider provider = managedProvider(providerValue);
         String apiKey = request.getApiKey().trim();
         repository.upsert(new AiProviderSecretRow(
-                PROVIDER.name(), cipher.encrypt(PROVIDER, apiKey), lastFour(apiKey),
+                provider.name(), cipher.encrypt(provider, apiKey), lastFour(apiKey),
                 true, currentUserUuid(), null));
-        return response(resolver.status(PROVIDER));
+        return response(resolver.status(provider));
     }
 
     @Transactional
-    public AiProviderSettingsResponse delete() {
+    public AiProviderSettingsResponse delete(String providerValue) {
         permissionChecker.require(Permissions.SYSTEM_CONFIG);
-        repository.delete(PROVIDER.name());
-        return response(resolver.status(PROVIDER));
+        AiProvider provider = managedProvider(providerValue);
+        repository.delete(provider.name());
+        return response(resolver.status(provider));
     }
 
     private AiProviderSettingsResponse response(AiProviderCredentialStatus status) {
+        AiProvider provider = managedProvider(status.provider());
         return new AiProviderSettingsResponse(
-                status.provider(), properties.getDeepseekModelPro(),
-                properties.getDeepseekBaseUrl(), status.configured(), status.source(),
+                status.provider(), model(provider), baseUrl(provider),
+                status.configured(), status.source(),
                 status.maskedApiKey(), status.enabled(), status.databaseStorageReady(),
                 status.updatedBy(), status.updatedAt());
+    }
+
+    private AiProvider managedProvider(String value) {
+        if (value == null) throw new IllegalArgumentException("AI 供应商不能为空");
+        try {
+            AiProvider provider = AiProvider.valueOf(value.trim().toUpperCase(Locale.ROOT));
+            if (provider == AiProvider.DEEPSEEK || provider == AiProvider.ZHIPU) return provider;
+        } catch (IllegalArgumentException ignored) {
+            // Normalize all unsupported provider values to one safe client error.
+        }
+        throw new IllegalArgumentException("不支持的 AI 供应商");
+    }
+
+    private String model(AiProvider provider) {
+        return provider == AiProvider.ZHIPU ? properties.getZhipuModel() : properties.getDeepseekModelPro();
+    }
+
+    private String baseUrl(AiProvider provider) {
+        return provider == AiProvider.ZHIPU ? properties.getZhipuBaseUrl() : properties.getDeepseekBaseUrl();
     }
 
     private String lastFour(String value) {

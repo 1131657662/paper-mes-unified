@@ -3,6 +3,7 @@ import type {
   ProcessAiConfirmResponse,
   ProcessAiMessage,
   ProcessAiPendingPackagingCandidate,
+  ProcessAiManagedProvider,
   ProcessAiProviderSettings,
   ProcessAiSession,
   ProcessAiStatus,
@@ -14,14 +15,14 @@ export const processAiService = {
   status: () => request<ProcessAiStatus>({
     url: '/api/ai/process-status', method: 'get', silentError: true,
   }),
-  providerSettings: () => request<ProcessAiProviderSettings>({
-    url: '/api/ai/provider-settings/deepseek', method: 'get',
+  providerSettings: (provider: ProcessAiManagedProvider) => request<ProcessAiProviderSettings>({
+    url: `/api/ai/provider-settings/${provider}`, method: 'get',
   }),
-  updateProviderKey: (apiKey: string) => request<ProcessAiProviderSettings>({
-    url: '/api/ai/provider-settings/deepseek', method: 'put', data: { apiKey },
+  updateProviderKey: (provider: ProcessAiManagedProvider, apiKey: string) => request<ProcessAiProviderSettings>({
+    url: `/api/ai/provider-settings/${provider}`, method: 'put', data: { apiKey },
   }),
-  deleteProviderKey: () => request<ProcessAiProviderSettings>({
-    url: '/api/ai/provider-settings/deepseek', method: 'delete',
+  deleteProviderKey: (provider: ProcessAiManagedProvider) => request<ProcessAiProviderSettings>({
+    url: `/api/ai/provider-settings/${provider}`, method: 'delete',
   }),
   openSession: (input: OpenSessionInput) => request<ProcessAiSession>({
     url: `${processUrl(input.orderUuid)}/session`, method: 'post',

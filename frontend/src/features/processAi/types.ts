@@ -2,6 +2,8 @@ import type { PlanPreviewVO, ProcessPlanDTO } from '../../types/processOrder'
 import type { ProcessStepDTO } from '../../api/processOrder'
 import type { RollDraft } from '../processOrderCreate/types'
 
+export type ProcessAiManagedProvider = 'deepseek' | 'zhipu'
+
 export interface ProcessAiProviderSettings {
   provider: string
   model: string

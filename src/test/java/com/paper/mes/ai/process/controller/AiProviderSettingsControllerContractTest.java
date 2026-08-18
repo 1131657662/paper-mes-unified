@@ -16,7 +16,7 @@ class AiProviderSettingsControllerContractTest {
         RequirePermission permission = AiProviderSettingsController.class
                 .getAnnotation(RequirePermission.class);
 
-        assertThat(mapping.value()).containsExactly("/api/ai/provider-settings/deepseek");
+        assertThat(mapping.value()).containsExactly("/api/ai/provider-settings/{provider}");
         assertThat(permission.value()).containsExactly(Permissions.SYSTEM_CONFIG);
     }
 }

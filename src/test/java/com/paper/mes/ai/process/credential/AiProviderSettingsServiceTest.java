@@ -46,7 +46,7 @@ class AiProviderSettingsServiceTest {
                 .thenReturn("v1:ciphertext");
         when(resolver.status(AiProvider.DEEPSEEK)).thenReturn(status());
 
-        service.update(request);
+        service.update("deepseek", request);
 
         ArgumentCaptor<AiProviderSecretRow> captor =
                 ArgumentCaptor.forClass(AiProviderSecretRow.class);
@@ -57,9 +57,43 @@ class AiProviderSettingsServiceTest {
         assertThat(request.toString()).doesNotContain("sk-sensitive-1234");
     }
 
+    @Test
+    void updateStoresZhipuCredentialUnderItsOwnProvider() {
+        AiProviderKeyUpdateRequest request = new AiProviderKeyUpdateRequest();
+        request.setApiKey("glm-sensitive-5678");
+        when(cipher.encrypt(AiProvider.ZHIPU, "glm-sensitive-5678"))
+                .thenReturn("v1:glm-ciphertext");
+        when(resolver.status(AiProvider.ZHIPU)).thenReturn(status(AiProvider.ZHIPU));
+
+        service.update("ZHIPU", request);
+
+        ArgumentCaptor<AiProviderSecretRow> captor =
+                ArgumentCaptor.forClass(AiProviderSecretRow.class);
+        verify(repository).upsert(captor.capture());
+        assertThat(captor.getValue().provider()).isEqualTo("ZHIPU");
+        assertThat(captor.getValue().ciphertext()).isEqualTo("v1:glm-ciphertext");
+        assertThat(captor.getValue().lastFour()).isEqualTo("5678");
+        assertThat(request.toString()).doesNotContain("glm-sensitive-5678");
+    }
+
+    @Test
+    void rejectsProvidersThatAreNotManagedCredentials() {
+        AiProviderKeyUpdateRequest request = new AiProviderKeyUpdateRequest();
+        request.setApiKey("sk-sensitive-1234");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> service.update("local_rules", request))
+                .isInstanceOf(IllegalArgumentException.class);
+        org.mockito.Mockito.verifyNoInteractions(cipher, repository, resolver);
+    }
+
     private AiProviderCredentialStatus status() {
+        return status(AiProvider.DEEPSEEK);
+    }
+
+    private AiProviderCredentialStatus status(AiProvider provider) {
         return new AiProviderCredentialStatus(
-                "DEEPSEEK", true, "DATABASE", "****1234",
+                provider.name(), true, "DATABASE", "****1234",
                 true, true, "admin-1", null);
     }
 }
