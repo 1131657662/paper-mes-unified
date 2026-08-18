@@ -32,6 +32,37 @@
   color: #237804 !important;
 }
 
+.mes-data-tag.ant-tag-blue,
+.mes-data-tag.ant-tag-processing {
+  color: #0958d9 !important;
+}
+
+.mes-data-tag.ant-tag-cyan {
+  color: #006d75 !important;
+}
+
+.mes-data-tag.ant-tag-geekblue {
+  color: #1d39c4 !important;
+}
+
+.mes-data-tag.ant-tag-purple {
+  color: #531dab !important;
+}
+
+.mes-data-tag.ant-tag-orange {
+  color: #ad4e00 !important;
+}
+
+.mes-data-tag.ant-tag-gold {
+  color: #874d00 !important;
+}
+
+.mes-data-tag.ant-tag-red,
+.mes-data-tag.ant-tag-magenta,
+.mes-data-tag.ant-tag-volcano {
+  color: #a8071a !important;
+}
+
 .ant-btn-primary.ant-btn-loading {
   color: #ffffff;
   background: #0958d9;
