@@ -73,7 +73,7 @@ export default function MachineFormPage({ mode }: Props) {
       />
 
       <Card className="document-module-card machine-profile-card" title="生产资源资料">
-        {isLoadingMachine ? (
+        {isEdit && isLoadingMachine ? (
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : isMachineError && !isNotFoundError(machineError) ? (
           <QueryLoadErrorAlert
