@@ -42,6 +42,7 @@ export default function DashboardTrendChart({ model }: { model: DashboardTrendMo
         onEvents={{ updateAxisPointer: movePointer }}
         option={buildTrendChartOption(model)}
         opts={{ renderer: 'svg' }}
+        role="img"
       />
       <span ref={lineRef} className="dashboard-trend__axis-pointer" hidden />
     </div>
