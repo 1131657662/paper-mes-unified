@@ -140,6 +140,10 @@
   margin-inline-end: 0;
 }
 
+.process-order-list__status .ant-tag-success {
+  color: var(--mes-color-success-strong);
+}
+
 .process-order-list__status .ant-tag-orange {
   color: #ad4e00;
 }
