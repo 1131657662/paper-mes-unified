@@ -19,5 +19,8 @@ describe('加工单基础信息表单', () => {
     expect(markup).toContain('客户与生产安排')
     expect(markup).not.toContain('name="teamGroup"')
     expect(markup).not.toContain('班组')
+    expect(markup).toContain('id="remarkLong"')
+    expect(markup).toContain('客户加工要求')
+    expect(markup).toContain('maxLength="2000"')
   })
 })

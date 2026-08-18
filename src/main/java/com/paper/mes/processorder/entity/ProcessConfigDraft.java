@@ -23,6 +23,8 @@ public class ProcessConfigDraft extends BaseEntity {
     private Integer processMode;
     private Integer mainStepType;
     private String configJson;
+    /** Confirmed, sanitized AI intent metadata; configJson remains the executable plan. */
+    private String aiIntentJson;
     private String previewJson;
     /** 0未完成 1可提交 */
     private Integer configStatus;

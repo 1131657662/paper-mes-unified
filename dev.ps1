@@ -9,6 +9,29 @@ $LogDir = Join-Path $Root '.codex-run-logs'
 $FrontendDir = Join-Path $Root 'frontend'
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
+function Import-UserAiEnvironment {
+    $names = @(
+        'PAPER_MES_AI_CONFIG_MASTER_KEY',
+        'PAPER_MES_AI_MESSAGE_ENCRYPTION_KEY',
+        'PAPER_MES_AI_PROVIDER',
+        'PAPER_MES_AI_DATA_MODE',
+        'PAPER_MES_AI_DEEPSEEK_API_KEY',
+        'PAPER_MES_AI_DEEPSEEK_MODEL_PRO',
+        'PAPER_MES_AI_DEEPSEEK_BASE_URL'
+    )
+    foreach ($name in $names) {
+        if (-not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name, 'Process'))) {
+            continue
+        }
+        $userValue = [Environment]::GetEnvironmentVariable($name, 'User')
+        if (-not [string]::IsNullOrWhiteSpace($userValue)) {
+            Set-Item -LiteralPath "Env:$name" -Value $userValue
+        }
+    }
+}
+
+Import-UserAiEnvironment
+
 function Resolve-LocalRuntimeMetadata {
     try {
         $sha = (& git -C $Root rev-parse --short HEAD 2>$null).Trim()

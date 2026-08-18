@@ -6,6 +6,7 @@ import {
   distributeFixedTotal,
   resolveServiceApplyTargets,
   serviceBatchIncludesCurrentRoll,
+  serviceStepTemplate,
 } from './serviceStepBatchModel'
 
 describe('service step batch application', () => {
@@ -76,6 +77,15 @@ describe('service step batch application', () => {
   it('only closes the current editor when the current roll is in the batch targets', () => {
     expect(serviceBatchIncludesCurrentRoll(['roll-b'], 'roll-a')).toBe(false)
     expect(serviceBatchIncludesCurrentRoll(['roll-a', 'roll-b'], 'roll-a')).toBe(true)
+  })
+
+  it('restores the confirmed quantity instead of the automatic source quantity', () => {
+    const template = serviceStepTemplate({
+      uuid: 'step-1', originalUuid: 'roll-1', stepType: 4, billingMode: 2,
+      billingBasis: 'PIECE', serviceQuantity: 1, billingQuantity: 6, unitPrice: 20,
+    })
+
+    expect(template?.serviceQuantity).toBe(6)
   })
 })
 

@@ -47,7 +47,7 @@ class SawPlanCalculatorTest {
                 roll(2400, "2400"), "ALLOCATE");
 
         assertEquals(200, result.differenceWidth());
-        assertEquals(List.of(new BigDecimal("1100.000"), new BigDecimal("1300.000")),
+        assertEquals(List.of(new BigDecimal("1200.000"), new BigDecimal("1200.000")),
                 result.finishes().stream().map(SawPlanCalculation.CalculatedFinish::estimateWeight).toList());
         assertEquals(new BigDecimal("2400.000"), finishWeight(result));
     }
@@ -82,6 +82,8 @@ class SawPlanCalculatorTest {
 
         assertEquals(new BigDecimal("2282.087"), finishWeight(result));
         assertEquals(new BigDecimal("2.913"), trimWeight(result));
+        assertEquals(List.of(new BigDecimal("1141.044"), new BigDecimal("1141.043")),
+                result.finishes().stream().map(SawPlanCalculation.CalculatedFinish::estimateWeight).toList());
     }
 
     @Test

@@ -48,7 +48,7 @@ class ActiveSoftDeleteUniquenessSchemaContractTest {
                 "UNIQUE KEY `uk_sys_dict_item_code` (",
                 "UNIQUE KEY `uk_sys_config_key` (",
                 "UNIQUE KEY `uk_sys_no_rule_biz` (");
-        assertThat(read("sql/schema-baseline.version").trim()).isEqualTo("3.68");
+        assertThat(read("sql/schema-baseline.version").trim()).isEqualTo("3.73");
     }
 
     @Test

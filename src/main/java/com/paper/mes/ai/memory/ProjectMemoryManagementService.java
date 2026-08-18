@@ -81,15 +81,19 @@ public class ProjectMemoryManagementService {
         if ("DRAFT".equals(target.status())) {
             throw new BusinessException(ResultCode.BAD_REQUEST, "MEMORY_ROLLBACK_INVALID", "不能回滚到草稿版本");
         }
-        ProjectMemorySnapshot snapshot = validator.validateDatabaseRow(
+        ProjectMemorySnapshot targetSnapshot = validator.validateDatabaseRow(
                 new ProjectMemoryDocumentRow(target.uuid(), target.docVersion(), target.schemaVersion(),
                         target.checksum(), target.docJson(), "ACTIVE", target.patchNotes(), target.createdBy(), target.approvedBy()));
-        requireUpdated(repository.markSuperseded(active.docVersion()), "active memory snapshot");
-        requireUpdated(repository.markActive(target.docVersion()), "rollback target memory snapshot");
-        repository.insertAudit(new ProjectMemoryPatchAuditRow(UUID.randomUUID().toString(),
-                request.idempotencyKey(), "ROLLBACK", request.expectedMemoryVersion(), active.docVersion(),
-                target.docVersion(), active.checksum(), target.checksum(), "[]", request.reason(), operator()));
-        reloadAfterCommit();
+        ObjectNode rollback = ((ObjectNode) targetSnapshot.document()).deepCopy();
+        String nextVersion = nextAvailableVersion(active.docVersion());
+        rollback.put("memoryVersion", nextVersion);
+        rollback.put("checksum", new ProjectMemoryChecksum(objectMapper).calculate(rollback));
+        ProjectMemorySnapshot snapshot = validator.validateNode(
+                rollback, nextVersion, targetSnapshot.schemaVersion(), rollback.path("checksum").asText());
+        ObjectNode operation = objectMapper.createObjectNode();
+        operation.put("targetMemoryVersion", request.targetMemoryVersion());
+        persist(active, snapshot, request.reason(), request.idempotencyKey(), "ROLLBACK",
+                request.expectedMemoryVersion(), operation);
         return response(snapshot);
     }
 

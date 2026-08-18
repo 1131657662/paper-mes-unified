@@ -21,6 +21,7 @@ import com.paper.mes.processorder.dto.ProcessStepPricingAdjustmentDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingBatchDTO;
 import com.paper.mes.processorder.dto.ProcessStepPricingBatchPreviewVO;
 import com.paper.mes.processorder.dto.FeeResultVO;
+import com.paper.mes.processorder.model.WeightEntryMode;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.ProcessRouteAppendService;
 import com.paper.mes.processorder.service.ProcessRouteSaveService;
@@ -385,6 +386,8 @@ class ProcessOrderControllerContractTest {
         verify(processOrderService).backRecord(eq("order-uuid"), captor.capture());
         assertEquals("warehouse-1", captor.getValue().getWarehouseUuid());
         assertEquals(new BigDecimal("1198.00"), captor.getValue().getRolls().getFirst().getActualWeight());
+        assertEquals(WeightEntryMode.CONFIRM_REFERENCE,
+                captor.getValue().getRolls().getFirst().getWeightEntryMode());
     }
 
     @Test
@@ -498,7 +501,7 @@ class ProcessOrderControllerContractTest {
 
     private String backRecordPayload() {
         return """
-                {"expectedVersion":0,"completeOrder":false,"warehouseUuid":"warehouse-1","rolls":[{"uuid":"roll-1","actualWeight":1198.00}]}
+                {"expectedVersion":0,"completeOrder":false,"warehouseUuid":"warehouse-1","rolls":[{"uuid":"roll-1","actualWeight":1198.00,"weightEntryMode":"CONFIRM_REFERENCE"}]}
                 """;
     }
 

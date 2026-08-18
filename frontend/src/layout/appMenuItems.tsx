@@ -13,6 +13,7 @@ import {
   FileDoneOutlined,
   FileOutlined,
   FileTextOutlined,
+  FileSearchOutlined,
   FundOutlined,
   InboxOutlined,
   LineChartOutlined,
@@ -98,6 +99,8 @@ function systemMenuItems(can: (permissions: string[]) => boolean): MenuItem[] {
     can([PERMISSIONS.systemConfig, PERMISSIONS.dataBackup, PERMISSIONS.dataHealth])
       && menu('/system-config', <ControlOutlined />, '系统配置'),
     can([PERMISSIONS.aiAssist]) && menu('/project-memory', <BookOutlined />, '项目记忆'),
+    can([PERMISSIONS.aiMemoryManage])
+      && menu('/ai-memory-review', <FileSearchOutlined />, 'AI记忆审核'),
     can([PERMISSIONS.systemAudit]) && menu('/operation-logs', <FileTextOutlined />, '操作日志'),
   ].filter(Boolean) as MenuItem[]
 }

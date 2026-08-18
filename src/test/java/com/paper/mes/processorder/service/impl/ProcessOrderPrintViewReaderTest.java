@@ -7,6 +7,7 @@ import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
+import com.paper.mes.processorder.entity.ProcessStep;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -25,6 +26,8 @@ class ProcessOrderPrintViewReaderTest {
     @Test
     void issuedVersion_withCompleteSnapshot_usesFrozenDetail() throws Exception {
         ProcessOrderDetailVO frozen = detail(2, "frozen-paper", List.of("finish-1"));
+        frozen.getOrder().setRemarkLong("AI customer requirement");
+        frozen.setSteps(List.of(packagingStep("film wrap, 20 per piece")));
         Map<String, Object> root = snapshotRoot("2.0", "print_time", "2026-07-15T00:10:00");
         ProcessOrderSnapshotDetailCodec.append(root, frozen, objectMapper);
         ProcessOrderDetailVO live = detail(4, "changed-paper", List.of("finish-1", "finish-2"));
@@ -40,6 +43,9 @@ class ProcessOrderPrintViewReaderTest {
                 .getFirst().getFinishes().getFirst();
         assertThat(finish.getActualRemark()).isEqualTo("回录备注");
         assertThat(finish.getSources().getFirst().getExtraNo()).isEqualTo("NO-1");
+        assertThat(view.getDetail().getOrder().getRemarkLong()).isEqualTo("AI customer requirement");
+        assertThat(view.getDetail().getSteps()).singleElement()
+                .extracting(ProcessStep::getRemark).isEqualTo("film wrap, 20 per piece");
         assertThat(view.getDetail().getOrder().getSnapPrint()).isNull();
     }
 
@@ -188,5 +194,16 @@ class ProcessOrderPrintViewReaderTest {
         root.put("original_rolls", List.of());
         root.put("finish_rolls", List.of());
         return root;
+    }
+
+    private ProcessStep packagingStep(String remark) {
+        ProcessStep step = new ProcessStep();
+        step.setUuid("step-1");
+        step.setOriginalUuid("roll-1");
+        step.setStepType(4);
+        step.setStepName("Packaging");
+        step.setIsMain(0);
+        step.setRemark(remark);
+        return step;
     }
 }

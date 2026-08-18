@@ -24,7 +24,7 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @has_weight_source := (SELECT COUNT(*) FROM information_schema.columns
   WHERE table_schema = DATABASE() AND table_name = 'biz_original_roll' AND column_name = 'weight_source');
 SET @sql := IF(@has_weight_source = 0,
-  'ALTER TABLE biz_original_roll ADD COLUMN weight_source VARCHAR(16) DEFAULT NULL COMMENT ''MANUAL/SCALE/IMPORT/INFERRED/LEGACY'' AFTER weight_status',
+  'ALTER TABLE biz_original_roll ADD COLUMN weight_source VARCHAR(16) DEFAULT NULL COMMENT ''MANUAL/SCALE/IMPORT/INFERRED/LEGACY/MANUAL_CONFIRM/CARRIED_NOMINAL/MANUAL_ESTIMATE'' AFTER weight_status',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 

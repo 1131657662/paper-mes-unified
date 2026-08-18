@@ -65,12 +65,13 @@ function OrderNoCopyButton({ orderNo }: { orderNo?: string }) {
 
 export function ProductionSummary({ record }: { record: ProcessOrder }) {
   const originalWeight = record.originalRollWeight ?? record.totalOriginalWeight
+  const originalPieces = record.originalPieceCount ?? record.originalRollCount ?? 0
   const estimateWeight = record.estimateFinishWeight ?? estimateFallback(record)
   const actualWeight = record.actualFinishWeight ?? record.totalFinishWeight
 
   return (
     <div className="process-order-list__summary">
-      <span>母卷 {record.originalRollCount ?? 0} 卷 / {formatTon(originalWeight)}</span>
+      <span>母卷 {originalPieces} 件 / {formatTon(originalWeight)}</span>
       <span>成品 {record.finishRollCount ?? 0} 件 / 预估 {formatTon(estimateWeight)}</span>
       {hasWeight(actualWeight) && <span>实际 {formatTon(actualWeight)}</span>}
       {record.actualTotalKnife != null && record.actualTotalKnife > 0 && <span>锯纸 {record.actualTotalKnife} 刀</span>}

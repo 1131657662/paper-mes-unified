@@ -29,9 +29,12 @@ public class ProcessOrderDetailVO {
 
     private List<RollProductionVO> rollProductions;
 
+    private List<WorkshopInstructionVO> workshopInstructions;
+
     @Data
     public static class RollProductionVO {
         private String originalUuid;
+        private Integer rowSort;
         private String extraNo;
         private String batchNo;
         private String rollNo;

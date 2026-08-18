@@ -107,6 +107,61 @@ class BackRecordRollMeasurementPolicyTest {
     }
 
     @Test
+    void confirmReferenceWeight_promotesCurrentReferenceToMeasured() {
+        OriginalRoll roll = roll("ESTIMATED", "1");
+        BackRecordRollDTO dto = dto("1");
+        dto.setWeightEntryMode(WeightEntryMode.CONFIRM_REFERENCE);
+
+        boolean measured = BackRecordRollMeasurementPolicy.apply(roll, dto, true);
+
+        assertThat(measured).isTrue();
+        assertThat(roll.getActualWeight()).isEqualByComparingTo("1");
+        assertThat(roll.getWeightStatus()).isEqualTo("MEASURED");
+        assertThat(roll.getWeightSource()).isEqualTo("MANUAL_CONFIRM");
+        assertThat(BackRecordRollMeasurementPolicy.isMeasured(roll)).isTrue();
+    }
+
+    @Test
+    void confirmReferenceWeight_usesServerNominalValue() {
+        OriginalRoll roll = roll("ESTIMATED", null);
+        roll.setRollWeight(new BigDecimal("2000"));
+        roll.setPieceNum(2);
+        BackRecordRollDTO dto = dto("4000");
+        dto.setWeightEntryMode(WeightEntryMode.CONFIRM_REFERENCE);
+
+        boolean measured = BackRecordRollMeasurementPolicy.apply(roll, dto, true);
+
+        assertThat(measured).isTrue();
+        assertThat(roll.getActualWeight()).isEqualByComparingTo("4000");
+        assertThat(roll.getWeightStatus()).isEqualTo("MEASURED");
+        assertThat(roll.getWeightSource()).isEqualTo("MANUAL_CONFIRM");
+    }
+
+    @Test
+    void confirmReferenceWeight_rejectsClientValueDifferentFromServerReference() {
+        OriginalRoll roll = roll("ESTIMATED", "1");
+        BackRecordRollDTO dto = dto("2");
+        dto.setWeightEntryMode(WeightEntryMode.CONFIRM_REFERENCE);
+
+        assertThatThrownBy(() -> BackRecordRollMeasurementPolicy.apply(roll, dto, true))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("参考重量");
+        assertThat(roll.getWeightStatus()).isEqualTo("ESTIMATED");
+        assertThat(roll.getWeightSource()).isNull();
+    }
+
+    @Test
+    void confirmReferenceWeight_withoutReferenceIsRejected() {
+        OriginalRoll roll = roll("UNKNOWN", null);
+        BackRecordRollDTO dto = dto("1");
+        dto.setWeightEntryMode(WeightEntryMode.CONFIRM_REFERENCE);
+
+        assertThatThrownBy(() -> BackRecordRollMeasurementPolicy.apply(roll, dto, false))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("参考重量");
+    }
+
+    @Test
     void userEstimate_withoutPositiveWeight_isRejected() {
         OriginalRoll roll = roll("UNKNOWN", null);
         BackRecordRollDTO dto = dto(null);

@@ -58,6 +58,8 @@ export interface ProcessOrder {
   processNames?: string[]
   remark?: string
   remarkLong?: string
+  /** 脱敏后的 AI 最终意图，用于打印车间执行摘要；不含客户原始对话。 */
+  aiRequirementJson?: string
   postProductionNote?: string
   voidTime?: string
   voidUser?: string

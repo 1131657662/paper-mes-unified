@@ -1,6 +1,6 @@
 -- =============================================================================
 -- 卷筒纸加工管理系统 V4.1  数据库建表脚本
--- Canonical schema version: 3.68
+-- Canonical schema version: 3.73
 -- Phase 1 / P0-1  数据库建表
 -- 引擎: InnoDB   字符集: utf8mb4   排序规则: utf8mb4_general_ci
 -- 规范依据: 开发文档 第三章 + 3.4 节 DDL 统一规范
@@ -226,6 +226,7 @@ CREATE TABLE `biz_process_order` (
   `snap_finish`           JSON          DEFAULT NULL            COMMENT '【V4.1】完成快照JSON，根节点必含 schema_version:1.0',
   `remark`                VARCHAR(255)  DEFAULT NULL            COMMENT '简短备注',
   `remark_long`           TEXT          DEFAULT NULL            COMMENT '长文本工艺/异常说明',
+  `ai_requirement_json`   JSON          DEFAULT NULL            COMMENT 'AI确认后的订单级加工要求总览',
   `post_production_note`  TEXT          DEFAULT NULL            COMMENT '后生产运营备注，不进入下发快照',
   `is_deleted`            TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1删除',
   `create_by`             VARCHAR(50)   DEFAULT NULL            COMMENT '创建人',
@@ -283,7 +284,7 @@ CREATE TABLE `biz_original_roll` (
   `piece_num`          INT           NOT NULL DEFAULT 1      COMMENT '件数固定默认1',
   `total_weight`       DECIMAL(10,3) DEFAULT NULL  COMMENT '标称/估算总重=件重*件数',
   `weight_status`      VARCHAR(16) NOT NULL DEFAULT 'ESTIMATED' COMMENT 'UNKNOWN/ESTIMATED/MEASURED',
-  `weight_source`      VARCHAR(16) DEFAULT NULL COMMENT 'MANUAL/SCALE/IMPORT/INFERRED/LEGACY',
+  `weight_source`      VARCHAR(16) DEFAULT NULL COMMENT 'MANUAL/SCALE/IMPORT/INFERRED/LEGACY/MANUAL_CONFIRM/CARRIED_NOMINAL/MANUAL_ESTIMATE',
   `weight_recorded_at` DATETIME DEFAULT NULL,
   `weight_recorded_by` VARCHAR(50) DEFAULT NULL,
   `batch_no`           VARCHAR(100)  DEFAULT NULL            COMMENT '来料批次号',
@@ -458,7 +459,8 @@ INSERT INTO `sys_process_catalog_billing_mode`
 ('process-catalog-rewind',1,10),('process-catalog-rewind',2,20),
 ('process-catalog-rewind',3,30),('process-catalog-rewind',4,40),
 ('process-catalog-strip',1,10),('process-catalog-strip',3,30),('process-catalog-strip',4,40),
-('process-catalog-repack',1,10),('process-catalog-repack',3,30),('process-catalog-repack',4,40);
+('process-catalog-repack',1,10),('process-catalog-repack',2,20),
+('process-catalog-repack',3,30),('process-catalog-repack',4,40);
 
 DROP TABLE IF EXISTS `sys_customer_process_price`;
 CREATE TABLE `sys_customer_process_price` (
@@ -1376,6 +1378,7 @@ CREATE TABLE `biz_process_config_draft` (
   `process_mode` TINYINT NOT NULL,
   `main_step_type` TINYINT DEFAULT NULL,
   `config_json` JSON NOT NULL,
+  `ai_intent_json` JSON DEFAULT NULL COMMENT '按母卷保存的AI工艺意图，不作为工艺计划解析',
   `preview_json` JSON DEFAULT NULL,
   `config_status` TINYINT NOT NULL DEFAULT 0,
   `last_error` VARCHAR(500) DEFAULT NULL,
@@ -2716,10 +2719,264 @@ CREATE TABLE `biz_project_memory_patch_audit` (
     CHECK (`operation_type` IN ('PATCH', 'ROLLBACK', 'RELOAD'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI项目记忆变更审计';
 
+-- V3.69 canonical baseline: order-scoped AI process parsing workflow.
+CREATE TABLE `biz_process_ai_conversation` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `conversation_id` VARCHAR(64) NOT NULL,
+  `order_uuid` VARCHAR(36) NOT NULL,
+  `user_uuid` VARCHAR(36) NOT NULL,
+  `current_step` TINYINT NOT NULL,
+  `draft_version` INT NOT NULL,
+  `project_memory_version` VARCHAR(32) NOT NULL,
+  `memory_generation` INT NOT NULL DEFAULT 1,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'OPEN',
+  `last_parse_revision` INT NOT NULL DEFAULT 0,
+  `expires_at` DATETIME DEFAULT NULL,
+  `closed_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_ai_conversation_id` (`conversation_id`),
+  UNIQUE KEY `uk_ai_conversation_order` (`order_uuid`),
+  KEY `idx_ai_conversation_status` (`status`, `updated_at`),
+  CONSTRAINT `fk_ai_conversation_order` FOREIGN KEY (`order_uuid`)
+    REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_ai_conversation_step` CHECK (`current_step` IN (3, 4)),
+  CONSTRAINT `chk_ai_conversation_status`
+    CHECK (`status` IN ('OPEN', 'INTERRUPTED', 'CLOSED', 'EXPIRED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单级AI工艺解析会话';
+
+CREATE TABLE `biz_process_ai_message` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `conversation_id` VARCHAR(64) NOT NULL,
+  `memory_generation` INT NOT NULL DEFAULT 1,
+  `sequence_no` INT NOT NULL,
+  `role` VARCHAR(16) NOT NULL,
+  `message_status` VARCHAR(16) NOT NULL DEFAULT 'FINAL',
+  `idempotency_key` VARCHAR(80) NOT NULL,
+  `content_ciphertext` MEDIUMTEXT NOT NULL COMMENT 'AES-GCM密文，不写明文日志',
+  `content_hash` CHAR(64) NOT NULL,
+  `structured_result` JSON DEFAULT NULL COMMENT 'AES-GCM信封；历史行可能为脱敏JSON',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_ai_message_sequence` (`conversation_id`, `sequence_no`),
+  UNIQUE KEY `uk_ai_message_idempotency` (`conversation_id`, `idempotency_key`),
+  KEY `idx_ai_message_created` (`conversation_id`, `created_at`),
+  CONSTRAINT `fk_ai_message_conversation` FOREIGN KEY (`conversation_id`)
+    REFERENCES `biz_process_ai_conversation` (`conversation_id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `chk_ai_message_role` CHECK (`role` IN ('USER', 'ASSISTANT', 'SYSTEM')),
+  CONSTRAINT `chk_ai_message_status` CHECK (`message_status` IN ('PARTIAL', 'FINAL', 'FAILED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单级AI会话消息';
+
+CREATE TABLE `biz_process_ai_parse` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `order_uuid` VARCHAR(36) NOT NULL,
+  `conversation_id` VARCHAR(64) NOT NULL,
+  `parse_id` VARCHAR(64) NOT NULL,
+  `parse_revision` INT NOT NULL,
+  `memory_generation` INT NOT NULL DEFAULT 1,
+  `request_idempotency_key` VARCHAR(80) NOT NULL,
+  `apply_idempotency_key` VARCHAR(80) DEFAULT NULL,
+  `expected_version` INT NOT NULL,
+  `status` VARCHAR(24) NOT NULL,
+  `provider` VARCHAR(32) NOT NULL,
+  `model` VARCHAR(80) NOT NULL,
+  `model_version` VARCHAR(80) DEFAULT NULL,
+  `route` VARCHAR(32) NOT NULL,
+  `schema_version` VARCHAR(16) NOT NULL,
+  `project_memory_version` VARCHAR(32) NOT NULL,
+  `project_memory_checksum` CHAR(71) NOT NULL,
+  `project_memory_item_ids` JSON NOT NULL,
+  `intent_json` JSON NOT NULL COMMENT '脱敏结构化意图，不含客户原文',
+  `accepted_field_paths` JSON DEFAULT NULL COMMENT '用户明确确认应用的字段路径',
+  `result_hash` CHAR(64) NOT NULL,
+  `plan_hash` CHAR(64) DEFAULT NULL,
+  `next_version` INT DEFAULT NULL,
+  `confirmed_result_json` JSON DEFAULT NULL COMMENT '确认响应AES-GCM信封，用于幂等重放',
+  `confirmed_by` VARCHAR(64) DEFAULT NULL,
+  `confirmed_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_ai_parse_id` (`parse_id`),
+  UNIQUE KEY `uk_ai_parse_conversation_revision` (`conversation_id`, `parse_revision`),
+  UNIQUE KEY `uk_ai_parse_request_idempotency` (`conversation_id`, `request_idempotency_key`),
+  UNIQUE KEY `uk_ai_parse_apply_idempotency` (`parse_id`, `apply_idempotency_key`),
+  KEY `idx_ai_parse_order_version` (`order_uuid`, `expected_version`),
+  KEY `idx_ai_parse_conversation_status` (`conversation_id`, `status`, `created_at`),
+  CONSTRAINT `fk_ai_parse_order` FOREIGN KEY (`order_uuid`)
+    REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_parse_conversation` FOREIGN KEY (`conversation_id`)
+    REFERENCES `biz_process_ai_conversation` (`conversation_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_ai_parse_status`
+    CHECK (`status` IN ('READY', 'CLARIFICATION', 'INTERRUPTED', 'CONFIRMED', 'EXPIRED', 'REJECTED')),
+  CONSTRAINT `chk_ai_parse_memory_checksum`
+    CHECK (`project_memory_checksum` LIKE 'sha256:%' AND CHAR_LENGTH(`project_memory_checksum`) = 71),
+  CONSTRAINT `chk_ai_parse_confirmation`
+    CHECK (`status` <> 'CONFIRMED' OR (`apply_idempotency_key` IS NOT NULL
+      AND `accepted_field_paths` IS NOT NULL AND `plan_hash` IS NOT NULL
+      AND `next_version` = `expected_version` + 1 AND `confirmed_result_json` IS NOT NULL
+      AND `confirmed_by` IS NOT NULL AND `confirmed_at` IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI工艺解析不可变候选与确认记录';
+
+CREATE TABLE `sys_ai_call_audit` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `order_uuid` VARCHAR(36) NOT NULL,
+  `conversation_id` VARCHAR(64) DEFAULT NULL,
+  `parse_id` VARCHAR(64) DEFAULT NULL,
+  `expected_version` INT DEFAULT NULL,
+  `action` VARCHAR(16) NOT NULL,
+  `idempotency_key` VARCHAR(80) DEFAULT NULL,
+  `schema_version` VARCHAR(16) DEFAULT NULL,
+  `project_memory_version` VARCHAR(32) DEFAULT NULL,
+  `project_memory_checksum` CHAR(71) DEFAULT NULL,
+  `project_memory_item_ids` JSON DEFAULT NULL,
+  `request_hash` CHAR(64) NOT NULL,
+  `result_hash` CHAR(64) DEFAULT NULL,
+  `provider` VARCHAR(32) NOT NULL,
+  `model` VARCHAR(80) NOT NULL,
+  `route` VARCHAR(32) NOT NULL,
+  `outcome` VARCHAR(32) NOT NULL,
+  `failure_code` VARCHAR(64) DEFAULT NULL,
+  `latency_ms` INT DEFAULT NULL,
+  `input_tokens` INT DEFAULT NULL,
+  `output_tokens` INT DEFAULT NULL,
+  `created_by` VARCHAR(64) DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  KEY `idx_ai_audit_order_time` (`order_uuid`, `created_at`),
+  KEY `idx_ai_audit_attempt` (`order_uuid`, `idempotency_key`, `action`, `created_at`),
+  KEY `idx_ai_audit_parse` (`parse_id`),
+  CONSTRAINT `chk_ai_audit_action` CHECK (`action` IN ('START', 'CLARIFY', 'CONFIRM')),
+  CONSTRAINT `chk_ai_audit_checksum`
+    CHECK (`project_memory_checksum` IS NULL OR (`project_memory_checksum` LIKE 'sha256:%' AND CHAR_LENGTH(`project_memory_checksum`) = 71))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI工艺解析调用审计';
+
+CREATE TABLE `sys_ai_provider_secret` (
+  `provider` VARCHAR(32) NOT NULL,
+  `api_key_ciphertext` TEXT NOT NULL COMMENT 'AES-GCM密文，永不保存明文',
+  `api_key_last_four` VARCHAR(8) NOT NULL,
+  `enabled` TINYINT NOT NULL DEFAULT 1,
+  `updated_by` VARCHAR(64) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`provider`),
+  CONSTRAINT `chk_ai_provider_secret_provider` CHECK (`provider` IN ('DEEPSEEK', 'ZHIPU')),
+  CONSTRAINT `chk_ai_provider_secret_enabled` CHECK (`enabled` IN (0, 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI供应商密钥密文';
+
+-- V3.71 canonical baseline: controlled memory learning and review evidence.
+CREATE TABLE `biz_project_memory_candidate` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `memory_id` VARCHAR(96) NOT NULL,
+  `candidate_type` VARCHAR(24) NOT NULL,
+  `candidate_json` JSON NOT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'CANDIDATE',
+  `distinct_order_count` INT NOT NULL DEFAULT 0,
+  `first_seen_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_seen_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` DATETIME NOT NULL,
+  `reviewed_by` VARCHAR(64) DEFAULT NULL,
+  `review_notes` VARCHAR(500) DEFAULT NULL,
+  `reviewed_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_memory_candidate_id` (`memory_id`),
+  KEY `idx_memory_candidate_status` (`status`, `last_seen_at`),
+  CONSTRAINT `chk_memory_candidate_type`
+    CHECK (`candidate_type` IN ('TERM', 'EXAMPLE', 'RULE', 'EXTERNAL_FACT', 'EPISODE')),
+  CONSTRAINT `chk_memory_candidate_status`
+    CHECK (`status` IN ('CANDIDATE', 'READY', 'ACTIVE', 'CONFLICT', 'REJECTED', 'EXPIRED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Controlled adaptive project-memory candidates';
+
+CREATE TABLE `biz_project_memory_candidate_evidence` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `candidate_uuid` VARCHAR(36) NOT NULL,
+  `order_uuid` VARCHAR(36) NOT NULL,
+  `parse_id` VARCHAR(64) DEFAULT NULL,
+  `evidence_hash` CHAR(64) NOT NULL,
+  `source_type` VARCHAR(24) NOT NULL DEFAULT 'AI_CONFIRMED',
+  `phrase` VARCHAR(2000) DEFAULT NULL,
+  `context_json` JSON DEFAULT NULL,
+  `proposed_value_json` JSON DEFAULT NULL,
+  `final_value_json` JSON DEFAULT NULL,
+  `difference_json` JSON DEFAULT NULL,
+  `preview_ready` TINYINT DEFAULT NULL,
+  `created_by` VARCHAR(64) DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_memory_candidate_order` (`candidate_uuid`, `order_uuid`),
+  KEY `idx_memory_evidence_parse` (`parse_id`),
+  CONSTRAINT `fk_memory_evidence_candidate` FOREIGN KEY (`candidate_uuid`)
+    REFERENCES `biz_project_memory_candidate` (`uuid`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_memory_evidence_order` FOREIGN KEY (`order_uuid`)
+    REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_memory_evidence_parse` FOREIGN KEY (`parse_id`)
+    REFERENCES `biz_process_ai_parse` (`parse_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_memory_evidence_source_type`
+    CHECK (`source_type` IN ('AI_CONFIRMED', 'MANUAL_FINAL')),
+  CONSTRAINT `chk_memory_evidence_preview_ready`
+    CHECK (`preview_ready` IS NULL OR `preview_ready` IN (0, 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Distinct-order evidence for memory promotion';
+
+-- V3.72 canonical baseline: durable AI packaging candidate lifecycle.
+CREATE TABLE `biz_process_ai_packaging_candidate` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `order_uuid` VARCHAR(36) NOT NULL,
+  `conversation_id` VARCHAR(64) NOT NULL,
+  `parse_id` VARCHAR(64) NOT NULL,
+  `parse_revision` INT NOT NULL,
+  `owner_roll_ref` VARCHAR(32) NOT NULL,
+  `original_uuid` VARCHAR(36) NOT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+  `created_by` VARCHAR(64) NOT NULL,
+  `resolved_by` VARCHAR(64) DEFAULT NULL,
+  `resolved_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_ai_packaging_candidate_parse_owner` (`parse_id`, `owner_roll_ref`),
+  KEY `idx_ai_packaging_candidate_pending` (`order_uuid`, `created_by`, `status`, `created_at`),
+  KEY `idx_ai_packaging_candidate_conversation` (`conversation_id`, `status`),
+  CONSTRAINT `fk_ai_packaging_candidate_order` FOREIGN KEY (`order_uuid`)
+    REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_packaging_candidate_conversation` FOREIGN KEY (`conversation_id`)
+    REFERENCES `biz_process_ai_conversation` (`conversation_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_packaging_candidate_parse` FOREIGN KEY (`parse_id`)
+    REFERENCES `biz_process_ai_parse` (`parse_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `chk_ai_packaging_candidate_status`
+    CHECK (`status` IN ('PENDING', 'SAVED', 'DISMISSED')),
+  CONSTRAINT `chk_ai_packaging_candidate_resolution`
+    CHECK (`status` = 'PENDING' OR (`resolved_by` IS NOT NULL AND `resolved_at` IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI包装候选待确认状态';
+
+-- V3.73 canonical baseline: durable project-memory learning capture outbox.
+CREATE TABLE `biz_project_memory_learning_outbox` (
+  `uuid` VARCHAR(36) NOT NULL,
+  `event_key` VARCHAR(160) NOT NULL,
+  `event_type` VARCHAR(32) NOT NULL,
+  `payload_json` JSON NOT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+  `attempt_count` INT NOT NULL DEFAULT 0,
+  `next_attempt_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_error` VARCHAR(500) DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_memory_learning_event` (`event_key`),
+  KEY `idx_memory_learning_due` (`status`, `next_attempt_at`),
+  CONSTRAINT `chk_memory_learning_type`
+    CHECK (`event_type` IN ('CONFIRMED_PARSE', 'SUBMITTED_ORDER')),
+  CONSTRAINT `chk_memory_learning_status`
+    CHECK (`status` IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目记忆学习采集出站箱';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================
--- 建表脚本结束  共 50 张表
+-- 建表脚本结束（含 V3.73 AI 工艺解析与记忆审核表）
 --   基础档案 4: sys_customer / sys_paper / sys_machine / sys_warehouse
 --   加工核心 8: biz_process_order / biz_original_roll / biz_process_step /
 --               biz_process_stage_output / biz_process_stage_input_rel /

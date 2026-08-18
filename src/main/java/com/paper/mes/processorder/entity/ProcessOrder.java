@@ -96,6 +96,8 @@ public class ProcessOrder extends BaseEntity {
 
     private String remark;
     private String remarkLong;
+    /** Confirmed, sanitized AI requirement summary; never stores raw conversation text. */
+    private String aiRequirementJson;
     /** Non-production operational note allowed after completion; never included in issued print snapshots. */
     private String postProductionNote;
 

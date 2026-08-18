@@ -1,5 +1,6 @@
 import { Card, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import type { ReactNode } from 'react'
 import { formatGram, formatMm, formatOptionalKg } from '../../../utils/numberFormatters'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
 import { configStepProgress } from '../configStepProgress'
@@ -7,13 +8,14 @@ import type { RollDraft } from '../types'
 import ConfigStepFooter from './ConfigStepFooter'
 
 interface Props {
+  assistantEntry?: ReactNode
   lockedRolls: ReturnType<typeof mergedSourceLocks>
   onNext: () => void
   onPrev: () => void
   rolls: RollDraft[]
 }
 
-export default function ConfigStepLight({ lockedRolls, onNext, onPrev, rolls }: Props) {
+export default function ConfigStepLight({ assistantEntry, lockedRolls, onNext, onPrev, rolls }: Props) {
   const progress = configStepProgress({
     configuredPlanIds: [],
     lockedRolls,
@@ -23,7 +25,7 @@ export default function ConfigStepLight({ lockedRolls, onNext, onPrev, rolls }: 
     serviceConfigured: {},
   })
   return (
-    <Card title="无需单独配置的母卷" className="config-light-step">
+    <Card title="无需单独配置的母卷" extra={assistantEntry} className="config-light-step">
       <Table
         size="small"
         rowKey="localId"

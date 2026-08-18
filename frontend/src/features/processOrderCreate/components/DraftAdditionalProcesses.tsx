@@ -16,8 +16,11 @@ import DraftServiceStepEditor from './DraftServiceStepEditor'
 import type { ServiceEditorStatus } from '../serviceStepEditorTypes'
 import ServiceStepsLoadGate from './ServiceStepsLoadGate'
 import SavedServiceStepList from './SavedServiceStepList'
+import type { ProcessAiPackagingDraft } from '../../processAi/types'
+import AiPackagingCandidateNotice from './AiPackagingCandidateNotice'
 
 interface Props {
+  aiPackagingDraft?: ProcessAiPackagingDraft
   allSteps: ProcessStep[]
   orderUuid?: string
   roll?: RollDraft
@@ -27,6 +30,8 @@ interface Props {
   detailLoading: boolean
   draftVersion: number
   onRetryDetail: () => void
+  onAiPackagingDraftConsumed?: (originalUuid: string) => void
+  onAiPackagingDraftDismissed?: (draft: ProcessAiPackagingDraft) => Promise<void>
   onBatchApplied: () => void
   onCurrentSaved: () => void
   onStatusChange: (status?: ServiceEditorStatus) => void
@@ -37,9 +42,9 @@ interface Props {
 }
 
 export default function DraftAdditionalProcesses({
-  allSteps, orderUuid, roll, selectedRolls = [], customerPrices,
+  aiPackagingDraft, allSteps, orderUuid, roll, selectedRolls = [], customerPrices,
   detailError, detailLoading, draftVersion, onRetryDetail, onStatusChange,
-  onBatchApplied,
+  onAiPackagingDraftConsumed, onAiPackagingDraftDismissed, onBatchApplied,
   onCurrentSaved,
   onSynchronizeVersion, onVersionSyncBlockedChange, onWritePendingChange, versionSyncBlocked,
 }: Props) {
@@ -57,10 +62,15 @@ export default function DraftAdditionalProcesses({
     steps,
     versionSyncBlocked,
   })
-  const resetEditor = () => setEditor((current) => ({
-    mode: 'create',
-    revision: current.mode === 'create' ? current.revision + 1 : 0,
-  }))
+  const consumeAiDraft = () => {
+    if (aiPackagingDraft) onAiPackagingDraftConsumed?.(aiPackagingDraft.values.originalUuid)
+  }
+  const resetEditor = () => {
+    setEditor((current) => ({
+      mode: 'create',
+      revision: current.mode === 'create' ? current.revision + 1 : 0,
+    }))
+  }
   const publishStatus = (status?: ServiceEditorStatus) => {
     setEditorStatus(status)
     onStatusChange(status)
@@ -73,9 +83,11 @@ export default function DraftAdditionalProcesses({
           <Typography.Text type="secondary">服务计费，不改变成品规格</Typography.Text>
         </div>
       </div>
+      {aiPackagingDraft && <AiPackagingCandidateNotice draft={aiPackagingDraft}
+        onDismiss={onAiPackagingDraftDismissed} />}
       <ServiceStepsLoadGate isError={detailError} isLoading={detailLoading} onRetry={onRetryDetail}>
         {roll?.uuid && <DraftServiceStepEditor
-          key={`${editorKey(roll.uuid, editor)}:${steps[0]?.uuid ?? 'none'}`}
+          key={`${editorKey(roll.uuid, editor)}:${steps[0]?.uuid ?? 'none'}:${aiPackagingDraft?.parseId ?? 'manual'}`}
           roll={{
             uuid: roll.uuid,
             rollName: currentRollLabel(roll),
@@ -87,7 +99,9 @@ export default function DraftAdditionalProcesses({
           }}
           customerPrices={customerPrices}
           editingStepUuid={editor.mode === 'edit' ? editor.step.uuid : undefined}
-          initialValues={stepInitialValues(editor.mode === 'edit' ? editor.step : steps[0])}
+          initialValues={editor.mode === 'edit'
+            ? stepInitialValues(editor.step)
+            : aiPackagingDraft?.values ?? stepInitialValues(steps[0])}
           savedSteps={steps}
           saving={writes.save.isPending}
           batchSaving={writes.apply.isPending}
@@ -100,12 +114,14 @@ export default function DraftAdditionalProcesses({
           })}
           onCancel={resetEditor}
           onSave={(values, stepUuid) => writes.run(async () => {
-            await writes.save.mutateAsync({ values, stepUuid })
+            await writes.save.mutateAsync({ values: withAiCandidateSource(values, aiPackagingDraft), stepUuid })
+            consumeAiDraft()
             publishStatus(undefined)
             onCurrentSaved()
           })}
           onSaveToSelected={(values, scope) => writes.run(async () => {
-            await writes.apply.mutateAsync({ values, scope })
+            await writes.apply.mutateAsync({ values: withAiCandidateSource(values, aiPackagingDraft), scope })
+            consumeAiDraft()
             onBatchApplied()
           })}
           onStatusChange={publishStatus}
@@ -126,6 +142,11 @@ export default function DraftAdditionalProcesses({
       </ServiceStepsLoadGate>
     </section>
   )
+}
+
+function withAiCandidateSource(values: ProcessStepDTO, draft?: ProcessAiPackagingDraft): ProcessStepDTO {
+  if (!draft) return values
+  return { ...values, aiParseId: draft.parseId, aiOwnerRollRef: draft.ownerRollRef }
 }
 
 function runSavedStepAction(

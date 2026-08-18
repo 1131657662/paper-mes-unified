@@ -82,6 +82,7 @@ export interface RewindParamVO {
 
 export interface RollProductionVO {
   originalUuid?: string
+  rowSort?: number
   extraNo?: string
   batchNo?: string
   rollNo?: string
@@ -111,6 +112,14 @@ export interface RollProductionVO {
   finishes?: FinishProductionVO[]
 }
 
+export interface WorkshopInstructionVO {
+  sourceRows: number[]
+  sourceWidthMm?: number
+  sourcePieceCount: number
+  instruction: string
+  text: string
+}
+
 /** 加工单详情返回体，与后端 ProcessOrderDetailVO 对应。 */
 export type ProcessOrderPrintStage =
   | 'DRAFT'
@@ -131,6 +140,7 @@ export interface ProcessOrderDetailVO {
   finishRolls: FinishRoll[]
   steps: ProcessStep[]
   rollProductions?: RollProductionVO[]
+  workshopInstructions?: WorkshopInstructionVO[]
 }
 
 export type PrintViewVersion = 'ISSUED' | 'FINISHED'

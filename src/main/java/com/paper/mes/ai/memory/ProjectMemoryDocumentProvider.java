@@ -43,6 +43,18 @@ public class ProjectMemoryDocumentProvider {
         return current == null ? reload() : Optional.of(current);
     }
 
+    public Optional<ProjectMemorySnapshot> version(String docVersion) {
+        ProjectMemorySnapshot current = snapshot;
+        if (current != null && current.docVersion().equals(docVersion)) return Optional.of(current);
+        try {
+            return repository.findVersion(docVersion).map(validator::validateConversationVersion);
+        } catch (RuntimeException ex) {
+            log.error("Project memory version unavailable for active AI conversation: version={}, type={}",
+                    docVersion, ex.getClass().getSimpleName());
+            return Optional.empty();
+        }
+    }
+
     public boolean ready() {
         return snapshot != null;
     }

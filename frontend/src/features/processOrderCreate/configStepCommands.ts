@@ -19,6 +19,8 @@ export function createConfigStepWorkspaceActions(
 ): ConfigStepWorkspaceActions {
   const { model, props, selections } = context
   return {
+    onAiPackagingDraftConsumed: props.onAiPackagingDraftConsumed,
+    onAiPackagingDraftDismissed: props.onAiPackagingDraftDismissed,
     onApplyChecked: () => applyToChecked(context),
     onClearSelection: () => runUnlessSaving(context,
       model.data.activeEditor === 'service' ? selections.service.clear : selections.plan.clear),

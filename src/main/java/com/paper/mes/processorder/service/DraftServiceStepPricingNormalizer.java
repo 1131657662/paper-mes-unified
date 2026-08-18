@@ -16,13 +16,17 @@ public final class DraftServiceStepPricingNormalizer {
     public static void apply(ProcessStep step, ProcessStepDTO request) {
         int mode = request.getBillingMode() == null
                 ? ProcessStepPricingPolicy.STANDARD : request.getBillingMode();
-        boolean quantityPricing = mode == ProcessStepPricingPolicy.STANDARD;
+        boolean quantityPricing = mode == ProcessStepPricingPolicy.STANDARD
+                || mode == ProcessStepPricingPolicy.QUANTITY_OVERRIDE;
         step.setBillingMode(mode);
         step.setBillingBasis(quantityPricing && StringUtils.hasText(request.getBillingBasis())
                 ? request.getBillingBasis().trim().toUpperCase(Locale.ROOT) : null);
         step.setUnitPrice(quantityPricing ? request.getUnitPrice() : null);
         step.setBillingAmount(resolveAmount(mode, request));
         clearAdjustment(step);
+        if (mode == ProcessStepPricingPolicy.QUANTITY_OVERRIDE) {
+            step.setBillingQuantity(request.getServiceQuantity());
+        }
     }
 
     private static BigDecimal resolveAmount(int mode, ProcessStepDTO request) {

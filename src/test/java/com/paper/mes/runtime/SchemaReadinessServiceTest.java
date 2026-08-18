@@ -17,7 +17,7 @@ class SchemaReadinessServiceTest {
         SchemaReadinessReport report = service.refresh();
 
         assertThat(report.ready()).isTrue();
-        assertThat(report.databaseVersion()).isEqualTo("3.68");
+        assertThat(report.databaseVersion()).isEqualTo("3.73");
         assertThat(report.missingStructures()).isEmpty();
     }
 
@@ -94,6 +94,30 @@ class SchemaReadinessServiceTest {
     }
 
     @Test
+    void reportsMissingAiAuditAttemptIndex() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("idx_ai_audit_attempt"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "index:sys_ai_call_audit.idx_ai_audit_attempt");
+    }
+
+    @Test
+    void reportsMissingProjectMemoryEvidenceParseConstraint() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("fk_memory_evidence_parse"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "constraint:biz_project_memory_candidate_evidence.fk_memory_evidence_parse");
+    }
+
+    @Test
     void selectsTheHighestSemanticMigrationVersion() {
         SchemaReadinessService service = service(
                 new ReadinessJdbcTemplate(null, List.of("3.61", "3.9", "3.63")));
@@ -103,7 +127,7 @@ class SchemaReadinessServiceTest {
         assertThat(report.databaseVersion()).isEqualTo("3.63");
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures())
-                .contains("migration:expected=3.68,actual=3.63");
+                .contains("migration:expected=3.73,actual=3.63");
     }
 
     @Test
@@ -116,12 +140,12 @@ class SchemaReadinessServiceTest {
         assertThat(report.databaseVersion()).isEqualTo("UNTRACKED");
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures())
-                .contains("migration:expected=3.68,actual=UNTRACKED");
+                .contains("migration:expected=3.73,actual=UNTRACKED");
     }
 
     private SchemaReadinessService service(JdbcTemplate jdbcTemplate) {
         SchemaReadinessService service = new SchemaReadinessService(jdbcTemplate);
-        ReflectionTestUtils.setField(service, "expectedVersion", "3.68");
+        ReflectionTestUtils.setField(service, "expectedVersion", "3.73");
         ReflectionTestUtils.setField(service, "requireMigrationHistory", true);
         return service;
     }
@@ -131,7 +155,7 @@ class SchemaReadinessServiceTest {
         private final List<String> versions;
 
         private ReadinessJdbcTemplate(String missingName) {
-            this(missingName, List.of("3.68"));
+            this(missingName, List.of("3.73"));
         }
 
         private ReadinessJdbcTemplate(String missingName, List<String> versions) {

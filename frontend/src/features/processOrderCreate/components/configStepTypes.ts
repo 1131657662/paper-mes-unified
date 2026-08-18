@@ -4,10 +4,14 @@ import type { PlanPreviewVO, ProcessPlanDTO, ProcessRoutePreviewVO, ProcessStep 
 import type { DefaultPlanOptions } from '../draftMappers'
 import type { RollDraft } from '../types'
 import type { PlanBatchSaveResult, PlanSaveResult } from '../planSaveResult'
+import type { ProcessAiPackagingDraft } from '../../processAi/types'
 
 export type ConfigOperation = 'saving' | 'validating'
 
 export interface ConfigStepProps {
+  aiPackagingLoading?: boolean
+  aiPackagingDrafts?: Record<string, ProcessAiPackagingDraft>
+  assistantEntry?: ReactNode
   autoFinishConfigEnabled: boolean
   configuredPlanIds: string[]
   customerPrices?: CustomerProcessPrice[]
@@ -16,6 +20,8 @@ export interface ConfigStepProps {
   machines: Machine[]
   draftVersion: number
   operation?: ConfigOperation
+  onAiPackagingDraftConsumed?: (originalUuid: string) => void
+  onAiPackagingDraftDismissed?: (draft: ProcessAiPackagingDraft) => Promise<void>
   onNext: () => void
   onOpenRouteDesigner: (roll: RollDraft) => void
   onPlanChange: (localId: string, plan: ProcessPlanDTO) => void
@@ -37,3 +43,4 @@ export interface ConfigStepProps {
   serviceStepsByRoll?: Record<string, ProcessStep[]>
   onServiceStepsChange?: (changes: Record<string, ProcessStep[]>) => Promise<void>
 }
+import type { ReactNode } from 'react'

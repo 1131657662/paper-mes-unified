@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.ai.process.session.ProcessAiConversationLifecycleService;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.customer.service.CustomerService;
 import com.paper.mes.processorder.dto.OriginalRollDTO;
@@ -58,6 +59,7 @@ class ProcessOrderDraftRollReplacementTest {
     @Mock private BusinessLockService businessLockService;
     @Mock private DraftOrderVersionGuard versionGuard;
     @Mock private DraftRollProcessManager rollProcessManager;
+    @Mock private ProcessAiConversationLifecycleService aiConversationLifecycle;
     @InjectMocks private ProcessOrderDraftServiceImpl service;
 
     @Test
@@ -89,6 +91,7 @@ class ProcessOrderDraftRollReplacementTest {
         assertEquals(List.of("A000001"), result.getFinishRollNos());
         assertEquals(List.of("A000002"), result.getRemainRollNos());
         assertEquals(List.of("A000003"), result.getSpareRollNos());
+        verify(aiConversationLifecycle).closeAfterCommit("order-1");
     }
 
     private ProcessOrder draftOrder() {

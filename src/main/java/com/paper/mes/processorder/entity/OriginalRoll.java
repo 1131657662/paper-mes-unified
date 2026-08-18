@@ -52,7 +52,7 @@ public class OriginalRoll extends BaseEntity {
     private BigDecimal totalWeight;
     /** UNKNOWN / ESTIMATED / MEASURED. */
     private String weightStatus;
-    /** MANUAL / SCALE / IMPORT / INFERRED / LEGACY. */
+    /** MANUAL / SCALE / IMPORT / INFERRED / LEGACY / MANUAL_CONFIRM. */
     private String weightSource;
     private LocalDateTime weightRecordedAt;
     private String weightRecordedBy;

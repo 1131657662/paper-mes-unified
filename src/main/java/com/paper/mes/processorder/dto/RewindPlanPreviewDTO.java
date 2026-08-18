@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
@@ -13,6 +14,9 @@ import java.util.List;
 
 @Data
 public class RewindPlanPreviewDTO {
+
+    @Pattern(regexp = "WEIGHT_SPLIT", message = "allocationRule can only be WEIGHT_SPLIT")
+    private String allocationRule;
 
     @Size(max = 20, message = "门幅差额处理值不能超过20个字符")
     private String widthDifferencePolicy;

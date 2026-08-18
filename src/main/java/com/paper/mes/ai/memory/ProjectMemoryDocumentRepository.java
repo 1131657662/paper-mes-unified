@@ -37,6 +37,12 @@ public class ProjectMemoryDocumentRepository {
             WHERE doc_version = ?
             FOR UPDATE
             """;
+    private static final String VERSION_READ_SQL = """
+            SELECT uuid, doc_version, schema_version, checksum, doc_json, status,
+                   patch_notes, created_by, approved_by
+            FROM biz_project_memory_doc
+            WHERE doc_version = ?
+            """;
     private static final String VERSION_LIST_SQL = """
             SELECT doc_version, schema_version, checksum, status, patch_notes,
                    created_by, approved_by, created_at
@@ -79,6 +85,11 @@ public class ProjectMemoryDocumentRepository {
 
     public Optional<ProjectMemoryDocumentRow> findVersionForUpdate(String version) {
         return one(jdbcTemplate.query(VERSION_SQL,
+                (resultSet, rowNumber) -> map(resultSet), version));
+    }
+
+    public Optional<ProjectMemoryDocumentRow> findVersion(String version) {
+        return one(jdbcTemplate.query(VERSION_READ_SQL,
                 (resultSet, rowNumber) -> map(resultSet), version));
     }
 

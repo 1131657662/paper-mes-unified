@@ -16,6 +16,9 @@ export interface ProcessStepDTO {
   billingAmount?: number
   unitPrice?: number
   remark?: string
+  /** AI包装候选来源，仅用于保存时结案，不写入工序业务字段。 */
+  aiParseId?: string
+  aiOwnerRollRef?: string
 }
 
 export interface ProcessStepBatchDTO {

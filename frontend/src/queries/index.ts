@@ -22,6 +22,7 @@ import { systemConfigKeys } from '../features/systemConfig/queries/systemConfigK
 import { userKeys } from '../features/user/queries/userKeys'
 import { runtimeKeys } from '../features/runtime/queries/runtimeKeys'
 import { aiKeys } from '../features/ai/queries/aiKeys'
+import { processAiKeys } from '../features/processAi/queries/processAiKeys'
 import { projectMemoryKeys } from '../features/projectMemory/queries/projectMemoryKeys'
 
 export const queries = mergeQueryKeys(
@@ -48,5 +49,6 @@ export const queries = mergeQueryKeys(
   systemConfigKeys,
   runtimeKeys,
   aiKeys,
+  processAiKeys,
   projectMemoryKeys,
 )

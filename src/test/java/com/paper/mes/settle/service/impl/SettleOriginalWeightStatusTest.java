@@ -10,11 +10,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SettleOriginalWeightStatusTest {
 
     @Test
-    void resolve_actualWeightAlwaysMeansMeasured() {
+    void resolve_estimatedActualWeightRemainsEstimated() {
         OriginalRoll roll = roll("ESTIMATED", "1");
         roll.setActualWeight(new BigDecimal("2000"));
 
-        assertThat(SettleOriginalWeightStatus.resolve(roll)).isEqualTo("MEASURED");
+        assertThat(SettleOriginalWeightStatus.resolve(roll)).isEqualTo("ESTIMATED");
+    }
+
+    @Test
+    void resolve_measuredAndLegacyActualWeightsRemainMeasured() {
+        OriginalRoll measured = roll("MEASURED", "1");
+        measured.setActualWeight(new BigDecimal("2000"));
+        OriginalRoll legacy = roll(null, null);
+        legacy.setActualWeight(new BigDecimal("2000"));
+
+        assertThat(SettleOriginalWeightStatus.resolve(measured)).isEqualTo("MEASURED");
+        assertThat(SettleOriginalWeightStatus.resolve(legacy)).isEqualTo("MEASURED");
     }
 
     @Test

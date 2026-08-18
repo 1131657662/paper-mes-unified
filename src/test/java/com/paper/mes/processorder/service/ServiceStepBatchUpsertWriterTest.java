@@ -102,6 +102,22 @@ class ServiceStepBatchUpsertWriterTest {
     }
 
     @Test
+    void upsert_quantityOverrideKeepsConfirmedFinishCount() {
+        ProcessStepDTO request = standardRequest("roll-1");
+        request.setStepType(4);
+        request.setBillingMode(ProcessStepPricingPolicy.QUANTITY_OVERRIDE);
+        request.setServiceQuantity(new BigDecimal("6"));
+        when(stepMapper.selectList(any())).thenReturn(List.of());
+
+        writer.upsert("order-1", List.of(request), Map.of("roll-1", roll("roll-1")));
+
+        ArgumentCaptor<ProcessStep> inserted = ArgumentCaptor.forClass(ProcessStep.class);
+        verify(stepMapper).insert(inserted.capture());
+        assertThat(inserted.getValue().getServiceQuantity()).isEqualByComparingTo("1");
+        assertThat(inserted.getValue().getBillingQuantity()).isEqualByComparingTo("6");
+    }
+
+    @Test
     void upsert_rejectsDuplicateTargets() {
         ProcessStepDTO request = standardRequest("roll-1");
 

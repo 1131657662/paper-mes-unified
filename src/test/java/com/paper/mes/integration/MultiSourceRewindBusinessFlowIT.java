@@ -10,6 +10,7 @@ import com.paper.mes.processorder.dto.ProcessRollDispositionDTO;
 import com.paper.mes.processorder.entity.FinishOriginalRel;
 import com.paper.mes.processorder.mapper.FinishOriginalRelMapper;
 import com.paper.mes.processorder.model.ProcessRollDispositionAction;
+import com.paper.mes.processorder.model.WeightEntryMode;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import com.paper.mes.processorder.service.ProcessRollDispositionService;
 import org.junit.jupiter.api.AfterEach;
@@ -77,6 +78,34 @@ class MultiSourceRewindBusinessFlowIT {
     }
 
     @Test
+    void mergedRewind_withKnownReferences_confirmsWithoutRetypingAndFinalizesFee() {
+        scenario = rewindFixture.createMerge();
+        processOrderService.issue(scenario.orderUuid());
+        processOrderService.print(scenario.orderUuid(), new PrintDTO());
+        processOrderService.completeProcessing(scenario.orderUuid(), "参考重量确认联调");
+        var before = processOrderService.getDetail(scenario.orderUuid());
+
+        processOrderService.backRecord(scenario.orderUuid(), referenceRequest(before));
+
+        var detail = processOrderService.getDetail(scenario.orderUuid());
+        assertThat(detail.getOrder().getOrderStatus()).isEqualTo(4);
+        assertThat(detail.getOriginalRolls()).allSatisfy(roll -> {
+            assertThat(roll.getWeightStatus()).isEqualTo("MEASURED");
+            assertThat(roll.getWeightSource()).isEqualTo("MANUAL_CONFIRM");
+            assertThat(roll.getWeightRecordedAt()).isNotNull();
+            assertThat(roll.getWeightRecordedBy()).isNotBlank();
+        });
+        assertThat(detail.getOrder().getTotalProcessAmount()).isEqualByComparingTo("240.00");
+        assertThat(detail.getSteps()).filteredOn(step -> Integer.valueOf(2).equals(step.getStepType())
+                        && !"FIXED".equalsIgnoreCase(step.getBillingWeightBasis()))
+                .allSatisfy(step -> {
+                    assertThat(step.getProcessWeight()).isEqualByComparingTo("1.600");
+                    assertThat(step.getBillingWeightStatus()).isEqualTo("MEASURED");
+                    assertThat(step.getPricingDirty()).isZero();
+                });
+    }
+
+    @Test
     void mergedRewind_cannotDisposeOneSourceWhileSharedOutputIsActive() {
         scenario = rewindFixture.createMerge();
         processOrderService.issue(scenario.orderUuid());
@@ -105,6 +134,28 @@ class MultiSourceRewindBusinessFlowIT {
                 roll(detail.getOriginalRolls().get(1).getUuid(), "700"),
                 roll(detail.getOriginalRolls().get(2).getUuid(), "700")));
         dto.setFinishes(List.of(finish(detail.getFinishRolls().getFirst().getUuid(), "2000")));
+        dto.setSteps(detail.getSteps().stream().map(step -> {
+            BackRecordStepDTO record = new BackRecordStepDTO();
+            record.setUuid(step.getUuid());
+            record.setLossWeight(BigDecimal.ZERO);
+            return record;
+        }).toList());
+        return dto;
+    }
+
+    private BackRecordDTO referenceRequest(com.paper.mes.processorder.dto.ProcessOrderDetailVO detail) {
+        BackRecordDTO dto = new BackRecordDTO();
+        dto.setExpectedVersion(detail.getOrder().getVersion());
+        dto.setCompleteOrder(true);
+        dto.setWarehouseUuid(detail.getOrder().getWarehouseUuid());
+        dto.setRolls(detail.getOriginalRolls().stream().map(roll -> {
+            BackRecordRollDTO record = roll(roll.getUuid(), roll.getTotalWeight().toPlainString());
+            record.setWeightEntryMode(WeightEntryMode.CONFIRM_REFERENCE);
+            return record;
+        }).toList());
+        dto.setFinishes(detail.getFinishRolls().stream()
+                .map(finish -> finish(finish.getUuid(), finish.getEstimateWeight().toPlainString()))
+                .toList());
         dto.setSteps(detail.getSteps().stream().map(step -> {
             BackRecordStepDTO record = new BackRecordStepDTO();
             record.setUuid(step.getUuid());

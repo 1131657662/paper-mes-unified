@@ -40,6 +40,15 @@ class RewindPlanPreviewDTOValidationTest {
                         "segments[0].layoutItems[0].customerGramWeight"));
     }
 
+    @Test
+    void validate_whenAllocationRuleIsUnsupported_rejectsRequest() {
+        RewindPlanPreviewDTO dto = validDto();
+        dto.setAllocationRule("AREA_SPLIT");
+
+        assertThat(validator.validate(dto)).anyMatch(violation ->
+                violation.getPropertyPath().toString().equals("allocationRule"));
+    }
+
     private RewindPlanPreviewDTO validDto() {
         RewindPlanPreviewDTO.RewindLayoutItemDTO item = new RewindPlanPreviewDTO.RewindLayoutItemDTO();
         item.setWidth(1000);

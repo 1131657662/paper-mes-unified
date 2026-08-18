@@ -44,6 +44,7 @@ export interface ProcessPlanDTO {
   rewindMode?: number
   knifeCount?: number
   unitPrice?: number
+  allocationRule?: 'WEIGHT_SPLIT'
   widthDifferencePolicy?: WidthDifferencePolicy
   remark?: string
   finishSpecs?: FinishConfigSpecDTO[]

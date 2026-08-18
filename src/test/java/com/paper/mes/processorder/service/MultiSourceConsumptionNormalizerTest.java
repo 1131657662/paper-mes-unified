@@ -67,6 +67,18 @@ class MultiSourceConsumptionNormalizerTest {
     }
 
     @Test
+    void totalConsumedWeight_actualWeightIsAlreadyTheSourceTotal() {
+        List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(segment(source("roll-1", "100")));
+        OriginalRoll roll = roll("roll-1", "1");
+        roll.setPieceNum(3);
+        roll.setActualWeight(new BigDecimal("2000"));
+        roll.setWeightStatus("MEASURED");
+
+        assertEquals(new BigDecimal("2000.000"),
+                MultiSourceConsumptionNormalizer.totalConsumedWeight(segments, Map.of("roll-1", roll)));
+    }
+
+    @Test
     void totalConsumedWeight_returnsNullWhenSourceWeightIsUnknown() {
         List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(segment(source("roll-1", "100")));
         OriginalRoll roll = roll("roll-1", "1");

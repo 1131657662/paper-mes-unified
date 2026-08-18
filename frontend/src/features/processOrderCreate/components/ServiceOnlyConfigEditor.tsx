@@ -3,8 +3,10 @@ import type { ProcessStep } from '../../../types/processOrder'
 import type { RollDraft } from '../types'
 import DraftAdditionalProcesses from './DraftAdditionalProcesses'
 import type { ServiceEditorStatus } from '../serviceStepEditorTypes'
+import type { ProcessAiPackagingDraft } from '../../processAi/types'
 
 interface Props {
+  aiPackagingDraft?: ProcessAiPackagingDraft
   allSteps: ProcessStep[]
   customerPrices?: CustomerProcessPrice[]
   detailError: boolean
@@ -14,6 +16,8 @@ interface Props {
   roll: RollDraft
   selectedRolls: RollDraft[]
   onBatchApplied: () => void
+  onAiPackagingDraftConsumed?: (originalUuid: string) => void
+  onAiPackagingDraftDismissed?: (draft: ProcessAiPackagingDraft) => Promise<void>
   onCurrentSaved: () => void
   onStatusChange: (status?: ServiceEditorStatus) => void
   onRetryDetail: () => void
@@ -24,6 +28,7 @@ interface Props {
 }
 
 export default function ServiceOnlyConfigEditor({
+  aiPackagingDraft,
   allSteps,
   customerPrices,
   detailError,
@@ -32,6 +37,8 @@ export default function ServiceOnlyConfigEditor({
   orderUuid,
   roll,
   selectedRolls,
+  onAiPackagingDraftConsumed,
+  onAiPackagingDraftDismissed,
   onBatchApplied,
   onCurrentSaved,
   onStatusChange,
@@ -44,11 +51,14 @@ export default function ServiceOnlyConfigEditor({
   return (
     <div className="service-only-config-editor">
       <DraftAdditionalProcesses
+        aiPackagingDraft={aiPackagingDraft}
         key={roll.localId}
         allSteps={allSteps}
         orderUuid={orderUuid}
         roll={roll}
         selectedRolls={selectedRolls}
+        onAiPackagingDraftConsumed={onAiPackagingDraftConsumed}
+        onAiPackagingDraftDismissed={onAiPackagingDraftDismissed}
         onBatchApplied={onBatchApplied}
         onCurrentSaved={onCurrentSaved}
         customerPrices={customerPrices}

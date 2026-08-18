@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.service;
 
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.ai.process.parse.ProcessAiPackagingCandidateResolutionService;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.processorder.dto.ProcessStepBatchDTO;
 import com.paper.mes.processorder.dto.ProcessStepDTO;
@@ -25,6 +26,7 @@ class DraftServiceStepServiceTest {
     private ProcessStepMapper stepMapper;
     private ProcessOrderService orderService;
     private DraftOrderVersionGuard versionGuard;
+    private ProcessAiPackagingCandidateResolutionService packagingResolution;
     private DraftServiceStepService service;
 
     @BeforeEach
@@ -33,8 +35,10 @@ class DraftServiceStepServiceTest {
         stepMapper = mock(ProcessStepMapper.class);
         orderService = mock(ProcessOrderService.class);
         versionGuard = mock(DraftOrderVersionGuard.class);
+        packagingResolution = mock(ProcessAiPackagingCandidateResolutionService.class);
         service = new DraftServiceStepService(
-                mock(BusinessLockService.class), orderMapper, stepMapper, orderService, versionGuard);
+                mock(BusinessLockService.class), orderMapper, stepMapper, orderService,
+                versionGuard, packagingResolution);
     }
 
     @Test
@@ -45,6 +49,7 @@ class DraftServiceStepServiceTest {
         service.add("order-1", request);
 
         verify(orderService).addProcessStep("order-1", request);
+        verify(packagingResolution).markSaved("order-1", List.of(request));
         verify(versionGuard).assertExpected(org.mockito.ArgumentMatchers.any(ProcessOrder.class),
                 org.mockito.ArgumentMatchers.eq(5));
     }

@@ -12,14 +12,17 @@ final class SettleOriginalWeightStatus {
     }
 
     static String resolve(OriginalRoll roll) {
-        if (positive(roll.getActualWeight())) {
-            return WeightStatus.MEASURED.name();
-        }
-        if (WeightStatus.UNKNOWN.name().equalsIgnoreCase(roll.getWeightStatus())) {
+        String status = roll.getWeightStatus();
+        if (WeightStatus.UNKNOWN.name().equalsIgnoreCase(status)) {
             return WeightStatus.UNKNOWN.name();
         }
-        if (WeightStatus.ESTIMATED.name().equalsIgnoreCase(roll.getWeightStatus())) {
+        if (WeightStatus.ESTIMATED.name().equalsIgnoreCase(status)) {
             return WeightStatus.ESTIMATED.name();
+        }
+        if (positive(roll.getActualWeight())
+                && (WeightStatus.MEASURED.name().equalsIgnoreCase(status)
+                || status == null || status.isBlank())) {
+            return WeightStatus.MEASURED.name();
         }
         return hasReferenceWeight(roll) ? WeightStatus.ESTIMATED.name() : WeightStatus.UNKNOWN.name();
     }

@@ -69,7 +69,8 @@ function columns(options: ColumnOptions): ColumnsType<BackRecordSourceRoll> {
 function SourceIdentity({ source, index, values }: { source: BackRecordSourceRoll; index: number; values: BackRecordFormValues }) {
   const weight = sourceActualWeight(source, values)
   const measured = sourceIsMeasured(source, values)
-  const label = measured ? '已实测' : weight != null && weight > 0 ? '已带入标称' : '待称重'
+  const mode = values.rolls?.[source.uuid]?.weightEntryMode
+  const label = mode === 'CONFIRM_REFERENCE' ? '已确认引用' : measured ? '已实测' : weight != null && weight > 0 ? '已带入标称' : '待称重'
   const color = measured ? 'success' : weight != null && weight > 0 ? 'processing' : 'warning'
   return (
     <div className="back-record-merge-source">

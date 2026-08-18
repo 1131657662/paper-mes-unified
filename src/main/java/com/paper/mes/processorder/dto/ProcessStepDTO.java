@@ -86,4 +86,10 @@ public class ProcessStepDTO {
      */
     @Size(max = 255, message = "备注不能超过255个字符")
     private String remark;
+
+    @Size(max = 64, message = "AI解析标识不能超过64个字符")
+    private String aiParseId;
+
+    @Size(max = 32, message = "AI母卷引用不能超过32个字符")
+    private String aiOwnerRollRef;
 }

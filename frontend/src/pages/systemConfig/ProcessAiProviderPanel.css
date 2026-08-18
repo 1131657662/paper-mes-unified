@@ -1,0 +1,37 @@
+.process-ai-provider-panel {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.process-ai-provider-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.process-ai-provider-panel__header .ant-typography {
+  margin: 0;
+}
+
+.process-ai-provider-panel__form {
+  display: grid;
+  max-width: 720px;
+  gap: 8px;
+}
+
+.process-ai-provider-panel__form > label {
+  color: var(--mes-color-text);
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .process-ai-provider-panel__header {
+    flex-direction: column;
+  }
+}

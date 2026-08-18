@@ -20,6 +20,25 @@ export function theoreticalBackRecordValues(detail: ProcessOrderDetailVO): BackR
   }
 }
 
+/**
+ * Fills the current reference values and explicitly confirms those values for this submission.
+ * Unknown rolls remain unconfirmed and still require a real weight entry.
+ */
+export function confirmedReferenceBackRecordValues(detail: ProcessOrderDetailVO): BackRecordFormValues {
+  const values = theoreticalBackRecordValues(detail)
+  return {
+    ...values,
+    rolls: Object.fromEntries(
+      Object.entries(values.rolls ?? {}).map(([uuid, value]) => [
+        uuid,
+        value.actualWeight != null && value.actualWeight > 0 && value.weightEntryMode !== 'MEASURED'
+          ? { ...value, weightEntryMode: 'CONFIRM_REFERENCE' as const }
+          : value,
+      ]),
+    ),
+  }
+}
+
 export function theoreticalRollValues(detail: ProcessOrderDetailVO): BackRecordFormValues['rolls'] {
   return Object.fromEntries(detail.originalRolls.map((roll) => [roll.uuid, theoreticalRollValue(roll)]))
 }

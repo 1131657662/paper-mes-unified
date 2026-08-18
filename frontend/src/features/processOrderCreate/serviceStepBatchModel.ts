@@ -45,7 +45,9 @@ export function serviceStepTemplate(step: ProcessStep): ProcessStepDTO | undefin
     machineUuid: step.machineUuid,
     isMain: step.isMain,
     billingBasis: step.billingBasis,
-    serviceQuantity: step.serviceQuantity,
+    serviceQuantity: step.billingMode === 2
+      ? step.billingQuantity ?? step.serviceQuantity
+      : step.serviceQuantity,
     billingMode: step.billingMode,
     billingAmount: step.billingAmount,
     unitPrice: step.unitPrice ?? step.billingUnitPrice,

@@ -15,27 +15,39 @@ import java.util.Set;
 public class ProjectMemoryContextSelector {
 
     public String select(ProjectMemorySnapshot snapshot, String question, String pageTemplate, int maxChars) {
-        if (snapshot == null || question == null || question.isBlank()) return "";
+        return selectWithIds(snapshot, question, pageTemplate, maxChars).context();
+    }
+
+    public ProjectMemorySelection selectWithIds(ProjectMemorySnapshot snapshot, String question,
+                                                 String pageTemplate, int maxChars) {
+        if (snapshot == null || question == null || question.isBlank()) {
+            return new ProjectMemorySelection("", List.of());
+        }
         String normalized = question.toLowerCase(Locale.ROOT);
-        List<String> matches = new ArrayList<>();
+        List<Match> matches = new ArrayList<>();
         collect(snapshot.document().path("rules"), normalized, matches);
         collect(snapshot.document().path("terms"), normalized, matches);
         collect(snapshot.document().path("examples"), normalized, matches);
         StringBuilder result = new StringBuilder("memoryVersion=").append(snapshot.docVersion());
         if (pageTemplate != null && !pageTemplate.isBlank()) result.append(" pageTemplate=").append(pageTemplate);
-        for (String match : matches) {
-            if (result.length() + match.length() + 1 > maxChars) break;
-            result.append('\n').append(match);
+        List<String> selectedIds = new ArrayList<>();
+        for (Match match : matches) {
+            if (result.length() + match.content().length() + 1 > maxChars) break;
+            result.append('\n').append(match.content());
+            selectedIds.add(match.id());
         }
-        return matches.isEmpty() ? "" : result.toString();
+        String context = selectedIds.isEmpty() ? "" : result.toString();
+        return new ProjectMemorySelection(context, selectedIds);
     }
 
-    private void collect(JsonNode entries, String question, List<String> matches) {
+    private void collect(JsonNode entries, String question, List<Match> matches) {
         if (!entries.isObject()) return;
         entries.fields().forEachRemaining(entry -> {
             JsonNode value = entry.getValue();
             if (!"ACTIVE".equals(value.path("status").asText("ACTIVE"))) return;
-            if (matchesQuestion(value, question)) matches.add(entry.getKey() + "=" + compact(value));
+            if (matchesQuestion(value, question)) {
+                matches.add(new Match(entry.getKey(), entry.getKey() + "=" + compact(value)));
+            }
         });
     }
 
@@ -76,5 +88,8 @@ public class ProjectMemoryContextSelector {
                     .replaceAll("(?<!\\d)\\d+(?:\\.\\d+)?\\s*(?:元|块钱|块|CNY|¥)", "[金额]"));
         }
         return value;
+    }
+
+    private record Match(String id, String content) {
     }
 }

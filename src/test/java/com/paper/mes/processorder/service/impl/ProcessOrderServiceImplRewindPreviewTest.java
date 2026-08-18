@@ -34,9 +34,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
 class ProcessOrderServiceImplRewindPreviewTest {
@@ -141,6 +143,95 @@ class ProcessOrderServiceImplRewindPreviewTest {
         assertEquals(0, preview.getTrimCount());
         assertEquals(new BigDecimal("0.000"), preview.getTotalTrimWeight());
         assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight());
+    }
+
+    @Test
+    void buildRewindPreview_weightSplitIgnoresDifferentDiameterAreas() {
+        RewindPlanPreviewDTO dto = diameterSplitPlan("WEIGHT_SPLIT");
+
+        FinishPreviewVO preview = ReflectionTestUtils.invokeMethod(
+                service(), "buildRewindPreview", "order-1", roll(), dto);
+
+        assertEquals(List.of(new BigDecimal("400.000"), new BigDecimal("400.000")),
+                preview.getFinishes().stream()
+                        .map(FinishPreviewVO.FinishItemPreview::getEstimateWeight).toList());
+    }
+
+    @Test
+    void buildRewindPreview_weightSplitDividesSegmentRatioAcrossFinishPieces() {
+        RewindPlanPreviewDTO.RewindSegmentDTO first = segment(item("FINISH", 1500, 2));
+        first.setSegmentRatio(new BigDecimal("50"));
+        first.setTargetDiameter(1000);
+        first.setFinishCoreDiameter(3);
+        RewindPlanPreviewDTO.RewindSegmentDTO second = segment(item("FINISH", 1500, 1));
+        second.setSegmentRatio(new BigDecimal("50"));
+        second.setTargetDiameter(1200);
+        second.setFinishCoreDiameter(3);
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setAllocationRule("WEIGHT_SPLIT");
+        dto.setRewindMode(2);
+        dto.setSegments(List.of(first, second));
+
+        FinishPreviewVO preview = ReflectionTestUtils.invokeMethod(
+                service(), "buildRewindPreview", "order-1", roll(), dto);
+
+        assertEquals(List.of(new BigDecimal("200.000"), new BigDecimal("200.000"),
+                        new BigDecimal("400.000")),
+                preview.getFinishes().stream()
+                        .map(FinishPreviewVO.FinishItemPreview::getEstimateWeight).toList());
+        assertEquals(List.of(new BigDecimal("0.250000"), new BigDecimal("0.250000"),
+                        new BigDecimal("0.500000")),
+                preview.getFinishes().stream()
+                        .map(FinishPreviewVO.FinishItemPreview::getSegmentRatio).toList());
+    }
+
+    @Test
+    void previewTotalWeight_unknownSourceIgnoresLegacyPlaceholderWeight() {
+        OriginalRoll unknown = roll();
+        unknown.setUuid("roll-unknown");
+        unknown.setWeightStatus("UNKNOWN");
+        unknown.setRollWeight(BigDecimal.ONE);
+        unknown.setTotalWeight(new BigDecimal("3"));
+        unknown.setPieceNum(3);
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setRewindMode(5);
+        RewindPlanPreviewDTO.RewindSegmentDTO segment = segment(item("FINISH", 1500, 1));
+        FinishConfigSpecDTO.FinishSourceDTO source = new FinishConfigSpecDTO.FinishSourceDTO();
+        source.setOriginalUuid(unknown.getUuid());
+        segment.setSources(List.of(source));
+        dto.setSegments(List.of(segment));
+
+        BigDecimal total = ReflectionTestUtils.invokeMethod(service(), "previewTotalWeight",
+                roll(), dto, Map.of(unknown.getUuid(), unknown));
+
+        assertEquals(null, total);
+    }
+
+    @Test
+    void buildRewindPreview_withoutAllocationRuleKeepsHistoricalAreaAllocation() {
+        RewindPlanPreviewDTO dto = diameterSplitPlan(null);
+
+        FinishPreviewVO preview = ReflectionTestUtils.invokeMethod(
+                service(), "buildRewindPreview", "order-1", roll(), dto);
+
+        assertTrue(preview.getFinishes().getFirst().getEstimateWeight()
+                .compareTo(preview.getFinishes().getLast().getEstimateWeight()) < 0);
+        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight());
+    }
+
+    @Test
+    void buildRewindSaveSpecs_weightSplitPersistsEffectivePercentages() {
+        FinishConfigSaveDTO dto = new FinishConfigSaveDTO();
+        RewindPlanPreviewDTO preview = diameterSplitPlan("WEIGHT_SPLIT");
+        dto.setAllocationRule(preview.getAllocationRule());
+        dto.setRewindMode(preview.getRewindMode());
+        dto.setRewindSegments(preview.getSegments());
+
+        List<FinishConfigSpecDTO> specs = ReflectionTestUtils.invokeMethod(
+                service(), "buildRewindSaveSpecs", "order-1", roll(), dto);
+
+        assertEquals(List.of(new BigDecimal("50.00"), new BigDecimal("50.00")),
+                specs.stream().map(FinishConfigSpecDTO::getSplitRatio).toList());
     }
 
     @Test
@@ -373,6 +464,22 @@ class ProcessOrderServiceImplRewindPreviewTest {
         RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
         dto.setRewindMode(6);
         dto.setSegments(List.of(segment));
+        return dto;
+    }
+
+    private RewindPlanPreviewDTO diameterSplitPlan(String allocationRule) {
+        RewindPlanPreviewDTO.RewindSegmentDTO first = segment(item("FINISH", 1500, 1));
+        first.setSegmentRatio(new BigDecimal("50"));
+        first.setTargetDiameter(1000);
+        first.setFinishCoreDiameter(3);
+        RewindPlanPreviewDTO.RewindSegmentDTO second = segment(item("FINISH", 1500, 1));
+        second.setSegmentRatio(new BigDecimal("50"));
+        second.setTargetDiameter(1200);
+        second.setFinishCoreDiameter(3);
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setAllocationRule(allocationRule);
+        dto.setRewindMode(2);
+        dto.setSegments(List.of(first, second));
         return dto;
     }
 

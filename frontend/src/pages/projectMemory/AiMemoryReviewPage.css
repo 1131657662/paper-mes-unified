@@ -1,0 +1,42 @@
+.ai-memory-review-page {
+  display: grid;
+  gap: var(--mes-gap);
+  min-width: 0;
+}
+
+.memory-candidate-detail {
+  display: grid;
+  gap: var(--mes-gap);
+}
+
+.memory-candidate-review-form {
+  width: 100%;
+}
+
+.memory-candidate-review-form label {
+  color: var(--mes-color-text-secondary);
+  font-size: 13px;
+}
+
+.memory-candidate-review-form__json,
+.memory-evidence__json {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+}
+
+.memory-evidence__phrase {
+  margin-bottom: 0;
+  white-space: pre-wrap;
+}
+
+.memory-evidence__json {
+  max-height: 320px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-memory-review-page .project-memory-candidates {
+  min-width: 0;
+}

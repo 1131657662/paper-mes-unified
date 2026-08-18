@@ -64,7 +64,7 @@ public class DraftOrderBaseDTO implements OrderSettlementSelection {
     private BigDecimal freightFee;
     @PositiveOrZero(message = "其他费用不能为负")
     private BigDecimal otherFee;
-    @Size(max = 500, message = "备注长度不能超过500")
+    @Size(max = 255, message = "备注长度不能超过255")
     private String remark;
     @Size(max = 2000, message = "详细备注长度不能超过2000")
     private String remarkLong;

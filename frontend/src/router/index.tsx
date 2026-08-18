@@ -9,6 +9,7 @@ import { PERMISSIONS } from '../constants/permissions'
 
 import {
   AppendOrderPage,
+  AiMemoryReviewPage,
   AuthenticatedLayout,
   BackRecordPage,
   CreateOrderPage,
@@ -154,6 +155,7 @@ export const router = createBrowserRouter([
             ]),
           },
           { path: 'project-memory', element: guardedPage(<ProjectMemoryPage />, [PERMISSIONS.aiAssist]) },
+          { path: 'ai-memory-review', element: guardedPage(<AiMemoryReviewPage />, [PERMISSIONS.aiMemoryManage]) },
           { path: 'operation-logs', element: guardedPage(<OperationLogPage />, [PERMISSIONS.systemAudit]) },
           { path: 'profile', element: lazyPage(<ProfilePage />) },
           { path: '*', element: lazyPage(<NotFoundPage />) },

@@ -11,6 +11,7 @@ import { useCreateOrderDirtyGuard } from '../../features/processOrderCreate/hook
 import { useCreateOrderPage } from '../../features/processOrderCreate/hooks/useCreateOrderPage'
 import { notifyErrorOnce } from '../../api/request'
 import CreateOrderLoadError from './CreateOrderLoadError'
+import CreateOrderAiAssistant from '../../features/processOrderCreate/components/CreateOrderAiAssistant'
 
 export { default as CreateOrderLoadError } from './CreateOrderLoadError'
 
@@ -105,6 +106,7 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
         )}
         {state.current === 2 && (
           <ProcessModeStep
+            assistantEntry={<CreateOrderAiAssistant currentStep={3} state={state} />}
             machines={state.machines}
             rolls={state.rolls}
             selectedId={state.selectedId}
@@ -119,6 +121,9 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
         )}
         {state.current === 3 && (
           <ConfigStep
+            aiPackagingLoading={state.aiPackagingLoading}
+            aiPackagingDrafts={state.aiPackagingDrafts}
+            assistantEntry={<CreateOrderAiAssistant currentStep={4} state={state} />}
             autoFinishConfigEnabled={state.autoFinishConfigEnabled}
             defaultSpareCount={state.defaultSpareCount}
             defaultPlanOptions={state.defaultPlanOptions}
@@ -159,6 +164,8 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             onServiceDirtyChange={dirtyGuard.setServiceDirty}
             onPendingChange={setServiceWritePending}
             onDraftVersionChange={state.setDraftVersion}
+            onAiPackagingDraftConsumed={state.consumeAiPackagingDraft}
+            onAiPackagingDraftDismissed={state.dismissAiPackagingDraft}
             onPrev={() => runIfClean(() => state.setCurrent(2))}
             onNext={async () => { if (await state.handleConfigNext()) clearDirtyAfterSuccess() }}
           />

@@ -18,6 +18,7 @@ export default function ConfigStep(props: ConfigStepProps) {
   if (props.rolls.length > 0 && model.configurableRolls.length === 0) {
     return (
       <ConfigStepLight
+        assistantEntry={props.assistantEntry}
         lockedRolls={model.data.lockedRolls}
         onNext={props.onNext}
         onPrev={props.onPrev}

@@ -115,7 +115,7 @@ export function processStepPayload(options: PayloadOptions): ProcessStepDTO {
   if (catalog?.pricingStrategy === 'SERVICE_QUANTITY') {
     return {
       ...payload,
-      serviceQuantity: undefined,
+      serviceQuantity: values.billingMode === 2 ? values.serviceQuantity : undefined,
       unitPrice: values.billingMode === 0 ? undefined : payload.unitPrice,
     }
   }

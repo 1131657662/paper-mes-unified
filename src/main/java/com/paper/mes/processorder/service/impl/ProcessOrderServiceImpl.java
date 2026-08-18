@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.ai.process.session.ProcessAiConversationLifecycleService;
 import com.paper.mes.auth.context.AuthContextHolder;
 import com.paper.mes.auth.permission.PermissionChecker;
 import com.paper.mes.auth.permission.Permissions;
@@ -118,6 +119,7 @@ import com.paper.mes.processorder.service.ProcessOrderIssueVersionService;
 import com.paper.mes.processorder.service.ProcessOrderReissueFingerprint;
 import com.paper.mes.processorder.service.ProcessOrderSettlementPolicy;
 import com.paper.mes.processorder.service.RewindPlanPreviewContext;
+import com.paper.mes.processorder.service.RewindFinishSourceAllocator;
 import com.paper.mes.processorder.service.RewindWidthDifferenceCalculator;
 import com.paper.mes.processorder.service.RewindSourceWidthValidator;
 import com.paper.mes.processorder.service.RewindPricingFinalizationPolicy;
@@ -125,6 +127,7 @@ import com.paper.mes.processorder.model.WidthDifferencePolicy;
 import com.paper.mes.processorder.service.ProcessRouteCleanupService;
 import com.paper.mes.processorder.service.ProcessRouteContext;
 import com.paper.mes.processorder.service.ProcessStepPricingSettings;
+import com.paper.mes.processorder.service.ProcessStepWeightStatePolicy;
 import com.paper.mes.processorder.service.ProcessStepPricingPolicy;
 import com.paper.mes.processorder.service.ProcessStepEditStatusPolicy;
 import com.paper.mes.processorder.service.ProcessStepRouteMutationGuard;
@@ -212,6 +215,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private static final BigDecimal LEGACY_DEFAULT_REWIND_PRICE = new BigDecimal("200.00");
     private static final String LAYOUT_ITEM_FINISH = "FINISH";
     private static final String LAYOUT_ITEM_TRIM = "TRIM";
+    private static final String ALLOCATION_RULE_WEIGHT_SPLIT = "WEIGHT_SPLIT";
 
     private final OriginalRollMapper originalRollMapper;
     private final FinishRollMapper finishRollMapper;
@@ -256,6 +260,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     private ProcessOrderIssueVersionService issueVersionService;
     @Autowired
     private ProcessOrderDeliveryImpactCounter deliveryImpactCounter;
+    @Autowired
+    private ProcessAiConversationLifecycleService aiConversationLifecycle;
 
     @Override
     public PageResult<ProcessOrder> pageOrders(ProcessOrderQuery query) {
@@ -392,7 +398,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         vo.setOriginalRolls(rolls);
         vo.setFinishRolls(finishRolls);
         vo.setSteps(steps);
-        vo.setRollProductions(buildRollProductions(rolls, finishRolls, steps, processParams, stageOutputs, finishOriginalRels));
+        List<ProcessOrderDetailVO.RollProductionVO> productions = buildRollProductions(
+                rolls, finishRolls, steps, processParams, stageOutputs, finishOriginalRels);
+        vo.setRollProductions(productions);
+        vo.setWorkshopInstructions(WorkshopInstructionBuilder.build(productions));
         return vo;
     }
 
@@ -457,6 +466,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         for (OriginalRoll roll : rolls) {
             ProcessOrderDetailVO.RollProductionVO item = new ProcessOrderDetailVO.RollProductionVO();
             item.setOriginalUuid(roll.getUuid());
+            item.setRowSort(roll.getRowSort());
             item.setExtraNo(roll.getExtraNo());
             item.setBatchNo(roll.getBatchNo());
             item.setRollNo(roll.getRollNo());
@@ -1159,6 +1169,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
         validateVoidOrder(order);
         markOrderVoided(order, dto.getReason().trim());
+        aiConversationLifecycle.closeAfterCommit(uuid);
     }
 
     private void validateVoidOrder(ProcessOrder order) {
@@ -3508,6 +3519,9 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     private BigDecimal effectiveSourceWeight(OriginalRoll source) {
+        if (source == null || WeightStatus.UNKNOWN.name().equalsIgnoreCase(source.getWeightStatus())) {
+            return null;
+        }
         if (hasUsableBillingWeight(source)) return source.getActualWeight();
         BigDecimal total = source.getTotalWeight();
         if (total != null && total.signum() > 0) return total;
@@ -3769,6 +3783,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
     }
 
     private void validateRewindPreviewPlan(RewindPlanPreviewDTO dto) {
+        if (StringUtils.hasText(dto.getAllocationRule())
+                && !ALLOCATION_RULE_WEIGHT_SPLIT.equals(dto.getAllocationRule())) {
+            throw new BusinessException("allocationRule can only be WEIGHT_SPLIT");
+        }
         Integer rewindMode = dto.getRewindMode();
         if (rewindMode == null || rewindMode < 1 || rewindMode > 6) {
             throw new BusinessException("复卷模式只能选择1到6类");
@@ -3938,6 +3956,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             segmentPreviews.add(segmentPreview);
 
             BigDecimal repeatedSegmentRatio = segmentRatio.divide(BigDecimal.valueOf(repeatCount), 6, RoundingMode.HALF_UP);
+            BigDecimal finishPieceRatio = ALLOCATION_RULE_WEIGHT_SPLIT.equals(dto.getAllocationRule())
+                    ? repeatedSegmentRatio.divide(BigDecimal.valueOf(finishLayoutPieceCount(segment)),
+                    6, RoundingMode.HALF_UP)
+                    : repeatedSegmentRatio;
             List<PreviewPiece> segmentPieces = new ArrayList<>();
             for (int repeat = 0; repeat < repeatCount; repeat++) {
                 List<PreviewPiece> repeatPieces = new ArrayList<>();
@@ -3949,7 +3971,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                     for (int i = 0; i < quantity; i++) {
                         PreviewPiece piece = new PreviewPiece();
                         piece.segmentSort = segmentPreview.getSegmentSort();
-                        piece.segmentRatio = repeatedSegmentRatio;
+                        piece.segmentRatio = finishPieceRatio;
                         piece.finishWidth = item.getWidth();
                         piece.finishDiameter = previewFinishDiameter(dto.getRewindMode(), segment, item);
                         piece.finishCoreDiameter = previewFinishCoreDiameter(dto.getRewindMode(), segment, item);
@@ -3961,7 +3983,8 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                         piece.trimWidth = trimWidth;
                         piece.sourceSummary = sourceSummary;
                         piece.layers = item.getLayers();
-                        piece.basis = previewBasis(roll, dto.getRewindMode(), segment, item, repeatedSegmentRatio);
+                        piece.basis = previewBasis(dto.getAllocationRule(), roll, dto.getRewindMode(),
+                                segment, item, finishPieceRatio);
                         piece.allocationExtra = widthDecision.allocationShare();
                         repeatPieces.add(piece);
                     }
@@ -4114,13 +4137,18 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         BigDecimal total = BigDecimal.ZERO;
         for (String sourceUuid : sourceUuids) {
             OriginalRoll sourceRoll = sourceRolls.get(sourceUuid);
-            if (sourceRoll != null) {
-                BigDecimal sourceWeight = calcTotalWeight(sourceRoll.getRollWeight(), sourceRoll.getPieceNum());
-                if (sourceWeight != null) total = total.add(sourceWeight);
-            }
+            BigDecimal sourceWeight = sourceRoll == null ? null : effectiveSourceWeight(sourceRoll);
+            if (sourceWeight == null) return null;
+            total = total.add(sourceWeight);
         }
-        if (total.signum() > 0) return total;
-        return calcTotalWeight(roll.getRollWeight(), roll.getPieceNum());
+        return sourceUuids.isEmpty() ? effectiveSourceWeight(roll) : total;
+    }
+
+    private int finishLayoutPieceCount(RewindPlanPreviewDTO.RewindSegmentDTO segment) {
+        return segment.getLayoutItems().stream()
+                .filter(item -> LAYOUT_ITEM_FINISH.equals(resolveLayoutItemType(item)))
+                .mapToInt(item -> item.getQuantity() == null ? 1 : item.getQuantity())
+                .sum();
     }
 
     private String sourceSummary(Integer rewindMode, RewindPlanPreviewDTO.RewindSegmentDTO segment,
@@ -4190,8 +4218,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         return firstLayerCoreDiameter(item.getLayers());
     }
 
-    private BigDecimal previewBasis(OriginalRoll roll, Integer rewindMode, RewindPlanPreviewDTO.RewindSegmentDTO segment,
+    private BigDecimal previewBasis(String allocationRule, OriginalRoll roll, Integer rewindMode,
+                                    RewindPlanPreviewDTO.RewindSegmentDTO segment,
                                     RewindPlanPreviewDTO.RewindLayoutItemDTO item, BigDecimal segmentRatio) {
+        if (ALLOCATION_RULE_WEIGHT_SPLIT.equals(allocationRule)) {
+            return segmentRatio;
+        }
         if (rewindMode == null || rewindMode == 1 || rewindMode == 6) {
             return BigDecimal.valueOf(item.getWidth()).multiply(segmentRatio);
         }
@@ -4440,6 +4472,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
         if (dto.getRewindSegments() != null && !dto.getRewindSegments().isEmpty()) {
             RewindPlanPreviewDTO previewDto = new RewindPlanPreviewDTO();
+            previewDto.setAllocationRule(dto.getAllocationRule());
             previewDto.setRewindMode(rewindMode);
             previewDto.setSpareCount(dto.getSpareCount());
             previewDto.setWidthDifferencePolicy(dto.getWidthDifferencePolicy());
@@ -4584,6 +4617,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         mainStep.setProcessWeight(mainStep.getStepType() == FeeCalculator.STEP_TYPE_REWIND
                 ? rewindProcessWeight(order.getUuid(), roll, dto)
                 : null);
+        ProcessStepWeightStatePolicy.clearWhenNotRewind(mainStep);
         mainStep.setUnitPrice(dto.getUnitPrice());
         applyWidthDifference(mainStep, roll, dto);
         mainStep.setRemark(rewindRemark(dto));
@@ -4839,8 +4873,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                     param.setOutDiameter(layer.getOutDiameter());
                     param.setCoreDiameter(layer.getCoreDiameter());
                     param.setLayerWidth(spec.getFinishWidth());
-                    param.setAreaValue(calcLayerArea(layer.getOutDiameter(), layer.getCoreDiameter()));
+                    param.setAreaValue(allocationBasis(dto, spec,
+                            calcLayerArea(layer.getOutDiameter(), layer.getCoreDiameter())));
                     param.setAreaRatio(spec.getEstimateWeight());
+                    param.setSplitRatio(spec.getSplitRatio());
                     param.setParamJson(toJson(spec));
                     param.setRemark(rewindRemark(dto));
                     processParamMapper.insert(param);
@@ -4857,7 +4893,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             param.setOutDiameter(spec.getFinishDiameter());
             param.setCoreDiameter(spec.getFinishCoreDiameter());
             param.setLayerWidth(spec.getFinishWidth());
-            param.setAreaValue(calcSpecArea(rewindMode, spec, roll));
+            param.setAreaValue(calcSpecArea(rewindMode, spec, roll, dto.getAllocationRule()));
             param.setAreaRatio(spec.getEstimateWeight());
             param.setSplitRatio(spec.getSplitRatio());
             param.setParamJson(toJson(spec));
@@ -4901,6 +4937,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
         if (dto.getRewindSegments() != null && !dto.getRewindSegments().isEmpty()) {
             RewindPlanPreviewDTO previewDto = new RewindPlanPreviewDTO();
+            previewDto.setAllocationRule(dto.getAllocationRule());
             previewDto.setRewindMode(dto.getRewindMode());
             previewDto.setSpareCount(dto.getSpareCount());
             previewDto.setWidthDifferencePolicy(dto.getWidthDifferencePolicy());
@@ -4908,8 +4945,11 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             FinishPreviewVO preview = buildRewindPreview(orderUuid, roll, previewDto);
             List<FinishPreviewVO.FinishItemPreview> previewFinishes = preview.getFinishes() == null ? List.of() : preview.getFinishes();
             List<FinishPreviewVO.SegmentPreview> previewSegments = preview.getSegments() == null ? List.of() : preview.getSegments();
+            List<List<FinishConfigSpecDTO.FinishSourceDTO>> sourceAllocations =
+                    RewindFinishSourceAllocator.allocate(previewFinishes, dto.getRewindSegments());
             List<FinishConfigSpecDTO> specs = new ArrayList<>(previewFinishes.size() + previewSegments.size());
-            for (FinishPreviewVO.FinishItemPreview finish : previewFinishes) {
+            for (int finishIndex = 0; finishIndex < previewFinishes.size(); finishIndex++) {
+                FinishPreviewVO.FinishItemPreview finish = previewFinishes.get(finishIndex);
                 FinishConfigSpecDTO spec = new FinishConfigSpecDTO();
                 spec.setItemType(LAYOUT_ITEM_FINISH);
                 spec.setCount(1);
@@ -4921,9 +4961,12 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                 spec.setCustomerFinishWidth(finish.getCustomerFinishWidth());
                 spec.setCustomerSpecOverrideReason(finish.getCustomerSpecOverrideReason());
                 spec.setEstimateWeight(finish.getEstimateWeight());
+                if (ALLOCATION_RULE_WEIGHT_SPLIT.equals(dto.getAllocationRule())) {
+                    spec.setSplitRatio(toPercent(finish.getSegmentRatio()));
+                }
                 spec.setLayers(finish.getLayers());
                 if (dto.getRewindMode() != null && dto.getRewindMode() == 5) {
-                    spec.setSources(resolveSegmentSources(dto.getRewindSegments(), finish.getSegmentSort()));
+                    spec.setSources(sourceAllocations.get(finishIndex));
                 }
                 specs.add(spec);
             }
@@ -4931,22 +4974,6 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             return specs;
         }
         return applyRewindEstimateWeights(orderUuid, roll, dto);
-    }
-
-    private List<FinishConfigSpecDTO.FinishSourceDTO> resolveSegmentSources(
-            List<RewindPlanPreviewDTO.RewindSegmentDTO> segments, Integer segmentSort) {
-        if (segments == null || segmentSort == null) {
-            return List.of();
-        }
-        int fallbackSort = 1;
-        for (RewindPlanPreviewDTO.RewindSegmentDTO segment : segments) {
-            int currentSort = segment.getSegmentSort() == null ? fallbackSort : segment.getSegmentSort();
-            if (currentSort == segmentSort) {
-                return segment.getSources() == null ? List.of() : segment.getSources();
-            }
-            fallbackSort++;
-        }
-        return List.of();
     }
 
     private List<FinishConfigSpecDTO> applyRewindEstimateWeights(String orderUuid, OriginalRoll roll, FinishConfigSaveDTO dto) {
@@ -4984,7 +5011,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
 
         List<RewindWeightCalculator.PieceInput> pieces = new ArrayList<>();
         for (FinishConfigSpecDTO spec : finishSpecs) {
-            BigDecimal basis = rewindBasis(roll, dto.getRewindMode(), spec);
+            BigDecimal basis = rewindBasis(roll, dto.getRewindMode(), spec, dto.getAllocationRule());
             for (int i = 0; i < spec.getCount(); i++) {
                 pieces.add(new RewindWeightCalculator.PieceInput(basis, null));
             }
@@ -5058,17 +5085,20 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         BigDecimal total = BigDecimal.ZERO;
         for (String sourceUuid : sourceUuids) {
             OriginalRoll sourceRoll = rollByUuid.get(sourceUuid);
-            if (sourceRoll != null) {
-                BigDecimal sourceWeight = calcTotalWeight(sourceRoll.getRollWeight(), sourceRoll.getPieceNum());
-                if (sourceWeight != null) total = total.add(sourceWeight);
-            }
+            BigDecimal sourceWeight = sourceRoll == null ? null : effectiveSourceWeight(sourceRoll);
+            if (sourceWeight == null) return null;
+            total = total.add(sourceWeight);
         }
-        return total;
+        return sourceUuids.isEmpty() ? null : total;
     }
 
-    private BigDecimal rewindBasis(OriginalRoll roll, Integer rewindMode, FinishConfigSpecDTO spec) {
+    private BigDecimal rewindBasis(OriginalRoll roll, Integer rewindMode, FinishConfigSpecDTO spec,
+                                   String allocationRule) {
         if (rewindMode == null) {
             return BigDecimal.ZERO;
+        }
+        if (ALLOCATION_RULE_WEIGHT_SPLIT.equals(allocationRule)) {
+            return spec.getSplitRatio() == null ? BigDecimal.ZERO : spec.getSplitRatio();
         }
         if (rewindMode == 1 || rewindMode == 6) {
             return BigDecimal.valueOf(spec.getFinishWidth() == null ? 0 : spec.getFinishWidth());
@@ -5097,14 +5127,25 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         return spec.getSplitRatio() == null ? BigDecimal.ZERO : spec.getSplitRatio();
     }
 
-    private BigDecimal calcSpecArea(Integer rewindMode, FinishConfigSpecDTO spec, OriginalRoll roll) {
+    private BigDecimal calcSpecArea(Integer rewindMode, FinishConfigSpecDTO spec, OriginalRoll roll,
+                                    String allocationRule) {
         if (rewindMode == null) {
             return BigDecimal.ZERO;
         }
         if (rewindMode == 4) {
-            return rewindBasis(roll, rewindMode, spec);
+            return rewindBasis(roll, rewindMode, spec, allocationRule);
         }
-        return rewindBasis(roll, rewindMode, spec);
+        return rewindBasis(roll, rewindMode, spec, allocationRule);
+    }
+
+    private BigDecimal allocationBasis(FinishConfigSaveDTO dto, FinishConfigSpecDTO spec,
+                                       BigDecimal defaultBasis) {
+        return ALLOCATION_RULE_WEIGHT_SPLIT.equals(dto.getAllocationRule())
+                ? spec.getSplitRatio() : defaultBasis;
+    }
+
+    private BigDecimal toPercent(BigDecimal ratio) {
+        return ratio == null ? null : ratio.movePointRight(2).setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calcLayerArea(Integer outDiameter, Integer coreDiameter) {
@@ -5497,7 +5538,13 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         }
         int mode = step.getBillingMode() == null ? ProcessStepPricingPolicy.STANDARD : step.getBillingMode();
         if (mode == ProcessStepPricingPolicy.QUANTITY_OVERRIDE) {
-            throw new BusinessException("整理和包装不使用指定数量模式，请直接填写服务数量");
+            if (step.getBillingQuantity() == null || step.getBillingQuantity().signum() <= 0) {
+                throw new BusinessException("指定包装数量必须大于0");
+            }
+            if ("PIECE".equals(step.getBillingBasis())
+                    && step.getBillingQuantity().stripTrailingZeros().scale() > 0) {
+                throw new BusinessException("指定包装件数必须为整数");
+            }
         }
         if (mode == ProcessStepPricingPolicy.FIXED_AMOUNT) {
             if (step.getBillingAmount() == null || step.getBillingAmount().signum() < 0) {

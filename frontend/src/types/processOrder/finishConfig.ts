@@ -63,6 +63,7 @@ export interface FinishConfigSaveDTO {
   rewindMode?: number
   knifeCount?: number
   unitPrice?: number
+  allocationRule?: 'WEIGHT_SPLIT'
   widthDifferencePolicy?: WidthDifferencePolicy
   finishSpecs?: FinishConfigSpecDTO[]
   rewindSegments?: RewindSegmentDTO[]
@@ -112,6 +113,7 @@ export interface RewindSegmentDTO {
 
 export interface RewindPlanPreviewDTO {
   rewindMode: number
+  allocationRule?: 'WEIGHT_SPLIT'
   spareCount?: number
   widthDifferencePolicy?: WidthDifferencePolicy
   segments?: RewindSegmentDTO[]

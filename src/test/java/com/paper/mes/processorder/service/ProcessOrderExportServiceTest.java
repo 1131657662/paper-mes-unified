@@ -4,6 +4,7 @@ import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.entity.FinishRoll;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessOrder;
+import com.paper.mes.processorder.entity.ProcessStep;
 import com.paper.mes.processorder.model.ProcessRollDispositionAction;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.jupiter.api.Test;
@@ -110,6 +111,29 @@ class ProcessOrderExportServiceTest {
             assertEquals("处置动作", sheet.getRow(0).getCell(24).getStringCellValue());
             assertEquals("加工中", sheet.getRow(1).getCell(23).getStringCellValue());
             assertEquals("取消本次加工", sheet.getRow(1).getCell(24).getStringCellValue());
+        }
+    }
+
+    @Test
+    void buildWorkbook_withAiRequirementAndPackaging_exportsBothProductionInstructions() throws IOException {
+        ProcessOrderDetailVO detail = detailWithMissingFinishWeight();
+        detail.getOrder().setRemark("short note");
+        detail.getOrder().setRemarkLong("AI customer requirement");
+        ProcessStep packaging = new ProcessStep();
+        packaging.setOriginalUuid("roll-1");
+        packaging.setStepType(4);
+        packaging.setIsMain(0);
+        packaging.setRemark("film wrap, 20 per piece");
+        detail.setSteps(List.of(packaging));
+
+        try (Workbook workbook = service.buildWorkbook(detail)) {
+            var summary = workbook.getSheetAt(0);
+            var steps = workbook.getSheetAt(2);
+
+            assertEquals("short note；AI customer requirement",
+                    summary.getRow(9).getCell(1).getStringCellValue());
+            assertEquals("film wrap, 20 per piece",
+                    steps.getRow(1).getCell(12).getStringCellValue());
         }
     }
 

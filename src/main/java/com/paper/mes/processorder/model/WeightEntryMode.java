@@ -7,5 +7,7 @@ public enum WeightEntryMode {
     /** Copy the stored nominal/reference weight without claiming a measurement. */
     CARRY_NOMINAL,
     /** A deliberate operator estimate that remains provisional for finalization. */
-    USER_ESTIMATE
+    USER_ESTIMATE,
+    /** Explicitly confirm the server-side nominal/reference weight for this submission. */
+    CONFIRM_REFERENCE
 }

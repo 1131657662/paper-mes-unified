@@ -166,7 +166,7 @@ class ProcessRouteSafetyContractTest {
                 "private Map<String, OriginalRoll> orderRollMap");
         String save = slice(source,
                 "private List<FinishConfigSpecDTO> buildRewindSaveSpecs",
-                "private List<FinishConfigSpecDTO.FinishSourceDTO> resolveSegmentSources");
+                "private List<FinishConfigSpecDTO> applyRewindEstimateWeights");
 
         assertContainsAll(preview,
                 "RewindWeightCalculator.allocate(",
@@ -178,7 +178,8 @@ class ProcessRouteSafetyContractTest {
                 "RewindWeightCalculator.storedCoreDiameterToMm(BigDecimal.valueOf(coreDiameter))");
         assertContainsAll(save,
                 "FinishPreviewVO preview = buildRewindPreview(orderUuid, roll, previewDto)",
-                "spec.setEstimateWeight(finish.getEstimateWeight())");
+                "spec.setEstimateWeight(finish.getEstimateWeight())",
+                "RewindFinishSourceAllocator.allocate(previewFinishes, dto.getRewindSegments())");
         assertTrue(!source.contains("calcTrimWeightShare("),
                 "rewind preview must not keep a second inline trim allocation formula");
         assertTrue(!source.contains("BigDecimal.valueOf(25.4)"),

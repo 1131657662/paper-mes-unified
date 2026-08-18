@@ -118,10 +118,15 @@ public final class MultiSourceConsumptionNormalizer {
     }
 
     private static BigDecimal totalWeight(OriginalRoll roll) {
-        BigDecimal weight = roll.getActualWeight() != null && roll.getActualWeight().signum() > 0
-                ? roll.getActualWeight() : roll.getRollWeight();
-        if (weight == null || weight.signum() <= 0
-                || "UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
+        if ("UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
+        if (roll.getActualWeight() != null && roll.getActualWeight().signum() > 0) {
+            return roll.getActualWeight();
+        }
+        if (roll.getTotalWeight() != null && roll.getTotalWeight().signum() > 0) {
+            return roll.getTotalWeight();
+        }
+        BigDecimal weight = roll.getRollWeight();
+        if (weight == null || weight.signum() <= 0) return null;
         int pieceNum = roll.getPieceNum() == null ? 1 : roll.getPieceNum();
         return weight.multiply(BigDecimal.valueOf(pieceNum));
     }

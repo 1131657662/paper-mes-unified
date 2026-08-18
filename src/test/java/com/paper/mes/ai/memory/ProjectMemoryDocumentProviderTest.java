@@ -90,6 +90,37 @@ class ProjectMemoryDocumentProviderTest {
         assertThat(provider.ready()).isFalse();
     }
 
+    @Test
+    void supersededSnapshotRemainsAvailableToBoundConversation(@TempDir Path tempDir) throws Exception {
+        JsonNode seed = objectMapper.readTree(Files.readString(
+                Path.of("docs/ai/project-memory.seed.v1.json"), StandardCharsets.UTF_8));
+        ProjectMemoryDocumentRow historical = withStatus(row(seed), "SUPERSEDED");
+        ProjectMemoryDocumentRepository repository = mock(ProjectMemoryDocumentRepository.class);
+        when(repository.findVersion(historical.docVersion())).thenReturn(Optional.of(historical));
+        ProjectMemoryDocumentProvider provider =
+                new ProjectMemoryDocumentProvider(properties(tempDir), objectMapper, repository, validator);
+
+        Optional<ProjectMemorySnapshot> result = provider.version(historical.docVersion());
+
+        assertThat(result).get().extracting(ProjectMemorySnapshot::docVersion)
+                .isEqualTo(historical.docVersion());
+    }
+
+    @Test
+    void draftSnapshotIsUnavailableToBoundConversation(@TempDir Path tempDir) throws Exception {
+        JsonNode seed = objectMapper.readTree(Files.readString(
+                Path.of("docs/ai/project-memory.seed.v1.json"), StandardCharsets.UTF_8));
+        ProjectMemoryDocumentRow draft = withStatus(row(seed), "DRAFT");
+        ProjectMemoryDocumentRepository repository = mock(ProjectMemoryDocumentRepository.class);
+        when(repository.findVersion(draft.docVersion())).thenReturn(Optional.of(draft));
+        ProjectMemoryDocumentProvider provider =
+                new ProjectMemoryDocumentProvider(properties(tempDir), objectMapper, repository, validator);
+
+        Optional<ProjectMemorySnapshot> result = provider.version(draft.docVersion());
+
+        assertThat(result).isEmpty();
+    }
+
     private AiProperties properties(Path memoryDir) {
         AiProperties properties = new AiProperties();
         properties.setMemoryDir(memoryDir.toString());
@@ -101,5 +132,10 @@ class ProjectMemoryDocumentProviderTest {
                 "memory-uuid", seed.path("memoryVersion").asText(), seed.path("schemaVersion").asText(),
                 seed.path("checksum").asText(), objectMapper.writeValueAsString(seed), "ACTIVE",
                 "test", "system", null);
+    }
+
+    private ProjectMemoryDocumentRow withStatus(ProjectMemoryDocumentRow row, String status) {
+        return new ProjectMemoryDocumentRow(row.uuid(), row.docVersion(), row.schemaVersion(), row.checksum(),
+                row.docJson(), status, row.patchNotes(), row.createdBy(), row.approvedBy());
     }
 }

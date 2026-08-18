@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.service;
 
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.ai.process.parse.ProcessAiPackagingCandidateResolutionService;
 import com.paper.mes.common.ErrorCode;
 import com.paper.mes.common.db.BusinessLockService;
 import com.paper.mes.processorder.dto.ProcessStepBatchDTO;
@@ -27,19 +28,23 @@ public class DraftServiceStepService {
     private final ProcessStepMapper stepMapper;
     private final ProcessOrderService processOrderService;
     private final DraftOrderVersionGuard versionGuard;
+    private final ProcessAiPackagingCandidateResolutionService packagingCandidateResolutionService;
 
     @Transactional(rollbackFor = Exception.class)
     public void add(String orderUuid, ProcessStepDTO dto) {
         requireDraftOrder(orderUuid, dto.getExpectedVersion());
         requireServiceRequest(dto);
         processOrderService.addProcessStep(orderUuid, dto);
+        packagingCandidateResolutionService.markSaved(orderUuid, List.of(dto));
     }
 
     @Transactional(rollbackFor = Exception.class)
     public ProcessStepBatchResultVO addBatch(String orderUuid, ProcessStepBatchDTO dto) {
         requireDraftOrder(orderUuid, dto.getExpectedVersion());
         dto.getSteps().forEach(this::requireServiceRequest);
-        return processOrderService.addProcessSteps(orderUuid, dto);
+        ProcessStepBatchResultVO result = processOrderService.addProcessSteps(orderUuid, dto);
+        packagingCandidateResolutionService.markSaved(orderUuid, dto.getSteps());
+        return result;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -50,6 +55,7 @@ public class DraftServiceStepService {
         requireServiceTarget(current);
         requireServiceRequest(dto);
         processOrderService.updateProcessStep(stepUuid, dto);
+        packagingCandidateResolutionService.markSaved(initial.getOrderUuid(), List.of(dto));
     }
 
     @Transactional(rollbackFor = Exception.class)

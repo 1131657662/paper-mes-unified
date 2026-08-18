@@ -3,6 +3,7 @@ package com.paper.mes.ai.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.ai.memory.ProjectMemoryManagementService;
 import com.paper.mes.ai.memory.ProjectMemoryVersionQueryService;
+import com.paper.mes.ai.memory.candidate.ProjectMemoryCandidateManagementService;
 import com.paper.mes.ai.memory.dto.ProjectMemoryResponse;
 import com.paper.mes.auth.config.AuthInterceptor;
 import com.paper.mes.auth.dto.CurrentUser;
@@ -29,6 +30,7 @@ class ProjectMemoryControllerContractTest {
     private AuthService authService;
     private ProjectMemoryManagementService service;
     private ProjectMemoryVersionQueryService versionQueryService;
+    private ProjectMemoryCandidateManagementService candidateService;
     private MockMvc mvc;
 
     @BeforeEach
@@ -36,7 +38,9 @@ class ProjectMemoryControllerContractTest {
         authService = mock(AuthService.class);
         service = mock(ProjectMemoryManagementService.class);
         versionQueryService = mock(ProjectMemoryVersionQueryService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new ProjectMemoryController(service, versionQueryService))
+        candidateService = mock(ProjectMemoryCandidateManagementService.class);
+        mvc = MockMvcBuilders.standaloneSetup(
+                        new ProjectMemoryController(service, versionQueryService, candidateService))
                 .addInterceptors(new AuthInterceptor(authService),
                         new PermissionInterceptor(new PermissionChecker()))
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -95,6 +99,29 @@ class ProjectMemoryControllerContractTest {
                 .andExpect(status().isForbidden());
 
         verifyNoInteractions(versionQueryService);
+    }
+
+    @Test
+    void operatorCannotReviewMemoryCandidates() throws Exception {
+        authorizeAs("operator");
+
+        mvc.perform(get("/api/ai/project-memory/candidates")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(candidateService);
+    }
+
+    @Test
+    void adminCanListMemoryCandidates() throws Exception {
+        authorizeAs("admin");
+        when(candidateService.list("READY")).thenReturn(java.util.List.of());
+
+        mvc.perform(get("/api/ai/project-memory/candidates?status=READY")
+                        .header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isOk());
+
+        verify(candidateService).list("READY");
     }
 
     private void authorizeAs(String roleCode) {

@@ -19,7 +19,7 @@ export interface BackRecordRollDTO {
   remark?: string
 }
 
-export type WeightEntryMode = 'MEASURED' | 'CARRY_NOMINAL' | 'USER_ESTIMATE'
+export type WeightEntryMode = 'MEASURED' | 'CARRY_NOMINAL' | 'USER_ESTIMATE' | 'CONFIRM_REFERENCE'
 
 /** 成品卷回录入参。 */
 export type BackRecordFinishAction = 'PRODUCED' | 'NOT_PRODUCED' | 'ADDED'

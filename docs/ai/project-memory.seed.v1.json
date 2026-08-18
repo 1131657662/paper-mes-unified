@@ -4,7 +4,7 @@
   "memoryVersion": "1.0.0",
   "documentKind": "PROJECT_MEMORY_SEED",
   "project": "paper-mes-unified",
-  "checksum": "sha256:0b3adc2555979722756877b61a41ed630216057911111e964763b920aea87d2b",
+  "checksum": "sha256:fc50598ccb857fe099019fdacc2366155043d2fc9f542cafebe3ea1794ad8937",
   "checksumSpecification": {
     "algorithm": "SHA-256",
     "excludeFields": ["checksum"],
@@ -72,14 +72,18 @@
         "remainderDirection": "BACK_FIRST_ROUND_ROBIN",
         "businessMeaning": "前件或后件没有业务偏好；固定算法只为保证重放一致，门幅成品数值最多相差1mm。",
         "weightAllocation": "EQUAL_BY_FINISH_COUNT",
-        "weightAllocationStatus": "BUSINESS_TARGET_REQUIRES_BACKEND_CHANGE",
+        "weightAllocationStatus": "IMPLEMENTED_BACKEND_DETERMINISTIC",
         "businessConfirmed": true,
         "currentImplementation": {
-          "class": "src/main/java/com/paper/mes/processorder/service/SawPlanCalculator.java",
-          "configuredWeight": "按成品门幅占已用门幅比例分配",
-          "remainderWeight": "ALLOCATE模式将余料重量均分到输出后仍按三位小数舍入",
-          "roundingRemainder": "applyRoundingRemainder将最终尾差加到最后一个成品",
-          "notEqualByFinishCount": true
+          "classes": [
+            "src/main/java/com/paper/mes/processorder/service/SawPlanCalculator.java",
+            "src/main/java/com/paper/mes/processorder/service/SawWeightAllocator.java"
+          ],
+          "finishWeight": "成品可分配重量按展开后的成品件数均分，不按门幅比例分配",
+          "trimWeight": "显式TRIM余料保留按门幅比例分配",
+          "remainderWeight": "ALLOCATE模式先将未分配门幅对应重量计入成品预算，再按成品件数均分",
+          "roundingRemainder": "三位小数商余法，以0.001kg为单位分散到不同成品，任意两件最多相差0.001kg",
+          "implemented": true
         },
         "weightRounding": "BALANCED_QUOTIENT_REMAINDER",
         "weightRoundingDetail": "总重量除以成品件数后保留3位小数；舍入余数以0.001kg为单位均匀分散到不同成品，任意两件重量最多相差0.001kg，不允许由最后一件独占尾差。",
@@ -87,7 +91,7 @@
         "sumMustEqualOriginalWidth": true
       },
       "examples": [
-        { "input": "2000mm切2刀", "finishCount": 3, "outputWidthsMm": [666, 667, 667], "weightAllocation": "EQUAL_BY_FINISH_COUNT_BUSINESS_TARGET", "weightRounding": "BALANCED_QUOTIENT_REMAINDER", "deterministic": true },
+        { "input": "2000mm切2刀", "finishCount": 3, "outputWidthsMm": [666, 667, 667], "weightAllocation": "EQUAL_BY_FINISH_COUNT", "weightRounding": "BALANCED_QUOTIENT_REMAINDER", "deterministic": true },
         { "input": "2000mm切3刀", "outputWidthsMm": [500, 500, 500, 500] }
       ],
       "source": "business-confirmation-2026-08-15"
@@ -454,9 +458,9 @@
         "finishWidthsMm": [666, 667, 667],
         "sumMm": 2000,
         "remainderDirection": "BACK_FIRST_ROUND_ROBIN",
-        "weightAllocation": "EQUAL_BY_FINISH_COUNT_BUSINESS_TARGET",
-        "autoApply": false,
-        "requiresBackendBranch": "SAW_EQUAL_WEIGHT_P2"
+        "weightAllocation": "EQUAL_BY_FINISH_COUNT",
+        "automaticCompilation": true,
+        "requiresUserConfirmation": true
       },
       "evidenceRequired": true
     },
@@ -541,10 +545,13 @@
       "meaning": "前后分配无所谓，固定算法仅用于可重放；门幅只差1mm，重量按成品件数均匀分摊且任意两件最多差0.001kg。"
     },
     "sawEqualWeightAllocation": {
-      "status": "RESOLVED_BUSINESS",
+      "status": "IMPLEMENTED",
       "decision": "EQUAL_BY_FINISH_COUNT_REQUIRED",
-      "requiresBackendBranch": "SAW_EQUAL_WEIGHT_P2",
-      "meaning": "锯纸成品重量必须按成品件数均匀分摊，任意两件最多相差0.001kg；当前后端按门幅占比分摊，需新增分支后才可自动应用。"
+      "implementation": [
+        "src/main/java/com/paper/mes/processorder/service/SawPlanCalculator.java",
+        "src/main/java/com/paper/mes/processorder/service/SawWeightAllocator.java"
+      ],
+      "meaning": "锯纸成品重量按展开后的成品件数均匀分摊，任意两件最多相差0.001kg；显式TRIM余料仍按门幅比例单独分配。"
     },
     "missingCoreBehavior": {
       "status": "RESOLVED_BUSINESS",

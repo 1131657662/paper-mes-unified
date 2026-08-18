@@ -29,6 +29,17 @@ public class ProjectMemoryDocumentValidator {
         if (!"ACTIVE".equals(row.status())) {
             throw new IllegalArgumentException("project memory row is not ACTIVE");
         }
+        return validateStoredRow(row);
+    }
+
+    public ProjectMemorySnapshot validateConversationVersion(ProjectMemoryDocumentRow row) {
+        if (!Set.of("ACTIVE", "SUPERSEDED").contains(row.status())) {
+            throw new IllegalArgumentException("project memory row is unavailable for conversation");
+        }
+        return validateStoredRow(row);
+    }
+
+    private ProjectMemorySnapshot validateStoredRow(ProjectMemoryDocumentRow row) {
         JsonNode document = parse(row.docJson());
         return validate(document, row.docVersion(), row.schemaVersion(), row.checksum());
     }

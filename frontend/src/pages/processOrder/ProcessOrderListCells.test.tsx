@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ProcessOrder } from '../../types/processOrder'
-import { OrderDateScheduleCell, OrderNoCell, OrderStatusCell } from './ProcessOrderListCells'
+import { OrderDateScheduleCell, OrderNoCell, OrderStatusCell, ProductionSummary } from './ProcessOrderListCells'
 import { processSummaryText } from './processOrderListModel'
 
 describe('加工单列表单号单元格', () => {
@@ -87,5 +87,14 @@ describe('加工单列表单号单元格', () => {
     expect(markup).toContain('制单 2026-08-02')
     expect(markup).not.toContain('一班')
     expect(markup).not.toContain('班组')
+  })
+
+  it('母卷汇总按实际件数展示并保留总重量', () => {
+    const markup = renderToStaticMarkup(<ProductionSummary record={{
+      uuid: 'order-9', originalRollCount: 2, originalPieceCount: 17, originalRollWeight: 23000,
+    }} />)
+
+    expect(markup).toContain('母卷 17 件 / 23 t')
+    expect(markup).not.toContain('母卷 2 卷')
   })
 })

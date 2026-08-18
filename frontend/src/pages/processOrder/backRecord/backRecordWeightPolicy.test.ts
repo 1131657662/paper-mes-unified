@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProcessOrderDetailVO, RollProductionVO } from '../../../types/processOrder'
-import { theoreticalBackRecordValues } from './backRecordTheoryFill'
+import { confirmedReferenceBackRecordValues, theoreticalBackRecordValues } from './backRecordTheoryFill'
 import { sourceWeightSummary, workItemSourceRolls } from './backRecordSourceRolls'
 import { buildBackRecordMetrics } from './backRecordMetrics'
 import { buildBackRecordDTO, type BackRecordFormValues } from './backRecordUtils'
@@ -78,6 +78,59 @@ describe('母卷重量回录策略', () => {
 
     expect(values.rolls?.['roll-1']?.actualWeight).toBe(700)
     expect(values.rolls?.['roll-1']?.weightEntryMode).toBe('USER_ESTIMATE')
+  })
+
+  it('marks a positive reference weight as explicitly confirmed', () => {
+    const values = confirmedReferenceBackRecordValues(detailFixture())
+
+    expect(values.rolls?.['roll-1']).toEqual(expect.objectContaining({
+      actualWeight: 1,
+      weightEntryMode: 'CONFIRM_REFERENCE',
+    }))
+  })
+
+  it('keeps an unknown source roll unconfirmed during confirmed reference fill', () => {
+    const detail = detailFixture()
+    const firstRoll = detail.originalRolls[0]!
+    detail.originalRolls[0] = { ...firstRoll, weightStatus: 'UNKNOWN' }
+
+    const values = confirmedReferenceBackRecordValues(detail)
+
+    expect(values.rolls?.['roll-1']?.actualWeight).toBeUndefined()
+    expect(values.rolls?.['roll-1']?.weightEntryMode).toBeUndefined()
+  })
+
+  it('allows confirmed reference weights to satisfy standard merged rewind metrics', () => {
+    const item = mergeItem(1)
+    const values = {
+      rolls: {
+        'roll-1': { actualWeight: 600, weightEntryMode: 'CONFIRM_REFERENCE' as const },
+        'roll-2': { actualWeight: 700, weightEntryMode: 'CONFIRM_REFERENCE' as const },
+        'roll-3': { actualWeight: 700, weightEntryMode: 'CONFIRM_REFERENCE' as const },
+      },
+    }
+
+    const metrics = buildWorkItemMetrics(item, values)
+
+    expect(metrics.rollActual).toBe(2000)
+    expect(metrics.missingRoll).toBe(false)
+    expect(metrics.missingRolls).toBe(0)
+  })
+
+  it('serializes confirmed reference intent for every selected source roll', () => {
+    const detail = detailFixture()
+    const values = confirmedReferenceBackRecordValues(detail)
+
+    const dto = buildBackRecordDTO(detail, values, undefined, undefined, {
+      selectedRollUuids: new Set(['roll-1', 'roll-2', 'roll-3']),
+    })
+
+    expect(dto.rolls).toHaveLength(3)
+    expect(dto.rolls).toEqual(expect.arrayContaining([
+      expect.objectContaining({ uuid: 'roll-1', actualWeight: 1, weightEntryMode: 'CONFIRM_REFERENCE' }),
+      expect.objectContaining({ uuid: 'roll-2', actualWeight: 1, weightEntryMode: 'CONFIRM_REFERENCE' }),
+      expect.objectContaining({ uuid: 'roll-3', actualWeight: 1, weightEntryMode: 'CONFIRM_REFERENCE' }),
+    ]))
   })
 
   it('keeps estimated standard-tonnage sources pending until measured', () => {

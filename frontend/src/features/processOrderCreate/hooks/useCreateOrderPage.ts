@@ -15,6 +15,7 @@ import { useProcessOrderCreateSettings } from './useProcessOrderCreateSettings'
 import { useProcessOrderDetail } from '../../processOrderDetail/hooks/useProcessOrderDetail'
 import { serviceStepsForRoll } from '../serviceStepBatchModel'
 import { nonDraftOrderUuid } from '../draftAccess'
+import { useCreateOrderAiConfirmation } from './useCreateOrderAiConfirmation'
 
 interface UseCreateOrderPageOptions {
   resetLocalDraft?: boolean
@@ -77,6 +78,10 @@ export function useCreateOrderPage(
   const detailQuery = useProcessOrderDetail(state.orderUuid, {
     enabled: Boolean(state.orderUuid) && state.current >= 3,
   })
+  const ai = useCreateOrderAiConfirmation(state, async () => {
+    await detailQuery.refetch()
+    if (draftUuid) await refetchDraft()
+  })
   const serviceConfigured = detailQuery.data
     ? Object.fromEntries(state.rolls.filter((roll) => roll.uuid).map((roll) => [
       roll.uuid!,
@@ -105,6 +110,8 @@ export function useCreateOrderPage(
   }
 
   return {
+    aiPackagingLoading: ai.aiPackagingLoading,
+    aiPackagingDrafts: ai.packagingDrafts,
     autoFinishConfigEnabled,
     baseInfo: state.baseInfo,
     current: state.current,
@@ -164,5 +171,8 @@ export function useCreateOrderPage(
     handleSavePlan: planActions.handleSavePlan,
     handleSavePlanBatch: planActions.handleSavePlanBatch,
     handleSubmit: submission.handleSubmit,
+    applyAiConfirmation: ai.apply,
+    consumeAiPackagingDraft: ai.consumePackagingDraft,
+    dismissAiPackagingDraft: ai.dismissPackagingDraft,
   }
 }

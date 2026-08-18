@@ -33,9 +33,28 @@ app:
     rules-resource: ${PAPER_MES_AI_RULES_RESOURCE:classpath:ai/rules-v1.0.0.json}
     memory-dir: ${PAPER_MES_AI_MEMORY_DIR:/etc/paper-mes/ai-memory}
     memory-seed-resource: ${PAPER_MES_AI_MEMORY_SEED_RESOURCE:classpath:ai/project-memory.seed.v1.json}
+    message-encryption-key: ${PAPER_MES_AI_MESSAGE_ENCRYPTION_KEY:}
+    config-master-key: ${PAPER_MES_AI_CONFIG_MASTER_KEY:}
     memory-cache-poll-ms: ${PAPER_MES_AI_MEMORY_CACHE_POLL_MS:60000}
     max-question-chars: ${PAPER_MES_AI_MAX_QUESTION_CHARS:1000}
     global-concurrent-requests: ${PAPER_MES_AI_GLOBAL_CONCURRENT_REQUESTS:1}
+    memory-candidate-min-orders: ${PAPER_MES_AI_MEMORY_CANDIDATE_MIN_ORDERS:5}
+    memory-candidate-window-days: ${PAPER_MES_AI_MEMORY_CANDIDATE_WINDOW_DAYS:7}
+    memory-candidate-ttl-days: ${PAPER_MES_AI_MEMORY_CANDIDATE_TTL_DAYS:90}
+    memory-learning-processing-timeout-minutes: ${PAPER_MES_AI_MEMORY_LEARNING_PROCESSING_TIMEOUT_MINUTES:10}
+    deepseek-api-key: ${PAPER_MES_AI_DEEPSEEK_API_KEY:}
+    deepseek-model-pro: ${PAPER_MES_AI_DEEPSEEK_MODEL_PRO:deepseek-v4-pro}
+    deepseek-model-flash: ${PAPER_MES_AI_DEEPSEEK_MODEL_FLASH:deepseek-v4-flash}
+    deepseek-base-url: ${PAPER_MES_AI_DEEPSEEK_BASE_URL:https://api.deepseek.com}
+    deepseek-connect-timeout-ms: ${PAPER_MES_AI_DEEPSEEK_CONNECT_TIMEOUT_MS:3000}
+    deepseek-read-timeout-ms: ${PAPER_MES_AI_DEEPSEEK_READ_TIMEOUT_MS:120000}
+    deepseek-max-output-tokens: ${PAPER_MES_AI_DEEPSEEK_MAX_OUTPUT_TOKENS:4000}
+    provider-max-attempts: ${PAPER_MES_AI_PROVIDER_MAX_ATTEMPTS:2}
+    provider-retry-backoff-ms: ${PAPER_MES_AI_PROVIDER_RETRY_BACKOFF_MS:250}
+    provider-circuit-failure-threshold: ${PAPER_MES_AI_PROVIDER_CIRCUIT_FAILURE_THRESHOLD:3}
+    provider-circuit-open-seconds: ${PAPER_MES_AI_PROVIDER_CIRCUIT_OPEN_SECONDS:30}
+    conversation-cleanup-delay-ms: ${PAPER_MES_AI_CONVERSATION_CLEANUP_DELAY_MS:60000}
+    default-target-diameter-mm: ${PAPER_MES_AI_DEFAULT_TARGET_DIAMETER_MM:1200}
     zhipu-api-key: ${PAPER_MES_AI_ZHIPU_API_KEY:}
     zhipu-model: ${PAPER_MES_AI_ZHIPU_MODEL:glm-4.7-flash}
     zhipu-base-url: ${PAPER_MES_AI_ZHIPU_BASE_URL:https://open.bigmodel.cn}
@@ -49,7 +68,7 @@ app:
   schema-bootstrap:
     enabled: false
   schema-readiness:
-    expected-version: ${PAPER_MES_EXPECTED_SCHEMA_VERSION:3.68}
+    expected-version: ${PAPER_MES_EXPECTED_SCHEMA_VERSION:3.73}
     require-migration-history: true
   runtime:
     backend-version: ${PAPER_MES_BACKEND_VERSION}

@@ -38,7 +38,33 @@ export default function ServiceStepFields({ catalog, billingMode, billingBasis, 
         catalog={catalog} compact={compact} />}
       {activeBillingMode === 1 && <StandardServiceFields catalog={catalog} unitName={unitName}
         compact={compact} />}
+      {activeBillingMode === 2 && <SpecifiedServiceFields catalog={catalog}
+        unitName={unitName} billingBasis={activeBillingBasis} />}
       {activeBillingMode === 3 && <FixedAmountFields batchMode={batchMode} compact={compact} />}
+    </>
+  )
+}
+
+function SpecifiedServiceFields({ catalog, unitName, billingBasis }: {
+  catalog: ProcessCatalog
+  unitName: string
+  billingBasis?: string
+}) {
+  return (
+    <>
+      <Form.Item className="service-step-fields__unit" label="计费单位" name="billingBasis"
+        preserve rules={[{ required: true, message: '请选择计费单位' }]}>
+        <Select options={catalog.units.map((unit) => ({ label: unit.name, value: unit.code }))} />
+      </Form.Item>
+      <Form.Item className="service-step-fields__quantity" label={`包装数量（${unitName}）`}
+        name="serviceQuantity" rules={[{ required: true, message: '请确认包装数量' }]}>
+        <InputNumber min={billingBasis === 'PIECE' ? 1 : 0.001}
+          precision={billingBasis === 'PIECE' ? 0 : 3} style={{ width: '100%' }} />
+      </Form.Item>
+      <Form.Item className="service-step-fields__price" label={`服务单价（元/${unitName}）`}
+        name="unitPrice" rules={[{ required: true, message: '请确认服务单价' }]}>
+        <InputNumber min={0.01} precision={2} style={{ width: '100%' }} />
+      </Form.Item>
     </>
   )
 }

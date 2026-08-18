@@ -51,6 +51,20 @@ class ProcessPlanMapperTest {
     }
 
     @Test
+    void weightSplitAllocationRule_survivesSaveAndPreviewMappings() {
+        ProcessPlanDTO source = layeredPlan();
+        source.setAllocationRule("WEIGHT_SPLIT");
+
+        FinishConfigSaveDTO saved = mapper.toSaveDto(source);
+        ProcessPlanDTO restored = mapper.fromSaveDto(saved);
+        RewindPlanPreviewDTO preview = mapper.toPreviewDto(source);
+
+        assertEquals("WEIGHT_SPLIT", saved.getAllocationRule());
+        assertEquals("WEIGHT_SPLIT", restored.getAllocationRule());
+        assertEquals("WEIGHT_SPLIT", preview.getAllocationRule());
+    }
+
+    @Test
     void serviceOnlyPreview_reportsOneOutputPerSourcePiece() {
         ProcessPlanDTO plan = new ProcessPlanDTO();
         plan.setProcessMode(4);

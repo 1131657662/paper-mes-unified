@@ -32,7 +32,17 @@ export default function BaseInfoFormSections(props: Props) {
       <SettlementFields {...props} />
       <section className="process-order-base__section">
         <div className="process-order-base__section-title">生产备注</div>
-        <Form.Item name="remark" label="备注"><Input.TextArea rows={2} /></Form.Item>
+        <Form.Item name="remark" label="备注" rules={[{ max: 255, message: '备注不能超过255个字符' }]}>
+          <Input.TextArea rows={2} maxLength={255} showCount />
+        </Form.Item>
+        <Form.Item
+          name="remarkLong"
+          label="客户加工要求"
+          extra="保存客户原话，供后续工艺解析和生产打印使用"
+          rules={[{ max: 2000, message: '客户加工要求不能超过2000个字符' }]}
+        >
+          <Input.TextArea rows={5} maxLength={2000} showCount />
+        </Form.Item>
       </section>
     </div>
   )

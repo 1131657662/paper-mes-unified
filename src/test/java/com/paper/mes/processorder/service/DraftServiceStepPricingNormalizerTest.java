@@ -37,6 +37,19 @@ class DraftServiceStepPricingNormalizerTest {
         assertThat(step.getBillingAmount()).isEqualByComparingTo("45.50");
     }
 
+    @Test
+    void apply_quantityOverrideStoresTheConfirmedServiceQuantity() {
+        ProcessStep step = previouslyQuantityPricedStep();
+        ProcessStepDTO request = request(ProcessStepPricingPolicy.QUANTITY_OVERRIDE);
+        request.setServiceQuantity(new BigDecimal("6"));
+
+        DraftServiceStepPricingNormalizer.apply(step, request);
+
+        assertThat(step.getBillingBasis()).isEqualTo("PIECE");
+        assertThat(step.getUnitPrice()).isEqualByComparingTo("20");
+        assertThat(step.getBillingQuantity()).isEqualByComparingTo("6");
+    }
+
     private ProcessStep previouslyQuantityPricedStep() {
         ProcessStep step = new ProcessStep();
         step.setBillingBasis("PIECE");

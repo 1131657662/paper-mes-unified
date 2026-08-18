@@ -74,7 +74,10 @@ export function storedEstimatedWeight(source: BackRecordSourceRoll): number | un
 
 export function sourceIsMeasured(source: BackRecordSourceRoll, values: BackRecordFormValues): boolean {
   const mode = values.rolls?.[source.uuid]?.weightEntryMode
-  if (mode) return mode === 'MEASURED' && positive(values.rolls?.[source.uuid]?.actualWeight)
+  if (mode) {
+    const confirmed = mode === 'MEASURED' || mode === 'CONFIRM_REFERENCE'
+    return confirmed && positive(values.rolls?.[source.uuid]?.actualWeight)
+  }
   if (source.weightStatus === 'UNKNOWN' || source.weightStatus === 'ESTIMATED') return false
   if (positive(values.rolls?.[source.uuid]?.actualWeight)) return true
   return storedMeasuredWeight(source) != null

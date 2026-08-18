@@ -90,6 +90,32 @@
   background: #fff8e6;
 }
 
+.print-preview-sheet__instruction-block {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 2px solid #111827;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.print-preview-sheet__instruction-block > strong {
+  color: #111827;
+}
+
+.print-preview-sheet__instruction-block ol {
+  margin: 0;
+  padding-left: 22px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.print-preview-sheet__instruction-block li + li {
+  margin-top: 4px;
+}
+
 .print-preview-sheet__remark-block strong {
   color: #9a3412;
 }
@@ -102,6 +128,7 @@
 
 .print-preview-sheet__remark-content > span {
   display: block;
+  white-space: pre-line;
 }
 
 .print-order-annotation {

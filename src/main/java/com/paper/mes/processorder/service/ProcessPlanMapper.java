@@ -28,6 +28,7 @@ public class ProcessPlanMapper {
         dto.setRewindMode(plan.getRewindMode());
         dto.setKnifeCount(plan.getKnifeCount());
         dto.setUnitPrice(plan.getUnitPrice());
+        dto.setAllocationRule(plan.getAllocationRule());
         dto.setWidthDifferencePolicy(plan.getWidthDifferencePolicy());
         dto.setFinishSpecs(plan.getFinishSpecs());
         dto.setRewindSegments(toPreviewSegments(plan.getSegments()));
@@ -43,6 +44,7 @@ public class ProcessPlanMapper {
         plan.setRewindMode(dto.getRewindMode());
         plan.setKnifeCount(dto.getKnifeCount());
         plan.setUnitPrice(dto.getUnitPrice());
+        plan.setAllocationRule(dto.getAllocationRule());
         plan.setWidthDifferencePolicy(dto.getWidthDifferencePolicy());
         plan.setFinishSpecs(dto.getFinishSpecs());
         plan.setSegments(fromPreviewSegments(dto.getRewindSegments()));
@@ -51,6 +53,7 @@ public class ProcessPlanMapper {
 
     public RewindPlanPreviewDTO toPreviewDto(ProcessPlanDTO plan) {
         RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setAllocationRule(plan.getAllocationRule());
         dto.setRewindMode(plan.getRewindMode());
         dto.setSpareCount(plan.getSpareCount());
         dto.setWidthDifferencePolicy(plan.getWidthDifferencePolicy());

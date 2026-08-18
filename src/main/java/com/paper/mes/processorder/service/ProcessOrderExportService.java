@@ -33,6 +33,7 @@ public class ProcessOrderExportService {
         ProcessOrderFinishExportWriter.write(workbook.createSheet("成品明细"), detail, styles.header);
         ProcessOrderCustomerExportWriter.write(workbook.createSheet("客户规格"), detail, styles.header);
         writeSources(workbook.createSheet("成品来源"), detail.getRollProductions(), styles);
+        ProcessOrderMotherSpecExportWriter.write(workbook.createSheet("母卷加工规格"), detail, styles.header);
         return workbook;
     }
 

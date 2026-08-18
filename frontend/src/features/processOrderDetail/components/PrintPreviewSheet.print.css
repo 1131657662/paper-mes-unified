@@ -109,6 +109,23 @@
     line-height: 1.18;
   }
 
+  .print-preview-sheet__instruction-block {
+    grid-template-columns: 15mm minmax(0, 1fr);
+    gap: 1.5mm;
+    margin-top: 1.3mm;
+    padding: 1.2mm 1.5mm;
+    border-width: 1.2pt;
+    border-radius: 0;
+    background: #fff !important;
+    break-inside: avoid;
+    line-height: 1.18;
+  }
+
+  .print-preview-sheet__instruction-block ol {
+    padding-left: 4mm;
+    line-height: 1.18;
+  }
+
   .print-preview-sheet__remark-content {
     line-height: 1.18;
   }

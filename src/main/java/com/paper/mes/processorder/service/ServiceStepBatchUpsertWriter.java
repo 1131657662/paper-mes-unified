@@ -140,6 +140,15 @@ public class ServiceStepBatchUpsertWriter {
         if (step.getServiceQuantity() == null || step.getServiceQuantity().signum() <= 0) {
             throw new BusinessException("附加工艺计费数量无效");
         }
+        if (mode == ProcessStepPricingPolicy.QUANTITY_OVERRIDE
+                && (step.getBillingQuantity() == null || step.getBillingQuantity().signum() <= 0)) {
+            throw new BusinessException("指定包装数量必须大于0");
+        }
+        if (mode == ProcessStepPricingPolicy.QUANTITY_OVERRIDE
+                && "PIECE".equals(step.getBillingBasis())
+                && step.getBillingQuantity().stripTrailingZeros().scale() > 0) {
+            throw new BusinessException("指定包装件数必须为整数");
+        }
         if (step.getUnitPrice() != null && step.getUnitPrice().signum() <= 0) {
             throw new BusinessException("服务单价必须大于0，暂不定价请留空");
         }

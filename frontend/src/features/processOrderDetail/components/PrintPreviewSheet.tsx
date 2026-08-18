@@ -12,8 +12,8 @@ import {
 } from './printPreviewModel'
 import PrintDenseTable from './PrintDenseTable'
 import { PrintAnnotationTags, PrintSpecification } from './PrintAnnotationText'
-import { OrderRemarkBlock, SummaryStrip } from './PrintPreviewRemarks'
-import { orderRemark } from './printPreviewRemarkModel'
+import { OrderRemarkBlock, SummaryStrip, WorkshopInstructionBlock } from './PrintPreviewRemarks'
+import { printPreviewRemarks } from './printPreviewRemarkModel'
 import { PrintFooter } from './PrintPreviewFooter'
 import './PrintPreviewSheet.css'
 import './PrintPreviewSheet.print.css'
@@ -31,13 +31,14 @@ export default function PrintPreviewSheet({ detail, historical, snapshotTime, sn
   const { blocks, orderAnnotations } = buildPrintSheetModel(detail)
   const summary = buildPrintSummary(detail)
   const { value: printTitle } = useSystemConfigValue(CONFIG_KEYS.processOrderTitle, '车间加工单')
-  const remark = orderRemark(detail)
+  const remarks = printPreviewRemarks(detail)
 
   return (
     <div className={`print-preview-sheet${historical ? ' print-preview-sheet--historical' : ''}`}>
       {historical && <div aria-hidden className="print-preview-sheet__historical-watermark">历史版本 - 禁止作为当前生产指令</div>}
       <PrintHeader detail={detail} title={printTitle} snapshotTime={snapshotTime} snapshotUser={snapshotUser} versionLabel={versionLabel} />
-      <OrderRemarkBlock remark={remark} annotations={orderAnnotations} />
+      <WorkshopInstructionBlock instructions={remarks.workshopInstructions} />
+      <OrderRemarkBlock remark={remarks.customerRemark} annotations={orderAnnotations} />
       <SummaryStrip items={summary} />
       <section className="print-preview-sheet__routes">
         {blocks.map((block) => <RollBlock block={block} key={block.key} showActuals={version === 'FINISHED'} />)}

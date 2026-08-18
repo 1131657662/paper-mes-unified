@@ -33,6 +33,17 @@ public final class BackRecordRollMeasurementPolicy {
             clearMeasurementAudit(roll);
             return false;
         }
+        if (dto.getWeightEntryMode() == WeightEntryMode.CONFIRM_REFERENCE) {
+            BigDecimal reference = referenceWeight(roll);
+            if (!positive(reference) || !positive(dto.getActualWeight())
+                    || dto.getActualWeight().compareTo(reference) != 0) {
+                throw new BusinessException("确认重量与当前母卷参考重量不一致，请刷新后重试：" + identity(roll));
+            }
+            roll.setActualWeight(reference);
+            roll.setWeightStatus(WeightStatus.MEASURED.name());
+            roll.setWeightSource("MANUAL_CONFIRM");
+            return true;
+        }
         if (dto.getWeightEntryMode() == WeightEntryMode.USER_ESTIMATE) {
             roll.setActualWeight(dto.getActualWeight());
             roll.setWeightStatus(WeightStatus.ESTIMATED.name());
@@ -55,7 +66,8 @@ public final class BackRecordRollMeasurementPolicy {
 
     private static void validate(BackRecordRollDTO dto, OriginalRoll roll, boolean weightRequired) {
         if ((dto.getWeightEntryMode() == WeightEntryMode.USER_ESTIMATE
-                || dto.getWeightEntryMode() == WeightEntryMode.MEASURED)
+                || dto.getWeightEntryMode() == WeightEntryMode.MEASURED
+                || dto.getWeightEntryMode() == WeightEntryMode.CONFIRM_REFERENCE)
                 && !positive(dto.getActualWeight())) {
             throw weightError(roll);
         }
@@ -89,6 +101,15 @@ public final class BackRecordRollMeasurementPolicy {
         if (!positive(roll.getRollWeight())) return null;
         int pieces = roll.getPieceNum() == null || roll.getPieceNum() < 1 ? 1 : roll.getPieceNum();
         return roll.getRollWeight().multiply(BigDecimal.valueOf(pieces));
+    }
+
+    private static BigDecimal referenceWeight(OriginalRoll roll) {
+        if (roll == null) return null;
+        if (WeightStatus.ESTIMATED.name().equalsIgnoreCase(roll.getWeightStatus())
+                && positive(roll.getActualWeight())) {
+            return roll.getActualWeight();
+        }
+        return nominalWeight(roll);
     }
 
     private static void clearMeasurementAudit(OriginalRoll roll) {

@@ -1,6 +1,7 @@
 import { AppstoreAddOutlined, CheckOutlined } from '@ant-design/icons'
 import { Button, Card, Segmented, Select, Space, Typography, message } from 'antd'
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { PROCESS_MODE, STEP_TYPE, processModeRequiresMain } from '../../../constants/processOrder'
 import type { Machine } from '../../../types/machine'
 import { applyDefaultMachineToRoll } from '../machineDefaults'
@@ -12,6 +13,7 @@ import RollSelectorPanel from './RollSelectorPanel'
 import './ProcessModeStep.css'
 
 interface Props {
+  assistantEntry?: ReactNode
   rolls: RollDraft[]
   machines: Machine[]
   selectedId?: string
@@ -25,6 +27,7 @@ interface Props {
 const processOptions = Object.entries(PROCESS_MODE).map(([value, label]) => ({ value: Number(value), label }))
 const mainStepOptions = [1, 2].map((value) => ({ value, label: STEP_TYPE[value] }))
 export default function ProcessModeStep({
+  assistantEntry,
   rolls,
   machines,
   selectedId,
@@ -61,7 +64,7 @@ export default function ProcessModeStep({
     <Card
       className="process-mode-workbench"
       title="加工方式"
-      extra={<Button
+      extra={<Space wrap>{assistantEntry}<Button
         icon={batchMode ? <CheckOutlined /> : <AppstoreAddOutlined />}
         disabled={loading}
         type={batchMode ? 'primary' : 'default'}
@@ -69,7 +72,7 @@ export default function ProcessModeStep({
           if (batchMode) batchSelection.clear()
           setBatchMode(!batchMode)
         }}
-      >{batchMode ? '退出批量设置' : '批量设置'}</Button>}
+      >{batchMode ? '退出批量设置' : '批量设置'}</Button></Space>}
       styles={{ body: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
     >
       <div style={{ flex: 1, minHeight: 0 }}>

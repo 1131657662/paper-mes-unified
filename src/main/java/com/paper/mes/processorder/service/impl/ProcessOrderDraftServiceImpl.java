@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.ai.process.session.ProcessAiConversationLifecycleService;
+import com.paper.mes.ai.memory.candidate.ProjectMemorySubmissionLearningService;
+import com.paper.mes.ai.memory.candidate.ProjectMemorySubmissionLearningSnapshot;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ConcurrencyGuard;
 import com.paper.mes.common.ErrorCode;
@@ -93,6 +96,8 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
     private final com.paper.mes.processorder.service.DraftOrderVersionGuard versionGuard;
     private final com.paper.mes.processorder.service.DraftRollProcessManager rollProcessManager;
     private final ProcessOrderSettlementPolicy settlementPolicy;
+    private final ProcessAiConversationLifecycleService aiConversationLifecycle;
+    private final ProjectMemorySubmissionLearningService memoryLearningService;
 
     @Override
     public List<DraftSummaryVO> listDrafts() {
@@ -330,6 +335,7 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         businessLockService.lockProcessOrders(List.of(orderUuid));
         ProcessOrder order = requireOrder(orderUuid);
         if (STATUS_PENDING == order.getOrderStatus()) {
+            aiConversationLifecycle.closeAfterCommit(orderUuid);
             return submittedResult(order);
         }
         if (order.getOrderStatus() == null || order.getOrderStatus() != STATUS_DRAFT) {
@@ -341,9 +347,14 @@ public class ProcessOrderDraftServiceImpl implements ProcessOrderDraftService {
         List<OriginalRoll> rolls = listRolls(orderUuid);
         Map<String, ProcessConfigDraft> drafts = draftMap(orderUuid);
         validateSubmit(rolls, drafts);
+        ProjectMemorySubmissionLearningSnapshot learning = memoryLearningService.prepare(
+                orderUuid, rolls, drafts).orElse(null);
         order.setOrderStatus(STATUS_PENDING);
         ConcurrencyGuard.requireRowUpdated(processOrderMapper.updateById(order));
-        return generateFinishConfigs(order, rolls, drafts);
+        ProcessOrderSubmitVO result = generateFinishConfigs(order, rolls, drafts);
+        if (learning != null) memoryLearningService.captureInTransaction(learning);
+        aiConversationLifecycle.closeAfterCommit(orderUuid);
+        return result;
     }
 
     private void copyBaseFields(DraftOrderBaseDTO dto, ProcessOrder order, Customer customer) {

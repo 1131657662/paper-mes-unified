@@ -30,6 +30,8 @@ public class FinishConfigSaveDTO {
     private Integer rewindMode;
     private Integer knifeCount;
     private BigDecimal unitPrice;
+    @Pattern(regexp = "WEIGHT_SPLIT", message = "allocationRule can only be WEIGHT_SPLIT")
+    private String allocationRule;
     @Pattern(regexp = "(?i)LOSS|ALLOCATE|REMAINDER",
             message = "门幅差额处理只能选择LOSS、ALLOCATE或REMAINDER")
     private String widthDifferencePolicy;

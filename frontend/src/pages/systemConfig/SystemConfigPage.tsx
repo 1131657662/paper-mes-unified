@@ -10,10 +10,11 @@ import DataBackupPanel from './DataBackupPanel'
 import DataHealthPanel from './DataHealthPanel'
 import DictItemPanel from './DictItemPanel'
 import NoRulePanel from './NoRulePanel'
+import ProcessAiProviderPanel from './ProcessAiProviderPanel'
 import './SystemConfigPage.css'
 
-type ConfigSection = 'dict' | 'config' | 'noRule' | 'backup' | 'health'
-type EditableSection = Exclude<ConfigSection, 'backup' | 'health'>
+type ConfigSection = 'dict' | 'config' | 'noRule' | 'aiProvider' | 'backup' | 'health'
+type EditableSection = Exclude<ConfigSection, 'aiProvider' | 'backup' | 'health'>
 type DirtyState = Record<EditableSection, boolean>
 
 const initialDirtyState: DirtyState = { dict: false, config: false, noRule: false }
@@ -168,11 +169,16 @@ function configurationTabs(options: BuildTabItemsOptions): NonNullable<TabsProps
       label: <SectionLabel title="单号规则" dirty={options.dirtyState.noRule} />,
       children: <NoRulePanel onDirtyChange={(dirty) => options.onDirtyChange('noRule', dirty)} />,
     },
+    {
+      key: 'aiProvider',
+      label: <SectionLabel title="AI 工艺解析" dirty={false} />,
+      children: <ProcessAiProviderPanel />,
+    },
   ]
 }
 
 function configSection(value: string | null): ConfigSection {
-  if (value === 'config' || value === 'noRule' || value === 'backup' || value === 'health') return value
+  if (value === 'config' || value === 'noRule' || value === 'aiProvider' || value === 'backup' || value === 'health') return value
   return 'dict'
 }
 

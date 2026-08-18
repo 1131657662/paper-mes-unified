@@ -34,6 +34,7 @@ final class ProcessOrderPrintViewReader {
             boolean legacy = stored == null;
             ProcessOrderDetailVO detail = legacy
                     ? legacyDetail(live, root, version, objectMapper) : stored;
+            restoreWorkshopInstructions(detail);
             return view(live, version, root, detail, legacy);
         } catch (BusinessException ex) {
             throw ex;
@@ -101,6 +102,11 @@ final class ProcessOrderPrintViewReader {
         }
         result.setAvailableVersions(versions);
         return result;
+    }
+
+    private static void restoreWorkshopInstructions(ProcessOrderDetailVO detail) {
+        if (detail == null || detail.getWorkshopInstructions() != null) return;
+        detail.setWorkshopInstructions(WorkshopInstructionBuilder.build(detail.getRollProductions()));
     }
 
     private static ProcessOrderDetailVO legacyDetail(ProcessOrderDetailVO live, JsonNode root,

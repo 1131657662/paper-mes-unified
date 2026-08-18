@@ -81,9 +81,8 @@ function measuredRollWeight(
 ): number | undefined {
   const entry = values.rolls?.[roll.uuid]
   if (entry?.weightEntryMode) {
-    return entry.weightEntryMode === 'MEASURED' && positive(entry.actualWeight)
-      ? entry.actualWeight
-      : undefined
+    const confirmed = entry.weightEntryMode === 'MEASURED' || entry.weightEntryMode === 'CONFIRM_REFERENCE'
+    return confirmed && positive(entry.actualWeight) ? entry.actualWeight : undefined
   }
   return entry?.actualWeight ?? storedMeasuredWeight(roll)
 }

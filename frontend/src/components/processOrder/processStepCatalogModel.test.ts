@@ -57,6 +57,18 @@ describe('process step catalog model', () => {
     expect(payload.serviceQuantity).toBeUndefined()
   })
 
+  it('keeps a user-confirmed packaging quantity in quantity override mode', () => {
+    const payload = processStepPayload({
+      values: { ...serviceValues(), stepType: 4, billingMode: 2, serviceQuantity: 6 },
+      catalog: { ...serviceCatalog, stepType: 4, billingModes: [1, 2, 3, 4] },
+      extraOnly: true,
+    })
+
+    expect(payload).toMatchObject({
+      stepType: 4, billingMode: 2, billingBasis: 'PIECE', serviceQuantity: 6,
+    })
+  })
+
   it('removes service-only fields from production payloads', () => {
     const payload = processStepPayload({
       values: serviceValues(),

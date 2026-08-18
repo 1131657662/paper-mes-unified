@@ -35,7 +35,7 @@ export default function ConfigStepWorkspace({ actions, data }: Props) {
   })
 
   return (
-    <Card title="母卷加工方案工作台" className="process-config-workbench">
+    <Card title="母卷加工方案工作台" extra={data.assistantEntry} className="process-config-workbench">
       <div className="process-config-workbench__workspace">
         <ResizableWorkspace
           leftTitle="母卷列表"
@@ -50,8 +50,10 @@ export default function ConfigStepWorkspace({ actions, data }: Props) {
       </div>
       <ConfigStepFooter
         autoFinishConfigEnabled={data.autoFinishConfigEnabled}
-        configurationLoading={data.detailLoading}
-        hasUnsavedServiceChanges={service.status?.dirty === true || service.versionSyncBlocked}
+        configurationLoading={data.detailLoading || data.aiPackagingLoading}
+        hasUnsavedServiceChanges={service.status?.dirty === true || service.versionSyncBlocked
+          || data.aiPackagingDraftCount > 0}
+        pendingAiPackagingCount={data.aiPackagingDraftCount}
         onNext={() => void service.runNext(actions.onNext)}
         onPrev={() => void service.runAfterVersionSync(actions.onPrev)}
         progress={progress}

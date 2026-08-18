@@ -115,6 +115,19 @@
   border: 1px solid var(--mes-color-border-light);
 }
 
+.project-memory-candidates {
+  height: 100%;
+  overflow: auto;
+}
+
+.project-memory-candidates .ant-table-wrapper {
+  border: 1px solid var(--mes-color-border-light);
+}
+
+.project-memory-candidates .ant-select {
+  min-width: 130px;
+}
+
 @media (max-width: 980px) {
   .project-memory-status {
     grid-template-columns: repeat(2, minmax(0, 1fr));
