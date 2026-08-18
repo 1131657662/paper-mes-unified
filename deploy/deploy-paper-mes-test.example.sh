@@ -19,6 +19,7 @@ backend_version=""
 frontend_version=""
 build_time=""
 release_id=""
+schema_version=""
 previous_jar_backup=""
 previous_env_backup=""
 
@@ -79,8 +80,13 @@ install_restore_runtime() {
 }
 
 prepare_release_metadata() {
-  local release_time
+  local release_time baseline_file
   release_time="$(date -u +%Y%m%d-%H%M%S)"
+  baseline_file="${source_root}/sql/schema-baseline.version"
+  [ -r "${baseline_file}" ] || fail "schema baseline version file is missing"
+  schema_version="$(tr -d '[:space:]' < "${baseline_file}")"
+  [[ "${schema_version}" =~ ^[0-9]+(\.[0-9]+)*$ ]] \
+    || fail "schema baseline version is invalid: ${schema_version}"
   backend_version="${deploy_sha:0:7}"
   release_id="${backend_version}-${release_time}"
   frontend_version="${release_id}"
@@ -118,13 +124,15 @@ update_runtime() {
 render_runtime_env() {
   local output_file="$1"
   awk -v sha="${deploy_sha}" -v backend="${backend_version}" \
-      -v frontend="${frontend_version}" -v built="${build_time}" '
+      -v frontend="${frontend_version}" -v built="${build_time}" \
+      -v schema="${schema_version}" '
     BEGIN {
       FS = "="; OFS = "="
       values["PAPER_MES_GIT_SHA"] = sha
       values["PAPER_MES_BACKEND_VERSION"] = backend
       values["PAPER_MES_FRONTEND_VERSION"] = frontend
       values["PAPER_MES_BUILD_TIME"] = built
+      values["PAPER_MES_EXPECTED_SCHEMA_VERSION"] = schema
       values["PAPER_MES_BACKUP_VERIFY_WRAPPER"] = "/usr/local/sbin/verify-paper-mes-test-backup-root"
     }
     {
@@ -219,5 +227,6 @@ publish_frontend
 [ "$(grep -E '^PAPER_MES_BACKEND_VERSION=' "${env_file}")" = "PAPER_MES_BACKEND_VERSION=${backend_version}" ]
 [ "$(grep -E '^PAPER_MES_FRONTEND_VERSION=' "${env_file}")" = "PAPER_MES_FRONTEND_VERSION=${frontend_version}" ]
 [ "$(grep -E '^PAPER_MES_BUILD_TIME=' "${env_file}")" = "PAPER_MES_BUILD_TIME=${build_time}" ]
+[ "$(grep -E '^PAPER_MES_EXPECTED_SCHEMA_VERSION=' "${env_file}")" = "PAPER_MES_EXPECTED_SCHEMA_VERSION=${schema_version}" ]
 systemctl is-active --quiet "${service}"
 echo "MES test deployment passed: ${deploy_sha}"
