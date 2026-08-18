@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ProcessOrder } from '../../types/processOrder'
-import { OrderDateScheduleCell, OrderNoCell, OrderStatusCell, ProductionSummary } from './ProcessOrderListCells'
+import { BillingCell, OrderDateScheduleCell, OrderNoCell, OrderStatusCell, ProductionSummary } from './ProcessOrderListCells'
 import { processSummaryText } from './processOrderListModel'
 
 describe('加工单列表单号单元格', () => {
@@ -68,6 +68,16 @@ describe('加工单列表单号单元格', () => {
     )
 
     expect(markup).toContain('已下发，未打印')
+    expect(markup).toContain('ant-tag-processing mes-data-tag')
+  })
+
+  it('开票标签使用高对比度语义样式', () => {
+    const markup = renderToStaticMarkup(
+      <BillingCell record={{ uuid: 'order-invoice', isInvoice: 1 }} />,
+    )
+
+    expect(markup).toContain('ant-tag-blue mes-data-tag')
+    expect(markup).toContain('开票')
   })
 
   it('打印次数为零时不被异常打印状态字段误判为已打印', () => {

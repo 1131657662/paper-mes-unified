@@ -95,7 +95,7 @@ export function BillingCell({ record }: { record: ProcessOrder }) {
     <div className="process-order-list__billing">
       <div className="process-order-list__billing-meta">
         <Tag className="process-order-list__billing-tag">{settleText(record.settleType, record.settleDay)}</Tag>
-        <Tag color={invoice.color}>{invoice.text}</Tag>
+        <Tag className="mes-data-tag" color={invoice.color}>{invoice.text}</Tag>
       </div>
       <strong>{record.totalAmount ? formatMoney(record.totalAmount) : '-'}</strong>
     </div>
@@ -111,7 +111,7 @@ export function OrderStatusCell({ record }: { record: ProcessOrder }) {
       : '未下发'
   return (
     <div className="process-order-list__status">
-      <Tag color={status?.color}>{status?.text ?? '-'}</Tag>
+      <Tag className="mes-data-tag" color={status?.color}>{status?.text ?? '-'}</Tag>
       <span>{printText}</span>
     </div>
   )
