@@ -19,6 +19,8 @@ backend_version=""
 frontend_version=""
 build_time=""
 release_id=""
+previous_jar_backup=""
+previous_env_backup=""
 
 fail() {
   echo "MES test deployment failed: $1" >&2
@@ -92,6 +94,8 @@ backup_runtime() {
   install -d -m 750 "${backup_dir}"
   cp -a "${app_root}/paper-mes.jar" "${backup_dir}/paper-mes.jar"
   cp -a "${env_file}" "${backup_dir}/paper-mes-test.env"
+  previous_jar_backup="${backup_dir}/paper-mes.jar"
+  previous_env_backup="${backup_dir}/paper-mes-test.env"
 }
 
 build_artifacts() {
@@ -148,8 +152,34 @@ update_runtime_metadata() {
   mv -f "${env_tmp}" "${env_file}"
 }
 
+report_service_failure() {
+  systemctl status "${service}" --no-pager -l >&2 || true
+  journalctl -u "${service}" -n 120 --no-pager >&2 || true
+}
+
+restore_previous_runtime() {
+  [ -s "${previous_jar_backup}" ] || fail "previous test backend jar backup is missing"
+  [ -s "${previous_env_backup}" ] || fail "previous test environment backup is missing"
+  install -o paper-mes-test -g paper-mes-test -m 640 \
+    "${previous_jar_backup}" "${app_root}/paper-mes.jar.rollback"
+  mv -f "${app_root}/paper-mes.jar.rollback" "${app_root}/paper-mes.jar"
+  install -o root -g root -m 600 \
+    "${previous_env_backup}" "${env_file}.rollback"
+  mv -f "${env_file}.rollback" "${env_file}"
+  if ! systemctl restart "${service}"; then
+    report_service_failure
+    fail "new test backend failed and previous version could not be restored"
+  fi
+  systemctl is-active --quiet "${service}" \
+    || fail "new test backend failed and previous version could not be restored"
+}
+
 restart_and_check() {
-  systemctl restart "${service}"
+  if ! systemctl restart "${service}"; then
+    report_service_failure
+    restore_previous_runtime
+    fail "test backend restart failed; previous version restored"
+  fi
   local healthy=0
   for _ in $(seq 1 30); do
     if curl --fail --silent --show-error --max-time 5 \
@@ -159,11 +189,11 @@ restart_and_check() {
     fi
     sleep 2
   done
-  [ "${healthy}" = 1 ] || {
-    systemctl status "${service}" --no-pager >&2 || true
-    journalctl -u "${service}" -n 120 --no-pager >&2 || true
-    fail "test backend health check failed"
-  }
+  if [ "${healthy}" != 1 ]; then
+    report_service_failure
+    restore_previous_runtime
+    fail "test backend health check failed; previous version restored"
+  fi
 }
 
 publish_frontend() {
