@@ -141,7 +141,7 @@
 }
 
 .process-order-list__status .ant-tag-success {
-  color: var(--mes-color-success-strong);
+  color: var(--mes-color-success-strong) !important;
 }
 
 .process-order-list__status .ant-tag-orange {
