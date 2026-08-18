@@ -28,7 +28,8 @@
   color: #a8071a;
 }
 
-.mes-data-tag.ant-tag-green {
+.mes-data-tag.ant-tag-green,
+.mes-data-tag.ant-tag-success {
   color: #237804 !important;
 }
 
@@ -53,13 +54,15 @@
   color: #ad4e00 !important;
 }
 
-.mes-data-tag.ant-tag-gold {
+.mes-data-tag.ant-tag-gold,
+.mes-data-tag.ant-tag-warning {
   color: #874d00 !important;
 }
 
 .mes-data-tag.ant-tag-red,
 .mes-data-tag.ant-tag-magenta,
-.mes-data-tag.ant-tag-volcano {
+.mes-data-tag.ant-tag-volcano,
+.mes-data-tag.ant-tag-error {
   color: #a8071a !important;
 }
 
