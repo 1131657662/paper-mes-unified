@@ -2,6 +2,10 @@ export function processOrderListLocation(pathname: string, search: string): stri
   return `${pathname}${search}`
 }
 
+export function newProcessOrderPath(timestamp = Date.now()): string {
+  return `/process-orders/create?fresh=${timestamp}`
+}
+
 export function processOrderReturnTarget(state: unknown, fallback: string): string {
   if (!isListNavigationState(state)) return fallback
   return state.from

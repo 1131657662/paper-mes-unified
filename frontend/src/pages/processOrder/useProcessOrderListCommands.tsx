@@ -21,7 +21,7 @@ import type { BatchActions } from './ProcessOrderBatchToolbar'
 import type { ProcessOrderColumnOptions } from './processOrderListColumns'
 import type { useProcessOrderListDialogs } from './useProcessOrderListDialogs'
 import type { ProcessOrderListCapabilities } from './useProcessOrderListCapabilities'
-import { processOrderListLocation } from './processOrderNavigation'
+import { newProcessOrderPath, processOrderListLocation } from './processOrderNavigation'
 
 interface Params {
   actionRef: RefObject<ActionType | undefined>
@@ -81,7 +81,7 @@ export function useProcessOrderListCommands(params: Params) {
 
 function navigationCommands(navigate: NavigateFunction, returnTo: string) {
   return {
-    create: () => navigate('/process-orders/create'),
+    create: () => navigate(newProcessOrderPath()),
     editDraft: (uuid: string) => navigate(`/process-orders/create?draft=${uuid}`),
     goDelivery: async (record: ProcessOrder) => {
       try {
