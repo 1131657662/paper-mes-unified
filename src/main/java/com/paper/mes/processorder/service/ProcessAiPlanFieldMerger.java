@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Component
@@ -26,7 +27,9 @@ class ProcessAiPlanFieldMerger {
         if (processType) applyProcessType(result, source);
         if (acceptedBelow(accepted, base + "/sawIntent")) applySaw(result, source);
         if (accepted.contains(base + "/rewindIntent/modeIntent")) {
+            boolean modeChanged = !Objects.equals(result.getRewindMode(), source.getRewindMode());
             result.setRewindMode(source.getRewindMode());
+            if (modeChanged) normalizeModeDependentFields(result, source.getRewindMode());
         }
         applySegments(result, source, accepted, base, current == null);
         return result;
@@ -70,6 +73,19 @@ class ProcessAiPlanFieldMerger {
         if (diameter) target.setAllocationRule(source.getAllocationRule());
         if (width) target.setWidthDifferencePolicy(source.getWidthDifferencePolicy());
         target.setFinishSpecs(List.of());
+    }
+
+    /** Keep persisted drafts aligned with the mode-dependent fields used by the editor and preview. */
+    private void normalizeModeDependentFields(ProcessPlanDTO plan, Integer rewindMode) {
+        if (rewindMode == null) return;
+        if (rewindMode != 2 && rewindMode != 3 && plan.getSegments() != null) {
+            plan.getSegments().forEach(segment -> {
+                segment.setTargetDiameter(null);
+                segment.setFinishCoreDiameter(null);
+            });
+        }
+        if (rewindMode != 2 && rewindMode != 3) plan.setAllocationRule(null);
+        if (rewindMode != 1 && rewindMode != 3) plan.setWidthDifferencePolicy(null);
     }
 
     private List<RewindSegmentPlanDTO> newSegments(

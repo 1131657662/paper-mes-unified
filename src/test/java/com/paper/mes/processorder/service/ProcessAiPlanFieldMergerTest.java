@@ -73,6 +73,29 @@ class ProcessAiPlanFieldMergerTest {
         assertThat(result.getMachineUuid()).isEqualTo("resolved-machine");
     }
 
+    @Test
+    void changingToWidthOnlyClearsDiameterCoreAndWeightSplitAllocation() {
+        ProcessPlanDTO current = plan(segment(1, "100", 1200, 3));
+        current.setRewindMode(3);
+        current.setAllocationRule("WEIGHT_SPLIT");
+        current.setWidthDifferencePolicy("REMAINDER");
+        ProcessPlanDTO proposed = plan(segment(1, "100", 900, 3));
+        proposed.setRewindMode(1);
+        proposed.setAllocationRule(null);
+        proposed.setWidthDifferencePolicy("REMAINDER");
+
+        ProcessPlanDTO result = merger.merge(current, candidate(proposed), List.of(
+                "/assignments/R1/rewindIntent/modeIntent"));
+
+        assertThat(result.getRewindMode()).isEqualTo(1);
+        assertThat(result.getAllocationRule()).isNull();
+        assertThat(result.getWidthDifferencePolicy()).isEqualTo("REMAINDER");
+        assertThat(result.getSegments()).singleElement().satisfies(segment -> {
+            assertThat(segment.getTargetDiameter()).isNull();
+            assertThat(segment.getFinishCoreDiameter()).isNull();
+        });
+    }
+
     private ProcessAiCompiledPlan candidate(ProcessPlanDTO plan) {
         return new ProcessAiCompiledPlan("R1", "roll-1", List.of(), plan, null);
     }
