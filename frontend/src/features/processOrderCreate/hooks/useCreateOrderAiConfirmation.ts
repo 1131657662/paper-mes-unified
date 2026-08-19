@@ -8,6 +8,7 @@ import type {
   ProcessAiConfirmResponse,
   ProcessAiPackagingDraft,
 } from '../../processAi/types'
+import type { PendingPackagingInput } from '../../processAi/services/processAiService'
 import type { CreateOrderDraftState } from './useCreateOrderDraftState'
 
 export function useCreateOrderAiConfirmation(
@@ -15,9 +16,7 @@ export function useCreateOrderAiConfirmation(
   onApplied?: () => Promise<unknown>,
 ) {
   const queryClient = useQueryClient()
-  const pendingQuery = usePendingProcessAiPackaging(state.orderUuid
-    ? { orderUuid: state.orderUuid, expectedVersion: state.draftVersion }
-    : undefined)
+  const pendingQuery = usePendingProcessAiPackaging(pendingPackagingInput(state))
   const dismissMutation = useDismissProcessAiPackaging()
   const packagingDrafts = Object.fromEntries(
     (pendingQuery.data ?? []).map((item) => [
@@ -74,6 +73,13 @@ export function useCreateOrderAiConfirmation(
     dismissPackagingDraft,
     packagingDrafts,
   }
+}
+
+export function pendingPackagingInput(
+  state: Pick<CreateOrderDraftState, 'current' | 'orderUuid' | 'draftVersion'>,
+): PendingPackagingInput | undefined {
+  if (state.current < 2 || !state.orderUuid) return undefined
+  return { orderUuid: state.orderUuid, expectedVersion: state.draftVersion }
 }
 
 function applyPlans(

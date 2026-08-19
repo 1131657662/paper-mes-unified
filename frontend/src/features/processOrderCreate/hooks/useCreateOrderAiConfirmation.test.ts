@@ -3,6 +3,7 @@ import type { ProcessAiPackagingDraft } from '../../processAi/types'
 import {
   consumeProcessAiPackagingDraft,
   mergeProcessAiPackagingDrafts,
+  pendingPackagingInput,
 } from './useCreateOrderAiConfirmation'
 
 describe('create order AI packaging drafts', () => {
@@ -32,6 +33,15 @@ describe('create order AI packaging drafts', () => {
     const drafts = consumeProcessAiPackagingDraft(current, 'roll-1')
 
     expect(drafts).toEqual({ 'roll-2': current['roll-2'] })
+  })
+
+  it('does not query packaging candidates before the process-mode step', () => {
+    expect(pendingPackagingInput({ current: 1, orderUuid: 'order-1', draftVersion: 2 })).toBeUndefined()
+  })
+
+  it('queries packaging candidates from the process-mode step with the current version', () => {
+    expect(pendingPackagingInput({ current: 2, orderUuid: 'order-1', draftVersion: 3 }))
+      .toEqual({ orderUuid: 'order-1', expectedVersion: 3 })
   })
 })
 
