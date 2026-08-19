@@ -79,6 +79,7 @@ export default function ProductionRollCard({
         originalUuid={originalUuid}
         outputs={row.mainProduction.stageOutputs}
         production={row.mainProduction}
+        sourceProductions={row.rollProductions}
       />
     </div>
   )

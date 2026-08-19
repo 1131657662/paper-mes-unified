@@ -38,11 +38,6 @@ export function fullConsumptionSources(values: string[]): RewindSourcePlanDTO[] 
   return values.map((value, index) => ({ originalUuid: value, consumeRatio: 100, sourceSort: index + 1 }))
 }
 
-export function equalConsumptionSources(values: string[]): RewindSourcePlanDTO[] {
-  const ratio = values.length ? roundRatio(100 / values.length) : 0
-  return values.map((value, index) => ({ originalUuid: value, consumeRatio: ratio, sourceSort: index + 1 }))
-}
-
 export function segmentConsumedWeight(sources: RewindSourcePlanDTO[], options: SourceRollOption[]): number | undefined {
   const weights = weightMap(options)
   const selected = sources.map((source) => options.find((option) => option.value === source.originalUuid))

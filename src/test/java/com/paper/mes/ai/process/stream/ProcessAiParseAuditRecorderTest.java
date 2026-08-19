@@ -65,6 +65,8 @@ class ProcessAiParseAuditRecorderTest {
         assertThat(entry.projectMemoryItemIds()).containsExactly("rule-saw");
         assertThat(entry.inputTokens()).isEqualTo(120);
         assertThat(entry.outputTokens()).isEqualTo(30);
+        assertThat(entry.provider()).isEqualTo("DEEPSEEK");
+        assertThat(entry.route()).isEqualTo("PRO");
         assertThat(entry.createdBy()).isEqualTo("user-1");
     }
 

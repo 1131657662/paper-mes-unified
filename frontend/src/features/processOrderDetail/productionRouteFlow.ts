@@ -1,7 +1,8 @@
-import type { Edge, Node } from '@xyflow/react'
+import type { Node } from '@xyflow/react'
 import type { RollProductionVO } from '../../types/processOrder'
 import { formatGram, formatKgWithMaxDecimals, formatMm } from '../../utils/numberFormatters'
 import { formatProductionKg } from './orderDetailUtils'
+import { descendantEdges, routeEdge, type ProductionFlowEdge } from './productionRouteEdges'
 import type { RouteNode } from './productionRouteTree'
 import type { ProcessRouteConfigTarget } from './routeConfigTypes'
 
@@ -22,14 +23,13 @@ export interface ProductionFlowNodeData extends Record<string, unknown> {
 }
 
 export type ProductionFlowNode = Node<ProductionFlowNodeData, 'productionRoute'>
-export type ProductionFlowEdge = Edge<Record<string, unknown>, 'smoothstep'>
-
 export interface ProductionRouteFlowOptions {
   canAppendRoute?: boolean
   onConfigureRoute?: (target: ProcessRouteConfigTarget) => void
   originalUuid?: string
   production: RollProductionVO
   roots: RouteNode[]
+  sourceProductions?: RollProductionVO[]
 }
 
 export interface ProductionRouteFlowModel {
@@ -45,7 +45,6 @@ interface PositionedRouteNode {
   y: number
 }
 
-const SOURCE_ID = 'source'
 const LEVEL_GAP = 370
 const NODE_HEIGHT = 108
 const NODE_WIDTH = 286
@@ -54,12 +53,14 @@ const TOP_PADDING = 56
 
 export function buildProductionRouteFlow(options: ProductionRouteFlowOptions): ProductionRouteFlowModel {
   const { production, roots } = options
+  const sources = normalizeSources(production, options.sourceProductions)
   const positionedRoots = layoutRoots(roots)
   const routeNodes = positionedRoots.flatMap((root) => flattenRouteNode(root, options))
-  const sourceY = sourceCenterY(positionedRoots)
-  const nodes = [sourceNode(production, sourceY), ...routeNodes]
-  const edges = positionedRoots.flatMap((root) => routeEdges(root, SOURCE_ID))
-  const maxY = Math.max(sourceY, ...positionedRoots.map(maxNodeY))
+  const sourceNodes = layoutSources(sources, sourceCenterY(positionedRoots))
+  const nodes = [...sourceNodes.map(({ source, y, index }) => sourceNode(source, y, index)), ...routeNodes]
+  const edges = sourceNodes.flatMap(({ source, index }) => positionedRoots.map((root) => routeEdge(sourceId(source, index), root.node)))
+    .concat(positionedRoots.flatMap(descendantEdges))
+  const maxY = Math.max(...sourceNodes.map(({ y }) => y), ...positionedRoots.map(maxNodeY))
 
   return {
     nodes,
@@ -102,10 +103,10 @@ function flattenRouteNode(item: PositionedRouteNode, options: ProductionRouteFlo
   return [node, ...item.children.flatMap((child) => flattenRouteNode(child, options))]
 }
 
-function sourceNode(production: RollProductionVO, y: number): ProductionFlowNode {
+function sourceNode(production: RollProductionVO, y: number, index: number): ProductionFlowNode {
   const weight = sourceWeight(production)
   return {
-    id: SOURCE_ID,
+    id: sourceId(production, index),
     type: 'productionRoute',
     position: { x: 0, y: y - NODE_HEIGHT / 2 },
     data: {
@@ -156,20 +157,24 @@ function outputLines(node: RouteNode): string[] {
   return [node.meta, `${node.weightLabel ?? '预估'} ${formatKgWithMaxDecimals(node.weight, node.weightDigits)}`]
 }
 
-function routeEdges(item: PositionedRouteNode, parentId: string): ProductionFlowEdge[] {
-  const currentEdge: ProductionFlowEdge = {
-    id: `${parentId}-${item.node.key}`,
-    source: parentId,
-    target: item.node.key,
-    type: 'smoothstep',
-    label: item.node.processLabel,
-    labelBgBorderRadius: 10,
-    labelBgPadding: [8, 4],
-    labelBgStyle: { fill: '#eff6ff', fillOpacity: 0.96 },
-    labelStyle: { fill: '#0958d9', fontSize: 12, fontWeight: 650 },
-    style: { stroke: '#93c5fd', strokeWidth: 1.5 },
-  }
-  return [currentEdge, ...item.children.flatMap((child) => routeEdges(child, item.node.key))]
+function normalizeSources(production: RollProductionVO, sources?: RollProductionVO[]) {
+  const candidates = sources?.length ? sources : [production]
+  const seen = new Set<string>()
+  return candidates.filter((source, index) => {
+    const key = sourceId(source, index)
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function layoutSources(sources: RollProductionVO[], centerY: number) {
+  const startY = Math.max(TOP_PADDING, centerY - ((sources.length - 1) * ROW_GAP) / 2)
+  return sources.map((source, index) => ({ index, source, y: startY + index * ROW_GAP }))
+}
+
+function sourceId(production: RollProductionVO, index: number) {
+  return `source-${production.originalUuid || production.rollNo || production.extraNo || `anonymous-${index}`}`
 }
 
 function sourceCenterY(roots: PositionedRouteNode[]) {

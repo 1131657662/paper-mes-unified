@@ -4,7 +4,6 @@ import type { RewindSegmentPlanDTO, RewindSourcePlanDTO } from '../../../types/p
 import { formatOptionalKg } from '../../../utils/numberFormatters'
 import {
   consumptionSources,
-  equalConsumptionSources,
   fullConsumptionSources,
   segmentConsumedWeight,
   sourceCompositionRatio,
@@ -55,7 +54,7 @@ export function RewindSourceEditor({ segment, roll, rolls, sourceOptions, onChan
     <Space direction="vertical" style={{ width: '100%', marginTop: 12 }}>
       <Space wrap>
         <Tag color="blue">本段消耗：{formatOptionalKg(segmentConsumedWeight(sources, sourceOptions))}</Tag>
-        <Typography.Text type="secondary">输入每卷在整套合并方案中的消耗比例，后端按重量换算本段组成。</Typography.Text>
+        <Typography.Text type="secondary">填写每卷本次实际使用比例；完整合并通常填写 100%，系统再按实际重量换算来源组成。</Typography.Text>
       </Space>
       <Select
         mode="multiple"
@@ -68,7 +67,6 @@ export function RewindSourceEditor({ segment, roll, rolls, sourceOptions, onChan
       />
       <Space wrap>
         <Button size="small" onClick={() => updateSources(fullConsumptionSources(selectedIds))}>每卷用满</Button>
-        <Button size="small" onClick={() => updateSources(equalConsumptionSources(selectedIds))}>平均消耗</Button>
         <Button size="small" disabled={!sameSpecIds.length} onClick={() => updateSources(fullConsumptionSources(sameSpecIds))}>使用同规格母卷</Button>
       </Space>
       {sources.map((source, index) => (
@@ -76,8 +74,8 @@ export function RewindSourceEditor({ segment, roll, rolls, sourceOptions, onChan
           <Tag>{index + 1}</Tag>
           <TooltipText className="rewind-source-editor__source-label" value={labelForSource(source, sourceOptions)} />
           <label className="rewind-field rewind-source-row__consume">
-            <span className="rewind-field__label">消耗比例</span>
-            <InputNumber aria-label={`来源母卷 ${index + 1} 消耗比例`} suffix="%"
+            <span className="rewind-field__label">本次使用比例</span>
+            <InputNumber aria-label={`来源母卷 ${index + 1} 本次使用比例`} suffix="%"
               min={0.01} max={100} value={sourceConsumptionValue(source)}
               onChange={(value) => updateSources(patchSource(sources, index, { consumeRatio: value ?? 0 }))} />
           </label>

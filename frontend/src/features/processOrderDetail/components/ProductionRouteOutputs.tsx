@@ -25,6 +25,7 @@ interface Props {
   originalUuid?: string
   outputs?: StageOutputVO[]
   production: RollProductionVO
+  sourceProductions?: RollProductionVO[]
 }
 
 const nodeTypes: NodeTypes = {
@@ -38,11 +39,19 @@ export default function ProductionRouteOutputs({
   originalUuid,
   outputs = [],
   production,
+  sourceProductions = [production],
 }: Props) {
   const roots = buildRouteTree(outputs, finishes, fallbackProcessLabel(production), production)
   if (!roots.length) return null
 
-  const flow = buildProductionRouteFlow({ canAppendRoute, onConfigureRoute, originalUuid, production, roots })
+  const flow = buildProductionRouteFlow({
+    canAppendRoute,
+    onConfigureRoute,
+    originalUuid,
+    production,
+    roots,
+    sourceProductions,
+  })
 
   return (
     <div className="production-route-map">

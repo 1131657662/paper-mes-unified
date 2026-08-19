@@ -31,6 +31,7 @@ class ProcessAiParseAuditRecorder {
                 .resultHash(success.parseRecord().resultHash())
                 .provider(success.execution().modelResult().provider())
                 .model(success.execution().modelResult().model())
+                .route(success.execution().modelResult().route())
                 .outcome(success.outcome())
                 .latencyMs(latencyMs(prepared))
                 .inputTokens(success.execution().modelResult().inputTokens())
