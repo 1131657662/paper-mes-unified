@@ -21,6 +21,7 @@ public class ProcessAiPlanCompilationService {
     private final ProcessAiPlanCompiler compiler;
     private final ProcessOrderDraftService draftService;
     private final ProcessAiPackagingCandidateCompiler packagingCompiler;
+    private final ProcessAiNewPlanCompletenessGuard completenessGuard;
 
     public ProcessAiCompilationResult compile(ProcessAiExtractionResult extraction,
                                               ProcessAiOrderContext context) {
@@ -68,6 +69,11 @@ public class ProcessAiPlanCompilationService {
                     candidate.plan(), preview));
             if (!preview.isReady()) {
                 state.errors.addAll(prefixed(candidate.ownerRollRef(), preview.getErrors()));
+            }
+            List<String> completenessErrors = completenessGuard.validate(
+                    assignment, candidate, context);
+            if (!completenessErrors.isEmpty()) {
+                state.errors.addAll(prefixed(candidate.ownerRollRef(), completenessErrors));
             }
             addAncillaryWarnings(candidate.ownerRollRef(), assignment.ancillaryRequirements(),
                     state.warnings);

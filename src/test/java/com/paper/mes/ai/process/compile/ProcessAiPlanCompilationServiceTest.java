@@ -6,7 +6,10 @@ import com.paper.mes.ai.process.context.ProcessAiRollContext;
 import com.paper.mes.ai.process.context.ProcessAiBaselinePlan;
 import com.paper.mes.ai.process.context.ProcessAiReviewBaseline;
 import com.paper.mes.ai.process.intent.ProcessAiAssignment;
+import com.paper.mes.ai.process.intent.ProcessAiDiameterRule;
 import com.paper.mes.ai.process.intent.ProcessAiExtractionResult;
+import com.paper.mes.ai.process.intent.ProcessAiMeasurement;
+import com.paper.mes.ai.process.intent.ProcessAiRewindIntent;
 import com.paper.mes.ai.process.intent.ProcessAiSawIntent;
 import com.paper.mes.processorder.dto.PlanPreviewVO;
 import com.paper.mes.processorder.service.ProcessOrderDraftService;
@@ -33,7 +36,8 @@ class ProcessAiPlanCompilationServiceTest {
         when(drafts.previewProcessPlan(eq("order-1"), eq("roll-1"), any(), eq(3)))
                 .thenReturn(preview);
         ProcessAiPlanCompilationService service = new ProcessAiPlanCompilationService(
-                compiler(), drafts, new ProcessAiPackagingCandidateCompiler());
+                compiler(), drafts, new ProcessAiPackagingCandidateCompiler(),
+                new ProcessAiNewPlanCompletenessGuard());
 
         ProcessAiCompilationResult result = service.compile(extraction(), context());
 
@@ -46,7 +50,8 @@ class ProcessAiPlanCompilationServiceTest {
     void compile_whenExtractionNeedsClarification_doesNotPreview() {
         ProcessOrderDraftService drafts = mock(ProcessOrderDraftService.class);
         ProcessAiPlanCompilationService service = new ProcessAiPlanCompilationService(
-                compiler(), drafts, new ProcessAiPackagingCandidateCompiler());
+                compiler(), drafts, new ProcessAiPackagingCandidateCompiler(),
+                new ProcessAiNewPlanCompletenessGuard());
         ProcessAiExtractionResult blocked = new ProcessAiExtractionResult(
                 "parse-1", "1.0", extraction().assignments(), List.of(), List.of(),
                 true, List.of("请确认母卷"));
@@ -62,7 +67,8 @@ class ProcessAiPlanCompilationServiceTest {
     void compile_whenOwnerHasRouteDraft_rejectsSinglePlanBeforePreview() {
         ProcessOrderDraftService drafts = mock(ProcessOrderDraftService.class);
         ProcessAiPlanCompilationService service = new ProcessAiPlanCompilationService(
-                compiler(), drafts, new ProcessAiPackagingCandidateCompiler());
+                compiler(), drafts, new ProcessAiPackagingCandidateCompiler(),
+                new ProcessAiNewPlanCompletenessGuard());
         ProcessAiOrderContext base = context();
         ProcessAiReviewBaseline baseline = new ProcessAiReviewBaseline(null, List.of(
                 new ProcessAiBaselinePlan("R1", "roll-1", 1, 2, true, null)));
@@ -85,7 +91,8 @@ class ProcessAiPlanCompilationServiceTest {
         when(drafts.previewProcessPlan(eq("order-1"), eq("roll-1"), any(), eq(3)))
                 .thenReturn(preview);
         ProcessAiPlanCompilationService service = new ProcessAiPlanCompilationService(
-                compiler(), drafts, new ProcessAiPackagingCandidateCompiler());
+                compiler(), drafts, new ProcessAiPackagingCandidateCompiler(),
+                new ProcessAiNewPlanCompletenessGuard());
         ProcessAiSawIntent saw = new ProcessAiSawIntent(
                 "EXPLICIT_WIDTHS", null, List.of(900, 900, 900), "mm");
         ProcessAiAssignment assignment = new ProcessAiAssignment(
@@ -99,6 +106,35 @@ class ProcessAiPlanCompilationServiceTest {
         verify(drafts).previewProcessPlan(eq("order-1"), eq("roll-1"), any(), eq(3));
         assertThat(result.errors()).containsExactly(
                 "R1: 现有预览：成品门幅合计超过母卷门幅");
+    }
+
+    @Test
+    void compile_newRewindWithoutWidthRule_isRejectedBeforeConfirmation() {
+        ProcessOrderDraftService drafts = mock(ProcessOrderDraftService.class);
+        PlanPreviewVO preview = new PlanPreviewVO();
+        preview.setReady(true);
+        when(drafts.previewProcessPlan(eq("order-1"), eq("roll-1"), any(), eq(3)))
+                .thenReturn(preview);
+        ProcessAiPlanCompilationService service = new ProcessAiPlanCompilationService(
+                compiler(), drafts, new ProcessAiPackagingCandidateCompiler(),
+                new ProcessAiNewPlanCompletenessGuard());
+        ProcessAiDiameterRule diameter = new ProcessAiDiameterRule(
+                "EXPLICIT", 1, List.of(new BigDecimal("100")),
+                new ProcessAiMeasurement(new BigDecimal("1200"), "mm", "DEFAULT"));
+        ProcessAiAssignment assignment = new ProcessAiAssignment(
+                List.of("R1"), "R1", List.of(), "REWIND",
+                new ProcessAiRewindIntent(
+                        "CHANGE_DIAMETER", diameter,
+                        new ProcessAiMeasurement(new BigDecimal("3"), "inch", "DEFAULT"), null),
+                null, null, List.of());
+        ProcessAiExtractionResult extraction = new ProcessAiExtractionResult(
+                "parse-1", "1.0", List.of(assignment),
+                List.of(), List.of(), false, List.of());
+
+        ProcessAiCompilationResult result = service.compile(extraction, context());
+
+        assertThat(result.eligible()).isFalse();
+        assertThat(result.errors()).containsExactly("R1: 请明确成品门幅，或明确保持母卷门幅");
     }
 
     private ProcessAiPlanCompiler compiler() {
