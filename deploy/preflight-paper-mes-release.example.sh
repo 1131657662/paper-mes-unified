@@ -144,6 +144,44 @@ check_schema_version_configuration() {
     || fail "schema baseline mismatch: source=${source_version}, configured=${configured_version}"
 }
 
+env_value() {
+  local key="$1"
+  awk -F= -v key="${key}" '
+    /^[[:space:]]*(#|$)/ { next }
+    $1 ~ "^[[:space:]]*(export[[:space:]]+)?" key "[[:space:]]*$" {
+      value=$0
+      sub(/^[^=]*=/, "", value)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      if (value ~ /^".*"$/ || value ~ /^'"'"'.*'"'"'$/) value=substr(value, 2, length(value) - 2)
+      if (found) duplicate=1
+      found=1
+      result=value
+    }
+    END {
+      if (duplicate) exit 2
+      if (found) print result
+    }
+  ' "${APP_ENV_FILE}"
+}
+
+check_ai_configuration() {
+  local provider data_mode master_key key_bytes
+  provider="$(env_value PAPER_MES_AI_PROVIDER 2>/dev/null)" \
+    || fail "application environment contains duplicate AI provider settings"
+  data_mode="$(env_value PAPER_MES_AI_DATA_MODE 2>/dev/null)" \
+    || fail "application environment contains duplicate AI data mode settings"
+  if [ "${provider:-LOCAL_RULES}" = "LOCAL_RULES" ] && [ "${data_mode:-DISABLED}" = "DISABLED" ]; then
+    return 0
+  fi
+  master_key="$(env_value PAPER_MES_AI_CONFIG_MASTER_KEY 2>/dev/null)" \
+    || fail "application environment contains duplicate AI master key settings"
+  [ -n "${master_key}" ] && [ "${master_key}" != "CHANGE_ME_DIFFERENT_BASE64_32_BYTE_KEY" ] \
+    || fail "AI provider credential encryption key is missing while AI is enabled"
+  key_bytes="$(printf '%s' "${master_key}" | base64 --decode 2>/dev/null | wc -c)"
+  [ "${key_bytes}" = "32" ] \
+    || fail "AI provider credential encryption key must decode to exactly 32 bytes"
+}
+
 check_backup() {
   [ -d "${BACKUP_ROOT}" ] || fail "backup root not found"
   local latest age_hours
@@ -177,7 +215,7 @@ check_database() {
   fi
 }
 
-for command_name in mysql curl sha256sum find sort stat grep runuser systemctl tr awk bash; do
+for command_name in mysql curl sha256sum find sort stat grep runuser systemctl tr awk bash base64 wc; do
   command -v "${command_name}" >/dev/null 2>&1 || fail "required command not found: ${command_name}"
 done
 [[ "${DB_NAME}" =~ ^[A-Za-z0-9_]+$ ]] || fail "invalid DB_NAME"
@@ -197,6 +235,7 @@ chmod 600 "${mysql_cnf}"
 
 check_source_provenance
 check_schema_version_configuration
+check_ai_configuration
 check_health
 check_app_temp
 check_service_temp_runtime

@@ -80,6 +80,13 @@ run_preflight() {
 }
 
 run_preflight 0 0 >/dev/null
+printf 'PAPER_MES_EXPECTED_SCHEMA_VERSION=3.63\nPAPER_MES_AI_PROVIDER=DEEPSEEK\nPAPER_MES_AI_DATA_MODE=CONTEXT_ALLOWLIST\n' > "${temp_dir}/paper-mes.env"
+if run_preflight 0 0 >/dev/null 2>&1; then
+  echo "preflight unexpectedly accepted enabled AI without a master key" >&2
+  exit 1
+fi
+printf 'PAPER_MES_EXPECTED_SCHEMA_VERSION=3.63\nPAPER_MES_AI_PROVIDER=DEEPSEEK\nPAPER_MES_AI_DATA_MODE=CONTEXT_ALLOWLIST\nPAPER_MES_AI_CONFIG_MASTER_KEY=QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=\n' > "${temp_dir}/paper-mes.env"
+run_preflight 0 0 >/dev/null
 printf 'PAPER_MES_EXPECTED_SCHEMA_VERSION=3.62\n' > "${temp_dir}/paper-mes.env"
 if run_preflight 0 0 >/dev/null 2>&1; then
   echo "preflight unexpectedly accepted a schema baseline mismatch" >&2

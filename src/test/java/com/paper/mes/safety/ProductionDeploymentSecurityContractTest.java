@@ -151,7 +151,10 @@ class ProductionDeploymentSecurityContractTest {
         assertContainsAll(nginx,
                 "listen 443 ssl http2", "return 301 https://$host$request_uri",
                 "ssl_protocols TLSv1.2 TLSv1.3", "Strict-Transport-Security",
-                "limit_req zone=paper_mes_login");
+                "limit_req zone=paper_mes_login",
+                "location = /v3/api-docs", "location ^~ /v3/api-docs/",
+                "location = /swagger-ui", "location ^~ /swagger-ui/",
+                "return 404;");
         assertContainsAll(source("deploy/paper-mes.service.example"),
                 "EnvironmentFile=/etc/paper-mes/paper-mes.env",
                 "install -d -o paper-mes -g paper-mes -m 0750 /etc/paper-mes/ai-memory",
