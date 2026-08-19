@@ -35,6 +35,29 @@ class ProcessAiIntentNormalizerTest {
                 new ProcessAiWidthRule("EXPLICIT", List.of(1000), "mm", null));
     }
 
+    @Test
+    void normalizeRepairsDiameterAndWidthModeWhenEvidenceIsExplicit() {
+        ProcessAiAssignment assignment = new ProcessAiAssignment(
+                List.of("R1"), "R1", List.of(), "REWIND",
+                new ProcessAiRewindIntent("CHANGE_WIDTH",
+                        new ProcessAiDiameterRule("EXPLICIT", 1,
+                                List.of(new BigDecimal("100")), null),
+                        null, new ProcessAiWidthRule("EXPLICIT", List.of(500, 500), "mm", null)),
+                null, null, List.of(
+                        new ProcessAiEvidence("diameterRule", "目标直径1200mm"),
+                        new ProcessAiEvidence("widthRule", "成品门幅500mm+500mm")));
+        ProcessAiExtractionResult input = new ProcessAiExtractionResult(
+                "parse-1", "1.0", List.of(assignment), List.of(), List.of(), false, List.of());
+
+        ProcessAiRewindIntent normalized = normalizer.normalize(input, "目标直径1200mm；成品门幅500mm+500mm")
+                .assignments().getFirst().rewindIntent();
+
+        assertThat(normalized.modeIntent()).isEqualTo("CHANGE_WIDTH_AND_DIAMETER");
+        assertThat(normalized.diameterRule().targetDiameter())
+                .isEqualTo(new ProcessAiMeasurement(new BigDecimal("1200"), "mm", "EXPLICIT"));
+        assertThat(normalized.widthRule().values()).containsExactly(500, 500);
+    }
+
     private ProcessAiExtractionResult result(String evidence) {
         ProcessAiDiameterRule diameter = new ProcessAiDiameterRule(
                 "WEIGHT_SPLIT", 2, List.of(new BigDecimal("50"), new BigDecimal("50")),

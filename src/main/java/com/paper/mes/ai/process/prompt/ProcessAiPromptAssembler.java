@@ -148,6 +148,8 @@ public class ProcessAiPromptAssembler {
                 processType只允许REWIND或SAW；每项必须提供原文evidence。无法唯一绑定母卷时必须needsClarification=true。
                 直径一分为二必须输出WEIGHT_SPLIT、parts=2、ratios=[50,50]，不得做等面积或直径除二。
                 门幅一分二或门幅一分为二必须输出widthRule.type=KNIFE_COUNT、knifeCount=1、values=null，表示一刀得到两个成品；不得输出单个EXPLICIT门幅并把另一半当余料。
+                同一要求同时出现目标直径和成品门幅排布时，modeIntent必须为CHANGE_WIDTH_AND_DIAMETER，diameterRule.targetDiameter与widthRule必须逐项对应客户原话。
+                evidence中的数值、单位和字段必须与结构化结果一致；例如“目标直径1200mm”不得输出空直径或只改门幅的模式。
                 锯纸显式成品门幅合计小于母卷门幅时，后端会把差额自动补为TRIM，不要因此追问；客户明确要求保留差额为成品时，才把差额加入widths。
                 客户未指定目标直径时输出1200mm且source=DEFAULT。普通复卷未指定纸芯时输出3inch且source=DEFAULT。
                 KEEP_SPEC不得注入默认纸芯；标签createsServiceStep必须为false；包装createsServiceStep必须为true。

@@ -22,6 +22,8 @@ public class ProcessAiPlanCompilationService {
     private final ProcessOrderDraftService draftService;
     private final ProcessAiPackagingCandidateCompiler packagingCompiler;
     private final ProcessAiNewPlanCompletenessGuard completenessGuard;
+    private final ProcessAiPlanEvidenceConsistencyGuard evidenceConsistencyGuard =
+            new ProcessAiPlanEvidenceConsistencyGuard();
 
     public ProcessAiCompilationResult compile(ProcessAiExtractionResult extraction,
                                               ProcessAiOrderContext context) {
@@ -74,6 +76,11 @@ public class ProcessAiPlanCompilationService {
                     assignment, candidate, context);
             if (!completenessErrors.isEmpty()) {
                 state.errors.addAll(prefixed(candidate.ownerRollRef(), completenessErrors));
+            }
+            List<String> evidenceErrors = evidenceConsistencyGuard.validate(
+                    assignment, candidate.plan());
+            if (!evidenceErrors.isEmpty()) {
+                state.errors.addAll(prefixed(candidate.ownerRollRef(), evidenceErrors));
             }
             addAncillaryWarnings(candidate.ownerRollRef(), assignment.ancillaryRequirements(),
                     state.warnings);
