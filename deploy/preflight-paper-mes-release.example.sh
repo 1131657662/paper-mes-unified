@@ -165,7 +165,7 @@ env_value() {
 }
 
 check_ai_configuration() {
-  local provider data_mode master_key key_bytes
+  local provider data_mode master_key key_bytes message_key message_key_bytes
   provider="$(env_value PAPER_MES_AI_PROVIDER 2>/dev/null)" \
     || fail "application environment contains duplicate AI provider settings"
   data_mode="$(env_value PAPER_MES_AI_DATA_MODE 2>/dev/null)" \
@@ -180,6 +180,16 @@ check_ai_configuration() {
   key_bytes="$(printf '%s' "${master_key}" | base64 --decode 2>/dev/null | wc -c)"
   [ "${key_bytes}" = "32" ] \
     || fail "AI provider credential encryption key must decode to exactly 32 bytes"
+
+  if [ "${data_mode:-DISABLED}" = "CONTEXT_ALLOWLIST" ]; then
+    message_key="$(env_value PAPER_MES_AI_MESSAGE_ENCRYPTION_KEY 2>/dev/null)" \
+      || fail "application environment contains duplicate AI message encryption key settings"
+    [ -n "${message_key}" ] && [ "${message_key}" != "CHANGE_ME_BASE64_32_BYTE_KEY" ] \
+      || fail "AI message encryption key is missing while CONTEXT_ALLOWLIST is enabled"
+    message_key_bytes="$(printf '%s' "${message_key}" | base64 --decode 2>/dev/null | wc -c)"
+    [ "${message_key_bytes}" = "32" ] \
+      || fail "AI message encryption key must decode to exactly 32 bytes"
+  fi
 }
 
 check_backup() {
