@@ -52,7 +52,7 @@ class ProductionDeploymentSecurityContractTest {
                 "enabled: ${PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED:false}");
         assertContainsAll(environment,
                 "PAPER_MES_SCHEMA_BOOTSTRAP_ENABLED=false",
-                "PAPER_MES_EXPECTED_SCHEMA_VERSION=3.73",
+                "PAPER_MES_EXPECTED_SCHEMA_VERSION=3.73.1",
                 "PAPER_MES_BACKEND_VERSION=CHANGE_ME_RELEASE_VERSION",
                 "PAPER_MES_FRONTEND_VERSION=CHANGE_ME_RELEASE_VERSION",
                 "PAPER_MES_GIT_SHA=CHANGE_ME_GIT_SHA",
@@ -179,6 +179,33 @@ class ProductionDeploymentSecurityContractTest {
     }
 
     @Test
+    void productionDeployment_locksTargetShaAndSynchronizesRuntimeMetadata() throws Exception {
+        String deployment = source("deploy/deploy-paper-mes.example.sh");
+        assertContainsAll(deployment,
+                "<40-character main commit sha>",
+                "[[ $# = 1 && ${target_sha} =~",
+                "rev-parse origin/main",
+                "PAPER_MES_GIT_SHA",
+                "PAPER_MES_EXPECTED_SCHEMA_VERSION",
+                "PAPER_MES_BACKEND_VERSION",
+                "PAPER_MES_FRONTEND_VERSION",
+                "PAPER_MES_BUILD_TIME",
+                "apply-paper-mes-migrations",
+                "MIGRATION_DIR=\"${SOURCE}/sql\"",
+                "publish-paper-mes-frontend.example.sh",
+                "verify-production-hardening.sh");
+        assertContainsAll(deployment,
+                "paper-mes-runtime-rollback.example.sh",
+                "paper-mes-runtime-rollback.sh");
+        assertContainsAll(source("deploy/paper-mes-runtime-rollback.example.sh"),
+                "backup_runtime", "restore_runtime", "schema_migrated");
+        assertTrue(deployment.indexOf("apply-paper-mes-migrations")
+                < deployment.indexOf("systemctl restart \"${SERVICE}\""));
+        assertTrue(deployment.indexOf("render_runtime_env")
+                < deployment.indexOf("systemctl restart \"${SERVICE}\""));
+    }
+
+    @Test
     void migrationStateGuard_blocksStartupWhenAnyScriptIsMissingOrNotApplied() throws Exception {
         String guard = source("deploy/verify-paper-mes-migration-state.example.sh");
         String verifier = source("deploy/verify-paper-mes-source.example.sh");
@@ -192,11 +219,13 @@ class ProductionDeploymentSecurityContractTest {
                 "verify-paper-mes-migration-state.example.sh",
                 "installed migration state guard does not match the pulled source",
                 "installed migration runner does not match the pulled source",
-                "installed migration lock support does not match the pulled source");
+                "installed migration lock support does not match the pulled source",
+                "installed production deployment script does not match the pulled source",
+                "installed production rollback helper does not match the pulled source");
     }
 
     private String source(String path) throws Exception {
-        return Files.readString(Path.of(path));
+        return Files.readString(Path.of(path)).replace("\r\n", "\n");
     }
 
     private void assertContainsAll(String source, String... fragments) {

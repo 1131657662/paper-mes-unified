@@ -33,7 +33,7 @@ class ProcessAiWorkflowSchemaContractTest {
 
     @Test
     void canonicalBaselineMatchesTheProcessAiMigration() throws IOException {
-        assertThat(read("sql/schema-baseline.version").trim()).isEqualTo("3.73");
+        assertThat(read("sql/schema-baseline.version").trim()).isEqualTo("3.73.1");
         assertThat(read("sql/01_schema_v4.1.sql")).contains(
                 "-- V3.69 canonical baseline",
                 "-- V3.71 canonical baseline",

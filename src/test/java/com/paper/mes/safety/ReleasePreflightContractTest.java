@@ -64,15 +64,17 @@ class ReleasePreflightContractTest {
         String guide = source("docs/生产部署指南.md");
 
         assertThat(guide).contains("每次从 GitHub 拉取新代码后");
-        assertThat(guide).contains("git pull --ff-only origin main");
+        assertThat(guide).contains("必须锁定已经通过测试环境验收的完整 SHA");
+        assertThat(guide).contains("deploy-paper-mes.example.sh /usr/local/sbin/deploy-paper-mes.sh");
+        assertThat(guide).contains("paper-mes-runtime-rollback.example.sh /usr/local/sbin/paper-mes-runtime-rollback.sh");
         assertThat(guide).contains("禁止在 `/opt/paper-mes/source` 中直接编辑");
         assertThat(guide).contains("bash /opt/paper-mes/source/deploy/backup-paper-mes.example.sh");
         assertThat(guide).contains("deploy/paper-mes.service.example /etc/systemd/system/paper-mes.service");
         assertThat(guide).contains("deploy/preflight-paper-mes-release.example.sh /usr/local/bin/preflight-paper-mes-release");
-        assertThat(guide).contains("systemctl daemon-reload", "systemctl restart paper-mes");
+        assertThat(guide).contains("systemctl daemon-reload", "sudo /usr/local/sbin/deploy-paper-mes.sh");
     }
 
     private String source(String path) throws Exception {
-        return Files.readString(Path.of(path));
+        return Files.readString(Path.of(path)).replace("\r\n", "\n");
     }
 }

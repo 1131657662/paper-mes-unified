@@ -171,12 +171,13 @@ class ReportMapperSqlContractTest {
             if (in == null) {
                 throw new IOException("Missing resource: " + resource);
             }
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n");
         }
     }
 
     private String sourceText(String relativePath) throws IOException {
-        return java.nio.file.Files.readString(java.nio.file.Path.of(relativePath), StandardCharsets.UTF_8);
+        return java.nio.file.Files.readString(java.nio.file.Path.of(relativePath), StandardCharsets.UTF_8)
+                .replace("\r\n", "\n");
     }
 
     private String normalize(String value) {

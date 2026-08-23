@@ -36,7 +36,7 @@ class WarehouseLocationSemanticsSchemaContractTest {
 
         assertThat(schema).contains(
                 "`location`        VARCHAR(255) DEFAULT NULL            COMMENT '仓库地址/说明'");
-        assertThat(read("sql/schema-baseline.version").trim()).isEqualTo("3.73");
+        assertThat(read("sql/schema-baseline.version").trim()).isEqualTo("3.73.1");
     }
 
     private String read(String path) throws IOException {
