@@ -66,6 +66,8 @@ required_columns=(
   "biz_finish_roll:paper_name" "biz_finish_roll:gram_weight" "biz_finish_roll:finish_width"
   "biz_finish_roll:finish_diameter" "biz_finish_roll:finish_core_diameter"
   "biz_finish_roll:estimate_weight" "biz_finish_roll:estimate_weight_snap"
+  "biz_finish_roll:remaining_weight" "biz_finish_roll:remain_own_weight"
+  "biz_finish_roll:ownership_status" "biz_finish_roll:remain_transfer_state"
   "biz_finish_roll:remark"
   "biz_finish_original_rel:uuid" "biz_finish_original_rel:order_uuid"
   "biz_finish_original_rel:finish_uuid" "biz_finish_original_rel:original_uuid"
