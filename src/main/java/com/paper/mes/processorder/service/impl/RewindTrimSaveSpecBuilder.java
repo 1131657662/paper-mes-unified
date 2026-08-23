@@ -1,21 +1,20 @@
 package com.paper.mes.processorder.service.impl;
 
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.processorder.calc.IntegerWeightAllocator;
 import com.paper.mes.processorder.dto.FinishConfigSaveDTO;
 import com.paper.mes.processorder.dto.FinishConfigSpecDTO;
 import com.paper.mes.processorder.dto.FinishPreviewVO;
 import com.paper.mes.processorder.dto.RewindPlanPreviewDTO;
-import com.paper.mes.processorder.service.RewindWidthDifferenceCalculator;
+import com.paper.mes.processorder.service.RewindFinishSourceAllocator;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
 final class RewindTrimSaveSpecBuilder {
 
     private static final String ITEM_TRIM = "TRIM";
-    private static final int SCALE = 3;
 
     private RewindTrimSaveSpecBuilder() {
     }
@@ -26,113 +25,94 @@ final class RewindTrimSaveSpecBuilder {
 
     static List<FinishConfigSpecDTO> build(FinishPreviewVO preview, FinishConfigSaveDTO dto,
                                            int sourcePieceCount) {
-        if (sourcePieceCount < 1) {
-            throw new BusinessException("母卷件数必须大于0");
-        }
+        return buildResult(preview, dto, sourcePieceCount).specs();
+    }
+
+    static TrimBuildResult buildResult(FinishPreviewVO preview, FinishConfigSaveDTO dto,
+                                       int sourcePieceCount) {
+        if (sourcePieceCount < 1) throw new BusinessException("母卷件数必须大于0");
         List<FinishPreviewVO.SegmentPreview> previews = preview.getSegments();
         List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = dto.getRewindSegments();
-        if (previews == null || previews.isEmpty()) return List.of();
+        if (previews == null || previews.isEmpty()) return new TrimBuildResult(List.of(), List.of());
         if (segments == null || segments.size() != previews.size()) {
             throw new BusinessException("复卷分段预览与保存方案不一致");
         }
-        BigDecimal totalWeight = totalWeight(preview);
-        int sourceWidth = preview.getOriginalWidth() == null ? 0 : preview.getOriginalWidth();
-        List<FinishConfigSpecDTO> result = new ArrayList<>();
-        for (int index = 0; index < segments.size(); index++) {
-            result.addAll(buildSegment(dto, segments.get(index), previews.get(index), totalWeight, sourceWidth,
-                    sourcePieceCount));
+        List<TrimCandidate> candidates = trimCandidates(previews, segments, sourcePieceCount);
+        List<BigDecimal> weights = IntegerWeightAllocator.allocate(
+                IntegerWeightAllocator.roundTotal(preview.getTotalTrimWeight()),
+                candidates.stream().map(TrimCandidate::basis).toList());
+        List<RewindFinishSourceAllocator.WeightedOutput> outputs = new ArrayList<>(candidates.size());
+        for (int index = 0; index < candidates.size(); index++) {
+            outputs.add(new RewindFinishSourceAllocator.WeightedOutput(
+                    candidates.get(index).segmentSort(), preview.isWeightPending() ? null : weights.get(index)));
         }
-        if (preview.isWeightPending()) {
-            result.forEach(spec -> spec.setEstimateWeight(null));
-        }
-        return result;
+        return new TrimBuildResult(trimSpecs(candidates, weights, dto, preview.isWeightPending()), outputs);
     }
 
-    private static List<FinishConfigSpecDTO> buildSegment(
-            FinishConfigSaveDTO dto, RewindPlanPreviewDTO.RewindSegmentDTO segment,
-            FinishPreviewVO.SegmentPreview preview, BigDecimal totalWeight, int sourceWidth,
+    private static List<TrimCandidate> trimCandidates(
+            List<FinishPreviewVO.SegmentPreview> previews,
+            List<RewindPlanPreviewDTO.RewindSegmentDTO> segments,
             int sourcePieceCount) {
-        List<Integer> widths = expandedTrimWidths(segment, sourcePieceCount);
-        if (widths.isEmpty()) return List.of();
-        BigDecimal ratio = preview.getSegmentRatio() == null ? BigDecimal.ZERO : preview.getSegmentRatio();
-        RewindWidthDifferenceCalculator.Decision decision = RewindWidthDifferenceCalculator.calculate(
-                dto.getWidthDifferencePolicy(), dto.getRewindMode(), sourceWidth, totalWeight, ratio, segment,
-                sourcePieceCount);
-        List<BigDecimal> weights = trimWeights(widths, totalWeight, ratio, sourceWidth, segment, decision,
-                sourcePieceCount);
-        List<FinishConfigSpecDTO> result = new ArrayList<>(widths.size());
-        for (int index = 0; index < widths.size(); index++) {
-            result.add(trimSpec(widths.get(index), weights.get(index), dto, segment));
+        List<TrimCandidate> result = new ArrayList<>();
+        for (int index = 0; index < segments.size(); index++) {
+            RewindPlanPreviewDTO.RewindSegmentDTO segment = segments.get(index);
+            BigDecimal ratio = value(previews.get(index).getSegmentRatio());
+            int repeats = segment.getRepeatCount() == null ? 1 : segment.getRepeatCount();
+            BigDecimal perRepeatRatio = ratio.divide(
+                    BigDecimal.valueOf(repeats * (long) sourcePieceCount), 12,
+                    java.math.RoundingMode.HALF_UP);
+            int segmentSort = segment.getSegmentSort() == null ? index + 1 : segment.getSegmentSort();
+            appendCandidates(result, segment, sourcePieceCount, perRepeatRatio, segmentSort);
         }
         return result;
     }
 
-    private static List<Integer> expandedTrimWidths(RewindPlanPreviewDTO.RewindSegmentDTO segment,
-                                                    int sourcePieceCount) {
-        List<Integer> result = new ArrayList<>();
-        int repeatCount = segment.getRepeatCount() == null ? 1 : segment.getRepeatCount();
-        for (int sourcePiece = 0; sourcePiece < sourcePieceCount; sourcePiece++) {
-            for (int repeat = 0; repeat < repeatCount; repeat++) {
-                for (RewindPlanPreviewDTO.RewindLayoutItemDTO item : segment.getLayoutItems()) {
+    private static void appendCandidates(List<TrimCandidate> target,
+                                         RewindPlanPreviewDTO.RewindSegmentDTO segment,
+                                         int sourcePieceCount, BigDecimal ratio, int segmentSort) {
+        int repeats = segment.getRepeatCount() == null ? 1 : segment.getRepeatCount();
+        List<RewindPlanPreviewDTO.RewindLayoutItemDTO> items = segment.getLayoutItems() == null
+                ? List.of() : segment.getLayoutItems();
+        for (int source = 0; source < sourcePieceCount; source++) {
+            for (int repeat = 0; repeat < repeats; repeat++) {
+                for (RewindPlanPreviewDTO.RewindLayoutItemDTO item : items) {
                     if (!ITEM_TRIM.equalsIgnoreCase(item.getItemType())) continue;
                     int quantity = item.getQuantity() == null ? 1 : item.getQuantity();
-                    for (int count = 0; count < quantity; count++) result.add(item.getWidth());
+                    for (int count = 0; count < quantity; count++) {
+                        target.add(new TrimCandidate(segmentSort, item.getWidth(),
+                                BigDecimal.valueOf(item.getWidth()).multiply(ratio), segment.getSources()));
+                    }
                 }
             }
         }
-        return result;
     }
 
-    private static List<BigDecimal> trimWeights(
-            List<Integer> widths, BigDecimal totalWeight, BigDecimal segmentRatio, int sourceWidth,
-            RewindPlanPreviewDTO.RewindSegmentDTO segment,
-            RewindWidthDifferenceCalculator.Decision decision, int sourcePieceCount) {
-        int repeatCount = segment.getRepeatCount() == null ? 1 : segment.getRepeatCount();
-        BigDecimal repeatRatio = segmentRatio.divide(BigDecimal.valueOf(repeatCount * (long) sourcePieceCount),
-                6, RoundingMode.HALF_UP);
-        List<BigDecimal> result = new ArrayList<>(widths.size());
-        BigDecimal targetWeight = decision.trimWeight().setScale(SCALE, RoundingMode.HALF_UP);
-        BigDecimal repeatWeight = totalWeight.multiply(repeatRatio);
-        BigDecimal rawCumulative = BigDecimal.ZERO;
-        BigDecimal allocated = BigDecimal.ZERO;
-        for (int index = 0; index < widths.size(); index++) {
-            rawCumulative = rawCumulative.add(proportional(repeatWeight, widths.get(index), sourceWidth))
-                    .add(decision.allocationShare());
-            BigDecimal roundedCumulative = rawCumulative.setScale(SCALE, RoundingMode.HALF_UP)
-                    .min(targetWeight);
-            BigDecimal weight = index == widths.size() - 1
-                    ? targetWeight.subtract(allocated)
-                    : roundedCumulative.subtract(allocated);
-            result.add(weight.setScale(SCALE, RoundingMode.HALF_UP));
-            allocated = allocated.add(weight);
+    private static List<FinishConfigSpecDTO> trimSpecs(List<TrimCandidate> candidates,
+                                                        List<BigDecimal> weights,
+                                                        FinishConfigSaveDTO dto,
+                                                        boolean weightPending) {
+        List<FinishConfigSpecDTO> result = new ArrayList<>(candidates.size());
+        for (int index = 0; index < candidates.size(); index++) {
+            TrimCandidate candidate = candidates.get(index);
+            FinishConfigSpecDTO spec = new FinishConfigSpecDTO();
+            spec.setItemType(ITEM_TRIM);
+            spec.setCount(1);
+            spec.setFinishWidth(candidate.width());
+            spec.setEstimateWeight(weightPending ? null : weights.get(index));
+            result.add(spec);
         }
         return result;
-    }
-
-    private static FinishConfigSpecDTO trimSpec(
-            int width, BigDecimal weight, FinishConfigSaveDTO dto,
-            RewindPlanPreviewDTO.RewindSegmentDTO segment) {
-        FinishConfigSpecDTO spec = new FinishConfigSpecDTO();
-        spec.setItemType(ITEM_TRIM);
-        spec.setCount(1);
-        spec.setFinishWidth(width);
-        spec.setEstimateWeight(weight);
-        if (Integer.valueOf(5).equals(dto.getRewindMode())) spec.setSources(segment.getSources());
-        return spec;
-    }
-
-    private static BigDecimal proportional(BigDecimal weight, int width, int sourceWidth) {
-        if (sourceWidth <= 0) return BigDecimal.ZERO.setScale(SCALE + 6);
-        return weight.multiply(BigDecimal.valueOf(width))
-                .divide(BigDecimal.valueOf(sourceWidth), SCALE + 6, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal totalWeight(FinishPreviewVO preview) {
-        return value(preview.getTotalEstimateWeight()).add(value(preview.getTotalTrimWeight()))
-                .add(value(preview.getCalculatedLossWeight())).setScale(SCALE, RoundingMode.HALF_UP);
     }
 
     private static BigDecimal value(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private record TrimCandidate(int segmentSort, int width, BigDecimal basis,
+                                 List<FinishConfigSpecDTO.FinishSourceDTO> sources) {
+    }
+
+    record TrimBuildResult(List<FinishConfigSpecDTO> specs,
+                           List<RewindFinishSourceAllocator.WeightedOutput> outputs) {
     }
 }

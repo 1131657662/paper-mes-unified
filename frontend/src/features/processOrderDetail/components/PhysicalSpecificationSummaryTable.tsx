@@ -1,7 +1,7 @@
 import { Empty, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { SortOrder } from 'antd/es/table/interface'
-import { formatGram, formatKg, formatMm, formatOptionalKg } from '../../../utils/numberFormatters'
+import { formatGram, formatKg, formatMm, formatOptionalKg, formatWholeKg } from '../../../utils/numberFormatters'
 import type { FinishedProductRow } from './finishedProductRows'
 import {
   buildPhysicalSpecificationGroups,
@@ -36,7 +36,7 @@ const columns: ColumnsType<PhysicalSpecificationGroup> = [
   { title: '门幅', dataIndex: 'width', align: 'right', width: 90, render: formatMm },
   { title: '类型', dataIndex: 'productType', width: 75, render: renderType },
   { title: '件数 / 回录', width: 115, align: 'right', render: (_, row) => `${row.count} 件 / ${row.recordedCount} 件` },
-  { title: '预估重量', dataIndex: 'estimateWeight', width: 110, align: 'right', render: formatKg },
+  { title: '预估重量', dataIndex: 'estimateWeight', width: 110, align: 'right', render: formatWholeKg },
   { title: '实际重量', dataIndex: 'actualWeight', width: 110, align: 'right', render: formatOptionalKg },
   { title: '差异', dataIndex: 'difference', width: 110, align: 'right', render: renderDifference },
 ]
@@ -86,7 +86,7 @@ function renderSummary(totals: PhysicalSpecificationTotals) {
       <Table.Summary.Cell index={0}>实物合计</Table.Summary.Cell>
       <Table.Summary.Cell index={1} colSpan={3} />
       <Table.Summary.Cell index={4} align="right">{totals.count} 件 / {totals.recordedCount} 件</Table.Summary.Cell>
-      <Table.Summary.Cell index={5} align="right">{formatKg(totals.estimateWeight)}</Table.Summary.Cell>
+      <Table.Summary.Cell index={5} align="right">{formatWholeKg(totals.estimateWeight)}</Table.Summary.Cell>
       <Table.Summary.Cell index={6} align="right">{formatOptionalKg(totals.actualWeight)}</Table.Summary.Cell>
       <Table.Summary.Cell index={7} align="right">{renderDifference(totals.difference)}</Table.Summary.Cell>
     </Table.Summary.Row>

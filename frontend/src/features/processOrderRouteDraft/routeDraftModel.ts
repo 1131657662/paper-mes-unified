@@ -19,6 +19,7 @@ import {
   routeStepName,
   sourceRollFromOutput,
 } from '../processOrderDetail/routeConfigDetail'
+import { rollTotalWeight } from '../processOrderDetail/routeConfigSource'
 
 export interface RouteDraftStage {
   id: string
@@ -324,7 +325,7 @@ function sourceRows(rows: DetailRouteOutputRow[], keys: string[]) {
 
 export function routeOriginalSource(roll: OriginalRoll): DetailRouteOutputRow {
   return {
-    estimateWeight: Number(roll.totalWeight ?? Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)),
+    estimateWeight: rollTotalWeight(roll),
     finishCoreDiameter: roll.coreDiameter,
     finishDiameter: roll.originalDiameter,
     finishWidth: Number(roll.originalWidth ?? 1),

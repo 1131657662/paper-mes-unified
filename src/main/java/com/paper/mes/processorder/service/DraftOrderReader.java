@@ -197,9 +197,22 @@ public class DraftOrderReader {
 
     private BigDecimal totalWeight(List<OriginalRoll> rolls) {
         return rolls.stream()
-                .map(OriginalRoll::getTotalWeight)
+                .map(this::effectiveOriginalWeight)
                 .filter(value -> value != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal effectiveOriginalWeight(OriginalRoll roll) {
+        if (roll.getActualWeight() != null && roll.getActualWeight().signum() > 0) {
+            return roll.getActualWeight();
+        }
+        if ("UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
+        if (roll.getTotalWeight() != null && roll.getTotalWeight().signum() > 0) {
+            return roll.getTotalWeight();
+        }
+        if (roll.getRollWeight() == null || roll.getRollWeight().signum() <= 0) return null;
+        return roll.getRollWeight().multiply(BigDecimal.valueOf(
+                roll.getPieceNum() == null ? 1 : roll.getPieceNum()));
     }
 
     private Integer currentStep(ProcessOrder order) {

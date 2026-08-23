@@ -3,8 +3,8 @@ import type { ColumnsType } from 'antd/es/table'
 import type { SortOrder } from 'antd/es/table/interface'
 import { FINISH_SOURCE_TYPE, FINISH_STATUS, ROLL_NO_STATUS } from '../../../constants/processOrder'
 import type { FinishProductionVO, FinishSourceVO } from '../../../types/processOrder'
-import { formatGram, formatKg, formatMm, formatOptionalKg, formatPercent } from '../../../utils/numberFormatters'
-import { calculateFinishedProductTotals, type FinishedProductRow } from './finishedProductRows'
+import { formatGram, formatKg, formatMm, formatOptionalKg, formatPercent, formatWholeKg } from '../../../utils/numberFormatters'
+import { calculateFinishedProductTotals, rowEstimateWeight, type FinishedProductRow } from './finishedProductRows'
 import type { FinishedProductsSortController } from './useFinishedProductsSortState'
 import { sortPhysicalItemRows, type PhysicalItemsSortField, type PhysicalItemsSortSpec } from './finishedProductsSorting'
 
@@ -38,9 +38,9 @@ const columns: ColumnsType<FinishedProductRow> = [
   { title: '成品规格', width: 230, render: (_, row) => renderSpec(row.finish) },
   { title: '来源母卷 / 分摊', width: 270, render: (_, row) => renderSources(row.sources) },
   { title: '类型 / 状态', width: 210, render: (_, row) => renderStatus(row.finish) },
-  { title: '预估重量', align: 'right', width: 115, render: (_, row) => formatOptionalKg(row.finish.estimateWeight) },
+  { title: '预估重量', align: 'right', width: 115, render: (_, row) => rowEstimateWeight(row) == null ? '-' : formatWholeKg(rowEstimateWeight(row)) },
   { title: '实际重量', align: 'right', width: 115, render: (_, row) => formatOptionalKg(row.finish.actualWeight) },
-  { title: '差异', align: 'right', width: 120, render: (_, row) => renderDifference(row.finish) },
+  { title: '差异', align: 'right', width: 120, render: (_, row) => renderDifference(row.finish, rowEstimateWeight(row)) },
 ]
 
 const physicalItemFields: PhysicalItemsSortField[] = ['finishRollNo', 'specification', 'sourceMotherRoll', 'status', 'estimateWeight', 'actualWeight', 'difference']
@@ -132,9 +132,9 @@ function typeColor(finish: FinishProductionVO) {
   return 'success'
 }
 
-function renderDifference(finish: FinishProductionVO) {
-  if (finish.actualWeight == null || finish.estimateWeight == null) return '-'
-  const difference = finish.actualWeight - finish.estimateWeight
+function renderDifference(finish: FinishProductionVO, estimateWeight?: number) {
+  if (finish.actualWeight == null || estimateWeight == null) return '-'
+  const difference = finish.actualWeight - estimateWeight
   const className = difference > 0 ? 'is-positive' : difference < 0 ? 'is-negative' : ''
   return <span className={className}>{signedKg(difference)}</span>
 }
@@ -151,7 +151,7 @@ function renderSummary(totals: ReturnType<typeof calculateFinishedProductTotals>
       <Table.Summary.Cell index={1}>可交付 {totals.deliverableCount} 件</Table.Summary.Cell>
       <Table.Summary.Cell index={2}>已回录 {totals.recordedCount} 件</Table.Summary.Cell>
       <Table.Summary.Cell index={3} />
-      <Table.Summary.Cell index={4} align="right">{formatKg(totals.estimateWeight)}</Table.Summary.Cell>
+      <Table.Summary.Cell index={4} align="right">{formatWholeKg(totals.estimateWeight)}</Table.Summary.Cell>
       <Table.Summary.Cell index={5} align="right">{formatKg(totals.actualWeight)}</Table.Summary.Cell>
       <Table.Summary.Cell index={6} align="right">{signedKg(totals.difference)}</Table.Summary.Cell>
     </Table.Summary.Row>

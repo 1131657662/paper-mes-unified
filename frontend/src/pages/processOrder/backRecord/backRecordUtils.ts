@@ -14,6 +14,7 @@ import type {
 } from '../../../types/processOrder'
 import { buildOnSiteOutputSubmission, toLegacyTrimDTOs, type OnSiteOutputRecordValues } from './backRecordOnSiteOutputModel'
 import { storedEstimatedWeight, storedMeasuredWeight } from './backRecordSourceRolls'
+import { roundWeightTotal } from '../../../utils/integerWeightAllocation'
 export type { OnSiteOutputRecordValues } from './backRecordOnSiteOutputModel'
 
 export interface RollRecordValues {
@@ -213,7 +214,7 @@ export function fillRollActuals(detail: ProcessOrderDetailVO): BackRecordFormVal
 
 export function fillFinishActuals(detail: ProcessOrderDetailVO): BackRecordFormValues['finishes'] {
   return Object.fromEntries(activeFinishRolls(detail).map((finish) => [finish.uuid, {
-    actualWeight: finish.actualWeight ?? (finish.isSpare === 1 ? undefined : finish.estimateWeight),
+    actualWeight: finish.actualWeight,
     scrapWeight: finish.scrapWeight,
     isRemain: finish.isRemain ?? 0,
     isAbnormal: finish.isAbnormal ?? 0,
@@ -279,9 +280,9 @@ function toRollDTO(roll: OriginalRoll, values?: RollRecordValues): BackRecordRol
 
 function nominalWeight(roll: OriginalRoll): number | undefined {
   if (roll.weightStatus === 'UNKNOWN') return undefined
-  if (roll.totalWeight != null && roll.totalWeight > 0) return roll.totalWeight
+  if (roll.totalWeight != null && roll.totalWeight > 0) return roundWeightTotal(roll.totalWeight)
   if (roll.rollWeight == null || roll.rollWeight <= 0) return undefined
-  return roll.rollWeight * (roll.pieceNum ?? 1)
+  return roundWeightTotal(roll.rollWeight * (roll.pieceNum ?? 1))
 }
 
 function toFinishDTO(
@@ -386,7 +387,7 @@ function toStepDTO(step: ProcessStep, values?: StepRecordValues): BackRecordStep
 }
 
 function positive(value?: number) {
-  return value != null && value > 0
+  return value != null && Number.isFinite(value) && value > 0
 }
 
 function validWidth(value?: number) {

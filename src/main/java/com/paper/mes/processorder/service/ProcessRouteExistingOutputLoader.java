@@ -44,9 +44,9 @@ public class ProcessRouteExistingOutputLoader {
         }
         return finishOriginalRelMapper.selectList(new LambdaQueryWrapper<FinishOriginalRel>()
                         .eq(FinishOriginalRel::getOrderUuid, context.order().getUuid())
-                        .eq(FinishOriginalRel::getOriginalUuid, context.roll().getUuid())
                         .in(FinishOriginalRel::getFinishUuid, finishUuids))
                 .stream()
+                .filter(relation -> context.roll().getUuid().equals(relation.getOriginalUuid()))
                 .map(FinishOriginalRel::getFinishUuid)
                 .collect(Collectors.toSet());
     }

@@ -4,6 +4,7 @@ import type { ProcessStepDTO } from '../../../api/processOrder'
 import type { CustomerProcessPrice } from '../../../types/customer'
 import type { ProcessStep } from '../../../types/processOrder'
 import type { RollDraft } from '../types'
+import { rollTotalWeight } from '../../processOrderDetail/routeConfigSource'
 import {
   buildServiceStepBatch,
   resolveServiceApplyTargets,
@@ -162,5 +163,5 @@ function rollLabel(roll: RollDraft) {
 }
 
 function totalWeight(roll: RollDraft) {
-  return Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)
+  return rollTotalWeight(roll)
 }

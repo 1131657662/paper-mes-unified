@@ -7,6 +7,7 @@ import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
 import { useDraftServiceStepWrites } from '../hooks/useDraftServiceStepWrites'
 import { serviceEditorActionBlockedReason } from '../serviceEditorGuard'
 import type { RollDraft } from '../types'
+import { rollTotalWeight } from '../../processOrderDetail/routeConfigSource'
 import {
   resolveServiceApplyTargets,
   serviceStepsForRoll,
@@ -180,7 +181,7 @@ function currentRollLabel(roll: RollDraft) {
 }
 
 function totalWeight(roll: RollDraft) {
-  return Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)
+  return rollTotalWeight(roll)
 }
 
 function stepInitialValues(step?: ProcessStep): (ProcessStepDTO & { uuid?: string }) | undefined {

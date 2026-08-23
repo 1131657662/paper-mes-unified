@@ -2,7 +2,7 @@ import { Alert, Button, Form, Input, InputNumber, Space, Tag, Typography } from 
 import { SwapOutlined } from '@ant-design/icons'
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import { buildConditionText, buildLayoutText } from '../../../components/processOrder/shared/detailHelpers'
-import { formatKg } from '../../../features/processOrderDetail/orderDetailUtils'
+import { formatKg, formatProductionEstimateKg } from '../../../features/processOrderDetail/orderDetailUtils'
 import { formatGram, formatMm } from '../../../utils/numberFormatters'
 import type { ProcessStep } from '../../../types/processOrder'
 import BackRecordFinishEntryList from './BackRecordFinishEntryList'
@@ -15,6 +15,7 @@ import type { BackRecordSourceOption } from './BackRecordFinishFields'
 import BackRecordCurrentToolbar from './BackRecordCurrentToolbar'
 import BackRecordMergeSummary from './BackRecordMergeSummary'
 import { requiresMeasuredSourceWeights } from './backRecordWeightPolicy'
+import { sourceCalculationWeight } from './backRecordSourceRolls'
 
 interface Props {
   item: BackRecordWorkItem
@@ -66,7 +67,7 @@ function RollActualPanel({
         <Fact label="批次" value={roll.batchNo || '-'} />
         <Fact label="件数" value={`${roll.pieceNum ?? 1} 件`} />
         <Fact label="标称" value={`${roll.paperName || '-'} / ${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}`} />
-        <Fact label="来料重量" value={roll.weightStatus === 'UNKNOWN' || roll.rollWeight == null ? '未知' : formatKg(roll.rollWeight * (roll.pieceNum ?? 1))} />
+        <Fact label="来料重量" value={sourceWeightText(roll)} />
         <Fact label="重量状态" value={roll.weightStatus === 'MEASURED' ? '实测' : roll.weightStatus === 'ESTIMATED' ? '参考（未实测）' : '未知（无参考）'} />
         <Fact label="加工方式" value={PROCESS_MODE[roll.processMode ?? 1] ?? '-'} />
       </div>
@@ -89,6 +90,13 @@ function RollActualPanel({
       </div>
     </section>
   )
+}
+
+function sourceWeightText(roll: NonNullable<BackRecordWorkItem['roll']>) {
+  if (roll.actualWeight != null && roll.actualWeight > 0) return formatKg(roll.actualWeight)
+  if (roll.weightStatus === 'UNKNOWN') return '未知'
+  const source = sourceCalculationWeight(roll)
+  return source == null ? '未知' : formatProductionEstimateKg(source)
 }
 
 function ProcessPanel({

@@ -88,7 +88,7 @@ final class DirectShipFinishMatcher {
                                             List<FinishRoll> available) {
         for (OriginalRoll source : sources) {
             List<FinishRoll> current = assigned.computeIfAbsent(source.getUuid(), ignored -> new ArrayList<>());
-            int remaining = DirectShipPiecePlan.from(source).count() - current.size();
+            int remaining = DirectShipPiecePlan.pieceCount(source) - current.size();
             if (remaining <= 0) continue;
             boolean uniqueRollNo = StringUtils.hasText(source.getRollNo())
                     && sources.stream().filter(row -> source.getRollNo().equals(row.getRollNo())).count() == 1;
@@ -107,7 +107,7 @@ final class DirectShipFinishMatcher {
                                              Map<String, List<FinishRoll>> assigned) {
         for (OriginalRoll source : sources) {
             if (assigned.getOrDefault(source.getUuid(), List.of()).size()
-                    > DirectShipPiecePlan.from(source).count()) {
+                    > DirectShipPiecePlan.pieceCount(source)) {
                 throw new BusinessException("直发成品数量超过母卷件数，请先修复来源数据");
             }
         }

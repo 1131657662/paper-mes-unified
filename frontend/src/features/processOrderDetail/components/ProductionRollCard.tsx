@@ -15,7 +15,7 @@ import {
 import { PROCESS_MODE } from '../../../constants/processOrder'
 import type { RollProductionVO } from '../../../types/processOrder'
 import { formatGram, formatMm } from '../../../utils/numberFormatters'
-import { formatProductionKg, sumProductionEstimateWeight } from '../orderDetailUtils'
+import { formatProductionEstimateKg, sumProductionEstimateWeight } from '../orderDetailUtils'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
 import ProductionFinishColumn from './ProductionFinishColumn'
 import ProductionRollSourceColumn from './ProductionRollSourceColumn'
@@ -41,7 +41,7 @@ export default function ProductionRollCard({
   row,
 }: Props) {
   const trimWidth = calcTrimWidth(row.mainProduction)
-  const trimWeight = trimWeightFromFinishes(row.finishes)
+  const trimWeight = trimWeightFromFinishes(row.finishes, row.mainProduction, row.rollProductions)
   const spareCount = row.finishes.filter(isActiveSpareProductionFinish).length
   const finishCount = row.finishes.filter(isDeliverableProductionFinish).length
   const originalUuid = resolveOriginalUuid(row)
@@ -64,11 +64,12 @@ export default function ProductionRollCard({
         />
         <PlanColumn row={row} trimWidth={trimWidth} trimWeight={trimWeight} />
         <ProductionFinishColumn
-          estimateWeight={sumProductionEstimateWeight(row.mainProduction)}
-          groups={groupFinishes(row.finishes)}
+          estimateWeight={sumProductionEstimateWeight(row.mainProduction, row.rollProductions)}
+          groups={groupFinishes(row.finishes, row.mainProduction, row.rollProductions)}
           finishes={row.finishes}
           finishCount={finishCount}
           production={row.mainProduction}
+          sourceProductions={row.rollProductions}
           spareCount={spareCount}
         />
       </div>
@@ -149,7 +150,7 @@ function PlanColumn({ row, trimWidth, trimWeight }: Props & { trimWidth: number;
       {(trimWidth > 0 || trimWeight > 0) && (
         <div className="production-roll__line">
           修边 {trimWidth > 0 ? formatMm(trimWidth) : '-'}
-          {trimWeight > 0 ? ` / ${formatProductionKg(trimWeight, production)}` : ''}
+          {trimWeight > 0 ? ` / ${formatProductionEstimateKg(trimWeight)}` : ''}
         </div>
       )}
       <AdditionalSteps row={row} />

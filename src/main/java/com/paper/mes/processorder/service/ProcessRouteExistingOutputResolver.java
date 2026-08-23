@@ -55,7 +55,7 @@ public class ProcessRouteExistingOutputResolver {
             if (output == null) {
                 missing.put(key, finish);
             } else {
-                validateUsable(output, key, finishesByKey);
+                validateUsable(output, key, finishesByKey, context);
             }
             result.put(key, output);
         }
@@ -128,7 +128,7 @@ public class ProcessRouteExistingOutputResolver {
         }
         Set<String> relatedFinishUuids = loader.relatedFinishUuids(context, missing.values());
         missing.values().forEach(finish -> requireFinishBelongsToRoll(relatedFinishUuids, finish));
-        missing.forEach(this::validateFinishUsable);
+        missing.forEach((key, finish) -> validateFinishUsable(key, finish, context));
         ProcessStep step = loader.latestStep(context);
         for (Map.Entry<String, FinishRoll> entry : missing.entrySet()) {
             ProcessStageOutput output = buildSourceOutput(context, entry.getKey(), entry.getValue(), step);
@@ -167,22 +167,44 @@ public class ProcessRouteExistingOutputResolver {
         output.setRemark(finish.getFinishRollNo());
         return output;
     }
-    private void validateUsable(ProcessStageOutput output, String key, Map<String, FinishRoll> finishesByKey) {
+    private void validateUsable(ProcessStageOutput output, String key, Map<String, FinishRoll> finishesByKey,
+                                 ProcessRouteContext context) {
         if (output.getOutputStatus() != null && output.getOutputStatus() == OUTPUT_CONSUMED) {
             throw new BusinessException("该产物已经进入下道工艺，不能重复加工：" + key);
         }
         if (output.getOutputStatus() != null && output.getOutputStatus() == OUTPUT_VOID) {
             throw new BusinessException("该产物已作废，不能继续加工：" + key);
         }
+        if (isTrimOutput(output)) {
+            throw new BusinessException("修边/余料不能作为后续工艺来源：" + key);
+        }
+        if (!hasPositiveWeight(output.getActualWeight()) && isUnknown(context.roll())) {
+            throw new BusinessException("来源母卷重量未知，不能使用历史阶段预估继续加工：" + key);
+        }
         if (!StringUtils.hasText(output.getFinishRollUuid())) {
             return;
         }
         FinishRoll finish = finishesByKey.get(output.getFinishRollUuid());
-        validateFinishUsable(key, finish);
+        if (finish == null) {
+            throw new BusinessException("阶段产物关联的成品卷不存在，不能继续加工：" + key);
+        }
+        validateFinishUsable(key, finish, context);
     }
-    private void validateFinishUsable(String key, FinishRoll finish) {
-        if (finish != null && finish.getActualWeight() != null) {
+    private void validateFinishUsable(String key, FinishRoll finish, ProcessRouteContext context) {
+        if (finish == null) {
+            throw new BusinessException("来源成品卷不存在，不能继续加工：" + key);
+        }
+        if (finish != null && hasPositiveWeight(finish.getActualWeight())) {
             throw new BusinessException("已有回录实重的成品不能再追加后续工艺：" + key);
+        }
+        if (Integer.valueOf(1).equals(finish.getIsRemain())) {
+            throw new BusinessException("修边/余料不能作为后续工艺来源：" + key);
+        }
+        if (Integer.valueOf(1).equals(finish.getIsSpare())) {
+            throw new BusinessException("备用卷不能作为后续工艺来源：" + key);
+        }
+        if (finish != null && !hasPositiveWeight(finish.getActualWeight()) && isUnknown(context.roll())) {
+            throw new BusinessException("来源母卷重量未知，不能使用历史成品预估继续加工：" + key);
         }
         if (finish != null && finish.getRollNoStatus() != null && finish.getRollNoStatus() == ROLL_NO_VOID) {
             throw new BusinessException("已作废的成品号不能作为后续工艺来源：" + key);
@@ -190,5 +212,22 @@ public class ProcessRouteExistingOutputResolver {
         if (FinishRollStatusPolicy.isScrapped(finish)) {
             throw new BusinessException("已报废成品不能作为后续工艺来源：" + key);
         }
+    }
+
+    private boolean isUnknown(com.paper.mes.processorder.entity.OriginalRoll roll) {
+        return roll != null && "UNKNOWN".equalsIgnoreCase(roll.getWeightStatus());
+    }
+
+    private boolean hasPositiveWeight(java.math.BigDecimal weight) {
+        return weight != null && weight.signum() > 0;
+    }
+
+    private boolean isTrimOutput(ProcessStageOutput output) {
+        return "修边/余料".equals(output.getRemark())
+                || "修边/余料".equals(output.getPaperName())
+                || "修边".equals(output.getPaperName())
+                || "切边".equals(output.getPaperName())
+                || "修边".equals(output.getOutputNo())
+                || "切边".equals(output.getOutputNo());
     }
 }

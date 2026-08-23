@@ -7,6 +7,7 @@ import type {
 } from '../../types/processOrder'
 import { DEFAULT_WIDTH_DIFFERENCE_POLICY, processModeRequiresMain } from '../../constants/processOrder'
 import type { RollDraft } from './types'
+import { rollTotalWeight } from '../processOrderDetail/routeConfigSource'
 
 export function newRollDraft(defaults: Partial<RollDraft> = {}): RollDraft {
   return {
@@ -137,7 +138,7 @@ export function baseInfoFromOrder(order: { [key: string]: unknown }): DraftOrder
 }
 
 export function totalWeight(rolls: RollDraft[]) {
-  return rolls.reduce((sum, roll) => sum + Number(roll.rollWeight ?? 0) * (roll.pieceNum ?? 1), 0)
+  return rolls.reduce((sum, roll) => sum + rollTotalWeight(roll), 0)
 }
 
 export function normalizeBaseInfo(values: DraftOrderBaseDTO): DraftOrderBaseDTO {

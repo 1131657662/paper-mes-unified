@@ -53,9 +53,30 @@ class ProcessOrderServiceImplRewindPreviewTest {
         assertEquals(3, preview.getFinishCount());
         assertEquals(0, preview.getTrimCount());
         assertEquals(20, preview.getWidthDifference());
-        assertEquals(new BigDecimal("10.667"), preview.getCalculatedLossWeight());
-        assertEquals(BigDecimal.ZERO.setScale(3), preview.getTotalTrimWeight());
-        assertEquals(new BigDecimal("789.333"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("11"), preview.getCalculatedLossWeight());
+        assertEquals(BigDecimal.ZERO.setScale(0), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("789"), preview.getTotalEstimateWeight());
+    }
+
+    @Test
+    void buildRewindPreview_equalWidthPiecesUsesIntegerClosedAllocation() {
+        OriginalRoll source = roll();
+        source.setOriginalWidth(2400);
+        source.setRollWeight(new BigDecimal("1862"));
+        RewindPlanPreviewDTO dto = new RewindPlanPreviewDTO();
+        dto.setRewindMode(1);
+        dto.setWidthDifferencePolicy("LOSS");
+        dto.setSegments(List.of(segment(item("FINISH", 800, 3))));
+
+        FinishPreviewVO preview = ReflectionTestUtils.invokeMethod(
+                service(), "buildRewindPreview", "order-1", source, dto);
+
+        assertEquals(List.of(new BigDecimal("621"), new BigDecimal("621"), new BigDecimal("620")),
+                preview.getFinishes().stream()
+                        .map(FinishPreviewVO.FinishItemPreview::getEstimateWeight).toList());
+        assertEquals(new BigDecimal("1862"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("1862"), preview.getTotalEstimateWeight()
+                .add(preview.getTotalTrimWeight()).add(preview.getCalculatedLossWeight()));
     }
 
     @Test
@@ -70,9 +91,9 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 service(), "buildRewindPreview", "order-1", roll(), dto);
 
         assertEquals(20, preview.getWidthDifference());
-        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight());
-        assertEquals(BigDecimal.ZERO.setScale(3), preview.getTotalTrimWeight());
-        assertEquals(BigDecimal.ZERO.setScale(3), preview.getCalculatedLossWeight());
+        assertEquals(new BigDecimal("800"), preview.getTotalEstimateWeight());
+        assertEquals(BigDecimal.ZERO.setScale(0), preview.getTotalTrimWeight());
+        assertEquals(BigDecimal.ZERO.setScale(0), preview.getCalculatedLossWeight());
     }
 
     @Test
@@ -81,9 +102,9 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 item("FINISH", 1400, 1), item("TRIM", 80, 1)));
 
         assertEquals(20, preview.getWidthDifference());
-        assertEquals(new BigDecimal("751.999"), preview.getTotalEstimateWeight());
-        assertEquals(new BigDecimal("48.001"), preview.getTotalTrimWeight());
-        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight()
+        assertEquals(new BigDecimal("757"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("43"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("800"), preview.getTotalEstimateWeight()
                 .add(preview.getTotalTrimWeight()));
     }
 
@@ -92,10 +113,10 @@ class ProcessOrderServiceImplRewindPreviewTest {
         FinishPreviewVO preview = previewWithPolicy("LOSS", segment(
                 item("FINISH", 1400, 1), item("TRIM", 80, 1)));
 
-        assertEquals(new BigDecimal("746.666"), preview.getTotalEstimateWeight());
-        assertEquals(new BigDecimal("42.667"), preview.getTotalTrimWeight());
-        assertEquals(new BigDecimal("10.667"), preview.getCalculatedLossWeight());
-        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight()
+        assertEquals(new BigDecimal("746"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("43"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("11"), preview.getCalculatedLossWeight());
+        assertEquals(new BigDecimal("800"), preview.getTotalEstimateWeight()
                 .add(preview.getTotalTrimWeight()).add(preview.getCalculatedLossWeight()));
     }
 
@@ -107,7 +128,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
         FinishPreviewVO preview = previewWithPolicy("REMAINDER", segment(
                 item("FINISH", 1400, 1), item("TRIM", 100, 1)));
         assertEquals(0, preview.getWidthDifference());
-        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight()
+        assertEquals(new BigDecimal("800"), preview.getTotalEstimateWeight()
                 .add(preview.getTotalTrimWeight()));
     }
 
@@ -123,9 +144,9 @@ class ProcessOrderServiceImplRewindPreviewTest {
         FinishPreviewVO preview = ReflectionTestUtils.invokeMethod(
                 service(), "buildRewindPreview", "order-1", roll(), dto);
 
-        assertEquals(new BigDecimal("799.466"), preview.getTotalEstimateWeight());
-        assertEquals(new BigDecimal("0.534"), preview.getTotalTrimWeight());
-        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight()
+        assertEquals(new BigDecimal("799"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("1"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("800"), preview.getTotalEstimateWeight()
                 .add(preview.getTotalTrimWeight()).add(preview.getCalculatedLossWeight()));
     }
 
@@ -141,8 +162,30 @@ class ProcessOrderServiceImplRewindPreviewTest {
 
         assertEquals(2, preview.getFinishCount());
         assertEquals(0, preview.getTrimCount());
-        assertEquals(new BigDecimal("0.000"), preview.getTotalTrimWeight());
-        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("0"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("800"), preview.getTotalEstimateWeight());
+    }
+
+    @Test
+    void mergedSourceTotalWeightHonorsPartialConsumeRatios() {
+        OriginalRollMapper mapper = mock(OriginalRollMapper.class);
+        OriginalRoll first = roll();
+        first.setUuid("source-a");
+        first.setRollWeight(new BigDecimal("1000"));
+        OriginalRoll second = roll();
+        second.setUuid("source-b");
+        second.setRollWeight(new BigDecimal("1000"));
+        org.mockito.Mockito.when(mapper.selectList(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of(first, second));
+        ProcessOrderServiceImpl service = serviceWithOriginalRollMapper(mapper);
+
+        FinishConfigSpecDTO spec = spec(800, 1);
+        spec.setSources(List.of(source("source-a", "50"), source("source-b", "50")));
+
+        BigDecimal total = ReflectionTestUtils.invokeMethod(service, "calcSourceTotalWeight",
+                "order-1", List.of(spec));
+
+        assertEquals(new BigDecimal("1000.00"), total);
     }
 
     @Test
@@ -152,7 +195,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
         FinishPreviewVO preview = ReflectionTestUtils.invokeMethod(
                 service(), "buildRewindPreview", "order-1", roll(), dto);
 
-        assertEquals(List.of(new BigDecimal("400.000"), new BigDecimal("400.000")),
+        assertEquals(List.of(new BigDecimal("400"), new BigDecimal("400")),
                 preview.getFinishes().stream()
                         .map(FinishPreviewVO.FinishItemPreview::getEstimateWeight).toList());
     }
@@ -175,8 +218,8 @@ class ProcessOrderServiceImplRewindPreviewTest {
         FinishPreviewVO preview = ReflectionTestUtils.invokeMethod(
                 service(), "buildRewindPreview", "order-1", roll(), dto);
 
-        assertEquals(List.of(new BigDecimal("200.000"), new BigDecimal("200.000"),
-                        new BigDecimal("400.000")),
+        assertEquals(List.of(new BigDecimal("200"), new BigDecimal("200"),
+                        new BigDecimal("400")),
                 preview.getFinishes().stream()
                         .map(FinishPreviewVO.FinishItemPreview::getEstimateWeight).toList());
         assertEquals(List.of(new BigDecimal("0.250000"), new BigDecimal("0.250000"),
@@ -216,7 +259,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
 
         assertTrue(preview.getFinishes().getFirst().getEstimateWeight()
                 .compareTo(preview.getFinishes().getLast().getEstimateWeight()) < 0);
-        assertEquals(new BigDecimal("800.000"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("800"), preview.getTotalEstimateWeight());
     }
 
     @Test
@@ -297,7 +340,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
         FinishConfigSpecDTO trim = specs.get(3);
         assertEquals("TRIM", trim.getItemType());
         assertEquals(20, trim.getFinishWidth());
-        assertEquals(new BigDecimal("10.667"), trim.getEstimateWeight());
+        assertEquals(new BigDecimal("11"), trim.getEstimateWeight());
     }
 
     @Test
@@ -316,7 +359,7 @@ class ProcessOrderServiceImplRewindPreviewTest {
         List<FinishConfigSpecDTO> trims = specs.stream()
                 .filter(spec -> "TRIM".equals(spec.getItemType())).toList();
         assertEquals(2, trims.size());
-        assertEquals(new BigDecimal("10.667"), trims.stream()
+        assertEquals(new BigDecimal("11"), trims.stream()
                 .map(FinishConfigSpecDTO::getEstimateWeight).reduce(BigDecimal.ZERO, BigDecimal::add));
     }
 
@@ -331,8 +374,8 @@ class ProcessOrderServiceImplRewindPreviewTest {
 
         assertEquals(8, preview.getFinishCount());
         assertEquals(8, preview.getTrimCount());
-        assertEquals(new BigDecimal("746.667"), preview.getFinishes().getFirst().getEstimateWeight());
-        assertEquals(new BigDecimal("6400.000"), preview.getTotalEstimateWeight()
+        assertEquals(new BigDecimal("747"), preview.getFinishes().getFirst().getEstimateWeight());
+        assertEquals(new BigDecimal("6400"), preview.getTotalEstimateWeight()
                 .add(preview.getTotalTrimWeight()));
     }
 
@@ -348,13 +391,13 @@ class ProcessOrderServiceImplRewindPreviewTest {
 
         assertEquals(8, preview.getFinishCount());
         assertEquals(List.of(
-                new BigDecimal("800.000"), new BigDecimal("800.000"),
-                new BigDecimal("800.000"), new BigDecimal("800.000"),
-                new BigDecimal("800.000"), new BigDecimal("800.000"),
-                new BigDecimal("800.000"), new BigDecimal("800.000")),
+                new BigDecimal("800"), new BigDecimal("800"),
+                new BigDecimal("800"), new BigDecimal("800"),
+                new BigDecimal("800"), new BigDecimal("800"),
+                new BigDecimal("800"), new BigDecimal("800")),
                 preview.getFinishes().stream()
                         .map(FinishPreviewVO.FinishItemPreview::getEstimateWeight).toList());
-        assertEquals(new BigDecimal("6400.000"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("6400"), preview.getTotalEstimateWeight());
     }
 
     @Test
@@ -457,6 +500,17 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 service(), "validateSameSpecRewind", sameSpecPlan(1500, 48, 6), roll));
     }
 
+    @Test
+    void validateRewindSegmentSources_rejectsCurrentPlanOwnerAsSource() {
+        OriginalRoll owner = roll();
+        RewindPlanPreviewDTO.RewindSegmentDTO segment = segment(item("FINISH", 750, 2));
+        segment.setSources(List.of(source(owner.getUuid(), "100")));
+
+        assertThrows(BusinessException.class, () -> ReflectionTestUtils.invokeMethod(
+                service(), "validateRewindSegmentSources", List.of(segment),
+                Map.of(owner.getUuid(), owner), owner));
+    }
+
     private RewindPlanPreviewDTO sameSpecPlan(int width, int diameter, int coreDiameter) {
         RewindPlanPreviewDTO.RewindSegmentDTO segment = segment(item("FINISH", width, 1));
         segment.setTargetDiameter(diameter);
@@ -546,8 +600,12 @@ class ProcessOrderServiceImplRewindPreviewTest {
     }
 
     private ProcessOrderServiceImpl service() {
+        return serviceWithOriginalRollMapper(mock(OriginalRollMapper.class));
+    }
+
+    private ProcessOrderServiceImpl serviceWithOriginalRollMapper(OriginalRollMapper originalRollMapper) {
         return new ProcessOrderServiceImpl(
-                mock(OriginalRollMapper.class),
+                originalRollMapper,
                 mock(FinishRollMapper.class),
                 mock(ProcessStepMapper.class),
                 mock(ProcessParamMapper.class),
@@ -584,5 +642,12 @@ class ProcessOrderServiceImplRewindPreviewTest {
                 null,
                 new com.paper.mes.processorder.service.ProcessOrderSettlementPolicy(),
                 mock(InventoryLedgerBusinessRecorder.class));
+    }
+
+    private FinishConfigSpecDTO.FinishSourceDTO source(String uuid, String ratio) {
+        FinishConfigSpecDTO.FinishSourceDTO source = new FinishConfigSpecDTO.FinishSourceDTO();
+        source.setOriginalUuid(uuid);
+        source.setConsumeRatio(new BigDecimal(ratio));
+        return source;
     }
 }

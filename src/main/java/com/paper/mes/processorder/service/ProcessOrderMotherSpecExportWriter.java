@@ -1,11 +1,13 @@
 package com.paper.mes.processorder.service;
 
+import com.paper.mes.processorder.calc.IntegerWeightAllocator;
 import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -144,8 +146,16 @@ final class ProcessOrderMotherSpecExportWriter {
                 ? List.of() : finish.getSources();
         for (ProcessOrderDetailVO.FinishSourceVO source : sources) {
             if (Objects.equals(originalUuid, source.getOriginalUuid())) {
+                Object canonical = fallbackWeights.get(finish.getUuid());
+                if ("UNKNOWN".equalsIgnoreCase(source.getWeightStatus())) return null;
+                if (canonical != null && source.getShareRatio() != null
+                        && source.getShareRatio().signum() > 0) {
+                    return IntegerWeightAllocator.roundTotal(new BigDecimal(canonical.toString())
+                            .multiply(source.getShareRatio()).movePointLeft(2));
+                }
+                if (canonical != null && sources.size() == 1) return canonical;
                 if (source.getShareWeight() != null) {
-                    return source.getShareWeight();
+                    return IntegerWeightAllocator.roundTotal(source.getShareWeight());
                 }
                 return sources.size() == 1 ? fallbackWeight(finish, fallbackWeights) : null;
             }
@@ -155,14 +165,19 @@ final class ProcessOrderMotherSpecExportWriter {
 
     private static Object fallbackWeight(ProcessOrderDetailVO.FinishProductionVO finish,
                                          Map<String, ?> fallbackWeights) {
+        Object byUuid = fallbackWeights.get(finish.getUuid());
+        if (fallbackWeights.containsKey(finish.getUuid())) return byUuid;
+        if (byUuid != null) return byUuid;
+        Object byRollNo = fallbackWeights.get(finish.getFinishRollNo());
+        if (fallbackWeights.containsKey(finish.getFinishRollNo())) return byRollNo;
+        if (byRollNo != null) return byRollNo;
         if (finish.getActualWeight() != null) {
             return finish.getActualWeight();
         }
         if (finish.getEstimateWeight() != null) {
-            return finish.getEstimateWeight();
+            return IntegerWeightAllocator.roundTotal(finish.getEstimateWeight());
         }
-        Object byUuid = fallbackWeights.get(finish.getUuid());
-        return byUuid == null ? fallbackWeights.get(finish.getFinishRollNo()) : byUuid;
+        return null;
     }
 
     private static void writeValues(Row row, Object... values) {

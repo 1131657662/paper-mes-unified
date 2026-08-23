@@ -1,8 +1,9 @@
 import { Space, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { OriginalRoll, ProcessRouteOutputVO, ProcessRouteStageLineVO } from '../../../types/processOrder'
-import { formatGram, formatKg, formatMm, formatTon } from '../../../utils/numberFormatters'
+import { formatGram, formatKg, formatMm, formatTon, formatWholeKg } from '../../../utils/numberFormatters'
 import type { DetailRouteOutputRow } from '../routeConfigDetail'
+import { isRollWeightKnown, rollTotalWeight } from '../routeConfigSource'
 import { formatMoney } from '../orderDetailUtils'
 
 export const outputColumns: ColumnsType<DetailRouteOutputRow> = [
@@ -11,7 +12,7 @@ export const outputColumns: ColumnsType<DetailRouteOutputRow> = [
   { title: '品名', dataIndex: 'paperName', width: 140 },
   { title: '规格', width: 150, render: (_, row) => `${formatGram(row.gramWeight)} / ${formatMm(row.finishWidth)}` },
   { title: '直径/纸芯', width: 130, render: (_, row) => `${row.finishDiameter ?? '-'} / ${row.finishCoreDiameter ?? '-'}` },
-  { title: '预估重量', dataIndex: 'estimateWeight', width: 120, align: 'right', render: formatWeight },
+  { title: '预估重量', dataIndex: 'estimateWeight', width: 120, align: 'right', render: formatEstimateWeight },
 ]
 
 export const stageColumns: ColumnsType<ProcessRouteStageLineVO> = [
@@ -29,7 +30,7 @@ export const previewOutputColumns: ColumnsType<ProcessRouteOutputVO> = [
   { title: '阶段', dataIndex: 'stageLevel', width: 70, render: (value) => `第${value ?? '-'}段` },
   { title: '状态', width: 100, render: (_, row) => routeOutputStatus(row) },
   { title: '门幅', dataIndex: 'finishWidth', width: 90, render: (value) => formatMm(value) },
-  { title: '预估重', dataIndex: 'estimateWeight', width: 110, render: formatWeight },
+  { title: '预估重', dataIndex: 'estimateWeight', width: 110, render: formatEstimateWeight },
   { title: '备注', dataIndex: 'remark', width: 180 },
 ]
 
@@ -37,15 +38,18 @@ export function formatWeight(value?: number): string {
   return formatKg(value)
 }
 
+export function formatEstimateWeight(value?: number): string {
+  return formatWholeKg(value)
+}
+
 export function rollLabel(roll: OriginalRoll): string {
   const no = [roll.rollNo && `卷号:${roll.rollNo}`, roll.extraNo && `编号:${roll.extraNo}`]
     .filter(Boolean).join(' / ')
-  return `${roll.rowSort ?? '-'} | ${no || '未编号'} | ${roll.paperName || '-'} | ${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)} | ${formatWeight(rollTotalWeight(roll))}`
+  return `${roll.rowSort ?? '-'} | ${no || '未编号'} | ${roll.paperName || '-'} | ${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)} | ${formatRollWeight(roll)}`
 }
 
-export function rollTotalWeight(roll: OriginalRoll): number {
-  return Number(roll.actualWeight ?? roll.totalWeight
-    ?? (Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)))
+export function formatRollWeight(roll: OriginalRoll): string {
+  return isRollWeightKnown(roll) ? formatWeight(rollTotalWeight(roll)) : '待称重'
 }
 
 export function stageRowKey(record: ProcessRouteStageLineVO): string {

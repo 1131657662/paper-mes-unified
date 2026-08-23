@@ -23,6 +23,8 @@ export interface DetailRouteStageForm {
 
 export interface DetailRouteOutputRow {
   estimateWeight: number
+  weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
+  actualWeight?: number
   finishCoreDiameter?: number
   finishDiameter?: number
   finishRollNo?: string

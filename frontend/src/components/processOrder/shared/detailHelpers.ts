@@ -2,6 +2,7 @@ import type { FinishProductionVO, ProcessStep, RollProductionVO } from '../../..
 import { formatKg, formatTon } from '../../../utils/numberFormatters'
 import { buildFinishLayers, layersSummaryText } from './layeredRewindView'
 import type { FinishGroup } from './types'
+import { canonicalFinishEstimateWeights, weightFromCanonicalMap } from './canonicalEstimateWeight'
 
 /* ---------- 通用格式化 ---------- */
 
@@ -49,14 +50,21 @@ export const rewindModeLabel = (record: RollProductionVO) => {
 
 /* ---------- 成品分组 ---------- */
 
-export function groupFinishes(finishes?: FinishProductionVO[]): FinishGroup[] {
+export function groupFinishes(
+  finishes?: FinishProductionVO[],
+  production?: RollProductionVO,
+  sourceProductions?: RollProductionVO[],
+): FinishGroup[] {
   const official = (finishes ?? []).filter(isDeliverableProductionFinish)
+  const estimates = production
+    ? canonicalFinishEstimateWeights({ production, finishes, sourceProductions })
+    : new Map<string, number>()
   const map = new Map<number, { count: number; totalEstimate: number }>()
   for (const f of official) {
     const w = f.finishWidth ?? 0
     const entry = map.get(w) ?? { count: 0, totalEstimate: 0 }
     entry.count++
-    entry.totalEstimate += f.estimateWeight ?? 0
+    entry.totalEstimate += weightFromCanonicalMap(estimates, f.uuid, f.estimateWeight) ?? 0
     map.set(w, entry)
   }
   return Array.from(map.entries())
@@ -74,7 +82,7 @@ export function calcTrimWidth(record: RollProductionVO) {
   if (!canInferTrimFromLayout(record)) return 0
   const originalWidth = record.originalWidth ?? 0
   if (!originalWidth) return 0
-  const groups = groupFinishes(record.finishes)
+  const groups = groupFinishes(record.finishes, record)
   const used = groups.reduce((sum, g) => sum + g.width * g.count, 0)
   return Math.max(0, originalWidth - used)
 }
@@ -90,9 +98,16 @@ export function trimFinishes(finishes?: FinishProductionVO[]) {
   return (finishes ?? []).filter((finish) => isVisibleProductionOutput(finish) && isRemainProductionFinish(finish))
 }
 
-export function trimWeightFromFinishes(finishes?: FinishProductionVO[]) {
+export function trimWeightFromFinishes(
+  finishes?: FinishProductionVO[],
+  production?: RollProductionVO,
+  sourceProductions?: RollProductionVO[],
+) {
+  const estimates = production
+    ? canonicalFinishEstimateWeights({ production, finishes, sourceProductions })
+    : new Map<string, number>()
   const explicit = trimFinishes(finishes).reduce((sum, finish) => {
-    return sum + (finish.actualWeight ?? finish.estimateWeight ?? 0)
+    return sum + (finish.actualWeight ?? weightFromCanonicalMap(estimates, finish.uuid, finish.estimateWeight) ?? 0)
   }, 0)
   if (explicit > 0) return explicit
   return (finishes ?? []).reduce((sum, finish) => sum + (finish.trimWeightShare ?? 0), 0)
@@ -110,11 +125,14 @@ export interface ProcessingStepLine {
 }
 
 /** 构建单个 RollProductionVO 的加工流程描述 */
-export function buildProcessingFlow(record: RollProductionVO): ProcessingStepLine[] {
+export function buildProcessingFlow(
+  record: RollProductionVO,
+  sourceProductions: RollProductionVO[] = [record],
+): ProcessingStepLine[] {
   const result: ProcessingStepLine[] = []
   const params = record.rewindParams ?? []
   const rewindMode = params[0]?.paramMode
-  const groups = groupFinishes(record.finishes)
+  const groups = groupFinishes(record.finishes, record, sourceProductions)
   const isRewind = record.mainStepType === 2
   const trim = calcTrimWidth(record)
   const spareCount = (record.finishes ?? []).filter(isActiveSpareProductionFinish).length
@@ -335,7 +353,7 @@ export function buildConditionText(record: RollProductionVO): string {
 export function buildLayoutText(record: RollProductionVO): string {
   const layerText = layersSummaryText(buildFinishLayers(record, record.finishes ?? []))
   if (layerText) return layerText
-  const groups = groupFinishes(record.finishes)
+  const groups = groupFinishes(record.finishes, record)
   if (!groups.length) return '-'
   return groups.map((g) => `${g.width} mm × ${g.count}`).join(' + ')
 }

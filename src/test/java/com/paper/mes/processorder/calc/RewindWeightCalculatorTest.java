@@ -25,10 +25,13 @@ class RewindWeightCalculatorTest {
                 RewindWeightCalculator.storedCoreDiameterToMm(new BigDecimal("76")));
     }
 
-    private static final BigDecimal TOL = new BigDecimal("0.5");
+    private void assertWhole(BigDecimal actual) {
+        assertTrue(actual.stripTrailingZeros().scale() <= 0, "预估重量必须为整数 kg");
+    }
 
     private void assertClose(BigDecimal expected, BigDecimal actual) {
-        assertTrue(actual.subtract(expected).abs().compareTo(TOL) <= 0,
+        assertTrue(actual.subtract(expected.setScale(0, java.math.RoundingMode.HALF_UP)).abs()
+                        .compareTo(BigDecimal.ONE) < 0,
                 "期望≈" + expected + " 实际=" + actual);
     }
 
@@ -49,6 +52,8 @@ class RewindWeightCalculatorTest {
 
         assertClose(new BigDecimal("529.81"), r.get(0).weight);
         assertClose(new BigDecimal("470.19"), r.get(1).weight);
+        assertWhole(r.get(0).weight);
+        assertWhole(r.get(1).weight);
         // 整卷闭合：严格相等。
         assertEquals(0, r.get(0).weight.add(r.get(1).weight)
                 .compareTo(new BigDecimal("1000.000")), "整卷闭合");
@@ -64,15 +69,14 @@ class RewindWeightCalculatorTest {
                         new RewindWeightCalculator.PieceInput(new BigDecimal("480"), null)),
                 new BigDecimal("20"), new BigDecimal("1500"), BigDecimal.ZERO);
 
-        assertClose(new BigDecimal("266.714"), r.get(0).weight);
-        assertClose(new BigDecimal("266.714"), r.get(1).weight);
-        assertClose(new BigDecimal("255.905"), r.get(2).weight);
+        assertEquals(List.of(new BigDecimal("267"), new BigDecimal("266"), new BigDecimal("256")),
+                r.stream().map(result -> result.weight).toList());
 
         // 闭合：Σ各件 = W_actual − 修边总重（末件倒挤吸收修边）。
         // trim_total=(20/1500)*800=10.6667，故 Σ各件应=789.333。
         // 不用 trimWeightShare×3 反推，避免单件四舍五入误差放大。
         BigDecimal sum = r.get(0).weight.add(r.get(1).weight).add(r.get(2).weight);
-        assertEquals(0, sum.compareTo(new BigDecimal("789.333")), "整卷闭合(末件吸收修边)");
+        assertEquals(0, sum.compareTo(new BigDecimal("789")), "整卷闭合(整数预估)");
     }
 
     @Test
@@ -101,8 +105,52 @@ class RewindWeightCalculatorTest {
                         new RewindWeightCalculator.PieceInput(BigDecimal.ONE, new BigDecimal("300.000"))),
                 BigDecimal.ZERO, new BigDecimal("1000"), BigDecimal.ZERO);
 
-        assertEquals(new BigDecimal("700.000"), result.get(0).weight);
+        assertEquals(new BigDecimal("700"), result.get(0).weight);
         assertEquals(new BigDecimal("300.000"), result.get(1).weight);
+    }
+
+    @Test
+    void zeroActualWeight_isTreatedAsUnmeasuredAndUsesIntegerAllocation() {
+        List<RewindWeightCalculator.PieceResult> result = RewindWeightCalculator.allocate(
+                new BigDecimal("1000"),
+                List.of(new RewindWeightCalculator.PieceInput(BigDecimal.ONE, BigDecimal.ZERO),
+                        new RewindWeightCalculator.PieceInput(BigDecimal.ONE, null)),
+                BigDecimal.ZERO, new BigDecimal("1000"), BigDecimal.ZERO);
+
+        assertEquals(new BigDecimal("500"), result.get(0).weight);
+        assertEquals(new BigDecimal("500"), result.get(1).weight);
+        assertEquals(new BigDecimal("1000"), result.get(0).weight.add(result.get(1).weight));
+    }
+
+    @Test
+    void negativeActualWeight_isTreatedAsUnmeasuredAndUsesIntegerAllocation() {
+        List<RewindWeightCalculator.PieceResult> result = RewindWeightCalculator.allocate(
+                new BigDecimal("1001"),
+                List.of(new RewindWeightCalculator.PieceInput(new BigDecimal("2"), new BigDecimal("-1")),
+                        new RewindWeightCalculator.PieceInput(BigDecimal.ONE, null)),
+                BigDecimal.ZERO, new BigDecimal("1000"), BigDecimal.ZERO);
+
+        assertEquals(new BigDecimal("667"), result.get(0).weight);
+        assertEquals(new BigDecimal("334"), result.get(1).weight);
+        assertEquals(new BigDecimal("1001"), result.get(0).weight.add(result.get(1).weight));
+    }
+
+    @Test
+    void unknownSourceWeight_rejectsEstimateAllocation() {
+        assertThrows(IllegalArgumentException.class, () -> RewindWeightCalculator.allocate(
+                null,
+                List.of(new RewindWeightCalculator.PieceInput(BigDecimal.ONE, null)),
+                BigDecimal.ZERO, new BigDecimal("1000"), BigDecimal.ZERO));
+    }
+
+    @Test
+    void missingLossWeight_defaultsToZeroForIntegerEstimate() {
+        List<RewindWeightCalculator.PieceResult> result = RewindWeightCalculator.allocate(
+                new BigDecimal("1000"),
+                List.of(new RewindWeightCalculator.PieceInput(BigDecimal.ONE, null)),
+                BigDecimal.ZERO, new BigDecimal("1000"), null);
+
+        assertEquals(new BigDecimal("1000"), result.getFirst().weight);
     }
 
     @Test

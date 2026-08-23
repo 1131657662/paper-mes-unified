@@ -16,6 +16,7 @@ import TooltipText from '../biz/TooltipText'
 import type { RollProductionVO } from '../../types/processOrder'
 import { ROLL_STATUS } from '../../constants/processOrder'
 import { formatMm, formatTonFromKg } from '../../utils/numberFormatters'
+import { isProductionWeightKnown, productionSourceEstimateWeight } from '../../features/processOrderDetail/productionSourceWeight'
 
 const { Text } = Typography
 
@@ -56,11 +57,12 @@ const fullColumns: ColumnsType<DisplayRow> = [
   {
     title: '卷重 / 件', width: 100, align: 'right',
     render: (_, row) => {
-      const totalWeight = row.rollProductions.reduce((s, p) => s + (p.rollWeight ?? 0), 0)
+      const weightUnknown = row.rollProductions.some((production) => !isProductionWeightKnown(production))
+      const totalWeight = row.rollProductions.reduce((s, p) => s + productionSourceEstimateWeight(p), 0)
       const totalPieces = row.rollProductions.reduce((s, p) => s + (p.pieceNum ?? 1), 0)
       return (
         <Space direction="vertical" size={0}>
-          <Text>{fmtKg(totalWeight)}</Text>
+          <Text>{weightUnknown ? '待称重' : fmtKg(totalWeight)}</Text>
           <Text type="secondary" style={{ fontSize: 11 }}>× {totalPieces}件</Text>
         </Space>
       )
@@ -100,7 +102,7 @@ const fullColumns: ColumnsType<DisplayRow> = [
   {
     title: '产量', width: 100, align: 'right',
     render: (_, row) => {
-      const groups = groupFinishes(row.finishes)
+      const groups = groupFinishes(row.finishes, row.mainProduction, row.rollProductions)
       const spareCount = row.finishes.filter(isActiveSpareProductionFinish).length
       const totalCount = groups.reduce((s, g) => s + g.count, 0) + spareCount
       const totalWeight = groups.reduce((s, g) => s + g.totalEstimate, 0)
@@ -175,7 +177,7 @@ const compactColumns: ColumnsType<DisplayRow> = [
   {
     title: '产量', width: 85, align: 'right',
     render: (_, row) => {
-      const groups = groupFinishes(row.finishes)
+      const groups = groupFinishes(row.finishes, row.mainProduction, row.rollProductions)
       const spareCount = row.finishes.filter(isActiveSpareProductionFinish).length
       const totalCount = groups.reduce((s, g) => s + g.count, 0) + spareCount
       const totalWeight = groups.reduce((s, g) => s + g.totalEstimate, 0)
@@ -210,7 +212,7 @@ export default function ProductionFlowTable({ productions, compact }: Props) {
   const finishGroups = groupFinishes(allFinishes)
   const totalSpareCount = allFinishes.filter(isActiveSpareProductionFinish).length
   const totalFinishCount = finishGroups.reduce((s, g) => s + g.count, 0) + totalSpareCount
-  const totalEstimateWeight = finishGroups.reduce((s, g) => s + g.totalEstimate, 0)
+  const totalEstimateWeight = rows.reduce((sum, row) => sum + row.totalEstimateWeight, 0)
 
   const hasSummary = rows.length > 0
 

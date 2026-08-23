@@ -13,7 +13,6 @@ import com.paper.mes.processorder.entity.ProcessStep;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
 import com.paper.mes.processorder.mapper.ProcessStepMapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +20,6 @@ import java.util.Map;
 import java.util.List;
 
 @Component
-@RequiredArgsConstructor
 public class ProcessRouteAppendService {
 
     private static final int STATUS_PENDING = 1;
@@ -32,6 +30,7 @@ public class ProcessRouteAppendService {
     private final ProcessStepMapper processStepMapper;
     private final ProcessRoutePreviewer routePreviewer;
     private final ProcessRouteStepWriter stepWriter;
+    private final ProcessRouteParamWriter paramWriter;
     private final ProcessRouteFinishWriter finishWriter;
     private final ProcessRouteExistingOutputResolver outputResolver;
     private final ProcessRouteSourceConsumer sourceConsumer;
@@ -39,6 +38,46 @@ public class ProcessRouteAppendService {
     private final ProcessOrderService processOrderService;
     private final BusinessLockService businessLockService;
     private final DraftOrderVersionGuard versionGuard;
+
+    public ProcessRouteAppendService(ProcessOrderMapper orderMapper, OriginalRollMapper originalRollMapper,
+                                     ProcessStepMapper processStepMapper, ProcessRoutePreviewer routePreviewer,
+                                     ProcessRouteStepWriter stepWriter, ProcessRouteFinishWriter finishWriter,
+                                     ProcessRouteExistingOutputResolver outputResolver,
+                                     ProcessRouteSourceConsumer sourceConsumer,
+                                     ProcessRoutePriceResolver priceResolver,
+                                     ProcessOrderService processOrderService,
+                                     BusinessLockService businessLockService,
+                                     DraftOrderVersionGuard versionGuard) {
+        this(orderMapper, originalRollMapper, processStepMapper, routePreviewer, stepWriter, null,
+                finishWriter, outputResolver, sourceConsumer, priceResolver, processOrderService,
+                businessLockService, versionGuard);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ProcessRouteAppendService(ProcessOrderMapper orderMapper, OriginalRollMapper originalRollMapper,
+                                     ProcessStepMapper processStepMapper, ProcessRoutePreviewer routePreviewer,
+                                     ProcessRouteStepWriter stepWriter, ProcessRouteParamWriter paramWriter,
+                                     ProcessRouteFinishWriter finishWriter,
+                                     ProcessRouteExistingOutputResolver outputResolver,
+                                     ProcessRouteSourceConsumer sourceConsumer,
+                                     ProcessRoutePriceResolver priceResolver,
+                                     ProcessOrderService processOrderService,
+                                     BusinessLockService businessLockService,
+                                     DraftOrderVersionGuard versionGuard) {
+        this.orderMapper = orderMapper;
+        this.originalRollMapper = originalRollMapper;
+        this.processStepMapper = processStepMapper;
+        this.routePreviewer = routePreviewer;
+        this.stepWriter = stepWriter;
+        this.paramWriter = paramWriter;
+        this.finishWriter = finishWriter;
+        this.outputResolver = outputResolver;
+        this.sourceConsumer = sourceConsumer;
+        this.priceResolver = priceResolver;
+        this.processOrderService = processOrderService;
+        this.businessLockService = businessLockService;
+        this.versionGuard = versionGuard;
+    }
 
     public ProcessRoutePreviewVO preview(String orderUuid, ProcessRoutePreviewDTO dto) {
         ProcessRouteContext context = loadContext(orderUuid, dto.getOriginalUuid());
@@ -62,6 +101,7 @@ public class ProcessRouteAppendService {
         requireFinalOutputs(preview);
         Map<String, ProcessStageOutput> outputsByKey = stepWriter.writeAppend(
                 context, dto, preview, sources, nextStepSort(context));
+        if (paramWriter != null) paramWriter.write(context, dto, outputsByKey);
         sourceConsumer.consume(sources.values());
         finishWriter.createFinalFinishes(context, preview, outputsByKey);
         processOrderService.calcFee(orderUuid);

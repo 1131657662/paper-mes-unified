@@ -124,7 +124,10 @@ export function isRollReadyForSave(roll: RollDraft) {
   if (!roll.paperName.trim()) return false
   if (!positiveInteger(roll.gramWeight) || !positiveInteger(roll.originalWidth)) return false
   if (!positiveInteger(roll.pieceNum ?? 1) || (roll.pieceNum ?? 1) > MAX_SOURCE_PIECES) return false
-  if (roll.weightStatus !== 'UNKNOWN' && !positiveNumber(roll.rollWeight)) return false
+  if (roll.weightStatus !== 'UNKNOWN'
+    && !positiveNumber(roll.rollWeight)
+    && !positiveNumber(roll.totalWeight)
+    && !positiveNumber(roll.actualWeight)) return false
   return roll.processMode !== 3 || Boolean(roll.rollNo?.trim())
 }
 

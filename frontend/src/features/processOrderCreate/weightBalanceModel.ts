@@ -1,6 +1,7 @@
 import type { PlanPreviewVO, ProcessPlanDTO, ProcessRoutePreviewVO } from '../../types/processOrder'
-import type { MergedSourceLock } from './rewindConsumptionUtils'
+import { effectiveConsumptionRatios, type MergedSourceLock } from './rewindConsumptionUtils'
 import type { RollDraft } from './types'
+import { isRollWeightKnown, rollTotalWeight } from '../processOrderDetail/routeConfigSource'
 
 export type WeightBalanceStatus = 'balanced' | 'unbalanced' | 'pending' | 'excluded'
 
@@ -137,7 +138,16 @@ function planInputWeight(options: RollBalanceOptions): number {
   const weights = new Map(options.rolls.filter(hasUuid).map((roll) => [roll.uuid, rollTotalWeight(roll)]))
   const usesConsumption = sources.some((source) => source.consumeRatio != null)
   if (usesConsumption) {
-    return sources.reduce((sum, source) => sum + (weights.get(source.originalUuid ?? '') ?? 0) * Number(source.consumeRatio ?? 0) / 100, 0)
+    const effective = effectiveConsumptionRatios(options.plan.segments ?? [])
+    const ratios = new Map<string, number>()
+    for (const source of sources) {
+      if (!source.originalUuid) continue
+      ratios.set(source.originalUuid, Math.min(100,
+        (ratios.get(source.originalUuid) ?? 0) + (effective.get(source) ?? 0)))
+    }
+    return Array.from(ratios.entries()).reduce((sum, [uuid, ratio]) => (
+      sum + (weights.get(uuid) ?? 0) * ratio / 100
+    ), 0)
   }
   return Array.from(new Set(sources.map((source) => source.originalUuid).filter(Boolean)))
     .reduce((sum, uuid) => sum + (weights.get(uuid ?? '') ?? 0), 0)
@@ -180,15 +190,14 @@ function emptyBalance(status: WeightBalanceStatus, label: string, detail: string
 }
 
 function sumOutputWeight(outputs: NonNullable<ProcessRoutePreviewVO['outputs']>): number {
-  return outputs.reduce((sum, item) => sum + Number(item.estimateWeight ?? 0), 0)
+  return outputs.reduce((sum, item) => {
+    const weight = Number(item.estimateWeight ?? 0)
+    return Number.isFinite(weight) ? sum + weight : sum
+  }, 0)
 }
 
 function countStatus(items: RollWeightBalance[], status: WeightBalanceStatus): number {
   return items.filter((item) => item.status === status).length
-}
-
-function rollTotalWeight(roll: RollDraft): number {
-  return Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)
 }
 
 function roundKg(value: number): number {
@@ -200,7 +209,7 @@ function hasUuid(roll: RollDraft): roll is RollDraft & { uuid: string } {
 }
 
 function isKnownRollWeight(roll: RollDraft): boolean {
-  return roll.weightStatus !== 'UNKNOWN' && roll.rollWeight != null && roll.rollWeight > 0
+  return isRollWeightKnown(roll)
 }
 
 

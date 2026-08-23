@@ -14,17 +14,24 @@ record DirectShipPiecePlan(List<BigDecimal> weights) {
     private static final int MAX_PIECES = 500;
 
     static DirectShipPiecePlan from(OriginalRoll source) {
-        int count = source.getPieceNum() == null ? 1 : source.getPieceNum();
-        if (count < 1 || count > MAX_PIECES) {
-            throw new BusinessException("直发母卷件数必须在1到500之间");
-        }
+        int count = pieceCount(source);
         BigDecimal total = source.getActualWeight();
-        if (total == null) return new DirectShipPiecePlan(Collections.nCopies(count, null));
+        if (total == null || total.signum() <= 0) {
+            throw new BusinessException("直发母卷必须先录入有效实际总重");
+        }
         BigDecimal unit = total.divide(BigDecimal.valueOf(count), 3, RoundingMode.HALF_UP);
         List<BigDecimal> weights = new ArrayList<>(Collections.nCopies(count, unit));
         weights.set(count - 1, remainder(total, unit, count));
         requirePositiveWeights(weights);
         return new DirectShipPiecePlan(weights);
+    }
+
+    static int pieceCount(OriginalRoll source) {
+        int count = source.getPieceNum() == null ? 1 : source.getPieceNum();
+        if (count < 1 || count > MAX_PIECES) {
+            throw new BusinessException("直发母卷件数必须在1到500之间");
+        }
+        return count;
     }
 
     int count() {

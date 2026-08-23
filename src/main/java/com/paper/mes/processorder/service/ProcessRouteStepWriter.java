@@ -2,6 +2,7 @@ package com.paper.mes.processorder.service;
 
 import com.paper.mes.machine.entity.Machine;
 import com.paper.mes.machine.service.MachineAssignmentPolicy;
+import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.ProcessStageInputRel;
@@ -95,6 +96,9 @@ public class ProcessRouteStepWriter {
         step.setProcessWeight(line.getProcessWeight());
         step.setUnitPrice(stage.getUnitPrice());
         step.setStepAmount(line.getStepAmount());
+        step.setWidthDifferencePolicy(line.getWidthDifferencePolicy());
+        step.setPlannedLossWidth(line.getPlannedLossWidth());
+        step.setPlannedLossWeight(line.getPlannedLossWeight());
         return step;
     }
 
@@ -141,7 +145,10 @@ public class ProcessRouteStepWriter {
         for (String inputKey : stage.getInputOutputKeys()) {
             ProcessStageOutput input = outputsByKey.get(inputKey);
             if (input == null) {
-                continue;
+                throw new BusinessException("阶段输入关系缺失，工序未保存：" + inputKey);
+            }
+            if (!context.roll().getUuid().equals(input.getOriginalUuid())) {
+                throw new BusinessException("链式工艺不能跨母卷消费阶段产出，请先完成合并复卷后再继续加工");
             }
             ProcessStageInputRel rel = new ProcessStageInputRel();
             rel.setOrderUuid(context.order().getUuid());

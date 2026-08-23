@@ -1,7 +1,7 @@
 import { Button, Select, Space, Tag, Tooltip, Typography } from 'antd'
 import { CheckCircleOutlined } from '@ant-design/icons'
 import type { DetailRouteOutputRow } from '../routeConfigDetail'
-import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
+import { formatGram, formatMm, formatWholeKg } from '../../../utils/numberFormatters'
 
 interface Props {
   inputs: DetailRouteOutputRow[]
@@ -20,7 +20,7 @@ export default function RouteSourcePicker({ inputs, selectedKeys, onChange }: Pr
         <div className="process-route-source-picker__title">
           <Typography.Text strong>来源产物</Typography.Text>
           <Typography.Text type="secondary">
-            已选 {selectedRows.length || 0} 件 / 合计 {formatKg(totalWeight(selectedRows))}
+            已选 {selectedRows.length || 0} 件 / 合计 {formatWholeKg(totalWeight(selectedRows))}
           </Typography.Text>
         </div>
         <Select
@@ -95,7 +95,7 @@ function SourceNode({ row, selected, onToggle }: SourceNodeProps) {
         <Meta label="品名" value={row.paperName || '-'} />
         <Meta label="规格" value={specText(row)} />
         <Meta label="直径/纸芯" value={diameterText(row)} />
-        <Meta label="预估重量" value={formatKg(row.estimateWeight)} strong />
+        <Meta label="预估重量" value={formatWholeKg(row.estimateWeight)} strong />
         <Meta label="父级来源" value={parentSourceText(row)} />
       </span>
       {selected && (
@@ -142,7 +142,7 @@ function groupByStage(inputs: DetailRouteOutputRow[]): StageGroup[] {
 }
 
 function routeOutputLabel(row: DetailRouteOutputRow) {
-  return `${stageName(row.stageLevel)}｜${row.outputKey}｜${sourceNo(row)}｜${row.paperName || '-'}｜${specText(row)}｜${formatKg(row.estimateWeight)}`
+  return `${stageName(row.stageLevel)}｜${row.outputKey}｜${sourceNo(row)}｜${row.paperName || '-'}｜${specText(row)}｜${formatWholeKg(row.estimateWeight)}`
 }
 
 function stageName(stageLevel?: number) {

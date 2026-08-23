@@ -46,6 +46,7 @@ public class ProcessRoutePreviewDTO {
         private Integer knifeCount;
         private BigDecimal processWeight;
         private BigDecimal unitPrice;
+        @Valid
         private ProcessPlanDTO plan;
 
         @Valid

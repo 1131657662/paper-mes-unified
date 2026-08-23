@@ -17,6 +17,7 @@ export interface SegmentForm extends RewindSegmentDTO {
 export interface SourceForm {
   originalUuid: string
   shareRatio: number
+  consumeRatio?: number
 }
 
 export interface LayoutItemForm extends RewindLayoutItemDTO {
@@ -103,7 +104,11 @@ export function buildSegmentFromDto(
     finishCoreDiameter: segment.finishCoreDiameter ?? 3,
     repeatCount: segment.repeatCount ?? 1,
     sources: segment.sources?.length
-      ? segment.sources.map((source) => ({ originalUuid: source.originalUuid ?? '', shareRatio: source.shareRatio ?? 0 }))
+      ? segment.sources.map((source) => ({
+        originalUuid: source.originalUuid ?? '',
+        shareRatio: source.shareRatio ?? 0,
+        consumeRatio: source.consumeRatio,
+      }))
       : sourceUuid ? [{ originalUuid: sourceUuid, shareRatio: 100 }] : [],
     layoutItems: segment.layoutItems?.length
       ? segment.layoutItems.map((item) => ({
@@ -141,7 +146,9 @@ export function toPreviewDto(rewindMode: number, spareCount: number, segments: S
       ...segment,
       segmentRatio: segments.length === 1 ? 1 : (segment.segmentRatio ?? 0) / 100,
       targetDiameter: toInch(segment.targetDiameter),
-      sources: sources.map(({ originalUuid, shareRatio }) => ({ originalUuid, shareRatio })),
+      sources: sources.map(({ originalUuid, shareRatio, consumeRatio }) => ({
+        originalUuid, shareRatio, consumeRatio,
+      })),
       layoutItems: layoutItems.map(({ key: _itemKey, ...item }) => ({
         ...item,
         layers: rewindMode === 4 && item.itemType !== 'TRIM'

@@ -6,7 +6,7 @@ import MesTooltip from '../../components/biz/MesTooltip'
 import TooltipText from '../../components/biz/TooltipText'
 import { FINISH_SOURCE_TYPE, FINISH_STATUS, ROLL_NO_STATUS } from '../../constants/processOrder'
 import type { FinishRoll } from '../../types/processOrder'
-import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
+import { formatGram, formatKg, formatMm, formatWholeKg } from '../../utils/numberFormatters'
 
 interface Props {
   onSelectionChange: (keys: Key[]) => void
@@ -85,7 +85,7 @@ function RollSpec({ roll }: { roll: FinishRoll }) {
 function RollWeight({ roll }: { roll: FinishRoll }) {
   return (
     <div className="finish-roll-cell">
-      <span>预估 {formatKg(roll.estimateWeight)}</span>
+      <span>预估 {formatWholeKg(roll.estimateWeight)}</span>
       <span>实际 {roll.actualWeight == null ? '-' : formatKg(roll.actualWeight)}</span>
     </div>
   )

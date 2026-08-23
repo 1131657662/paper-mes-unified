@@ -56,6 +56,37 @@ class MultiSourceConsumptionNormalizerTest {
     }
 
     @Test
+    void normalize_withLegacyEmptyRatio_usesRemainingConsumption() {
+        FinishConfigSpecDTO.FinishSourceDTO legacy = source("roll-3", null);
+        List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(
+                segment(source("roll-3", "50")), segment(legacy));
+        Map<String, OriginalRoll> rolls = Map.of("roll-3", roll("roll-3", "1000"));
+
+        MultiSourceConsumptionNormalizer.normalize(segments, rolls);
+
+        assertEquals(new BigDecimal("1000.000"),
+                MultiSourceConsumptionNormalizer.totalConsumedWeight(segments, rolls));
+        assertEquals(new BigDecimal("100.00"), legacy.getShareRatio());
+    }
+
+    @Test
+    void normalize_withMultipleLegacyEmptyRatios_doesNotDoubleConsumeSource() {
+        FinishConfigSpecDTO.FinishSourceDTO first = source("roll-3", "50");
+        FinishConfigSpecDTO.FinishSourceDTO second = source("roll-3", null);
+        FinishConfigSpecDTO.FinishSourceDTO third = source("roll-3", null);
+        List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(
+                segment(first), segment(second), segment(third));
+
+        MultiSourceConsumptionNormalizer.normalize(segments, Map.of("roll-3", roll("roll-3", "1000")));
+
+        assertEquals(new BigDecimal("1000.000"),
+                MultiSourceConsumptionNormalizer.totalConsumedWeight(segments,
+                        Map.of("roll-3", roll("roll-3", "1000"))));
+        assertEquals(new BigDecimal("100.00"), second.getShareRatio());
+        assertEquals(null, third.getShareRatio());
+    }
+
+    @Test
     void totalConsumedWeight_prefersMeasuredWeightOverEstimatedWeight() {
         List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(segment(source("roll-1", "100")));
         OriginalRoll roll = roll("roll-1", "1");
@@ -73,6 +104,16 @@ class MultiSourceConsumptionNormalizerTest {
         roll.setPieceNum(3);
         roll.setActualWeight(new BigDecimal("2000"));
         roll.setWeightStatus("MEASURED");
+
+        assertEquals(new BigDecimal("2000.000"),
+                MultiSourceConsumptionNormalizer.totalConsumedWeight(segments, Map.of("roll-1", roll)));
+    }
+
+    @Test
+    void totalConsumedWeight_prefersActualWeightEvenWhenStatusIsStaleUnknown() {
+        List<RewindPlanPreviewDTO.RewindSegmentDTO> segments = List.of(segment(source("roll-1", "100")));
+        OriginalRoll roll = unknownRoll("roll-1");
+        roll.setActualWeight(new BigDecimal("2000"));
 
         assertEquals(new BigDecimal("2000.000"),
                 MultiSourceConsumptionNormalizer.totalConsumedWeight(segments, Map.of("roll-1", roll)));
@@ -128,7 +169,7 @@ class MultiSourceConsumptionNormalizerTest {
     private FinishConfigSpecDTO.FinishSourceDTO source(String uuid, String consumeRatio) {
         FinishConfigSpecDTO.FinishSourceDTO source = new FinishConfigSpecDTO.FinishSourceDTO();
         source.setOriginalUuid(uuid);
-        source.setConsumeRatio(new BigDecimal(consumeRatio));
+        if (consumeRatio != null) source.setConsumeRatio(new BigDecimal(consumeRatio));
         return source;
     }
 

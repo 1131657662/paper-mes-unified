@@ -48,6 +48,12 @@ public class FinishRoll extends BaseEntity {
     private BigDecimal estimateWeight;
     private BigDecimal actualWeight;
     private BigDecimal remainingWeight;
+    /** 已转入我方的余料系统重量 kg。 */
+    private BigDecimal remainOwnWeight;
+    /** 0客户所有 1客户/我方分属 2我方所有。 */
+    private Integer ownershipStatus;
+    /** 0未转让 1部分转让 2全部转让 3部分恢复。 */
+    private Integer remainTransferState;
     private BigDecimal diameterRatio;
     private Integer trimWidthShare;
     private BigDecimal trimWeightShare;

@@ -2,6 +2,7 @@ package com.paper.mes.processorder.service;
 
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.processorder.calc.FeeCalculator;
+import com.paper.mes.processorder.calc.IntegerWeightAllocator;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewDTO;
 import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.OriginalRoll;
@@ -51,12 +52,23 @@ public class ProcessRoutePreviewer {
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (ProcessRoutePreviewDTO.RouteStageDTO stage : dto.getStages()) {
             validateStageInputs(stage, outputsByKey, usedInputKeys, initialOutputs.keySet());
-            ProcessRoutePreviewValidator.validateStageWeight(roll, stage, outputsByKey);
+            ProcessRoutePlanContractValidator.validate(stage);
+            BigDecimal sourceWeight = ProcessRoutePreviewValidator.stageSourceWeight(roll, stage, outputsByKey);
+            requireKnownSourceWeight(sourceWeight);
+            ProcessRouteWidthValidator.WidthBalance width =
+                    ProcessRouteWidthValidator.validate(roll, stage, outputsByKey,
+                            stage.getOutputs() == null ? List.of() : stage.getOutputs());
+            List<BigDecimal> authoritativeWeights = ProcessRouteCanonicalWeightCalculator.allocate(
+                    sourceWeight,
+                    stage, stage.getOutputs() == null ? List.of() : stage.getOutputs(), width, outputsByKey);
+            ProcessRoutePreviewValidator.StageBalance balance =
+                    ProcessRoutePreviewValidator.validateStageWeight(roll, stage, outputsByKey,
+                            width, authoritativeWeights);
             BigDecimal processWeight = resolveProcessWeight(roll, stage, outputsByKey);
             BigDecimal amount = FeeCalculator.stepAmount(stage.getStepType(), stage.getKnifeCount(), processWeight, stage.getUnitPrice());
             totalAmount = totalAmount.add(amount);
-            stageLines.add(stageLine(stage, processWeight, amount));
-            appendOutputs(stage, roll, consumedKeys, outputsByKey, outputLines);
+            stageLines.add(stageLine(stage, processWeight, amount, balance));
+            appendOutputs(stage, roll, consumedKeys, outputsByKey, outputLines, authoritativeWeights);
         }
         ProcessRoutePreviewVO vo = new ProcessRoutePreviewVO();
         vo.setOriginalUuid(roll.getUuid());
@@ -65,9 +77,16 @@ public class ProcessRoutePreviewer {
         vo.setTotalAmount(totalAmount);
         return vo;
     }
+
+    private void requireKnownSourceWeight(BigDecimal sourceWeight) {
+        if (sourceWeight == null || sourceWeight.signum() <= 0) {
+            throw new BusinessException("来源母卷重量未知，不能生成闭合的阶段预估");
+        }
+    }
     private ProcessRoutePreviewVO.RouteOutputVO sourceOutputLine(String outputKey, ProcessStageOutput output) {
         ProcessRoutePreviewVO.RouteOutputVO line = new ProcessRoutePreviewVO.RouteOutputVO();
         line.setOutputKey(outputKey);
+        line.setSourceOutputUuid(output.getUuid());
         line.setStageLevel(output.getStageLevel());
         line.setOutputSort(output.getOutputSort());
         line.setOutputType(output.getOutputType());
@@ -78,9 +97,17 @@ public class ProcessRoutePreviewer {
         line.setFinishWidth(output.getFinishWidth());
         line.setFinishDiameter(output.getFinishDiameter());
         line.setFinishCoreDiameter(output.getFinishCoreDiameter());
-        line.setEstimateWeight(output.getEstimateWeight());
+        line.setActualWeight(output.getActualWeight());
+        line.setEstimateWeight(IntegerWeightAllocator.roundTotal(effectiveOutputWeight(output)));
         line.setRemark(output.getRemark());
         return line;
+    }
+
+    private BigDecimal effectiveOutputWeight(ProcessStageOutput output) {
+        if (output.getActualWeight() != null && output.getActualWeight().signum() > 0) {
+            return output.getActualWeight();
+        }
+        return output.getEstimateWeight();
     }
     private void validateStageInputs(ProcessRoutePreviewDTO.RouteStageDTO stage,
                                      Map<String, ProcessRoutePreviewVO.RouteOutputVO> outputsByKey,
@@ -96,6 +123,7 @@ public class ProcessRoutePreviewer {
             throw new BusinessException("后续工艺必须选择上一阶段产出");
         }
         Set<String> seen = new HashSet<>();
+        Set<String> seenPhysicalOutputs = new HashSet<>();
         for (String key : stage.getInputOutputKeys()) {
             if (key == null || key.isBlank()) {
                 throw new BusinessException("后续工艺引用的阶段产出不能为空");
@@ -106,14 +134,20 @@ public class ProcessRoutePreviewer {
             if (!outputsByKey.containsKey(key)) {
                 throw new BusinessException("后续工艺引用了不存在的阶段产出：" + key);
             }
-            Integer sourceLevel = outputsByKey.get(key).getStageLevel();
+            ProcessRoutePreviewVO.RouteOutputVO input = outputsByKey.get(key);
+            String physicalKey = input.getSourceOutputUuid() == null
+                    ? "key:" + key : "uuid:" + input.getSourceOutputUuid();
+            if (!seenPhysicalOutputs.add(physicalKey)) {
+                throw new BusinessException("阶段产物不能通过不同编号重复消费：" + key);
+            }
+            Integer sourceLevel = input.getStageLevel();
             if (sourceLevel == null && !initialOutputKeys.contains(key)) {
                 throw new BusinessException("阶段产出缺少阶段编号：" + key);
             }
             if (sourceLevel != null && sourceLevel != stage.getStageLevel() - 1) {
                 throw new BusinessException("后续工艺只能引用紧邻上一阶段产出：" + key);
             }
-            if (isRemainOutput(outputsByKey.get(key))) {
+            if (isRemainOutput(input)) {
                 throw new BusinessException("修边/余料不能作为后续工艺来源：" + key);
             }
             if (!usedInputKeys.add(key)) {
@@ -191,9 +225,6 @@ public class ProcessRoutePreviewer {
         if (stage.getStepType() == null || stage.getStepType() != FeeCalculator.STEP_TYPE_REWIND) {
             return null;
         }
-        if (stage.getProcessWeight() != null) {
-            return stage.getProcessWeight();
-        }
         if (stage.getInputOutputKeys() == null || stage.getInputOutputKeys().isEmpty()) {
             return originalWeightTon(roll);
         }
@@ -211,13 +242,15 @@ public class ProcessRoutePreviewer {
             if (output == null) {
                 throw new BusinessException("下道工艺引用了不存在的阶段产出：" + key);
             }
-            total = total.add(output.getEstimateWeight() == null ? BigDecimal.ZERO : output.getEstimateWeight());
+            BigDecimal weight = ProcessRoutePreviewValidator.effectiveOutputWeight(output);
+            total = total.add(weight == null ? BigDecimal.ZERO : weight);
         }
         return total.divide(FeeCalculator.TON_DIVISOR, 3, RoundingMode.HALF_UP);
     }
 
     private ProcessRoutePreviewVO.RouteStageLineVO stageLine(ProcessRoutePreviewDTO.RouteStageDTO stage,
-                                                            BigDecimal processWeight, BigDecimal amount) {
+                                                            BigDecimal processWeight, BigDecimal amount,
+                                                            ProcessRoutePreviewValidator.StageBalance balance) {
         ProcessRoutePreviewVO.RouteStageLineVO line = new ProcessRoutePreviewVO.RouteStageLineVO();
         line.setStageLevel(stage.getStageLevel());
         line.setStepType(stage.getStepType());
@@ -228,6 +261,9 @@ public class ProcessRoutePreviewer {
         line.setProcessWeight(processWeight);
         line.setUnitPrice(stage.getUnitPrice());
         line.setStepAmount(amount);
+        line.setWidthDifferencePolicy(balance.policy() == null ? null : balance.policy().name());
+        line.setPlannedLossWidth(balance.plannedLossWidth());
+        line.setPlannedLossWeight(balance.plannedLossWeight());
         return line;
     }
 
@@ -240,13 +276,16 @@ public class ProcessRoutePreviewer {
 
     private void appendOutputs(ProcessRoutePreviewDTO.RouteStageDTO stage, OriginalRoll roll, Set<String> consumedKeys,
                                Map<String, ProcessRoutePreviewVO.RouteOutputVO> outputsByKey,
-                               List<ProcessRoutePreviewVO.RouteOutputVO> outputLines) {
+                               List<ProcessRoutePreviewVO.RouteOutputVO> outputLines,
+                               List<BigDecimal> authoritativeWeights) {
         List<ProcessRoutePreviewDTO.RouteOutputDTO> outputs = stage.getOutputs() == null ? List.of() : stage.getOutputs();
         int sort = 1;
+        int weightIndex = 0;
         for (ProcessRoutePreviewDTO.RouteOutputDTO output : outputs) {
             int count = output.getCount() == null ? 1 : output.getCount();
             for (int i = 0; i < count; i++) {
-                ProcessRoutePreviewVO.RouteOutputVO line = outputLine(stage, roll, output, consumedKeys, sort, i);
+                ProcessRoutePreviewVO.RouteOutputVO line = outputLine(stage, roll, output, consumedKeys, sort, i,
+                        authoritativeWeights.get(weightIndex++));
                 if (outputsByKey.containsKey(line.getOutputKey())) {
                     throw new BusinessException("阶段产物编号重复：" + line.getOutputKey());
                 }
@@ -259,7 +298,8 @@ public class ProcessRoutePreviewer {
 
     private ProcessRoutePreviewVO.RouteOutputVO outputLine(ProcessRoutePreviewDTO.RouteStageDTO stage, OriginalRoll roll,
                                                           ProcessRoutePreviewDTO.RouteOutputDTO output,
-                                                          Set<String> consumedKeys, int sort, int index) {
+                                                          Set<String> consumedKeys, int sort, int index,
+                                                          BigDecimal authoritativeWeight) {
         String key = outputKey(stage, output, sort, index);
         ProcessRoutePreviewVO.RouteOutputVO line = new ProcessRoutePreviewVO.RouteOutputVO();
         line.setOutputKey(key);
@@ -273,7 +313,7 @@ public class ProcessRoutePreviewer {
         line.setFinishWidth(output.getFinishWidth());
         line.setFinishDiameter(output.getFinishDiameter());
         line.setFinishCoreDiameter(output.getFinishCoreDiameter());
-        line.setEstimateWeight(output.getEstimateWeight());
+        line.setEstimateWeight(IntegerWeightAllocator.roundTotal(authoritativeWeight));
         line.setRemark(output.getRemark());
         return line;
     }

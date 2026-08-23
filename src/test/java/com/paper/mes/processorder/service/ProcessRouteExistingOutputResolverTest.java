@@ -157,6 +157,7 @@ class ProcessRouteExistingOutputResolverTest {
     private FinishOriginalRel relation(String finishUuid) {
         FinishOriginalRel relation = new FinishOriginalRel();
         relation.setFinishUuid(finishUuid);
+        relation.setOriginalUuid("roll-1");
         return relation;
     }
 

@@ -15,6 +15,10 @@ import {
   isStageTrimOutput,
   stageOutputsWithFallbackTrim,
 } from './productionRouteTrimFallback'
+import {
+  canonicalFinishEstimateWeights,
+  canonicalStageOutputWeights,
+} from '../../components/processOrder/shared/canonicalEstimateWeight'
 
 export interface RouteNode {
   appendable: boolean
@@ -25,6 +29,8 @@ export interface RouteNode {
   layerText?: string
   meta: string
   outputKey?: string
+  /** All upstream stage outputs consumed by this node, not just the legacy primary parent. */
+  parentKeys?: string[]
   processLabel: string
   statusColor: string
   statusText: string
@@ -58,6 +64,9 @@ export function buildRouteTree(
     const finishLayerMap = layerItemMap(finishLayers)
     const finishSortMap = layerItemSortMap(finishLayers)
     const weightDigits = productionWeightDigits(production)
+    const estimateWeights = production
+      ? canonicalFinishEstimateWeights({ production, finishes: finishRows })
+      : new Map<string, number>()
     return sortNodes(finishRows.map((finish) => {
       return toFinishNode(
         finish,
@@ -65,6 +74,7 @@ export function buildRouteTree(
         finishLayerMap.get(finish.uuid)?.label,
         finishSortMap.get(finish.uuid),
         weightDigits,
+        estimateWeights.get(finish.uuid),
       )
     }))
   }
@@ -73,12 +83,16 @@ export function buildRouteTree(
   const stageLayerMap = layerItemMap(stageLayers)
   const stageSortMap = layerItemSortMap(stageLayers)
   const weightDigits = productionWeightDigits(production)
+  const estimateWeights = production
+    ? canonicalStageOutputWeights(production, activeOutputRows)
+    : new Map<string, number>()
   const nodes = new Map(activeOutputRows.map((output) => {
     return [output.uuid, toStageNode(
       output,
       stageLayerMap.get(output.uuid)?.label,
       stageSortMap.get(output.uuid),
       weightDigits,
+      estimateWeights.get(output.uuid),
     )]
   }))
   const childrenByParent = new Map<string, RouteNode[]>()
@@ -87,7 +101,9 @@ export function buildRouteTree(
   for (const output of activeOutputRows) {
     const node = nodes.get(output.uuid)
     if (!node) continue
-    const parent = output.parentOutputUuid
+    const parentKeys = upstreamKeys(output)
+    node.parentKeys = parentKeys
+    const parent = parentKeys.find((key) => nodes.has(key))
     if (parent && nodes.has(parent)) {
       childrenByParent.set(parent, [...(childrenByParent.get(parent) ?? []), node])
     } else {
@@ -101,14 +117,21 @@ export function buildRouteTree(
   return sortNodes(roots)
 }
 
+function upstreamKeys(output: StageOutputVO): string[] {
+  const keys = output.inputOutputUuids?.filter(Boolean) ?? []
+  if (keys.length) return Array.from(new Set(keys))
+  return output.parentOutputUuid ? [output.parentOutputUuid] : []
+}
+
 function toStageNode(
   output: StageOutputVO,
   layerText?: string,
   sortInfo?: LayeredRewindSort,
   weightDigits = 3,
+  estimateWeight?: number,
 ): RouteNode {
   const remain = isStageTrimOutput(output)
-  const weight = displayWeight(output.actualWeight, output.estimateWeight)
+  const weight = displayWeight(output.actualWeight, estimateWeight ?? output.estimateWeight)
   return {
     children: [],
     isTrim: remain,
@@ -118,7 +141,7 @@ function toStageNode(
     title: remain ? trimTitle(output.outputNo) : output.outputNo || `产物 ${output.outputSort ?? '-'}`,
     meta: formatSpec(output.paperName, output.gramWeight, output.finishWidth),
     weight: weight.value,
-    weightDigits,
+    weightDigits: weight.label === '实际' ? weightDigits : 0,
     weightLabel: weight.label,
     processLabel: output.sourceSummary || stepTypeText(output.sourceStepType),
     statusColor: remain ? 'orange' : outputStatusColor(output.outputStatus),
@@ -135,9 +158,10 @@ function toFinishNode(
   layerText?: string,
   sortInfo?: LayeredRewindSort,
   weightDigits = 3,
+  estimateWeight?: number,
 ): RouteNode {
   const isRemain = finish.isRemain === 1
-  const weight = displayWeight(finish.actualWeight, finish.estimateWeight)
+  const weight = displayWeight(finish.actualWeight, estimateWeight ?? finish.estimateWeight)
   return {
     children: [],
     isTrim: isRemain,
@@ -147,7 +171,7 @@ function toFinishNode(
     title: isRemain ? trimTitle(finish.finishRollNo) : finish.finishRollNo || `成品 ${finish.rowSort ?? '-'}`,
     meta: formatSpec(finish.paperName, finish.gramWeight, finish.finishWidth),
     weight: weight.value,
-    weightDigits,
+    weightDigits: weight.label === '实际' ? weightDigits : 0,
     weightLabel: weight.label,
     processLabel,
     statusColor: isRemain ? 'orange' : 'green',

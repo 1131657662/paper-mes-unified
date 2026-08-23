@@ -1,5 +1,5 @@
-import type { FinishRoll, OriginalRoll, ProcessOrderDetailVO } from '../../../types/processOrder'
-import { decimalPlaces } from '../../../utils/numberFormatters'
+import type { FinishRoll, OriginalRoll, ProcessOrderDetailVO, RollProductionVO } from '../../../types/processOrder'
+import { allocateIntegerWeight, roundWeightTotal } from '../../../utils/integerWeightAllocation'
 import {
   activeFinishRolls,
   isActiveBackRecordFinish,
@@ -8,9 +8,15 @@ import {
   type RollRecordValues,
 } from './backRecordUtils'
 import { autoTrimWeights } from './backRecordAutoTrim'
-import { sourceEstimatedWeight, storedEstimatedWeight, storedMeasuredWeight } from './backRecordSourceRolls'
-import { buildBackRecordWorkbench } from './backRecordWorkbenchUtils'
-import type { BackRecordWorkItem } from './backRecordWorkbenchTypes'
+import {
+  sourceCalculationWeight, sourceConsumptionRatio,
+  sourceEstimatedWeight,
+  storedEstimatedWeight,
+  storedMeasuredWeight,
+  workItemSourceRolls,
+} from './backRecordSourceRolls'
+import { buildBackRecordWorkbench, processSteps } from './backRecordWorkbenchUtils'
+import type { BackRecordWorkItem, WorkbenchFinish } from './backRecordWorkbenchTypes'
 
 export function theoreticalBackRecordValues(detail: ProcessOrderDetailVO): BackRecordFormValues {
   const rolls = theoreticalRollValues(detail)
@@ -60,7 +66,13 @@ export function theoreticalFinishValues(
 
 export function theoreticalItemFinishValues(item: BackRecordWorkItem): Record<string, FinishRecordValues> {
   const values = new Map<string, FinishRecordValues>()
-  const rolls = item.roll ? { [item.roll.uuid]: theoreticalRollValue(item.roll) } : {}
+  const sourceRolls = item.rollProductions.length
+    ? item.rollProductions
+    : item.roll ? [item.roll] : []
+  const rolls = Object.fromEntries(sourceRolls.map((roll) => [
+    'uuid' in roll ? roll.uuid : roll.originalUuid,
+    theoreticalRollValue(roll),
+  ]))
   assignItemFinishes(item, values, rolls)
   return Object.fromEntries(values)
 }
@@ -72,8 +84,20 @@ function assignItemFinishes(
 ) {
   const entries = item.finishes.filter(({ finish }) => isActiveBackRecordFinish(finish))
   const official = entries.filter(({ finish }) => finish.isSpare !== 1 && finish.isRemain !== 1)
-  const hasTrim = entries.some(({ finish }) => finish.isRemain === 1)
-  const distributedWeights = distributeOfficialWeights(official.map(({ finish }) => finish), item.roll, !hasTrim)
+  const trims = entries.filter(({ finish }) => finish.isRemain === 1)
+  const sourceWeight = itemSourceWeight(item, rolls)
+  const reservedTrimWeight = trimBudget(item, trims, official, sourceWeight)
+  const plannedLossWeight = roundWeightTotal(sum(processSteps(item).map((step) => (
+    step.lossWeight ?? step.plannedLossWeight
+  ))))
+  const productTarget = sourceWeight == null
+    ? undefined
+    : Math.max(0, sourceWeight - roundWeightTotal(reservedTrimWeight) - plannedLossWeight)
+  const distributedWeights = distributeOfficialWeights(
+    official.map(({ finish }) => finish),
+    productTarget,
+    true,
+  )
   const weights = new Map(official.map(({ finish }, index) => [finish.uuid, distributedWeights[index]]))
   entries.forEach(({ finish }) => {
     const fallback = finish.isSpare === 1 || finish.isRemain === 1 ? undefined : weights.get(finish.uuid)
@@ -82,7 +106,29 @@ function assignItemFinishes(
   assignAutoTrimWeights(item, values, rolls)
 }
 
-function theoreticalRollValue(roll: OriginalRoll): RollRecordValues {
+function trimBudget(
+  item: BackRecordWorkItem,
+  trims: WorkbenchFinish[],
+  products: WorkbenchFinish[],
+  sourceWeight?: number,
+) {
+  if (!trims.length) return 0
+  const explicit = sum(trims.map(({ finish }) => firstPositive(finish.actualWeight, finish.estimateWeight)))
+  const measured = sum(trims.map(({ finish }) => firstPositive(finish.actualWeight)))
+  const allMeasured = trims.every(({ finish }) => firstPositive(finish.actualWeight) != null)
+  if (allMeasured && explicit > 0) return roundWeightTotal(explicit)
+  if (sourceWeight == null || sourceWeight <= 0) return roundWeightTotal(explicit)
+  const sourceWidth = itemSourceWidth(item)
+  const trimWidth = sum(trims.map(({ finish }) => finish.finishWidth))
+  if (!sourceWidth || sourceWidth <= 0 || trimWidth <= 0) return roundWeightTotal(explicit)
+  const productWidth = sum(products.map(({ finish }) => finish.finishWidth))
+  const physicalTrimWidth = trimWidth + (widthPolicy(item) === 'REMAINDER'
+    ? Math.max(0, sourceWidth - productWidth - trimWidth) : 0)
+  const widthBudget = sourceWeight * physicalTrimWidth / sourceWidth
+  return roundWeightTotal(Math.max(measured, widthBudget))
+}
+
+function theoreticalRollValue(roll: OriginalRoll | RollProductionVO): RollRecordValues {
   const measured = storedMeasuredWeight(roll)
   const estimated = storedEstimatedWeight(roll)
   const nominal = sourceEstimatedWeight(roll)
@@ -97,14 +143,18 @@ function theoreticalRollValue(roll: OriginalRoll): RollRecordValues {
   }
 }
 
-function theoreticalFinishValue(finish: FinishRoll, fallbackWeight?: number): FinishRecordValues {
+function theoreticalFinishValue(
+  finish: FinishRoll,
+  fallbackWeight?: number,
+): FinishRecordValues {
   return {
     finishWidth: finish.finishWidth && finish.finishWidth > 0 ? finish.finishWidth : undefined,
     finishDiameter: finish.finishDiameter,
     finishCoreDiameter: finish.finishCoreDiameter,
     actualWeight: finish.isRemain === 1 || finish.isSpare === 1
       ? finish.actualWeight
-      : finish.actualWeight ?? firstPositive(fallbackWeight, finish.estimateWeight),
+      : finish.actualWeight
+        ?? firstPositive(fallbackWeight),
     scrapWeight: finish.scrapWeight ?? 0,
     isRemain: finish.isRemain ?? 0,
     isAbnormal: finish.isAbnormal ?? 0,
@@ -115,43 +165,60 @@ function theoreticalFinishValue(finish: FinishRoll, fallbackWeight?: number): Fi
 
 function distributeOfficialWeights(
   finishes: FinishRoll[],
-  roll: OriginalRoll | undefined,
+  roll: number | undefined,
   balanceToSource: boolean,
 ): Array<number | undefined> {
   if (!finishes.length) return []
-  const digits = sourceWeightDigits(roll)
-  const explicit = finishes.map((finish) => roundOptional(firstPositive(finish.actualWeight, finish.estimateWeight), digits))
-  if (explicit.every((weight) => weight != null)) return balanceToSource ? balanceWeights(explicit, nominalRollWeight(roll), digits) : explicit
-  const total = nominalRollWeight(roll)
+  const explicit = finishes.map((finish) => roundOptional(firstPositive(finish.actualWeight, finish.estimateWeight)))
+  const total = roll
+  if (balanceToSource) return balanceExplicitWeights(finishes, explicit, total)
+  if (explicit.every((weight) => weight != null)) return explicit
   if (!total || total <= 0) return explicit
-  const totalWeight = roundWeight(total, digits)
+  const totalWeight = roundWeightTotal(total)
   const knownTotal = sum(explicit)
   const missingCount = explicit.filter((weight) => weight == null).length
   if (knownTotal > 0 && knownTotal < totalWeight && missingCount > 0) {
-    let remaining = totalWeight - knownTotal
-    let missingLeft = missingCount
+    const missing = allocateIntegerWeight(totalWeight - knownTotal, Array.from({ length: missingCount }, () => 1))
+    let missingIndex = 0
     return explicit.map((weight) => {
       if (weight != null) return weight
-      const next = missingLeft === 1 ? roundWeight(remaining, digits) : roundWeight(remaining / missingLeft, digits)
-      remaining -= next
-      missingLeft -= 1
-      return next
+      return missing[missingIndex++] ?? 0
     })
   }
   if (knownTotal >= totalWeight) return explicit
-  const share = roundWeight(totalWeight / finishes.length, digits)
-  return finishes.map((_, index) => (index === finishes.length - 1 ? roundWeight(totalWeight - share * (finishes.length - 1), digits) : share))
+  return allocateIntegerWeight(totalWeight, finishes.map(() => 1))
 }
 
-function balanceWeights(weights: number[], total: number | undefined, digits: number) {
+function balanceExplicitWeights(
+  finishes: FinishRoll[],
+  weights: Array<number | undefined>,
+  total: number | undefined,
+): Array<number | undefined> {
   if (total == null || total <= 0 || weights.length === 0) return weights
-  const roundedTotal = roundWeight(total, digits)
-  const currentTotal = sum(weights)
-  const diff = roundWeight(roundedTotal - currentTotal, digits)
-  if (diff === 0) return weights
+  const fixed = finishes.reduce((sum, finish) => (
+    finish.actualWeight != null && finish.actualWeight > 0 ? sum + finish.actualWeight : sum
+  ), 0)
+  const adjustable = finishes.map((finish, index) => (
+    finish.actualWeight != null && finish.actualWeight > 0 ? undefined : index
+  )).filter((index): index is number => index != null)
+  if (fixed > total) return clearAdjustableWeights(weights, adjustable)
+  if (!adjustable.length) return weights
+  const remaining = total - fixed
+  if (!Number.isFinite(remaining) || Math.abs(remaining - Math.round(remaining)) >= 1e-9) {
+    return clearAdjustableWeights(weights, adjustable)
+  }
+  const allocated = allocateIntegerWeight(
+    remaining,
+    adjustable.map((index) => Math.max(1, finishes[index]?.finishWidth ?? 1)),
+  )
   const result = [...weights]
-  result[result.length - 1] = Math.max(0, roundWeight((result[result.length - 1] ?? 0) + diff, digits))
+  adjustable.forEach((index, position) => { result[index] = allocated[position] ?? 0 })
   return result
+}
+
+function clearAdjustableWeights(weights: Array<number | undefined>, adjustable: number[]) {
+  const adjustableIndexes = new Set(adjustable)
+  return weights.map((weight, index) => adjustableIndexes.has(index) ? undefined : weight)
 }
 
 function assignAutoTrimWeights(
@@ -160,36 +227,46 @@ function assignAutoTrimWeights(
   rolls: BackRecordFormValues['rolls'],
 ) {
   const finishes = Object.fromEntries(Array.from(values.entries()))
+  const fixedTrimUuids = new Set(item.finishes
+    .filter(({ finish }) => finish.isRemain === 1 && (values.get(finish.uuid)?.actualWeight ?? 0) > 0)
+    .map(({ finish }) => finish.uuid))
   const patches = autoTrimWeights(item, { finishes, rolls }, {
-    autoTrimUuids: new Set(item.finishes.map(({ finish }) => finish.uuid)),
-    manualTrimUuids: new Set(),
+    autoTrimUuids: new Set(item.finishes
+      .filter(({ finish }) => finish.isRemain === 1 && values.get(finish.uuid)?.actualWeight == null)
+      .map(({ finish }) => finish.uuid)),
+    manualTrimUuids: fixedTrimUuids,
   })
   for (const patch of patches) {
     values.set(patch.uuid, { ...values.get(patch.uuid), actualWeight: patch.actualWeight })
   }
 }
 
+function itemSourceWidth(item: BackRecordWorkItem) {
+  const widths = workItemSourceRolls(item)
+    .map((source) => source.actualWidth ?? source.originalWidth)
+    .filter((width): width is number => width != null && width > 0)
+  return widths.length > 0 && widths.every((width) => width === widths[0]) ? widths[0] : undefined
+}
+
+function widthPolicy(item: BackRecordWorkItem) {
+  return processSteps(item).find((step) => step.widthDifferencePolicy)?.widthDifferencePolicy ?? 'REMAINDER'
+}
+
 function firstPositive(...values: Array<number | undefined>) {
-  return values.find((value) => value != null && value > 0)
+  return values.find((value) => value != null && Number.isFinite(value) && value > 0)
 }
 
-function nominalRollWeight(roll?: OriginalRoll) {
-  if (roll?.weightStatus === 'UNKNOWN') return undefined
-  if (!roll?.rollWeight) return undefined
-  return roll.rollWeight * (roll.pieceNum ?? 1)
+function itemSourceWeight(item: BackRecordWorkItem, rolls: BackRecordFormValues['rolls']) {
+  const sources = workItemSourceRolls(item)
+  const total = sources.reduce((sum, source) => {
+    const weight = rolls?.[source.uuid]?.actualWeight ?? sourceCalculationWeight(source) ?? 0
+    return sum + weight * sourceConsumptionRatio(item, source.uuid)
+  }, 0)
+  return total > 0 ? roundWeightTotal(total) : undefined
 }
 
-function sourceWeightDigits(roll?: OriginalRoll) {
-  return decimalPlaces(nominalRollWeight(roll), 3)
-}
-
-function roundOptional(value: number | undefined, digits: number) {
-  return value == null ? undefined : roundWeight(value, digits)
-}
-
-function roundWeight(value: number, digits: number) {
-  const scale = 10 ** Math.max(0, digits)
-  return Math.round(value * scale) / scale
+function roundOptional(value: number | undefined) {
+  return value == null ? undefined : roundWeightTotal(value)
 }
 
 function sum(values: Array<number | undefined>): number {

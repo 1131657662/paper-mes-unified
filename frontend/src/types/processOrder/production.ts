@@ -37,6 +37,7 @@ export interface FinishProductionVO {
   finishCoreDiameter?: number
   estimateWeight?: number
   actualWeight?: number
+  weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
   trimWidthShare?: number
   trimWeightShare?: number
   actualRemark?: string
@@ -51,6 +52,7 @@ export interface StageOutputVO {
   outputNo?: string
   finishRollUuid?: string
   parentOutputUuid?: string
+  inputOutputUuids?: string[]
   stageLevel?: number
   outputSort?: number
   outputType?: number
@@ -62,6 +64,7 @@ export interface StageOutputVO {
   finishCoreDiameter?: number
   estimateWeight?: number
   actualWeight?: number
+  weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
   /** 0正品 1边角余料 */
   isRemain?: number
   sourceStepType?: number
@@ -94,6 +97,8 @@ export interface RollProductionVO {
   originalWidth?: number
   actualWidth?: number
   rollWeight?: number
+  /** Total reference weight for this source row; preferred over nominal rollWeight × pieceNum. */
+  totalWeight?: number
   weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
   actualWeight?: number
   processAmount?: number

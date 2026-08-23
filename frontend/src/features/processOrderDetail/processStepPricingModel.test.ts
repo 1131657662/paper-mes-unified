@@ -27,4 +27,17 @@ describe('附加工艺后定价预览', () => {
     expect(preview.quantity).toBe(3)
     expect(preview.finalAmount).toBe(60)
   })
+
+  it('来源重量未知时按吨附加工艺不伪造计费吨位', () => {
+    const preview = pricingPreview({
+      step: { uuid: 'step-1', stepType: 3 },
+      originalRoll: { uuid: 'roll-1', weightStatus: 'UNKNOWN', totalWeight: 2400, pieceNum: 3 },
+      mode: 1,
+      billingBasis: 'TON',
+      billingUnitPrice: 20,
+    })
+
+    expect(preview.quantity).toBeUndefined()
+    expect(preview.finalAmount).toBe(0)
+  })
 })

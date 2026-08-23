@@ -8,20 +8,42 @@ import com.paper.mes.processorder.dto.ProcessRoutePreviewVO;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.entity.ProcessStageOutput;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
 @Component
-@RequiredArgsConstructor
 public class ProcessRoutePersistenceService {
 
     private final OriginalRollMapper originalRollMapper;
     private final ProcessRouteCleanupService cleanupService;
     private final ProcessRouteStepWriter stepWriter;
+    private final ProcessRouteParamWriter paramWriter;
     private final ProcessRouteFinishWriter finishWriter;
     private final ProcessRouteModePolicy routeModePolicy;
+
+    public ProcessRoutePersistenceService(OriginalRollMapper originalRollMapper,
+                                          ProcessRouteCleanupService cleanupService,
+                                          ProcessRouteStepWriter stepWriter,
+                                          ProcessRouteFinishWriter finishWriter,
+                                          ProcessRouteModePolicy routeModePolicy) {
+        this(originalRollMapper, cleanupService, stepWriter, null, finishWriter, routeModePolicy);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ProcessRoutePersistenceService(OriginalRollMapper originalRollMapper,
+                                          ProcessRouteCleanupService cleanupService,
+                                          ProcessRouteStepWriter stepWriter,
+                                          ProcessRouteParamWriter paramWriter,
+                                          ProcessRouteFinishWriter finishWriter,
+                                          ProcessRouteModePolicy routeModePolicy) {
+        this.originalRollMapper = originalRollMapper;
+        this.cleanupService = cleanupService;
+        this.stepWriter = stepWriter;
+        this.paramWriter = paramWriter;
+        this.finishWriter = finishWriter;
+        this.routeModePolicy = routeModePolicy;
+    }
 
     public void replaceRoute(ProcessRouteContext context, ProcessRoutePreviewDTO dto,
                              ProcessRoutePreviewVO preview) {
@@ -29,6 +51,7 @@ public class ProcessRoutePersistenceService {
         cleanupService.clearExistingRoute(context);
         updateRollRoute(context.roll(), firstStage(dto));
         Map<String, ProcessStageOutput> outputsByKey = stepWriter.write(context, dto, preview);
+        if (paramWriter != null) paramWriter.write(context, dto, outputsByKey);
         finishWriter.createFinalFinishes(context, preview, outputsByKey);
     }
 

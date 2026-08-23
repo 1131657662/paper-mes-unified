@@ -13,17 +13,48 @@ final class ProcessRouteQuantityValidator {
     }
 
     static void requireWithinLimit(ProcessRoutePreviewDTO dto) {
-        int total = 0;
+        long total = 0;
         for (ProcessRoutePreviewDTO.RouteStageDTO stage : safe(dto.getStages())) {
+            long planCount = planExpansionCount(stage);
+            long outputCount = outputCount(stage);
             for (ProcessRoutePreviewDTO.RouteOutputDTO output : safe(stage.getOutputs())) {
                 int count = output.getCount() == null ? 1 : output.getCount();
                 requireValidCount(count);
-                if (total > MAX_TOTAL_OUTPUTS - count) {
-                    throw limitExceeded();
+            }
+            long stageCount = Math.max(planCount, outputCount);
+            if (stageCount > MAX_TOTAL_OUTPUTS || total > MAX_TOTAL_OUTPUTS - stageCount) {
+                throw limitExceeded();
+            }
+            total += stageCount;
+        }
+    }
+
+    private static long planExpansionCount(ProcessRoutePreviewDTO.RouteStageDTO stage) {
+        if (stage.getPlan() == null) return 0;
+        if (stage.getPlan().getFinishSpecs() != null && !stage.getPlan().getFinishSpecs().isEmpty()) {
+            return stage.getPlan().getFinishSpecs().stream()
+                    .mapToLong(spec -> Math.max(1, spec.getCount() == null ? 1 : spec.getCount()))
+                    .sum();
+        }
+        if (stage.getPlan().getSegments() == null) return 0;
+        long total = 0;
+        for (var segment : stage.getPlan().getSegments()) {
+            long repeat = Math.max(1, segment.getRepeatCount() == null ? 1 : segment.getRepeatCount());
+            for (var item : safe(segment.getLayoutItems())) {
+                long quantity = Math.max(1, item.getQuantity() == null ? 1 : item.getQuantity());
+                if (repeat > MAX_TOTAL_OUTPUTS / quantity || total > MAX_TOTAL_OUTPUTS - repeat * quantity) {
+                    return MAX_TOTAL_OUTPUTS + 1L;
                 }
-                total += count;
+                total += repeat * quantity;
             }
         }
+        return total;
+    }
+
+    private static long outputCount(ProcessRoutePreviewDTO.RouteStageDTO stage) {
+        return safe(stage.getOutputs()).stream()
+                .mapToLong(output -> Math.max(1, output.getCount() == null ? 1 : output.getCount()))
+                .sum();
     }
 
     private static void requireValidCount(int count) {

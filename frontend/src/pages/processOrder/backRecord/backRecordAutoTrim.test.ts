@@ -44,4 +44,30 @@ describe('automatic trim weight calculation', () => {
 
     expect(patches).toEqual([{ uuid: 'trim-1', actualWeight: 220 }])
   })
+
+  it('does not round a fractional remainder into an invalid automatic trim weight', () => {
+    const item: BackRecordWorkItem = {
+      key: 'roll-roll-1',
+      kind: 'roll',
+      title: 'Roll 1',
+      roll: { uuid: 'roll-1', actualWeight: 1000, processMode: 1 },
+      rollProductions: [],
+      isMergeGroup: false,
+      sourceMode: 'linked',
+      finishes: [
+        { bindMode: 'linked', finish: { uuid: 'finish-1', isSpare: 0, isRemain: 0 } },
+        { bindMode: 'linked', finish: { uuid: 'trim-1', isSpare: 0, isRemain: 1 } },
+      ],
+    }
+
+    const patches = autoTrimWeights(item, {
+      rolls: { 'roll-1': { actualWeight: 1000 } },
+      finishes: { 'finish-1': { actualWeight: 333.4 } },
+    }, {
+      autoTrimUuids: new Set(['trim-1']),
+      manualTrimUuids: new Set(),
+    })
+
+    expect(patches).toEqual([])
+  })
 })

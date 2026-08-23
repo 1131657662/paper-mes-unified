@@ -18,7 +18,7 @@ public class SawPlanPreviewer {
 
     private static final String ITEM_FINISH = "FINISH";
     private static final String ITEM_TRIM = "TRIM";
-    private static final int WEIGHT_SCALE = 3;
+    private static final int WEIGHT_SCALE = 0;
 
     private final SawPlanCalculator calculator = new SawPlanCalculator();
 
@@ -100,7 +100,7 @@ public class SawPlanPreviewer {
                 row.setItemType(ITEM_FINISH);
                 row.setCount(1);
                 row.setFinishWidth(spec.getFinishWidth());
-                row.setEstimateWeight(BigDecimal.ZERO.setScale(3));
+                row.setEstimateWeight(BigDecimal.ZERO.setScale(WEIGHT_SCALE));
                 result.add(row);
             }
         }

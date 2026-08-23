@@ -22,26 +22,49 @@ public final class RewindFinishSourceAllocator {
     public static List<List<FinishConfigSpecDTO.FinishSourceDTO>> allocate(
             List<FinishPreviewVO.FinishItemPreview> finishes,
             List<RewindPlanPreviewDTO.RewindSegmentDTO> segments) {
+        return allocateWithExtras(finishes, List.of(), segments).finishSources();
+    }
+
+    public static Allocation allocateWithExtras(
+            List<FinishPreviewVO.FinishItemPreview> finishes,
+            List<WeightedOutput> extras,
+            List<RewindPlanPreviewDTO.RewindSegmentDTO> segments) {
         List<List<FinishConfigSpecDTO.FinishSourceDTO>> result = emptyResult(finishes.size());
+        List<List<FinishConfigSpecDTO.FinishSourceDTO>> extraResult = emptyResult(extras.size());
         Map<Integer, List<Integer>> indexesBySegment = groupFinishIndexes(finishes);
+        Map<Integer, List<Integer>> extraIndexesBySegment = groupExtraIndexes(extras);
         Map<Integer, List<FinishConfigSpecDTO.FinishSourceDTO>> sourcesBySegment = segmentSources(segments);
-        indexesBySegment.forEach((segmentSort, indexes) -> allocateSegment(
-                finishes, indexes, sourcesBySegment.getOrDefault(segmentSort, List.of()), result));
-        return result;
+        java.util.Set<Integer> segmentSorts = new java.util.LinkedHashSet<>();
+        segmentSorts.addAll(indexesBySegment.keySet());
+        segmentSorts.addAll(extraIndexesBySegment.keySet());
+        for (Integer segmentSort : segmentSorts) {
+            allocateSegment(finishes, indexesBySegment.getOrDefault(segmentSort, List.of()),
+                    extras, extraIndexesBySegment.getOrDefault(segmentSort, List.of()),
+                    sourcesBySegment.getOrDefault(segmentSort, List.of()), result, extraResult);
+        }
+        return new Allocation(result, extraResult);
     }
 
     private static void allocateSegment(List<FinishPreviewVO.FinishItemPreview> finishes,
                                         List<Integer> indexes,
+                                        List<WeightedOutput> extras,
+                                        List<Integer> extraIndexes,
                                         List<FinishConfigSpecDTO.FinishSourceDTO> sources,
-                                        List<List<FinishConfigSpecDTO.FinishSourceDTO>> result) {
+                                        List<List<FinishConfigSpecDTO.FinishSourceDTO>> result,
+                                        List<List<FinishConfigSpecDTO.FinishSourceDTO>> extraResult) {
         if (sources.isEmpty()) return;
-        List<BigDecimal> bases = indexes.stream()
-                .map(index -> positiveOrZero(finishes.get(index).getEstimateWeight())).toList();
+        List<BigDecimal> bases = new ArrayList<>(indexes.size() + extraIndexes.size());
+        indexes.forEach(index -> bases.add(positiveOrZero(finishes.get(index).getEstimateWeight())));
+        extraIndexes.forEach(index -> bases.add(positiveOrZero(extras.get(index).estimateWeight())));
         BigDecimal totalBasis = bases.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         for (FinishConfigSpecDTO.FinishSourceDTO source : sources) {
             List<BigDecimal> allocations = allocateRatio(source.getConsumeRatio(), bases, totalBasis);
             for (int i = 0; i < indexes.size(); i++) {
                 result.get(indexes.get(i)).add(copy(source, allocations.get(i)));
+            }
+            for (int i = 0; i < extraIndexes.size(); i++) {
+                extraResult.get(extraIndexes.get(i)).add(copy(source,
+                        allocations.get(indexes.size() + i)));
             }
         }
     }
@@ -94,6 +117,14 @@ public final class RewindFinishSourceAllocator {
         return result;
     }
 
+    private static Map<Integer, List<Integer>> groupExtraIndexes(List<WeightedOutput> outputs) {
+        Map<Integer, List<Integer>> result = new LinkedHashMap<>();
+        for (int i = 0; i < outputs.size(); i++) {
+            result.computeIfAbsent(outputs.get(i).segmentSort(), key -> new ArrayList<>()).add(i);
+        }
+        return result;
+    }
+
     private static Map<Integer, List<FinishConfigSpecDTO.FinishSourceDTO>> segmentSources(
             List<RewindPlanPreviewDTO.RewindSegmentDTO> segments) {
         Map<Integer, List<FinishConfigSpecDTO.FinishSourceDTO>> result = new LinkedHashMap<>();
@@ -114,5 +145,12 @@ public final class RewindFinishSourceAllocator {
 
     private static BigDecimal positiveOrZero(BigDecimal value) {
         return value != null && value.signum() > 0 ? value : BigDecimal.ZERO;
+    }
+
+    public record WeightedOutput(int segmentSort, BigDecimal estimateWeight) {
+    }
+
+    public record Allocation(List<List<FinishConfigSpecDTO.FinishSourceDTO>> finishSources,
+                             List<List<FinishConfigSpecDTO.FinishSourceDTO>> extraSources) {
     }
 }

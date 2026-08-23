@@ -4,7 +4,7 @@ import { EditOutlined } from '@ant-design/icons'
 import { DICT_TYPES, abnormalFallbackOptions } from '../../../features/systemConfig/configFallbacks'
 import { useDictOptions } from '../../../features/systemConfig/hooks/useRuntimeDictOptions'
 import type { BackRecordFormValues } from './backRecordUtils'
-import { formatKg, formatMm } from '../../../utils/numberFormatters'
+import { formatMm, formatWholeKg } from '../../../utils/numberFormatters'
 import type { BackRecordWorkItem, WorkbenchFinish } from './backRecordWorkbenchTypes'
 import { autoTrimWeights } from './backRecordAutoTrim'
 import BackRecordBatchSpecModal, { type BatchSpecValues } from './BackRecordBatchSpecModal'
@@ -12,6 +12,7 @@ import BackRecordFinishFields, { type BackRecordSourceOption } from './BackRecor
 import BackRecordFinishAdjustmentPanel from './BackRecordFinishAdjustmentPanel'
 import { addedFinishEntity, normalizeFinishAdjustment, visibleFinishEntries } from './backRecordFinishAdjustment'
 import { workItemRollUuids } from './backRecordWorkbenchUtils'
+import { canonicalFinishEstimateWeights } from '../../../components/processOrder/shared/canonicalEstimateWeight'
 
 interface Props {
   item: BackRecordWorkItem
@@ -34,6 +35,13 @@ export default function BackRecordFinishEntryList({ item, onDirty, onFieldExhaus
   const { options: abnormalTypeOptions } = useDictOptions(DICT_TYPES.abnormalType, abnormalFallbackOptions)
   const onSite = item.roll?.processMode === 2
   const visibleFinishes = visibleFinishEntries(item, adjustment)
+  const estimateWeights = item.production
+    ? canonicalFinishEstimateWeights({
+      production: item.production,
+      finishes: item.production.finishes,
+      sourceProductions: item.rollProductions,
+    })
+    : new Map<string, number>()
 
   useEffect(() => {
     const patches = autoTrimWeights(item, { finishes, rolls, steps }, {
@@ -93,6 +101,8 @@ export default function BackRecordFinishEntryList({ item, onDirty, onFieldExhaus
               key={entry.finish.uuid}
               abnormalTypeOptions={abnormalTypeOptions}
               entry={entry}
+              estimateWeight={estimateWeights.get(entry.finish.uuid)}
+              estimateKnown={estimateWeights.has(entry.finish.uuid)}
               maxWidth={item.roll?.actualWidth ?? item.roll?.originalWidth}
               onSite={onSite}
               sourceOptions={sourceOptions}
@@ -133,6 +143,8 @@ export default function BackRecordFinishEntryList({ item, onDirty, onFieldExhaus
 function FinishEntryRow({
   abnormalTypeOptions,
   entry,
+  estimateWeight,
+  estimateKnown,
   maxWidth,
   onSite,
   allowWidth,
@@ -143,6 +155,8 @@ function FinishEntryRow({
 }: {
   abnormalTypeOptions: Array<{ label: string; value: number | string }>
   entry: WorkbenchFinish
+  estimateWeight?: number
+  estimateKnown?: boolean
   maxWidth?: number
   onSite: boolean
   allowWidth?: boolean
@@ -157,7 +171,7 @@ function FinishEntryRow({
     <div className="back-record-finish-row">
       <div className="back-record-finish-row__identity">
         <Typography.Text strong>{finish.finishRollNo || '-'}</Typography.Text>
-        <span>{finishSpec(finish, onSite)}</span>
+        <span>{finishSpec(finish, onSite, estimateWeight, estimateKnown)}</span>
         <div>
           <Tag color={finish.isRemain === 1 ? 'orange' : finish.isSpare === 1 ? 'gold' : 'blue'}>
             {finish.isRemain === 1 ? '余料' : finish.isSpare === 1 ? '备用' : '正式'}
@@ -178,8 +192,14 @@ function FinishEntryRow({
   )
 }
 
-function finishSpec(finish: WorkbenchFinish['finish'], onSite: boolean) {
+function finishSpec(
+  finish: WorkbenchFinish['finish'],
+  onSite: boolean,
+  estimateWeight?: number,
+  estimateKnown = false,
+) {
   const width = onSite && !finish.finishWidth ? '待现场确认' : formatMm(finish.finishWidth)
-  const weight = finish.estimateWeight ? formatKg(finish.estimateWeight) : '无预估'
+  const value = estimateKnown ? estimateWeight : estimateWeight ?? finish.estimateWeight
+  const weight = value ? formatWholeKg(value) : '无预估'
   return `${finish.paperName || '-'} / ${width} / ${weight}`
 }

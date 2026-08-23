@@ -25,8 +25,8 @@ class ProcessOrderExportServiceTest {
         try (Workbook workbook = service.buildWorkbook(detailWithMissingFinishWeight())) {
             var sheet = workbook.getSheet("成品明细");
 
-            assertEquals("1688.973", sheet.getRow(1).getCell(9).getStringCellValue());
-            assertEquals("1274.027", sheet.getRow(2).getCell(9).getStringCellValue());
+            assertEquals("1689", sheet.getRow(1).getCell(9).getStringCellValue());
+            assertEquals("1274", sheet.getRow(2).getCell(9).getStringCellValue());
         }
     }
 
@@ -93,6 +93,24 @@ class ProcessOrderExportServiceTest {
             assertEquals("1288", sheet.getRow(1).getCell(20).getStringCellValue());
             assertEquals("已调整", sheet.getRow(1).getCell(21).getStringCellValue());
             assertEquals("客户要求改标签", sheet.getRow(1).getCell(22).getStringCellValue());
+        }
+    }
+
+    @Test
+    void buildWorkbook_reservesTrimBeforeSubtractingPlannedLoss() throws IOException {
+        ProcessOrderDetailVO detail = detailWithExplicitTrimAndMissingFinishWeight();
+        ProcessStep loss = new ProcessStep();
+        loss.setOriginalUuid("roll-1");
+        loss.setWidthDifferencePolicy("LOSS");
+        loss.setPlannedLossWeight(new BigDecimal("100"));
+        detail.getRollProductions().get(0).setSteps(List.of(loss));
+
+        try (Workbook workbook = service.buildWorkbook(detail)) {
+            var sheet = workbook.getSheet("成品明细");
+
+            assertEquals("444", sheet.getRow(1).getCell(9).getStringCellValue());
+            assertEquals("356", sheet.getRow(2).getCell(9).getStringCellValue());
+            assertEquals("100", sheet.getRow(3).getCell(9).getStringCellValue());
         }
     }
 
@@ -200,6 +218,7 @@ class ProcessOrderExportServiceTest {
 
     private ProcessOrderDetailVO.RollProductionVO productionWithTrim() {
         ProcessOrderDetailVO.RollProductionVO production = new ProcessOrderDetailVO.RollProductionVO();
+        production.setOriginalUuid("roll-1");
         production.setPaperName("蒙迪半化学浆");
         production.setGramWeight(140);
         production.setOriginalWidth(1000);

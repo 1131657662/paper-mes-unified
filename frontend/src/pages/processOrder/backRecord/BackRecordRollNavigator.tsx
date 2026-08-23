@@ -1,7 +1,8 @@
 import { Button, Checkbox, Popconfirm, Space, Tag, Typography } from 'antd'
 import { UndoOutlined } from '@ant-design/icons'
 import { PROCESS_MODE } from '../../../constants/processOrder'
-import { formatKg } from '../../../features/processOrderDetail/orderDetailUtils'
+import { formatKg, formatProductionEstimateKg } from '../../../features/processOrderDetail/orderDetailUtils'
+import { isRollWeightKnown, rollTotalWeight } from '../../../features/processOrderDetail/routeConfigSource'
 import { formatGram, formatMm, formatOptionalKg } from '../../../utils/numberFormatters'
 import type { OriginalRoll } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
@@ -157,7 +158,6 @@ function rollSpec(roll: OriginalRoll) {
 }
 
 function rollWeightText(roll: OriginalRoll) {
-  if (roll.weightStatus === 'UNKNOWN' && !(roll.actualWeight && roll.actualWeight > 0)) return '来料重量待称重'
-  const weight = roll.actualWeight ?? roll.totalWeight ?? roll.rollWeight
-  return weight == null ? '来料重量待称重' : formatKg(weight)
+  if (roll.actualWeight != null && roll.actualWeight > 0) return formatKg(roll.actualWeight)
+  return isRollWeightKnown(roll) ? formatProductionEstimateKg(rollTotalWeight(roll)) : '来料重量待称重'
 }

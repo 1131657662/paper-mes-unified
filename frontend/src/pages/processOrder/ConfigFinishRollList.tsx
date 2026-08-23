@@ -4,6 +4,7 @@ import { CheckCircleOutlined, MergeCellsOutlined } from '@ant-design/icons'
 import { PROCESS_MODE, STEP_TYPE, processModeRequiresMain } from '../../constants/processOrder'
 import type { OriginalRoll } from '../../types/processOrder'
 import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
+import { isRollWeightKnown, rollTotalWeight } from '../../features/processOrderDetail/routeConfigSource'
 
 interface RollSelection {
   checkedUuids: string[]
@@ -97,7 +98,7 @@ function RollItem(props: RollItemProps) {
       </div>
       <span className="config-finish-roll__paper">{roll.paperName || '-'}</span>
       <span>{formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)}</span>
-      <span>{formatKg(roll.rollWeight)} × {roll.pieceNum || 1} 件</span>
+      <span>{isRollWeightKnown(roll) ? formatKg(rollTotalWeight(roll)) : '待称重'} / {roll.pieceNum || 1} 件</span>
       <span>
         {PROCESS_MODE[roll.processMode ?? 1] ?? '-'}
         {processModeRequiresMain(roll.processMode) ? ` / ${STEP_TYPE[roll.mainStepType ?? 0] ?? '-'}` : ''}

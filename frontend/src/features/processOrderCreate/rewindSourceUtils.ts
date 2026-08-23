@@ -2,6 +2,10 @@ import type { RewindSourcePlanDTO } from '../../types/processOrder'
 import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
 import type { RollDraft } from './types'
 import { effectiveRollWidth } from './rewindLayerPlanUtils'
+import {
+  isRollWeightKnown as canonicalIsRollWeightKnown,
+  rollTotalWeight as canonicalRollTotalWeight,
+} from '../processOrderDetail/routeConfigSource'
 
 export interface SourceRollOption {
   value: string
@@ -9,6 +13,10 @@ export interface SourceRollOption {
   weight: number
   weightKnown: boolean
   roll: RollDraft
+}
+
+export function rollTotalWeight(roll: RollDraft): number {
+  return canonicalRollTotalWeight(roll)
 }
 
 export function sourceOptionsFromRolls(rolls: RollDraft[]): SourceRollOption[] {
@@ -21,10 +29,6 @@ export function sourceOptionsFromRolls(rolls: RollDraft[]): SourceRollOption[] {
       weightKnown: isKnownWeight(roll),
       roll,
     }))
-}
-
-export function rollTotalWeight(roll: RollDraft): number {
-  return Number(roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)
 }
 
 export function equalSources(values: string[]): RewindSourcePlanDTO[] {
@@ -96,5 +100,5 @@ function sourceRollLabel(roll: RollDraft, index: number): string {
 }
 
 function isKnownWeight(roll: RollDraft): boolean {
-  return roll.weightStatus !== 'UNKNOWN' && roll.rollWeight != null
+  return canonicalIsRollWeightKnown(roll)
 }

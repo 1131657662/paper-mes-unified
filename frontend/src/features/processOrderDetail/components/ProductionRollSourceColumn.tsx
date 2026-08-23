@@ -6,8 +6,9 @@ import { ROLL_STATUS } from '../../../constants/processOrder'
 import MesTooltip from '../../../components/biz/MesTooltip'
 import ProtectedImage from '../../../components/biz/ProtectedImage'
 import { formatGram, formatMm } from '../../../utils/numberFormatters'
-import { formatProductionKg } from '../orderDetailUtils'
+import { formatProductionEstimateKg, formatProductionKg } from '../orderDetailUtils'
 import type { ProcessRouteConfigTarget } from '../routeConfigTypes'
+import { isProductionWeightKnown, productionSourceEstimateWeight } from '../productionSourceWeight'
 
 interface Props {
   canEditPending?: boolean
@@ -48,7 +49,10 @@ export default function ProductionRollSourceColumn({
         {production.paperName || '-'} / {formatGram(production.gramWeight)} / {formatMm(production.originalWidth)}
       </div>
       <div className="production-roll__line">
-        来料 {formatProductionKg((production.rollWeight ?? 0) * (production.pieceNum ?? 1), production)}
+        来料 {production.actualWeight != null && production.actualWeight > 0
+          ? formatProductionKg(production.actualWeight, production)
+          : !isProductionWeightKnown(production) ? '待称重'
+            : formatProductionEstimateKg(productionSourceEstimateWeight(production))}
       </div>
       <RollRemarkNotes row={row} />
       <RollDamageImages row={row} />

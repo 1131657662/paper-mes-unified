@@ -34,7 +34,7 @@ final class ProcessOrderCustomerExportWriter {
     }
 
     private static Object[] customerRow(FinishRoll finish, Map<String, BigDecimal> fallbackWeights) {
-        BigDecimal physicalWeight = finish.getActualWeight() != null
+        BigDecimal physicalWeight = finish.getActualWeight() != null && finish.getActualWeight().signum() > 0
                 ? finish.getActualWeight()
                 : ProcessOrderExportWeightResolver.estimateWeight(finish, fallbackWeights);
         String customerPaper = fallback(finish.getCustomerPaperName(), finish.getPaperName());

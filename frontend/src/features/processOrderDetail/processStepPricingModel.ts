@@ -1,4 +1,5 @@
 import type { OriginalRoll, ProcessStep } from '../../types/processOrder'
+import { isRollWeightKnown, rollTotalWeight } from './routeConfigSource'
 
 export interface PricingPreview {
   quantity?: number
@@ -53,11 +54,5 @@ function serviceQuantity(basis?: string, roll?: OriginalRoll): number | undefine
   const pieces = roll.pieceNum ?? 1
   if (basis === 'PIECE') return pieces
   if (basis !== 'TON') return undefined
-  const weight = positive(roll.actualWeight) ?? positive(roll.totalWeight)
-    ?? (positive(roll.rollWeight) == null ? undefined : roll.rollWeight! * pieces)
-  return weight == null ? undefined : weight / 1000
-}
-
-function positive(value?: number): number | undefined {
-  return value != null && value > 0 ? value : undefined
+  return isRollWeightKnown(roll) ? rollTotalWeight(roll) / 1000 : undefined
 }

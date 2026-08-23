@@ -30,7 +30,7 @@ class SawPlanPreviewerTest {
         assertEquals(2, preview.getFinishCount());
         assertEquals(1, preview.getTrimCount());
         assertEquals(2, preview.getFinishes().size());
-        assertEquals(new BigDecimal("50.000"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("50"), preview.getTotalTrimWeight());
         assertTrue(preview.getSummary().contains("刀数 2"));
     }
 
@@ -66,11 +66,11 @@ class SawPlanPreviewerTest {
 
         assertEquals(3, finishes.size());
         assertEquals(1, finishes.getFirst().getCount());
-        assertEquals(new BigDecimal("475.000"), finishes.getFirst().getEstimateWeight());
-        assertEquals(new BigDecimal("475.000"), finishes.get(1).getEstimateWeight());
+        assertEquals(new BigDecimal("475"), finishes.getFirst().getEstimateWeight());
+        assertEquals(new BigDecimal("475"), finishes.get(1).getEstimateWeight());
         assertEquals("TRIM", finishes.get(2).getItemType());
         assertEquals(100, finishes.get(2).getFinishWidth());
-        assertEquals(new BigDecimal("50.000"), finishes.get(2).getEstimateWeight());
+        assertEquals(new BigDecimal("50"), finishes.get(2).getEstimateWeight());
     }
 
     @Test
@@ -90,10 +90,10 @@ class SawPlanPreviewerTest {
                 spec("FINISH", 1175, 2)
         ), "ALLOCATE"), roll(2353, "2285"));
 
-        assertEquals(new BigDecimal("2285.000"), preview.getTotalEstimateWeight());
-        assertEquals(new BigDecimal("0.000"), preview.getTotalTrimWeight());
-        assertEquals(new BigDecimal("2.913"), preview.getWidthDifferenceWeight());
-        assertEquals(new BigDecimal("0.000"), preview.getCalculatedLossWeight());
+        assertEquals(new BigDecimal("2285"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("0"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("3"), preview.getWidthDifferenceWeight());
+        assertEquals(new BigDecimal("0"), preview.getCalculatedLossWeight());
         assertTrue(preview.getSummary().contains("分摊入成品"));
     }
 
@@ -103,9 +103,9 @@ class SawPlanPreviewerTest {
                 spec("FINISH", 1175, 2)
         ), "LOSS"), roll(2353, "2285"));
 
-        assertEquals(new BigDecimal("2282.087"), preview.getTotalEstimateWeight());
-        assertEquals(new BigDecimal("0.000"), preview.getTotalTrimWeight());
-        assertEquals(new BigDecimal("2.913"), preview.getCalculatedLossWeight());
+        assertEquals(new BigDecimal("2282"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("0"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("3"), preview.getCalculatedLossWeight());
     }
 
     @Test
@@ -116,9 +116,9 @@ class SawPlanPreviewerTest {
         ), "REMAINDER"), roll(2353, "2285"));
 
         assertEquals(1, preview.getTrimCount());
-        assertEquals(new BigDecimal("2282.087"), preview.getTotalEstimateWeight());
-        assertEquals(new BigDecimal("2.913"), preview.getTotalTrimWeight());
-        assertEquals(new BigDecimal("0.000"), preview.getWidthDifferenceWeight());
+        assertEquals(new BigDecimal("2282"), preview.getTotalEstimateWeight());
+        assertEquals(new BigDecimal("3"), preview.getTotalTrimWeight());
+        assertEquals(new BigDecimal("0"), preview.getWidthDifferenceWeight());
     }
 
     @Test
@@ -139,7 +139,7 @@ class SawPlanPreviewerTest {
 
         assertEquals(2, finishes.size());
         assertEquals("FINISH", finishes.getFirst().getItemType());
-        assertEquals(new BigDecimal("0.000"), finishes.getFirst().getEstimateWeight());
+        assertEquals(new BigDecimal("0"), finishes.getFirst().getEstimateWeight());
     }
 
     @Test

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { message } from 'antd'
 import type { FinishConfigSaveDTO, OriginalRoll } from '../../types/processOrder'
-import { formatTon } from '../../utils/numberFormatters'
+import { formatOptionalTonFromKg } from '../../utils/numberFormatters'
+import { isRollWeightKnown, rollTotalWeight } from '../../features/processOrderDetail/routeConfigSource'
 import RewindingOnSiteFields from './RewindingOnSiteFields'
 import RewindingStandardFields from './RewindingStandardFields'
 import {
@@ -184,11 +185,16 @@ export default function RewindingConfigForm(props: Props) {
         rewindMode,
         segments,
         spareCount,
-        tonnage: formatTon(((roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)) / 1000),
+        tonnage: sourceTonnage(roll),
         unitPrice,
       }}
     />
   )
+}
+
+function sourceTonnage(roll: OriginalRoll) {
+  if (!isRollWeightKnown(roll)) return '待称重'
+  return formatOptionalTonFromKg(rollTotalWeight(roll))
 }
 
 function segmentWithSources(segment: SegmentForm, sourceUuids: string[]): SegmentForm {

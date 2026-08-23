@@ -28,7 +28,7 @@ public final class BackRecordSourceAllocationPolicy {
         List<FinishOriginalRel> changed = new ArrayList<>();
         for (Map.Entry<String, List<FinishOriginalRel>> entry : relationsByFinish.entrySet()) {
             FinishRoll finish = finishByUuid.get(entry.getKey());
-            if (finish == null || entry.getValue().size() < 2) continue;
+            if (finish == null) continue;
             recalculateFinish(entry.getValue(), finish, rollByUuid, changed);
         }
         return changed;
@@ -58,11 +58,24 @@ public final class BackRecordSourceAllocationPolicy {
     private static List<BigDecimal> contributions(List<FinishOriginalRel> relations,
                                                    Map<String, OriginalRoll> rollByUuid) {
         List<BigDecimal> result = new ArrayList<>(relations.size());
+        Map<FinishOriginalRel, BigDecimal> effectiveRatios = effectiveRatios(relations);
+        if (effectiveRatios.isEmpty() && !relations.isEmpty()) return List.of();
         for (FinishOriginalRel relation : relations) {
             OriginalRoll roll = rollByUuid.get(relation.getOriginalUuid());
-            if (!positiveWeight(roll) || !positive(relation.getConsumeRatio())) return List.of();
-            result.add(roll.getActualWeight().multiply(relation.getConsumeRatio())
+            if (!positiveWeight(roll)) return List.of();
+            result.add(roll.getActualWeight().multiply(effectiveRatios.get(relation))
                     .divide(HUNDRED, 6, RoundingMode.HALF_UP));
+        }
+        return result;
+    }
+
+    private static Map<FinishOriginalRel, BigDecimal> effectiveRatios(List<FinishOriginalRel> relations) {
+        Map<FinishOriginalRel, BigDecimal> result = new java.util.IdentityHashMap<>();
+        List<BigDecimal> ratios = SourceConsumptionRatioAllocator.allocate(relations.stream()
+                .map(relation -> new SourceConsumptionRatioAllocator.SourceRatio(
+                        relation.getOriginalUuid(), relation.getConsumeRatio())).toList());
+        for (int index = 0; index < relations.size(); index++) {
+            result.put(relations.get(index), ratios.get(index));
         }
         return result;
     }

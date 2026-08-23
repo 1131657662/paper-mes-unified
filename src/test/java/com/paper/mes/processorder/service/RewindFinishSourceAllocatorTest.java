@@ -52,6 +52,19 @@ class RewindFinishSourceAllocatorTest {
         assertEquals(0, ratios.stream().filter(value -> value.signum() < 0).count());
     }
 
+    @Test
+    void allocateWithExtrasSharesConsumptionAcrossFinishesAndTrim() {
+        RewindFinishSourceAllocator.Allocation allocation = RewindFinishSourceAllocator.allocateWithExtras(
+                List.of(finish(1, "900")),
+                List.of(new RewindFinishSourceAllocator.WeightedOutput(1, new BigDecimal("100"))),
+                List.of(segment(1, source("roll-1", "100"))));
+
+        assertEquals(new BigDecimal("90.00"),
+                allocation.finishSources().getFirst().getFirst().getConsumeRatio());
+        assertEquals(new BigDecimal("10.00"),
+                allocation.extraSources().getFirst().getFirst().getConsumeRatio());
+    }
+
     private FinishPreviewVO.FinishItemPreview finish(int segmentSort, String weight) {
         FinishPreviewVO.FinishItemPreview finish = new FinishPreviewVO.FinishItemPreview();
         finish.setSegmentSort(segmentSort);

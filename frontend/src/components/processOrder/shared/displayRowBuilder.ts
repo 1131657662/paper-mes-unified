@@ -1,5 +1,6 @@
 import type { RollProductionVO } from '../../../types/processOrder'
 import { isDeliverableProductionFinish } from './detailHelpers'
+import { canonicalFinishEstimateWeights, weightFromCanonicalMap } from './canonicalEstimateWeight'
 import { sortFinishOutputs } from './outputOrder'
 import { compareRollProductions } from './productionSpecificationOrder'
 import type { DisplayRow, MergeGroup } from './types'
@@ -56,6 +57,11 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
       return `${name}`
     }).join(' / ')
 
+    const estimates = canonicalFinishEstimateWeights({
+      production: mainProd,
+      finishes: allFinishes,
+      sourceProductions: allProds,
+    })
     rows.push({
       key: `merge-${group.mainUuid}`,
       seq: 0, // 后续统一赋值
@@ -71,7 +77,7 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
       totalKnifeCount: steps.reduce((s, step) => s + (step.knifeCount ?? 0), 0),
       totalEstimateWeight: allFinishes
         .filter(isDeliverableProductionFinish)
-        .reduce((s, f) => s + (f.estimateWeight ?? 0), 0),
+        .reduce((s, f) => s + (weightFromCanonicalMap(estimates, f.uuid, f.estimateWeight) ?? 0), 0),
       rewindMode,
       isDirectShip: mainProd.processMode === 3,
       hasConfig: rewindParams.length > 0 || (mainProd.finishes?.length ?? 0) > 0,
@@ -87,6 +93,7 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
     const rewindParams = prod.rewindParams ?? []
     const rewindMode = rewindParams[0]?.paramMode
 
+    const estimates = canonicalFinishEstimateWeights({ production: prod, finishes: prod.finishes })
     rows.push({
       key: `single-${uuid}`,
       seq: 0,
@@ -102,7 +109,7 @@ export function buildDisplayRows(productions: RollProductionVO[]): DisplayRow[] 
       totalKnifeCount: steps.reduce((s, step) => s + (step.knifeCount ?? 0), 0),
       totalEstimateWeight: (prod.finishes ?? [])
         .filter(isDeliverableProductionFinish)
-        .reduce((s, f) => s + (f.estimateWeight ?? 0), 0),
+        .reduce((s, f) => s + (weightFromCanonicalMap(estimates, f.uuid, f.estimateWeight) ?? 0), 0),
       rewindMode,
       isDirectShip: prod.processMode === 3,
       hasConfig: rewindParams.length > 0 || (prod.finishes?.length ?? 0) > 0,

@@ -12,11 +12,10 @@ import {
 } from '../routeConfigDetail'
 import { formatMoney } from '../orderDetailUtils'
 import {
-  formatWeight,
+  formatRollWeight,
   outputColumns,
   previewOutputColumns,
   rollLabel,
-  rollTotalWeight,
   stageColumns,
   stageRowKey,
 } from './processRouteConfigPresentation'
@@ -35,7 +34,7 @@ export function RouteBaseControls(props: {
       <Descriptions.Item label="规格">{formatGram(props.roll.gramWeight)} / {formatMm(props.roll.originalWidth)}</Descriptions.Item>
       <Descriptions.Item label="直径/纸芯">{props.roll.originalDiameter ?? '-'} / {props.roll.coreDiameter ?? '-'}</Descriptions.Item>
       <Descriptions.Item label="件数">{props.roll.pieceNum ?? 1} 件</Descriptions.Item>
-      <Descriptions.Item label="重量">{formatWeight(rollTotalWeight(props.roll))}</Descriptions.Item>
+      <Descriptions.Item label="重量">{formatRollWeight(props.roll)}</Descriptions.Item>
       <Descriptions.Item label="首道工艺">{props.roll.mainStepType === STEP_TYPE_SAW ? '锯纸' : '复卷'}</Descriptions.Item>
     </Descriptions>
   </Space></Card>

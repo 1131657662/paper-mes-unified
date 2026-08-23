@@ -12,7 +12,7 @@ import type { RouteDraftStage } from '../../features/processOrderRouteDraft/rout
 import type { DetailRouteOutputRow, DetailRoutePriceDefaults } from '../../features/processOrderDetail/routeConfigDetail'
 import type { Machine } from '../../types/machine'
 import type { OriginalRoll, ProcessRoutePreviewVO } from '../../types/processOrder'
-import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
+import { formatGram, formatMm, formatWholeKg } from '../../utils/numberFormatters'
 
 export interface RouteDesignerActionState {
   applyDisabledReason?: string
@@ -132,7 +132,7 @@ function RouteSourcePanel({ onSelect, roll, selectedKey, stages }: {
         onClick={() => onSelect(ORIGINAL_OUTPUT_KEY)}>
         <Typography.Text strong>{roll.rollNo || roll.extraNo || '未编号母卷'}</Typography.Text>
         <span>{roll.paperName || '-'} / {formatGram(roll.gramWeight)} / {formatMm(roll.originalWidth)}</span>
-        <span>来料 {formatKg(Number(roll.totalWeight ?? 0))}</span>
+        <span>来料 {formatWholeKg(Number(roll.totalWeight ?? 0))}</span>
       </button>
       <div className="route-draft-output-list">
         {outputs.length ? outputs.map((row) => (
@@ -141,7 +141,7 @@ function RouteSourcePanel({ onSelect, roll, selectedKey, stages }: {
             onClick={() => onSelect(row.outputKey)}>
             <span><b>{row.outputKey}</b><Tag color={finals.has(row.outputKey) ? 'green' : 'blue'}>{finals.has(row.outputKey) ? '最终' : '中间'}</Tag></span>
             <small>{row.paperName || '-'} / {formatGram(row.gramWeight)} / {formatMm(row.finishWidth)}</small>
-            <em>{formatKg(row.estimateWeight)}</em>
+            <em>{formatWholeKg(row.estimateWeight)}</em>
           </button>
         )) : <Empty description="配置首道工艺后生成阶段产物" />}
       </div>

@@ -24,7 +24,7 @@ class RewindTrimSaveSpecBuilderTest {
 
         assertThat(specs).extracting(FinishConfigSpecDTO::getFinishWidth).containsExactly(20, 20);
         assertThat(specs).extracting(FinishConfigSpecDTO::getEstimateWeight)
-                .containsExactly(new BigDecimal("5.333"), new BigDecimal("5.334"));
+                .containsExactly(new BigDecimal("6"), new BigDecimal("5"));
     }
 
     @Test
@@ -38,7 +38,7 @@ class RewindTrimSaveSpecBuilderTest {
 
         assertThat(specs).extracting(FinishConfigSpecDTO::getFinishWidth).containsExactly(40, 40);
         assertThat(specs).extracting(FinishConfigSpecDTO::getEstimateWeight)
-                .containsExactly(new BigDecimal("24.889"), new BigDecimal("24.890"));
+                .containsExactly(new BigDecimal("25"), new BigDecimal("25"));
     }
 
     @Test
@@ -53,10 +53,10 @@ class RewindTrimSaveSpecBuilderTest {
         assertThat(specs).hasSize(500);
         assertThat(specs).allMatch(spec -> spec.getEstimateWeight().signum() >= 0);
         assertThat(specs).extracting(FinishConfigSpecDTO::getEstimateWeight)
-                .containsOnly(new BigDecimal("0.000"), new BigDecimal("0.001"));
+                .containsOnly(new BigDecimal("0"));
         BigDecimal total = specs.stream().map(FinishConfigSpecDTO::getEstimateWeight)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        assertThat(total).isEqualByComparingTo(new BigDecimal("0.333"));
+        assertThat(total).isEqualByComparingTo(new BigDecimal("0"));
     }
 
     private FinishConfigSaveDTO dto(String policy, RewindPlanPreviewDTO.RewindSegmentDTO segment) {

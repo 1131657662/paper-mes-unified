@@ -1,6 +1,7 @@
 package com.paper.mes.processorder.service;
 
 import com.paper.mes.common.BusinessException;
+import com.paper.mes.processorder.calc.IntegerWeightAllocator;
 import com.paper.mes.processorder.dto.FinishConfigSpecDTO;
 import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.model.WidthDifferencePolicy;
@@ -13,10 +14,11 @@ import java.util.List;
 public class SawPlanCalculator {
 
     private static final String ITEM_TRIM = "TRIM";
-    private static final int SCALE = 3;
+    private static final int SCALE = 0;
 
     public SawPlanCalculation calculate(List<FinishConfigSpecDTO> source, OriginalRoll roll,
                                         String policyValue) {
+        if (roll == null) throw new BusinessException("锯纸来源母卷不能为空");
         List<FinishConfigSpecDTO> specs = source == null ? List.of() : source;
         WidthDifferencePolicy policy = WidthDifferencePolicy.resolve(policyValue);
         int sourceWidth = effectiveSourceWidth(roll);
@@ -33,7 +35,7 @@ public class SawPlanCalculator {
         List<FinishConfigSpecDTO> expanded = repeatForSourcePieces(perPieceOutputs, sourcePieces);
         List<SawPlanCalculation.CalculatedFinish> calculated = calculateOutputs(
                 expanded, totalWeight, differenceWeight, policy,
-                (long) usedWidth * sourcePieces);
+                (long) sourceWidth * sourcePieces);
         List<SawPlanCalculation.CalculatedFinish> finishes = calculated.stream()
                 .filter(item -> isFinish(item.specification())).toList();
         List<SawPlanCalculation.CalculatedFinish> trims = calculated.stream()
@@ -96,13 +98,29 @@ public class SawPlanCalculator {
 
     private BigDecimal proportionalWeight(BigDecimal totalWeight, int width, int sourceWidth) {
         if (width <= 0 || sourceWidth <= 0) return BigDecimal.ZERO.setScale(SCALE);
-        return totalWeight.multiply(BigDecimal.valueOf(width))
-                .divide(BigDecimal.valueOf(sourceWidth), SCALE, RoundingMode.HALF_UP);
+        return IntegerWeightAllocator.roundTotal(totalWeight.multiply(BigDecimal.valueOf(width))
+                .divide(BigDecimal.valueOf(sourceWidth), 12, RoundingMode.HALF_UP));
     }
 
     private BigDecimal totalWeight(OriginalRoll roll, int sourcePieces) {
-        BigDecimal unit = roll.getRollWeight() == null ? BigDecimal.ZERO : roll.getRollWeight();
-        return unit.multiply(BigDecimal.valueOf(sourcePieces));
+        if (roll == null) throw new BusinessException("锯纸来源母卷不能为空");
+        BigDecimal sourceWeight = effectiveSourceWeight(roll, sourcePieces);
+        if (!isPositive(sourceWeight)) {
+            throw new BusinessException("母卷重量未知或不大于0，不能生成预估加工单");
+        }
+        return IntegerWeightAllocator.roundTotal(sourceWeight);
+    }
+
+    private BigDecimal effectiveSourceWeight(OriginalRoll roll, int sourcePieces) {
+        if (isPositive(roll.getActualWeight())) return roll.getActualWeight();
+        if ("UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return BigDecimal.ZERO;
+        if (isPositive(roll.getTotalWeight())) return roll.getTotalWeight();
+        if (!isPositive(roll.getRollWeight())) return BigDecimal.ZERO;
+        return roll.getRollWeight().multiply(BigDecimal.valueOf(sourcePieces));
+    }
+
+    private boolean isPositive(BigDecimal value) {
+        return value != null && value.signum() > 0;
     }
 
     private int sourcePieceCount(OriginalRoll roll) {

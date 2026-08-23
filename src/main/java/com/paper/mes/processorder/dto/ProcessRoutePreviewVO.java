@@ -28,11 +28,15 @@ public class ProcessRoutePreviewVO {
         private BigDecimal processWeight;
         private BigDecimal unitPrice;
         private BigDecimal stepAmount;
+        private String widthDifferencePolicy;
+        private Integer plannedLossWidth;
+        private BigDecimal plannedLossWeight;
     }
 
     @Data
     public static class RouteOutputVO {
         private String outputKey;
+        private String sourceOutputUuid;
         private Integer stageLevel;
         private Integer outputSort;
         private Integer outputType;
@@ -44,6 +48,7 @@ public class ProcessRoutePreviewVO {
         private Integer finishWidth;
         private Integer finishDiameter;
         private Integer finishCoreDiameter;
+        private BigDecimal actualWeight;
         private BigDecimal estimateWeight;
         private String remark;
     }

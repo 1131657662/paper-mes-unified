@@ -30,6 +30,21 @@ class ServiceOnlyFinishFactoryTest {
         assertNull(finish.getActualWeight());
     }
 
+    @Test
+    void create_usesTotalSourceWeightAndWholeKilograms() {
+        ProcessOrder order = new ProcessOrder();
+        order.setUuid("order-1");
+        OriginalRoll source = sourceRoll();
+        source.setRollWeight(new BigDecimal("600.4"));
+        source.setPieceNum(3);
+        source.setTotalWeight(new BigDecimal("1802.6"));
+
+        FinishRoll finish = ServiceOnlyFinishFactory.create(order, source, 7);
+
+        assertEquals(new BigDecimal("1803"), finish.getEstimateWeight());
+        assertEquals(new BigDecimal("1803"), finish.getEstimateWeightSnap());
+    }
+
     private OriginalRoll sourceRoll() {
         OriginalRoll source = new OriginalRoll();
         source.setPaperName("白卡");

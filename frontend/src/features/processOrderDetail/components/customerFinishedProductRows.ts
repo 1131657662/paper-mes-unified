@@ -1,4 +1,4 @@
-import type { FinishedProductRow } from './finishedProductRows'
+import { rowEstimateWeight, type FinishedProductRow } from './finishedProductRows'
 import { compareProductionSpecifications } from '../../../components/processOrder/shared/productionSpecificationOrder'
 
 export interface CustomerFinishedProductRow {
@@ -84,6 +84,6 @@ function toCustomerRow(row: FinishedProductRow, key: string): CustomerFinishedPr
   }
 }
 
-export function customerFinishedProductWeight({ finish }: FinishedProductRow) {
-  return finish.actualWeight ?? finish.estimateWeight ?? 0
+export function customerFinishedProductWeight(row: FinishedProductRow) {
+  return row.finish.actualWeight ?? rowEstimateWeight(row) ?? 0
 }

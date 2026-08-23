@@ -13,6 +13,7 @@ import { rollPreviewStatus } from '../previewStatusUtils'
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
 import { calculateRollWeightBalance, summarizeWeightBalances } from '../weightBalanceModel'
+import { isRollWeightKnown, rollTotalWeight } from '../../processOrderDetail/routeConfigSource'
 import {
   PreviewActions,
   PreviewStatusCell,
@@ -109,8 +110,8 @@ function previewColumns(
   return [
     { title: '母卷', width: 150, render: (_, roll) => roll.rollNo || roll.paperName || '-' },
     { title: '原纸规格', width: 160, render: (_, roll) => `${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}` },
-    { title: '重量', width: 120, render: (_, roll) => roll.weightStatus === 'UNKNOWN' || roll.rollWeight == null
-      ? '待称重' : formatKg(Number(roll.rollWeight) * (roll.pieceNum ?? 1)) },
+    { title: '重量', width: 120, render: (_, roll) => !isRollWeightKnown(roll)
+      ? '待称重' : formatKg(rollTotalWeight(roll)) },
     { title: '加工方式', width: 110, render: (_, roll) => <Tag>{PROCESS_MODE[roll.processMode ?? 1]}</Tag> },
     {
       title: '主工艺',

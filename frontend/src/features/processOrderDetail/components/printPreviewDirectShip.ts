@@ -3,8 +3,9 @@ import type {
   FinishRoll,
   RollProductionVO,
 } from '../../../types/processOrder'
-import { formatProductionKg } from '../orderDetailUtils'
+import { formatProductionEstimateKg, formatProductionKg } from '../orderDetailUtils'
 import { printFinishSpec } from './printPreviewSpecification'
+import { isProductionWeightKnown, productionSourceEstimateWeight } from '../productionSourceWeight'
 import type { PrintRouteOutput, PrintRouteStage } from './printPreviewTypes'
 
 export function directShipStage(
@@ -25,15 +26,13 @@ function directShipOutput(
   production: RollProductionVO,
   finish?: FinishRoll,
 ): PrintRouteOutput {
-  const estimateWeight = finish?.estimateWeight
-    ?? production.actualWeight
-    ?? (production.rollWeight ?? 0) * (production.pieceNum ?? 1)
+  const estimateWeight = directShipEstimateWeight(production, finish)
   return {
     key: finish?.uuid ?? `${production.originalUuid ?? 'roll'}-direct-output`,
     finishRollUuid: finish?.uuid,
     name: finish?.finishRollNo || production.rollNo || production.extraNo || '原卷直发',
     spec: printFinishSpec(directSpec(production, finish)),
-    weight: formatProductionKg(estimateWeight, production),
+    weight: estimateWeight == null ? '待称重' : formatProductionEstimateKg(estimateWeight),
     actualWeight: finish?.actualWeight == null
       ? undefined
       : formatProductionKg(finish.actualWeight, production),
@@ -41,6 +40,12 @@ function directShipOutput(
     width: finish?.finishWidth ?? production.actualWidth ?? production.originalWidth,
     status: 'final',
   }
+}
+
+function directShipEstimateWeight(production: RollProductionVO, finish?: FinishRoll) {
+  if (finish?.estimateWeight != null && finish.estimateWeight > 0) return finish.estimateWeight
+  if (!isProductionWeightKnown(production)) return undefined
+  return productionSourceEstimateWeight(production)
 }
 
 function matchingFinish(production: RollProductionVO, finishes: FinishRoll[]) {

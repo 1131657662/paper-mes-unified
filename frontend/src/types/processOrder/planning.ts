@@ -143,6 +143,9 @@ export interface ProcessRouteStageLineVO {
   processWeight?: number
   unitPrice?: number
   stepAmount?: number
+  widthDifferencePolicy?: WidthDifferencePolicy
+  plannedLossWidth?: number
+  plannedLossWeight?: number
 }
 
 export interface ProcessRouteOutputVO {
@@ -158,6 +161,7 @@ export interface ProcessRouteOutputVO {
   finishWidth?: number
   finishDiameter?: number
   finishCoreDiameter?: number
+  actualWeight?: number
   estimateWeight?: number
   remark?: string
 }

@@ -10,6 +10,7 @@ import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.IdentityHashMap;
 
 public final class MultiSourceConsumptionNormalizer {
 
@@ -34,16 +35,18 @@ public final class MultiSourceConsumptionNormalizer {
             return;
         }
         validateCompleteConsumption(segments);
+        Map<FinishConfigSpecDTO.FinishSourceDTO, BigDecimal> effective = effectiveConsumptionRatios(segments);
         for (RewindPlanPreviewDTO.RewindSegmentDTO segment : segments) {
-            normalizeSegment(segment, rollByUuid);
+            normalizeSegment(segment, rollByUuid, effective);
         }
     }
 
     public static BigDecimal totalConsumedWeight(List<RewindPlanPreviewDTO.RewindSegmentDTO> segments,
                                                  Map<String, OriginalRoll> rollByUuid) {
+        Map<FinishConfigSpecDTO.FinishSourceDTO, BigDecimal> effective = effectiveConsumptionRatios(segments);
         BigDecimal total = BigDecimal.ZERO;
         for (RewindPlanPreviewDTO.RewindSegmentDTO segment : segments) {
-            BigDecimal segmentWeight = segmentConsumedWeight(segment, rollByUuid);
+            BigDecimal segmentWeight = segmentConsumedWeight(segment, rollByUuid, effective);
             if (segmentWeight == null) return null;
             total = total.add(segmentWeight);
         }
@@ -52,9 +55,16 @@ public final class MultiSourceConsumptionNormalizer {
 
     public static BigDecimal segmentConsumedWeight(RewindPlanPreviewDTO.RewindSegmentDTO segment,
                                                    Map<String, OriginalRoll> rollByUuid) {
+        return segmentConsumedWeight(segment, rollByUuid,
+                effectiveConsumptionRatios(List.of(segment)));
+    }
+
+    private static BigDecimal segmentConsumedWeight(RewindPlanPreviewDTO.RewindSegmentDTO segment,
+                                                   Map<String, OriginalRoll> rollByUuid,
+                                                   Map<FinishConfigSpecDTO.FinishSourceDTO, BigDecimal> effective) {
         BigDecimal total = BigDecimal.ZERO;
         for (FinishConfigSpecDTO.FinishSourceDTO source : safeSources(segment)) {
-            BigDecimal sourceWeight = sourceConsumedWeight(source, rollByUuid);
+            BigDecimal sourceWeight = sourceConsumedWeight(source, rollByUuid, effective.get(source));
             if (sourceWeight == null) return null;
             total = total.add(sourceWeight);
         }
@@ -62,9 +72,10 @@ public final class MultiSourceConsumptionNormalizer {
     }
 
     private static void normalizeSegment(RewindPlanPreviewDTO.RewindSegmentDTO segment,
-                                         Map<String, OriginalRoll> rollByUuid) {
+                                         Map<String, OriginalRoll> rollByUuid,
+                                         Map<FinishConfigSpecDTO.FinishSourceDTO, BigDecimal> effective) {
         List<FinishConfigSpecDTO.FinishSourceDTO> sources = safeSources(segment);
-        BigDecimal segmentWeight = segmentConsumedWeight(segment, rollByUuid);
+        BigDecimal segmentWeight = segmentConsumedWeight(segment, rollByUuid, effective);
         if (segmentWeight == null || segmentWeight.signum() <= 0) {
             validatePendingShares(sources);
             return;
@@ -74,7 +85,8 @@ public final class MultiSourceConsumptionNormalizer {
             FinishConfigSpecDTO.FinishSourceDTO source = sources.get(i);
             BigDecimal share = i == sources.size() - 1
                     ? HUNDRED.subtract(allocated)
-                    : sourceConsumedWeight(source, rollByUuid).multiply(HUNDRED).divide(segmentWeight, 2, RoundingMode.HALF_UP);
+                : sourceConsumedWeight(source, rollByUuid, effective.get(source))
+                .multiply(HUNDRED).divide(segmentWeight, 2, RoundingMode.HALF_UP);
             source.setShareRatio(share.setScale(2, RoundingMode.HALF_UP));
             allocated = allocated.add(source.getShareRatio());
         }
@@ -94,34 +106,47 @@ public final class MultiSourceConsumptionNormalizer {
 
     private static Map<String, BigDecimal> consumptionTotals(List<RewindPlanPreviewDTO.RewindSegmentDTO> segments) {
         Map<String, BigDecimal> totals = new LinkedHashMap<>();
+        Map<FinishConfigSpecDTO.FinishSourceDTO, BigDecimal> effective = effectiveConsumptionRatios(segments);
         for (RewindPlanPreviewDTO.RewindSegmentDTO segment : segments) {
             for (FinishConfigSpecDTO.FinishSourceDTO source : safeSources(segment)) {
-                BigDecimal ratio = source.getConsumeRatio();
-                if (ratio == null || ratio.signum() <= 0) {
-                    throw new BusinessException("多母卷合并复卷必须填写来源消耗比例");
-                }
-                totals.merge(source.getOriginalUuid(), ratio, BigDecimal::add);
+                totals.merge(source.getOriginalUuid(), effective.getOrDefault(source, BigDecimal.ZERO),
+                        BigDecimal::add);
             }
         }
         return totals;
     }
 
     private static BigDecimal sourceConsumedWeight(FinishConfigSpecDTO.FinishSourceDTO source,
-                                                   Map<String, OriginalRoll> rollByUuid) {
+                                                   Map<String, OriginalRoll> rollByUuid,
+                                                   BigDecimal effectiveRatio) {
         OriginalRoll roll = rollByUuid.get(source.getOriginalUuid());
-        if (roll == null || source.getConsumeRatio() == null) {
+        if (roll == null || effectiveRatio == null) {
             return null;
         }
         BigDecimal totalWeight = totalWeight(roll);
         return totalWeight == null ? null
-                : totalWeight.multiply(source.getConsumeRatio()).divide(HUNDRED, 6, RoundingMode.HALF_UP);
+                : totalWeight.multiply(effectiveRatio).divide(HUNDRED, 6, RoundingMode.HALF_UP);
+    }
+
+    private static Map<FinishConfigSpecDTO.FinishSourceDTO, BigDecimal> effectiveConsumptionRatios(
+            List<RewindPlanPreviewDTO.RewindSegmentDTO> segments) {
+        Map<FinishConfigSpecDTO.FinishSourceDTO, BigDecimal> result = new IdentityHashMap<>();
+        List<FinishConfigSpecDTO.FinishSourceDTO> sources = segments.stream()
+                .flatMap(segment -> safeSources(segment).stream()).toList();
+        List<BigDecimal> ratios = SourceConsumptionRatioAllocator.allocate(sources.stream()
+                .map(source -> new SourceConsumptionRatioAllocator.SourceRatio(
+                        source.getOriginalUuid(), source.getConsumeRatio())).toList());
+        for (int index = 0; index < sources.size(); index++) {
+            result.put(sources.get(index), ratios.get(index));
+        }
+        return result;
     }
 
     private static BigDecimal totalWeight(OriginalRoll roll) {
-        if ("UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
         if (roll.getActualWeight() != null && roll.getActualWeight().signum() > 0) {
             return roll.getActualWeight();
         }
+        if ("UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
         if (roll.getTotalWeight() != null && roll.getTotalWeight().signum() > 0) {
             return roll.getTotalWeight();
         }

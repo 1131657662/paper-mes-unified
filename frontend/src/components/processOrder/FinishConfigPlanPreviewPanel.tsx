@@ -2,7 +2,7 @@ import { Descriptions, Empty, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import TooltipText from '../biz/TooltipText'
 import type { FinishPreviewVO, RewindFinishItemPreview, RewindSegmentDTO, RewindSegmentPreview } from '../../types/processOrder'
-import { formatKg, formatMm, formatOptionalKg } from '../../utils/numberFormatters'
+import { formatMm, formatOptionalKg, formatWholeKg } from '../../utils/numberFormatters'
 
 interface Props {
   segments: RewindSegmentDTO[]
@@ -33,9 +33,9 @@ const finishColumns: ColumnsType<RewindFinishItemPreview> = [
   { title: '成品直径', dataIndex: 'finishDiameter', width: 85, render: (v: number) => formatMm(v) },
   { title: '纸芯直径', dataIndex: 'finishCoreDiameter', width: 85, render: (v: number) => formatMm(v) },
   { title: '分摊比例', dataIndex: 'segmentRatio', width: 80, render: (v: number) => `${v}%` },
-  { title: '预估重量', dataIndex: 'estimateWeight', width: 85, render: (v: number) => formatKg(v) },
+  { title: '预估重量', dataIndex: 'estimateWeight', width: 85, render: (v: number) => formatWholeKg(v) },
   { title: '修边宽度', dataIndex: 'trimWidth', width: 80, render: (v: number) => (v ? formatMm(v) : '-') },
-  { title: '修边重量', dataIndex: 'trimWeight', width: 80, render: (v: number) => (v == null ? '-' : formatKg(v)) },
+  { title: '修边重量', dataIndex: 'trimWeight', width: 80, render: (v: number) => (v == null ? '-' : formatWholeKg(v)) },
   { title: '来源', dataIndex: 'sourceSummary', render: textCell },
 ]
 

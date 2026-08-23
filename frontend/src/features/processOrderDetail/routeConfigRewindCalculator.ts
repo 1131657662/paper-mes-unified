@@ -9,12 +9,26 @@ import {
   appendTrimSeed,
   calcTrimWeight,
   combinedSource,
-  roundWeight,
+  isRouteOutputWeightKnown,
   type RouteOutputSeed,
 } from './routeConfigSource'
+import { allocateIntegerWeight, roundWeightTotal } from '../../utils/integerWeightAllocation'
+import {
+  effectiveSourceConsumptionRatios,
+  validateExplicitSourceConsumptionRatios,
+} from '../../utils/sourceConsumptionRatios'
 
 interface RewindSeedInput extends Omit<RouteOutputSeed, 'estimateWeight'> {
   basis: number
+}
+
+interface RewindWidthAccounting {
+  outputTrimWidth: number
+  explicitTrimWidth: number
+  differenceWidth: number
+  trimWeight: number
+  lossWeight: number
+  allocationWeight: number
 }
 
 export function calculateRewindOutputSeeds(
@@ -23,15 +37,27 @@ export function calculateRewindOutputSeeds(
 ): RouteOutputSeed[] {
   const source = combinedSource(sources)
   const segments = plan.segments?.length ? plan.segments : [defaultRewindSegment(source)]
+  validateModeFiveConsumption(sources, segments, plan.rewindMode)
   const ratios = rewindSegmentRatios(sources, segments, plan.rewindMode)
   const totalWeight = rewindTotalWeight(sources, segments, plan.rewindMode)
-  const trimWidth = rewindTrimWidth(segments, source.finishWidth, ratios, plan.rewindMode)
+  const accounting = rewindWidthAccounting(
+    segments,
+    source.finishWidth,
+    ratios,
+    plan.rewindMode,
+    plan.widthDifferencePolicy,
+    totalWeight,
+  )
   const inputs = segments.flatMap((segment, index) => (
     rewindSegmentSeedInputs(source, segment, ratios[index] ?? 0, plan.rewindMode)
   ))
-  const rows = allocateRewindSeeds(inputs, totalWeight, source.finishWidth, trimWidth)
-  const trimWeight = calcTrimWeight(totalWeight, source.finishWidth, trimWidth)
-  return appendTrimSeed(rows, source, trimWidth, trimWeight)
+  const allocation = allocateRewindSeeds(inputs, totalWeight, accounting)
+  return appendTrimSeed(
+    allocation.rows,
+    source,
+    accounting.outputTrimWidth,
+    allocation.trimWeight,
+  )
 }
 
 function rewindSegmentSeedInputs(
@@ -62,23 +88,23 @@ function rewindSegmentSeedInputs(
 function allocateRewindSeeds(
   inputs: RewindSeedInput[],
   totalWeight: number,
-  originalWidth: number,
-  trimWidth: number,
-): RouteOutputSeed[] {
-  if (!inputs.length) return []
-  const trimWeight = originalWidth > 0 ? totalWeight * trimWidth / originalWidth : 0
-  const allocatableWeight = totalWeight - trimWeight
-  const basisTotal = inputs.reduce((sum, input) => sum + input.basis, 0)
-  let allocated = 0
-  return inputs.map((input, index) => {
-    const estimateWeight = index === inputs.length - 1
-      ? roundWeight(allocatableWeight - allocated)
-      : roundWeight(basisTotal > 0
-        ? allocatableWeight * input.basis / basisTotal
-        : allocatableWeight / inputs.length)
-    allocated += estimateWeight
-    return { ...input, estimateWeight }
-  })
+  accounting: RewindWidthAccounting,
+): { rows: RouteOutputSeed[]; trimWeight: number } {
+  if (!inputs.length) return { rows: [], trimWeight: 0 }
+  const baseOutputWeight = Math.max(
+    0,
+    totalWeight - accounting.trimWeight - accounting.lossWeight - accounting.allocationWeight,
+  )
+  const weights = allocateIntegerWeight(baseOutputWeight, inputs.map((input) => input.basis))
+  const allocationShares = allocateIntegerWeight(
+    accounting.allocationWeight,
+    Array.from({ length: inputs.length }, () => 1),
+  )
+  const rows = inputs.map((input, index) => ({
+    ...input,
+    estimateWeight: (weights[index] ?? 0) + (allocationShares[index] ?? 0),
+  }))
+  return { rows, trimWeight: accounting.trimWeight }
 }
 
 function rewindSeedBasis(
@@ -101,17 +127,56 @@ function rewindSeedBasis(
   return finishWidth * ratio
 }
 
-function rewindTrimWidth(
+function rewindWidthAccounting(
   segments: RewindSegmentPlanDTO[],
   originalWidth: number,
   ratios: number[],
-  rewindMode?: number,
-) {
-  if (rewindMode === 2) return 0
-  return segments.reduce(
-    (sum, segment, index) => sum + segmentTrimWidth(segment, originalWidth) * (ratios[index] ?? 0),
-    0,
+  rewindMode: number | undefined,
+  policy: ProcessPlanDTO['widthDifferencePolicy'],
+  totalWeight: number,
+): RewindWidthAccounting {
+  if (rewindMode === 2 || rewindMode === 6 || originalWidth <= 0) {
+    return zeroWidthAccounting()
+  }
+  const widths = segments.reduce(
+    (result, segment, index) => {
+      const ratio = ratios[index] ?? 0
+      result.explicitTrimWidth += explicitTrimWidth(segment) * ratio
+      result.differenceWidth += segmentDifferenceWidth(segment, originalWidth) * ratio
+      return result
+    },
+    { explicitTrimWidth: 0, differenceWidth: 0 },
   )
+  const normalizedPolicy = policy ?? 'REMAINDER'
+  const outputTrimWidth = widths.explicitTrimWidth + (
+    normalizedPolicy === 'REMAINDER' ? widths.differenceWidth : 0
+  )
+  const trimWeight = calcTrimWeight(totalWeight, originalWidth, outputTrimWidth)
+  const lossWeight = normalizedPolicy === 'LOSS'
+    ? calcTrimWeight(totalWeight, originalWidth, widths.differenceWidth)
+    : 0
+  const allocationWeight = normalizedPolicy === 'ALLOCATE'
+    ? calcTrimWeight(totalWeight, originalWidth, widths.differenceWidth)
+    : 0
+  return {
+    outputTrimWidth,
+    explicitTrimWidth: widths.explicitTrimWidth,
+    differenceWidth: widths.differenceWidth,
+    trimWeight,
+    lossWeight,
+    allocationWeight,
+  }
+}
+
+function zeroWidthAccounting(): RewindWidthAccounting {
+  return {
+    outputTrimWidth: 0,
+    explicitTrimWidth: 0,
+    differenceWidth: 0,
+    trimWeight: 0,
+    lossWeight: 0,
+    allocationWeight: 0,
+  }
 }
 
 function rewindSegmentRatios(
@@ -120,9 +185,10 @@ function rewindSegmentRatios(
   rewindMode?: number,
 ) {
   if (hasSourceConsumption(segments, rewindMode)) {
-    const total = totalConsumedWeight(sources, segments)
+    const effective = effectiveConsumptionRatios(segments)
+    const total = totalConsumedWeight(sources, segments, effective)
     if (total > 0) {
-      return segments.map((segment) => safeDivide(segmentConsumedWeight(sources, segment), total))
+      return segments.map((segment) => safeDivide(segmentConsumedWeight(sources, segment, effective), total))
     }
   }
   const totalRatio = segments.reduce((sum, segment) => sum + Number(segment.segmentRatio ?? 1), 0) || 1
@@ -135,37 +201,85 @@ function rewindTotalWeight(
   rewindMode?: number,
 ) {
   if (!hasSourceConsumption(segments, rewindMode)) return combinedSource(sources).estimateWeight
-  const consumed = totalConsumedWeight(sources, segments)
-  return consumed > 0 ? consumed : combinedSource(sources).estimateWeight
+  const consumed = totalConsumedWeight(sources, segments, effectiveConsumptionRatios(segments))
+  return consumed > 0 ? roundWeightTotal(consumed) : combinedSource(sources).estimateWeight
 }
 
 function hasSourceConsumption(segments: RewindSegmentPlanDTO[], rewindMode?: number) {
   return rewindMode === 5
-    && segments.some((segment) => segment.sources?.some((source) => source.consumeRatio != null))
+    && segments.some((segment) => (segment.sources?.length ?? 0) > 0)
 }
 
 function totalConsumedWeight(
   sources: DetailRouteOutputRow[],
   segments: RewindSegmentPlanDTO[],
+  effective: Map<NonNullable<RewindSegmentPlanDTO['sources']>[number], number>,
 ) {
-  return segments.reduce((sum, segment) => sum + segmentConsumedWeight(sources, segment), 0)
+  return segments.reduce((sum, segment) => sum + segmentConsumedWeight(sources, segment, effective), 0)
 }
 
 function segmentConsumedWeight(
   sources: DetailRouteOutputRow[],
   segment: RewindSegmentPlanDTO,
+  effective: Map<NonNullable<RewindSegmentPlanDTO['sources']>[number], number>,
 ) {
   return (segment.sources ?? []).reduce((sum, source) => {
     const row = sources.find((item) => item.outputKey === source.originalUuid)
-    const ratio = Number(source.consumeRatio ?? source.shareRatio ?? 0) / 100
-    return sum + (row?.estimateWeight ?? 0) * ratio
+    const ratio = (effective.get(source) ?? 0) / 100
+    const sourceWeight = row?.actualWeight != null && Number.isFinite(row.actualWeight) && row.actualWeight > 0
+      ? row.actualWeight
+      : Number.isFinite(row?.estimateWeight) ? row?.estimateWeight ?? 0 : 0
+    return sum + sourceWeight * ratio
   }, 0)
 }
 
-function segmentTrimWidth(segment: RewindSegmentPlanDTO, originalWidth: number) {
-  const explicitTrim = layoutWidth(segment, 'TRIM')
-  if (explicitTrim > 0) return explicitTrim
-  return Math.max(0, originalWidth - layoutWidth(segment, 'FINISH'))
+function effectiveConsumptionRatios(segments: RewindSegmentPlanDTO[]) {
+  type Source = NonNullable<RewindSegmentPlanDTO['sources']>[number]
+  const sources = segments.flatMap((segment) => segment.sources ?? [])
+  validateExplicitSourceConsumptionRatios(sources)
+  return effectiveSourceConsumptionRatios(sources) as Map<Source, number>
+}
+
+function validateModeFiveConsumption(
+  sources: DetailRouteOutputRow[],
+  segments: RewindSegmentPlanDTO[],
+  rewindMode?: number,
+) {
+  if (rewindMode !== 5 || !segments.some((segment) => (segment.sources?.length ?? 0) > 0)) return
+  if (sources.some((source) => !isRouteOutputWeightKnown(source))) {
+    throw new Error('多母卷合并复卷来源重量未知，不能生成预估')
+  }
+  const totals = new Map<string, number>()
+  const effective = effectiveConsumptionRatios(segments)
+  const sourceKeys = new Set(sources.map((source) => source.outputKey))
+  for (const segment of segments) {
+    for (const source of segment.sources ?? []) {
+      if (!source.originalUuid || !sourceKeys.has(source.originalUuid)) {
+        throw new Error('合并复卷来源产物必须来自当前输入')
+      }
+      if (source.originalUuid) totals.set(
+        source.originalUuid,
+        (totals.get(source.originalUuid) ?? 0) + (effective.get(source) ?? 0),
+      )
+    }
+    if ((segment.sources?.length ?? 0) > 0 && segmentConsumedWeight(sources, segment, effective) <= 0) {
+      throw new Error('多母卷合并复卷分段消耗重量必须大于0')
+    }
+  }
+  for (const source of sources) {
+    const total = totals.get(source.outputKey) ?? 0
+    if (Math.abs(total - 100) > 1e-9) {
+      throw new Error(`来源 ${source.outputKey} 的消耗比例合计必须为100%`)
+    }
+  }
+}
+
+function explicitTrimWidth(segment: RewindSegmentPlanDTO) {
+  return layoutWidth(segment, 'TRIM')
+}
+
+function segmentDifferenceWidth(segment: RewindSegmentPlanDTO, originalWidth: number) {
+  return Math.max(0, originalWidth - layoutWidth(segment, 'FINISH') - explicitTrimWidth(segment))
 }
 
 function layoutWidth(segment: RewindSegmentPlanDTO, type: 'FINISH' | 'TRIM') {

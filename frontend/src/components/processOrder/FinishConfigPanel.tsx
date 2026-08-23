@@ -2,6 +2,7 @@ import { Alert, Descriptions, Empty } from 'antd'
 import type { FinishConfigSaveDTO, OriginalRoll, ProcessOrder } from '../../types/processOrder'
 import { PROCESS_MODE, STEP_TYPE, processModeRequiresMain } from '../../constants/processOrder'
 import { formatGram, formatKg, formatMm } from '../../utils/numberFormatters'
+import { isRollWeightKnown, rollTotalWeight } from '../../features/processOrderDetail/routeConfigSource'
 import DirectShipInfo from './DirectShipInfo'
 import RewindingConfigForm from './RewindingConfigForm'
 import SawingConfigForm from './SawingConfigForm'
@@ -37,7 +38,7 @@ function RollDescriptions({ roll }: { roll: OriginalRoll }) {
       <Descriptions.Item label="品名">{roll.paperName || '-'}</Descriptions.Item>
       <Descriptions.Item label="克重">{formatGram(roll.gramWeight)}</Descriptions.Item>
       <Descriptions.Item label="门幅">{formatMm(roll.originalWidth)}</Descriptions.Item>
-      <Descriptions.Item label="单重">{formatKg(roll.rollWeight)} × {roll.pieceNum || 1} 件</Descriptions.Item>
+      <Descriptions.Item label="总重">{isRollWeightKnown(roll) ? formatKg(rollTotalWeight(roll)) : '待称重'} / {roll.pieceNum || 1} 件</Descriptions.Item>
       <Descriptions.Item label="加工模式">{PROCESS_MODE[processMode] ?? '-'}</Descriptions.Item>
       <Descriptions.Item label="主工艺">{processModeRequiresMain(processMode) ? STEP_TYPE[stepType ?? 0] ?? '-' : '-'}</Descriptions.Item>
       <Descriptions.Item label="母卷号">{roll.rollNo || '-'}</Descriptions.Item>

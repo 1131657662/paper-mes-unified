@@ -59,6 +59,22 @@ describe('rewindingConfigModel', () => {
     expect(segment?.layoutItems[0]?.width).toBe(1200)
   })
 
+  it('preserves source consume ratios when editing and submitting a plan', () => {
+    const [segment] = buildInitialSegments(roll(), {
+      processMode: 1,
+      rewindMode: 5,
+      rewindSegments: [{
+        segmentSort: 1,
+        segmentRatio: 1,
+        sources: [{ originalUuid: 'roll-1', shareRatio: 100, consumeRatio: 50 }],
+        layoutItems: [{ width: 1200, itemType: 'FINISH' }],
+      }],
+    })
+
+    expect(segment?.sources[0]?.consumeRatio).toBe(50)
+    expect(toPreviewDto(5, 0, [segment!]).segments?.[0]?.sources?.[0]?.consumeRatio).toBe(50)
+  })
+
   it('uses the measured width and does not invent a paper core for same-spec mode', () => {
     const [segment] = buildSameSpecSegments(roll({ actualWidth: 1180, coreDiameter: undefined }))
 

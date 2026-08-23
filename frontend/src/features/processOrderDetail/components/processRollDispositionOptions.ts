@@ -6,6 +6,7 @@ import {
   formatStoredCoreDiameter,
   formatStoredDiameter,
 } from '../../../utils/numberFormatters'
+import { isRollWeightKnown, rollTotalWeight } from '../routeConfigSource'
 
 export const DEFAULT_DISPOSITION_VALUES = { action: 'CANCEL' as const }
 
@@ -87,7 +88,7 @@ function buildRollFields(roll: OriginalRoll): RollOptionField[] {
     { label: '门幅', value: formatMm(width) },
     { label: '卷径', value: formatStoredDiameter(roll.originalDiameter) },
     { label: '纸芯', value: formatStoredCoreDiameter(roll.coreDiameter) },
-    { label: '总重', value: formatOptionalKg(totalRollWeight(roll)) },
+    { label: '总重', value: formatOptionalKg(displayRollWeight(roll)) },
   ]
 }
 
@@ -101,13 +102,10 @@ function buildRollDetail(roll: OriginalRoll): string {
     `卷径 ${formatStoredDiameter(roll.originalDiameter)}`,
     `纸芯 ${formatStoredCoreDiameter(roll.coreDiameter)}`,
     `件数 ${roll.pieceNum ?? 1} 件`,
-    `总重 ${formatOptionalKg(totalRollWeight(roll))}`,
+    `总重 ${formatOptionalKg(displayRollWeight(roll))}`,
   ].join(' · ')
 }
 
-function totalRollWeight(roll: OriginalRoll): number | undefined {
-  if (roll.weightStatus === 'UNKNOWN') return undefined
-  if (roll.totalWeight != null) return roll.totalWeight
-  if (roll.rollWeight == null) return undefined
-  return roll.rollWeight * (roll.pieceNum ?? 1)
+function displayRollWeight(roll: OriginalRoll): number | undefined {
+  return isRollWeightKnown(roll) ? rollTotalWeight(roll) : undefined
 }

@@ -34,6 +34,7 @@ import {
   sourceStageText,
   totalSourceWeight,
 } from './processRouteConfigPresentation'
+import { rollTotalWeight } from '../routeConfigSource'
 
 interface Props {
   appendMode: boolean
@@ -74,7 +75,7 @@ function StageEditor({ form, machines, prices, setForm, stage }: Props & { stage
     <StageTypeControl machines={machines} prices={prices} setForm={setForm} stage={stage} />
     <ProcessMachineSelect machines={machines} mainStepType={stage.stepType}
       diameter={sourceRoll.originalDiameter} width={sourceRoll.originalWidth}
-      weight={Number(sourceRoll.rollWeight ?? 0) * Number(sourceRoll.pieceNum ?? 1)}
+      weight={rollTotalWeight(sourceRoll)}
       value={stage.plan.machineUuid} onChange={(machineUuid) => updatePlan({ ...stage.plan, machineUuid })} />
     <SourceSummary rows={sources.length ? sources : [source]} />
     {stage.stepType === STEP_TYPE_REWIND
@@ -138,8 +139,9 @@ function lastStageKeys(form: DetailRouteFormState): string[] {
 function mergeSourceRolls(rolls: RollDraft[]): RollDraft | undefined {
   const [first] = rolls
   if (!first || rolls.length <= 1) return first
+  const known = rolls.every((roll) => roll.weightStatus !== 'UNKNOWN' && rollTotalWeight(roll) > 0)
   return { ...first, localId: rolls.map((roll) => roll.localId).join('+'),
     uuid: rolls.map((roll) => roll.uuid).join('+'), rollWeight: rolls.reduce((sum, roll) => (
-      sum + Number(roll.rollWeight ?? 0) * Number(roll.pieceNum ?? 1)
-    ), 0) }
+      sum + rollTotalWeight(roll)
+    ), 0), pieceNum: 1, weightStatus: known ? 'ESTIMATED' : 'UNKNOWN' }
 }

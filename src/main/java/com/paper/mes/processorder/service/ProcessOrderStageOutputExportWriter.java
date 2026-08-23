@@ -7,6 +7,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.paper.mes.processorder.service.ProcessOrderExportText.productionLabel;
 import static com.paper.mes.processorder.service.ProcessOrderExportText.stepTypeText;
@@ -22,13 +23,21 @@ final class ProcessOrderStageOutputExportWriter {
                 "品名", "克重", "门幅", "外径", "纸芯", "预估重量kg", "实际重量kg", "来源工艺");
         int rowIndex = 1;
         for (ProcessOrderDetailVO.RollProductionVO production : productions) {
+            Map<String, java.math.BigDecimal> estimateWeights =
+                    ProcessOrderExportWeightResolver.stageOutputEstimateWeights(production);
             for (ProcessOrderDetailVO.StageOutputVO output : stageOutputs(production)) {
                 Row row = sheet.createRow(rowIndex++);
                 cells(row, rowIndex - 1, productionLabel(production), output.getOutputNo(),
                         output.getParentOutputUuid(), stageText(output.getStageLevel()),
                         outputTypeText(output.getOutputType()), outputStatusText(output.getOutputStatus()),
                         output.getPaperName(), output.getGramWeight(), output.getFinishWidth(),
-                        output.getFinishDiameter(), output.getFinishCoreDiameter(), output.getEstimateWeight(),
+                        output.getFinishDiameter(), output.getFinishCoreDiameter(),
+                        output.getActualWeight() != null && output.getActualWeight().signum() > 0
+                                ? output.getActualWeight()
+                                : estimateWeights.containsKey(output.getUuid())
+                                    ? estimateWeights.get(output.getUuid())
+                                    : "UNKNOWN".equalsIgnoreCase(output.getWeightStatus())
+                                        ? null : output.getEstimateWeight(),
                         output.getActualWeight(), sourceText(output));
             }
         }

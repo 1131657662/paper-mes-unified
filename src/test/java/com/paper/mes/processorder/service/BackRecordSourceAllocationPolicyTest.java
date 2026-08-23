@@ -50,6 +50,18 @@ class BackRecordSourceAllocationPolicyTest {
         assertThat(relations).extracting(FinishOriginalRel::getShareRatio).containsOnlyNulls();
     }
 
+    @Test
+    void recalculate_withLegacyEmptyConsumptionTreatsSourceAsFullyConsumed() {
+        List<FinishOriginalRel> relations = relations(null, "50", "50");
+
+        List<FinishOriginalRel> changed = BackRecordSourceAllocationPolicy.recalculate(
+                rolls("600", "700", "700"), List.of(finish("2000")), relations);
+
+        assertThat(changed).hasSize(3);
+        assertThat(relations).extracting(FinishOriginalRel::getShareRatio)
+                .containsExactly(new BigDecimal("46.15"), new BigDecimal("26.92"), new BigDecimal("26.93"));
+    }
+
     private List<OriginalRoll> rolls(String... weights) {
         return java.util.stream.IntStream.range(0, weights.length)
                 .mapToObj(index -> roll("roll-" + (index + 1), weights[index]))
@@ -83,7 +95,7 @@ class BackRecordSourceAllocationPolicyTest {
         FinishOriginalRel relation = new FinishOriginalRel();
         relation.setFinishUuid("finish-1");
         relation.setOriginalUuid(rollUuid);
-        relation.setConsumeRatio(new BigDecimal(consumptionRatio));
+        if (consumptionRatio != null) relation.setConsumeRatio(new BigDecimal(consumptionRatio));
         return relation;
     }
 }

@@ -39,4 +39,25 @@ describe('calculateRollWeightBalance', () => {
     expect(balance.difference).toBe(0)
     expect(balance.detail).toContain('已分摊到所有实际产出件重量')
   })
+
+  it('caps repeated merged-source consumption at the mother roll weight', () => {
+    const mergedRoll = { ...roll, uuid: 'source-a', rollWeight: 1000, mainStepType: 2 }
+    const mergedPlan: ProcessPlanDTO = {
+      processMode: 1,
+      mainStepType: 2,
+      rewindMode: 5,
+      segments: [
+        { sources: [{ originalUuid: 'source-a', consumeRatio: 60 }] },
+        { sources: [{ originalUuid: 'source-a', consumeRatio: 60 }] },
+      ],
+    }
+    const preview: PlanPreviewVO = { ready: true, totalEstimateWeight: 1000, totalTrimWeight: 0 }
+
+    const balance = calculateRollWeightBalance({
+      roll: mergedRoll, rolls: [mergedRoll], plan: mergedPlan, preview,
+    })
+
+    expect(balance.inputWeight).toBe(1000)
+    expect(balance.status).toBe('balanced')
+  })
 })

@@ -153,7 +153,7 @@ export function workItemRecorded(item: BackRecordWorkItem): boolean {
 
 export function processLines(item: BackRecordWorkItem): Array<{ header: string; details: string[] }> {
   if (!item.production) return [{ header: '未保存工艺方案', details: [] }]
-  return buildProcessingFlow(item.production)
+  return buildProcessingFlow(item.production, item.rollProductions)
 }
 
 function fromDisplayRow(
@@ -197,10 +197,13 @@ function attachFinishes(items: BackRecordWorkItem[], detail: ProcessOrderDetailV
 
   for (const item of items) {
     const finishes = [...(item.production?.finishes ?? [])].sort(compareFinishProductions)
+    const sourceByUuid = new Map((item.production?.finishes ?? []).map((finish) => [finish.uuid, finish]))
     for (const finish of finishes) {
       const matched = byUuid.get(finish.uuid)
       if (!matched) continue
-      item.finishes.push({ finish: matched, bindMode: 'linked' })
+      const sourceRow = sourceByUuid.get(finish.uuid)
+      const enriched = sourceRow?.sources ? { ...matched, sources: sourceRow.sources } : matched
+      item.finishes.push({ finish: enriched, bindMode: 'linked' })
       item.sourceMode = 'linked'
     }
   }
@@ -249,7 +252,7 @@ function sum(values: Array<number | undefined>): number {
 }
 
 function positive(value?: number) {
-  return value != null && value > 0
+  return value != null && Number.isFinite(value) && value > 0
 }
 
 function validWidth(value?: number) {

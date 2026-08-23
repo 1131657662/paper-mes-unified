@@ -9,8 +9,10 @@ import type {
   FinishSourceVO,
   RollProductionVO,
 } from '../../../types/processOrder'
+import { canonicalFinishEstimateWeights, weightFromCanonicalMap } from '../../../components/processOrder/shared/canonicalEstimateWeight'
 
 export interface FinishedProductRow {
+  estimateWeight?: number
   finish: FinishProductionVO
   key: string
   sources: FinishSourceVO[]
@@ -31,10 +33,16 @@ export function buildFinishedProductRows(
   const seen = new Set<string>()
 
   for (const production of [...productions].sort(compareRollProductions)) {
+    const estimates = canonicalFinishEstimateWeights({
+      production,
+      finishes: production.finishes,
+      sourceProductions: productions,
+    })
     for (const finish of [...(production.finishes ?? [])].sort(compareFinishProductions)) {
       if (seen.has(finish.uuid)) continue
       seen.add(finish.uuid)
       rows.push({
+        estimateWeight: weightFromCanonicalMap(estimates, finish.uuid, finish.estimateWeight),
         finish,
         key: finish.uuid,
         sources: finish.sources?.length
@@ -82,5 +90,11 @@ function sumWeight(
   rows: FinishedProductRow[],
   field: 'actualWeight' | 'estimateWeight',
 ): number {
-  return rows.reduce((sum, { finish }) => sum + (finish[field] ?? 0), 0)
+  return rows.reduce((sum, row) => sum + (field === 'estimateWeight'
+    ? row.estimateWeight ?? row.finish.estimateWeight ?? 0
+    : row.finish.actualWeight ?? 0), 0)
+}
+
+export function rowEstimateWeight(row: FinishedProductRow): number | undefined {
+  return row.estimateWeight ?? row.finish.estimateWeight
 }

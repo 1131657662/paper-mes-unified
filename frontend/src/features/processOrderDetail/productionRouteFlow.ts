@@ -1,7 +1,8 @@
 import type { Node } from '@xyflow/react'
 import type { RollProductionVO } from '../../types/processOrder'
 import { formatGram, formatKgWithMaxDecimals, formatMm } from '../../utils/numberFormatters'
-import { formatProductionKg } from './orderDetailUtils'
+import { formatProductionEstimateKg, formatProductionKg } from './orderDetailUtils'
+import { productionSourceEstimateWeight } from './productionSourceWeight'
 import { descendantEdges, routeEdge, type ProductionFlowEdge } from './productionRouteEdges'
 import type { RouteNode } from './productionRouteTree'
 import type { ProcessRouteConfigTarget } from './routeConfigTypes'
@@ -58,8 +59,9 @@ export function buildProductionRouteFlow(options: ProductionRouteFlowOptions): P
   const routeNodes = positionedRoots.flatMap((root) => flattenRouteNode(root, options))
   const sourceNodes = layoutSources(sources, sourceCenterY(positionedRoots))
   const nodes = [...sourceNodes.map(({ source, y, index }) => sourceNode(source, y, index)), ...routeNodes]
+  const knownNodeKeys = new Set(routeNodes.map((node) => node.id))
   const edges = sourceNodes.flatMap(({ source, index }) => positionedRoots.map((root) => routeEdge(sourceId(source, index), root.node)))
-    .concat(positionedRoots.flatMap(descendantEdges))
+    .concat(positionedRoots.flatMap((root) => descendantEdges(root, knownNodeKeys)))
   const maxY = Math.max(...sourceNodes.map(({ y }) => y), ...positionedRoots.map(maxNodeY))
 
   return {
@@ -112,7 +114,9 @@ function sourceNode(production: RollProductionVO, y: number, index: number): Pro
     data: {
       kind: 'source',
       title: production.rollNo || production.extraNo || production.paperName || '母卷',
-      lines: [sourceSpec(production), `${weight.label} ${formatProductionKg(weight.value, production)}`],
+      lines: [sourceSpec(production), `${weight.label} ${weight.actual
+        ? formatProductionKg(weight.value, production)
+        : formatProductionEstimateKg(weight.value)}`],
       statusText: '原卷',
       statusColor: 'blue',
     },
@@ -147,14 +151,19 @@ function outputNode(item: PositionedRouteNode, options: ProductionRouteFlowOptio
   }
 }
 
-function sourceWeight(production: RollProductionVO): { label: string; value: number } {
-  if (production.actualWeight != null) return { label: '实际', value: production.actualWeight }
-  return { label: '来料', value: (production.rollWeight ?? 0) * (production.pieceNum ?? 1) }
+function sourceWeight(production: RollProductionVO): { actual: boolean; label: string; value: number } {
+  if (production.actualWeight != null && Number.isFinite(production.actualWeight) && production.actualWeight > 0) {
+    return { actual: true, label: '实际', value: production.actualWeight }
+  }
+  return { actual: false, label: '来料', value: productionSourceEstimateWeight(production) }
 }
 
 function outputLines(node: RouteNode): string[] {
   if (node.weight == null) return [node.meta]
-  return [node.meta, `${node.weightLabel ?? '预估'} ${formatKgWithMaxDecimals(node.weight, node.weightDigits)}`]
+  return [node.meta, `${node.weightLabel ?? '预估'} ${formatKgWithMaxDecimals(
+    node.weight,
+    node.weightLabel === '实际' ? node.weightDigits : 0,
+  )}`]
 }
 
 function normalizeSources(production: RollProductionVO, sources?: RollProductionVO[]) {

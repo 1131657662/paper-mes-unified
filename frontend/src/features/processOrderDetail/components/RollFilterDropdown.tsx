@@ -3,6 +3,7 @@ import { Button, Checkbox, Empty, Input } from 'antd'
 import { useState } from 'react'
 import type { FilterDropdownProps } from 'antd/es/table/interface'
 import type { OriginalRoll } from '../../../types/processOrder'
+import { isRollWeightKnown, rollTotalWeight } from '../routeConfigSource'
 import './RollFilterDropdown.css'
 
 interface Props extends Pick<FilterDropdownProps, 'selectedKeys' | 'setSelectedKeys' | 'confirm' | 'clearFilters'> {
@@ -92,9 +93,9 @@ function rollIdentifiers(roll: OriginalRoll): string {
 function rollMetadata(roll: OriginalRoll): string {
   const gramWeight = roll.actualGramWeight ?? roll.gramWeight
   const width = roll.actualWidth ?? roll.originalWidth
-  const weight = roll.actualWeight ?? roll.totalWeight ?? roll.rollWeight
+  const weight = isRollWeightKnown(roll) ? rollTotalWeight(roll) : undefined
   return [roll.paperName || '品名待补充', gramWeight == null ? undefined : `${gramWeight}g`,
-    width == null ? undefined : `${width}mm`, weight == null ? undefined : `来料 ${(weight / 1000).toFixed(3)} t`,
+    width == null ? undefined : `${width}mm`, weight == null ? '来料 待称重' : `来料 ${(weight / 1000).toFixed(3)} t`,
     roll.batchNo ? `批次 ${roll.batchNo}` : undefined]
     .filter(Boolean).join(' · ')
 }

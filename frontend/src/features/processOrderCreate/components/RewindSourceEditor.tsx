@@ -8,6 +8,7 @@ import {
   segmentConsumedWeight,
   sourceCompositionRatio,
   sourceConsumptionValue,
+  effectiveConsumptionRatios,
   sourceUsageRows,
 } from '../rewindConsumptionUtils'
 import { labelForSource, patchSource, sameSpecSourceIds, sourceOptionsFromRolls } from '../rewindSourceUtils'
@@ -48,6 +49,7 @@ export function RewindSourceEditor({ segment, roll, rolls, sourceOptions, onChan
   const sources = segment.sources ?? []
   const selectedIds = sources.map((source) => source.originalUuid).filter(Boolean) as string[]
   const sameSpecIds = sameSpecSourceIds(roll, rolls)
+  const effectiveRatios = effectiveConsumptionRatios([segment])
   const updateSources = (next: RewindSourcePlanDTO[]) => onChange({ ...segment, sources: next })
 
   return (
@@ -76,7 +78,7 @@ export function RewindSourceEditor({ segment, roll, rolls, sourceOptions, onChan
           <label className="rewind-field rewind-source-row__consume">
             <span className="rewind-field__label">本次使用比例</span>
             <InputNumber aria-label={`来源母卷 ${index + 1} 本次使用比例`} suffix="%"
-              min={0.01} max={100} value={sourceConsumptionValue(source)}
+              min={0.01} max={100} value={effectiveRatios.get(source) ?? sourceConsumptionValue(source)}
               onChange={(value) => updateSources(patchSource(sources, index, { consumeRatio: value ?? 0 }))} />
           </label>
           <Tag color="geekblue">本段组成 {sourceCompositionRatio(source, sources, sourceOptions)}%</Tag>

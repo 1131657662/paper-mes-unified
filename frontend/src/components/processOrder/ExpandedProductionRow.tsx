@@ -38,7 +38,7 @@ export default function ExpandedProductionRow({ row }: Props) {
   const isRewind = p.mainStepType === 2
   const isServiceOnly = p.processMode === 4
 
-  const groups = groupFinishes(row.finishes)
+  const groups = groupFinishes(row.finishes, p, row.rollProductions)
   const finishData: FinishRow[] = groups.map((g) => ({
     finishWidth: g.width,
     count: g.count,
@@ -46,7 +46,7 @@ export default function ExpandedProductionRow({ row }: Props) {
   }))
 
   const trim = calcTrimWidth(p)
-  const trimWeight = trimWeightFromFinishes(row.finishes)
+  const trimWeight = trimWeightFromFinishes(row.finishes, p, row.rollProductions)
   const spareCount = row.finishes.filter(isActiveSpareProductionFinish).length
   const allSources = row.finishes.flatMap((f) => f.sources ?? [])
   const uniqueSources = Array.from(

@@ -82,6 +82,13 @@ export interface FinishRoll {
   /** 1待入库 2已入库 3已出库 4报废 */
   finishStatus?: number
   remark?: string
+  /** Source lineage used for merged-rewind consumption budgeting. */
+  sources?: FinishRollSourceRef[]
+}
+
+export interface FinishRollSourceRef {
+  originalUuid?: string
+  consumeRatio?: number
 }
 
 /** 工序明细（详情只读展示用，最小字段集）。 */

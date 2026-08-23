@@ -5,6 +5,9 @@ import {
   trimWeightFromFinishes,
 } from '../../components/processOrder/shared/detailHelpers'
 import type { FinishProductionVO, RollProductionVO, StageOutputVO } from '../../types/processOrder'
+import { roundWeightTotal } from '../../utils/integerWeightAllocation'
+import { productionSourceEstimateWeight } from './productionSourceWeight'
+import { canonicalStageOutputWeights, weightFromCanonicalMap } from '../../components/processOrder/shared/canonicalEstimateWeight'
 
 const OUTPUT_VOID = 4
 
@@ -15,7 +18,7 @@ export function activeFinishesWithFallbackTrim(
   const rows = finishes.filter(isVisibleProductionOutput)
   if (!production || rows.some(isRemainProductionFinish)) return rows
   const trimWidth = calcTrimWidth(production)
-  const trimWeight = trimWeightFromFinishes(production.finishes)
+  const trimWeight = trimWeightFromFinishes(production.finishes, production)
   if (trimWidth <= 0 && trimWeight <= 0) return rows
   return [...rows, {
     uuid: `${production.originalUuid ?? 'roll'}-trim`,
@@ -94,18 +97,31 @@ function stageSource(
   stageOutputs: StageOutputVO[],
   allOutputs: StageOutputVO[],
 ): { width?: number; weight: number } {
-  const parentUuid = stageOutputs.find((output) => output.parentOutputUuid)?.parentOutputUuid
-  const parent = allOutputs.find((output) => output.uuid === parentUuid)
-  if (parent) return { width: parent.finishWidth, weight: parent.actualWeight ?? parent.estimateWeight ?? 0 }
+  const declaredInputs = stageOutputs[0]?.inputOutputUuids?.filter(Boolean) ?? []
+  const inputUuids = declaredInputs.length > 0
+    ? declaredInputs
+    : stageOutputs.map((output) => output.parentOutputUuid).filter((value): value is string => Boolean(value))
+  const parents = allOutputs.filter((output) => inputUuids.includes(output.uuid))
+  if (parents.length) {
+    const estimates = canonicalStageOutputWeights(production, allOutputs)
+    const widths = new Set(parents.map((parent) => parent.finishWidth).filter((width): width is number => width != null))
+    return {
+      width: widths.size === 1 ? Array.from(widths)[0] : undefined,
+      weight: roundWeightTotal(parents.reduce(
+        (sum, parent) => sum + (parent.actualWeight ?? weightFromCanonicalMap(estimates, parent.uuid, parent.estimateWeight) ?? 0),
+        0,
+      )),
+    }
+  }
   return {
     width: production.originalWidth,
-    weight: production.actualWeight ?? (production.rollWeight ?? 0) * (production.pieceNum ?? 1),
+    weight: productionSourceEstimateWeight(production),
   }
 }
 
 function estimateTrimWeight(sourceWeight: number, sourceWidth: number, trimWidth: number): number | undefined {
   if (sourceWeight <= 0 || sourceWidth <= 0 || trimWidth <= 0) return undefined
-  return sourceWeight * trimWidth / sourceWidth
+  return roundWeightTotal(sourceWeight * trimWidth / sourceWidth)
 }
 
 function stepTypeText(stepType?: number) {

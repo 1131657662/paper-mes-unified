@@ -51,7 +51,7 @@ function trimGroupText(item: OutputGroup): string {
 }
 
 function formatKg(value: number): string {
-  return `${Number(value.toFixed(3)).toLocaleString('zh-CN')} kg`
+  return `${Math.round(value).toLocaleString('zh-CN')} kg`
 }
 
 function compareOutputGroup(left: OutputGroup, right: OutputGroup): number {

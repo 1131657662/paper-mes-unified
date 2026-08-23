@@ -24,8 +24,8 @@ class SawPlanCalculatorTest {
 
         assertEquals(WidthDifferencePolicy.LOSS, result.policy());
         assertEquals(100, result.differenceWidth());
-        assertEquals(new BigDecimal("100.000"), result.differenceWeight());
-        assertEquals(new BigDecimal("2200.000"), finishWeight(result));
+        assertEquals(new BigDecimal("100"), result.differenceWeight());
+        assertEquals(new BigDecimal("2200"), finishWeight(result));
         assertEquals(BigDecimal.ZERO, trimWeight(result));
     }
 
@@ -35,21 +35,31 @@ class SawPlanCalculatorTest {
                 spec("FINISH", 2000), spec("TRIM", 290)), roll(2300, "2300"), "LOSS");
 
         assertEquals(10, result.differenceWidth());
-        assertEquals(new BigDecimal("10.000"), result.differenceWeight());
-        assertEquals(new BigDecimal("2000.000"), finishWeight(result));
-        assertEquals(new BigDecimal("290.000"), trimWeight(result));
+        assertEquals(new BigDecimal("10"), result.differenceWeight());
+        assertEquals(new BigDecimal("2000"), finishWeight(result));
+        assertEquals(new BigDecimal("290"), trimWeight(result));
     }
 
     @Test
-    void allocate_splitsTheGapEvenlyAcrossConfiguredPieces() {
+    void allocate_preservesPhysicalTrimRatioAgainstMotherWidth() {
+        SawPlanCalculation result = calculator.calculate(List.of(
+                spec("FINISH", 2000), spec("TRIM", 290)), roll(2400, "2400"), "ALLOCATE");
+
+        assertEquals(110, result.differenceWidth());
+        assertEquals(new BigDecimal("290"), trimWeight(result));
+        assertEquals(new BigDecimal("2400"), finishWeight(result).add(trimWeight(result)));
+    }
+
+    @Test
+    void allocate_splitsTheGapByFinishWidthAndPreservesTotal() {
         SawPlanCalculation result = calculator.calculate(
                 List.of(spec("FINISH", 1000), spec("FINISH", 1200)),
                 roll(2400, "2400"), "ALLOCATE");
 
         assertEquals(200, result.differenceWidth());
-        assertEquals(List.of(new BigDecimal("1200.000"), new BigDecimal("1200.000")),
+        assertEquals(List.of(new BigDecimal("1091"), new BigDecimal("1309")),
                 result.finishes().stream().map(SawPlanCalculation.CalculatedFinish::estimateWeight).toList());
-        assertEquals(new BigDecimal("2400.000"), finishWeight(result));
+        assertEquals(new BigDecimal("2400"), finishWeight(result));
     }
 
     @Test
@@ -64,8 +74,8 @@ class SawPlanCalculatorTest {
         SawPlanCalculation complete = calculator.calculate(
                 incomplete, roll(2400, "2400"), "REMAINDER");
         assertEquals(0, complete.differenceWidth());
-        assertEquals(new BigDecimal("2300.000"), finishWeight(complete));
-        assertEquals(new BigDecimal("100.000"), trimWeight(complete));
+        assertEquals(new BigDecimal("2300"), finishWeight(complete));
+        assertEquals(new BigDecimal("100"), trimWeight(complete));
     }
 
     @Test
@@ -80,9 +90,9 @@ class SawPlanCalculatorTest {
                 spec("FINISH", 1175), spec("FINISH", 1175), spec("TRIM", 3)),
                 roll(2353, "2285"), "REMAINDER");
 
-        assertEquals(new BigDecimal("2282.087"), finishWeight(result));
-        assertEquals(new BigDecimal("2.913"), trimWeight(result));
-        assertEquals(List.of(new BigDecimal("1141.044"), new BigDecimal("1141.043")),
+        assertEquals(new BigDecimal("2282"), finishWeight(result));
+        assertEquals(new BigDecimal("3"), trimWeight(result));
+        assertEquals(List.of(new BigDecimal("1141"), new BigDecimal("1141")),
                 result.finishes().stream().map(SawPlanCalculation.CalculatedFinish::estimateWeight).toList());
     }
 
@@ -96,11 +106,35 @@ class SawPlanCalculatorTest {
 
         assertEquals(8, result.finishes().size());
         assertEquals(8, result.trims().size());
-        assertEquals(new BigDecimal("670.410"), result.finishes().getFirst().estimateWeight());
-        assertEquals(new BigDecimal("74.490"), result.trims().getFirst().estimateWeight());
-        assertEquals(new BigDecimal("5363.280"), finishWeight(result));
-        assertEquals(new BigDecimal("595.920"), trimWeight(result));
+        assertEquals(new BigDecimal("671"), result.finishes().getFirst().estimateWeight());
+        assertEquals(new BigDecimal("75"), result.trims().getFirst().estimateWeight());
+        assertEquals(new BigDecimal("5363"), finishWeight(result));
+        assertEquals(new BigDecimal("596"), trimWeight(result));
         assertEquals(8, result.knifeCount());
+    }
+
+    @Test
+    void actualWeight_hasPriorityAndThreeEqualWidthsCloseAs621621620() {
+        OriginalRoll roll = roll(2400, "634");
+        roll.setActualWeight(new BigDecimal("1862"));
+
+        SawPlanCalculation result = calculator.calculate(List.of(
+                spec("FINISH", 800), spec("FINISH", 800), spec("FINISH", 800)), roll, "REMAINDER");
+
+        assertEquals(List.of(new BigDecimal("621"), new BigDecimal("621"), new BigDecimal("620")),
+                result.finishes().stream().map(SawPlanCalculation.CalculatedFinish::estimateWeight).toList());
+        assertEquals(new BigDecimal("1862"), finishWeight(result));
+    }
+
+    @Test
+    void unknownSourceWeight_isRejectedInsteadOfBecomingZeroKilograms() {
+        OriginalRoll roll = roll(2400, "634");
+        roll.setWeightStatus("UNKNOWN");
+        roll.setActualWeight(null);
+        roll.setTotalWeight(new BigDecimal("1862"));
+
+        assertThrows(BusinessException.class, () -> calculator.calculate(List.of(
+                spec("FINISH", 800), spec("FINISH", 800), spec("FINISH", 800)), roll, "REMAINDER"));
     }
 
     @Test

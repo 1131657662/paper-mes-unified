@@ -23,6 +23,7 @@ import {
   type DetailRouteStageForm,
 } from './routeConfigModel'
 import { calculateRouteOutputs } from './routeConfigOutputCalculator'
+import { routeOutputWeight } from './routeConfigSource'
 
 export {
   addDetailRouteStage,
@@ -109,7 +110,7 @@ export function sourceRollFromOutput(row: DetailRouteOutputRow): RollDraft {
     originalWidth: row.finishWidth,
     originalDiameter: row.finishDiameter,
     coreDiameter: row.finishCoreDiameter,
-    rollWeight: row.estimateWeight,
+    rollWeight: routeOutputWeight(row),
     pieceNum: 1,
     processMode: 1,
     mainStepType: STEP_TYPE_REWIND,

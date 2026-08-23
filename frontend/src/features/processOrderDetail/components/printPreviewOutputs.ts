@@ -4,6 +4,11 @@ import {
   trimWeightFromFinishes,
 } from '../../../components/processOrder/shared/detailHelpers'
 import { buildFinishLayers } from '../../../components/processOrder/shared/layeredRewindView'
+import {
+  canonicalFinishEstimateWeights,
+  canonicalStageOutputWeights,
+  weightFromCanonicalMap,
+} from '../../../components/processOrder/shared/canonicalEstimateWeight'
 import { sortFinishOutputs } from '../../../components/processOrder/shared/outputOrder'
 import type {
   FinishProductionVO,
@@ -12,7 +17,9 @@ import type {
   StageOutputVO,
 } from '../../../types/processOrder'
 import { formatMm } from '../../../utils/numberFormatters'
-import { formatProductionKg } from '../orderDetailUtils'
+import { roundWeightTotal } from '../../../utils/integerWeightAllocation'
+import { formatProductionEstimateKg, formatProductionKg } from '../orderDetailUtils'
+import { productionSourceEstimateWeight } from '../productionSourceWeight'
 import { withPrintLayerTexts } from './printPreviewLayeredOutputs'
 import {
   printFinishSpec,
@@ -27,29 +34,56 @@ export function singleStageOutputs(
   step?: ProcessStep,
 ) {
   const sortedOutputs = sortFinishOutputs(production, outputs)
-  const items = sortedOutputs.map((finish) => finishRouteOutput(finish, production))
   const trim = fallbackSingleStageTrim(production, outputs, step)
+  const estimateFinishes: FinishProductionVO[] = trim
+    ? [...outputs, {
+      uuid: trim.key,
+      isRemain: 1,
+      finishWidth: trim.width,
+      estimateWeight: trim.weightValue,
+    }]
+    : outputs
+  const estimates = canonicalFinishEstimateWeights({ production, finishes: estimateFinishes })
+  const items = sortedOutputs.map((finish) => finishRouteOutput(
+    finish,
+    production,
+    weightFromCanonicalMap(estimates, finish.uuid),
+  ))
+  const estimatedTrim = trim
+    ? { ...trim, weightValue: weightFromCanonicalMap(estimates, trim.key, trim.weightValue) }
+    : null
   return withPrintLayerTexts(
-    trim ? [...items, trim] : items,
+    estimatedTrim ? [...items, estimatedTrim] : items,
     buildFinishLayers(production, sortedOutputs),
   )
 }
 
-export function routeOutput(output: StageOutputVO, production: RollProductionVO) {
+export function routeOutput(
+  output: StageOutputVO,
+  production: RollProductionVO,
+  estimateWeight = output.estimateWeight,
+) {
   const trim = isTrimOutput(output)
   return {
     key: output.uuid,
     finishRollUuid: output.finishRollUuid,
     name: trim ? printTrimTitle(output.outputNo) : output.outputNo || '-',
     spec: printOutputSpec(output),
-    weight: formatProductionKg(output.estimateWeight, production),
+    weight: formatProductionEstimateKg(estimateWeight),
     actualWeight: output.actualWeight == null
       ? undefined
       : formatProductionKg(output.actualWeight, production),
-    weightValue: output.estimateWeight,
+    weightValue: estimateWeight,
     width: output.finishWidth,
     status: trim ? 'trim' : isFinalOutput(output) ? 'final' : 'next',
   } satisfies PrintRouteOutput
+}
+
+export function routeOutputEstimateWeights(
+  production: RollProductionVO,
+  outputs: StageOutputVO[],
+): Map<string, number | undefined> {
+  return canonicalStageOutputWeights(production, outputs)
 }
 
 export function outputsWithTrim(
@@ -78,12 +112,25 @@ export function stageSource(
   stageOutputs: StageOutputVO[],
   allOutputs: StageOutputVO[],
 ): { width?: number; weight: number } {
-  const parentUuid = stageOutputs.find((item) => item.parentOutputUuid)?.parentOutputUuid
-  const parent = allOutputs.find((item) => item.uuid === parentUuid)
-  if (parent) return { width: parent.finishWidth, weight: parent.estimateWeight ?? 0 }
+  const declaredInputs = stageOutputs[0]?.inputOutputUuids?.filter(Boolean) ?? []
+  const inputUuids = declaredInputs.length > 0
+    ? declaredInputs
+    : stageOutputs.map((item) => item.parentOutputUuid).filter((value): value is string => Boolean(value))
+  const parents = allOutputs.filter((item) => inputUuids.includes(item.uuid))
+  if (parents.length) {
+    const estimates = canonicalStageOutputWeights(production, allOutputs)
+    const widths = new Set(parents.map((parent) => parent.finishWidth).filter((width): width is number => width != null))
+    return {
+      width: widths.size === 1 ? Array.from(widths)[0] : undefined,
+      weight: roundWeightTotal(parents.reduce(
+        (sum, parent) => sum + (parent.actualWeight ?? weightFromCanonicalMap(estimates, parent.uuid, parent.estimateWeight) ?? 0),
+        0,
+      )),
+    }
+  }
   return {
     width: production.originalWidth,
-    weight: (production.rollWeight ?? 0) * (production.pieceNum ?? 1),
+    weight: productionSourceEstimateWeight(production),
   }
 }
 
@@ -104,6 +151,7 @@ export function isTrimOutput(output: StageOutputVO) {
 function finishRouteOutput(
   finish: FinishProductionVO,
   production: RollProductionVO,
+  estimateWeight = finish.estimateWeight,
 ): PrintRouteOutput {
   const remain = isRemainProductionFinish(finish)
   return {
@@ -111,11 +159,11 @@ function finishRouteOutput(
     finishRollUuid: finish.uuid,
     name: remain ? printTrimTitle(finish.finishRollNo) : finish.finishRollNo || '预生成成品',
     spec: printFinishSpec(finish),
-    weight: formatProductionKg(finish.estimateWeight, production),
+    weight: formatProductionEstimateKg(estimateWeight),
     actualWeight: finish.actualWeight == null
       ? undefined
       : formatProductionKg(finish.actualWeight, production),
-    weightValue: finish.estimateWeight,
+    weightValue: estimateWeight,
     width: finish.finishWidth,
     status: remain ? 'trim' : 'final',
   }
@@ -129,9 +177,9 @@ function fallbackSingleStageTrim(
   if (outputs.some(isRemainProductionFinish)) return null
   if ((step?.stepType ?? production.mainStepType) !== 1) return null
   const trimWidth = calcTrimWidth(production)
-  const trimWeight = trimWeightFromFinishes(production.finishes)
+  const trimWeight = trimWeightFromFinishes(production.finishes, production)
   if (trimWidth <= 0 && trimWeight <= 0) return null
-  const sourceWeight = (production.rollWeight ?? 0) * (production.pieceNum ?? 1)
+  const sourceWeight = productionSourceEstimateWeight(production)
   const estimateWeight = trimWeight > 0
     ? trimWeight
     : estimateTrimWeight(sourceWeight, production.originalWidth, trimWidth)
@@ -139,7 +187,7 @@ function fallbackSingleStageTrim(
     key: `${production.originalUuid ?? 'roll'}-trim`,
     name: '修边',
     spec: trimWidth > 0 ? formatMm(trimWidth) : '-',
-    weight: estimateWeight == null ? '-' : formatProductionKg(estimateWeight, production),
+    weight: estimateWeight == null ? '-' : formatProductionEstimateKg(estimateWeight),
     weightValue: estimateWeight,
     width: trimWidth,
     status: 'trim',
@@ -159,13 +207,13 @@ function trimOutput(options: TrimOutputOptions): PrintRouteOutput | null {
   const trimWidth = options.sourceWidth - options.usedWidth
   if (trimWidth <= 0) return null
   const trimWeight = options.sourceWeight > 0
-    ? options.sourceWeight * trimWidth / options.sourceWidth
+    ? roundWeightTotal(options.sourceWeight * trimWidth / options.sourceWidth)
     : undefined
   return {
     key: options.key,
     name: '修边',
     spec: formatMm(trimWidth),
-    weight: trimWeight == null ? '-' : formatProductionKg(trimWeight, options.production),
+    weight: trimWeight == null ? '-' : formatProductionEstimateKg(trimWeight),
     weightValue: trimWeight,
     status: 'trim',
   }
@@ -173,7 +221,7 @@ function trimOutput(options: TrimOutputOptions): PrintRouteOutput | null {
 
 function estimateTrimWeight(sourceWeight: number, sourceWidth?: number, trimWidth?: number) {
   if (!sourceWidth || !trimWidth || sourceWeight <= 0) return undefined
-  return sourceWeight * trimWidth / sourceWidth
+  return roundWeightTotal(sourceWeight * trimWidth / sourceWidth)
 }
 
 function trimToStageOutput(trim: PrintRouteOutput, sample?: StageOutputVO): StageOutputVO {

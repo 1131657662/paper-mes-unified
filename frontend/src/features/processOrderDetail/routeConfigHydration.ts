@@ -61,11 +61,10 @@ function finishOutputRow(
   stageLevel: number,
 ): DetailRouteOutputRow {
   return {
-    estimateWeight: finishWeight(
-      roll,
-      finish.estimateWeight ?? finish.actualWeight,
-      finish.finishWidth,
-    ),
+    estimateWeight: finishWeight(roll, positiveWeight(finish.actualWeight, finish.estimateWeight), finish.finishWidth),
+    weightStatus: isPositiveFinite(finish.actualWeight)
+      ? 'MEASURED' : roll.weightStatus === 'UNKNOWN' ? 'UNKNOWN' : 'ESTIMATED',
+    actualWeight: positiveWeightOrUndefined(finish.actualWeight),
     finishCoreDiameter: finish.finishCoreDiameter,
     finishDiameter: finish.finishDiameter,
     finishRollNo: finish.finishRollNo,
@@ -117,11 +116,10 @@ function stageOutputRow(
   const stageLevel = output.stageLevel ?? baseStageLevel
   const isRemain = isTrimStageOutput(output) ? 1 : undefined
   return {
-    estimateWeight: finishWeight(
-      roll,
-      output.estimateWeight ?? output.actualWeight,
-      output.finishWidth,
-    ),
+    estimateWeight: finishWeight(roll, positiveWeight(output.actualWeight, output.estimateWeight), output.finishWidth),
+    weightStatus: output.weightStatus ?? (isPositiveFinite(output.actualWeight)
+      ? 'MEASURED' : roll.weightStatus === 'UNKNOWN' ? 'UNKNOWN' : 'ESTIMATED'),
+    actualWeight: positiveWeightOrUndefined(output.actualWeight),
     finishCoreDiameter: output.finishCoreDiameter,
     finishDiameter: output.finishDiameter,
     finishWidth: Number(output.finishWidth ?? roll.originalWidth ?? 1),
@@ -162,6 +160,7 @@ function finishOutputKey(finish: FinishProductionVO, index: number) {
 function originalAsOutput(roll: OriginalRoll, stageLevel: number): DetailRouteOutputRow {
   return {
     estimateWeight: rollTotalWeight(roll),
+    weightStatus: roll.weightStatus ?? (rollTotalWeight(roll) > 0 ? 'ESTIMATED' : 'UNKNOWN'),
     finishCoreDiameter: roll.coreDiameter,
     finishDiameter: roll.originalDiameter,
     finishWidth: Number(roll.originalWidth ?? 1),
@@ -172,6 +171,18 @@ function originalAsOutput(roll: OriginalRoll, stageLevel: number): DetailRouteOu
     sourceRollNo: roll.rollNo || roll.extraNo,
     stageLevel,
   }
+}
+
+function positiveWeight(actualWeight?: number, estimateWeight?: number) {
+  return isPositiveFinite(actualWeight) ? actualWeight : estimateWeight
+}
+
+function positiveWeightOrUndefined(value?: number) {
+  return isPositiveFinite(value) ? value : undefined
+}
+
+function isPositiveFinite(value?: number): value is number {
+  return value != null && Number.isFinite(value) && value > 0
 }
 
 function stageLabel(stageLevel: number) {

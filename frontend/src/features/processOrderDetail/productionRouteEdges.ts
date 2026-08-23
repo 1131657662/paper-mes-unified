@@ -8,11 +8,25 @@ export interface PositionedRouteNodeForEdges {
   node: RouteNode
 }
 
-export function descendantEdges(item: PositionedRouteNodeForEdges): ProductionFlowEdge[] {
+export function descendantEdges(
+  item: PositionedRouteNodeForEdges,
+  knownNodeKeys: ReadonlySet<string> = new Set(),
+): ProductionFlowEdge[] {
   return item.children.flatMap((child) => [
-    routeEdge(item.node.key, child.node),
-    ...descendantEdges(child),
+    ...parentEdges(item.node.key, child.node, knownNodeKeys),
+    ...descendantEdges(child, knownNodeKeys),
   ])
+}
+
+function parentEdges(
+  fallbackParentKey: string,
+  child: RouteNode,
+  knownNodeKeys: ReadonlySet<string>,
+): ProductionFlowEdge[] {
+  const parents = child.parentKeys?.length ? child.parentKeys : [fallbackParentKey]
+  return parents
+    .filter((parentKey) => parentKey === fallbackParentKey || knownNodeKeys.has(parentKey))
+    .map((parentKey) => routeEdge(parentKey, child))
 }
 
 export function routeEdge(parentId: string, node: RouteNode): ProductionFlowEdge {

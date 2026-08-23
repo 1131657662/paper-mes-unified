@@ -3,7 +3,7 @@ import type { FinishSourceVO } from '../../../types/processOrder'
 import type { FinishCustomerSpec } from '../../processOrderCustomerSpec/customerSpecTypes'
 import { compareValues, isEmpty } from '../../../pages/delivery/deliveryDetailSorting'
 import type { CustomerSpecificationGroup } from '../../processOrderCustomerSpec/customerSpecModel'
-import type { FinishedProductRow } from './finishedProductRows'
+import { rowEstimateWeight, type FinishedProductRow } from './finishedProductRows'
 import type { PhysicalSpecificationGroup } from './physicalSpecificationModel'
 
 export type FinishedProductsSortDirection = 'asc' | 'desc'
@@ -106,11 +106,12 @@ function physicalItemsValue(row: FinishedProductRow, field: PhysicalItemsSortFie
   if (field === 'specification') return [finish.paperName, finish.gramWeight, finish.finishWidth, finish.finishDiameter, finish.finishCoreDiameter].map(value => value ?? '').join('/')
   if (field === 'sourceMotherRoll') return sourceText(row.sources)
   if (field === 'status') return [finish.isRemain, finish.isSpare, finish.rollNoStatus, finish.finishStatus].map(value => value ?? '').join('/')
-  if (field === 'estimateWeight') return finish.estimateWeight
+  if (field === 'estimateWeight') return rowEstimateWeight(row)
   if (field === 'actualWeight') return finish.actualWeight
   if (field === 'difference') {
-    if (finish.actualWeight == null || finish.estimateWeight == null) return undefined
-    return finish.actualWeight - finish.estimateWeight
+    const estimateWeight = rowEstimateWeight(row)
+    if (finish.actualWeight == null || estimateWeight == null) return undefined
+    return finish.actualWeight - estimateWeight
   }
   return undefined
 }

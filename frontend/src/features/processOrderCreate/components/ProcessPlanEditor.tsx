@@ -5,6 +5,7 @@ import type { Machine } from '../../../types/machine'
 import type { ProcessPlanDTO } from '../../../types/processOrder'
 import { formatGram, formatMm, formatOptionalKg } from '../../../utils/numberFormatters'
 import type { RollDraft } from '../types'
+import { rollTotalWeight } from '../../processOrderDetail/routeConfigSource'
 import OnSiteCountEditor from './OnSiteCountEditor'
 import ProcessMachineSelect from './ProcessMachineSelect'
 import RewindPlanEditor from './RewindPlanEditor'
@@ -84,7 +85,7 @@ export default function ProcessPlanEditor({
 }
 
 function RollContextHeader({ roll }: { roll: RollDraft }) {
-  const weight = roll.weightStatus === 'UNKNOWN' ? undefined : Number(roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)
+  const weight = roll.weightStatus === 'UNKNOWN' ? undefined : rollTotalWeight(roll)
   return (
     <div className="process-plan-context">
       <Typography.Text strong className="process-plan-context__spec">

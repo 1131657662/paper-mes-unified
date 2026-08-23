@@ -72,7 +72,7 @@ export function buildBackRecordMetrics(
 }
 
 function positive(value?: number) {
-  return value != null && value > 0
+  return value != null && Number.isFinite(value) && value > 0
 }
 
 function measuredRollWeight(

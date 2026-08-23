@@ -33,7 +33,7 @@ final class ProcessOrderFinishExportWriter {
     }
 
     private static void writeFinish(Row row, FinishRoll finish, Map<String, BigDecimal> fallbackWeights) {
-        BigDecimal physicalWeight = finish.getActualWeight() != null
+        BigDecimal physicalWeight = finish.getActualWeight() != null && finish.getActualWeight().signum() > 0
                 ? finish.getActualWeight()
                 : ProcessOrderExportWeightResolver.estimateWeight(finish, fallbackWeights);
         Object[] values = {row.getRowNum(), finish.getFinishRollNo(), finish.getFinishInnerNo(), finish.getPaperName(),

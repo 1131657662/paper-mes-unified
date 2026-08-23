@@ -1,7 +1,8 @@
 import { PROCESS_MODE, STEP_TYPE } from '../../../constants/processOrder'
 import type { RollProductionVO } from '../../../types/processOrder'
 import { formatGram, formatMm } from '../../../utils/numberFormatters'
-import { formatProductionKg } from '../orderDetailUtils'
+import { formatProductionEstimateKg, formatProductionKg } from '../orderDetailUtils'
+import { isProductionWeightKnown, productionSourceEstimateWeight } from '../productionSourceWeight'
 
 export function printSourceItems(
   production: RollProductionVO,
@@ -18,7 +19,7 @@ export function printSourceItems(
     { label: '品名', value: production.paperName || '-' },
     { label: '克重/门幅', value: `${gramText} / ${widthText}` },
     {
-      label: production.actualWeight == null ? '标重' : '实重',
+      label: production.actualWeight != null && production.actualWeight > 0 ? '实重' : '标重',
       value: sourceWeight(production),
     },
     { label: '方式', value: sourceProcessText(production) },
@@ -63,13 +64,11 @@ function sourceName(production: RollProductionVO, index: number) {
 }
 
 function sourceWeight(production: RollProductionVO) {
-  if (production.actualWeight != null) {
+  if (production.actualWeight != null && production.actualWeight > 0) {
     return formatProductionKg(production.actualWeight, production)
   }
-  if (production.weightStatus === 'UNKNOWN') return '待称重'
-  if (production.rollWeight == null) return '-'
-  const weight = production.rollWeight * (production.pieceNum ?? 1)
-  return formatProductionKg(weight, production)
+  if (!isProductionWeightKnown(production)) return '待称重'
+  return formatProductionEstimateKg(productionSourceEstimateWeight(production))
 }
 
 function compactValues(

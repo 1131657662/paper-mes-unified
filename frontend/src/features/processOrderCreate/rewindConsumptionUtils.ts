@@ -1,6 +1,7 @@
 import type { ProcessPlanDTO, RewindSegmentPlanDTO, RewindSourcePlanDTO } from '../../types/processOrder'
 import type { RollDraft } from './types'
 import type { SourceRollOption } from './rewindSourceUtils'
+import { effectiveSourceConsumptionRatios } from '../../utils/sourceConsumptionRatios'
 
 export interface SourceUsageRow {
   originalUuid: string
@@ -18,17 +19,25 @@ export interface MergedSourceLock {
 }
 
 export function sourceConsumptionValue(source: RewindSourcePlanDTO): number {
-  return Number(source.consumeRatio ?? source.shareRatio ?? 0)
+  const value = Number(source.consumeRatio ?? 100)
+  return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0
+}
+
+export function effectiveConsumptionRatios(
+  segments: RewindSegmentPlanDTO[],
+): Map<RewindSourcePlanDTO, number> {
+  return effectiveSourceConsumptionRatios(segments.flatMap((segment) => segment.sources ?? []))
 }
 
 export function consumptionSources(values: string[], current: RewindSourcePlanDTO[] = []): RewindSourcePlanDTO[] {
+  const effective = effectiveSourceConsumptionRatios(current)
   return values.map((value, index) => {
     const existing = current.find((source) => source.originalUuid === value)
     return {
       ...existing,
       originalUuid: value,
       shareRatio: undefined,
-      consumeRatio: existing ? sourceConsumptionValue(existing) : 100,
+      consumeRatio: existing ? (effective.get(existing) ?? sourceConsumptionValue(existing)) : 100,
       sourceSort: index + 1,
     }
   })
@@ -40,11 +49,12 @@ export function fullConsumptionSources(values: string[]): RewindSourcePlanDTO[] 
 
 export function segmentConsumedWeight(sources: RewindSourcePlanDTO[], options: SourceRollOption[]): number | undefined {
   const weights = weightMap(options)
+  const effective = effectiveSourceConsumptionRatios(sources)
   const selected = sources.map((source) => options.find((option) => option.value === source.originalUuid))
   if (selected.some((option) => option && !option.weightKnown)) return undefined
   return sources.reduce((sum, source) => {
     const sourceWeight = source.originalUuid ? weights.get(source.originalUuid) ?? 0 : 0
-    return sum + sourceWeight * sourceConsumptionValue(source) / 100
+    return sum + sourceWeight * (effective.get(source) ?? 0) / 100
   }, 0)
 }
 
@@ -56,16 +66,27 @@ export function sourceCompositionRatio(
   const total = segmentConsumedWeight(sources, options)
   if (!source.originalUuid || total == null || total <= 0) return 0
   const sourceWeight = weightMap(options).get(source.originalUuid) ?? 0
-  return roundRatio(sourceWeight * sourceConsumptionValue(source) / total)
+  const effective = effectiveSourceConsumptionRatios(sources)
+  return roundRatio(sourceWeight * (effective.get(source) ?? 0) / 100 / total * 100)
 }
 
 export function sourceUsageRows(segments: RewindSegmentPlanDTO[], options: SourceRollOption[]): SourceUsageRow[] {
   const totals = new Map<string, number>()
+  const effective = effectiveConsumptionRatios(segments)
+  const explicitTotals = new Map<string, number>()
   for (const source of segments.flatMap((segment) => segment.sources ?? [])) {
     if (!source.originalUuid) continue
-    totals.set(source.originalUuid, roundRatio((totals.get(source.originalUuid) ?? 0) + sourceConsumptionValue(source)))
+    const explicit = Number(source.consumeRatio ?? 0)
+    if (Number.isFinite(explicit) && explicit > 0) {
+      explicitTotals.set(source.originalUuid, roundRatio(
+        (explicitTotals.get(source.originalUuid) ?? 0) + explicit,
+      ))
+    }
+    totals.set(source.originalUuid, roundRatio((totals.get(source.originalUuid) ?? 0)
+      + (effective.get(source) ?? 0)))
   }
-  return Array.from(totals.entries()).map(([originalUuid, consumeRatio]) => {
+  return Array.from(totals.entries()).map(([originalUuid, effectiveRatio]) => {
+    const consumeRatio = Math.max(effectiveRatio, explicitTotals.get(originalUuid) ?? 0)
     const option = options.find((item) => item.value === originalUuid)
     const remainingRatio = roundRatio(100 - consumeRatio)
     return {
@@ -102,6 +123,7 @@ export function mergedSourceUuidSet(rolls: RollDraft[], plans: Record<string, Pr
 
 function addLocksForPlan(options: AddLockOptions): void {
   const ownerLabel = rollShortLabel(options.owner)
+  const effective = effectiveConsumptionRatios(options.plan.segments ?? [])
   for (const source of options.plan.segments?.flatMap((segment) => segment.sources ?? []) ?? []) {
     if (!source.originalUuid || source.originalUuid === options.owner.uuid) continue
     const lockedRoll = options.rollByUuid.get(source.originalUuid)
@@ -110,7 +132,7 @@ function addLocksForPlan(options: AddLockOptions): void {
     options.locks[lockedRoll.localId] = {
       ownerLocalId: options.ownerLocalId,
       ownerLabel,
-      consumeRatio: roundRatio((previous?.consumeRatio ?? 0) + sourceConsumptionValue(source)),
+      consumeRatio: roundRatio((previous?.consumeRatio ?? 0) + (effective.get(source) ?? 0)),
     }
   }
 }

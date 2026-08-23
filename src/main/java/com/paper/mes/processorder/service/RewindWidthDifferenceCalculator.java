@@ -49,18 +49,16 @@ public final class RewindWidthDifferenceCalculator {
         int repeatCount = segment.getRepeatCount() == null ? 1 : segment.getRepeatCount();
         int finishCount = layoutCount(segment, false) * repeatCount * sourcePieceCount;
         int trimCount = layoutCount(segment, true) * repeatCount * sourcePieceCount;
-        int outputCount = finishCount + trimCount;
-        BigDecimal allocationShare = policy == WidthDifferencePolicy.ALLOCATE && outputCount > 0
-                ? differenceWeight.divide(BigDecimal.valueOf(outputCount), SCALE, RoundingMode.HALF_UP)
+        BigDecimal allocationShare = policy == WidthDifferencePolicy.ALLOCATE && finishCount > 0
+                ? differenceWeight.divide(BigDecimal.valueOf(finishCount), SCALE, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO.setScale(SCALE);
-        BigDecimal trimAllocation = allocationShare.multiply(BigDecimal.valueOf(trimCount));
         BigDecimal allocationRemainder = policy == WidthDifferencePolicy.ALLOCATE
-                ? differenceWeight.subtract(allocationShare.multiply(BigDecimal.valueOf(outputCount)))
+                ? differenceWeight.subtract(allocationShare.multiply(BigDecimal.valueOf(finishCount)))
                 : BigDecimal.ZERO.setScale(SCALE);
         BigDecimal lossWeight = policy == WidthDifferencePolicy.LOSS
                 ? differenceWeight : BigDecimal.ZERO.setScale(SCALE);
         return new Decision(policy, trimWidth, trimCount, differenceWidth, differenceWeight, lossWeight,
-                trimWeight.add(trimAllocation), allocationShare, allocationRemainder);
+                trimWeight, allocationShare, allocationRemainder);
     }
 
     public static boolean supportsWidthPolicy(Integer rewindMode) {

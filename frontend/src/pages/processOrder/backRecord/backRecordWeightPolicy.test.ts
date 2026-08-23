@@ -22,6 +22,30 @@ describe('母卷重量回录策略', () => {
     expect(metrics.diff).toBe(0)
   })
 
+  it('历史关系缺少消耗比例时按整卷来源计量', () => {
+    const item = mergeItem(2)
+    item.finishes = [{ finish: {
+      uuid: 'finish-1', actualWeight: 1000,
+      sources: [{ originalUuid: 'roll-1', consumeRatio: 50 }, { originalUuid: 'roll-1' }],
+    }, bindMode: 'linked' }]
+
+    const summary = sourceWeightSummary(item, rollValues(600, 700, 700))
+
+    expect(summary.completeTotal).toBe(2000)
+  })
+
+  it('回录遇到来源消耗比例超过100%时阻止计算', () => {
+    const item = mergeItem(2)
+    item.finishes = [{ finish: {
+      uuid: 'finish-1', actualWeight: 1000,
+      sources: [{ originalUuid: 'roll-1', consumeRatio: 60 },
+        { originalUuid: 'roll-1', consumeRatio: 60 }],
+    }, bindMode: 'linked' }]
+
+    expect(() => sourceWeightSummary(item, rollValues(600, 700, 700)))
+      .toThrow('来源消耗比例合计不能超过100%')
+  })
+
   it('标准吨位复卷缺少任一来源实测时阻止完成', () => {
     const item = mergeItem(1)
     const metrics = buildWorkItemMetrics(item, rollValues(600, undefined, 700))
@@ -49,6 +73,120 @@ describe('母卷重量回录策略', () => {
 
     expect(values.rolls?.['roll-1']?.actualWeight).toBeUndefined()
     expect(values.rolls?.['roll-1']?.weightEntryMode).toBeUndefined()
+  })
+
+  it('理论回填为无旧估重的余料预留母卷预算并保持整数闭合', () => {
+    const detail: ProcessOrderDetailVO = {
+      order: { uuid: 'order-1', version: 1 },
+      originalRolls: [{ uuid: 'roll-1', actualWeight: 1862, actualWidth: 2400, weightStatus: 'MEASURED' }],
+      rolls: [],
+      finishRolls: [
+        { uuid: 'finish-a', finishWidth: 800, isRemain: 0 },
+        { uuid: 'finish-b', finishWidth: 800, isRemain: 0 },
+        { uuid: 'trim', finishWidth: 800, isRemain: 1 },
+      ],
+      steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 1, isMain: 1 }],
+      rollProductions: [{
+        originalUuid: 'roll-1',
+        actualWidth: 2400,
+        actualWeight: 1862,
+        mainStepType: 1,
+        steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 1, isMain: 1 }],
+        finishes: [
+          { uuid: 'finish-a', finishWidth: 800, isRemain: 0 },
+          { uuid: 'finish-b', finishWidth: 800, isRemain: 0 },
+          { uuid: 'trim', finishWidth: 800, isRemain: 1 },
+        ],
+      }],
+    }
+
+    const values = theoreticalBackRecordValues(detail)
+    const weights = ['finish-a', 'finish-b', 'trim'].map((uuid) => values.finishes?.[uuid]?.actualWeight ?? 0)
+
+    expect(weights).toEqual([621, 620, 621])
+    expect(weights.reduce((sum, weight) => sum + weight, 0)).toBe(1862)
+  })
+
+  it('实测小数导致剩余重量非整数时不伪造成品预估', () => {
+    const detail: ProcessOrderDetailVO = {
+      order: { uuid: 'order-1', version: 1 },
+      originalRolls: [{ uuid: 'roll-1', actualWidth: 1000, actualWeight: 1000, weightStatus: 'MEASURED' }],
+      rolls: [],
+      finishRolls: [
+        { uuid: 'measured', finishWidth: 500, actualWeight: 333.4 },
+        { uuid: 'unknown', finishWidth: 500 },
+      ],
+      steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 1, isMain: 1 }],
+      rollProductions: [{
+        originalUuid: 'roll-1',
+        actualWidth: 1000,
+        actualWeight: 1000,
+        mainStepType: 1,
+        steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 1, isMain: 1 }],
+        finishes: [
+          { uuid: 'measured', finishWidth: 500, actualWeight: 333.4 },
+          { uuid: 'unknown', finishWidth: 500 },
+        ],
+      }],
+    }
+
+    const values = theoreticalBackRecordValues(detail)
+
+    expect(values.finishes?.measured?.actualWeight).toBe(333.4)
+    expect(values.finishes?.unknown?.actualWeight).toBeUndefined()
+  })
+
+  it('实测小数时清除未实测成品的历史整数估重', () => {
+    const detail: ProcessOrderDetailVO = {
+      order: { uuid: 'order-1', version: 1 },
+      originalRolls: [{ uuid: 'roll-1', actualWidth: 1000, actualWeight: 1000, weightStatus: 'MEASURED' }],
+      rolls: [],
+      finishRolls: [
+        { uuid: 'measured', finishWidth: 500, actualWeight: 333.4 },
+        { uuid: 'unknown', finishWidth: 500, estimateWeight: 600 },
+      ],
+      steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 1, isMain: 1 }],
+      rollProductions: [{
+        originalUuid: 'roll-1', actualWidth: 1000, actualWeight: 1000, mainStepType: 1,
+        steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 1, isMain: 1 }],
+        finishes: [
+          { uuid: 'measured', finishWidth: 500, actualWeight: 333.4 },
+          { uuid: 'unknown', finishWidth: 500, estimateWeight: 600 },
+        ],
+      }],
+    }
+
+    const values = theoreticalBackRecordValues(detail)
+
+    expect(values.finishes?.unknown?.actualWeight).toBeUndefined()
+  })
+
+  it('理论回填在分摊模式下忽略未实测余料旧估重', () => {
+    const detail: ProcessOrderDetailVO = {
+      order: { uuid: 'order-1', version: 1 },
+      originalRolls: [{ uuid: 'roll-1', actualWeight: 1000, actualWidth: 1000, weightStatus: 'MEASURED' }],
+      rolls: [],
+      finishRolls: [
+        { uuid: 'finish-a', finishWidth: 600, isRemain: 0 },
+        { uuid: 'trim', finishWidth: 100, isRemain: 1, estimateWeight: 400 },
+      ],
+      steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 1,
+        isMain: 1, widthDifferencePolicy: 'ALLOCATE' }],
+      rollProductions: [{
+        originalUuid: 'roll-1', actualWidth: 1000, actualWeight: 1000, mainStepType: 1,
+        steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 1,
+          isMain: 1, widthDifferencePolicy: 'ALLOCATE' }],
+        finishes: [
+          { uuid: 'finish-a', finishWidth: 600, isRemain: 0 },
+          { uuid: 'trim', finishWidth: 100, isRemain: 1, estimateWeight: 400 },
+        ],
+      }],
+    }
+
+    const values = theoreticalBackRecordValues(detail)
+
+    expect(values.finishes?.['finish-a']?.actualWeight).toBe(900)
+    expect(values.finishes?.['trim']?.actualWeight).toBe(100)
   })
 
   it('汇总不会把 ESTIMATED 的正重量当作已复称', () => {

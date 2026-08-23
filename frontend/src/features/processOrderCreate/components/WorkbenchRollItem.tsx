@@ -5,6 +5,7 @@ import type { ProcessRoutePreviewVO } from '../../../types/processOrder'
 import { formatGram, formatKg, formatMm } from '../../../utils/numberFormatters'
 import type { MergedSourceLock } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
+import { rollTotalWeight } from '../../processOrderDetail/routeConfigSource'
 import { supportsRouteDesigner } from '../configStepSelection'
 
 interface Props {
@@ -150,7 +151,7 @@ function machineName(machineUuid: string | undefined, machines: Machine[]) {
 }
 
 function rollWeight(roll: RollDraft) {
-  return Number(roll.rollWeight ?? 0) * (roll.pieceNum ?? 1)
+  return rollTotalWeight(roll)
 }
 
 interface BatchCheckboxProps {

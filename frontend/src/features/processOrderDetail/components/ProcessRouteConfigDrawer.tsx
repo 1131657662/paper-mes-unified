@@ -27,10 +27,12 @@ import {
   buildDetailRouteDto,
   detailRoutePriceDefaults,
   finalDetailRouteOutputs,
+  selectedInputRowsForStage,
   initialDetailRouteFormForOrder,
   type DetailRouteFormState,
 } from '../routeConfigDetail'
 import { createRoutePreviewRequestGate, routeRequestFingerprint, isRoutePreviewCurrent } from '../routePreviewGuard'
+import { isRollWeightKnown, isRouteOutputWeightKnown } from '../routeConfigSource'
 interface Props {
   open: boolean
   detail?: ProcessOrderDetailVO
@@ -109,7 +111,7 @@ export default function ProcessRouteConfigDrawer({
 
   const handlePreview = async () => {
     if (!detail?.order.uuid || !roll || !form) return
-    if (!requireRouteReady(form, appendMode)) return
+    if (!requireRouteReady(form, appendMode, roll)) return
     clearPreview()
     const request = appendMode
       ? buildAppendRouteDto(roll, form, expectedVersion)
@@ -131,7 +133,7 @@ export default function ProcessRouteConfigDrawer({
 
   const handleSave = () => {
     if (!detail?.order.uuid || !roll || !form) return
-    if (!requireRouteReady(form, appendMode)) return
+    if (!requireRouteReady(form, appendMode, roll)) return
     const request = appendMode
       ? buildAppendRouteDto(roll, form, expectedVersion)
       : buildDetailRouteDto(roll, form, expectedVersion)
@@ -193,9 +195,31 @@ export default function ProcessRouteConfigDrawer({
   )
 }
 
-function requireRouteReady(form: DetailRouteFormState, appendMode: boolean) {
-  if (!appendMode) return true
-  if (form.stages.length > 0) return true
-  message.warning('请先选择产物并配置至少一道追加工艺')
-  return false
+function requireRouteReady(form: DetailRouteFormState, appendMode: boolean, roll: NonNullable<Props['detail']>['originalRolls'][number]) {
+  if (!appendMode) {
+    if (!isRollWeightKnown(roll)) {
+      message.warning('来源母卷重量未知，请先完成称重后再生成加工预估')
+      return false
+    }
+    return true
+  }
+  if (form.stages.length === 0) {
+    message.warning('请先选择产物并配置至少一道追加工艺')
+    return false
+  }
+  const firstStage = form.stages[0]
+  if (!firstStage) {
+    message.warning('请先配置追加工艺')
+    return false
+  }
+  const sources = selectedInputRowsForStage(form, firstStage)
+  if (!sources.length) {
+    message.warning('请先选择要继续加工的阶段产物')
+    return false
+  }
+  if (sources.some((source) => !isRouteOutputWeightKnown(source))) {
+    message.warning('所选阶段产物重量未知，请先完成称重或补齐预估')
+    return false
+  }
+  return true
 }

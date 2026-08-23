@@ -3,10 +3,19 @@ import type { DetailRouteOutputRow } from './routeConfigModel'
 import {
   appendTrimSeed,
   calcTrimWeight,
-  roundWeight,
   seedFromSource,
   type RouteOutputSeed,
 } from './routeConfigSource'
+import { allocateIntegerWeight } from '../../utils/integerWeightAllocation'
+
+type SawWidthAccounting = {
+  finishWidth: number
+  explicitTrimWidth: number
+  differenceWidth: number
+  outputTrimWidth: number
+  trimWeight: number
+  lossWeight: number
+}
 
 export function calculateSawOutputSeeds(
   source: DetailRouteOutputRow,
@@ -17,24 +26,17 @@ export function calculateSawOutputSeeds(
   const expandedSpecs = specs.flatMap((spec) => (
     Array.from({ length: Math.max(1, spec.count ?? 1) }, () => spec)
   ))
-  const trimWidth = sawTrimWidth(source, allSpecs)
-  const trimWeightValue = calcTrimWeight(source.estimateWeight, source.finishWidth, trimWidth)
-  const finishWeight = Math.max(0, source.estimateWeight - trimWeightValue)
-  const widthTotal = expandedSpecs.reduce(
-    (sum, spec) => sum + Number(spec.finishWidth ?? 0),
+  const accounting = sawWidthAccounting(source, allSpecs, plan.widthDifferencePolicy)
+  const finishWeight = Math.max(
     0,
+    source.estimateWeight - accounting.trimWeight - accounting.lossWeight,
   )
-  let allocated = 0
+  const weights = allocateIntegerWeight(
+    finishWeight,
+    expandedSpecs.map((spec) => Math.max(1, Number(spec.finishWidth ?? source.finishWidth))),
+  )
   const rows = expandedSpecs.map((spec, index) => {
-    const estimateWeight = allocatedSawWeight({
-      allocated,
-      count: expandedSpecs.length,
-      index,
-      totalWeight: finishWeight,
-      width: Number(spec.finishWidth ?? 0),
-      widthTotal,
-    })
-    allocated += estimateWeight
+    const estimateWeight = weights[index] ?? 0
     return {
       estimateWeight,
       finishCoreDiameter: spec.finishCoreDiameter ?? source.finishCoreDiameter,
@@ -45,39 +47,41 @@ export function calculateSawOutputSeeds(
     }
   })
   if (!rows.length) return [seedFromSource(source)]
-  return appendTrimSeed(rows, source, trimWidth, trimWeightValue)
+  return appendTrimSeed(rows, source, accounting.outputTrimWidth, accounting.trimWeight)
 }
 
-interface SawWeightAllocation {
-  allocated: number
-  count: number
-  index: number
-  totalWeight: number
-  width: number
-  widthTotal: number
-}
-
-function allocatedSawWeight(options: SawWeightAllocation) {
-  if (options.count <= 0 || options.totalWeight <= 0 || options.widthTotal <= 0) return 0
-  if (options.index === options.count - 1) {
-    return roundWeight(options.totalWeight - options.allocated)
-  }
-  return roundWeight(options.totalWeight * options.width / options.widthTotal)
-}
-
-function sawTrimWidth(source: DetailRouteOutputRow, specs: FinishConfigSpecDTO[]) {
-  const explicitTrim = specs
+function sawWidthAccounting(
+  source: DetailRouteOutputRow,
+  specs: FinishConfigSpecDTO[],
+  policy: ProcessPlanDTO['widthDifferencePolicy'],
+): SawWidthAccounting {
+  const explicitTrimWidth = specs
     .filter((spec) => spec.itemType === 'TRIM')
     .reduce(
       (sum, spec) => sum + Number(spec.finishWidth ?? 0) * Math.max(1, spec.count ?? 1),
       0,
     )
-  if (explicitTrim > 0) return explicitTrim
   const finishWidth = specs
     .filter((spec) => (spec.itemType ?? 'FINISH') !== 'TRIM')
     .reduce(
       (sum, spec) => sum + Number(spec.finishWidth ?? 0) * Math.max(1, spec.count ?? 1),
       0,
     )
-  return Math.max(0, source.finishWidth - finishWidth)
+  const differenceWidth = Math.max(0, source.finishWidth - finishWidth - explicitTrimWidth)
+  const normalizedPolicy = policy ?? 'REMAINDER'
+  const outputTrimWidth = explicitTrimWidth + (
+    normalizedPolicy === 'REMAINDER' ? differenceWidth : 0
+  )
+  const trimWeight = calcTrimWeight(source.estimateWeight, source.finishWidth, outputTrimWidth)
+  const lossWeight = normalizedPolicy === 'LOSS'
+    ? calcTrimWeight(source.estimateWeight, source.finishWidth, differenceWidth)
+    : 0
+  return {
+    finishWidth,
+    explicitTrimWidth,
+    differenceWidth,
+    outputTrimWidth,
+    trimWeight,
+    lossWeight,
+  }
 }

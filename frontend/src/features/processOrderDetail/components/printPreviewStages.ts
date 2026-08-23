@@ -1,5 +1,6 @@
 import { STEP_TYPE } from '../../../constants/processOrder'
 import { isVisibleProductionOutput } from '../../../components/processOrder/shared/detailHelpers'
+import { canonicalStageOutputWeights, weightFromCanonicalMap } from '../../../components/processOrder/shared/canonicalEstimateWeight'
 import { sortFinishOutputs } from '../../../components/processOrder/shared/outputOrder'
 import type {
   FinishRoll,
@@ -13,6 +14,7 @@ import { layeredRouteOutputs } from './printPreviewLayeredOutputs'
 import {
   outputsWithTrim,
   routeOutput,
+  routeOutputEstimateWeights,
   singleStageOutputs,
 } from './printPreviewOutputs'
 import { singleStageRequirement, stageRequirement } from './printPreviewRequirements'
@@ -37,20 +39,31 @@ function routeStagesFromOutputs(
   outputs: StageOutputVO[],
   steps: ProcessStep[],
 ): PrintRouteStage[] {
-  return routeLevels(steps, outputs).map((level, index) => {
+  const entries = routeLevels(steps, outputs).map((level, index) => {
     const levelOutputs = outputs.filter((item) => (item.stageLevel ?? 1) === level)
     const step = stageStep(steps, level, index, levelOutputs)
     const stageOutputsWithTrim = outputsWithTrim(production, step, levelOutputs, outputs)
+    return { level, levelOutputs, step, stageOutputsWithTrim }
+  })
+  const estimateWeights = routeOutputEstimateWeights(
+    production,
+    entries.flatMap((entry) => entry.stageOutputsWithTrim),
+  )
+  return entries.map(({ level, levelOutputs, step, stageOutputsWithTrim }) => {
     return {
       key: `${production.originalUuid ?? 'roll'}-${level}`,
       stepType: step?.stepType ?? levelOutputs[0]?.sourceStepType,
       title: stageTitle(level, step, levelOutputs),
       source: sourceText(step, outputs, levelOutputs),
-      metric: stepMetric(step, levelOutputs, outputs),
+      metric: stepMetric(step, levelOutputs, outputs, production),
       requirement: stageRequirement(production, step, levelOutputs, outputs),
       outputs: layeredRouteOutputs(
         production,
-        stageOutputsWithTrim.map((output) => routeOutput(output, production)),
+        stageOutputsWithTrim.map((output) => routeOutput(
+          output,
+          production,
+          estimateWeights.get(output.uuid),
+        )),
         stageOutputsWithTrim,
         step,
       ),
@@ -74,7 +87,7 @@ function routeStagesFromFinishes(
       stepType: serviceStep.stepType,
       title: `第${index + 1}道 ${serviceStep.stepName || STEP_TYPE[serviceStep.stepType ?? 0] || '附加工艺'}`,
       source: index === 0 ? '原卷' : '上一道服务工序',
-      metric: stepMetric(serviceStep, [], []),
+      metric: stepMetric(serviceStep, [], [], production),
       requirement: singleStageRequirement(production, outputs, serviceStep),
       outputs: index === orderedSteps.length - 1
         ? singleStageOutputs(production, outputs, serviceStep)
@@ -89,7 +102,7 @@ function routeStagesFromFinishes(
     stepType: step?.stepType ?? production.mainStepType,
     title: `第1道 ${step?.stepName || fallbackTitle || '加工'}`,
     source: '原卷',
-    metric: stepMetric(step, [], []),
+    metric: stepMetric(step, [], [], production),
     requirement: singleStageRequirement(production, outputs, step),
     outputs: singleStageOutputs(production, outputs, step),
   }]
@@ -162,8 +175,9 @@ function stepMetric(
   step: ProcessStep | undefined,
   stageOutputs: StageOutputVO[],
   allOutputs: StageOutputVO[],
+  production?: RollProductionVO,
 ) {
-  if (!step) return fallbackMetric(stageOutputs, allOutputs)
+  if (!step) return fallbackMetric(stageOutputs, allOutputs, production)
   if (step.stepType === 1) return `刀数 ${step.knifeCount ?? 0} 刀`
   if (step.stepType === 2) return `复卷 ${formatRawTon(step.processWeight)}`
   if (step.stepType === 3 || step.stepType === 4) return serviceMetric(step)
@@ -178,17 +192,31 @@ function serviceMetric(step: ProcessStep) {
   return '服务数量待核定'
 }
 
-function fallbackMetric(stageOutputs: StageOutputVO[], allOutputs: StageOutputVO[]) {
+function fallbackMetric(
+  stageOutputs: StageOutputVO[],
+  allOutputs: StageOutputVO[],
+  production?: RollProductionVO,
+) {
   const stepType = stageOutputs[0]?.sourceStepType
   if (stepType === 1) return '刀数 -'
   if (stepType !== 2) return '-'
-  const parentWeight = sumParentWeights(stageOutputs, allOutputs)
+  const parentWeight = sumParentWeights(stageOutputs, allOutputs, production)
   return parentWeight > 0 ? `复卷 ${formatTon(parentWeight)}` : '复卷 -'
 }
 
-function sumParentWeights(stageOutputs: StageOutputVO[], allOutputs: StageOutputVO[]) {
-  const parentUuids = new Set(stageOutputs.map((item) => item.parentOutputUuid).filter(Boolean))
+function sumParentWeights(
+  stageOutputs: StageOutputVO[],
+  allOutputs: StageOutputVO[],
+  production?: RollProductionVO,
+) {
+  const declaredInputs = stageOutputs.flatMap((item) => item.inputOutputUuids?.filter(Boolean) ?? [])
+  const parentUuids = new Set(declaredInputs.length > 0
+    ? declaredInputs
+    : stageOutputs.map((item) => item.parentOutputUuid).filter(Boolean))
+  const estimates = production ? canonicalStageOutputWeights(production, allOutputs) : new Map<string, number>()
   return allOutputs.reduce((sum, output) => (
-    parentUuids.has(output.uuid) ? sum + (output.estimateWeight ?? 0) : sum
+    parentUuids.has(output.uuid)
+      ? sum + (output.actualWeight ?? weightFromCanonicalMap(estimates, output.uuid, output.estimateWeight) ?? 0)
+      : sum
   ), 0)
 }

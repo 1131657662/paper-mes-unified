@@ -9,7 +9,8 @@ import type {
   StageOutputVO,
 } from '../../../types/processOrder'
 import { formatMm } from '../../../utils/numberFormatters'
-import { formatProductionKg } from '../orderDetailUtils'
+import { formatProductionEstimateKg } from '../orderDetailUtils'
+import { productionSourceEstimateWeight } from '../productionSourceWeight'
 import { isFinalOutput, isTrimOutput, stageSource } from './printPreviewOutputs'
 
 export function stageRequirement(
@@ -39,7 +40,7 @@ export function singleStageRequirement(
     return withWidthDifference(sawText({
       production,
       sourceWidth: production.originalWidth,
-      sourceWeight: (production.rollWeight ?? 0) * (production.pieceNum ?? 1),
+      sourceWeight: productionSourceEstimateWeight(production),
       knifeCount: step?.knifeCount,
       outputs: deliverableOutputs.map((item) => ({
         width: item.finishWidth,
@@ -114,9 +115,8 @@ function sawText(options: SawTextOptions) {
 function trimText(options: SawTextOptions, trimWidth: number) {
   if (trimWidth <= 0) return '无切边'
   const weight = options.sourceWeight > 0
-    ? `，约 ${formatProductionKg(
+    ? `，约 ${formatProductionEstimateKg(
       options.sourceWeight * trimWidth / (options.sourceWidth ?? 1),
-      options.production,
     )}`
     : ''
   return `切边 ${formatMm(trimWidth)}${weight}`

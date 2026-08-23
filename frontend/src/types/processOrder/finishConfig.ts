@@ -14,6 +14,10 @@ export interface OriginalRollDTO {
   coreDiameter?: number
   originalLength?: number
   rollWeight?: number
+  /** Measured total source weight, when a draft is reopened from an existing order. */
+  actualWeight?: number
+  /** Persisted estimated total source weight, used before actual weighing. */
+  totalWeight?: number
   /** UNKNOWN has no reference value; ESTIMATED is a positive, not-yet-weighed reference value. */
   weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
   pieceNum?: number

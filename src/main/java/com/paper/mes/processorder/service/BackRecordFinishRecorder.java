@@ -112,7 +112,9 @@ public class BackRecordFinishRecorder {
         finish.setActualWeight(dto.getActualWeight());
         finish.setRemainingWeight(dto.getActualWeight());
         finish.setScrapWeight(dto.getScrapWeight());
-        finish.setIsRemain(dto.getIsRemain());
+        if (dto.getIsRemain() != null) {
+            finish.setIsRemain(dto.getIsRemain());
+        }
         finish.setIsAbnormal(dto.getIsAbnormal() == null ? 0 : dto.getIsAbnormal());
         finish.setAbnormalType(BackRecordFinishRules.normalizedAbnormalType(dto));
         finish.setActualRemark(dto.getActualRemark());

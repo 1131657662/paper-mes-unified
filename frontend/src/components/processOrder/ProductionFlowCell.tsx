@@ -9,7 +9,7 @@ interface Props {
 }
 
 export default function ProductionFlowCell({ row }: Props) {
-  const flow = buildProcessingFlow(row.mainProduction)
+  const flow = buildProcessingFlow(row.mainProduction, row.rollProductions)
 
   if (flow.length === 0) {
     return <Text type="secondary">-</Text>

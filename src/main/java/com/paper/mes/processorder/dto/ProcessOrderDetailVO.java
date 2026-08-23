@@ -46,6 +46,8 @@ public class ProcessOrderDetailVO {
         private Integer originalWidth;
         private Integer actualWidth;
         private BigDecimal rollWeight;
+        /** Total reference weight for this source row; preferred over nominal rollWeight × pieceNum. */
+        private BigDecimal totalWeight;
         private String weightStatus;
         private BigDecimal actualWeight;
         private BigDecimal processAmount;
@@ -70,6 +72,8 @@ public class ProcessOrderDetailVO {
         private String outputNo;
         private String finishRollUuid;
         private String parentOutputUuid;
+        /** All upstream stage outputs consumed by the source step, ordered by inputSort. */
+        private List<String> inputOutputUuids;
         private Integer stageLevel;
         private Integer outputSort;
         private Integer outputType;
@@ -81,6 +85,7 @@ public class ProcessOrderDetailVO {
         private Integer finishCoreDiameter;
         private BigDecimal estimateWeight;
         private BigDecimal actualWeight;
+        private String weightStatus;
         private Integer isRemain;
         private Integer sourceStepType;
         private String sourceSummary;
@@ -115,6 +120,7 @@ public class ProcessOrderDetailVO {
         private Integer finishCoreDiameter;
         private BigDecimal estimateWeight;
         private BigDecimal actualWeight;
+        private String weightStatus;
         private Integer trimWidthShare;
         private BigDecimal trimWeightShare;
         private String actualRemark;

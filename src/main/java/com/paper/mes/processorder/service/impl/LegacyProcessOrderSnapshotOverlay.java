@@ -80,6 +80,7 @@ final class LegacyProcessOrderSnapshotOverlay {
         roll.setCoreDiameter(integer(node.get("core_diameter"), roll.getCoreDiameter()));
         roll.setRollWeight(decimal(node.get("roll_weight"), roll.getRollWeight()));
         roll.setPieceNum(integer(node.get("piece_num"), roll.getPieceNum()));
+        roll.setTotalWeight(decimal(node.get("total_weight"), roll.getTotalWeight()));
         roll.setProcessMode(integer(node.get("process_mode"), roll.getProcessMode()));
         roll.setMainStepType(integer(node.get("main_step_type"), roll.getMainStepType()));
         // Legacy snapshots predate post-issue disposition; never inherit the live action.
@@ -93,6 +94,7 @@ final class LegacyProcessOrderSnapshotOverlay {
         item.setOriginalWidth(integer(node.get("original_width"), item.getOriginalWidth()));
         item.setRollWeight(decimal(node.get("roll_weight"), item.getRollWeight()));
         item.setPieceNum(integer(node.get("piece_num"), item.getPieceNum()));
+        item.setTotalWeight(decimal(node.get("total_weight"), item.getTotalWeight()));
         item.setProcessMode(integer(node.get("process_mode"), item.getProcessMode()));
         item.setMainStepType(integer(node.get("main_step_type"), item.getMainStepType()));
     }

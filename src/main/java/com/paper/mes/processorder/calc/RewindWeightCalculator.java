@@ -3,17 +3,16 @@ package com.paper.mes.processorder.calc;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 复卷重量分摊计算引擎（P0-0《复卷重量分摊计算规格书》/ V4.1 §2.6.1）。
  *
- * 纯函数、无状态。全程 BigDecimal，最终重量四舍五入到 3 位小数（对齐 decimal(10,3)）。
+ * 纯函数、无状态。预估重量以整数 kg 分配并闭合；实际回录重量保留三位小数。
  * 核心规则：
  *  - 实称值优先（§G）：已实称件直接取实称值，面积分摊仅作用于剩余未实称件，
- *    且先从 W_actual 扣除已实称件重量与总损耗后再分摊。
- *  - 末件尾差倒挤（§E）：最后一件由整卷余量倒挤，保证 Σ各件 + 总损耗 严格等于 W_actual。
+ *    且先从来源重量扣除已实称件重量与总损耗后再分摊。
+ *  - 预估整数最大余数分配（§E）：成品和余料按整数 kg 分配并严格闭合。
  */
 public final class RewindWeightCalculator {
 
@@ -21,8 +20,6 @@ public final class RewindWeightCalculator {
     private static final BigDecimal PI = new BigDecimal(Math.PI);
     private static final BigDecimal TWO = new BigDecimal("2");
     private static final MathContext MC = new MathContext(20, RoundingMode.HALF_UP);
-    private static final int WEIGHT_SCALE = 3;
-
     private RewindWeightCalculator() {
     }
 
@@ -88,86 +85,21 @@ public final class RewindWeightCalculator {
     /**
      * 单卷成品重量分摊。
      *
-     * @param wActual    原纸实际总重 kg（闭合唯一基准）
+     * @param wActual    来源有效总重 kg（预估闭合基准）
      * @param pieces     各件分摊基准：面积/门幅权重 areaBasis + 可选实称重量 actualWeight
      * @param trimTotalWidth 总修边宽度 mm（≤1mm 视为豁免，按 0 处理见 §2.8，调用方负责豁免清零）
      * @param originalWidth  原纸门幅 mm（修边占比分母）
-     * @param totalLoss  总损耗重量 kg（Σ工序损耗，参与末件倒挤）
-     * @return 每件分摊结果（顺序与入参一致），末件为倒挤值
+     * @param totalLoss  总损耗重量 kg（预估场景按整数处理）
+     * @return 每件分摊结果（顺序与入参一致）
      *
      * <p>模式5（多母卷合并复卷）无需新增方法：将各母卷比例 ratio_i 直接作 areaBasis 传入、
-     * wActual 传各母卷合计重，Σratio=1 时占比即 ratio_i，分摊结果即 W_actual×ratio_i（末件倒挤闭合）。
+     * wActual 传各母卷合计重，Σratio=1 时占比即 ratio_i。
      */
     public static List<PieceResult> allocate(BigDecimal wActual, List<PieceInput> pieces,
                                              BigDecimal trimTotalWidth, BigDecimal originalWidth,
                                              BigDecimal totalLoss) {
-        int n = pieces.size();
-        if (n == 0) {
-            return List.of();
-        }
-        BigDecimal actual = wActual == null ? BigDecimal.ZERO : wActual;
-        BigDecimal loss = totalLoss == null ? BigDecimal.ZERO : totalLoss;
-
-        // 修边总重与单件分摊：trim_total = (总修边宽度 / 原纸门幅) × W_actual；share = trim_total / N。
-        BigDecimal trimTotal = BigDecimal.ZERO;
-        if (trimTotalWidth != null && trimTotalWidth.signum() > 0
-                && originalWidth != null && originalWidth.signum() > 0) {
-            trimTotal = trimTotalWidth.divide(originalWidth, MC).multiply(actual, MC);
-        }
-        BigDecimal trimShare = trimTotal.divide(BigDecimal.valueOf(n), MC);
-
-        // 实称值优先：先扣除已实称件重量，剩余在未实称件间按面积分摊。
-        BigDecimal measuredSum = BigDecimal.ZERO;
-        BigDecimal unmeasuredAreaTotal = BigDecimal.ZERO;
-        int lastUnmeasuredIndex = -1;
-        for (int i = 0; i < pieces.size(); i++) {
-            PieceInput p = pieces.get(i);
-            if (p.actualWeight != null) {
-                measuredSum = measuredSum.add(roundedWeight(p.actualWeight));
-            } else {
-                unmeasuredAreaTotal = unmeasuredAreaTotal.add(p.areaBasis);
-                lastUnmeasuredIndex = i;
-            }
-        }
-        // 未实称件可分配的总量 = W_actual − 已实称合计 − 总损耗 − 修边总重。
-        // 修边重量是整卷损耗，从分配池整体扣除；非末件再各自减 trimShare 体现到件重。
-        BigDecimal distributable = actual.subtract(measuredSum).subtract(loss).subtract(trimTotal);
-        requireValidDistributable(distributable, lastUnmeasuredIndex);
-
-        List<PieceResult> results = new ArrayList<>(n);
-        BigDecimal allocatedUnmeasured = BigDecimal.ZERO;
-        for (int i = 0; i < n; i++) {
-            PieceInput p = pieces.get(i);
-            BigDecimal weight;
-            if (p.actualWeight != null) {
-                weight = roundedWeight(p.actualWeight);
-            } else if (i == lastUnmeasuredIndex) {
-                // 最后一个未实称件倒挤，避免覆盖排在末尾的实称值。
-                weight = distributable.subtract(allocatedUnmeasured)
-                        .setScale(WEIGHT_SCALE, RoundingMode.HALF_UP);
-            } else {
-                BigDecimal raw = unmeasuredAreaTotal.signum() == 0
-                        ? BigDecimal.ZERO
-                        : distributable.multiply(p.areaBasis, MC).divide(unmeasuredAreaTotal, MC);
-                weight = roundedWeight(raw);
-                allocatedUnmeasured = allocatedUnmeasured.add(weight);
-            }
-            results.add(new PieceResult(weight, trimShare.setScale(WEIGHT_SCALE, RoundingMode.HALF_UP)));
-        }
-        return results;
-    }
-
-    private static void requireValidDistributable(BigDecimal distributable, int lastUnmeasuredIndex) {
-        if (distributable.signum() < 0) {
-            throw new IllegalArgumentException("实称重量、损耗与修边重量合计不能超过原纸实际总重");
-        }
-        if (lastUnmeasuredIndex < 0 && distributable.setScale(WEIGHT_SCALE, RoundingMode.HALF_UP).signum() != 0) {
-            throw new IllegalArgumentException("全部成品均已实称时，重量合计必须与原纸实际总重闭合");
-        }
-    }
-
-    private static BigDecimal roundedWeight(BigDecimal weight) {
-        return weight.setScale(WEIGHT_SCALE, RoundingMode.HALF_UP);
+        return RewindEstimateWeightAllocator.allocate(
+                wActual, pieces, trimTotalWidth, originalWidth, totalLoss);
     }
 
     /** 模式4 分层入参：单层的外径与纸芯内径 mm。 */

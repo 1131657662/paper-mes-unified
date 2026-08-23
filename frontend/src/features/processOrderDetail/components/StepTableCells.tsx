@@ -1,6 +1,7 @@
 import { Tag } from 'antd'
 import type { ProcessOrderDetailVO, ProcessStep } from '../../../types/processOrder'
 import { formatMoney, formatNumber } from '../orderDetailUtils'
+import { isRollWeightKnown, rollTotalWeight } from '../routeConfigSource'
 
 const BILLING_MODE: Record<number, string> = {
   1: '标准计价',
@@ -13,10 +14,8 @@ export function renderRollCell(detail: ProcessOrderDetailVO | undefined, step: P
   const roll = detail?.originalRolls?.find((item) => item.uuid === step.originalUuid)
   const gramWeight = roll?.actualGramWeight ?? roll?.gramWeight
   const width = roll?.actualWidth ?? roll?.originalWidth
-  const weight = roll?.actualWeight ?? roll?.totalWeight ?? roll?.rollWeight
-  const weightText = roll?.weightStatus === 'UNKNOWN' && !(roll.actualWeight && roll.actualWeight > 0)
-    ? '来料 待称重'
-    : weight != null ? `来料 ${formatNumber(weight / 1000, 3)} t` : undefined
+  const weight = roll && isRollWeightKnown(roll) ? rollTotalWeight(roll) : undefined
+  const weightText = weight != null ? `来料 ${formatNumber(weight / 1000, 3)} t` : '来料 待称重'
   const metadata = [
     roll?.paperName,
     gramWeight != null ? `${gramWeight}g` : undefined,

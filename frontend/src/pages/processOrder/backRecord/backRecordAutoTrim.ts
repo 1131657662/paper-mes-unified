@@ -1,8 +1,9 @@
-import { decimalPlaces } from '../../../utils/numberFormatters'
+import { allocateIntegerWeight, roundWeightTotal } from '../../../utils/integerWeightAllocation'
 import type { BackRecordFinishAdjustmentValues } from '../../../types/processOrder'
 import type { BackRecordFormValues } from './backRecordUtils'
 import type { BackRecordWorkItem, WorkbenchFinish } from './backRecordWorkbenchTypes'
 import { isFinishProduced } from './backRecordFinishAdjustment'
+import { sourceCalculationWeight, sourceConsumptionRatio, workItemSourceRolls } from './backRecordSourceRolls'
 
 interface AutoTrimOptions {
   autoTrimUuids: Set<string>
@@ -30,11 +31,11 @@ export function autoTrimWeights(
   ))
   if (officialFinishes.length === 0 || !allOfficialWeightsFilled(officialFinishes, values)) return []
 
-  const sourceWeight = values.rolls?.[item.roll.uuid]?.actualWeight ?? item.roll.actualWeight
+  const sourceWeight = sourceWeightForItem(item, values)
   if (sourceWeight == null || sourceWeight <= 0) return []
 
   const remainder = sourceWeight - officialTotal(officialFinishes, values) - lossTotal(item, values) - scrapTotal(item, values)
-  if (remainder < 0) return []
+  if (remainder < 0 || !Number.isFinite(remainder) || Math.abs(remainder - Math.round(remainder)) >= 1e-9) return []
 
   const manualTrimTotal = sum(trimFinishes
     .filter(({ finish }) => options.manualTrimUuids.has(finish.uuid))
@@ -43,7 +44,7 @@ export function autoTrimWeights(
   const editableTrims = trimFinishes.filter(({ finish }) => !options.manualTrimUuids.has(finish.uuid))
   if (editableTrims.length === 0) return []
 
-  const weights = distributeWeight(editableRemainder, editableTrims.length, decimalPlaces(sourceWeight, 3))
+  const weights = allocateIntegerWeight(editableRemainder, editableTrims.map(() => 1))
   return editableTrims
     .map((entry, index) => ({
       uuid: entry.finish.uuid,
@@ -66,7 +67,7 @@ function isTrimFinish(entry: WorkbenchFinish, values: BackRecordFormValues) {
 function allOfficialWeightsFilled(finishes: WorkbenchFinish[], values: BackRecordFormValues) {
   return finishes.every(({ finish }) => {
     const actualWeight = values.finishes?.[finish.uuid]?.actualWeight ?? finish.actualWeight
-    return actualWeight != null && actualWeight > 0
+    return actualWeight != null && Number.isFinite(actualWeight) && actualWeight > 0
   })
 }
 
@@ -85,17 +86,15 @@ function lossTotal(item: BackRecordWorkItem, values: BackRecordFormValues) {
   return sum(uniqueSteps.map((step) => values.steps?.[step.uuid]?.lossWeight ?? step.lossWeight))
 }
 
-function distributeWeight(total: number, count: number, digits: number) {
-  if (count <= 0) return []
-  const scale = 10 ** Math.max(0, digits)
-  const units = Math.max(0, Math.round(total * scale))
-  const base = Math.floor(units / count)
-  let remainder = units - base * count
-  return Array.from({ length: count }, () => {
-    const value = base + (remainder > 0 ? 1 : 0)
-    remainder -= remainder > 0 ? 1 : 0
-    return value / scale
-  })
+function sourceWeightForItem(item: BackRecordWorkItem, values: BackRecordFormValues) {
+  const sources = workItemSourceRolls(item)
+  const total = sources.reduce((sum, source) => {
+    const weight = values.rolls?.[source.uuid]?.actualWeight
+      ?? sourceCalculationWeight(source)
+      ?? 0
+    return sum + weight * sourceConsumptionRatio(item, source.uuid)
+  }, 0)
+  return total > 0 ? roundWeightTotal(total) : undefined
 }
 
 function sum(values: Array<number | undefined>) {

@@ -5,6 +5,7 @@ import { formatGram, formatMm, formatOptionalKg } from '../../../utils/numberFor
 import { mergedSourceLocks } from '../rewindConsumptionUtils'
 import { configStepProgress } from '../configStepProgress'
 import type { RollDraft } from '../types'
+import { isRollWeightKnown, rollTotalWeight } from '../../processOrderDetail/routeConfigSource'
 import ConfigStepFooter from './ConfigStepFooter'
 
 interface Props {
@@ -45,7 +46,7 @@ function lightColumns(lockedRolls: ReturnType<typeof mergedSourceLocks>): Column
     { title: '母卷', width: 170, render: (_, roll) => rollNoText(roll) },
     { title: '品名', dataIndex: 'paperName', width: 130 },
     { title: '规格', width: 150, render: (_, roll) => `${formatGram(roll.gramWeight)} / ${formatMm(roll.originalWidth)}` },
-    { title: '重量', width: 120, align: 'right', render: (_, roll) => roll.weightStatus === 'UNKNOWN' ? '待称重' : formatOptionalKg(rollTotalWeight(roll)) },
+    { title: '重量', width: 120, align: 'right', render: (_, roll) => !isRollWeightKnown(roll) ? '待称重' : formatOptionalKg(rollTotalWeight(roll)) },
     { title: '处理方式', width: 140, render: (_, roll) => lightRollStatus(roll, lockedRolls) },
     { title: '说明', width: 220, render: (_, roll) => lightRollHint(roll, lockedRolls) },
   ]
@@ -66,9 +67,4 @@ function lightRollHint(roll: RollDraft, lockedRolls: ReturnType<typeof mergedSou
 
 function rollNoText(roll: RollDraft) {
   return [roll.rollNo, roll.extraNo].filter(Boolean).join(' / ') || roll.paperName || '未编号母卷'
-}
-
-function rollTotalWeight(roll: RollDraft): number | undefined {
-  if (roll.weightStatus === 'UNKNOWN' || roll.rollWeight == null) return undefined
-  return roll.rollWeight * Number(roll.pieceNum ?? 1)
 }

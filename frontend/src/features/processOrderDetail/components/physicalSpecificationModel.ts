@@ -1,5 +1,5 @@
 import type { FinishProductionVO } from '../../../types/processOrder'
-import type { FinishedProductRow } from './finishedProductRows'
+import { rowEstimateWeight, type FinishedProductRow } from './finishedProductRows'
 
 export type PhysicalProductType = 'FINISH' | 'SPARE' | 'TRIM'
 
@@ -28,10 +28,11 @@ export function buildPhysicalSpecificationGroups(
   rows: FinishedProductRow[],
 ): PhysicalSpecificationGroup[] {
   const groups = new Map<string, PhysicalSpecificationGroup>()
-  for (const { finish } of rows.filter(isActiveFinish)) {
+  for (const row of rows.filter(isActiveFinish)) {
+    const { finish } = row
     const key = groupKey(finish)
     const group = groups.get(key) ?? emptyGroup(key, finish)
-    addFinish(group, finish)
+    addFinish(group, row)
     groups.set(key, group)
   }
   return [...groups.values()].map(withDifference).sort(compareGroups)
@@ -62,9 +63,10 @@ function emptyGroup(key: string, finish: FinishProductionVO): PhysicalSpecificat
   }
 }
 
-function addFinish(group: PhysicalSpecificationGroup, finish: FinishProductionVO) {
+function addFinish(group: PhysicalSpecificationGroup, row: FinishedProductRow) {
+  const { finish } = row
   group.count += 1
-  group.estimateWeight += finish.estimateWeight ?? 0
+  group.estimateWeight += rowEstimateWeight(row) ?? 0
   if (finish.actualWeight == null) return
   group.actualWeight = (group.actualWeight ?? 0) + finish.actualWeight
   group.recordedCount += 1
