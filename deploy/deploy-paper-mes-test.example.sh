@@ -95,15 +95,8 @@ prepare_release_metadata() {
 }
 
 run_database_migrations() {
-  local candidate migration_runner migration_guard route_guard
-  if [ -z "${migration_env_file}" ]; then
-    for candidate in /etc/paper-mes-test/migration.env /etc/paper-mes/migration.env; do
-      if [ -r "${candidate}" ]; then
-        migration_env_file="${candidate}"
-        break
-      fi
-    done
-  fi
+  local migration_runner migration_guard route_guard
+  [ -n "${migration_env_file}" ] || migration_env_file=/etc/paper-mes-test/migration.env
   [ -r "${migration_env_file}" ] || fail "test migration environment file is missing"
   [ "$(stat -c '%U:%G:%a' "${migration_env_file}")" = "root:root:600" ] \
     || fail "test migration environment file must be root:root 0600"
