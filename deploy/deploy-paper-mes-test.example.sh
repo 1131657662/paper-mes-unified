@@ -36,8 +36,15 @@ require_root() {
 }
 
 checkout_ci_commit() {
-  [ -z "$(git -C "${source_root}" status --porcelain --untracked-files=all)" ] \
-    || fail "refusing deployment over a dirty test source tree"
+  local dirty_state
+  dirty_state="$(git -C "${source_root}" status --porcelain --untracked-files=all)"
+  if [ -n "${dirty_state}" ]; then
+    printf 'test source tree is dirty; refusing deployment:\n%s\n' "${dirty_state}" >&2
+    systemctl show paper-mes-test.service \
+      --property=User,WorkingDirectory,ExecStart,ExecStartPre,EnvironmentFiles \
+      --no-pager >&2 || true
+    fail "refusing deployment over a dirty test source tree"
+  fi
   git -C "${source_root}" fetch --prune origin main
   [ "$(git -C "${source_root}" rev-parse origin/main)" = "${deploy_sha}" ] \
     || fail "origin/main does not match the CI-tested commit"

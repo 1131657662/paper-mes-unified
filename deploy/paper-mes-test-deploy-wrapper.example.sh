@@ -9,10 +9,14 @@ deploy_sha="${1:-}"
 }
 
 git -C "${source_root}" fetch --prune origin main
-[ "$(git -C "${source_root}" rev-parse origin/main)" = "${deploy_sha}" ] || {
-  echo "requested commit is not the current origin/main" >&2
+remote_main="$(git -C "${source_root}" rev-parse origin/main 2>/dev/null || true)"
+if [ "${remote_main}" != "${deploy_sha}" ]; then
+  printf 'requested commit is not the current origin/main: requested=%s fetched=%s remote=%s\n' \
+    "${deploy_sha}" "${remote_main:-<missing>}" \
+    "$(git -C "${source_root}" remote get-url origin 2>/dev/null || printf '<missing>')" >&2
+  git -C "${source_root}" status --short --branch >&2 || true
   exit 1
-}
+fi
 
 tmp_script="$(mktemp)"
 cleanup() { rm -f "${tmp_script}"; }
