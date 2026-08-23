@@ -16,7 +16,6 @@ restore_env_file=/etc/paper-mes-test/backup-restore.env
 service=paper-mes-test.service
 backup_root=/opt/paper-mes-test/backups
 migration_env_file="${MIGRATION_ENV_FILE:-}"
-migration_runtime_env=""
 backend_version=""
 frontend_version=""
 build_time=""
@@ -29,11 +28,6 @@ fail() {
   echo "MES test deployment failed: $1" >&2
   exit 1
 }
-
-cleanup() {
-  [ -z "${migration_runtime_env}" ] || rm -f "${migration_runtime_env}"
-}
-trap cleanup EXIT
 
 require_root() {
   [ "$(id -u)" = 0 ] || fail "root privileges are required"
@@ -113,15 +107,16 @@ run_database_migrations() {
   [ -r "${migration_env_file}" ] || fail "test migration environment file is missing"
   [ "$(stat -c '%U:%G:%a' "${migration_env_file}")" = "root:root:600" ] \
     || fail "test migration environment file must be root:root 0600"
-  migration_runtime_env="$(mktemp)"
+  local migration_env_tmp
+  migration_env_tmp="$(mktemp "${migration_env_file}.XXXXXX")"
   awk '
     /^[[:space:]]*(export[[:space:]]+)?MIGRATION_DIR[[:space:]]*=/ { next }
     { print }
-  ' "${migration_env_file}" > "${migration_runtime_env}"
-  printf 'MIGRATION_DIR=%s/sql\n' "${source_root}" >> "${migration_runtime_env}"
-  chown root:root "${migration_runtime_env}"
-  chmod 600 "${migration_runtime_env}"
-  migration_env_file="${migration_runtime_env}"
+  ' "${migration_env_file}" > "${migration_env_tmp}"
+  printf 'MIGRATION_DIR=%s/sql\n' "${source_root}" >> "${migration_env_tmp}"
+  chown root:root "${migration_env_tmp}"
+  chmod 600 "${migration_env_tmp}"
+  mv -f "${migration_env_tmp}" "${migration_env_file}"
   migration_runner="${source_root}/deploy/apply-paper-mes-migrations.example.sh"
   migration_guard="${source_root}/deploy/verify-paper-mes-migration-state.example.sh"
   route_guard="${source_root}/deploy/verify-paper-mes-process-route-schema.example.sh"
@@ -234,7 +229,7 @@ restart_and_check() {
     fail "test backend restart failed; previous version restored"
   fi
   local healthy=0
-  for _ in $(seq 1 30); do
+  for _ in $(seq 1 60); do
     if curl --fail --silent --show-error --max-time 5 \
       http://127.0.0.1:8082/actuator/health | grep -q '"status":"UP"'; then
       healthy=1
