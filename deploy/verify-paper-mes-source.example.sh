@@ -10,6 +10,8 @@ INSTALLED_MIGRATION_GUARD_PATH="${INSTALLED_MIGRATION_GUARD_PATH:-/usr/local/bin
 INSTALLED_MIGRATION_RUNNER_PATH="${INSTALLED_MIGRATION_RUNNER_PATH:-/usr/local/bin/apply-paper-mes-migrations}"
 INSTALLED_MIGRATION_LOCK_PATH="${INSTALLED_MIGRATION_LOCK_PATH:-/usr/local/bin/migration-lock-support.sh}"
 INSTALLED_MIGRATION_STATE_PATH="${INSTALLED_MIGRATION_STATE_PATH:-/usr/local/bin/migration-state-support.sh}"
+INSTALLED_DEPLOY_PATH="${INSTALLED_DEPLOY_PATH:-/usr/local/sbin/deploy-paper-mes.sh}"
+INSTALLED_ROLLBACK_PATH="${INSTALLED_ROLLBACK_PATH:-/usr/local/sbin/paper-mes-runtime-rollback.sh}"
 
 fail() {
   echo "source provenance verification failed: $1" >&2
@@ -43,12 +45,16 @@ source_migration_guard="${SOURCE_ROOT}/deploy/verify-paper-mes-migration-state.e
 source_migration_runner="${SOURCE_ROOT}/deploy/apply-paper-mes-migrations.example.sh"
 source_migration_lock="${SOURCE_ROOT}/deploy/migration-lock-support.sh"
 source_migration_state="${SOURCE_ROOT}/deploy/migration-state-support.sh"
+source_deploy="${SOURCE_ROOT}/deploy/deploy-paper-mes.example.sh"
+source_rollback="${SOURCE_ROOT}/deploy/paper-mes-runtime-rollback.example.sh"
 [ -f "${source_service_unit}" ] || fail "service unit template is missing from source"
 [ -f "${source_preflight}" ] || fail "release preflight is missing from source"
 [ -f "${source_migration_guard}" ] || fail "migration state guard is missing from source"
 [ -f "${source_migration_runner}" ] || fail "migration runner is missing from source"
 [ -f "${source_migration_lock}" ] || fail "migration lock support is missing from source"
 [ -f "${source_migration_state}" ] || fail "migration state support is missing from source"
+[ -f "${source_deploy}" ] || fail "production deployment script is missing from source"
+[ -f "${source_rollback}" ] || fail "production rollback helper is missing from source"
 cmp -s "${source_service_unit}" "${SERVICE_UNIT_PATH}" \
   || fail "installed service unit does not match the pulled source"
 cmp -s "${source_preflight}" "${INSTALLED_PREFLIGHT_PATH}" \
@@ -61,5 +67,9 @@ cmp -s "${source_migration_lock}" "${INSTALLED_MIGRATION_LOCK_PATH}" \
   || fail "installed migration lock support does not match the pulled source"
 cmp -s "${source_migration_state}" "${INSTALLED_MIGRATION_STATE_PATH}" \
   || fail "installed migration state support does not match the pulled source"
+cmp -s "${source_deploy}" "${INSTALLED_DEPLOY_PATH}" \
+  || fail "installed production deployment script does not match the pulled source"
+cmp -s "${source_rollback}" "${INSTALLED_ROLLBACK_PATH}" \
+  || fail "installed production rollback helper does not match the pulled source"
 
 echo "source provenance verification passed: ${head_commit}"

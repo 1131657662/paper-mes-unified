@@ -20,6 +20,8 @@ on:
       - "deploy/nginx-paper-mes.example.conf"
       - "deploy/nginx-paper-mes-https.example.conf"
       - "deploy/test-nginx-paper-mes-config.sh"
+      - "deploy/deploy-paper-mes.example.sh"
+      - "deploy/paper-mes-runtime-rollback.example.sh"
       - "deploy/deploy-paper-mes-test.example.sh"
       - "deploy/paper-mes-test-deploy-wrapper.example.sh"
       - ".github/workflows/deploy-mes-test.yml"
@@ -44,6 +46,8 @@ on:
       - "deploy/nginx-paper-mes.example.conf"
       - "deploy/nginx-paper-mes-https.example.conf"
       - "deploy/test-nginx-paper-mes-config.sh"
+      - "deploy/deploy-paper-mes.example.sh"
+      - "deploy/paper-mes-runtime-rollback.example.sh"
       - "deploy/deploy-paper-mes-test.example.sh"
       - "deploy/paper-mes-test-deploy-wrapper.example.sh"
       - ".github/workflows/deploy-mes-test.yml"
@@ -73,7 +77,7 @@ jobs:
 
       - run: bash deploy/test-nginx-paper-mes-config.sh
         working-directory: .
-      - run: bash -n deploy/deploy-paper-mes-test.example.sh deploy/paper-mes-test-deploy-wrapper.example.sh deploy/verify-paper-mes-process-route-schema.example.sh
+      - run: bash -n deploy/deploy-paper-mes.example.sh deploy/paper-mes-runtime-rollback.example.sh deploy/deploy-paper-mes-test.example.sh deploy/paper-mes-test-deploy-wrapper.example.sh deploy/verify-paper-mes-process-route-schema.example.sh
         working-directory: .
 
       - uses: actions/setup-java@v5

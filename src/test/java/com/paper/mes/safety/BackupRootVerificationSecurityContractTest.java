@@ -65,7 +65,7 @@ class BackupRootVerificationSecurityContractTest {
     }
 
     private String source(String path) throws Exception {
-        return Files.readString(Path.of(path));
+        return Files.readString(Path.of(path)).replace("\r\n", "\n");
     }
 
     private void assertContainsAll(String source, String... fragments) {

@@ -16,12 +16,16 @@ printf 'migration-state-guard\n' > "${source_root}/deploy/verify-paper-mes-migra
 printf 'migration-runner\n' > "${source_root}/deploy/apply-paper-mes-migrations.example.sh"
 printf 'migration-lock\n' > "${source_root}/deploy/migration-lock-support.sh"
 printf 'migration-state\n' > "${source_root}/deploy/migration-state-support.sh"
+printf 'production-deploy\n' > "${source_root}/deploy/deploy-paper-mes.example.sh"
+printf 'production-rollback\n' > "${source_root}/deploy/paper-mes-runtime-rollback.example.sh"
 cp "${source_root}/deploy/paper-mes.service.example" "${temp_dir}/installed.service"
 cp "${source_root}/deploy/preflight-paper-mes-release.example.sh" "${temp_dir}/installed-preflight"
 cp "${source_root}/deploy/verify-paper-mes-migration-state.example.sh" "${temp_dir}/installed-migration-guard"
 cp "${source_root}/deploy/apply-paper-mes-migrations.example.sh" "${temp_dir}/installed-migration-runner"
 cp "${source_root}/deploy/migration-lock-support.sh" "${temp_dir}/installed-migration-lock"
 cp "${source_root}/deploy/migration-state-support.sh" "${temp_dir}/installed-migration-state"
+cp "${source_root}/deploy/deploy-paper-mes.example.sh" "${temp_dir}/installed-deploy"
+cp "${source_root}/deploy/paper-mes-runtime-rollback.example.sh" "${temp_dir}/installed-rollback"
 
 cat > "${temp_dir}/bin/git" <<'EOF'
 #!/usr/bin/env bash
@@ -46,6 +50,8 @@ run_verify() {
   INSTALLED_MIGRATION_RUNNER_PATH="${temp_dir}/installed-migration-runner" \
   INSTALLED_MIGRATION_LOCK_PATH="${temp_dir}/installed-migration-lock" \
   INSTALLED_MIGRATION_STATE_PATH="${temp_dir}/installed-migration-state" \
+  INSTALLED_DEPLOY_PATH="${temp_dir}/installed-deploy" \
+  INSTALLED_ROLLBACK_PATH="${temp_dir}/installed-rollback" \
   bash "${verify_script}"
 }
 
@@ -84,6 +90,18 @@ cp "${source_root}/deploy/apply-paper-mes-migrations.example.sh" "${temp_dir}/in
 printf 'direct-cloud-edit\n' > "${temp_dir}/installed-migration-guard"
 if run_verify >/dev/null 2>&1; then
   echo "source verification unexpectedly accepted a directly edited migration guard" >&2
+  exit 1
+fi
+cp "${source_root}/deploy/verify-paper-mes-migration-state.example.sh" "${temp_dir}/installed-migration-guard"
+printf 'direct-cloud-edit\n' > "${temp_dir}/installed-deploy"
+if run_verify >/dev/null 2>&1; then
+  echo "source verification unexpectedly accepted a directly edited production deployment script" >&2
+  exit 1
+fi
+cp "${source_root}/deploy/deploy-paper-mes.example.sh" "${temp_dir}/installed-deploy"
+printf 'direct-cloud-edit\n' > "${temp_dir}/installed-rollback"
+if run_verify >/dev/null 2>&1; then
+  echo "source verification unexpectedly accepted a directly edited production rollback helper" >&2
   exit 1
 fi
 
