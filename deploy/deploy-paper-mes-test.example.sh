@@ -16,6 +16,7 @@ restore_env_file=/etc/paper-mes-test/backup-restore.env
 service=paper-mes-test.service
 backup_root=/opt/paper-mes-test/backups
 migration_env_file="${MIGRATION_ENV_FILE:-}"
+migration_runtime_env=""
 backend_version=""
 frontend_version=""
 build_time=""
@@ -28,6 +29,11 @@ fail() {
   echo "MES test deployment failed: $1" >&2
   exit 1
 }
+
+cleanup() {
+  [ -z "${migration_runtime_env}" ] || rm -f "${migration_runtime_env}"
+}
+trap cleanup EXIT
 
 require_root() {
   [ "$(id -u)" = 0 ] || fail "root privileges are required"
@@ -107,6 +113,15 @@ run_database_migrations() {
   [ -r "${migration_env_file}" ] || fail "test migration environment file is missing"
   [ "$(stat -c '%U:%G:%a' "${migration_env_file}")" = "root:root:600" ] \
     || fail "test migration environment file must be root:root 0600"
+  migration_runtime_env="$(mktemp)"
+  awk '
+    /^[[:space:]]*(export[[:space:]]+)?MIGRATION_DIR[[:space:]]*=/ { next }
+    { print }
+  ' "${migration_env_file}" > "${migration_runtime_env}"
+  printf 'MIGRATION_DIR=%s/sql\n' "${source_root}" >> "${migration_runtime_env}"
+  chown root:root "${migration_runtime_env}"
+  chmod 600 "${migration_runtime_env}"
+  migration_env_file="${migration_runtime_env}"
   migration_runner="${source_root}/deploy/apply-paper-mes-migrations.example.sh"
   migration_guard="${source_root}/deploy/verify-paper-mes-migration-state.example.sh"
   route_guard="${source_root}/deploy/verify-paper-mes-process-route-schema.example.sh"
@@ -161,6 +176,8 @@ render_runtime_env() {
       values["PAPER_MES_FRONTEND_VERSION"] = frontend
       values["PAPER_MES_BUILD_TIME"] = built
       values["PAPER_MES_EXPECTED_SCHEMA_VERSION"] = schema
+      values["MIGRATION_ENV_FILE"] = "/etc/paper-mes-test/migration.env"
+      values["MIGRATION_DIR"] = "/opt/paper-mes-test/source/sql"
       values["PAPER_MES_BACKUP_VERIFY_WRAPPER"] = "/usr/local/sbin/verify-paper-mes-test-backup-root"
     }
     {
