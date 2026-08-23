@@ -73,7 +73,7 @@ jobs:
 
       - run: bash deploy/test-nginx-paper-mes-config.sh
         working-directory: .
-      - run: bash -n deploy/deploy-paper-mes-test.example.sh deploy/paper-mes-test-deploy-wrapper.example.sh
+      - run: bash -n deploy/deploy-paper-mes-test.example.sh deploy/paper-mes-test-deploy-wrapper.example.sh deploy/verify-paper-mes-process-route-schema.example.sh
         working-directory: .
 
       - uses: actions/setup-java@v5

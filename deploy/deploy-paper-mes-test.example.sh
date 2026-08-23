@@ -15,6 +15,7 @@ env_file=/etc/paper-mes-test/paper-mes-test.env
 restore_env_file=/etc/paper-mes-test/backup-restore.env
 service=paper-mes-test.service
 backup_root=/opt/paper-mes-test/backups
+migration_env_file="${MIGRATION_ENV_FILE:-}"
 backend_version=""
 frontend_version=""
 build_time=""
@@ -91,6 +92,33 @@ prepare_release_metadata() {
   release_id="${backend_version}-${release_time}"
   frontend_version="${release_id}"
   build_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+
+run_database_migrations() {
+  local candidate migration_runner migration_guard route_guard
+  if [ -z "${migration_env_file}" ]; then
+    for candidate in /etc/paper-mes-test/migration.env /etc/paper-mes/migration.env; do
+      if [ -r "${candidate}" ]; then
+        migration_env_file="${candidate}"
+        break
+      fi
+    done
+  fi
+  [ -r "${migration_env_file}" ] || fail "test migration environment file is missing"
+  [ "$(stat -c '%U:%G:%a' "${migration_env_file}")" = "root:root:600" ] \
+    || fail "test migration environment file must be root:root 0600"
+  migration_runner="${source_root}/deploy/apply-paper-mes-migrations.example.sh"
+  migration_guard="${source_root}/deploy/verify-paper-mes-migration-state.example.sh"
+  route_guard="${source_root}/deploy/verify-paper-mes-process-route-schema.example.sh"
+  [ -f "${migration_runner}" ] || fail "migration runner is missing"
+  [ -f "${migration_guard}" ] || fail "migration state guard is missing"
+  [ -f "${route_guard}" ] || fail "process route schema guard is missing"
+  MIGRATION_ENV_FILE="${migration_env_file}" MIGRATION_DIR="${source_root}/sql" \
+    bash "${migration_runner}"
+  MIGRATION_ENV_FILE="${migration_env_file}" MIGRATION_DIR="${source_root}/sql" \
+    bash "${migration_guard}"
+  MIGRATION_ENV_FILE="${migration_env_file}" \
+    bash "${route_guard}"
 }
 
 backup_runtime() {
@@ -217,6 +245,7 @@ checkout_ci_commit
 prepare_runtime_scripts
 install_restore_runtime
 prepare_release_metadata
+run_database_migrations
 backup_runtime
 build_artifacts
 update_runtime
