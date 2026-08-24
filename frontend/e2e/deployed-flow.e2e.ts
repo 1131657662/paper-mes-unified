@@ -2,6 +2,7 @@ import { test } from '@playwright/test'
 import { signIn } from './auth'
 
 test('test 环境业务链路探测', async ({ page }) => {
+  test.skip(process.env.PAPER_MES_E2E_DEPLOYED_PROBES !== 'true', '仅在明确启用测试环境部署探测时运行')
   test.setTimeout(180_000)
   await signIn(page)
   await page.goto(`/process-orders/create?fresh=${Date.now()}`)

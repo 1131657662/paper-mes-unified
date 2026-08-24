@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { signIn } from './auth'
 
 test('test 环境单卷复卷真实链路探测', async ({ page }, testInfo) => {
+  test.skip(process.env.PAPER_MES_E2E_DEPLOYED_PROBES !== 'true', '仅在明确启用测试环境部署探测时运行')
   test.setTimeout(180_000)
   await signIn(page)
   const suffix = Date.now().toString().slice(-6)

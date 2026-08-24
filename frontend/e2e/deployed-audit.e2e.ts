@@ -3,6 +3,7 @@ import { signIn } from './auth'
 
 test.describe('test 环境真实页面审查', () => {
   test('采集 AI 页面和新建流程控件', async ({ page }, testInfo) => {
+    test.skip(process.env.PAPER_MES_E2E_DEPLOYED_PROBES !== 'true', '仅在明确启用测试环境部署探测时运行')
     test.setTimeout(90_000)
     await signIn(page)
 
