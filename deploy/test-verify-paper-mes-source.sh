@@ -33,6 +33,7 @@ case "$*" in
   *"symbolic-ref --short HEAD"*) printf '%s\n' "${GIT_TEST_BRANCH:-main}" ;;
   *"rev-parse HEAD"*) printf '%s\n' "${GIT_TEST_HEAD:-commit-1}" ;;
   *"rev-parse refs/remotes/origin/main"*) printf '%s\n' "${GIT_TEST_REMOTE_HEAD:-commit-1}" ;;
+  *"merge-base --is-ancestor"*) [ "${GIT_TEST_ANCESTOR:-1}" = '1' ] ;;
   *"status --porcelain --untracked-files=all"*)
     [ -z "${GIT_TEST_STATUS:-}" ] || printf '%s\n' "${GIT_TEST_STATUS}"
     ;;
@@ -60,8 +61,9 @@ if GIT_TEST_STATUS=' M tracked-file' run_verify >/dev/null 2>&1; then
   echo "source verification unexpectedly accepted a dirty cloud working tree" >&2
   exit 1
 fi
-if GIT_TEST_REMOTE_HEAD=commit-2 run_verify >/dev/null 2>&1; then
-  echo "source verification unexpectedly accepted a commit not pulled from GitHub" >&2
+GIT_TEST_REMOTE_HEAD=commit-2 run_verify >/dev/null
+if GIT_TEST_HEAD=local-commit GIT_TEST_REMOTE_HEAD=commit-2 GIT_TEST_ANCESTOR=0 run_verify >/dev/null 2>&1; then
+  echo "source verification unexpectedly accepted a commit outside GitHub main history" >&2
   exit 1
 fi
 if GIT_TEST_BRANCH=release run_verify >/dev/null 2>&1; then

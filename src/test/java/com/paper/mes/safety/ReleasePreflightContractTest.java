@@ -42,18 +42,22 @@ class ReleasePreflightContractTest {
     }
 
     @Test
-    void sourceProvenanceRejectsCloudEditsAndUnpulledCommits() throws Exception {
+    void sourceProvenanceAcceptsFetchedMainAheadAndRejectsCloudEditsOrDivergence() throws Exception {
         String verifier = source("deploy/verify-paper-mes-source.example.sh");
         String behaviorTest = source("deploy/test-verify-paper-mes-source.sh");
 
-        assertThat(verifier).contains("status --porcelain", "refs/remotes/${SOURCE_REMOTE}/${SOURCE_BRANCH}");
+        assertThat(verifier).contains(
+                "status --porcelain", "refs/remotes/${SOURCE_REMOTE}/${SOURCE_BRANCH}",
+                "merge-base --is-ancestor");
         assertThat(verifier).contains("installed service unit does not match the pulled source");
         assertThat(verifier).contains("installed release preflight does not match the pulled source");
         assertThat(verifier).contains("installed migration state guard does not match the pulled source");
         assertThat(verifier).contains("installed migration runner does not match the pulled source");
         assertThat(verifier).contains("installed migration lock support does not match the pulled source");
         assertThat(verifier).contains("installed migration state support does not match the pulled source");
-        assertThat(behaviorTest).contains("dirty cloud working tree", "commit not pulled from GitHub");
+        assertThat(behaviorTest).contains(
+                "GIT_TEST_REMOTE_HEAD=commit-2 run_verify",
+                "dirty cloud working tree", "commit outside GitHub main history");
         assertThat(behaviorTest).contains(
                 "directly edited service unit", "directly edited preflight",
                 "directly edited migration runner");

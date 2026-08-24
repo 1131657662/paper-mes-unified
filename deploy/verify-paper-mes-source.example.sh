@@ -32,8 +32,12 @@ current_branch="$(git -C "${SOURCE_ROOT}" symbolic-ref --short HEAD)" \
 head_commit="$(git -C "${SOURCE_ROOT}" rev-parse HEAD)" || fail "cannot read source HEAD"
 remote_commit="$(git -C "${SOURCE_ROOT}" rev-parse "refs/remotes/${SOURCE_REMOTE}/${SOURCE_BRANCH}")" \
   || fail "cannot read ${SOURCE_REMOTE}/${SOURCE_BRANCH}"
-[ "${head_commit}" = "${remote_commit}" ] \
-  || fail "source HEAD ${head_commit} does not match ${SOURCE_REMOTE}/${SOURCE_BRANCH} ${remote_commit}"
+# The fetched remote main branch may legitimately be ahead while the currently
+# running release still uses the checked-out source and matching templates.
+# Accept only that fast-forward relationship; local commits and divergent
+# branches remain a provenance failure.
+git -C "${SOURCE_ROOT}" merge-base --is-ancestor "${head_commit}" "${remote_commit}" \
+  || fail "source HEAD ${head_commit} is not an ancestor of ${SOURCE_REMOTE}/${SOURCE_BRANCH} ${remote_commit}"
 
 working_tree_status="$(git -C "${SOURCE_ROOT}" status --porcelain --untracked-files=all)" \
   || fail "cannot inspect source working tree"
