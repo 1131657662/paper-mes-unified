@@ -78,6 +78,20 @@ class ReleasePreflightContractTest {
         assertThat(guide).contains("systemctl daemon-reload", "sudo /usr/local/sbin/deploy-paper-mes.sh");
     }
 
+    @Test
+    void productionDeploymentChecksCurrentHealthBeforeMigrationAndRunsFullPreflightAfterRestart() throws Exception {
+        String deployment = source("deploy/deploy-paper-mes.example.sh");
+
+        assertThat(deployment).contains(
+                "MES backend health check failed before deployment",
+                "http://127.0.0.1:8081/actuator/health",
+                "/usr/local/bin/preflight-paper-mes-release");
+        assertThat(deployment.indexOf("check_current_runtime()"))
+                .isLessThan(deployment.indexOf("install_runtime_templates()"));
+        assertThat(deployment.lastIndexOf("/usr/local/bin/preflight-paper-mes-release"))
+                .isGreaterThan(deployment.indexOf("systemctl restart \"${SERVICE}\""));
+    }
+
     private String source(String path) throws Exception {
         return Files.readString(Path.of(path)).replace("\r\n", "\n");
     }

@@ -49,7 +49,9 @@ check_current_runtime() {
   systemctl is-active --quiet "${SERVICE}" || fail "MES service is not active"
   [ -s "${APP}" ] || fail "MES JAR is missing"
   [ -s "${FRONTEND_ROOT}/dist/index.html" ] || fail "MES frontend is missing"
-  /usr/local/bin/preflight-paper-mes-release >/dev/null
+  curl --fail --silent --show-error --max-time 10 \
+    http://127.0.0.1:8081/actuator/health >/dev/null \
+    || fail "MES backend health check failed before deployment"
 }
 wait_health() {
   local response
