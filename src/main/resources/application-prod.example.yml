@@ -29,18 +29,23 @@ springdoc:
 app:
   ai:
     data-mode: ${PAPER_MES_AI_DATA_MODE:DISABLED}
+    process-dialogue-v2-enabled: ${PAPER_MES_AI_PROCESS_DIALOGUE_V2:false}
+    process-dialogue-v2-order-allowlist: ${PAPER_MES_AI_PROCESS_DIALOGUE_V2_ORDERS:}
+    process-dialogue-v2-user-allowlist: ${PAPER_MES_AI_PROCESS_DIALOGUE_V2_USERS:}
     provider: ${PAPER_MES_AI_PROVIDER:LOCAL_RULES}
     rules-resource: ${PAPER_MES_AI_RULES_RESOURCE:classpath:ai/rules-v1.0.0.json}
     memory-dir: ${PAPER_MES_AI_MEMORY_DIR:/etc/paper-mes/ai-memory}
     memory-seed-resource: ${PAPER_MES_AI_MEMORY_SEED_RESOURCE:classpath:ai/project-memory.seed.v1.json}
     message-encryption-key: ${PAPER_MES_AI_MESSAGE_ENCRYPTION_KEY:}
     config-master-key: ${PAPER_MES_AI_CONFIG_MASTER_KEY:}
+    memory-reference-hmac-key: ${PAPER_MES_AI_MEMORY_REFERENCE_HMAC_KEY:}
     memory-cache-poll-ms: ${PAPER_MES_AI_MEMORY_CACHE_POLL_MS:60000}
     max-question-chars: ${PAPER_MES_AI_MAX_QUESTION_CHARS:1000}
     global-concurrent-requests: ${PAPER_MES_AI_GLOBAL_CONCURRENT_REQUESTS:1}
     memory-candidate-min-orders: ${PAPER_MES_AI_MEMORY_CANDIDATE_MIN_ORDERS:5}
     memory-candidate-window-days: ${PAPER_MES_AI_MEMORY_CANDIDATE_WINDOW_DAYS:7}
     memory-candidate-ttl-days: ${PAPER_MES_AI_MEMORY_CANDIDATE_TTL_DAYS:90}
+    memory-evidence-audit-retention-days: ${PAPER_MES_AI_MEMORY_EVIDENCE_AUDIT_RETENTION_DAYS:90}
     memory-learning-processing-timeout-minutes: ${PAPER_MES_AI_MEMORY_LEARNING_PROCESSING_TIMEOUT_MINUTES:10}
     deepseek-api-key: ${PAPER_MES_AI_DEEPSEEK_API_KEY:}
     deepseek-model-pro: ${PAPER_MES_AI_DEEPSEEK_MODEL_PRO:deepseek-v4-pro}
@@ -68,7 +73,7 @@ app:
   schema-bootstrap:
     enabled: false
   schema-readiness:
-    expected-version: ${PAPER_MES_EXPECTED_SCHEMA_VERSION:3.73}
+    expected-version: ${PAPER_MES_EXPECTED_SCHEMA_VERSION:3.76}
     require-migration-history: true
   runtime:
     backend-version: ${PAPER_MES_BACKEND_VERSION}

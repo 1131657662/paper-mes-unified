@@ -13,6 +13,7 @@ function Import-UserAiEnvironment {
     $names = @(
         'PAPER_MES_AI_CONFIG_MASTER_KEY',
         'PAPER_MES_AI_MESSAGE_ENCRYPTION_KEY',
+        'PAPER_MES_AI_MEMORY_REFERENCE_HMAC_KEY',
         'PAPER_MES_AI_PROVIDER',
         'PAPER_MES_AI_DATA_MODE',
         'PAPER_MES_AI_DEEPSEEK_API_KEY',
@@ -31,6 +32,27 @@ function Import-UserAiEnvironment {
 }
 
 Import-UserAiEnvironment
+
+function Ensure-LocalAiMemoryReferenceHmac {
+    $name = 'PAPER_MES_AI_MEMORY_REFERENCE_HMAC_KEY'
+    $current = [Environment]::GetEnvironmentVariable($name, 'Process')
+    if (-not [string]::IsNullOrWhiteSpace($current) -and $current.Length -ge 32) { return }
+
+    $userValue = [Environment]::GetEnvironmentVariable($name, 'User')
+    if (-not [string]::IsNullOrWhiteSpace($userValue) -and $userValue.Length -ge 32) {
+        Set-Item -LiteralPath "Env:$name" -Value $userValue
+        return
+    }
+
+    $bytes = New-Object byte[] 32
+    [Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+    $value = [Convert]::ToBase64String($bytes)
+    [Environment]::SetEnvironmentVariable($name, $value, 'User')
+    Set-Item -LiteralPath "Env:$name" -Value $value
+    Write-Output 'Generated a local AI memory reference HMAC key and stored it in the current Windows user environment.'
+}
+
+Ensure-LocalAiMemoryReferenceHmac
 
 function Resolve-LocalRuntimeMetadata {
     try {

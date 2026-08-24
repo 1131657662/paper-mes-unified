@@ -14,6 +14,7 @@ import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.mapper.FinishOriginalRelMapper;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
+import com.paper.mes.remain.service.RemainReopenGuard;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -184,6 +185,7 @@ class BackRecordReopenServiceTest {
         DeliveryDetailMapper deliveryMapper = mock(DeliveryDetailMapper.class);
         BusinessLockService lockService = mock(BusinessLockService.class);
         InventoryLedgerBusinessRecorder inventoryLedgerRecorder = mock(InventoryLedgerBusinessRecorder.class);
+        RemainReopenGuard remainReopenGuard = mock(RemainReopenGuard.class);
         when(rollMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(rolls);
         when(relationMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(relations);
         when(finishMapper.selectList(any(LambdaQueryWrapper.class)))
@@ -192,7 +194,8 @@ class BackRecordReopenServiceTest {
         when(finishMapper.update(isNull(), any(LambdaUpdateWrapper.class))).thenReturn(1);
         when(rollMapper.update(isNull(), any(LambdaUpdateWrapper.class))).thenReturn(1);
         return new Fixture(new BackRecordReopenService(
-                rollMapper, finishMapper, relationMapper, deliveryMapper, lockService, inventoryLedgerRecorder),
+                rollMapper, finishMapper, relationMapper, deliveryMapper, lockService,
+                inventoryLedgerRecorder, remainReopenGuard),
                 rollMapper, finishMapper, deliveryMapper, inventoryLedgerRecorder, allFinishes.get(0), rolls.get(0));
     }
 

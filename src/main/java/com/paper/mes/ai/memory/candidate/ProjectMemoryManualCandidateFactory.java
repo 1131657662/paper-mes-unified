@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -19,14 +20,23 @@ class ProjectMemoryManualCandidateFactory {
     Optional<ProjectMemoryCandidateProposal> create(
             ProjectMemorySubmissionLearningSnapshot snapshot,
             ProjectMemorySnapshot memory) {
-        String input = normalize(snapshot.customerRequirement());
+        return createFinalConfiguration(snapshot.finalConfiguration(), memory);
+    }
+
+    Optional<ProjectMemoryCandidateProposal> createFinalConfiguration(
+            com.fasterxml.jackson.databind.JsonNode finalConfiguration,
+            ProjectMemorySnapshot memory) {
+        String input = safeConfigurationLabel(finalConfiguration);
         if (input == null || alreadyApproved(memory, input)) return Optional.empty();
         ObjectNode document = objectMapper.createObjectNode();
         document.put("type", "EXAMPLE");
         document.put("scope", "PROCESS_ORDER");
         document.put("status", "ACTIVE");
         document.put("input", input);
-        document.set("expected", snapshot.finalConfiguration());
+        ObjectNode expected = document.putObject("expected");
+        expected.put("processType", "PROCESS_ORDER");
+        expected.put("intent", "FINAL_VALIDATED_CONFIGURATION");
+        expected.put("field", "processPlans");
         document.put("evidenceRequired", true);
         document.put("source", "manual-final-configuration-after-ai-conversation");
         String hash = ProcessAiAuditHasher.sha256(input.toLowerCase(Locale.ROOT));
@@ -39,7 +49,17 @@ class ProjectMemoryManualCandidateFactory {
     private String normalize(String value) {
         if (value == null) return null;
         String normalized = value.replaceAll("\\s+", " ").trim();
-        return normalized.length() < 2 || normalized.length() > 2_000 ? null : normalized;
+        return normalized.length() < 2 || normalized.length() > 500 ? null : normalized;
+    }
+
+    private String safeConfigurationLabel(com.fasterxml.jackson.databind.JsonNode configuration) {
+        var plans = configuration.path("processPlans");
+        if (!plans.isArray() || plans.isEmpty()) return null;
+        String modes = java.util.stream.StreamSupport.stream(plans.spliterator(), false)
+                .map(plan -> plan.path("processMode").asText() + "/"
+                        + plan.path("mainStepType").asText())
+                .distinct().sorted().collect(Collectors.joining(","));
+        return normalize("已确认工艺配置:" + modes);
     }
 
     private boolean alreadyApproved(ProjectMemorySnapshot memory, String input) {

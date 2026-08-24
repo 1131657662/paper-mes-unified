@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,7 +18,7 @@ class SchemaReadinessServiceTest {
         SchemaReadinessReport report = service.refresh();
 
         assertThat(report.ready()).isTrue();
-        assertThat(report.databaseVersion()).isEqualTo("3.73");
+        assertThat(report.databaseVersion()).isEqualTo("3.76");
         assertThat(report.missingStructures()).isEmpty();
     }
 
@@ -106,6 +107,32 @@ class SchemaReadinessServiceTest {
     }
 
     @Test
+    void reportsMissingAiDialoguePreviewHashColumn() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("preview_hash"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "column:biz_process_ai_parse.preview_hash");
+    }
+
+    @Test
+    void reportsMissingGenerationScopedAiMessageIdempotencyIndex() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("uk_ai_message_idempotency_generation"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "index:biz_process_ai_message.uk_ai_message_idempotency_generation",
+                "index-columns:biz_process_ai_message.uk_ai_message_idempotency_generation="
+                        + "conversation_id,memory_generation,idempotency_key");
+    }
+
+    @Test
     void reportsMissingProjectMemoryEvidenceParseConstraint() {
         SchemaReadinessService service = service(
                 new ReadinessJdbcTemplate("fk_memory_evidence_parse"));
@@ -114,7 +141,45 @@ class SchemaReadinessServiceTest {
 
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures()).containsExactly(
-                "constraint:biz_project_memory_candidate_evidence.fk_memory_evidence_parse");
+                "constraint:biz_project_memory_candidate_evidence.fk_memory_evidence_parse",
+                "foreign-key-delete-rule:biz_project_memory_candidate_evidence.fk_memory_evidence_parse=SET NULL");
+    }
+
+    @Test
+    void reportsEvidenceReferenceColumnThatIsStillNotNullable() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("order_uuid"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "column-nullable:biz_project_memory_candidate_evidence.order_uuid");
+    }
+
+    @Test
+    void reportsEvidenceUniquenessIndexWithTheWrongColumns() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("candidate_uuid,order_ref_hash"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "index-columns:biz_project_memory_candidate_evidence.uk_memory_candidate_order_ref=candidate_uuid,order_ref_hash");
+    }
+
+    @Test
+    void reportsEvidenceForeignKeyWithTheWrongDeleteAction() {
+        SchemaReadinessService service = service(
+                new ReadinessJdbcTemplate("SET NULL"));
+
+        SchemaReadinessReport report = service.refresh();
+
+        assertThat(report.ready()).isFalse();
+        assertThat(report.missingStructures()).containsExactly(
+                "foreign-key-delete-rule:biz_project_memory_candidate_evidence.fk_memory_evidence_order=SET NULL",
+                "foreign-key-delete-rule:biz_project_memory_candidate_evidence.fk_memory_evidence_parse=SET NULL");
     }
 
     @Test
@@ -127,7 +192,7 @@ class SchemaReadinessServiceTest {
         assertThat(report.databaseVersion()).isEqualTo("3.63");
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures())
-                .contains("migration:expected=3.73,actual=3.63");
+                .contains("migration:expected=3.76,actual=3.63");
     }
 
     @Test
@@ -140,12 +205,12 @@ class SchemaReadinessServiceTest {
         assertThat(report.databaseVersion()).isEqualTo("UNTRACKED");
         assertThat(report.ready()).isFalse();
         assertThat(report.missingStructures())
-                .contains("migration:expected=3.73,actual=UNTRACKED");
+                .contains("migration:expected=3.76,actual=UNTRACKED");
     }
 
     private SchemaReadinessService service(JdbcTemplate jdbcTemplate) {
         SchemaReadinessService service = new SchemaReadinessService(jdbcTemplate);
-        ReflectionTestUtils.setField(service, "expectedVersion", "3.73");
+        ReflectionTestUtils.setField(service, "expectedVersion", "3.76");
         ReflectionTestUtils.setField(service, "requireMigrationHistory", true);
         return service;
     }
@@ -155,7 +220,7 @@ class SchemaReadinessServiceTest {
         private final List<String> versions;
 
         private ReadinessJdbcTemplate(String missingName) {
-            this(missingName, List.of("3.73"));
+            this(missingName, List.of("3.76"));
         }
 
         private ReadinessJdbcTemplate(String missingName, List<String> versions) {
@@ -165,8 +230,9 @@ class SchemaReadinessServiceTest {
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            String objectName = String.valueOf(args[args.length - 1]);
-            Integer count = objectName.equals(missingName) ? 0 : 1;
+            boolean missing = missingName != null
+                    && Arrays.stream(args).map(String::valueOf).anyMatch(missingName::equals);
+            Integer count = missing ? 0 : 1;
             return requiredType.cast(count);
         }
 

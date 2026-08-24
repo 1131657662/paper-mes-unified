@@ -9,5 +9,14 @@ record ProcessAiConversationRow(
         int draftVersion,
         String projectMemoryVersion,
         int memoryGeneration,
-        String status) {
+        String status,
+        int clarificationRound) {
+
+    ProcessAiConversationRow(String uuid, String conversationId, String orderUuid,
+                             String userUuid, int currentStep, int draftVersion,
+                             String projectMemoryVersion, int memoryGeneration,
+                             String status) {
+        this(uuid, conversationId, orderUuid, userUuid, currentStep, draftVersion,
+                projectMemoryVersion, memoryGeneration, status, 0);
+    }
 }

@@ -16,6 +16,8 @@ import { useProcessOrderDetail } from '../../processOrderDetail/hooks/useProcess
 import { serviceStepsForRoll } from '../serviceStepBatchModel'
 import { nonDraftOrderUuid } from '../draftAccess'
 import { useCreateOrderAiConfirmation } from './useCreateOrderAiConfirmation'
+import { useQueryClient } from '@tanstack/react-query'
+import { queries } from '../../../queries'
 
 interface UseCreateOrderPageOptions {
   resetLocalDraft?: boolean
@@ -25,6 +27,7 @@ export function useCreateOrderPage(
   draftUuid?: string,
   options: UseCreateOrderPageOptions = {},
 ) {
+  const queryClient = useQueryClient()
   const resetLocalDraft = options.resetLocalDraft === true
   const {
     data: draft,
@@ -79,8 +82,10 @@ export function useCreateOrderPage(
     enabled: Boolean(state.orderUuid) && state.current >= 3,
   })
   const ai = useCreateOrderAiConfirmation(state, async () => {
+    if (!state.orderUuid) throw new Error('当前草稿不存在，无法加载 AI 已保存的配置')
+    const refreshed = await queryClient.fetchQuery(queries.createOrder.draft(state.orderUuid))
+    state.hydrateDraft(refreshed, { preserveCurrentStep: true })
     await detailQuery.refetch()
-    if (draftUuid) await refetchDraft()
   })
   const serviceConfigured = detailQuery.data
     ? Object.fromEntries(state.rolls.filter((roll) => roll.uuid).map((roll) => [
@@ -110,8 +115,6 @@ export function useCreateOrderPage(
   }
 
   return {
-    aiPackagingLoading: ai.aiPackagingLoading,
-    aiPackagingDrafts: ai.packagingDrafts,
     autoFinishConfigEnabled,
     baseInfo: state.baseInfo,
     current: state.current,
@@ -172,7 +175,5 @@ export function useCreateOrderPage(
     handleSavePlanBatch: planActions.handleSavePlanBatch,
     handleSubmit: submission.handleSubmit,
     applyAiConfirmation: ai.apply,
-    consumeAiPackagingDraft: ai.consumePackagingDraft,
-    dismissAiPackagingDraft: ai.dismissPackagingDraft,
   }
 }

@@ -142,7 +142,8 @@ export interface DeliveryInventoryUnassignedOrder {
   customerUuid: string
   customerName: string
   unassignedRollCount: number
-  unassignedWeight: number
+  unassignedWeight?: number | null
+  unassignedUnknownRollCount: number
   knownWarehouseUuid?: string
   knownWarehouseName?: string
   warehouseConflict: boolean

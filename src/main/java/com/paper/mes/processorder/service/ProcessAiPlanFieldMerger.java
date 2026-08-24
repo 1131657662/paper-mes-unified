@@ -14,29 +14,36 @@ import java.util.Set;
 @Component
 class ProcessAiPlanFieldMerger {
 
+    private final ProcessAiCustomerSpecMerger customerSpecMerger = new ProcessAiCustomerSpecMerger();
+
     ProcessPlanDTO merge(ProcessPlanDTO current, ProcessAiCompiledPlan candidate,
                          List<String> acceptedPaths) {
         Set<String> accepted = new HashSet<>(acceptedPaths);
         String base = "/assignments/" + candidate.ownerRollRef();
         ProcessPlanDTO source = candidate.plan();
-        ProcessPlanDTO result = current == null ? new ProcessPlanDTO() : copy(current);
+        boolean newPlan = current == null;
+        ProcessPlanDTO result = newPlan ? new ProcessPlanDTO() : copy(current);
         if (accepted.contains(base + "/machineUuid")) {
             result.setMachineUuid(source.getMachineUuid());
         }
         boolean processType = accepted.contains(base + "/processType");
-        if (processType) applyProcessType(result, source);
+        if (processType) applyProcessType(result, source, newPlan);
+        if (accepted.contains(base + "/processMode")) {
+            result.setProcessMode(source.getProcessMode());
+        }
         if (acceptedBelow(accepted, base + "/sawIntent")) applySaw(result, source);
         if (accepted.contains(base + "/rewindIntent/modeIntent")) {
             boolean modeChanged = !Objects.equals(result.getRewindMode(), source.getRewindMode());
             result.setRewindMode(source.getRewindMode());
             if (modeChanged) normalizeModeDependentFields(result, source.getRewindMode());
         }
-        applySegments(result, source, accepted, base, current == null);
+        applySegments(result, source, accepted, base, newPlan);
+        customerSpecMerger.apply(result, source, accepted, base);
         return result;
     }
 
-    private void applyProcessType(ProcessPlanDTO target, ProcessPlanDTO source) {
-        target.setProcessMode(source.getProcessMode());
+    private void applyProcessType(ProcessPlanDTO target, ProcessPlanDTO source, boolean newPlan) {
+        if (newPlan) target.setProcessMode(source.getProcessMode());
         target.setMainStepType(source.getMainStepType());
         target.setSpareCount(source.getSpareCount());
         if (Integer.valueOf(1).equals(source.getMainStepType())) {
@@ -50,7 +57,7 @@ class ProcessAiPlanFieldMerger {
 
     private void applySaw(ProcessPlanDTO target, ProcessPlanDTO source) {
         target.setKnifeCount(source.getKnifeCount());
-        target.setFinishSpecs(copy(source).getFinishSpecs());
+        target.setFinishSpecs(customerSpecMerger.copyFinishSpecsWithoutCustomerFields(source));
         target.setWidthDifferencePolicy(source.getWidthDifferencePolicy());
     }
 
@@ -100,7 +107,7 @@ class ProcessAiPlanFieldMerger {
                 segment.setRepeatCount(candidate.getRepeatCount());
             }
             if (core) segment.setFinishCoreDiameter(candidate.getFinishCoreDiameter());
-            if (width) segment.setLayoutItems(copySegment(candidate).getLayoutItems());
+            if (width) segment.setLayoutItems(customerSpecMerger.copyLayoutItemsWithoutCustomerFields(candidate));
             if (sources) segment.setSources(copySegment(candidate).getSources());
             return segment;
         }).toList();
@@ -119,7 +126,7 @@ class ProcessAiPlanFieldMerger {
                 existing.setRepeatCount(candidate.getRepeatCount());
             }
             if (core) existing.setFinishCoreDiameter(candidate.getFinishCoreDiameter());
-            if (width) existing.setLayoutItems(copySegment(candidate).getLayoutItems());
+            if (width) existing.setLayoutItems(customerSpecMerger.copyLayoutItemsWithoutCustomerFields(candidate));
             if (sources) existing.setSources(copySegment(candidate).getSources());
             result.add(existing);
         }

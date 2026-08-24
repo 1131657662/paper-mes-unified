@@ -6,7 +6,33 @@
         INNER JOIN (
             SELECT f.order_uuid,
                    COUNT(*) AS unassigned_roll_count,
-                   COALESCE(SUM(COALESCE(f.remaining_weight, f.actual_weight, 0)), 0) AS unassigned_weight
+                   SUM(CASE WHEN COALESCE(f.actual_weight, 0) > 0
+                                  OR NOT EXISTS (
+                                      SELECT 1
+                                      FROM biz_finish_original_rel unknown_rel
+                                      INNER JOIN biz_original_roll unknown_roll
+                                        ON unknown_roll.uuid = unknown_rel.original_uuid
+                                       AND unknown_roll.is_deleted = 0
+                                      WHERE unknown_rel.finish_uuid = f.uuid
+                                        AND unknown_rel.is_deleted = 0
+                                        AND unknown_roll.weight_status = 'UNKNOWN'
+                                        AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0
+                                  )
+                            THEN COALESCE(f.remaining_weight, f.actual_weight, 0)
+                            ELSE NULL END) AS unassigned_weight,
+                   SUM(CASE WHEN COALESCE(f.actual_weight, 0) &lt;= 0
+                                  AND EXISTS (
+                                      SELECT 1
+                                      FROM biz_finish_original_rel unknown_rel
+                                      INNER JOIN biz_original_roll unknown_roll
+                                        ON unknown_roll.uuid = unknown_rel.original_uuid
+                                       AND unknown_roll.is_deleted = 0
+                                      WHERE unknown_rel.finish_uuid = f.uuid
+                                        AND unknown_rel.is_deleted = 0
+                                        AND unknown_roll.weight_status = 'UNKNOWN'
+                                        AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0
+                                  )
+                            THEN 1 ELSE 0 END) AS unassigned_unknown_roll_count
             FROM biz_finish_roll f
             WHERE f.is_deleted = 0
               AND f.finish_status IN (2, 3)
@@ -41,6 +67,7 @@
                o.customer_name AS customerName,
                u.unassigned_roll_count AS unassignedRollCount,
                u.unassigned_weight AS unassignedWeight,
+               u.unassigned_unknown_roll_count AS unassignedUnknownRollCount,
                CASE WHEN COALESCE(k.finish_warehouse_count, 0) &gt; 1
                           OR (o.warehouse_uuid IS NOT NULL
                               AND k.finish_warehouse_uuid IS NOT NULL

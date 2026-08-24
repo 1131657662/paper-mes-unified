@@ -3,7 +3,7 @@ import type { ColumnType, ColumnsType, TableProps } from 'antd/es/table'
 import type { SortOrder } from 'antd/es/table/interface'
 import type { DeliveryDetail } from '../../types/delivery'
 import type { DeliveryCustomerSortField, DeliveryCustomerSortSpec } from '../../types/deliverySort'
-import { formatKg, formatWholeKg } from '../../utils/numberFormatters'
+import { formatOptionalKg, formatWholeKg } from '../../utils/numberFormatters'
 import {
   sortDeliveryCustomerRows,
   type DeliveryCustomerTableRow,
@@ -104,7 +104,7 @@ function CustomerSpecification({ spec, trace }: { spec: DeliveryCustomerSpec; tr
 }
 
 function Weight({ spec, trace }: { spec: DeliveryCustomerSpec; trace: boolean }) {
-  return <div className="delivery-customer-cell is-right"><Typography.Text strong>{formatWholeKg(spec.customerDisplayWeight)}</Typography.Text>{trace && <span>实物：{formatKg(spec.physicalDeliveryWeight)}</span>}</div>
+  return <div className="delivery-customer-cell is-right"><Typography.Text strong>{formatWholeKg(spec.customerDisplayWeight)}</Typography.Text>{trace && <span>实物：{formatOptionalKg(spec.physicalDeliveryWeight)}</span>}</div>
 }
 
 function summary(count: number, total: number, view: Props['view']) {

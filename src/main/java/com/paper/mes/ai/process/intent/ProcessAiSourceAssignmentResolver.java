@@ -20,15 +20,23 @@ import java.util.stream.Collectors;
 public class ProcessAiSourceAssignmentResolver {
 
     private static final Pattern PIECE_COUNT = Pattern.compile("(?<!\\d)(\\d{1,3})\\s*(?:件|卷)");
+    private static final Pattern ALL_ROLLS = Pattern.compile("全部|所有(?:母卷|卷)|每条母卷|每个母卷");
 
     public ProcessAiExtractionResult resolve(ProcessAiExtractionResult result,
                                              ProcessAiOrderContext context) {
+        return resolve(result, context, null);
+    }
+
+    public ProcessAiExtractionResult resolve(ProcessAiExtractionResult result,
+                                             ProcessAiOrderContext context,
+                                             String customerRequirement) {
         Map<String, ProcessAiRollContext> rolls = context.rolls().stream()
                 .collect(Collectors.toMap(ProcessAiRollContext::shortRef, Function.identity()));
         LinkedHashSet<String> questions = ProcessAiClarificationQuestions
                 .withoutSourceBinding(result.clarificationQuestions());
-        List<ProcessAiAssignment> expanded = expandCombinedRecipes(
-                result.assignments(), rolls, questions);
+        List<ProcessAiAssignment> expanded = expandAncillaryOnly(
+                result.assignments(), rolls, customerRequirement);
+        expanded = expandCombinedRecipes(expanded, rolls, questions);
         Set<String> duplicatedSources = duplicatedSources(expanded);
         if (duplicatedSources.isEmpty() && expanded.equals(result.assignments())) return result;
 
@@ -42,6 +50,45 @@ public class ProcessAiSourceAssignmentResolver {
                 result.unmappedText(), result.conflicts(),
                 ProcessAiClarificationQuestions.needsClarification(result, questions),
                 List.copyOf(questions));
+    }
+
+    private List<ProcessAiAssignment> expandAncillaryOnly(
+            List<ProcessAiAssignment> assignments,
+            Map<String, ProcessAiRollContext> rolls,
+            String customerRequirement) {
+        List<ProcessAiAssignment> ancillary = assignments.stream()
+                .filter(this::isAncillaryOnly).toList();
+        if (ancillary.isEmpty()) return assignments;
+        boolean allOnly = ancillary.size() == assignments.size();
+        boolean requestsAll = customerRequirement != null
+                && ALL_ROLLS.matcher(customerRequirement).find();
+        if (allOnly && requestsAll && ancillary.size() == 1) {
+            return rolls.keySet().stream().sorted()
+                    .map(ref -> copyForSource(ancillary.getFirst(), ref))
+                    .toList();
+        }
+        List<ProcessAiAssignment> result = new ArrayList<>();
+        for (ProcessAiAssignment assignment : assignments) {
+            if (!isAncillaryOnly(assignment) || assignment.sourceRollRefs().size() <= 1) {
+                result.add(assignment);
+                continue;
+            }
+            assignment.sourceRollRefs().stream()
+                    .filter(rolls::containsKey)
+                    .map(ref -> copyForSource(assignment, ref))
+                    .forEach(result::add);
+        }
+        return result;
+    }
+
+    private boolean isAncillaryOnly(ProcessAiAssignment assignment) {
+        return "ANCILLARY_ONLY".equals(assignment.processType());
+    }
+
+    private ProcessAiAssignment copyForSource(ProcessAiAssignment assignment, String ref) {
+        return new ProcessAiAssignment(List.of(ref), ref, List.of(), assignment.processType(),
+                assignment.processMode(), null, null, assignment.ancillaryRequirements(), assignment.evidence(),
+                assignment.customerSpecs());
     }
 
     private List<ProcessAiAssignment> expandCombinedRecipes(
@@ -91,7 +138,8 @@ public class ProcessAiSourceAssignmentResolver {
                     List.of(recipe.getKey()), assignment.sawIntent().unit());
             result.add(new ProcessAiAssignment(
                     List.of(owner.shortRef()), owner.shortRef(), List.of(), "SAW",
-                    null, saw, assignment.ancillaryRequirements(), assignment.evidence()));
+                    assignment.processMode(), null, saw, assignment.ancillaryRequirements(), assignment.evidence(),
+                    assignment.customerSpecs()));
         }
         return result;
     }
@@ -124,8 +172,8 @@ public class ProcessAiSourceAssignmentResolver {
         reserved.add(selected.shortRef());
         return new ProcessAiAssignment(
                 List.of(selected.shortRef()), selected.shortRef(), List.of(),
-                assignment.processType(), assignment.rewindIntent(), assignment.sawIntent(),
-                assignment.ancillaryRequirements(), assignment.evidence());
+                assignment.processType(), assignment.processMode(), assignment.rewindIntent(), assignment.sawIntent(),
+                assignment.ancillaryRequirements(), assignment.evidence(), assignment.customerSpecs());
     }
 
     private Set<String> duplicatedSources(List<ProcessAiAssignment> assignments) {

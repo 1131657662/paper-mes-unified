@@ -1319,9 +1319,10 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
 
     private String originalText(OriginalRoll roll) {
         String label = StringUtils.hasText(roll.getRollNo()) ? roll.getRollNo() : "母卷" + roll.getRowSort();
-        BigDecimal weight = roll.getActualWeight() != null ? roll.getActualWeight() : roll.getTotalWeight();
+        BigDecimal weight = effectiveOriginalWeight(roll);
+        String weightText = weight == null ? "待称重" : nz(weight) + "kg";
         return label + "｜" + roll.getPaperName() + " / " + roll.getGramWeight() + "g / "
-                + roll.getOriginalWidth() + "mm｜" + nz(weight) + "kg";
+                + roll.getOriginalWidth() + "mm｜" + weightText;
     }
 
     private List<DeliveryDetailItemVO.OriginalSourceItem> originalSourceItems(
@@ -1342,7 +1343,8 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         item.setOriginalWidth(roll.getOriginalWidth());
         item.setActualWidth(roll.getActualWidth());
         item.setActualWeight(roll.getActualWeight());
-        item.setTotalWeight(roll.getTotalWeight());
+        item.setTotalWeight(fallbackOriginalWeight(roll));
+        item.setWeightStatus(roll.getWeightStatus());
         item.setProcessMode(roll.getProcessMode());
         item.setMainStepType(roll.getMainStepType());
         item.setMachineUuid(roll.getMachineUuid());
@@ -1351,6 +1353,24 @@ public class DeliveryServiceImpl extends ServiceImpl<DeliveryOrderMapper, Delive
         item.setOperator(roll.getOperator());
         item.setRemark(roll.getRemark());
         return item;
+    }
+
+    private BigDecimal effectiveOriginalWeight(OriginalRoll roll) {
+        if (roll.getActualWeight() != null && roll.getActualWeight().signum() > 0) {
+            return roll.getActualWeight();
+        }
+        if ("UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
+        return fallbackOriginalWeight(roll);
+    }
+
+    private BigDecimal fallbackOriginalWeight(OriginalRoll roll) {
+        if ("UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
+        if (roll.getTotalWeight() != null && roll.getTotalWeight().signum() > 0) {
+            return roll.getTotalWeight();
+        }
+        if (roll.getRollWeight() == null || roll.getRollWeight().signum() <= 0) return null;
+        return roll.getRollWeight().multiply(BigDecimal.valueOf(
+                roll.getPieceNum() == null ? 1 : roll.getPieceNum()));
     }
 
     private String processModeText(List<OriginalRoll> originals) {

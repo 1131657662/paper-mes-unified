@@ -52,6 +52,7 @@ public class DeliveryDetailItemVO {
         private Integer actualWidth;
         private BigDecimal actualWeight;
         private BigDecimal totalWeight;
+        private String weightStatus;
         private Integer processMode;
         private Integer mainStepType;
         private String machineUuid;

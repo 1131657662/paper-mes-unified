@@ -1,5 +1,4 @@
 import type { PlanPreviewVO, ProcessPlanDTO } from '../../types/processOrder'
-import type { ProcessStepDTO } from '../../api/processOrder'
 import type { RollDraft } from '../processOrderCreate/types'
 
 export type ProcessAiManagedProvider = 'deepseek' | 'zhipu'
@@ -57,15 +56,34 @@ export interface ProcessAiEvidence {
   text: string
 }
 
+export type ProcessAiProcessType = 'REWIND' | 'SAW' | 'DIRECT_SHIP' | 'SERVICE_ONLY' | 'ANCILLARY_ONLY'
+export type ProcessAiProcessMode = 'STANDARD' | 'ON_SITE' | 'DIRECT_SHIP' | 'SERVICE_ONLY'
+
+export interface ProcessAiUnderstandingEvidence extends ProcessAiEvidence {
+  sourceType: 'CUSTOMER_TEXT' | 'DB_FACT' | 'APPROVED_MEMORY' | 'DEFAULT' | 'MODEL_INFERENCE'
+  sourceRef: string
+  normalizedRange?: string
+}
+
 export interface ProcessAiAssignment {
   sourceRollRefs: string[]
   ownerRollRef: string
   coveredRollRefs: string[]
-  processType: 'REWIND' | 'SAW'
+  processType: ProcessAiProcessType
+  processMode?: ProcessAiProcessMode
   rewindIntent?: Record<string, unknown>
   sawIntent?: Record<string, unknown>
   ancillaryRequirements?: Record<string, unknown>
   evidence: ProcessAiEvidence[]
+  customerSpecs?: ProcessAiCustomerSpec[]
+}
+
+export interface ProcessAiCustomerSpec {
+  outputIndex: number
+  paperName?: string
+  gramWeight?: number
+  finishWidth?: number
+  overrideReason?: string
 }
 
 export interface ProcessAiExtractionResult {
@@ -78,6 +96,31 @@ export interface ProcessAiExtractionResult {
   clarificationQuestions: string[]
 }
 
+export interface ProcessAiClarificationQuestion {
+  questionId: string
+  field: string
+  parseRevision: number
+  question: string
+  options: ProcessAiClarificationOption[]
+  allowUnknown: boolean
+}
+
+export interface ProcessAiClarificationOption {
+  code: string
+  label: string
+}
+
+export interface ProcessAiUnderstandingResult {
+  parseId: string
+  schemaVersion: '2.0'
+  conclusion: string
+  evidence: ProcessAiUnderstandingEvidence[]
+  assumptions: string[]
+  risks: string[]
+  clarificationQuestions: ProcessAiClarificationQuestion[]
+  needsClarification: boolean
+}
+
 export interface ProcessAiCompiledPlan {
   ownerRollRef: string
   originalUuid: string
@@ -86,30 +129,26 @@ export interface ProcessAiCompiledPlan {
   preview: PlanPreviewVO
 }
 
+export interface ProcessAiRollConfiguration {
+  ownerRollRef: string
+  originalUuids: string[]
+  processMode: number
+  mainStepType?: number
+}
+
 export interface ProcessAiPackagingCandidate {
   ownerRollRef: string
   originalUuid: string
   coveredOriginalUuids: string[]
-  stepType: 4
-  packagingType: 'FILM' | 'BOX' | 'OTHER'
+  stepType: 3 | 4
+  packagingType: 'STRIP_SORT' | 'REPACKAGE' | 'FILM' | 'BOX' | 'OTHER'
   stepName: string
   billingBasis?: 'PIECE' | 'TON'
   serviceQuantity?: number
-  billingMode: 2 | 3
+  billingMode: 1 | 2 | 3
   unitPrice?: number
   billingAmount?: number
   remark: string
-}
-
-export interface ProcessAiPackagingDraft {
-  parseId: string
-  ownerRollRef: string
-  values: ProcessStepDTO
-}
-
-export interface ProcessAiPendingPackagingCandidate {
-  parseId: string
-  candidate: ProcessAiPackagingCandidate
 }
 
 export interface ProcessAiParseResult {
@@ -123,12 +162,29 @@ export interface ProcessAiParseResult {
   result: ProcessAiExtractionResult
   compiled: {
     eligible: boolean
+    rollConfigurations?: ProcessAiRollConfiguration[]
     plans: ProcessAiCompiledPlan[]
     packagingCandidates: ProcessAiPackagingCandidate[]
     errors: string[]
     warnings: string[]
   }
   expiresAt: string
+  resultKind?: 'EXTRACTION' | 'UNDERSTANDING' | 'FAILURE'
+  dialogueState?: string
+  understanding?: ProcessAiUnderstandingResult
+  clarificationQuestions?: ProcessAiClarificationQuestion[]
+  requiredDefaultIds?: string[]
+  previewHash?: string
+}
+
+export interface ProcessAiCorrection {
+  assignmentRef: string
+  field: 'finishCoreDiameter' | 'widthMm' | 'quantityScope' | 'customerPaperName'
+    | 'customerGramWeight' | 'customerFinishWidth' | 'customerSpecOverrideReason'
+  value?: number
+  textValue?: string
+  unit?: 'inch' | 'mm'
+  outputIndex?: number
 }
 
 export interface ProcessAiConfirmResponse {
@@ -143,6 +199,8 @@ export interface ProcessAiConfirmResponse {
   packagingCandidates: ProcessAiPackagingCandidate[]
   warnings: string[]
   planHash: string
+  previewHash?: string
+  acknowledgedDefaultIds?: string[]
   remarkLong?: string
 }
 

@@ -73,6 +73,7 @@ export interface DeliveryOriginalSourceItem {
   actualWidth?: number
   actualWeight?: number
   totalWeight?: number
+  weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
   processMode?: number
   mainStepType?: number
   machineUuid?: string

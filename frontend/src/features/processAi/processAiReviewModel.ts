@@ -91,7 +91,7 @@ function reviewOption(
   const hasBaseline = hasBaselineValue(kind, baseline)
   return {
     ...option,
-    required: option.required || requiresCompleteNewPlan(kind, baseline),
+    required: option.required || requiresCompleteNewPlan(kind, baseline, candidate),
     aiValue: aiValue.text === '-' ? option.detail : aiValue.text,
     baselineValue: hasBaseline ? baseValue.text : '旧解析结果未保存基线',
     currentValue: currentValue.text,
@@ -99,9 +99,15 @@ function reviewOption(
   }
 }
 
-function requiresCompleteNewPlan(kind: string, baseline: ProcessAiBaselinePlan | undefined) {
-  if (!baseline || baseline.plan !== undefined) return false
-  return ['machine', 'rewind-mode', 'diameter', 'core', 'width', 'saw'].includes(kind)
+function requiresCompleteNewPlan(
+  kind: string,
+  baseline: ProcessAiBaselinePlan | undefined,
+  candidate: ProcessPlanDTO | undefined,
+) {
+  if (baseline?.plan !== undefined && baseline.plan.mainStepType === candidate?.mainStepType) return false
+  if (baseline?.plan === undefined && baseline && (baseline.processMode === 3 || baseline.processMode === 4)) return false
+  return ['scope', 'process-mode', 'type', 'machine', 'rewind-mode', 'diameter', 'core', 'width', 'saw',
+    'customer-spec'].includes(kind)
 }
 
 function hasBaselineValue(kind: string, baseline: ProcessAiBaselinePlan | undefined) {

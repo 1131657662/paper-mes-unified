@@ -7,6 +7,7 @@ import type { RollDraft } from '../../processOrderCreate/types'
 import type { ProcessPlanDTO } from '../../../types/processOrder'
 import { useOpenProcessAiSession } from '../hooks/useOpenProcessAiSession'
 import { useProcessAiStatus } from '../hooks/useProcessAiStatus'
+import { processAiAvailability } from '../processAiAvailability'
 import type { ProcessAiConfirmResponse, ProcessAiSession } from '../types'
 
 const ProcessAiConversationDrawer = lazy(() => import('./ProcessAiConversationDrawer'))
@@ -19,20 +20,30 @@ interface Props {
   remarkLong?: string
   rolls: RollDraft[]
   selectedRollId?: string
-  onApply: (confirmation: ProcessAiConfirmResponse) => void
+  onApply: (confirmation: ProcessAiConfirmResponse) => Promise<void> | void
 }
 
 export default function ProcessAiAssistantEntry(props: Props) {
   const [open, setOpen] = useState(false)
   const [session, setSession] = useState<ProcessAiSession>()
   const canUseAi = useHasPermission(PERMISSIONS.aiAssist)
-  const { data: status, isError: isStatusError, isLoading: isLoadingStatus } = useProcessAiStatus(canUseAi)
+  const {
+    data: status,
+    isError: isStatusError,
+    isLoading: isLoadingStatus,
+    refetch: refetchStatus,
+  } = useProcessAiStatus(canUseAi)
   const { mutateAsync: openSession, isPending: isOpening } = useOpenProcessAiSession()
   if (!canUseAi) return null
-  const unavailable = isStatusError ? '无法确认 AI 工艺解析状态' : unavailableText(props.orderUuid, status)
+  const availability = processAiAvailability(props.orderUuid, status, isStatusError)
 
   const handleOpen = async () => {
-    if (!props.orderUuid || unavailable) return
+    if (!props.orderUuid || availability.unavailable) return
+    if (isStatusError) {
+      const refreshed = await refetchStatus()
+      const refreshedAvailability = processAiAvailability(props.orderUuid, refreshed.data)
+      if (refreshed.isError || refreshedAvailability.unavailable) return
+    }
     const opened = await openSession({
       orderUuid: props.orderUuid,
       expectedVersion: props.draftVersion,
@@ -43,9 +54,9 @@ export default function ProcessAiAssistantEntry(props: Props) {
   }
 
   return <>
-    <Tooltip title={unavailable ?? '打开 AI 工艺助手'}>
+    <Tooltip title={availability.hint}>
       <Button icon={<RobotOutlined />} loading={isOpening || isLoadingStatus}
-        disabled={Boolean(unavailable)} onClick={() => void handleOpen()}>
+        disabled={Boolean(availability.unavailable)} onClick={() => void handleOpen()}>
         AI 工艺助手
       </Button>
     </Tooltip>
@@ -68,14 +79,4 @@ export default function ProcessAiAssistantEntry(props: Props) {
       />
     </Suspense>}
   </>
-}
-
-function unavailableText(orderUuid: string | undefined, status: ReturnType<typeof useProcessAiStatus>['data']) {
-  if (!orderUuid) return '请先完成母卷录入'
-  if (!status) return undefined
-  if (!status.enabled) return 'AI 工艺解析尚未启用'
-  if (!status.ready && status.unavailableReason !== 'AI_MEMORY_UNAVAILABLE') {
-    return status.unavailableReason || 'AI 工艺解析尚未就绪'
-  }
-  return undefined
 }

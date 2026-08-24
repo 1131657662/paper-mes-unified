@@ -1,6 +1,6 @@
 import { Input, Table, Tag, Typography } from 'antd'
 import type { ColumnsType, TableRowSelection } from 'antd/es/table/interface'
-import { formatKg } from '../../utils/numberFormatters'
+import { formatOptionalKg } from '../../utils/numberFormatters'
 import type { CustomerSpecDraft } from './customerSpecDraftModel'
 import type { FinishCustomerSpec } from './customerSpecTypes'
 import CustomerSpecNumberInput from './CustomerSpecNumberInput'
@@ -40,7 +40,7 @@ function buildColumns(
 }
 
 function PhysicalCell({ row }: { row: CustomerSpecDraft }) {
-  return <div className="customer-spec-physical-cell"><Typography.Text>{row.physicalPaperName ?? '-'}</Typography.Text><span>{row.physicalGramWeight ?? '-'}g / {row.physicalFinishWidth ?? '-'}mm / {formatKg(row.physicalWeight)}</span></div>
+  return <div className="customer-spec-physical-cell"><Typography.Text>{row.physicalPaperName ?? '-'}</Typography.Text><span>{row.physicalGramWeight ?? '-'}g / {row.physicalFinishWidth ?? '-'}mm / {formatOptionalKg(row.physicalWeight)}</span></div>
 }
 
 function ValidationCell({ item }: { item?: FinishCustomerSpec }) {

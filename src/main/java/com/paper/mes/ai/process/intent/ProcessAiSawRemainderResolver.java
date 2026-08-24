@@ -104,8 +104,8 @@ public class ProcessAiSawRemainderResolver {
         ProcessAiAssignment assignment = value.assignment();
         return new ProcessAiAssignment(
                 assignment.sourceRollRefs(), assignment.ownerRollRef(), assignment.coveredRollRefs(),
-                assignment.processType(), assignment.rewindIntent(), normalized,
-                assignment.ancillaryRequirements(), assignment.evidence());
+                assignment.processType(), assignment.processMode(), assignment.rewindIntent(), normalized,
+                assignment.ancillaryRequirements(), assignment.evidence(), assignment.customerSpecs());
     }
 
     private RemainderDecision decision(String text) {

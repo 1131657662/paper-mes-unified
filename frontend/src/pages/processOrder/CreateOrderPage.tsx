@@ -121,8 +121,6 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
         )}
         {state.current === 3 && (
           <ConfigStep
-            aiPackagingLoading={state.aiPackagingLoading}
-            aiPackagingDrafts={state.aiPackagingDrafts}
             assistantEntry={<CreateOrderAiAssistant currentStep={4} state={state} />}
             autoFinishConfigEnabled={state.autoFinishConfigEnabled}
             defaultSpareCount={state.defaultSpareCount}
@@ -164,8 +162,6 @@ function CreateOrderContent({ draftUuid, resetLocalDraft }: { draftUuid?: string
             onServiceDirtyChange={dirtyGuard.setServiceDirty}
             onPendingChange={setServiceWritePending}
             onDraftVersionChange={state.setDraftVersion}
-            onAiPackagingDraftConsumed={state.consumeAiPackagingDraft}
-            onAiPackagingDraftDismissed={state.dismissAiPackagingDraft}
             onPrev={() => runIfClean(() => state.setCurrent(2))}
             onNext={async () => { if (await state.handleConfigNext()) clearDirtyAfterSuccess() }}
           />

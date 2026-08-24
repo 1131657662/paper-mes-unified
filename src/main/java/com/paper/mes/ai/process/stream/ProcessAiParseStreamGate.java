@@ -22,7 +22,7 @@ class ProcessAiParseStreamGate {
                                                   ProcessAiParseStreamRequest request) {
         availabilityGuard.requireReady();
         conversationService.requireAccess(new ReserveProcessAiParseCommand(
-                orderUuid, request.conversationId(), request.expectedVersion()));
+                orderUuid, request.conversationId(), request.expectedVersion(), request.action()));
         return replayService.replay(request.conversationId(), request.idempotencyKey());
     }
 }

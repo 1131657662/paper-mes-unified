@@ -39,13 +39,26 @@ public class ProcessAiModelRetryExecutor {
 
     public ProcessAiModelResult parse(ProcessAiModelPrompt prompt, Consumer<String> deltaConsumer,
                                       ProcessAiCancellation cancellation) {
+        return parseWithRoute(prompt, deltaConsumer, cancellation, false);
+    }
+
+    public ProcessAiModelResult parseFallback(ProcessAiModelPrompt prompt,
+                                               Consumer<String> deltaConsumer,
+                                               ProcessAiCancellation cancellation) {
+        return parseWithRoute(prompt, deltaConsumer, cancellation, true);
+    }
+
+    private ProcessAiModelResult parseWithRoute(ProcessAiModelPrompt prompt,
+                                                Consumer<String> deltaConsumer,
+                                                ProcessAiCancellation cancellation,
+                                                boolean fallbackRoute) {
         ProcessAiProviderException last = null;
         for (int attempt = 1; attempt <= properties.getProviderMaxAttempts(); attempt++) {
             AtomicBoolean streamed = new AtomicBoolean();
             try {
                 cancellation.throwIfCancelled();
                 circuitBreaker.beforeCall();
-                ProcessAiModelResult result = client.parse(prompt, delta -> {
+                ProcessAiModelResult result = invoke(client, fallbackRoute, prompt, delta -> {
                     streamed.set(true);
                     deltaConsumer.accept(delta);
                 }, cancellation);
@@ -60,6 +73,15 @@ public class ProcessAiModelRetryExecutor {
             }
         }
         throw last == null ? new IllegalStateException("AI provider retry failed") : last;
+    }
+
+    private ProcessAiModelResult invoke(ProcessAiModelClient target, boolean fallbackRoute,
+                                        ProcessAiModelPrompt prompt,
+                                        java.util.function.Consumer<String> deltaConsumer,
+                                        ProcessAiCancellation cancellation) {
+        return fallbackRoute
+                ? target.parseFallback(prompt, deltaConsumer, cancellation)
+                : target.parse(prompt, deltaConsumer, cancellation);
     }
 
     private boolean retryable(ProcessAiProviderException exception,

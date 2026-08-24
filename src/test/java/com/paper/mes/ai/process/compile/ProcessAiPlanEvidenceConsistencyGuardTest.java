@@ -1,6 +1,7 @@
 package com.paper.mes.ai.process.compile;
 
 import com.paper.mes.ai.process.intent.ProcessAiAssignment;
+import com.paper.mes.ai.process.intent.ProcessAiCustomerSpec;
 import com.paper.mes.ai.process.intent.ProcessAiDiameterRule;
 import com.paper.mes.ai.process.intent.ProcessAiEvidence;
 import com.paper.mes.ai.process.intent.ProcessAiMeasurement;
@@ -37,6 +38,21 @@ class ProcessAiPlanEvidenceConsistencyGuardTest {
         ProcessPlanDTO plan = plan(3, 1200, List.of(500, 500));
 
         assertThat(guard.validate(assignment, plan)).isEmpty();
+    }
+
+    @Test
+    void rejectsCustomerSpecWithoutTrustedEvidence() {
+        ProcessAiAssignment assignment = new ProcessAiAssignment(
+                List.of("R1"), "R1", List.of(), "SAW", null,
+                new com.paper.mes.ai.process.intent.ProcessAiSawIntent(
+                        "EXPLICIT_WIDTHS", null, List.of(800), "mm"), null,
+                List.of(new ProcessAiEvidence("customerSpec", "客户品名")),
+                List.of(new ProcessAiCustomerSpec(0, "客户白卡", 250, 800, "客户合同")));
+
+        assertThat(guard.validate(assignment, plan(1, null, List.of(800))))
+                .contains("客户品名没有可核验的客户要求依据")
+                .contains("客户克重没有可核验的客户要求依据")
+                .contains("客户门幅没有可核验的客户要求依据");
     }
 
     private ProcessAiAssignment assignment(String mode, int diameter, List<Integer> widths) {

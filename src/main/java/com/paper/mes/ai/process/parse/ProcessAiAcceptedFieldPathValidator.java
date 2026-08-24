@@ -1,6 +1,7 @@
 package com.paper.mes.ai.process.parse;
 
 import com.paper.mes.ai.process.intent.ProcessAiAssignment;
+import com.paper.mes.ai.process.intent.ProcessAiCustomerSpec;
 import com.paper.mes.ai.process.intent.ProcessAiExtractionResult;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ResultCode;
@@ -33,10 +34,23 @@ class ProcessAiAcceptedFieldPathValidator {
 
     private void addAssignment(Set<String> paths, ProcessAiAssignment assignment) {
         String base = "/assignments/" + assignment.ownerRollRef();
-        add(paths, base, "processType", "sourceRollRefs", "coveredRollRefs", "machineUuid");
+        add(paths, base, "processType", "processMode", "sourceRollRefs", "coveredRollRefs", "machineUuid");
         addRewind(paths, base, assignment);
         addSaw(paths, base, assignment);
+        addCustomerSpecs(paths, base, assignment);
         addAncillary(paths, base, assignment);
+    }
+
+    private void addCustomerSpecs(Set<String> paths, String base,
+                                  ProcessAiAssignment assignment) {
+        for (ProcessAiCustomerSpec spec : assignment.customerSpecs()) {
+            if (spec.outputIndex() == null) continue;
+            String prefix = base + "/customerSpecs/" + spec.outputIndex();
+            if (spec.paperName() != null) paths.add(prefix + "/paperName");
+            if (spec.gramWeight() != null) paths.add(prefix + "/gramWeight");
+            if (spec.finishWidth() != null) paths.add(prefix + "/finishWidth");
+            if (spec.overrideReason() != null) paths.add(prefix + "/overrideReason");
+        }
     }
 
     private void addRewind(Set<String> paths, String base, ProcessAiAssignment assignment) {

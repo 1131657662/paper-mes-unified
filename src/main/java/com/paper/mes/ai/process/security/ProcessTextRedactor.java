@@ -32,10 +32,12 @@ public class ProcessTextRedactor {
                     + "\\s*[:\\uFF1A=]?\\s*[\\p{L}\\p{N}()\\uFF08\\uFF09._\\-\\u00B7]{2,40}");
     private static final Pattern UNLABELED_ORGANIZATION = Pattern.compile(
             "(?:给|为|替|交给|发给)?\\s*[\\p{IsHan}A-Za-z0-9()（）·]{2,36}"
-                    + "(?:有限责任公司|股份有限公司|有限公司|纸业|纸厂|包装|印刷|商贸|贸易|集团|公司|工厂)");
+                    + "(?:有限责任公司|股份有限公司|有限公司|纸业|纸厂|印刷|商贸|贸易|集团|公司|工厂)");
     private static final Pattern LONG_IDENTIFIER = Pattern.compile("(?<!\\d)\\d{6,}(?!\\d)");
     private static final Pattern PRICE = Pattern.compile(
-            "(?<!\\d)(\\d+(?:\\.\\d{1,2})?)\\s*(?:元|块钱|块|¥)\\s*(每件|/件|每吨|/吨|固定)?");
+            "(?<!\\d)(?:(每件|/件|每吨|/吨|固定)\\s*)?"
+                    + "(\\d+(?:\\.\\d{1,2})?)\\s*(?:元|块钱|块|¥)\\s*"
+                    + "(每件|/件|每吨|/吨|固定)?");
 
     public ProcessTextRedactionResult redact(String text) {
         if (text == null || text.isBlank()) {
@@ -59,10 +61,12 @@ public class ProcessTextRedactor {
         Matcher matcher = PRICE.matcher(text);
         StringBuffer result = new StringBuffer();
         while (matcher.find()) {
-            String rawUnit = matcher.group(2);
-            String unit = normalizeUnit(rawUnit);
-            charges.add(new ExtractedCharge(new BigDecimal(matcher.group(1)), unit));
-            String replacement = "[金额]" + (rawUnit == null ? "" : rawUnit);
+            String prefixUnit = matcher.group(1);
+            String rawUnit = matcher.group(3);
+            String unit = normalizeUnit(prefixUnit == null ? rawUnit : prefixUnit);
+            charges.add(new ExtractedCharge(new BigDecimal(matcher.group(2)), unit));
+            String replacement = (prefixUnit == null ? "" : prefixUnit) + "[金额]"
+                    + (rawUnit == null ? "" : rawUnit);
             matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(result);

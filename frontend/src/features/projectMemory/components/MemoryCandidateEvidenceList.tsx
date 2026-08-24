@@ -18,7 +18,6 @@ export default function MemoryCandidateEvidenceList({ items }: Props) {
 
 function EvidenceTitle({ item }: { item: ProjectMemoryCandidateEvidence }) {
   return <Space wrap>
-    <strong>{item.orderNo || item.orderUuid}</strong>
     <Tag color={item.sourceType === 'AI_CONFIRMED' ? 'blue' : 'gold'}>
       {item.sourceType === 'AI_CONFIRMED' ? 'AI确认应用' : '人工最终配置'}
     </Tag>
@@ -33,14 +32,7 @@ function EvidenceTitle({ item }: { item: ProjectMemoryCandidateEvidence }) {
 
 function EvidenceBody({ item }: { item: ProjectMemoryCandidateEvidence }) {
   return <Descriptions size="small" bordered column={1} styles={{ label: { width: 120 } }}>
-    <Descriptions.Item label="客户原话">
-      <Typography.Paragraph className="memory-evidence__phrase" copyable>
-        {item.phrase || contextRequirement(item.context) || '-'}
-      </Typography.Paragraph>
-    </Descriptions.Item>
-    <Descriptions.Item label="母卷与基线">
-      <JsonValue value={item.context} />
-    </Descriptions.Item>
+    <Descriptions.Item label="脱敏短语">{item.phrase || '-'}</Descriptions.Item>
     <Descriptions.Item label="AI建议">
       <JsonValue value={item.proposedValue} empty="该证据来自人工最终配置" />
     </Descriptions.Item>
@@ -50,17 +42,10 @@ function EvidenceBody({ item }: { item: ProjectMemoryCandidateEvidence }) {
     <Descriptions.Item label="确认差异">
       <JsonValue value={item.difference} />
     </Descriptions.Item>
-    <Descriptions.Item label="记录人">{item.createdBy || '-'}</Descriptions.Item>
   </Descriptions>
 }
 
 function JsonValue({ value, empty = '-' }: { value: unknown; empty?: string }) {
   if (value == null) return <Typography.Text type="secondary">{empty}</Typography.Text>
   return <pre className="memory-evidence__json">{JSON.stringify(value, null, 2)}</pre>
-}
-
-function contextRequirement(value: unknown) {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
-  const requirement = (value as Record<string, unknown>).customerRequirement
-  return typeof requirement === 'string' ? requirement : undefined
 }

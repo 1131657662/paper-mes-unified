@@ -9,7 +9,6 @@ interface Props {
   hasUnsavedServiceChanges: boolean
   onNext: () => void
   onPrev: () => void
-  pendingAiPackagingCount?: number
   progress: ConfigStepProgress
   saving: boolean
   serviceWritePending: boolean
@@ -32,9 +31,7 @@ export default function ConfigStepFooter(props: Props) {
       <div className="config-step-footer__summary" aria-live="polite">
         <span>{configStepProgressText(props.progress)}</span>
         {props.hasUnsavedServiceChanges && (
-          <strong>{props.pendingAiPackagingCount
-            ? `有 ${props.pendingAiPackagingCount} 个 AI 包装候选待保存或还原`
-            : '当前卷附加工艺有未保存修改'}</strong>
+          <strong>当前卷附加工艺有未保存修改</strong>
         )}
         {props.serviceWritePending && <strong>附加工艺正在保存或删除</strong>}
         {props.configurationLoading && <strong>正在读取附加工艺配置</strong>}

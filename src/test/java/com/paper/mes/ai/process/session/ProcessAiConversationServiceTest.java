@@ -193,6 +193,21 @@ class ProcessAiConversationServiceTest {
     }
 
     @Test
+    void reserveParseRejectsTheNinthClarificationRound() {
+        ProcessAiConversationRow row = new ProcessAiConversationRow(
+                "row-1", "conversation-1", "order-1", "user-1", 3, 7,
+                "1.0.0", 1, "OPEN", 8);
+        when(repository.findByOrderForUpdate("order-1")).thenReturn(Optional.of(row));
+
+        BusinessException error = catchThrowableOfType(() -> service.reserveParse(
+                new ReserveProcessAiParseCommand("order-1", "conversation-1", 7, "CLARIFY")),
+                BusinessException.class);
+
+        assertThat(error.getErrorCode()).isEqualTo("AI_CLARIFICATION_LIMIT_REACHED");
+        verify(repository, never()).reserveNextRevision("conversation-1", "CLARIFY");
+    }
+
+    @Test
     void refreshMemoryStartsANewGenerationWithoutDeletingHistory() {
         ProcessAiConversationRow old = new ProcessAiConversationRow(
                 "row-1", "conversation-1", "order-1", "user-1",

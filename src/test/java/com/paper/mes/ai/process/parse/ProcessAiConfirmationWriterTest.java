@@ -1,6 +1,8 @@
 package com.paper.mes.ai.process.parse;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paper.mes.ai.process.compile.ProcessAiCompilationResult;
+import com.paper.mes.ai.process.compile.ProcessAiPackagingCandidate;
 import com.paper.mes.ai.process.parse.dto.ProcessAiConfirmResponse;
 import com.paper.mes.processorder.service.ProcessAiDraftApplicationService;
 import com.paper.mes.processorder.service.ProcessAiDraftApplyCommand;
@@ -9,6 +11,7 @@ import jakarta.validation.Validation;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -26,10 +29,8 @@ class ProcessAiConfirmationWriterTest {
         ProcessAiDraftApplicationService draftApplication =
                 mock(ProcessAiDraftApplicationService.class);
         ProcessAiConfirmationCodec codec = codec();
-        ProcessAiPackagingCandidateRegistrar registrar =
-                mock(ProcessAiPackagingCandidateRegistrar.class);
         ProcessAiConfirmationWriter writer = new ProcessAiConfirmationWriter(
-                repository, codec, draftApplication, registrar);
+                repository, codec, draftApplication);
         var compilation = ProcessAiConfirmationTestFixtures.compilation();
         when(draftApplication.apply(any())).thenReturn(new ProcessAiDraftApplyResult(
                 8, Map.of("original-1", compilation.plans().getFirst()), List.of()));
@@ -42,11 +43,36 @@ class ProcessAiConfirmationWriterTest {
         assertThat(response.planHash()).hasSize(64);
         assertStoredConfirmation(repository, codec, response);
         assertDraftApplicationCommand(draftApplication);
-        verify(registrar).register(any(), any(),
-                org.mockito.ArgumentMatchers.eq("user-1"));
+    }
+
+    @Test
+    void confirmWithServiceOnlyCandidateReturnsTheSavedServiceStep() {
+        ProcessAiParseRepository repository = mock(ProcessAiParseRepository.class);
+        ProcessAiDraftApplicationService draftApplication =
+                mock(ProcessAiDraftApplicationService.class);
+        ProcessAiConfirmationWriter writer = new ProcessAiConfirmationWriter(
+                repository, codec(), draftApplication);
+        ProcessAiPackagingCandidate packaging = new ProcessAiPackagingCandidate(
+                "R1", "original-1", List.of(), 3, "STRIP_SORT", "剥损整理", "PIECE",
+                null, 1, new BigDecimal("20"), null, "按当前母卷的权威件数或吨位计费");
+        ProcessAiCompilationResult compilation = new ProcessAiCompilationResult(
+                true, List.of(), List.of(packaging), List.of(), List.of());
+        when(draftApplication.apply(any())).thenReturn(new ProcessAiDraftApplyResult(
+                8, Map.of(), List.of(packaging)));
+        when(repository.confirm(any(), any())).thenReturn(1);
+
+        ProcessAiConfirmResponse response = writer.confirm(command(compilation));
+
+        assertThat(response.plans()).isEmpty();
+        assertThat(response.packagingCandidates()).containsExactly(packaging);
+        assertStoredConfirmation(repository, codec(), response);
     }
 
     private ProcessAiConfirmationWriteCommand command() {
+        return command(ProcessAiConfirmationTestFixtures.compilation());
+    }
+
+    private ProcessAiConfirmationWriteCommand command(ProcessAiCompilationResult compilation) {
         ObjectMapper mapper = ProcessAiConfirmationTestFixtures.mapper();
         ProcessAiParseRecord record = ProcessAiConfirmationTestFixtures.record(
                 mapper, "READY", ProcessAiParseConfirmation.empty());
@@ -54,7 +80,7 @@ class ProcessAiConfirmationWriterTest {
                 record, ProcessAiConfirmationTestFixtures.extraction(),
                 List.of(ProcessAiConfirmationTestFixtures.ACCEPTED_PATH), "apply-1", null);
         return new ProcessAiConfirmationWriteCommand(
-                load, ProcessAiConfirmationTestFixtures.compilation(), "user-1",
+                load, compilation, "user-1",
                 "cut 2000 mm twice");
     }
 

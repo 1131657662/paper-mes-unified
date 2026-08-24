@@ -6,9 +6,11 @@ import com.paper.mes.ai.process.context.ProcessAiRollContext;
 import com.paper.mes.ai.process.context.ProcessAiBaselinePlan;
 import com.paper.mes.ai.process.context.ProcessAiReviewBaseline;
 import com.paper.mes.ai.process.intent.ProcessAiAssignment;
+import com.paper.mes.ai.process.intent.ProcessAiAncillaryRequirements;
 import com.paper.mes.ai.process.intent.ProcessAiDiameterRule;
 import com.paper.mes.ai.process.intent.ProcessAiExtractionResult;
 import com.paper.mes.ai.process.intent.ProcessAiMeasurement;
+import com.paper.mes.ai.process.intent.ProcessAiPackagingRequirement;
 import com.paper.mes.ai.process.intent.ProcessAiRewindIntent;
 import com.paper.mes.ai.process.intent.ProcessAiSawIntent;
 import com.paper.mes.processorder.dto.PlanPreviewVO;
@@ -135,6 +137,34 @@ class ProcessAiPlanCompilationServiceTest {
 
         assertThat(result.eligible()).isFalse();
         assertThat(result.errors()).containsExactly("R1: 请明确成品门幅，或明确保持母卷门幅");
+    }
+
+    @Test
+    void compile_newOrdinaryRewindWithoutCore_usesThreeInchDefaultAndIsEligible() {
+        ProcessOrderDraftService drafts = mock(ProcessOrderDraftService.class);
+        PlanPreviewVO preview = new PlanPreviewVO();
+        preview.setReady(true);
+        when(drafts.previewProcessPlan(eq("order-1"), eq("roll-1"), any(), eq(3)))
+                .thenReturn(preview);
+        ProcessAiPlanCompilationService service = new ProcessAiPlanCompilationService(
+                compiler(), drafts, new ProcessAiPackagingCandidateCompiler(),
+                new ProcessAiNewPlanCompletenessGuard());
+        ProcessAiDiameterRule diameter = new ProcessAiDiameterRule(
+                "EXPLICIT", 1, List.of(new BigDecimal("100")),
+                new ProcessAiMeasurement(new BigDecimal("1200"), "mm", "DEFAULT"));
+        ProcessAiAssignment assignment = new ProcessAiAssignment(
+                List.of("R1"), "R1", List.of(), "REWIND",
+                new ProcessAiRewindIntent("CHANGE_DIAMETER", diameter, null,
+                        new com.paper.mes.ai.process.intent.ProcessAiWidthRule(
+                                "KEEP_SPEC", null, null, null)),
+                null, null, List.of());
+
+        ProcessAiCompilationResult result = service.compile(
+                new ProcessAiExtractionResult("parse-1", "1.0", List.of(assignment),
+                        List.of(), List.of(), false, List.of()), context());
+
+        assertThat(result.eligible()).isTrue();
+        assertThat(result.errors()).isEmpty();
     }
 
     private ProcessAiPlanCompiler compiler() {

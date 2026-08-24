@@ -11,4 +11,11 @@ public interface ProcessAiModelClient {
         cancellation.throwIfCancelled();
         return parse(prompt, deltaConsumer);
     }
+
+    /** Executes the configured fallback route when the primary result violates the output contract. */
+    default ProcessAiModelResult parseFallback(ProcessAiModelPrompt prompt,
+                                                Consumer<String> deltaConsumer,
+                                                ProcessAiCancellation cancellation) {
+        return parse(prompt, deltaConsumer, cancellation);
+    }
 }

@@ -1,6 +1,7 @@
 package com.paper.mes.ai.process.stream;
 
 import com.paper.mes.ai.config.AiProperties;
+import com.paper.mes.ai.process.status.ProcessAiDialogueV2Feature;
 import com.paper.mes.ai.process.stream.dto.ProcessAiParseStreamRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,17 +17,21 @@ public class ProcessAiParseStreamService {
     private final ProcessAiSingleFlightRegistry singleFlightRegistry;
     private final ProcessAiHeartbeatScheduler heartbeatScheduler;
     private final AiProperties properties;
+    private final ProcessAiDialogueV2Feature dialogueV2Feature;
 
     public SseEmitter start(String orderUuid, ProcessAiParseStreamRequest request) {
-        ProcessAiSseSink sink = new ProcessAiSseSink(properties.processStreamTimeoutMs());
-        heartbeatScheduler.register(sink);
         var replay = streamGate.replay(orderUuid, request);
         if (replay.isPresent()) {
+            ProcessAiSseSink sink = new ProcessAiSseSink(properties.processStreamTimeoutMs());
+            heartbeatScheduler.register(sink);
             sink.conversation(request.conversationId());
             sink.result(replay.get());
             sink.done();
             return sink.emitter();
         }
+        dialogueV2Feature.requireEnabled(orderUuid);
+        ProcessAiSseSink sink = new ProcessAiSseSink(properties.processStreamTimeoutMs());
+        heartbeatScheduler.register(sink);
         sink.conversation(request.conversationId());
         ProcessAiSingleFlightRegistry.Registration registration =
                 singleFlightRegistry.register(request, sink);

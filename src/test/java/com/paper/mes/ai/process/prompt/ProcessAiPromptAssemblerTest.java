@@ -5,6 +5,8 @@ import com.paper.mes.ai.memory.ProjectMemoryContextSelector;
 import com.paper.mes.ai.memory.ProjectMemorySnapshot;
 import com.paper.mes.ai.process.context.ProcessAiOrderContext;
 import com.paper.mes.ai.process.context.ProcessAiRollContext;
+import com.paper.mes.ai.process.intent.ProcessAiClarificationOption;
+import com.paper.mes.ai.process.intent.ProcessAiClarificationQuestion;
 import com.paper.mes.ai.process.security.ProcessTextRedactor;
 import com.paper.mes.ai.process.session.dto.ProcessAiMessageResponse;
 import org.junit.jupiter.api.Test;
@@ -32,15 +34,37 @@ class ProcessAiPromptAssemblerTest {
 
         assertThat(prompt.userContext())
                 .contains("\"ref\":\"R1\"", "\"widthMm\":2000", "rule-split")
+                .doesNotContain("weightKg", "estimateWeight", "estimateWeightKg")
                 .doesNotContain("roll-secret-uuid", "order-1", "CUSTOMER-001", "API_KEY");
         assertThat(prompt.systemInstruction()).contains(
                 "不调用工具", "WEIGHT_SPLIT", "\"rewindIntent\"", "\"sawIntent\"",
-                "\"ancillaryRequirements\"", "REWIND时rewindIntent为对象且sawIntent为null");
+                "\"ancillaryRequirements\"", "SERVICE_ONLY", "DIRECT_SHIP",
+                "\"processMode\"", "REWIND时processMode只能为STANDARD或ON_SITE");
         assertThat(prompt.systemInstruction()).contains(
                 "门幅一分二", "widthRule.type=KNIFE_COUNT", "knifeCount=1",
                 "widthRule为EXPLICIT时values为完整成品门幅数组",
-                "后端会把差额自动补为TRIM", "本次允许的母卷短代号：R1");
+                "后端会把差额自动补为TRIM", "STRIP_SORT", "REPACKAGE",
+                "按件或按吨的服务数量由系统", "本次允许的母卷短代号：R1");
         assertThat(bundle.memoryItemIds()).containsExactly("rule-split");
+    }
+
+    @Test
+    void assembleIncludesTheServerBoundClarificationQuestionAndRevision() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        ProcessAiPromptAssembler assembler = new ProcessAiPromptAssembler(
+                mapper, new ProjectMemoryContextSelector(), new ProcessTextRedactor());
+        ProcessAiClarificationQuestion question = new ProcessAiClarificationQuestion(
+                "quantity-scope", "quantityScope", 4, "数量范围？", List.of(
+                new ProcessAiClarificationOption("PER_SOURCE", "每条母卷"),
+                new ProcessAiClarificationOption("TOTAL", "全单")), true);
+
+        var bundle = assembler.assemble(new ProcessAiPromptContext(
+                "parse-1", 4, order(), memory(mapper), "PER_SOURCE", List.of(),
+                question, "PER_SOURCE", null));
+
+        assertThat(bundle.prompt().userContext()).contains(
+                "\"parseRevision\":4", "\"questionId\":\"quantity-scope\"",
+                "\"answerCode\":\"PER_SOURCE\"", "每条母卷", "全单");
     }
 
     @Test

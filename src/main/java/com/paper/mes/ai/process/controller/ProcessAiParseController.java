@@ -3,6 +3,9 @@ package com.paper.mes.ai.process.controller;
 import com.paper.mes.ai.process.parse.ProcessAiParseConfirmationService;
 import com.paper.mes.ai.process.parse.dto.ProcessAiConfirmRequest;
 import com.paper.mes.ai.process.parse.dto.ProcessAiConfirmResponse;
+import com.paper.mes.ai.process.parse.ProcessAiParseRevisionService;
+import com.paper.mes.ai.process.parse.dto.ProcessAiReviseRequest;
+import com.paper.mes.ai.process.stream.dto.ProcessAiParseResultResponse;
 import com.paper.mes.ai.process.stream.ProcessAiParseStreamService;
 import com.paper.mes.ai.process.stream.dto.ProcessAiParseStreamRequest;
 import com.paper.mes.auth.permission.Permissions;
@@ -28,6 +31,7 @@ public class ProcessAiParseController {
 
     private final ProcessAiParseStreamService streamService;
     private final ProcessAiParseConfirmationService confirmationService;
+    private final ProcessAiParseRevisionService revisionService;
 
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(
@@ -44,5 +48,12 @@ public class ProcessAiParseController {
             @PathVariable String orderUuid,
             @Valid @RequestBody ProcessAiConfirmRequest request) {
         return R.success(confirmationService.confirm(orderUuid, request));
+    }
+
+    @PostMapping("/revise")
+    public R<ProcessAiParseResultResponse> revise(
+            @PathVariable String orderUuid,
+            @Valid @RequestBody ProcessAiReviseRequest request) {
+        return R.success(revisionService.revise(orderUuid, request));
     }
 }

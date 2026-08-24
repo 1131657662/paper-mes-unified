@@ -4,6 +4,7 @@ import com.paper.mes.ai.config.AiProperties;
 import com.paper.mes.ai.process.context.ProcessAiOrderContext;
 import com.paper.mes.ai.process.context.ProcessAiRollContext;
 import com.paper.mes.ai.process.intent.ProcessAiAssignment;
+import com.paper.mes.ai.process.intent.ProcessAiCustomerSpec;
 import com.paper.mes.ai.process.intent.ProcessAiDiameterRule;
 import com.paper.mes.ai.process.intent.ProcessAiMeasurement;
 import com.paper.mes.ai.process.intent.ProcessAiRewindIntent;
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 class ProcessAiPlanCompilerTest {
@@ -93,6 +95,59 @@ class ProcessAiPlanCompilerTest {
     }
 
     @Test
+    void compile_sawCustomerSpec_writesSalesFieldsToFinishSpec() {
+        ProcessAiSawIntent saw = new ProcessAiSawIntent(
+                "EXPLICIT_WIDTHS", null, List.of(800, 800), "mm");
+        ProcessAiAssignment assignment = assignment("SAW", null, saw,
+                List.of(new ProcessAiCustomerSpec(0, "客户白卡", 250, 800, "客户合同")));
+
+        ProcessPlanDTO plan = compiler.compile(assignment, context(1600)).plan();
+
+        assertEquals("客户白卡", plan.getFinishSpecs().getFirst().getCustomerPaperName());
+        assertEquals(250, plan.getFinishSpecs().getFirst().getCustomerGramWeight());
+        assertEquals(800, plan.getFinishSpecs().getFirst().getCustomerFinishWidth());
+    }
+
+    @Test
+    void compile_rewindCustomerSpec_writesSalesFieldsToLayoutItem() {
+        ProcessAiRewindIntent rewind = new ProcessAiRewindIntent(
+                "CHANGE_WIDTH", null, null,
+                new ProcessAiWidthRule("EXPLICIT", List.of(800, 800), "mm", null));
+        ProcessAiAssignment assignment = assignment("REWIND", rewind, null,
+                List.of(new ProcessAiCustomerSpec(1, "客户白卡", 250, 800, "客户合同")));
+
+        ProcessPlanDTO plan = compiler.compile(assignment, context(1600)).plan();
+
+        assertEquals("客户白卡", plan.getSegments().getFirst().getLayoutItems().get(1)
+                .getCustomerPaperName());
+        assertEquals(250, plan.getSegments().getFirst().getLayoutItems().get(1)
+                .getCustomerGramWeight());
+    }
+
+    @Test
+    void compile_rejectsDuplicateCustomerSpecIndexesBeforeBinding() {
+        ProcessAiSawIntent saw = new ProcessAiSawIntent(
+                "EXPLICIT_WIDTHS", null, List.of(800, 800), "mm");
+        ProcessAiAssignment assignment = assignment("SAW", null, saw, List.of(
+                new ProcessAiCustomerSpec(0, "客户白卡", 250, 800, null),
+                new ProcessAiCustomerSpec(0, "客户铜版", 128, 800, null)));
+
+        assertThatThrownBy(() -> compiler.compile(assignment, context(1600)))
+                .hasMessageContaining("客户销售规格未对应有效成品排布");
+    }
+
+    @Test
+    void compile_rejectsCustomerSpecWithoutOverrideReason() {
+        ProcessAiSawIntent saw = new ProcessAiSawIntent(
+                "EXPLICIT_WIDTHS", null, List.of(800), "mm");
+        ProcessAiAssignment assignment = assignment("SAW", null, saw,
+                List.of(new ProcessAiCustomerSpec(0, "客户白卡", 250, 800, null)));
+
+        assertThatThrownBy(() -> compiler.compile(assignment, context(800)))
+                .hasMessageContaining("必须填写改写原因");
+    }
+
+    @Test
     void compile_explicitSawWidth_keepsTheRemainderAsTrim() {
         ProcessAiSawIntent saw = new ProcessAiSawIntent(
                 "EXPLICIT_WIDTHS", null, List.of(900), "mm");
@@ -158,8 +213,14 @@ class ProcessAiPlanCompilerTest {
 
     private ProcessAiAssignment assignment(String type, ProcessAiRewindIntent rewind,
                                             ProcessAiSawIntent saw) {
+        return assignment(type, rewind, saw, List.of());
+    }
+
+    private ProcessAiAssignment assignment(String type, ProcessAiRewindIntent rewind,
+                                           ProcessAiSawIntent saw,
+                                           List<ProcessAiCustomerSpec> customerSpecs) {
         return new ProcessAiAssignment(List.of("R1"), "R1", List.of(), type,
-                rewind, saw, null, List.of());
+                rewind, saw, null, List.of(), customerSpecs);
     }
 
     private ProcessAiMeasurement measurement(String value, String unit) {

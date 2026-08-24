@@ -20,6 +20,10 @@ final class DeliveryStockPolicy {
         if (finish == null) {
             return BigDecimal.ZERO;
         }
+        if (Integer.valueOf(1).equals(finish.getIsRemain())
+                && Integer.valueOf(2).equals(finish.getOwnershipStatus())) {
+            return BigDecimal.ZERO;
+        }
         if (finish.getFinishStatus() != null && finish.getFinishStatus() == FINISH_STATUS_OUT) {
             return BigDecimal.ZERO;
         }

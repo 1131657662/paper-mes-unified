@@ -83,23 +83,49 @@ public class ProductionHealthInspector implements DataHealthInspector {
     private static final String ORDER_WEIGHT_SQL = """
             SELECT p.uuid, p.order_no, p.total_original_weight order_original,
                    p.total_finish_weight order_finish,
-                   COALESCE(o.original_weight, 0) detail_original,
-                   COALESCE(f.finish_weight, 0) detail_finish
+                   o.original_weight detail_original,
+                   f.finish_weight detail_finish,
+                   COALESCE(o.unknown_count, 0) original_unknown_count,
+                   COALESCE(f.unknown_count, 0) finish_unknown_count
             FROM biz_process_order p
             LEFT JOIN (
-                SELECT order_uuid, SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) original_weight
+                SELECT order_uuid,
+                       SUM(CASE WHEN weight_status = 'UNKNOWN' AND COALESCE(actual_weight, 0) <= 0
+                                THEN NULL ELSE COALESCE(actual_weight, total_weight,
+                                    roll_weight * COALESCE(piece_num, 1), 0) END) original_weight,
+                       SUM(CASE WHEN weight_status = 'UNKNOWN' AND COALESCE(actual_weight, 0) <= 0
+                                THEN 1 ELSE 0 END) unknown_count
                 FROM biz_original_roll
                 WHERE is_deleted = 0 AND disposition_action IS NULL
                 GROUP BY order_uuid
             ) o ON o.order_uuid = p.uuid
             LEFT JOIN (
-                SELECT order_uuid, SUM(COALESCE(actual_weight, estimate_weight, 0)) finish_weight
-                FROM biz_finish_roll
+                SELECT f.order_uuid,
+                       SUM(CASE WHEN COALESCE(f.actual_weight, 0) > 0 THEN f.actual_weight
+                                WHEN EXISTS (
+                                    SELECT 1 FROM biz_finish_original_rel fr
+                                    INNER JOIN biz_original_roll ro
+                                      ON ro.uuid = fr.original_uuid AND ro.is_deleted = 0
+                                    WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0
+                                      AND ro.weight_status = 'UNKNOWN'
+                                      AND COALESCE(ro.actual_weight, 0) <= 0
+                                ) THEN NULL ELSE COALESCE(f.estimate_weight, 0) END) finish_weight,
+                       SUM(CASE WHEN COALESCE(f.actual_weight, 0) <= 0 AND EXISTS (
+                                    SELECT 1 FROM biz_finish_original_rel fr
+                                    INNER JOIN biz_original_roll ro
+                                      ON ro.uuid = fr.original_uuid AND ro.is_deleted = 0
+                                    WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0
+                                      AND ro.weight_status = 'UNKNOWN'
+                                      AND COALESCE(ro.actual_weight, 0) <= 0
+                                ) THEN 1 ELSE 0 END) unknown_count
+                FROM biz_finish_roll f
                 WHERE is_deleted = 0 AND roll_no_status <> 3 AND is_spare = 0 GROUP BY order_uuid
             ) f ON f.order_uuid = p.uuid
             WHERE p.is_deleted = 0 AND p.order_status IN (4, 5)
-              AND (ABS(COALESCE(p.total_original_weight, 0) - COALESCE(o.original_weight, 0)) > 0.001
-                OR ABS(COALESCE(p.total_finish_weight, 0) - COALESCE(f.finish_weight, 0)) > 0.001)
+              AND ((COALESCE(o.unknown_count, 0) = 0
+                    AND ABS(COALESCE(p.total_original_weight, 0) - COALESCE(o.original_weight, 0)) > 0.001)
+                OR (COALESCE(f.unknown_count, 0) = 0
+                    AND ABS(COALESCE(p.total_finish_weight, 0) - COALESCE(f.finish_weight, 0)) > 0.001))
             ORDER BY p.update_time DESC
             """;
 
@@ -115,18 +141,42 @@ public class ProductionHealthInspector implements DataHealthInspector {
                    f.finish_weight - o.original_weight gain_weight
             FROM biz_process_order p
             INNER JOIN (
-                SELECT order_uuid, SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) original_weight
+                SELECT order_uuid,
+                       SUM(CASE WHEN weight_status = 'UNKNOWN' AND COALESCE(actual_weight, 0) <= 0
+                                THEN NULL ELSE COALESCE(actual_weight, total_weight,
+                                    roll_weight * COALESCE(piece_num, 1), 0) END) original_weight,
+                       SUM(CASE WHEN weight_status = 'UNKNOWN' AND COALESCE(actual_weight, 0) <= 0
+                                THEN 1 ELSE 0 END) unknown_count
                 FROM biz_original_roll
                 WHERE is_deleted = 0
                   AND (disposition_action IS NULL OR disposition_action = 'DIRECT_SHIP')
                 GROUP BY order_uuid
             ) o ON o.order_uuid = p.uuid
             INNER JOIN (
-                SELECT order_uuid, SUM(COALESCE(actual_weight, estimate_weight, 0)) finish_weight
-                FROM biz_finish_roll
-                WHERE is_deleted = 0 AND roll_no_status <> 3 AND is_spare = 0 GROUP BY order_uuid
+                SELECT f.order_uuid,
+                       SUM(CASE WHEN COALESCE(f.actual_weight, 0) > 0 THEN f.actual_weight
+                                WHEN EXISTS (
+                                    SELECT 1 FROM biz_finish_original_rel fr
+                                    INNER JOIN biz_original_roll ro
+                                      ON ro.uuid = fr.original_uuid AND ro.is_deleted = 0
+                                    WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0
+                                      AND ro.weight_status = 'UNKNOWN'
+                                      AND COALESCE(ro.actual_weight, 0) <= 0
+                                ) THEN NULL ELSE COALESCE(f.estimate_weight, 0) END) finish_weight,
+                       SUM(CASE WHEN COALESCE(f.actual_weight, 0) <= 0 AND EXISTS (
+                                    SELECT 1 FROM biz_finish_original_rel fr
+                                    INNER JOIN biz_original_roll ro
+                                      ON ro.uuid = fr.original_uuid AND ro.is_deleted = 0
+                                    WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0
+                                      AND ro.weight_status = 'UNKNOWN'
+                                      AND COALESCE(ro.actual_weight, 0) <= 0
+                                ) THEN 1 ELSE 0 END) unknown_count
+                FROM biz_finish_roll f
+                WHERE f.is_deleted = 0 AND f.roll_no_status <> 3 AND f.is_spare = 0 GROUP BY f.order_uuid
             ) f ON f.order_uuid = p.uuid
             WHERE p.is_deleted = 0 AND p.order_status IN (4, 5)
+              AND COALESCE(o.unknown_count, 0) = 0
+              AND COALESCE(f.unknown_count, 0) = 0
               AND f.finish_weight > o.original_weight + 0.001
             ORDER BY gain_weight DESC
             """;

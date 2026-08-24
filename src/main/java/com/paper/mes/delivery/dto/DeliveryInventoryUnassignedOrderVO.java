@@ -16,6 +16,7 @@ public class DeliveryInventoryUnassignedOrderVO {
     private String customerName;
     private long unassignedRollCount;
     private BigDecimal unassignedWeight;
+    private long unassignedUnknownRollCount;
     private String knownWarehouseUuid;
     private String knownWarehouseName;
     private boolean warehouseConflict;

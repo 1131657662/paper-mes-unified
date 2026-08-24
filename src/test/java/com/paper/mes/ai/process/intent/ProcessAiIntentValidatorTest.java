@@ -80,6 +80,33 @@ class ProcessAiIntentValidatorTest {
         validator.validate(result, context());
     }
 
+    @Test
+    void validateAcceptsServiceOnlyStripSortingWithoutMainIntent() {
+        ProcessAiPackagingRequirement packaging = new ProcessAiPackagingRequirement(
+                "STRIP_SORT", "[金额]", "PIECE", "STANDARD", true);
+        ProcessAiAssignment assignment = new ProcessAiAssignment(
+                List.of("R1"), "R1", List.of(), "SERVICE_ONLY", "SERVICE_ONLY", null, null,
+                new ProcessAiAncillaryRequirements(null, packaging), List.of(
+                        new ProcessAiEvidence("packaging", "剥破损包装，每件20元")), List.of());
+
+        validator.validate(result(List.of(assignment)), context());
+    }
+
+    @Test
+    void validateRejectsDirectShipWithServiceSteps() {
+        ProcessAiPackagingRequirement packaging = new ProcessAiPackagingRequirement(
+                "STRIP_SORT", "[金额]", "PIECE", "STANDARD", true);
+        ProcessAiAssignment assignment = new ProcessAiAssignment(
+                List.of("R1"), "R1", List.of(), "DIRECT_SHIP", "DIRECT_SHIP", null, null,
+                new ProcessAiAncillaryRequirements(null, packaging), List.of(
+                        new ProcessAiEvidence("packaging", "剥破损包装，每件20元")), List.of());
+
+        BusinessException error = catchThrowableOfType(
+                () -> validator.validate(result(List.of(assignment)), context()), BusinessException.class);
+
+        assertThat(error.getErrorCode()).isEqualTo("AI_INTENT_DIRECT_SHIP_INVALID");
+    }
+
     private ProcessAiAssignment assignment(List<String> sources, String owner, List<String> covered,
                                             List<Integer> ratios,
                                             ProcessAiAncillaryRequirements ancillary) {

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paper.mes.ai.process.intent.ProcessAiExtractionResult;
+import com.paper.mes.ai.process.parse.dto.ProcessAiCorrection;
 import com.paper.mes.ai.process.parse.dto.ProcessAiConfirmResponse;
 import com.paper.mes.ai.process.session.crypto.AiMessageCryptoContext;
 import com.paper.mes.ai.process.session.crypto.AiStructuredResultCipher;
@@ -26,6 +27,8 @@ import java.util.Set;
 class ProcessAiConfirmationCodec {
 
     private static final TypeReference<List<String>> STRING_LIST = new TypeReference<>() { };
+    private static final TypeReference<List<ProcessAiCorrection>> CORRECTION_LIST =
+            new TypeReference<>() { };
 
     private final ObjectMapper objectMapper;
     private final Validator validator;
@@ -59,6 +62,32 @@ class ProcessAiConfirmationCodec {
         } catch (Exception ex) {
             throw corrupted();
         }
+    }
+
+    List<ProcessAiCorrection> readCorrections(ProcessAiParseRecord record) {
+        if (record.correctionsJson() == null) return List.of();
+        try {
+            String plaintext = intentCipher.decrypt(record.conversationId(),
+                    record.parseRevision(), record.correctionsJson());
+            List<ProcessAiCorrection> corrections = objectMapper.readValue(
+                    plaintext, CORRECTION_LIST);
+            Set<ConstraintViolation<ProcessAiCorrection>> violations = corrections.stream()
+                    .flatMap(item -> validator.validate(item).stream())
+                    .collect(java.util.stream.Collectors.toSet());
+            if (!violations.isEmpty()) throw corrupted();
+            return List.copyOf(corrections);
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw corrupted();
+        }
+    }
+
+    String correctionsHash(ProcessAiParseRecord record) {
+        if (record.correctionsJson() == null) return null;
+        String plaintext = intentCipher.decrypt(record.conversationId(),
+                record.parseRevision(), record.correctionsJson());
+        return sha256(plaintext);
     }
 
     String write(Object value) {

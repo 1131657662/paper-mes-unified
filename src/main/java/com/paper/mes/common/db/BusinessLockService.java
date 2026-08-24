@@ -29,6 +29,10 @@ public class BusinessLockService {
         lockOne("biz_settle_order", uuid);
     }
 
+    public void lockSettleOrders(Collection<String> uuids) {
+        lockMany("biz_settle_order", uuids);
+    }
+
     public void lockReceiveRecord(String uuid) {
         lockOne("biz_receive_record", uuid);
     }

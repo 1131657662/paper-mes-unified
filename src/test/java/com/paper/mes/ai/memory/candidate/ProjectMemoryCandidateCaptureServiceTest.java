@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -20,6 +21,21 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ProjectMemoryCandidateCaptureServiceTest {
+
+    @Test
+    void captureRejectsNewLearningUntilLegacyEvidenceMigrationFinishes() {
+        ProjectMemoryCandidateRepository repository = mock(ProjectMemoryCandidateRepository.class);
+        when(repository.evidenceReferencesReady()).thenReturn(false);
+        ProjectMemoryCandidateCaptureService service = new ProjectMemoryCandidateCaptureService(
+                repository, mock(ProjectMemoryCandidateExtractor.class),
+                mock(ProjectMemoryManualCandidateFactory.class),
+                mock(ProjectMemoryCandidateEvidenceFactory.class),
+                mock(ProjectMemoryDocumentProvider.class), new AiProperties(), new ObjectMapper());
+
+        assertThatThrownBy(() -> service.capture(event()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("memory evidence reference backfill is incomplete");
+    }
 
     @Test
     void captureMarksCandidateReadyAtFiveDistinctOrdersWithoutActivatingIt() {
@@ -34,6 +50,7 @@ class ProjectMemoryCandidateCaptureServiceTest {
         when(provider.version("1.0.0")).thenReturn(Optional.of(memory(mapper)));
         when(extractor.extract(any(), any(), any())).thenReturn(List.of(proposal));
         when(repository.findByMemoryIdForUpdate(proposal.memoryId())).thenReturn(Optional.empty());
+        when(repository.evidenceReferencesReady()).thenReturn(true);
         when(repository.insert(any())).thenReturn(1);
         var evidence = new ProjectMemoryCandidateEvidenceWrite(
                 "order-1", "parse-1", "AI_CONFIRMED", "cut twice",
@@ -76,6 +93,7 @@ class ProjectMemoryCandidateCaptureServiceTest {
                 "CANDIDATE", 1, LocalDateTime.now(), LocalDateTime.now(),
                 LocalDateTime.now().plusDays(90), null, null, null);
         when(provider.version("1.0.0")).thenReturn(Optional.of(memory(mapper)));
+        when(repository.evidenceReferencesReady()).thenReturn(true);
         when(manualFactory.create(any(), any())).thenReturn(Optional.of(proposal));
         when(repository.findByMemoryIdForUpdate(proposal.memoryId())).thenReturn(Optional.of(existing));
         when(evidenceFactory.manual(any(), any())).thenReturn(new ProjectMemoryCandidateEvidenceWrite(

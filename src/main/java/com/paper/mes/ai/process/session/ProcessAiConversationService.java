@@ -22,6 +22,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ProcessAiConversationService {
 
+    private static final int MAX_CLARIFICATION_ROUNDS = 8;
+
     private final CloudDbContextReader contextReader;
     private final ProjectMemoryDocumentProvider memoryProvider;
     private final ProcessAiConversationRepository repository;
@@ -45,7 +47,14 @@ public class ProcessAiConversationService {
         requireOwner(row, user);
         requireOpen(row);
         synchronizeIfBehind(row, command.expectedVersion());
-        int revision = repository.reserveNextRevision(command.conversationId());
+        if ("CLARIFY".equals(command.action())
+                && row.clarificationRound() >= MAX_CLARIFICATION_ROUNDS) {
+            throw conflict("AI_CLARIFICATION_LIMIT_REACHED",
+                    "本次AI会话最多进行8轮澄清，请确认已知信息或转人工处理");
+        }
+        int revision = "CLARIFY".equals(command.action())
+                ? repository.reserveNextRevision(command.conversationId(), command.action())
+                : repository.reserveNextRevision(command.conversationId());
         if (revision < 1) {
             throw conflict("AI_CONVERSATION_REVISION_CONFLICT",
                     "AI conversation revision could not be reserved");

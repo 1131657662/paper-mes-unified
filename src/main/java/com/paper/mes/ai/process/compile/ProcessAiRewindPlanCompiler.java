@@ -5,6 +5,7 @@ import com.paper.mes.ai.process.context.ProcessAiRollContext;
 import com.paper.mes.ai.process.intent.ProcessAiAssignment;
 import com.paper.mes.ai.process.intent.ProcessAiDiameterRule;
 import com.paper.mes.ai.process.intent.ProcessAiRewindIntent;
+import com.paper.mes.ai.process.intent.ProcessAiQuantityIntent;
 import com.paper.mes.ai.process.intent.ProcessAiWidthRule;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ResultCode;
@@ -14,7 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -32,12 +35,13 @@ class ProcessAiRewindPlanCompiler {
         requireCompatibleDiameterRule(mode, intent.diameterRule());
         Integer target = targetDiameter(mode, intent.diameterRule(), owner);
         int core = coreDiameter(mode, intent, owner);
-        List<Integer> widths = widths(intent.widthRule(), owner);
+        List<Integer> widths = widths(intent, owner);
+        validateCustomerSpecIndexes(assignment, widths.size());
         List<RewindSegmentPlanDTO> segments = segmentCompiler.compile(
                 new ProcessAiRewindSegmentInput(owner, intent.diameterRule(),
-                        mode, target, core, widths, sources));
+                        mode, target, core, widths, sources, assignment.customerSpecs()));
         ProcessPlanDTO plan = new ProcessPlanDTO();
-        plan.setProcessMode(processMode(owner));
+        plan.setProcessMode(processMode(assignment));
         plan.setMainStepType(2);
         plan.setSpareCount(0);
         plan.setRewindMode(mode);
@@ -48,7 +52,10 @@ class ProcessAiRewindPlanCompiler {
         return plan;
     }
 
-    private List<Integer> widths(ProcessAiWidthRule rule, ProcessAiRollContext owner) {
+    private List<Integer> widths(ProcessAiRewindIntent intent, ProcessAiRollContext owner) {
+        ProcessAiQuantityIntent quantity = intent.quantityIntent();
+        if (quantity != null) return repeatedWidth(quantity);
+        ProcessAiWidthRule rule = intent.widthRule();
         int width = requiredSourceWidth(owner);
         if (rule == null || "KEEP_SPEC".equals(rule.type())) return List.of(width);
         if ("EXPLICIT".equals(rule.type())) {
@@ -61,6 +68,13 @@ class ProcessAiRewindPlanCompiler {
             throw invalid("AI_REWIND_KNIFE_COUNT_MISSING", "平均复卷方案缺少刀数");
         }
         return distribute(width, rule.knifeCount() + 1);
+    }
+
+    private List<Integer> repeatedWidth(ProcessAiQuantityIntent quantity) {
+        int width = quantity.widthMm().stripTrailingZeros().intValueExact();
+        if (width <= 0) throw invalid("AI_QUANTITY_WIDTH_INVALID", "重复复卷门幅必须大于0");
+        return java.util.stream.IntStream.range(0, quantity.count())
+                .mapToObj(ignored -> width).toList();
     }
 
     private List<Integer> distribute(int width, int parts) {
@@ -142,11 +156,21 @@ class ProcessAiRewindPlanCompiler {
         return mode == 1 || mode == 3;
     }
 
-    private int processMode(ProcessAiRollContext owner) {
-        return Integer.valueOf(2).equals(owner.processMode()) ? 2 : 1;
+    private int processMode(ProcessAiAssignment assignment) {
+        return "ON_SITE".equals(assignment.processMode()) ? 2 : 1;
     }
 
     private BusinessException invalid(String code, String message) {
         return new BusinessException(ResultCode.BAD_REQUEST, code, message);
+    }
+
+    private void validateCustomerSpecIndexes(ProcessAiAssignment assignment, int outputCount) {
+        Set<Integer> indexes = new HashSet<>();
+        assignment.customerSpecs().forEach(spec -> {
+            if (spec.outputIndex() == null || spec.outputIndex() < 0
+                    || spec.outputIndex() >= outputCount || !indexes.add(spec.outputIndex())) {
+                throw invalid("AI_CUSTOMER_SPEC_INDEX_INVALID", "客户销售规格未对应有效成品排布");
+            }
+        });
     }
 }

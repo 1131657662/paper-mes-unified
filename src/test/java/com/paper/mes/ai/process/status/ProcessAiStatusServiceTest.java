@@ -76,11 +76,32 @@ class ProcessAiStatusServiceTest {
         assertThat(status.fallbackConfigured()).isTrue();
     }
 
+    @Test
+    void statusFailsClosedWhenMemoryReferenceHmacKeyIsMissing() {
+        AiProperties properties = properties();
+        properties.setMemoryReferenceHmacKey("");
+        ProjectMemoryDocumentProvider memory = mock(ProjectMemoryDocumentProvider.class);
+        AiMessageCipher cipher = mock(AiMessageCipher.class);
+        AiProviderCredentialResolver credentials = mock(AiProviderCredentialResolver.class);
+        when(memory.ready()).thenReturn(true);
+        when(memory.state()).thenReturn("READY");
+        when(cipher.configured()).thenReturn(true);
+        when(credentials.resolveApiKey(AiProvider.DEEPSEEK)).thenReturn(Optional.of("secret"));
+        when(credentials.resolveApiKey(AiProvider.ZHIPU)).thenReturn(Optional.empty());
+
+        ProcessAiStatusResponse status = new ProcessAiStatusService(
+                properties, memory, cipher, credentials).status();
+
+        assertThat(status.ready()).isFalse();
+        assertThat(status.unavailableReason()).isEqualTo("AI_MEMORY_REFERENCE_HMAC_UNAVAILABLE");
+    }
+
     private AiProperties properties() {
         AiProperties properties = new AiProperties();
         properties.setDataMode("CONTEXT_ALLOWLIST");
         properties.setProvider("DEEPSEEK");
         properties.setDeepseekApiKey("secret");
+        properties.setMemoryReferenceHmacKey("h".repeat(32));
         return properties;
     }
 }

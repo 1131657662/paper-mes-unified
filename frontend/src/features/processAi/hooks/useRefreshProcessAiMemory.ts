@@ -9,7 +9,6 @@ export function useRefreshProcessAiMemory() {
     mutationFn: processAiService.refreshMemory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queries.processAi.messages._def })
-      queryClient.invalidateQueries({ queryKey: queries.processAi.pendingPackaging._def })
     },
     onError: (error) => notifyErrorOnce(error, '刷新项目记忆失败'),
   })

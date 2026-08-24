@@ -17,11 +17,8 @@ import DraftServiceStepEditor from './DraftServiceStepEditor'
 import type { ServiceEditorStatus } from '../serviceStepEditorTypes'
 import ServiceStepsLoadGate from './ServiceStepsLoadGate'
 import SavedServiceStepList from './SavedServiceStepList'
-import type { ProcessAiPackagingDraft } from '../../processAi/types'
-import AiPackagingCandidateNotice from './AiPackagingCandidateNotice'
 
 interface Props {
-  aiPackagingDraft?: ProcessAiPackagingDraft
   allSteps: ProcessStep[]
   orderUuid?: string
   roll?: RollDraft
@@ -31,8 +28,6 @@ interface Props {
   detailLoading: boolean
   draftVersion: number
   onRetryDetail: () => void
-  onAiPackagingDraftConsumed?: (originalUuid: string) => void
-  onAiPackagingDraftDismissed?: (draft: ProcessAiPackagingDraft) => Promise<void>
   onBatchApplied: () => void
   onCurrentSaved: () => void
   onStatusChange: (status?: ServiceEditorStatus) => void
@@ -43,10 +38,9 @@ interface Props {
 }
 
 export default function DraftAdditionalProcesses({
-  aiPackagingDraft, allSteps, orderUuid, roll, selectedRolls = [], customerPrices,
+  allSteps, orderUuid, roll, selectedRolls = [], customerPrices,
   detailError, detailLoading, draftVersion, onRetryDetail, onStatusChange,
-  onAiPackagingDraftConsumed, onAiPackagingDraftDismissed, onBatchApplied,
-  onCurrentSaved,
+  onBatchApplied, onCurrentSaved,
   onSynchronizeVersion, onVersionSyncBlockedChange, onWritePendingChange, versionSyncBlocked,
 }: Props) {
   const [editor, setEditor] = useState<EditorState>({ mode: 'create', revision: 0 })
@@ -63,9 +57,6 @@ export default function DraftAdditionalProcesses({
     steps,
     versionSyncBlocked,
   })
-  const consumeAiDraft = () => {
-    if (aiPackagingDraft) onAiPackagingDraftConsumed?.(aiPackagingDraft.values.originalUuid)
-  }
   const resetEditor = () => {
     setEditor((current) => ({
       mode: 'create',
@@ -84,11 +75,9 @@ export default function DraftAdditionalProcesses({
           <Typography.Text type="secondary">服务计费，不改变成品规格</Typography.Text>
         </div>
       </div>
-      {aiPackagingDraft && <AiPackagingCandidateNotice draft={aiPackagingDraft}
-        onDismiss={onAiPackagingDraftDismissed} />}
       <ServiceStepsLoadGate isError={detailError} isLoading={detailLoading} onRetry={onRetryDetail}>
         {roll?.uuid && <DraftServiceStepEditor
-          key={`${editorKey(roll.uuid, editor)}:${steps[0]?.uuid ?? 'none'}:${aiPackagingDraft?.parseId ?? 'manual'}`}
+          key={`${editorKey(roll.uuid, editor)}:${steps[0]?.uuid ?? 'none'}`}
           roll={{
             uuid: roll.uuid,
             rollName: currentRollLabel(roll),
@@ -102,7 +91,7 @@ export default function DraftAdditionalProcesses({
           editingStepUuid={editor.mode === 'edit' ? editor.step.uuid : undefined}
           initialValues={editor.mode === 'edit'
             ? stepInitialValues(editor.step)
-            : aiPackagingDraft?.values ?? stepInitialValues(steps[0])}
+            : stepInitialValues(steps[0])}
           savedSteps={steps}
           saving={writes.save.isPending}
           batchSaving={writes.apply.isPending}
@@ -115,14 +104,12 @@ export default function DraftAdditionalProcesses({
           })}
           onCancel={resetEditor}
           onSave={(values, stepUuid) => writes.run(async () => {
-            await writes.save.mutateAsync({ values: withAiCandidateSource(values, aiPackagingDraft), stepUuid })
-            consumeAiDraft()
+            await writes.save.mutateAsync({ values, stepUuid })
             publishStatus(undefined)
             onCurrentSaved()
           })}
           onSaveToSelected={(values, scope) => writes.run(async () => {
-            await writes.apply.mutateAsync({ values: withAiCandidateSource(values, aiPackagingDraft), scope })
-            consumeAiDraft()
+            await writes.apply.mutateAsync({ values, scope })
             onBatchApplied()
           })}
           onStatusChange={publishStatus}
@@ -143,11 +130,6 @@ export default function DraftAdditionalProcesses({
       </ServiceStepsLoadGate>
     </section>
   )
-}
-
-function withAiCandidateSource(values: ProcessStepDTO, draft?: ProcessAiPackagingDraft): ProcessStepDTO {
-  if (!draft) return values
-  return { ...values, aiParseId: draft.parseId, aiOwnerRollRef: draft.ownerRollRef }
 }
 
 function runSavedStepAction(

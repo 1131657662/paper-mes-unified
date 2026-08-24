@@ -28,6 +28,11 @@ public final class Permissions {
     public static final String SETTLE_DISCOUNT_ADMIN_APPROVE = "settle:discount-admin-approve";
     public static final String SETTLE_RECEIVE = "settle:receive";
     public static final String SETTLE_VIEW = "settle:view";
+    public static final String REMAIN_VIEW = "remain:view";
+    public static final String REMAIN_REGISTER = "remain:register";
+    public static final String REMAIN_ROLLBACK = "remain:rollback";
+    public static final String REMAIN_PRICE = "remain:price";
+    public static final String REMAIN_SALE = "remain:sale";
     public static final String DATA_BACKUP = "system:data-backup";
     public static final String DATA_HEALTH = "system:data-health";
     public static final String SYSTEM_AUDIT = "system:audit";
@@ -42,26 +47,26 @@ public final class Permissions {
             return List.of(ALL);
         }
         if (RoleCodes.ORDER_CLERK.equals(roleCode)) {
-            return List.of(AI_ASSIST, BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_MANAGE, ORDER_ROLL_DISPOSITION, ORDER_PRICING, REPORT_VIEW,
+            return List.of(AI_ASSIST, BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_MANAGE, ORDER_ROLL_DISPOSITION, ORDER_PRICING, REMAIN_VIEW, REMAIN_REGISTER, REMAIN_ROLLBACK, REMAIN_PRICE, REPORT_VIEW,
                     EXPORT_TASK_VIEW);
         }
         if (RoleCodes.RECORDER.equals(roleCode)) {
-            return List.of(AI_ASSIST, BASE_VIEW, ORDER_VIEW, ORDER_BACK_RECORD, REPORT_VIEW, EXPORT_TASK_VIEW);
+            return List.of(AI_ASSIST, BASE_VIEW, ORDER_VIEW, ORDER_BACK_RECORD, REMAIN_VIEW, REMAIN_REGISTER, REMAIN_ROLLBACK, REPORT_VIEW, EXPORT_TASK_VIEW);
         }
         if (RoleCodes.OPERATOR.equals(roleCode)) {
             return List.of(AI_ASSIST, BASE_VIEW, ORDER_VIEW, ORDER_CREATE, ORDER_BACK_RECORD, REPORT_VIEW, EXPORT_TASK_VIEW);
         }
         if (RoleCodes.FINANCE.equals(roleCode)) {
             return List.of(AI_ASSIST, BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, DELIVERY_RELEASE, SETTLE_VIEW, SETTLE_MANAGE,
-                    SETTLE_RECEIVE, SETTLE_DISCOUNT, SETTLE_DISCOUNT_APPROVE, ORDER_PRICING, ORDER_PRICING_APPROVE, REPORT_VIEW,
+                    SETTLE_RECEIVE, SETTLE_DISCOUNT, SETTLE_DISCOUNT_APPROVE, ORDER_PRICING, ORDER_PRICING_APPROVE, REMAIN_VIEW, REMAIN_ROLLBACK, REMAIN_PRICE, REMAIN_SALE, REPORT_VIEW,
                     EXPORT_TASK_VIEW);
         }
         if (RoleCodes.WAREHOUSE.equals(roleCode)) {
             return List.of(AI_ASSIST, BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, DELIVERY_MANAGE, INVENTORY_SCRAP,
-                    REPORT_VIEW, EXPORT_TASK_VIEW);
+                    REMAIN_VIEW, REMAIN_SALE, REPORT_VIEW, EXPORT_TASK_VIEW);
         }
         if (RoleCodes.VIEWER.equals(roleCode)) {
-            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, SETTLE_VIEW, REPORT_VIEW, EXPORT_TASK_VIEW);
+            return List.of(BASE_VIEW, ORDER_VIEW, DELIVERY_VIEW, SETTLE_VIEW, REMAIN_VIEW, REPORT_VIEW, EXPORT_TASK_VIEW);
         }
         return List.of();
     }

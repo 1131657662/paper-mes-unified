@@ -24,6 +24,7 @@ import { runtimeKeys } from '../features/runtime/queries/runtimeKeys'
 import { aiKeys } from '../features/ai/queries/aiKeys'
 import { processAiKeys } from '../features/processAi/queries/processAiKeys'
 import { projectMemoryKeys } from '../features/projectMemory/queries/projectMemoryKeys'
+import { remainKeys } from '../features/remain/queries/remainKeys'
 
 export const queries = mergeQueryKeys(
   authKeys,
@@ -51,4 +52,5 @@ export const queries = mergeQueryKeys(
   aiKeys,
   processAiKeys,
   projectMemoryKeys,
+  remainKeys,
 )

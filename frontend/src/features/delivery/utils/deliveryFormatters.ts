@@ -7,16 +7,21 @@ import type {
 import {
   formatGram,
   formatKg as formatWeightKg,
+  formatOptionalKg as formatWeightOptionalKg,
   formatMm,
   formatNumber,
   formatTonFromKg,
 } from '../../../utils/numberFormatters'
 
-export function formatKg(value?: number) {
+export function formatKg(value?: number | null) {
   return formatWeightKg(value)
 }
 
-export function formatTon(value?: number) {
+export function formatOptionalKg(value?: number | null) {
+  return formatWeightOptionalKg(value)
+}
+
+export function formatTon(value?: number | null) {
   return formatTonFromKg(value)
 }
 

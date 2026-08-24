@@ -113,6 +113,33 @@ class ProcessAiConfirmCandidateLoaderTest {
         assertThat(error.getErrorCode()).isEqualTo("AI_PARSE_NOT_READY");
     }
 
+    @Test
+    void loadRejectsAV2RevisionThatIsNotPreviewReadyBeforeDecodingItsExtraction() {
+        when(repository.findByParseIdForUpdate("parse-1")).thenReturn(Optional.of(
+                v2Record("READY", "REVISING", "not-a-decryptable-extraction")));
+
+        BusinessException error = catchThrowableOfType(
+                () -> loader.load("order-1", v2Request()), BusinessException.class);
+
+        assertThat(error.getErrorCode()).isEqualTo("AI_PARSE_NOT_READY");
+    }
+
+    private ProcessAiParseRecord v2Record(String status, String dialogueState, String intentJson) {
+        return new ProcessAiParseRecord("row-1", "order-1", "conversation-1", "parse-1",
+                2, 1, "request-1", 7, status, "DEEPSEEK", "model", "PRIMARY", "1.0",
+                "1.0.0", "sha256:" + "a".repeat(64), "[]", intentJson, "b".repeat(64),
+                ProcessAiParseConfirmation.empty(), LocalDateTime.now(), dialogueState,
+                "EXTRACTION", 2, null, null, null, null, null, "c".repeat(64),
+                null, null, "[]", null);
+    }
+
+    private com.paper.mes.ai.process.parse.dto.ProcessAiConfirmRequest v2Request() {
+        return new com.paper.mes.ai.process.parse.dto.ProcessAiConfirmRequest(
+                "conversation-1", "parse-1", 7, "apply-1",
+                List.of(ProcessAiConfirmationTestFixtures.ACCEPTED_PATH), 2,
+                "c".repeat(64), List.of());
+    }
+
     private ProcessAiConfirmResponse storedResponse() {
         return new ProcessAiConfirmResponse(
                 "conversation-1", "parse-1", 2, 7, 8, "CONFIRMED",

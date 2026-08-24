@@ -1,6 +1,6 @@
 import { Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { formatKg, formatWholeKg } from '../../utils/numberFormatters'
+import { formatOptionalKg, formatWholeKg } from '../../utils/numberFormatters'
 import { toDisplayFormula } from './customerWeightFormulaModel'
 import type { FinishCustomerRevisionDetail, FinishCustomerRevisionItem } from './customerSpecTypes'
 
@@ -15,7 +15,7 @@ const columns: ColumnsType<FinishCustomerRevisionItem> = [
   { title: '成品卷号', dataIndex: 'finishRollNo', width: 140, fixed: 'left', render: (value) => <Typography.Text strong>{value || '-'}</Typography.Text> },
   { title: '实物规格', width: 200, render: (_, item) => physicalSpec(item) },
   { title: '客户规格', width: 200, render: (_, item) => customerSpec(item) },
-  { title: '实物重量', width: 120, align: 'right', render: (_, item) => formatKg(item.physicalWeightSnapshot) },
+  { title: '实物重量', width: 120, align: 'right', render: (_, item) => formatOptionalKg(item.physicalWeightSnapshot) },
   { title: '客户重量', width: 125, align: 'right', render: (_, item) => formatWholeKg(item.customerDisplayWeight) },
   { title: '重量方式', width: 95, render: (_, item) => <Tag>{modeText[item.calculationMode] ?? item.calculationMode}</Tag> },
   { title: '计算依据', width: 300, render: (_, item) => calculationAudit(item) },

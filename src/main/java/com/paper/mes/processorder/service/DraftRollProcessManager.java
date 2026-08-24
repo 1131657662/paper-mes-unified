@@ -52,6 +52,19 @@ public class DraftRollProcessManager {
         }
     }
 
+    /**
+     * Applies validated Step 3 selections while the caller already holds the order lock and
+     * owns the draft-version transition. AI confirmation uses this to share manual-save rules
+     * without advancing the draft version more than once.
+     */
+    public void applyLocked(ProcessOrder order, List<DraftRollProcessDTO> items) {
+        if (items.isEmpty()) return;
+        Map<String, OriginalRoll> rolls = requireRolls(order.getUuid(), items);
+        for (DraftRollProcessDTO item : items) {
+            updateRoll(rolls.get(item.getOriginalUuid()), item);
+        }
+    }
+
     private ProcessOrder requireDraft(String orderUuid) {
         ProcessOrder order = orderMapper.selectById(orderUuid);
         if (order == null) {

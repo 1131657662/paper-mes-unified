@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Component
@@ -33,7 +34,7 @@ public class ProcessAiIntentNormalizer {
                                                     String currentRequirement) {
         if (value.rewindIntent() == null) return value;
         ProcessAiRewindIntent rewind = value.rewindIntent();
-        ProcessAiMeasurement explicitDiameter = explicitDiameter(value.evidence());
+        ProcessAiMeasurement explicitDiameter = explicitDiameter(value.evidence(), currentRequirement);
         boolean widthSplit = hasTrustedWidthSplitEvidence(value.evidence(), currentRequirement)
                 || hasExplicitWidthSplit(rewind.widthRule());
         boolean diameterChange = explicitDiameter != null || hasExplicitDiameter(rewind);
@@ -42,12 +43,12 @@ public class ProcessAiIntentNormalizer {
                 withExplicitDiameter(rewind.diameterRule(), explicitDiameter), rewind.core(),
                 widthSplit && hasTrustedWidthSplitEvidence(value.evidence(), currentRequirement)
                         ? new ProcessAiWidthRule("KNIFE_COUNT", null, "mm", 1)
-                        : rewind.widthRule());
+                        : rewind.widthRule(), rewind.quantityIntent());
         if (normalized.equals(rewind)) return value;
         return new ProcessAiAssignment(
                 value.sourceRollRefs(), value.ownerRollRef(), value.coveredRollRefs(),
-                value.processType(), normalized, value.sawIntent(),
-                value.ancillaryRequirements(), value.evidence());
+                value.processType(), value.processMode(), normalized, value.sawIntent(),
+                value.ancillaryRequirements(), value.evidence(), value.customerSpecs());
     }
 
     private ProcessAiDiameterRule withExplicitDiameter(ProcessAiDiameterRule rule,
@@ -72,8 +73,10 @@ public class ProcessAiIntentNormalizer {
                 && normalizeUnit(left.unit()).equals(normalizeUnit(right.unit()));
     }
 
-    private ProcessAiMeasurement explicitDiameter(List<ProcessAiEvidence> evidence) {
+    private ProcessAiMeasurement explicitDiameter(List<ProcessAiEvidence> evidence,
+                                                  String currentRequirement) {
         return evidence.stream()
+                .filter(item -> trusted(item, currentRequirement))
                 .map(ProcessAiEvidence::text)
                 .map(EXPLICIT_DIAMETER::matcher)
                 .filter(matcher -> matcher.find())
@@ -81,6 +84,13 @@ public class ProcessAiIntentNormalizer {
                 .map(matcher -> new ProcessAiMeasurement(
                         new BigDecimal(matcher.group(1)), normalizeUnit(matcher.group(2)), "EXPLICIT"))
                 .orElse(null);
+    }
+
+    private boolean trusted(ProcessAiEvidence item, String currentRequirement) {
+        if (!Set.of("CUSTOMER_TEXT", "DB_FACT", "APPROVED_MEMORY", "DEFAULT")
+                .contains(item.sourceType())) return false;
+        return !"CUSTOMER_TEXT".equals(item.sourceType())
+                || ProcessAiEvidenceTextMatcher.contains(currentRequirement, item.text());
     }
 
     private String normalizeUnit(String unit) {
@@ -107,8 +117,9 @@ public class ProcessAiIntentNormalizer {
     private boolean hasTrustedWidthSplitEvidence(List<ProcessAiEvidence> evidence,
                                                  String currentRequirement) {
         if (currentRequirement == null || currentRequirement.isBlank()) return false;
-        return evidence.stream().anyMatch(value -> "widthRule".equals(value.field())
-                && currentRequirement.contains(value.text())
+        return evidence.stream().anyMatch(value -> trusted(value, currentRequirement)
+                && "widthRule".equals(value.field())
+                && ProcessAiEvidenceTextMatcher.contains(currentRequirement, value.text())
                 && WIDTH_SPLIT_IN_TWO.matcher(value.text()).find());
     }
 

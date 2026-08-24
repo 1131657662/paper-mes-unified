@@ -49,6 +49,35 @@ class ProcessAiModelRetryExecutorTest {
         assertThat(deltas).containsExactly("partial");
     }
 
+    @Test
+    void parseFallbackUsesTheFallbackRouteWithoutCallingPrimary() {
+        AtomicInteger primaryCalls = new AtomicInteger();
+        AtomicInteger fallbackCalls = new AtomicInteger();
+        ProcessAiModelClient client = new ProcessAiModelClient() {
+            @Override
+            public ProcessAiModelResult parse(ProcessAiModelPrompt prompt,
+                                              java.util.function.Consumer<String> consumer) {
+                primaryCalls.incrementAndGet();
+                return result("primary");
+            }
+
+            @Override
+            public ProcessAiModelResult parseFallback(ProcessAiModelPrompt prompt,
+                                                       java.util.function.Consumer<String> consumer,
+                                                       ProcessAiCancellation cancellation) {
+                fallbackCalls.incrementAndGet();
+                return result("fallback");
+            }
+        };
+
+        ProcessAiModelResult actual = executor(client, new AiProperties())
+                .parseFallback(prompt(), ignored -> { }, new ProcessAiCancellation());
+
+        assertThat(actual.content()).isEqualTo("fallback");
+        assertThat(primaryCalls).hasValue(0);
+        assertThat(fallbackCalls).hasValue(1);
+    }
+
     private ProcessAiModelRetryExecutor executor(ProcessAiModelClient client,
                                                   AiProperties properties) {
         ProcessAiProviderCircuitBreaker breaker = new ProcessAiProviderCircuitBreaker(

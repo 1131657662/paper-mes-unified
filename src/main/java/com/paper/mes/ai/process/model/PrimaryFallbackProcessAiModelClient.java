@@ -46,4 +46,11 @@ public class PrimaryFallbackProcessAiModelClient implements ProcessAiModelClient
             }
         }
     }
+
+    @Override
+    public ProcessAiModelResult parseFallback(ProcessAiModelPrompt prompt,
+                                               Consumer<String> deltaConsumer,
+                                               ProcessAiCancellation cancellation) {
+        return fallback.parse(prompt, deltaConsumer, cancellation);
+    }
 }

@@ -33,7 +33,7 @@ class ProcessAiWorkflowSchemaContractTest {
 
     @Test
     void canonicalBaselineMatchesTheProcessAiMigration() throws IOException {
-        assertThat(read("sql/schema-baseline.version").trim()).isEqualTo("3.73");
+        assertThat(read("sql/schema-baseline.version").trim()).isEqualTo("3.76");
         assertThat(read("sql/01_schema_v4.1.sql")).contains(
                 "-- V3.69 canonical baseline",
                 "-- V3.71 canonical baseline",
@@ -49,6 +49,21 @@ class ProcessAiWorkflowSchemaContractTest {
                 "`final_value_json` JSON",
                 "CONSTRAINT `fk_memory_evidence_parse`",
                 "KEY `idx_ai_audit_attempt`");
+    }
+
+    @Test
+    void messageIdempotencyIsScopedToTheMemoryGeneration() throws IOException {
+        String migration = read("sql/V3.76__scope_ai_message_idempotency_to_memory_generation.sql");
+        String baseline = read("sql/01_schema_v4.1.sql");
+
+        assertThat(migration).contains(
+                "V3.76 migration lock not acquired",
+                "DROP INDEX uk_ai_message_idempotency",
+                "uk_ai_message_idempotency_generation",
+                "conversation_id, memory_generation, idempotency_key",
+                "SELECT RELEASE_LOCK");
+        assertThat(baseline).contains(
+                "UNIQUE KEY `uk_ai_message_idempotency_generation` (`conversation_id`, `memory_generation`, `idempotency_key`)");
     }
 
     @Test
@@ -69,6 +84,42 @@ class ProcessAiWorkflowSchemaContractTest {
                 "CREATE TABLE IF NOT EXISTS `biz_project_memory_candidate_evidence`",
                 "CONSTRAINT `fk_memory_evidence_parse`",
                 "REFERENCES `biz_process_ai_parse` (`parse_id`)");
+    }
+
+    @Test
+    void dialogueV2MigrationAddsDualStateAndRedactedEvidenceContracts() throws IOException {
+        String migration = read("sql/V3.75__add_ai_process_dialogue_v2.sql");
+        String repository = read("src/main/java/com/paper/mes/ai/process/parse/ProcessAiParseRepository.java");
+        String candidateRepository = read(
+                "src/main/java/com/paper/mes/ai/memory/candidate/ProjectMemoryCandidateRepository.java");
+
+        assertThat(migration).contains(
+                "V3.75 migration lock not acquired",
+                "dialogue_state",
+                "result_kind",
+                "workflow_version",
+                "understanding_json",
+                "preview_hash",
+                "chk_ai_parse_result_consistency",
+                "order_ref_hash",
+                "parse_ref_hash",
+                "audit_context_ciphertext",
+                "ON DELETE SET NULL",
+                "MODIFY COLUMN order_uuid VARCHAR(36) DEFAULT NULL",
+                "MODIFY COLUMN parse_id VARCHAR(64) DEFAULT NULL",
+                "ADD UNIQUE KEY uk_memory_candidate_order_ref (candidate_uuid, order_ref_hash)",
+                "SELECT RELEASE_LOCK");
+        assertThat(migration).contains("application audit backfill")
+                .doesNotContain("context_json = NULL", "phrase = NULL");
+        assertThat(migration).contains(
+                "proposed_value_json IS NOT NULL",
+                "final_value_json IS NOT NULL",
+                "difference_json IS NOT NULL",
+                "audit_context_hash IS NULL AND (");
+        assertThat(repository).contains("question_json = CAST(? AS JSON)");
+        assertThat(candidateRepository).contains(
+                "WHERE audit_context_hash IS NULL",
+                "AND audit_context_hash IS NULL");
     }
 
     private String read(String path) throws IOException {

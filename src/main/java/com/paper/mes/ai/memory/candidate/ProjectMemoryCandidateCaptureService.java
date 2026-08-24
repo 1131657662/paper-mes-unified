@@ -27,23 +27,48 @@ public class ProjectMemoryCandidateCaptureService {
 
     @Transactional
     public void capture(ProjectMemoryCandidateConfirmedEvent event) {
+        requireEvidenceReferencesReady();
         var memory = memoryProvider.version(event.projectMemoryVersion()).orElse(null);
         if (memory == null) throw new IllegalStateException("project-memory version unavailable");
         LocalDateTime now = LocalDateTime.now();
         repository.expireCandidates(now);
         extractor.extract(event.extraction(), event.acceptedFieldPaths(), memory)
+                .forEach(proposal -> observe(proposal, evidenceFactory.confirmed(event, proposal), now));
+    }
+
+    @Transactional
+    public void capture(ProjectMemoryCandidateLearningSnapshot event) {
+        requireEvidenceReferencesReady();
+        var memory = memoryProvider.version(event.projectMemoryVersion()).orElse(null);
+        if (memory == null) throw new IllegalStateException("project-memory version unavailable");
+        LocalDateTime now = LocalDateTime.now();
+        repository.expireCandidates(now);
+        if (event.extraction() == null) return;
+        extractor.extract(event.extraction(), event.acceptedFieldPaths(), memory)
                 .forEach(proposal -> observe(proposal,
-                        evidenceFactory.confirmed(event, proposal), now));
+                        evidenceFactory.confirmedSnapshot(event, proposal), now));
     }
 
     @Transactional
     public void captureSubmission(ProjectMemorySubmissionLearningSnapshot snapshot) {
+        requireEvidenceReferencesReady();
         var memory = memoryProvider.version(snapshot.projectMemoryVersion()).orElse(null);
         if (memory == null) throw new IllegalStateException("project-memory version unavailable");
         LocalDateTime now = LocalDateTime.now();
         repository.expireCandidates(now);
         manualFactory.create(snapshot, memory).ifPresent(proposal ->
                 observe(proposal, evidenceFactory.manual(snapshot, proposal), now));
+    }
+
+    @Transactional
+    public void captureSubmittedOutbox(ProjectMemorySubmissionLearningOutboxSnapshot snapshot) {
+        requireEvidenceReferencesReady();
+        var memory = memoryProvider.version(snapshot.projectMemoryVersion()).orElse(null);
+        if (memory == null) throw new IllegalStateException("project-memory version unavailable");
+        LocalDateTime now = LocalDateTime.now();
+        repository.expireCandidates(now);
+        manualFactory.createFinalConfiguration(snapshot.finalConfiguration(), memory).ifPresent(proposal ->
+                observe(proposal, evidenceFactory.manualSnapshot(snapshot, proposal), now));
     }
 
     private void observe(ProjectMemoryCandidateProposal proposal,
@@ -90,6 +115,12 @@ public class ProjectMemoryCandidateCaptureService {
 
     private LocalDateTime expiry(LocalDateTime now) {
         return now.plusDays(properties.getMemoryCandidateTtlDays());
+    }
+
+    private void requireEvidenceReferencesReady() {
+        if (!repository.evidenceReferencesReady()) {
+            throw new IllegalStateException("memory evidence reference backfill is incomplete");
+        }
     }
 
     private void requireUpdated(int count) {

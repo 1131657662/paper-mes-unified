@@ -20,6 +20,15 @@ class ProcessTextRedactorTest {
     }
 
     @Test
+    void redactExtractsPieceUnitWhenUnitPrecedesPrice() {
+        ProcessTextRedactionResult result = redactor.redact("剥破损包装，每件20元");
+
+        assertThat(result.sanitizedText()).isEqualTo("剥破损包装，每件[金额]");
+        assertThat(result.charges()).containsExactly(
+                new ProcessTextRedactor.ExtractedCharge(new java.math.BigDecimal("20"), "PIECE"));
+    }
+
+    @Test
     void redactRemovesIdentifiersAndCredentialsWithoutLoggingOrRejectingTheRequest() {
         ProcessTextRedactionResult result = redactor.redact(
                 "电话13800138000，编号202608120003，api key=sk-1234567890123456，邮箱a@example.com");

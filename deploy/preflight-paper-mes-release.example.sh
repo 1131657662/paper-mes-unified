@@ -165,7 +165,7 @@ env_value() {
 }
 
 check_ai_configuration() {
-  local provider data_mode master_key key_bytes message_key message_key_bytes
+  local provider data_mode master_key key_bytes message_key message_key_bytes reference_key
   provider="$(env_value PAPER_MES_AI_PROVIDER 2>/dev/null)" \
     || fail "application environment contains duplicate AI provider settings"
   data_mode="$(env_value PAPER_MES_AI_DATA_MODE 2>/dev/null)" \
@@ -189,6 +189,12 @@ check_ai_configuration() {
     message_key_bytes="$(printf '%s' "${message_key}" | base64 --decode 2>/dev/null | wc -c)"
     [ "${message_key_bytes}" = "32" ] \
       || fail "AI message encryption key must decode to exactly 32 bytes"
+    reference_key="$(env_value PAPER_MES_AI_MEMORY_REFERENCE_HMAC_KEY 2>/dev/null)" \
+      || fail "application environment contains duplicate AI memory reference HMAC settings"
+    [ -n "${reference_key}" ] && [ "${reference_key}" != "CHANGE_ME_STABLE_HMAC_KEY" ] \
+      || fail "AI memory reference HMAC key is missing while CONTEXT_ALLOWLIST is enabled"
+    [ "${#reference_key}" -ge 32 ] \
+      || fail "AI memory reference HMAC key must be at least 32 characters"
   fi
 }
 

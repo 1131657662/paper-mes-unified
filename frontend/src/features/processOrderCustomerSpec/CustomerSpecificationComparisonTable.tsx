@@ -2,7 +2,7 @@ import { Empty, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { SortOrder } from 'antd/es/table/interface'
 import type { FinishSourceVO } from '../../types/processOrder'
-import { formatGram, formatKg, formatMm, formatWholeKg } from '../../utils/numberFormatters'
+import { formatGram, formatKg, formatMm, formatOptionalKg, formatWholeKg } from '../../utils/numberFormatters'
 import type { FinishedProductRow } from '../processOrderDetail/components/finishedProductRows'
 import { customerSpecificationLabel, physicalSpecificationLabel } from './customerSpecModel'
 import type { FinishCustomerSpec } from './customerSpecTypes'
@@ -60,7 +60,7 @@ function SpecificationCell({ primary, secondary, changed }: { primary: string; s
 }
 
 function WeightCell({ spec }: { spec: FinishCustomerSpec }) {
-  return <div className="customer-comparison-cell is-right"><Typography.Text strong>{formatWholeKg(spec.customerDisplayWeight)}</Typography.Text><span>实物：{formatKg(spec.physicalWeight)}</span></div>
+  return <div className="customer-comparison-cell is-right"><Typography.Text strong>{formatWholeKg(spec.customerDisplayWeight)}</Typography.Text><span>实物：{formatOptionalKg(spec.physicalWeight)}</span></div>
 }
 
 function SourceRollCell({ sources }: { sources: FinishSourceVO[] }) {

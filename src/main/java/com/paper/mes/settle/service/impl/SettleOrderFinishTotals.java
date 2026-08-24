@@ -20,8 +20,10 @@ final class SettleOrderFinishTotals {
 
     static void apply(List<SettlePrintLineVO> lines, List<FinishRoll> finishes) {
         Map<String, FinishRoll> unique = uniqueDeliverableFinishes(finishes);
-        BigDecimal weight = unique.values().stream()
+        boolean unknown = lines.stream().anyMatch(line -> "UNKNOWN".equalsIgnoreCase(line.getOriginalWeightStatus()));
+        BigDecimal weight = unknown ? null : unique.values().stream()
                 .map(SettleOrderFinishTotals::weight)
+                .filter(value -> value != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         Set<String> shownFinishResults = new LinkedHashSet<>();
         for (SettlePrintLineVO line : lines) {
@@ -71,7 +73,7 @@ final class SettleOrderFinishTotals {
     }
 
     private static BigDecimal weight(FinishRoll finish) {
-        BigDecimal value = finish.getActualWeight() != null
+        BigDecimal value = finish.getActualWeight() != null && finish.getActualWeight().signum() > 0
                 ? finish.getActualWeight()
                 : finish.getEstimateWeight();
         return value == null ? BigDecimal.ZERO : value;

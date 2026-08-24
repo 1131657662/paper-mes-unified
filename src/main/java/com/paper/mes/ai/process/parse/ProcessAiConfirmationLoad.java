@@ -10,7 +10,18 @@ record ProcessAiConfirmationLoad(
         ProcessAiExtractionResult extraction,
         List<String> acceptedFieldPaths,
         String applyIdempotencyKey,
-        ProcessAiConfirmResponse replay) {
+        ProcessAiConfirmResponse replay,
+        String previewHash,
+        List<String> acknowledgedDefaultIds) {
+
+    ProcessAiConfirmationLoad(ProcessAiParseRecord record,
+                              ProcessAiExtractionResult extraction,
+                              List<String> acceptedFieldPaths,
+                              String applyIdempotencyKey,
+                              ProcessAiConfirmResponse replay) {
+        this(record, extraction, acceptedFieldPaths, applyIdempotencyKey, replay,
+                record.previewHash(), List.of());
+    }
 
     boolean isReplay() {
         return replay != null;

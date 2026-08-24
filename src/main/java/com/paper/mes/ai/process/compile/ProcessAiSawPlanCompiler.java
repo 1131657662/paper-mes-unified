@@ -3,14 +3,18 @@ package com.paper.mes.ai.process.compile;
 import com.paper.mes.ai.process.context.ProcessAiRollContext;
 import com.paper.mes.ai.process.intent.ProcessAiAssignment;
 import com.paper.mes.ai.process.intent.ProcessAiSawIntent;
+import com.paper.mes.ai.process.intent.ProcessAiCustomerSpec;
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ResultCode;
 import com.paper.mes.processorder.dto.FinishConfigSpecDTO;
 import com.paper.mes.processorder.dto.ProcessPlanDTO;
+import com.paper.mes.processorder.service.FinishCustomerSpecificationPolicy;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 class ProcessAiSawPlanCompiler {
@@ -18,9 +22,10 @@ class ProcessAiSawPlanCompiler {
     ProcessPlanDTO compile(ProcessAiAssignment assignment, ProcessAiRollContext owner) {
         requireSingleSource(assignment);
         List<Integer> widths = finishWidths(assignment.sawIntent(), owner);
-        List<FinishConfigSpecDTO> specs = finishSpecs(widths, owner.originalWidth());
+        validateCustomerSpecIndexes(assignment, widths.size());
+        List<FinishConfigSpecDTO> specs = finishSpecs(widths, owner, assignment.customerSpecs());
         ProcessPlanDTO plan = new ProcessPlanDTO();
-        plan.setProcessMode(processMode(owner));
+        plan.setProcessMode(processMode(assignment));
         plan.setMainStepType(1);
         plan.setSpareCount(0);
         plan.setKnifeCount(Math.max(0, specs.size() - 1));
@@ -56,12 +61,52 @@ class ProcessAiSawPlanCompiler {
         return result;
     }
 
-    private List<FinishConfigSpecDTO> finishSpecs(List<Integer> widths, int sourceWidth) {
+    private List<FinishConfigSpecDTO> finishSpecs(List<Integer> widths,
+                                                  ProcessAiRollContext owner,
+                                                  List<ProcessAiCustomerSpec> customerSpecs) {
         int used = widths.stream().mapToInt(Integer::intValue).sum();
         List<FinishConfigSpecDTO> result = new ArrayList<>();
-        widths.forEach(width -> result.add(spec("FINISH", width)));
-        if (used < sourceWidth) result.add(spec("TRIM", sourceWidth - used));
+        for (int index = 0; index < widths.size(); index++) {
+            FinishConfigSpecDTO item = spec("FINISH", widths.get(index));
+            applyCustomerSpecIfPresent(item, customerSpecs, index, owner, widths.get(index));
+            result.add(item);
+        }
+        if (used < owner.originalWidth()) result.add(spec("TRIM", owner.originalWidth() - used));
         return result;
+    }
+
+    private void applyCustomerSpecIfPresent(FinishConfigSpecDTO item,
+                                            List<ProcessAiCustomerSpec> customerSpecs,
+                                            int outputIndex,
+                                            ProcessAiRollContext owner,
+                                            int physicalWidth) {
+        for (ProcessAiCustomerSpec customerSpec : customerSpecs) {
+            if (Integer.valueOf(outputIndex).equals(customerSpec.outputIndex())) {
+                applyCustomerSpec(item, customerSpec, owner, physicalWidth);
+                return;
+            }
+        }
+    }
+
+    private void applyCustomerSpec(FinishConfigSpecDTO item, ProcessAiCustomerSpec spec,
+                                   ProcessAiRollContext owner, int physicalWidth) {
+        FinishCustomerSpecificationPolicy.requireOverrideReason(owner.paperName(), owner.gramWeight(),
+                physicalWidth, spec.paperName(), spec.gramWeight(), spec.finishWidth(),
+                spec.overrideReason());
+        item.setCustomerPaperName(spec.paperName());
+        item.setCustomerGramWeight(spec.gramWeight());
+        item.setCustomerFinishWidth(spec.finishWidth());
+        item.setCustomerSpecOverrideReason(spec.overrideReason());
+    }
+
+    private void validateCustomerSpecIndexes(ProcessAiAssignment assignment, int outputCount) {
+        Set<Integer> indexes = new HashSet<>();
+        assignment.customerSpecs().forEach(spec -> {
+            if (spec.outputIndex() == null || spec.outputIndex() < 0
+                    || spec.outputIndex() >= outputCount || !indexes.add(spec.outputIndex())) {
+                throw invalid("AI_CUSTOMER_SPEC_INDEX_INVALID", "客户销售规格未对应有效成品排布");
+            }
+        });
     }
 
     private FinishConfigSpecDTO spec(String type, int width) {
@@ -78,8 +123,8 @@ class ProcessAiSawPlanCompiler {
         }
     }
 
-    private int processMode(ProcessAiRollContext owner) {
-        return Integer.valueOf(2).equals(owner.processMode()) ? 2 : 1;
+    private int processMode(ProcessAiAssignment assignment) {
+        return "ON_SITE".equals(assignment.processMode()) ? 2 : 1;
     }
 
     private BusinessException invalid(String code, String message) {

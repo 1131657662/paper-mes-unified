@@ -20,12 +20,28 @@ public record ProcessAiConfirmResponse(
         List<ProcessAiPackagingCandidate> packagingCandidates,
         List<String> warnings,
         String remarkLong,
-        String planHash) {
+        String planHash,
+        int parseRevisionEcho,
+        String previewHash,
+        List<String> acknowledgedDefaultIds) {
+
+    public ProcessAiConfirmResponse(
+            String conversationId, String parseId, int parseRevision, int expectedVersion,
+            int nextVersion, String status, List<String> acceptedFieldPaths,
+            Map<String, ProcessAiCompiledPlan> plans,
+            List<ProcessAiPackagingCandidate> packagingCandidates, List<String> warnings,
+            String remarkLong, String planHash) {
+        this(conversationId, parseId, parseRevision, expectedVersion, nextVersion, status,
+                acceptedFieldPaths, plans, packagingCandidates, warnings, remarkLong, planHash,
+                parseRevision, null, List.of());
+    }
 
     public ProcessAiConfirmResponse {
         acceptedFieldPaths = List.copyOf(acceptedFieldPaths);
         plans = Collections.unmodifiableMap(new LinkedHashMap<>(plans));
         packagingCandidates = List.copyOf(packagingCandidates);
         warnings = List.copyOf(warnings);
+        acknowledgedDefaultIds = acknowledgedDefaultIds == null
+                ? List.of() : List.copyOf(acknowledgedDefaultIds);
     }
 }

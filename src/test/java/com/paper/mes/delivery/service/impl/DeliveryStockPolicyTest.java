@@ -53,6 +53,15 @@ class DeliveryStockPolicyTest {
         assertEquals(0, BigDecimal.ZERO.compareTo(DeliveryStockPolicy.availableWeight(finish)));
     }
 
+    @Test
+    void availableWeight_whenRemainIsOwnedByUs_returnsZero() {
+        FinishRoll finish = finish("A000006", 1, 2, "100.000", null);
+        finish.setIsRemain(1);
+        finish.setOwnershipStatus(2);
+
+        assertEquals(0, BigDecimal.ZERO.compareTo(DeliveryStockPolicy.availableWeight(finish)));
+    }
+
     private static FinishRoll finish(String rollNo, int sourceType, int status, String actual, String remaining) {
         FinishRoll finish = new FinishRoll();
         finish.setFinishRollNo(rollNo);

@@ -3,10 +3,10 @@ package com.paper.mes.ai.process.compile;
 import com.paper.mes.ai.process.intent.ProcessAiAssignment;
 import com.paper.mes.ai.process.intent.ProcessAiPackagingRequirement;
 import com.paper.mes.ai.process.security.ProcessTextRedactor.ExtractedCharge;
+import com.paper.mes.ai.process.context.ProcessAiRollContext;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,11 +16,16 @@ import java.util.stream.Collectors;
 @Component
 class ProcessAiPackagingCandidateCompiler {
 
-    private static final int REPACKAGE_STEP_TYPE = 4;
-
     ProcessAiPackagingCompilation compile(List<ProcessAiAssignment> assignments,
                                           List<ProcessAiCompiledPlan> plans,
                                           List<ExtractedCharge> charges) {
+        return compile(assignments, plans, charges, List.of());
+    }
+
+    ProcessAiPackagingCompilation compile(List<ProcessAiAssignment> assignments,
+                                          List<ProcessAiCompiledPlan> plans,
+                                          List<ExtractedCharge> charges,
+                                          List<ProcessAiRollContext> sourceRolls) {
         List<ProcessAiAssignment> packaging = assignments.stream()
                 .filter(this::hasPackaging)
                 .toList();
@@ -34,13 +39,20 @@ class ProcessAiPackagingCandidateCompiler {
                 .collect(Collectors.toMap(ProcessAiCompiledPlan::ownerRollRef, Function.identity()));
         List<ProcessAiPackagingCandidate> candidates = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
+        Map<String, ProcessAiRollContext> sourceByRef = sourceRolls.stream()
+                .collect(Collectors.toMap(ProcessAiRollContext::shortRef,
+                        Function.identity(), (left, right) -> left));
         for (ProcessAiAssignment assignment : packaging) {
             ProcessAiCompiledPlan plan = byOwner.get(assignment.ownerRollRef());
-            if (plan == null) continue;
+            if (plan == null && !isServiceOnly(assignment)) continue;
             ExtractedCharge charge = chargeMapping.byOwner().get(assignment.ownerRollRef());
-            candidates.add(candidate(assignment, plan, charge));
-            warnings.add(assignment.ownerRollRef()
-                    + ": 包装候选尚未保存，请人工确认机台、数量和价格");
+            if (isServiceOnly(assignment)) {
+                candidates.add(candidate(assignment, null, charge,
+                        sourceByRef.get(assignment.ownerRollRef()), assignment.ownerRollRef()));
+            } else {
+                candidates.add(candidate(assignment, plan, charge,
+                        sourceByRef.get(assignment.ownerRollRef()), assignment.ownerRollRef()));
+            }
         }
         return new ProcessAiPackagingCompilation(candidates, List.of(), warnings);
     }
@@ -52,6 +64,9 @@ class ProcessAiPackagingCandidateCompiler {
                         .packaging().chargeToken() != null)
                 .toList();
         if (tokenAssignments.isEmpty() && charges.isEmpty()) return ChargeMapping.empty();
+        if (canReuseSingleCharge(tokenAssignments, charges)) {
+            return sharedCharge(tokenAssignments, charges.getFirst());
+        }
         if (tokenAssignments.size() != charges.size()) {
             return ChargeMapping.error("包装金额占位符与本地提取金额数量不一致，请重新说明包装价格");
         }
@@ -68,37 +83,56 @@ class ProcessAiPackagingCandidateCompiler {
         return new ChargeMapping(Map.of(priced.ownerRollRef(), charge), List.of());
     }
 
+    private boolean canReuseSingleCharge(List<ProcessAiAssignment> assignments,
+                                         List<ExtractedCharge> charges) {
+        if (assignments.size() < 2 || charges.size() != 1
+                || assignments.stream().anyMatch(assignment -> !isServiceOnly(assignment))) {
+            return false;
+        }
+        ProcessAiPackagingRequirement first = assignments.getFirst()
+                .ancillaryRequirements().packaging();
+        return assignments.stream()
+                .map(assignment -> assignment.ancillaryRequirements().packaging())
+                .allMatch(item -> first.type().equals(item.type())
+                        && first.unit().equals(item.unit())
+                        && first.chargeToken().equals(item.chargeToken()));
+    }
+
+    private ChargeMapping sharedCharge(List<ProcessAiAssignment> assignments,
+                                       ExtractedCharge charge) {
+        Map<String, ExtractedCharge> byOwner = assignments.stream().collect(Collectors.toMap(
+                ProcessAiAssignment::ownerRollRef, ignored -> charge, (first, ignored) -> first));
+        return new ChargeMapping(byOwner, List.of());
+    }
+
     private ProcessAiPackagingCandidate candidate(ProcessAiAssignment assignment,
                                                    ProcessAiCompiledPlan plan,
-                                                   ExtractedCharge charge) {
+                                                   ExtractedCharge charge,
+                                                   ProcessAiRollContext source,
+                                                   String ownerRollRef) {
         ProcessAiPackagingRequirement requirement = assignment.ancillaryRequirements().packaging();
         String unit = normalizedUnit(requirement.unit(), charge);
         boolean fixed = "FIXED".equals(unit);
         BigDecimal amount = charge == null ? null : charge.amount();
+        String originalUuid = plan == null ? source == null ? null : source.originalUuid()
+                : plan.originalUuid();
+        List<String> covered = plan == null ? List.of() : plan.coveredOriginalUuids();
         return new ProcessAiPackagingCandidate(
-                assignment.ownerRollRef(), plan.originalUuid(), plan.coveredOriginalUuids(),
-                REPACKAGE_STEP_TYPE, requirement.type(), stepName(requirement.type()),
-                fixed ? null : unit, fixed ? null : quantity(unit, plan),
-                fixed ? 3 : 2, fixed ? null : amount, fixed ? amount : null,
-                stepName(requirement.type()) + "；AI识别候选，保存前请确认机台、数量和价格");
-    }
-
-    private BigDecimal quantity(String unit, ProcessAiCompiledPlan plan) {
-        Integer finishCount = plan.preview().getFinishCount();
-        if ("PIECE".equals(unit) && finishCount != null && finishCount > 0) {
-            return BigDecimal.valueOf(finishCount);
-        }
-        BigDecimal weight = plan.preview().getTotalEstimateWeight();
-        if ("TON".equals(unit) && weight != null && weight.signum() > 0) {
-            return weight
-                    .divide(new BigDecimal("1000"), 3, RoundingMode.HALF_UP);
-        }
-        return null;
+                ownerRollRef, originalUuid, covered,
+                stepType(requirement.type()), requirement.type(), stepName(requirement.type()),
+                fixed ? null : unit, null,
+                fixed ? 3 : billingMode(requirement), fixed ? null : amount, fixed ? amount : null,
+                stepName(requirement.type()) + "；按当前母卷的权威件数或吨位计费");
     }
 
     private boolean hasPackaging(ProcessAiAssignment assignment) {
         return assignment.ancillaryRequirements() != null
                 && assignment.ancillaryRequirements().packaging() != null;
+    }
+
+    private boolean isServiceOnly(ProcessAiAssignment assignment) {
+        return "SERVICE_ONLY".equals(assignment.processType())
+                || "ANCILLARY_ONLY".equals(assignment.processType());
     }
 
     private boolean compatibleUnit(String modelUnit, String extractedUnit) {
@@ -113,10 +147,17 @@ class ProcessAiPackagingCandidateCompiler {
 
     private String stepName(String type) {
         return switch (type) {
-            case "FILM" -> "包膜";
-            case "BOX" -> "装盒";
+            case "STRIP_SORT" -> "剥损整理";
             default -> "重新包装";
         };
+    }
+
+    private int stepType(String type) {
+        return "STRIP_SORT".equals(type) ? 3 : 4;
+    }
+
+    private int billingMode(ProcessAiPackagingRequirement requirement) {
+        return "SPECIFIED".equals(requirement.quantityMode()) ? 2 : 1;
     }
 
     private ProcessAiPackagingCompilation empty() {

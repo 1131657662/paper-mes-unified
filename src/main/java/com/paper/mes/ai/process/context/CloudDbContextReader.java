@@ -91,7 +91,8 @@ public class CloudDbContextReader {
         return new ProcessAiRollContext("R" + index, roll.getUuid(), roll.getRowSort(),
                 roll.getPaperName(), roll.getGramWeight(), roll.getOriginalWidth(),
                 roll.getOriginalDiameter(), roll.getCoreDiameter(), roll.getRollWeight(),
-                roll.getPieceNum(), roll.getProcessMode(), roll.getMainStepType());
+                roll.getPieceNum(), roll.getProcessMode(), roll.getMainStepType(),
+                roll.getActualWeight(), roll.getTotalWeight());
     }
 
     private int pieceCount(OriginalRoll roll) {

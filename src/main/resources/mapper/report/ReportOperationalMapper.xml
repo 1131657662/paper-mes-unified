@@ -24,6 +24,17 @@
 
     <sql id="InventoryWhere">
         f.is_deleted = 0 AND f.finish_status = 2
+        AND (COALESCE(f.actual_weight, 0) &gt; 0 OR NOT EXISTS (
+            SELECT 1
+            FROM biz_finish_original_rel unknown_rel
+            INNER JOIN biz_original_roll unknown_roll
+              ON unknown_roll.uuid = unknown_rel.original_uuid
+             AND unknown_roll.is_deleted = 0
+            WHERE unknown_rel.finish_uuid = f.uuid
+              AND unknown_rel.is_deleted = 0
+              AND unknown_roll.weight_status = 'UNKNOWN'
+              AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0
+        ))
         AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
         AND o.order_status IN (3, 4, 5)
         AND COALESCE(f.is_spare, 0) = 0 AND COALESCE(f.roll_no_status, 1) != 3

@@ -74,7 +74,8 @@ const columns: TableColumnsType<DeliveryInventoryUnassignedOrder> = [
   { title: '加工单号', dataIndex: 'orderNo', fixed: 'left', width: 140 },
   { title: '客户', dataIndex: 'customerName', width: 130, ellipsis: true },
   { title: '未分仓', dataIndex: 'unassignedRollCount', align: 'right', width: 80, render: (value) => `${value} 卷` },
-  { title: '剩余重量', dataIndex: 'unassignedWeight', align: 'right', width: 100, render: (value) => formatTon(value) },
+  { title: '剩余重量', dataIndex: 'unassignedWeight', align: 'right', width: 150,
+    render: (_, row) => unassignedWeightText(row) },
   { title: '已知仓库', dataIndex: 'knownWarehouseName', width: 120, render: (value) => value || <Typography.Text type="secondary">待人工确认</Typography.Text> },
   { title: '处理条件', key: 'state', width: 100, render: (_, row) => repairState(row) },
 ]
@@ -92,6 +93,15 @@ function repairState(row: DeliveryInventoryUnassignedOrder) {
 
 function repairStateText(row: DeliveryInventoryUnassignedOrder) {
   return row.warehouseConflict ? '同一加工单存在多个已知仓库，请先核对数据' : '存在活动出库占用，请先处理出库单'
+}
+
+function unassignedWeightText(row: DeliveryInventoryUnassignedOrder) {
+  const unknown = row.unassignedUnknownRollCount
+  if (unknown <= 0) return formatTon(row.unassignedWeight)
+  const pending = `待称重 ${unknown} 卷`
+  return row.unassignedWeight == null
+    ? pending
+    : `${formatTon(row.unassignedWeight)}（${pending}）`
 }
 
 function warehouseMatches(required: (string | undefined)[], selected: string) {

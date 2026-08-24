@@ -14,15 +14,18 @@ describe('processAiFieldOptions', () => {
     expect(paths).not.toContain('/assignments/R1/rewindIntent/widthRule/unit')
   })
 
-  it('keeps an ancillary-only selection independent from the main process', () => {
+  it('keeps service-only field paths aligned with the backend contract', () => {
     const parsed = rewindResult()
     parsed.result.assignments[0]!.ancillaryRequirements = {
-      packaging: { type: 'FILM', unit: 'PIECE', createsServiceStep: true },
+      packaging: { type: 'STRIP_SORT', unit: 'PIECE', quantityMode: 'STANDARD', createsServiceStep: true },
     }
+    parsed.result.assignments[0]!.processType = 'SERVICE_ONLY'
+    parsed.result.assignments[0]!.processMode = 'SERVICE_ONLY'
+    parsed.result.assignments[0]!.rewindIntent = undefined
     parsed.compiled.packagingCandidates = [{
-      ownerRollRef: 'R1', originalUuid: 'roll-1', coveredOriginalUuids: [], stepType: 4,
-      packagingType: 'FILM', stepName: '包膜', billingBasis: 'PIECE', billingMode: 2,
-      remark: '待确认',
+      ownerRollRef: 'R1', originalUuid: 'roll-1', coveredOriginalUuids: [], stepType: 3,
+      packagingType: 'STRIP_SORT', stepName: '剥损整理', billingBasis: 'PIECE', billingMode: 1,
+      remark: '按当前母卷的权威件数或吨位计费',
     }]
     const groups = buildProcessAiFieldOptions(parsed)
     const packagingId = groups[0]!.options.find((option) => option.id.endsWith('/packaging'))!.id
@@ -30,6 +33,21 @@ describe('processAiFieldOptions', () => {
     expect(acceptedPaths(groups, [packagingId])).toEqual([
       '/assignments/R1/ancillaryRequirements/packaging',
     ])
+  })
+
+  it('does not expose a main-process option for a service-only assignment', () => {
+    const parsed = rewindResult()
+    parsed.result.assignments[0] = {
+      sourceRollRefs: ['R1'], ownerRollRef: 'R1', coveredRollRefs: [],
+      processType: 'SERVICE_ONLY', processMode: 'SERVICE_ONLY',
+      ancillaryRequirements: { packaging: { type: 'STRIP_SORT', unit: 'PIECE', createsServiceStep: true } },
+      evidence: [{ field: 'packaging', text: '只附加工艺' }],
+    }
+
+    const options = buildProcessAiFieldOptions(parsed)[0]!.options
+
+    expect(options.some((option) => option.label === '主工艺')).toBe(false)
+    expect(options.some((option) => option.label === '包装要求')).toBe(true)
   })
 
   it('exposes a backend-resolved machine as its own selectable field', () => {
@@ -51,6 +69,25 @@ describe('processAiFieldOptions', () => {
     const groups = buildProcessAiFieldOptions(rewindResult())
 
     expect(acceptedPaths(groups, [])).toEqual([])
+  })
+
+  it('defaults to all parsed assignment groups instead of the currently selected roll', () => {
+    const parsed = rewindResult()
+    parsed.result.assignments.push({
+      sourceRollRefs: ['R2'], ownerRollRef: 'R2', coveredRollRefs: [],
+      processType: 'DIRECT_SHIP', processMode: 'DIRECT_SHIP', evidence: [],
+    })
+
+    const groups = buildProcessAiFieldOptions(parsed)
+
+    expect(defaultAcceptedOptionIds(groups)).toEqual(
+      expect.arrayContaining([
+        '/assignments/R1/scope',
+        '/assignments/R1/process-mode',
+        '/assignments/R2/scope',
+        '/assignments/R2/process-mode',
+      ]),
+    )
   })
 })
 

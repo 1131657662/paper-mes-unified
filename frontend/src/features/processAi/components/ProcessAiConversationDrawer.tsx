@@ -26,7 +26,7 @@ interface Props {
   selectedRollId?: string
   session: ProcessAiSession
   status?: ProcessAiStatus
-  onApply: (confirmation: ProcessAiConfirmResponse) => void
+  onApply: (confirmation: ProcessAiConfirmResponse) => Promise<void> | void
   onClose: () => void
   onSessionChange: (session: ProcessAiSession) => void
 }
@@ -47,12 +47,10 @@ export default function ProcessAiConversationDrawer(props: Props) {
       conversationId: props.session.conversationId,
       expectedVersion: props.expectedVersion,
     },
-    hasHistory: messages.some((item) => item.role === 'USER'),
     onMessagesChanged: messagesQuery.refetch,
   })
   const result = stream.result ?? (!stream.streaming
     ? latestStoredProcessAiResult(messages, props.expectedVersion) : undefined)
-  const selectedOriginalUuid = props.rolls.find((roll) => roll.localId === props.selectedRollId)?.uuid
   const customerRequirement = props.remarkLong?.trim()
     || messages.find((item) => item.role === 'USER' && item.content.trim())?.content.trim()
     || ''
@@ -103,14 +101,15 @@ export default function ProcessAiConversationDrawer(props: Props) {
           action={<Button onClick={() => void messagesQuery.refetch()}>重试</Button>} />}
         <ProcessAiMessageList messages={messages} loading={messagesQuery.isLoading}
           pendingUser={stream.pendingUser} progress={stream.progress} error={stream.error} />
-        {result && <ProcessAiResultPanel key={result.parseId} result={result}
+        {result && <ProcessAiResultPanel key={`${result.parseId}:${result.parseRevision}`} result={result}
           conversationRequirement={customerRequirement}
           currentDraft={{ plans: props.plans, remarkLong: props.remarkLong, rolls: props.rolls }}
-          defaultOriginalUuid={props.currentStep === 4 ? selectedOriginalUuid : undefined}
           expectedVersion={props.expectedVersion} orderUuid={props.orderUuid}
-          onApply={(confirmation) => {
+          onClarify={(question, answerCode) => void stream.clarify?.(question, answerCode)}
+          onRevised={stream.replaceResult}
+          onApply={async (confirmation) => {
+            await props.onApply(confirmation)
             stream.clearResult()
-            props.onApply(confirmation)
           }} />}
       </div>
       <ProcessAiComposer disabled={messagesQuery.isLoading || messagesQuery.isError}

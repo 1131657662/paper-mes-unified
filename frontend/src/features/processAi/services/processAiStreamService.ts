@@ -7,6 +7,11 @@ export interface ProcessAiStreamInput {
   idempotencyKey: string
   action: 'START' | 'CLARIFY'
   message: string
+  parseId?: string
+  questionId?: string
+  answerCode?: string
+  answerText?: string
+  parseRevision?: number
 }
 
 export interface ProcessAiStreamCallbacks {
@@ -45,6 +50,11 @@ export async function streamProcessAiParse(
       idempotencyKey: input.idempotencyKey,
       action: input.action,
       message: input.message,
+      ...(input.parseId ? { parseId: input.parseId } : {}),
+      ...(input.questionId ? { questionId: input.questionId } : {}),
+      ...(input.answerCode ? { answerCode: input.answerCode } : {}),
+      ...(input.answerText ? { answerText: input.answerText } : {}),
+      ...(input.parseRevision ? { parseRevision: input.parseRevision } : {}),
     }),
     signal,
   })
@@ -110,11 +120,17 @@ function dispatchFrame(
 
 function parseResult(value: unknown): ProcessAiParseResult {
   if (!isRecord(value) || typeof value.parseId !== 'string'
-    || typeof value.conversationId !== 'string' || !isRecord(value.result)
+    || typeof value.conversationId !== 'string'
     || !isRecord(value.compiled)) {
     throw new ProcessAiStreamError('AI_STREAM_PROTOCOL', 'AI 返回结果格式无效', true)
   }
-  return value as unknown as ProcessAiParseResult
+  if (isRecord(value.result)) return value as unknown as ProcessAiParseResult
+  return { ...value, result: emptyExtraction(value.parseId) } as unknown as ProcessAiParseResult
+}
+
+function emptyExtraction(parseId: string): ProcessAiParseResult['result'] {
+  return { parseId, schemaVersion: '2.0', assignments: [], unmappedText: [],
+    conflicts: [], needsClarification: true, clarificationQuestions: [] }
 }
 
 function streamEventError(value: unknown) {

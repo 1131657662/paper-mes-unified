@@ -9,5 +9,11 @@ public record ProcessAiRewindIntent(
         String modeIntent,
         @Valid ProcessAiDiameterRule diameterRule,
         @Valid ProcessAiMeasurement core,
-        @Valid ProcessAiWidthRule widthRule) {
+        @Valid ProcessAiWidthRule widthRule,
+        @Valid ProcessAiQuantityIntent quantityIntent) {
+
+    public ProcessAiRewindIntent(String modeIntent, ProcessAiDiameterRule diameterRule,
+                                 ProcessAiMeasurement core, ProcessAiWidthRule widthRule) {
+        this(modeIntent, diameterRule, core, widthRule, null);
+    }
 }

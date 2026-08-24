@@ -77,13 +77,10 @@ function buildServiceEditor(options: Props & { roll: RollDraft }) {
     />
   }
   return <ServiceOnlyConfigEditor
-    aiPackagingDraft={data.aiPackagingDraft}
     customerPrices={data.customerPrices} detailError={data.detailError}
     detailLoading={data.detailLoading} allSteps={data.allSteps} draftVersion={data.draftVersion}
     orderUuid={data.orderUuid}
     roll={roll} selectedRolls={data.selectedServiceRolls} onStatusChange={service.changeStatus}
-    onAiPackagingDraftConsumed={actions.onAiPackagingDraftConsumed}
-    onAiPackagingDraftDismissed={actions.onAiPackagingDraftDismissed}
     onBatchApplied={actions.onServiceBatchApplied}
     onCurrentSaved={actions.onCurrentServiceSaved}
     onSynchronizeVersion={service.synchronizeLatest}

@@ -61,6 +61,14 @@ class ProjectMemoryLearningOutboxRepository {
                 """, uuid);
     }
 
+    int replacePayload(String uuid, String payloadJson) {
+        return jdbcTemplate.update("""
+                UPDATE biz_project_memory_learning_outbox
+                SET payload_json = CAST(? AS JSON)
+                WHERE uuid = ? AND status = 'PROCESSING'
+                """, payloadJson, uuid);
+    }
+
     int fail(String uuid, int attemptCount, String error, LocalDateTime nextAttemptAt) {
         return jdbcTemplate.update("""
                 UPDATE biz_project_memory_learning_outbox

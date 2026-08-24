@@ -29,7 +29,7 @@ class ProcessAiNewPlanCompletenessGuard {
         if (hasTargetDiameter(plan) && intent.diameterRule() == null) {
             missing.add("请明确目标直径，或明确保持母卷直径");
         }
-        if (hasCore(plan) && intent.core() == null) {
+        if (hasCore(plan) && intent.core() == null && "KEEP_SPEC".equals(intent.modeIntent())) {
             missing.add("请明确成品纸芯规格");
         }
         return missing;

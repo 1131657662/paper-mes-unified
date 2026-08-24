@@ -1,12 +1,13 @@
 import { request } from '../../../api/request'
 import type {
   ProcessAiConfirmResponse,
+  ProcessAiCorrection,
   ProcessAiMessage,
-  ProcessAiPendingPackagingCandidate,
   ProcessAiManagedProvider,
   ProcessAiProviderSettings,
   ProcessAiSession,
   ProcessAiStatus,
+  ProcessAiParseResult,
 } from '../types'
 
 const processUrl = (orderUuid: string) => `/api/process-orders/${orderUuid}/ai/process-parse`
@@ -39,13 +40,8 @@ export const processAiService = {
   confirm: (input: ConfirmInput) => request<ProcessAiConfirmResponse>({
     url: `${processUrl(input.orderUuid)}/confirm`, method: 'post', data: input.request,
   }),
-  pendingPackaging: (input: PendingPackagingInput) => request<ProcessAiPendingPackagingCandidate[]>({
-    url: `${processUrl(input.orderUuid)}/packaging-candidates`, method: 'get',
-    params: { expectedVersion: input.expectedVersion },
-  }),
-  dismissPackaging: (input: DismissPackagingInput) => request<void>({
-    url: `${processUrl(input.orderUuid)}/packaging-candidates/${input.parseId}/${input.ownerRollRef}/dismiss`,
-    method: 'post', params: { expectedVersion: input.expectedVersion },
+  revise: (input: ReviseInput) => request<ProcessAiParseResult>({
+    url: `${processUrl(input.orderUuid)}/revise`, method: 'post', data: input.request,
   }),
 }
 
@@ -67,16 +63,6 @@ export interface RefreshMemoryInput {
   expectedVersion: number
 }
 
-export interface PendingPackagingInput {
-  orderUuid: string
-  expectedVersion: number
-}
-
-export interface DismissPackagingInput extends PendingPackagingInput {
-  parseId: string
-  ownerRollRef: string
-}
-
 export interface ConfirmInput {
   orderUuid: string
   request: {
@@ -85,5 +71,19 @@ export interface ConfirmInput {
     expectedVersion: number
     applyIdempotencyKey: string
     acceptedFieldPaths: string[]
+    parseRevision?: number
+    previewHash?: string
+    acknowledgedDefaultIds?: string[]
+  }
+}
+
+export interface ReviseInput {
+  orderUuid: string
+  request: {
+    conversationId: string
+    parseId: string
+    expectedVersion: number
+    parseRevision: number
+    corrections: ProcessAiCorrection[]
   }
 }

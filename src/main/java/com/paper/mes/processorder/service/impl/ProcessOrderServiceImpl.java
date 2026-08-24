@@ -1713,6 +1713,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
                         .set(ProcessOrder::getTotalFinishWeight, null)
                         .set(ProcessOrder::getTotalStepCount, 0)
                         .set(ProcessOrder::getHasExtraStep, 0)
+                        .set(ProcessOrder::getExtNum1, BigDecimal.valueOf(3))
                         .set(ProcessOrder::getActualTotalKnife, null)
                         .set(ProcessOrder::getIsMixProcess, 0)
                         .set(ProcessOrder::getUpdateBy, currentOperator())

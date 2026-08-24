@@ -21,7 +21,7 @@ public class SchemaReadinessService {
 
     private final JdbcTemplate jdbcTemplate;
 
-    @Value("${app.schema-readiness.expected-version:3.73}")
+    @Value("${app.schema-readiness.expected-version:3.76}")
     private String expectedVersion;
 
     @Value("${app.schema-readiness.require-migration-history:false}")
@@ -62,10 +62,25 @@ public class SchemaReadinessService {
         return switch (requirement.kind()) {
             case TABLE -> count(TABLE_SQL, requirement.table()) > 0;
             case COLUMN -> count(COLUMN_SQL, requirement.table(), requirement.name()) > 0;
+            case COLUMN_NULLABILITY -> count(COLUMN_NULLABILITY_SQL,
+                    requirement.table(), requirement.name()) > 0;
             case INDEX -> count(INDEX_SQL, requirement.table(), requirement.name()) > 0;
+            case INDEX_COLUMNS -> indexColumnsExist(requirement);
             case CONSTRAINT -> count(CONSTRAINT_SQL, requirement.table(), requirement.name()) > 0;
+            case FOREIGN_KEY_DELETE_RULE -> foreignKeyDeleteRuleExists(requirement);
             case TRIGGER -> count(TRIGGER_SQL, requirement.name()) > 0;
         };
+    }
+
+    private boolean indexColumnsExist(SchemaRequirement requirement) {
+        String[] parts = requirement.name().split("=", 2);
+        return parts.length == 2 && count(INDEX_COLUMNS_SQL, requirement.table(), parts[0], parts[1]) > 0;
+    }
+
+    private boolean foreignKeyDeleteRuleExists(SchemaRequirement requirement) {
+        String[] parts = requirement.name().split("=", 2);
+        return parts.length == 2 && count(FOREIGN_KEY_DELETE_RULE_SQL,
+                requirement.table(), parts[0], parts[1]) > 0;
     }
 
     private int count(String sql, Object... arguments) {
@@ -128,13 +143,33 @@ public class SchemaReadinessService {
             SELECT COUNT(*) FROM information_schema.columns
             WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
             """;
+    private static final String COLUMN_NULLABILITY_SQL = """
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
+              AND is_nullable = 'YES'
+            """;
     private static final String INDEX_SQL = """
             SELECT COUNT(*) FROM information_schema.statistics
             WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?
             """;
+    private static final String INDEX_COLUMNS_SQL = """
+            SELECT COUNT(*) FROM (
+              SELECT table_name, index_name,
+                     GROUP_CONCAT(column_name ORDER BY seq_in_index SEPARATOR ',') AS columns_used
+              FROM information_schema.statistics
+              WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?
+              GROUP BY table_name, index_name
+            ) indexes
+            WHERE columns_used = ?
+            """;
     private static final String CONSTRAINT_SQL = """
             SELECT COUNT(*) FROM information_schema.table_constraints
             WHERE constraint_schema = DATABASE() AND table_name = ? AND constraint_name = ?
+            """;
+    private static final String FOREIGN_KEY_DELETE_RULE_SQL = """
+            SELECT COUNT(*) FROM information_schema.referential_constraints
+            WHERE constraint_schema = DATABASE() AND table_name = ?
+              AND constraint_name = ? AND delete_rule = ?
             """;
     private static final String TRIGGER_SQL = """
             SELECT COUNT(*) FROM information_schema.triggers

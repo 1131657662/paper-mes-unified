@@ -14,12 +14,15 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 class ProjectMemoryCandidateExtractorTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final ProjectMemoryCandidateExtractor extractor = new ProjectMemoryCandidateExtractor(
             mapper, new ProjectMemoryContextSelector(), new ProcessTextRedactor());
+    private final ProjectMemoryCandidateDocumentValidator documentValidator =
+            new ProjectMemoryCandidateDocumentValidator();
 
     @Test
     void extractCreatesATermOnlyForUnknownConfirmedEvidence() {
@@ -32,6 +35,8 @@ class ProjectMemoryCandidateExtractorTest {
             assertThat(candidate.intent()).isEqualTo("SAW_CUTS");
             assertThat(candidate.document().path("status").asText()).isEqualTo("ACTIVE");
         });
+        assertThatCode(() -> documentValidator.validate(result.getFirst().candidateType(),
+                result.getFirst().document())).doesNotThrowAnyException();
     }
 
     @Test
@@ -45,14 +50,42 @@ class ProjectMemoryCandidateExtractorTest {
     @Test
     void extractClassifiesOrderSpecificNumericPhraseAsExample() {
         var result = extractor.extract(extraction("1000的9件切900"),
-                List.of("/assignments/R1/sawIntent/type"), memory("different"));
+                List.of("/assignments/R1/sawIntent/knifeCount"), memory("different"));
 
         assertThat(result).singleElement().satisfies(candidate -> {
-            assertThat(candidate.candidateType()).isEqualTo("EXAMPLE");
-            assertThat(candidate.document().path("input").asText()).isEqualTo("1000的9件切900");
-            assertThat(candidate.document().path("expected").path("intent").asText())
-                    .isEqualTo("SAW_CUTS");
+            assertThat(candidate.document().path("source").asText())
+                    .isEqualTo("confirmed-ai-candidate");
+            assertThat(candidate.document().toString())
+                    .doesNotContain("1000的9件切900");
+            assertThat(candidate.document().path("expected").path("field").asText())
+                    .isEqualTo("sawIntent/knifeCount");
+            assertThat(candidate.document().path("expected").path("processType").asText())
+                    .isEqualTo("SAW");
         });
+        assertThatCode(() -> documentValidator.validate(result.getFirst().candidateType(),
+                result.getFirst().document())).doesNotThrowAnyException();
+    }
+
+    @Test
+    void extractOnlyUsesAcceptedFieldSubtree() {
+        ProcessAiAssignment assignment = new ProcessAiAssignment(
+                List.of("R1"), "R1", List.of(), "REWIND",
+                new com.paper.mes.ai.process.intent.ProcessAiRewindIntent(
+                        "CHANGE_WIDTH",
+                        new com.paper.mes.ai.process.intent.ProcessAiDiameterRule(
+                                "EXPLICIT", 1, List.of(java.math.BigDecimal.ONE),
+                                new com.paper.mes.ai.process.intent.ProcessAiMeasurement(
+                                        java.math.BigDecimal.valueOf(1300), "mm", "EXPLICIT")),
+                        null,
+                        new com.paper.mes.ai.process.intent.ProcessAiWidthRule(
+                                "EXPLICIT", List.of(500, 500), "mm", null)),
+                null, null, List.of(new ProcessAiEvidence("diameterRule", "目标直径1300mm")));
+        ProcessAiExtractionResult extraction = new ProcessAiExtractionResult(
+                "parse-1", "1.0", List.of(assignment), List.of(), List.of(), false, List.of());
+
+        assertThat(extractor.extract(extraction,
+                List.of("/assignments/R1/rewindIntent/widthRule/values"), memory("different")))
+                .allMatch(candidate -> !candidate.document().toString().contains("diameter"));
     }
 
     private ProcessAiExtractionResult extraction(String phrase) {

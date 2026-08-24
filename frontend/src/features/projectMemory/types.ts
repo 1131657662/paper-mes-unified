@@ -62,17 +62,12 @@ export interface ProjectMemoryCandidateDocument {
 
 export interface ProjectMemoryCandidateEvidence {
   uuid: string
-  orderUuid: string
-  orderNo: string
-  parseId?: string
-  sourceType: 'AI_CONFIRMED' | 'MANUAL_FINAL'
   phrase?: string
-  context?: unknown
+  sourceType: 'AI_CONFIRMED' | 'MANUAL_FINAL'
   proposedValue?: unknown
   finalValue?: unknown
   difference?: unknown
   previewReady?: boolean
-  createdBy?: string
   createdAt: string
 }
 

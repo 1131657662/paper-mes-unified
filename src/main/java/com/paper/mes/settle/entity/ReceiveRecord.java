@@ -36,6 +36,9 @@ public class ReceiveRecord extends BaseEntity {
     private BigDecimal scrapUnitPrice;
     /** 1普通收款 2废纸抵扣 3混合结清 4优惠核销 */
     private Integer receiveType;
+    /** LEGACY/CASH/DISCOUNT/REMAIN_OFFSET。 */
+    private String sourceType;
+    private String remainApplicationUuid;
     /** 1现金 2转账 3微信 4支付宝 */
     private Integer payMethod;
     private String payNo;

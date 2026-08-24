@@ -15,7 +15,8 @@ class ProcessAiConversationRepository {
 
     private static final String BY_ORDER_FOR_UPDATE_SQL = """
             SELECT uuid, conversation_id, order_uuid, user_uuid, current_step,
-                   draft_version, project_memory_version, memory_generation, status
+                   draft_version, project_memory_version, memory_generation, status,
+                   clarification_round
             FROM biz_process_ai_conversation
             WHERE order_uuid = ?
             FOR UPDATE
@@ -23,7 +24,8 @@ class ProcessAiConversationRepository {
 
     private static final String BY_ORDER_SQL = """
             SELECT uuid, conversation_id, order_uuid, user_uuid, current_step,
-                   draft_version, project_memory_version, memory_generation, status
+                   draft_version, project_memory_version, memory_generation, status,
+                   clarification_round
             FROM biz_process_ai_conversation
             WHERE order_uuid = ?
             """;
@@ -121,6 +123,23 @@ class ProcessAiConversationRepository {
         return revision == null ? 0 : revision;
     }
 
+    int reserveNextRevision(String conversationId, String action) {
+        int updated = jdbcTemplate.update("""
+                UPDATE biz_process_ai_conversation
+                SET last_parse_revision = last_parse_revision + 1,
+                    clarification_round = clarification_round +
+                        CASE WHEN ? = 'CLARIFY' THEN 1 ELSE 0 END,
+                    status = 'OPEN'
+                WHERE conversation_id = ? AND status IN ('OPEN', 'INTERRUPTED')
+                """, action, conversationId);
+        if (updated != 1) return 0;
+        Integer revision = jdbcTemplate.queryForObject("""
+                SELECT last_parse_revision FROM biz_process_ai_conversation
+                WHERE conversation_id = ?
+                """, Integer.class, conversationId);
+        return revision == null ? 0 : revision;
+    }
+
     int refreshMemory(String conversationId, int expectedGeneration, String memoryVersion) {
         return jdbcTemplate.update("""
                 UPDATE biz_process_ai_conversation
@@ -137,6 +156,7 @@ class ProcessAiConversationRepository {
                 resultSet.getString("order_uuid"), resultSet.getString("user_uuid"),
                 resultSet.getInt("current_step"), resultSet.getInt("draft_version"),
                 resultSet.getString("project_memory_version"),
-                resultSet.getInt("memory_generation"), resultSet.getString("status"));
+                resultSet.getInt("memory_generation"), resultSet.getString("status"),
+                resultSet.getInt("clarification_round"));
     }
 }

@@ -64,6 +64,7 @@ export const routeMeta: AppRouteMeta[] = [
   { path: '/delivery-orders/:uuid', label: '出库单详情', parentLabel: '出库管理', menuKey: '/delivery-orders' },
   { path: '/settle-orders/create', label: '新建结算单', parentLabel: '结算管理', menuKey: '/settle-orders' },
   { path: '/settle-orders/:uuid', label: '结算单详情', parentLabel: '结算管理', menuKey: '/settle-orders' },
+  { path: '/remain', label: '余料业务' },
   { path: '/operation-logs', label: '操作日志', parentLabel: '系统管理', group: 'system' },
   { path: '*', label: '页面不存在' },
 ]

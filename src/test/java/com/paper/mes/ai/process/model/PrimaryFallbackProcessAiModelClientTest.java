@@ -74,6 +74,27 @@ class PrimaryFallbackProcessAiModelClientTest {
         assertThat(fallbackFailure.getSuppressed()).containsExactly(primaryFailure);
     }
 
+    @Test
+    void parseFallbackUsesFallbackRouteAfterPrimaryContractFailure() {
+        AtomicInteger primaryCalls = new AtomicInteger();
+        AtomicInteger fallbackCalls = new AtomicInteger();
+        ProcessAiModelClient primary = (prompt, consumer) -> {
+            primaryCalls.incrementAndGet();
+            return result("DEEPSEEK", "invalid");
+        };
+        ProcessAiModelClient fallback = (prompt, consumer) -> {
+            fallbackCalls.incrementAndGet();
+            return result("ZHIPU", "valid");
+        };
+
+        ProcessAiModelResult actual = router(primary, fallback)
+                .parseFallback(prompt(), ignored -> { }, new ProcessAiCancellation());
+
+        assertThat(actual.provider()).isEqualTo("ZHIPU");
+        assertThat(primaryCalls).hasValue(0);
+        assertThat(fallbackCalls).hasValue(1);
+    }
+
     private PrimaryFallbackProcessAiModelClient router(ProcessAiModelClient primary,
                                                        ProcessAiModelClient fallback) {
         return new PrimaryFallbackProcessAiModelClient(primary, fallback);

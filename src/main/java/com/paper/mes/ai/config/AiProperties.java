@@ -17,6 +17,13 @@ public class AiProperties {
 
     private String dataMode = AiDataMode.DISABLED.name();
 
+    /** Kill switch and optional rollout scopes for the collaborative dialogue flow. */
+    private boolean processDialogueV2Enabled = false;
+
+    private String processDialogueV2OrderAllowlist = "";
+
+    private String processDialogueV2UserAllowlist = "";
+
     private String provider = AiProvider.LOCAL_RULES.name();
 
     @NotBlank
@@ -31,6 +38,9 @@ public class AiProperties {
 
     @ToString.Exclude
     private String configMasterKey = "";
+
+    @ToString.Exclude
+    private String memoryReferenceHmacKey = "";
 
     @Min(1_000)
     @Max(86_400_000)
@@ -55,6 +65,10 @@ public class AiProperties {
     @Min(7)
     @Max(365)
     private int memoryCandidateTtlDays = 90;
+
+    @Min(1)
+    @Max(365)
+    private int memoryEvidenceAuditRetentionDays = 90;
 
     @Min(1)
     @Max(1_440)
@@ -126,6 +140,10 @@ public class AiProperties {
 
     public boolean enabled() {
         return mode() != AiDataMode.DISABLED;
+    }
+
+    public boolean memoryReferenceHmacConfigured() {
+        return memoryReferenceHmacKey != null && memoryReferenceHmacKey.length() >= 32;
     }
 
     public AiDataMode mode() {

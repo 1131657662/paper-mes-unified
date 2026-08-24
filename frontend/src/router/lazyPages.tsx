@@ -42,6 +42,7 @@ export const SettleCreatePage = lazy(() => import('../pages/settle/SettleCreateP
 export const SettleDiscountApprovalPage = lazy(() => import('../pages/settle/SettleDiscountApprovalPage'))
 export const SettleDetailPage = lazy(() => import('../pages/settle/SettleDetailPage'))
 export const SettleOrderList = lazy(() => import('../pages/settle/SettleOrderList'))
+export const RemainPage = lazy(() => import('../pages/remain/RemainPage'))
 export const SystemConfigPage = lazy(() => import('../pages/systemConfig/SystemConfigPage'))
 export const UserDetailPage = lazy(() => import('../pages/user/UserDetailPage'))
 export const UserFormPage = lazy(() => import('../pages/user/UserFormPage'))

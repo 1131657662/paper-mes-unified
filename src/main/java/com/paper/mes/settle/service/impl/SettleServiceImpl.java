@@ -445,6 +445,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         if (!StringUtils.hasText(dto.getRequestId())) {
             throw new BusinessException("收款请求号不能为空");
         }
+        if (dto.getScrapOffsetAmount() != null && dto.getScrapOffsetAmount().signum() > 0) {
+            throw new BusinessException("余料抵扣必须通过余料登记单应用入口完成");
+        }
         String requestId = dto.getRequestId().trim();
         businessLockService.lockSettleOrder(uuid);
         SettleOrder settle = getById(uuid);
@@ -486,6 +489,7 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         record.setScrapWeight(amount.scrapWeight());
         record.setScrapUnitPrice(amount.scrapUnitPrice());
         record.setReceiveType(amount.receiveType());
+        record.setSourceType(amount.discountAmount().signum() > 0 ? "DISCOUNT" : "CASH");
         record.setPayMethod(amount.cashAmount().signum() > 0 ? dto.getPayMethod() : null);
         record.setPayNo(trimToNull(dto.getPayNo()));
         record.setOperator(operator);
@@ -515,6 +519,9 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         ReceiveRecord record = receiveRecordMapper.selectById(receiveUuid);
         if (record == null || !uuid.equals(record.getSettleUuid())) {
             throw new BusinessException(ErrorCode.E002, "收款流水不存在");
+        }
+        if ("REMAIN_OFFSET".equals(record.getSourceType())) {
+            throw new BusinessException("余料抵扣收款必须通过余料应用反向入口撤销");
         }
         if (record.getRecordStatus() != null && record.getRecordStatus() == RECEIVE_STATUS_CANCELLED) {
             throw new BusinessException("该收款流水已撤销");
@@ -948,8 +955,8 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         line.setFinishSummary(finishSummary(deliverableFinishes));
         line.setFinishDetailSummary(finishDetailSummary(deliverableFinishes));
         line.setFinishCount(deliverableFinishes.size());
-        line.setFinishWeight(sumFinishWeight(deliverableFinishes));
-        line.setTrimWeight(sumTrimWeight(finishes));
+        line.setFinishWeight(sumFinishWeight(deliverableFinishes, roll));
+        line.setTrimWeight(sumTrimWeight(finishes, roll));
         line.setTrimSummary(trimSummary(finishes));
         line.setSawWeight(amounts.sawWeight());
         line.setRewindWeight(amounts.rewindWeight());
@@ -1234,13 +1241,15 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private BigDecimal originalWeight(OriginalRoll roll) {
-        if (roll.getActualWeight() != null) {
+        if (roll.getActualWeight() != null && roll.getActualWeight().signum() > 0) {
             return roll.getActualWeight();
         }
-        if (roll.getTotalWeight() != null) {
+        if ("UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
+        if (roll.getTotalWeight() != null && roll.getTotalWeight().signum() > 0) {
             return roll.getTotalWeight();
         }
-        return nz(roll.getRollWeight()).multiply(BigDecimal.valueOf(roll.getPieceNum() == null ? 1 : roll.getPieceNum()));
+        if (roll.getRollWeight() == null || roll.getRollWeight().signum() <= 0) return null;
+        return roll.getRollWeight().multiply(BigDecimal.valueOf(roll.getPieceNum() == null ? 1 : roll.getPieceNum()));
     }
 
     private String processText(OriginalRoll roll) {
@@ -1314,17 +1323,23 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
         return trimWidth + "mm / " + trimWeight + "kg";
     }
 
-    private BigDecimal sumFinishWeight(List<FinishRoll> finishes) {
+    private BigDecimal sumFinishWeight(List<FinishRoll> finishes, OriginalRoll source) {
+        if (source != null && "UNKNOWN".equalsIgnoreCase(source.getWeightStatus())
+                && finishes.stream().anyMatch(finish -> finish.getActualWeight() == null
+                    || finish.getActualWeight().signum() <= 0)) return null;
         BigDecimal total = BigDecimal.ZERO;
         for (FinishRoll finish : finishes) {
             if (isDeliverableFinish(finish)) {
-                total = total.add(finishWeight(finish));
+                BigDecimal weight = finishWeight(finish);
+                if (weight == null) return null;
+                total = total.add(weight);
             }
         }
         return total;
     }
 
-    private BigDecimal sumTrimWeight(List<FinishRoll> finishes) {
+    private BigDecimal sumTrimWeight(List<FinishRoll> finishes, OriginalRoll source) {
+        if (source != null && "UNKNOWN".equalsIgnoreCase(source.getWeightStatus())) return null;
         BigDecimal total = BigDecimal.ZERO;
         for (FinishRoll finish : finishes) {
             if (isSpareFinish(finish) || isVoidFinish(finish)) {
@@ -1353,7 +1368,10 @@ public class SettleServiceImpl extends ServiceImpl<SettleOrderMapper, SettleOrde
     }
 
     private BigDecimal finishWeight(FinishRoll finish) {
-        return nz(finish.getActualWeight() != null ? finish.getActualWeight() : finish.getEstimateWeight());
+        if (finish.getActualWeight() != null && finish.getActualWeight().signum() > 0) {
+            return finish.getActualWeight();
+        }
+        return finish.getEstimateWeight();
     }
 
     private String createFromOrders(SettlementBuildContext context) {

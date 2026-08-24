@@ -1,6 +1,6 @@
 import { Input, Table, Tag, Typography } from 'antd'
 import type { ColumnsType, TableRowSelection } from 'antd/es/table/interface'
-import { formatKg } from '../../utils/numberFormatters'
+import { formatOptionalKg } from '../../utils/numberFormatters'
 import CustomerSpecNumberInput from '../processOrderCustomerSpec/CustomerSpecNumberInput'
 import type { DeliveryCustomerSpecDraft } from './deliveryCustomerDraftModel'
 import type { DeliveryCustomerSpec } from './deliveryCustomerSpecTypes'
@@ -37,7 +37,7 @@ function columns(update: Props['onUpdate'], preview: Map<string, DeliveryCustome
 }
 
 function PhysicalCell({ row }: { row: DeliveryCustomerSpecDraft }) {
-  return <div className="delivery-customer-cell"><Typography.Text>{row.physicalPaperName ?? '-'}</Typography.Text><span>{row.physicalGramWeight ?? '-'}g / {row.physicalFinishWidth ?? '-'}mm / {formatKg(row.physicalDeliveryWeight)}</span></div>
+  return <div className="delivery-customer-cell"><Typography.Text>{row.physicalPaperName ?? '-'}</Typography.Text><span>{row.physicalGramWeight ?? '-'}g / {row.physicalFinishWidth ?? '-'}mm / {formatOptionalKg(row.physicalDeliveryWeight)}</span></div>
 }
 
 function Validation({ item }: { item?: DeliveryCustomerSpec }) {

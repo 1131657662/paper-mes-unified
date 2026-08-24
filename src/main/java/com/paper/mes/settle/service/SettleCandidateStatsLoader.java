@@ -62,31 +62,50 @@ public class SettleCandidateStatsLoader {
     private CandidateStats buildStats(List<OriginalRoll> originals, List<FinishRoll> finishes) {
         List<OriginalRoll> originalRows = originals == null ? List.of() : originals;
         List<FinishRoll> finishRows = finishes == null ? List.of() : finishes;
+        boolean sourceWeightKnown = originalRows.stream().allMatch(this::hasKnownWeight);
         return new CandidateStats(
                 originalRows.size(),
                 sumOriginalWeight(originalRows),
                 (int) finishRows.stream().filter(this::isFormalFinishRoll).count(),
-                sumFinishWeight(finishRows));
+                sumFinishWeight(finishRows, sourceWeightKnown));
     }
 
     private BigDecimal sumOriginalWeight(List<OriginalRoll> rolls) {
         BigDecimal total = BigDecimal.ZERO;
         for (OriginalRoll roll : rolls) {
-            BigDecimal weight = roll.getActualWeight() == null ? roll.getTotalWeight() : roll.getActualWeight();
+            BigDecimal weight = effectiveOriginalWeight(roll);
             total = total.add(weight == null ? BigDecimal.ZERO : weight);
         }
         return total;
     }
 
-    private BigDecimal sumFinishWeight(List<FinishRoll> rolls) {
+    private BigDecimal effectiveOriginalWeight(OriginalRoll roll) {
+        if (roll.getActualWeight() != null && roll.getActualWeight().signum() > 0) {
+            return roll.getActualWeight();
+        }
+        if ("UNKNOWN".equalsIgnoreCase(roll.getWeightStatus())) return null;
+        if (roll.getTotalWeight() != null && roll.getTotalWeight().signum() > 0) {
+            return roll.getTotalWeight();
+        }
+        if (roll.getRollWeight() == null || roll.getRollWeight().signum() <= 0) return null;
+        return roll.getRollWeight().multiply(BigDecimal.valueOf(
+                roll.getPieceNum() == null ? 1 : roll.getPieceNum()));
+    }
+
+    private BigDecimal sumFinishWeight(List<FinishRoll> rolls, boolean sourceWeightKnown) {
         BigDecimal total = BigDecimal.ZERO;
         for (FinishRoll roll : rolls) {
             if (isFormalFinishRoll(roll)) {
-                BigDecimal weight = roll.getActualWeight() == null ? roll.getEstimateWeight() : roll.getActualWeight();
+                BigDecimal weight = roll.getActualWeight() != null && roll.getActualWeight().signum() > 0
+                        ? roll.getActualWeight() : sourceWeightKnown ? roll.getEstimateWeight() : null;
                 total = total.add(weight == null ? BigDecimal.ZERO : weight);
             }
         }
         return total;
+    }
+
+    private boolean hasKnownWeight(OriginalRoll roll) {
+        return effectiveOriginalWeight(roll) != null;
     }
 
     private boolean isFormalFinishRoll(FinishRoll roll) {

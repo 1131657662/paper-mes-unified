@@ -22,7 +22,6 @@ class ProcessAiConfirmationWriter {
     private final ProcessAiParseRepository repository;
     private final ProcessAiConfirmationCodec codec;
     private final ProcessAiDraftApplicationService draftApplicationService;
-    private final ProcessAiPackagingCandidateRegistrar packagingCandidateRegistrar;
 
     ProcessAiConfirmResponse confirm(ProcessAiConfirmationWriteCommand command) {
         ProcessAiConfirmationMaterial material = material(command);
@@ -36,8 +35,6 @@ class ProcessAiConfirmationWriter {
                         command.compilation()));
         ProcessAiConfirmResponse response = response(command, material, applied);
         ProcessAiParseConfirmation confirmation = confirmation(command, response, material);
-        packagingCandidateRegistrar.register(
-                command.load().record(), response, command.confirmedBy());
         persist(command, confirmation);
         return response;
     }
@@ -45,7 +42,8 @@ class ProcessAiConfirmationWriter {
     private ProcessAiConfirmationMaterial material(ProcessAiConfirmationWriteCommand command) {
         Map<String, ProcessAiCompiledPlan> plans = indexedPlans(command.compilation());
         String planHash = codec.sha256(codec.write(new ConfirmationHashPayload(
-                plans, command.compilation().packagingCandidates())));
+                command.compilation().rollConfigurations(), plans,
+                command.compilation().packagingCandidates())));
         int nextVersion = command.load().record().expectedVersion() + 1;
         return new ProcessAiConfirmationMaterial(
                 plans, planHash, nextVersion, LocalDateTime.now());
@@ -71,7 +69,8 @@ class ProcessAiConfirmationWriter {
                 command.load().acceptedFieldPaths(), applied.plans(),
                 applied.packagingCandidates(),
                 command.compilation().warnings(), command.customerRequirement(),
-                material.planHash());
+                material.planHash(), record.parseRevision(), command.load().previewHash(),
+                command.load().acknowledgedDefaultIds());
     }
 
     private ProcessAiParseConfirmation confirmation(ProcessAiConfirmationWriteCommand command,
@@ -81,7 +80,7 @@ class ProcessAiConfirmationWriter {
                 command.load().applyIdempotencyKey(),
                 codec.write(command.load().acceptedFieldPaths()), material.planHash(),
                 material.nextVersion(), codec.writeResponse(response), command.confirmedBy(),
-                material.confirmedAt());
+                material.confirmedAt(), codec.write(command.load().acknowledgedDefaultIds()));
     }
 
     private ProcessAiConfirmedRequirement requirement(ProcessAiConfirmationWriteCommand command,
@@ -108,6 +107,7 @@ class ProcessAiConfirmationWriter {
     }
 
     private record ConfirmationHashPayload(
+            java.util.List<com.paper.mes.ai.process.compile.ProcessAiRollConfiguration> rollConfigurations,
             Map<String, ProcessAiCompiledPlan> plans,
             java.util.List<com.paper.mes.ai.process.compile.ProcessAiPackagingCandidate> packagingCandidates) {
     }

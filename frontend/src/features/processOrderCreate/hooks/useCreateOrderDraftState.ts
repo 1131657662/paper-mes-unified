@@ -37,6 +37,10 @@ export interface CreateOrderDraftSnapshot {
   selectedId?: string
 }
 
+interface HydrateDraftOptions {
+  preserveCurrentStep?: boolean
+}
+
 export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOptions) {
   const { draft, draftUuid, resetLocalDraft } = options
   const [localDraft] = useState(() => (
@@ -66,6 +70,21 @@ export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOption
     () => localDraft?.routePreviews ?? {},
   )
   const [submitResult, setSubmitResult] = useState<ProcessOrderSubmitVO>()
+
+  const hydrateDraft = useCallback((value: DraftOrderVO, hydrateOptions: HydrateDraftOptions = {}) => {
+    const next = hydrateDraftState(value)
+    setOrderUuid(next.orderUuid ?? value.order?.uuid)
+    setBaseInfo(next.baseInfo)
+    setRolls(next.rolls)
+    setPlans(next.plans)
+    setConfiguredPlanIds(next.configuredPlanIds)
+    setPreviews(next.previews)
+    setRoutes(next.routes)
+    setRoutePreviews(next.routePreviews)
+    setSelectedId(next.selectedId)
+    if (!hydrateOptions.preserveCurrentStep) setCurrent(next.current)
+    setDraftVersion(value.order?.version ?? 1)
+  }, [setDraftVersion, setRolls])
 
   const captureSnapshot = (): CreateOrderDraftSnapshot => structuredClone({
     baseInfo, configuredPlanIds, current, plans, previews, routePreviews, routes, rolls, selectedId,
@@ -106,20 +125,9 @@ export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOption
 
   useEffect(() => {
     if (!draftUuid || !draft || hydratedDraftUuid.current === draftUuid) return
-    const state = hydrateDraftState(draft)
-    setOrderUuid(state.orderUuid ?? draftUuid)
-    setBaseInfo(state.baseInfo)
-    setRolls(state.rolls)
-    setPlans(state.plans)
-    setConfiguredPlanIds(state.configuredPlanIds)
-    setPreviews(state.previews)
-    setRoutes(state.routes)
-    setRoutePreviews(state.routePreviews)
-    setSelectedId(state.selectedId)
-    setCurrent(state.current)
-    setDraftVersion(draft.order?.version ?? 1)
+    hydrateDraft(draft)
     hydratedDraftUuid.current = draftUuid
-  }, [draft, draftUuid, setDraftVersion, setRolls])
+  }, [draft, draftUuid, hydrateDraft])
 
   useEffect(() => {
     if (!draftUuid || !draft || hydratedDraftUuid.current !== draftUuid) return
@@ -134,6 +142,7 @@ export function useCreateOrderDraftState(options: UseCreateOrderDraftStateOption
     draftVersion,
     getDraftVersion,
     getRollsRevision,
+    hydrateDraft,
     orderUuid,
     plans,
     configuredPlanIds,

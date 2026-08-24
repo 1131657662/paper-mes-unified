@@ -67,12 +67,15 @@ class ProjectMemoryCandidateRepository {
         return jdbcTemplate.update("""
                 INSERT IGNORE INTO biz_project_memory_candidate_evidence
                   (uuid, candidate_uuid, order_uuid, parse_id, evidence_hash,
+                   order_ref_hash, parse_ref_hash, audit_context_ciphertext, audit_context_hash,
                    source_type, phrase, context_json, proposed_value_json,
                    final_value_json, difference_json, preview_ready, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), CAST(? AS JSON),
-                        CAST(? AS JSON), CAST(? AS JSON), ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), CAST(? AS JSON),
+                        CAST(? AS JSON), ?, ?)
                 """, uuid, candidateUuid, evidence.orderUuid(), evidence.parseId(),
-                evidence.evidenceHash(), evidence.sourceType(), evidence.phrase(),
+                evidence.evidenceHash(), evidence.orderRefHash(), evidence.parseRefHash(),
+                evidence.auditContextCiphertext(), evidence.auditContextHash(),
+                evidence.sourceType(), evidence.phrase(),
                 evidence.contextJson(), evidence.proposedValueJson(),
                 evidence.finalValueJson(), evidence.differenceJson(),
                 evidence.previewReady(), evidence.createdBy());
@@ -80,27 +83,131 @@ class ProjectMemoryCandidateRepository {
 
     List<ProjectMemoryCandidateEvidenceRow> listEvidence(String candidateUuid) {
         return jdbcTemplate.query("""
-                SELECT evidence.uuid, evidence.candidate_uuid, evidence.order_uuid,
-                       process_order.order_no, evidence.parse_id, evidence.source_type,
-                       evidence.phrase, evidence.context_json, evidence.proposed_value_json,
-                       evidence.final_value_json, evidence.difference_json,
+                SELECT evidence.uuid, evidence.candidate_uuid, evidence.source_type,
+                       evidence.proposed_value_json, evidence.final_value_json, evidence.difference_json,
                        evidence.preview_ready, evidence.created_by, evidence.created_at
                 FROM biz_project_memory_candidate_evidence evidence
-                INNER JOIN biz_process_order process_order
-                  ON process_order.uuid = evidence.order_uuid
                 WHERE evidence.candidate_uuid = ?
+                  AND evidence.audit_context_hash IS NOT NULL
+                  AND evidence.context_json IS NULL
+                  AND evidence.phrase IS NULL
                 ORDER BY evidence.created_at DESC
                 LIMIT 100
                 """, this::mapEvidence, candidateUuid);
     }
 
+    boolean evidenceReferencesReady() {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM biz_project_memory_candidate_evidence
+                WHERE (order_uuid IS NOT NULL AND order_ref_hash IS NULL)
+                   OR (parse_id IS NOT NULL AND parse_ref_hash IS NULL)
+                   OR phrase IS NOT NULL
+                   OR context_json IS NOT NULL
+                   OR (audit_context_hash IS NULL AND
+                       (audit_context_ciphertext IS NOT NULL
+                        OR proposed_value_json IS NOT NULL
+                        OR final_value_json IS NOT NULL
+                        OR difference_json IS NOT NULL))
+                """, Integer.class);
+        return count != null && count == 0;
+    }
+
     int countRecentOrders(String candidateUuid, LocalDateTime since) {
         Integer count = jdbcTemplate.queryForObject("""
-                SELECT COUNT(DISTINCT order_uuid)
+                SELECT COUNT(DISTINCT COALESCE(order_ref_hash, order_uuid))
                 FROM biz_project_memory_candidate_evidence
                 WHERE candidate_uuid = ? AND created_at >= ?
                 """, Integer.class, candidateUuid, since);
         return count == null ? 0 : count;
+    }
+
+    List<LegacyEvidenceReference> findLegacyReferences(int limit) {
+        return jdbcTemplate.query("""
+                SELECT uuid, candidate_uuid, order_uuid, parse_id
+                FROM biz_project_memory_candidate_evidence
+                WHERE (order_uuid IS NOT NULL AND order_ref_hash IS NULL)
+                   OR (parse_id IS NOT NULL AND parse_ref_hash IS NULL)
+                ORDER BY created_at, uuid
+                LIMIT ?
+                """, (resultSet, rowNumber) -> new LegacyEvidenceReference(
+                resultSet.getString("uuid"), resultSet.getString("candidate_uuid"),
+                resultSet.getString("order_uuid"), resultSet.getString("parse_id")), limit);
+    }
+
+    int backfillReference(String uuid, String orderRefHash, String parseRefHash) {
+        return jdbcTemplate.update("""
+                UPDATE biz_project_memory_candidate_evidence
+                SET order_ref_hash = ?, parse_ref_hash = ?, order_uuid = NULL, parse_id = NULL
+                WHERE uuid = ?
+                  AND ((order_uuid IS NOT NULL AND order_ref_hash IS NULL)
+                    OR (parse_id IS NOT NULL AND parse_ref_hash IS NULL))
+                """, orderRefHash, parseRefHash, uuid);
+    }
+
+    List<LegacyEvidenceAuditContext> findLegacyAuditContexts(int limit) {
+        return jdbcTemplate.query("""
+                SELECT uuid, phrase, context_json, proposed_value_json,
+                       final_value_json, difference_json
+                FROM biz_project_memory_candidate_evidence
+                WHERE audit_context_hash IS NULL
+                  AND (phrase IS NOT NULL OR context_json IS NOT NULL
+                   OR proposed_value_json IS NOT NULL
+                   OR final_value_json IS NOT NULL
+                   OR difference_json IS NOT NULL
+                   OR (audit_context_ciphertext IS NULL
+                       AND phrase IS NULL AND context_json IS NULL
+                       AND proposed_value_json IS NULL
+                       AND final_value_json IS NULL
+                       AND difference_json IS NULL))
+                ORDER BY created_at, uuid
+                LIMIT ?
+                """, (resultSet, rowNumber) -> new LegacyEvidenceAuditContext(
+                resultSet.getString("uuid"), resultSet.getString("phrase"),
+                resultSet.getString("context_json"),
+                resultSet.getString("proposed_value_json"),
+                resultSet.getString("final_value_json"),
+                resultSet.getString("difference_json")), limit);
+    }
+
+    int backfillAuditContext(String uuid, String ciphertext, String hash) {
+        return jdbcTemplate.update("""
+                UPDATE biz_project_memory_candidate_evidence
+                SET audit_context_ciphertext = ?, audit_context_hash = COALESCE(audit_context_hash, ?),
+                    context_json = NULL, phrase = NULL, proposed_value_json = NULL,
+                    final_value_json = NULL, difference_json = NULL
+                WHERE uuid = ? AND audit_context_hash IS NULL
+                  AND (phrase IS NOT NULL OR context_json IS NOT NULL
+                   OR proposed_value_json IS NOT NULL
+                   OR final_value_json IS NOT NULL
+                   OR difference_json IS NOT NULL
+                   OR (audit_context_ciphertext IS NULL
+                       AND phrase IS NULL AND context_json IS NULL
+                       AND proposed_value_json IS NULL
+                       AND final_value_json IS NULL
+                       AND difference_json IS NULL))
+                """, ciphertext, hash, uuid);
+    }
+
+    int purgeAuditContextBefore(LocalDateTime cutoff) {
+        return jdbcTemplate.update("""
+                UPDATE biz_project_memory_candidate_evidence
+                SET audit_context_ciphertext = NULL
+                WHERE audit_context_ciphertext IS NOT NULL AND created_at < ?
+                """, cutoff);
+    }
+
+    int refreshDistinctOrderCounts() {
+        return jdbcTemplate.update("""
+                UPDATE biz_project_memory_candidate candidate
+                LEFT JOIN (
+                    SELECT candidate_uuid, COUNT(DISTINCT order_ref_hash) AS order_count
+                    FROM biz_project_memory_candidate_evidence
+                    WHERE order_ref_hash IS NOT NULL
+                    GROUP BY candidate_uuid
+                ) evidence ON evidence.candidate_uuid = candidate.uuid
+                SET candidate.distinct_order_count = COALESCE(evidence.order_count, 0)
+                WHERE candidate.status <> 'ACTIVE'
+                """);
     }
 
     int updateObservation(String uuid, String status, int count,
@@ -145,10 +252,7 @@ class ProjectMemoryCandidateRepository {
         Object ready = resultSet.getObject("preview_ready");
         return new ProjectMemoryCandidateEvidenceRow(
                 resultSet.getString("uuid"), resultSet.getString("candidate_uuid"),
-                resultSet.getString("order_uuid"), resultSet.getString("order_no"),
-                resultSet.getString("parse_id"), resultSet.getString("source_type"),
-                resultSet.getString("phrase"), resultSet.getString("context_json"),
-                resultSet.getString("proposed_value_json"),
+                resultSet.getString("source_type"), resultSet.getString("proposed_value_json"),
                 resultSet.getString("final_value_json"),
                 resultSet.getString("difference_json"),
                 ready == null ? null : resultSet.getBoolean("preview_ready"),
@@ -163,5 +267,25 @@ class ProjectMemoryCandidateRepository {
     private Optional<ProjectMemoryCandidateRow> one(List<ProjectMemoryCandidateRow> rows) {
         if (rows.size() > 1) throw new IllegalStateException("multiple memory candidates matched");
         return rows.stream().findFirst();
+    }
+}
+
+record LegacyEvidenceReference(
+        String uuid,
+        String candidateUuid,
+        String orderUuid,
+        String parseId) {
+}
+
+record LegacyEvidenceAuditContext(
+        String uuid,
+        String phrase,
+        String contextJson,
+        String proposedValueJson,
+        String finalValueJson,
+        String differenceJson) {
+
+    LegacyEvidenceAuditContext(String uuid, String phrase, String contextJson) {
+        this(uuid, phrase, contextJson, null, null, null);
     }
 }

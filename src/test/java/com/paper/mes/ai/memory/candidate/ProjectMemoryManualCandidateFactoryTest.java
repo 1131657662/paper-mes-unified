@@ -26,8 +26,13 @@ class ProjectMemoryManualCandidateFactoryTest {
 
         assertThat(proposal.candidateType()).isEqualTo("EXAMPLE");
         assertThat(proposal.document().path("input").asText())
-                .isEqualTo("1000的9件切900，3件切850");
-        assertThat(proposal.document().path("expected").path("processPlans")).hasSize(1);
+                .isEqualTo("已确认工艺配置:/1");
+        assertThat(proposal.document().path("input").asText())
+                .doesNotContain("1000", "900", "客户");
+        assertThat(proposal.document().path("expected").path("processType").asText())
+                .isEqualTo("PROCESS_ORDER");
+        assertThat(proposal.document().path("expected").path("field").asText())
+                .isEqualTo("processPlans");
     }
 
     private ProjectMemorySnapshot memory() {

@@ -14,6 +14,7 @@ class ProcessAiConfirmationCommitter {
     private final ProcessAiConfirmationWriter writer;
     private final ProcessAiConfirmationContextGuard contextGuard;
     private final ProcessAiConfirmationAuditRecorder auditRecorder;
+    private final ProcessAiConfirmationCodec codec;
     private final ApplicationEventPublisher eventPublisher;
 
     ProcessAiConfirmResponse commit(ProcessAiConfirmationPreparation preparation,
@@ -27,9 +28,11 @@ class ProcessAiConfirmationCommitter {
         eventPublisher.publishEvent(new ProjectMemoryCandidateConfirmedEvent(
                 preparation.load().record().orderUuid(), response.parseId(),
                 preparation.load().record().projectMemoryVersion(),
-                preparation.customerRequirement(), preparation.userUuid(),
+                preparation.redaction().sanitizedText(), preparation.userUuid(),
                 preparation.load().extraction(), response.acceptedFieldPaths(),
-                compilation, preparation.context().baseline()));
+                compilation, preparation.context().baseline(),
+                codec.readCorrections(preparation.load().record()),
+                preparation.load().acknowledgedDefaultIds(), response.previewHash()));
         return response;
     }
 }

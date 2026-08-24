@@ -6,6 +6,7 @@ import {
   deliveryDetailSpecText,
   deliveryOriginalSnapshotText,
   formatKg,
+  formatOptionalKg,
 } from '../../features/delivery/utils/deliveryFormatters'
 import type { DeliveryDetail } from '../../types/delivery'
 import { formatGram } from '../../utils/numberFormatters'
@@ -46,9 +47,9 @@ export function buildDeliveryDetailColumns(options: {
     sortable({ title: '\u54c1\u540d', field: 'paperName', dataIndex: 'paperName', width: 130, render: textCell }, sortChain),
     sortable({ title: '\u514b\u91cd', field: 'gramWeight', dataIndex: 'gramWeight', width: 78, render: formatGram }, sortChain),
     sortable({ title: '\u89c4\u683c', field: 'spec', key: 'spec', width: 110, render: (_, record) => deliveryDetailSpecText(record) }, sortChain),
-    sortable({ title: '\u4ef6\u91cd', field: 'actualWeight', dataIndex: 'actualWeight', align: 'right', width: 110, render: formatKg }, sortChain),
+    sortable({ title: '\u4ef6\u91cd', field: 'actualWeight', dataIndex: 'actualWeight', align: 'right', width: 110, render: formatOptionalKg }, sortChain),
     sortable({ title: '\u51fa\u5e93\u91cd\u91cf', field: 'outWeight', dataIndex: 'outWeight', align: 'right', width: 110, render: formatKg }, sortChain),
-    sortable({ title: '\u5269\u4f59\u53ef\u51fa\u5e93', field: 'remainingWeight', dataIndex: 'remainingWeight', align: 'right', width: 120, render: formatKg }, sortChain),
+    sortable({ title: '\u5269\u4f59\u53ef\u51fa\u5e93', field: 'remainingWeight', dataIndex: 'remainingWeight', align: 'right', width: 120, render: formatOptionalKg }, sortChain),
     {
       ...sortableBase('originalSummary', sortChain),
       title: sortableTitle('\u6765\u6e90\u6bcd\u5377', 'originalSummary', sortChain),

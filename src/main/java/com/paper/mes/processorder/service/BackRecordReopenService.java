@@ -14,6 +14,7 @@ import com.paper.mes.processorder.entity.OriginalRoll;
 import com.paper.mes.processorder.mapper.FinishOriginalRelMapper;
 import com.paper.mes.processorder.mapper.FinishRollMapper;
 import com.paper.mes.processorder.mapper.OriginalRollMapper;
+import com.paper.mes.remain.service.RemainReopenGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +49,7 @@ public class BackRecordReopenService {
     private final DeliveryDetailMapper deliveryDetailMapper;
     private final BusinessLockService businessLockService;
     private final InventoryLedgerBusinessRecorder inventoryLedgerRecorder;
+    private final RemainReopenGuard remainReopenGuard;
 
     @Transactional(rollbackFor = Exception.class)
     public int reopen(String orderUuid, Collection<String> requestedRollUuids,
@@ -75,6 +77,7 @@ public class BackRecordReopenService {
         businessLockService.lockFinishRolls(finishUuids);
         List<FinishRoll> finishes = lockedFinishes(orderUuid, finishUuids);
         requireNoDeliveryActivity(finishes);
+        remainReopenGuard.assertAllowed(finishes);
         reopenFinishes(finishes, orderUuid, batchKey, operator);
         reopenRolls(selected, operator);
         return selected.size();

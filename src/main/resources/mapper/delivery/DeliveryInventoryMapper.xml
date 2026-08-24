@@ -12,6 +12,17 @@
     <sql id="InventoryWhere">
         f.is_deleted = 0
         AND f.finish_status = 2
+        AND (COALESCE(f.actual_weight, 0) &gt; 0 OR NOT EXISTS (
+            SELECT 1
+            FROM biz_finish_original_rel unknown_rel
+            INNER JOIN biz_original_roll unknown_roll
+              ON unknown_roll.uuid = unknown_rel.original_uuid
+             AND unknown_roll.is_deleted = 0
+            WHERE unknown_rel.finish_uuid = f.uuid
+              AND unknown_rel.is_deleted = 0
+              AND unknown_roll.weight_status = 'UNKNOWN'
+              AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0
+        ))
         AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
         AND o.is_deleted = 0
         AND o.order_status IN (3, 4, 5)
@@ -153,7 +164,20 @@
                f.finish_diameter AS finishDiameter,
                f.finish_core_diameter AS finishCoreDiameter,
                f.actual_weight AS actualWeight,
-               COALESCE(f.remaining_weight, f.actual_weight, 0) AS remainingWeight,
+               CASE WHEN COALESCE(f.actual_weight, 0) &gt; 0
+                         OR NOT EXISTS (
+                             SELECT 1
+                             FROM biz_finish_original_rel unknown_rel
+                             INNER JOIN biz_original_roll unknown_roll
+                               ON unknown_roll.uuid = unknown_rel.original_uuid
+                              AND unknown_roll.is_deleted = 0
+                             WHERE unknown_rel.finish_uuid = f.uuid
+                               AND unknown_rel.is_deleted = 0
+                               AND unknown_roll.weight_status = 'UNKNOWN'
+                               AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0
+                         )
+                    THEN COALESCE(f.remaining_weight, f.actual_weight, 0)
+                    ELSE NULL END AS remainingWeight,
                f.stock_in_time AS stockInTime,
                CASE WHEN f.stock_in_time IS NULL THEN NULL
                     ELSE TIMESTAMPDIFF(DAY, f.stock_in_time, NOW()) END AS stockAgeDays,

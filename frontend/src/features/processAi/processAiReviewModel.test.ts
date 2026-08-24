@@ -34,6 +34,37 @@ describe('processAiReviewModel', () => {
     expect(groups[0]?.options.find((option) => option.id.endsWith('/diameter'))?.required).toBe(true)
   })
 
+  it('does not require step three fields when adding packaging to an existing service-only roll', () => {
+    const parsed = result()
+    parsed.result.assignments[0] = {
+      sourceRollRefs: ['R1'], ownerRollRef: 'R1', coveredRollRefs: [],
+      processType: 'SERVICE_ONLY', processMode: 'SERVICE_ONLY', rewindIntent: undefined,
+      ancillaryRequirements: { packaging: { type: 'STRIP_SORT', unit: 'PIECE',
+        quantityMode: 'STANDARD', createsServiceStep: true } }, evidence: [],
+    }
+    parsed.baseline!.plans[0] = { ownerRollRef: 'R1', originalUuid: 'roll-1',
+      processMode: 4, route: false, plan: undefined }
+    parsed.compiled.plans = []
+    const groups = buildProcessAiReviewGroups(parsed, current(plan(1000)))
+
+    expect(groups[0]?.options.find((option) => option.id.endsWith('/scope'))?.required).toBe(false)
+    expect(groups[0]?.options.find((option) => option.id.endsWith('/process-mode'))?.required).toBe(false)
+    expect(groups[0]?.options.find((option) => option.id.endsWith('/packaging'))?.required).toBe(false)
+  })
+
+  it('requires the complete candidate when the main process changes', () => {
+    const parsed = result()
+    parsed.result.assignments[0] = {
+      sourceRollRefs: ['R1'], ownerRollRef: 'R1', coveredRollRefs: [], processType: 'SAW',
+      sawIntent: { type: 'EXPLICIT_WIDTHS', widths: [900], unit: 'mm' }, evidence: [],
+    }
+    parsed.compiled.plans[0]!.plan = sawPlan()
+
+    const options = buildProcessAiReviewGroups(parsed, current(plan(1200)))[0]?.options ?? []
+
+    expect(options.filter((option) => option.category === 'PLAN').every((option) => option.required)).toBe(true)
+  })
+
   it('labels trim layout items so they cannot look like finished widths', () => {
     const currentPlan = plan(1200)
     currentPlan.segments![0]!.layoutItems![1]!.itemType = 'TRIM'

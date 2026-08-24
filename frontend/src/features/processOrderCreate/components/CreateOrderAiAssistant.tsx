@@ -11,8 +11,8 @@ interface Props {
 }
 
 export default function CreateOrderAiAssistant({ currentStep, state }: Props) {
-  const apply = (confirmation: ProcessAiConfirmResponse) => {
-    state.applyAiConfirmation(confirmation)
+  const apply = async (confirmation: ProcessAiConfirmResponse) => {
+    await state.applyAiConfirmation(confirmation)
   }
   return <ProcessAiAssistantEntry currentStep={currentStep} draftVersion={state.draftVersion}
     orderUuid={state.orderUuid} plans={state.plans} remarkLong={state.baseInfo?.remarkLong}

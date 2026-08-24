@@ -74,6 +74,38 @@ class ProcessAiPlanFieldMergerTest {
     }
 
     @Test
+    void mergeAcceptedProcessModeLeavesTheExistingMainProcessUntouched() {
+        ProcessPlanDTO current = plan(segment(1, "100", 1200, 3));
+        current.setProcessMode(1);
+        current.setMainStepType(2);
+        ProcessPlanDTO proposed = plan(segment(1, "100", 1200, 3));
+        proposed.setProcessMode(2);
+        proposed.setMainStepType(1);
+
+        ProcessPlanDTO result = merger.merge(current, candidate(proposed), List.of(
+                "/assignments/R1/processMode"));
+
+        assertThat(result.getProcessMode()).isEqualTo(2);
+        assertThat(result.getMainStepType()).isEqualTo(2);
+    }
+
+    @Test
+    void mergeAcceptedProcessTypeLeavesTheExistingProcessModeUntouched() {
+        ProcessPlanDTO current = plan(segment(1, "100", 1200, 3));
+        current.setProcessMode(2);
+        current.setMainStepType(1);
+        ProcessPlanDTO proposed = plan(segment(1, "100", 1200, 3));
+        proposed.setProcessMode(1);
+        proposed.setMainStepType(2);
+
+        ProcessPlanDTO result = merger.merge(current, candidate(proposed), List.of(
+                "/assignments/R1/processType"));
+
+        assertThat(result.getProcessMode()).isEqualTo(2);
+        assertThat(result.getMainStepType()).isEqualTo(2);
+    }
+
+    @Test
     void changingToWidthOnlyClearsDiameterCoreAndWeightSplitAllocation() {
         ProcessPlanDTO current = plan(segment(1, "100", 1200, 3));
         current.setRewindMode(3);
@@ -120,4 +152,5 @@ class ProcessAiPlanFieldMergerTest {
         segment.setLayoutItems(List.of());
         return segment;
     }
+
 }

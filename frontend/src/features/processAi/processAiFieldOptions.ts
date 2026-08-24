@@ -3,6 +3,7 @@ import type {
   ProcessAiCompiledPlan,
   ProcessAiPackagingCandidate,
   ProcessAiParseResult,
+  ProcessAiProcessMode,
 } from './types'
 
 export interface ProcessAiFieldOption {
@@ -32,11 +33,9 @@ export function buildProcessAiFieldOptions(result: ProcessAiParseResult): Proces
 
 export function defaultAcceptedOptionIds(
   groups: ProcessAiAssignmentOptions[],
-  defaultOwnerRollRef?: string,
   excludedIds: ReadonlySet<string> = new Set(),
 ): string[] {
-  return groups.filter((group) => !defaultOwnerRollRef || group.ownerRollRef === defaultOwnerRollRef)
-    .flatMap((group) => group.options.map((option) => option.id))
+  return groups.flatMap((group) => group.options.map((option) => option.id))
     .filter((id) => !excludedIds.has(id))
 }
 
@@ -48,9 +47,8 @@ export function acceptedPaths(
   return [...new Set(groups.flatMap((group) => {
     const selectedOptions = group.options.filter((option) => selected.has(option.id))
     if (selectedOptions.length === 0) return []
-    const planEnabled = selectedOptions.some((option) => option.category === 'PLAN')
     return group.options.filter((option) => selected.has(option.id)
-      || (planEnabled && option.required && option.category === 'PLAN'))
+      || (option.required && option.category === 'PLAN'))
       .flatMap((option) => option.paths)
   }))]
 }
@@ -61,18 +59,40 @@ function assignmentOptions(
   packaging?: ProcessAiPackagingCandidate,
 ): ProcessAiFieldOption[] {
   const base = `/assignments/${assignment.ownerRollRef}`
-  const options = [
-    option(base, 'scope', '适用母卷', rollScope(assignment),
-      [`${base}/sourceRollRefs`, `${base}/coveredRollRefs`], 'PLAN', true),
-    option(base, 'type', '主工艺', assignment.processType === 'SAW' ? '锯纸' : '复卷',
-      [`${base}/processType`], 'PLAN', true),
-  ]
+  const options = configurationOptions(assignment, base)
   if (compiledPlan?.plan.machineUuid) options.push(option(base, 'machine', '建议机台',
     compiledPlan.plan.machineUuid, [`${base}/machineUuid`], 'PLAN'))
   if (assignment.rewindIntent) addRewindOptions(options, base, assignment.rewindIntent)
   if (assignment.sawIntent) addSawOption(options, base, assignment.sawIntent)
+  addCustomerSpecOption(options, base, assignment, compiledPlan)
   addAncillaryOptions(options, base, assignment.ancillaryRequirements, packaging)
   return options
+}
+
+function addCustomerSpecOption(
+  options: ProcessAiFieldOption[],
+  base: string,
+  assignment: ProcessAiAssignment,
+  compiledPlan?: ProcessAiCompiledPlan,
+) {
+  const specs = assignment.customerSpecs ?? []
+  if (specs.length === 0) return
+  const values = specs.map((spec) => {
+    const fields = [spec.paperName, spec.gramWeight == null ? undefined : `${spec.gramWeight}g`,
+      spec.finishWidth == null ? undefined : `${spec.finishWidth}mm`].filter(Boolean)
+    return `第${spec.outputIndex + 1}件：${fields.join(' / ') || '客户规格'}${spec.overrideReason
+      ? `（${spec.overrideReason}）` : ''}`
+  })
+  const paths = specs.flatMap((spec) => {
+    const prefix = `${base}/customerSpecs/${spec.outputIndex}`
+    return [spec.paperName != null ? `${prefix}/paperName` : undefined,
+      spec.gramWeight != null ? `${prefix}/gramWeight` : undefined,
+      spec.finishWidth != null ? `${prefix}/finishWidth` : undefined,
+      spec.overrideReason != null ? `${prefix}/overrideReason` : undefined].filter(
+        (value): value is string => value !== undefined)
+  })
+  if (paths.length === 0 || !compiledPlan) return
+  options.push(option(base, 'customer-spec', '客户销售规格', values.join('；'), paths, 'PLAN'))
 }
 
 function addRewindOptions(options: ProcessAiFieldOption[], base: string, intent: Record<string, unknown>) {
@@ -109,14 +129,38 @@ function addAncillaryOptions(
 }
 
 function packagingDetail(candidate?: ProcessAiPackagingCandidate) {
-  if (!candidate) return '待人工确认数量、价格和机台'
-  const quantity = candidate.serviceQuantity == null
-    ? '数量待填'
-    : `${candidate.serviceQuantity} ${candidate.billingBasis === 'TON' ? '吨' : '件'}`
+  if (!candidate) return '等待后端核验附加工艺'
+  const quantity = candidate.billingBasis === 'TON' ? '当前母卷吨位' : '当前母卷件数'
   const price = candidate.billingMode === 3
     ? `固定 ${candidate.billingAmount ?? '-'} 元`
-    : `${candidate.unitPrice ?? '待定'} 元/${candidate.billingBasis === 'TON' ? '吨' : '件'}`
-  return `${candidate.stepName} · ${quantity} · ${price} · 机台待确认`
+    : `${candidate.unitPrice ?? '未定价'} 元/${candidate.billingBasis === 'TON' ? '吨' : '件'}`
+  return `${candidate.stepName} · ${quantity} · ${price}`
+}
+
+function configurationOptions(assignment: ProcessAiAssignment, base: string): ProcessAiFieldOption[] {
+  const mode = assignment.processMode ?? legacyProcessMode(assignment.processType)
+  const options = [option(base, 'scope', '适用母卷', rollScope(assignment),
+    [`${base}/sourceRollRefs`, `${base}/coveredRollRefs`], 'PLAN'),
+    option(base, 'process-mode', '加工方式', processModeText(mode),
+      [`${base}/processMode`], 'PLAN')]
+  if (assignment.processType === 'REWIND' || assignment.processType === 'SAW') {
+    options.push(option(base, 'type', '主工艺', assignment.processType === 'SAW' ? '锯纸' : '复卷',
+      [`${base}/processType`], 'PLAN'))
+  }
+  return options
+}
+
+function legacyProcessMode(type: ProcessAiAssignment['processType']): ProcessAiProcessMode {
+  if (type === 'ANCILLARY_ONLY' || type === 'SERVICE_ONLY') return 'SERVICE_ONLY'
+  if (type === 'DIRECT_SHIP') return 'DIRECT_SHIP'
+  return 'STANDARD'
+}
+
+function processModeText(mode: ProcessAiProcessMode) {
+  const labels: Record<ProcessAiProcessMode, string> = {
+    STANDARD: '标准加工', ON_SITE: '现场定尺', DIRECT_SHIP: '不加工直发', SERVICE_ONLY: '仅附加工艺',
+  }
+  return labels[mode]
 }
 
 function option(

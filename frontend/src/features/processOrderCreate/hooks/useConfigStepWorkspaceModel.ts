@@ -37,9 +37,6 @@ export function useConfigStepWorkspaceModel(options: Options): ConfigStepWorkspa
   const lockedRolls = mergedSourceLocks(props.rolls, props.plans)
   const configurableRolls = getConfigurableRolls(props.rolls, lockedRolls)
   const selected = selectedConfigRoll(props.rolls, props.selectedId, lockedRolls)
-  const aiPackagingDraft = selected?.uuid
-    ? props.aiPackagingDrafts?.[selected.uuid]
-    : undefined
   const defaults = props.defaultPlanOptions ?? { spareCount: props.defaultSpareCount ?? 0 }
   const plan = selected
     ? applyDefaultMachineToPlan(
@@ -49,7 +46,7 @@ export function useConfigStepWorkspaceModel(options: Options): ConfigStepWorkspa
     )
     : undefined
   const serviceOnly = selected?.processMode === 4
-  const activeEditor = serviceOnly || aiPackagingDraft ? 'service' : preferredEditor
+  const activeEditor = serviceOnly ? 'service' : preferredEditor
   const selectionReasonOptions = {
     locks: lockedRolls, rolls: props.rolls, routePreviews: props.routePreviews, selected,
   }
@@ -97,7 +94,6 @@ export function useConfigStepWorkspaceModel(options: Options): ConfigStepWorkspa
     serviceOnlyRolls: configurableRolls.filter((roll) => roll.processMode === 4),
     data: buildWorkspaceData({
       activeEditor,
-      aiPackagingDraft,
       allSteps,
       balance,
       batchTargets,
@@ -121,7 +117,6 @@ export function useConfigStepWorkspaceModel(options: Options): ConfigStepWorkspa
 
 interface DataOptions {
   activeEditor: ConfigEditorTab
-  aiPackagingDraft: ConfigStepWorkspaceData['aiPackagingDraft']
   allSteps: ConfigStepWorkspaceData['allSteps']
   balance: ConfigStepWorkspaceData['balance']
   batchTargets: ReturnType<typeof planBatchTargets>
@@ -144,9 +139,6 @@ interface DataOptions {
 function buildWorkspaceData(options: DataOptions): ConfigStepWorkspaceData {
   const { props, selections } = options
   return {
-    aiPackagingLoading: props.aiPackagingLoading === true,
-    aiPackagingDraft: options.aiPackagingDraft,
-    aiPackagingDraftCount: Object.keys(props.aiPackagingDrafts ?? {}).length,
     activeEditor: options.activeEditor,
     assistantEntry: props.assistantEntry,
     allSteps: options.allSteps,

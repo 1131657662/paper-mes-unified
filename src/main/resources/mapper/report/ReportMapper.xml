@@ -200,7 +200,9 @@
                            WHEN COALESCE(orderBase.orderProcessAmount, 0) > 0
                                THEN COALESCE(r.process_amount, 0)
                            WHEN COALESCE(orderBase.orderOriginalWeight, 0) > 0
-                               THEN COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)
+                               THEN CASE WHEN r.weight_status = 'UNKNOWN' AND COALESCE(r.actual_weight, 0) &lt;= 0 THEN NULL
+                                         ELSE COALESCE(r.actual_weight, r.total_weight,
+                                             r.roll_weight * COALESCE(r.piece_num, 1), 0) END
                            WHEN COALESCE(orderBase.orderRollCount, 0) > 0
                                THEN 1
                            ELSE 0
@@ -216,7 +218,8 @@
                 LEFT JOIN (
                     SELECT order_uuid,
                            COUNT(*) AS orderRollCount,
-                           SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS orderOriginalWeight,
+                           SUM(CASE WHEN weight_status = 'UNKNOWN' AND COALESCE(actual_weight, 0) &lt;= 0 THEN NULL ELSE COALESCE(actual_weight, total_weight,
+                               roll_weight * COALESCE(piece_num, 1), 0) END) AS orderOriginalWeight,
                            SUM(COALESCE(process_amount, 0)) AS orderProcessAmount
                     FROM biz_original_roll
                     WHERE is_deleted = 0
@@ -323,7 +326,9 @@
         LEFT JOIN (
             SELECT r.order_uuid,
                    COUNT(*) AS originalRollCount,
-                   SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)) AS originalWeight,
+                   SUM(CASE WHEN r.weight_status = 'UNKNOWN' AND COALESCE(r.actual_weight, 0) &lt;= 0 THEN NULL
+                            ELSE COALESCE(r.actual_weight, r.total_weight,
+                                r.roll_weight * COALESCE(r.piece_num, 1), 0) END) AS originalWeight,
                    SUM(COALESCE(r.total_loss_weight, 0)) AS lossWeight
             FROM biz_original_roll r
             WHERE r.is_deleted = 0
@@ -335,7 +340,12 @@
         LEFT JOIN (
             SELECT f.order_uuid,
                    COUNT(*) AS finishRollCount,
-                   SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                   SUM(CASE WHEN COALESCE(f.actual_weight, 0) > 0 THEN f.actual_weight
+                            WHEN EXISTS (SELECT 1 FROM biz_finish_original_rel fr
+                                         JOIN biz_original_roll ro ON ro.uuid = fr.original_uuid AND ro.is_deleted = 0
+                                        WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0 AND ro.weight_status = 'UNKNOWN'
+                                          AND COALESCE(ro.actual_weight, 0) &lt;= 0)
+                            THEN NULL ELSE COALESCE(f.estimate_weight, 0) END) AS finishWeight
             FROM biz_finish_roll f
             WHERE <include refid="EffectiveFinishRollWhere"/>
               <if test="q.paperName != null and q.paperName != ''">
@@ -411,7 +421,9 @@
                                    THEN ps.process_weight * 1000
                                WHEN ps.input_type = 2 AND inputOutput.uuid IS NOT NULL
                                    THEN COALESCE(inputOutput.actual_weight, inputOutput.estimate_weight, 0)
-                               ELSE COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)
+                               ELSE CASE WHEN r.weight_status = 'UNKNOWN' AND COALESCE(r.actual_weight, 0) &lt;= 0 THEN NULL
+                                         ELSE COALESCE(r.actual_weight, r.total_weight,
+                                             r.roll_weight * COALESCE(r.piece_num, 1), 0) END
                            END AS sourceWeight,
                            COALESCE(ps.loss_weight, 0) AS lossWeight,
                            COALESCE(ps.knife_count, 0) AS knifeCount,
@@ -468,7 +480,12 @@
                         FROM (
                             SELECT s.step_uuid,
                                    COUNT(DISTINCT f.uuid) AS finishRollCount,
-                                   SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                                   SUM(CASE WHEN COALESCE(f.actual_weight, 0) > 0 THEN f.actual_weight
+                                            WHEN EXISTS (SELECT 1 FROM biz_finish_original_rel fr
+                                                         JOIN biz_original_roll ro ON ro.uuid = fr.original_uuid AND ro.is_deleted = 0
+                                                        WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0 AND ro.weight_status = 'UNKNOWN'
+                                                          AND COALESCE(ro.actual_weight, 0) &lt;= 0)
+                                            THEN NULL ELSE COALESCE(f.estimate_weight, 0) END) AS finishWeight
                             FROM biz_process_stage_output s
                             JOIN biz_finish_roll f
                               ON f.uuid = s.finish_roll_uuid
@@ -480,7 +497,13 @@
                             UNION ALL
                             SELECT legacyStep.uuid AS step_uuid,
                                    COUNT(DISTINCT f.uuid) AS finishRollCount,
-                                   SUM(COALESCE(rel.share_weight, f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                                    SUM(CASE WHEN EXISTS (SELECT 1 FROM biz_original_roll ro
+                                                         WHERE ro.uuid = rel.original_uuid AND ro.is_deleted = 0 AND ro.weight_status = 'UNKNOWN'
+                                                           AND COALESCE(ro.actual_weight, 0) &lt;= 0)
+                                             THEN NULL ELSE COALESCE(rel.share_weight,
+                                                 COALESCE(f.actual_weight, f.estimate_weight, 0) /
+                                                 NULLIF((SELECT COUNT(*) FROM biz_finish_original_rel relCount
+                                                         WHERE relCount.finish_uuid = f.uuid AND relCount.is_deleted = 0), 0), 0) END) AS finishWeight
                             FROM biz_process_step legacyStep
                             JOIN biz_finish_original_rel rel
                               ON rel.original_uuid = legacyStep.original_uuid
@@ -560,7 +583,9 @@
                                    THEN ps.process_weight * 1000
                                WHEN ps.input_type = 2 AND inputOutput.uuid IS NOT NULL
                                    THEN COALESCE(inputOutput.actual_weight, inputOutput.estimate_weight, 0)
-                               ELSE COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)
+                               ELSE CASE WHEN r.weight_status = 'UNKNOWN' AND COALESCE(r.actual_weight, 0) &lt;= 0 THEN NULL
+                                         ELSE COALESCE(r.actual_weight, r.total_weight,
+                                             r.roll_weight * COALESCE(r.piece_num, 1), 0) END
                            END AS sourceWeight,
                            COALESCE(ps.loss_weight, 0) AS lossWeight,
                            COALESCE(ps.knife_count, 0) AS knifeCount,
@@ -619,7 +644,12 @@
                         FROM (
                             SELECT s.step_uuid,
                                    COUNT(DISTINCT f.uuid) AS finishRollCount,
-                                   SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                                   SUM(CASE WHEN COALESCE(f.actual_weight, 0) > 0 THEN f.actual_weight
+                                            WHEN EXISTS (SELECT 1 FROM biz_finish_original_rel fr
+                                                         JOIN biz_original_roll ro ON ro.uuid = fr.original_uuid AND ro.is_deleted = 0
+                                                        WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0 AND ro.weight_status = 'UNKNOWN'
+                                                          AND COALESCE(ro.actual_weight, 0) &lt;= 0)
+                                            THEN NULL ELSE COALESCE(f.estimate_weight, 0) END) AS finishWeight
                             FROM biz_process_stage_output s
                             JOIN biz_finish_roll f
                               ON f.uuid = s.finish_roll_uuid
@@ -631,7 +661,13 @@
                             UNION ALL
                             SELECT legacyStep.uuid AS step_uuid,
                                    COUNT(DISTINCT f.uuid) AS finishRollCount,
-                                   SUM(COALESCE(rel.share_weight, f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                                    SUM(CASE WHEN EXISTS (SELECT 1 FROM biz_original_roll ro
+                                                         WHERE ro.uuid = rel.original_uuid AND ro.is_deleted = 0 AND ro.weight_status = 'UNKNOWN'
+                                                           AND COALESCE(ro.actual_weight, 0) &lt;= 0)
+                                     THEN NULL ELSE COALESCE(rel.share_weight,
+                                         COALESCE(f.actual_weight, f.estimate_weight, 0) /
+                                         NULLIF((SELECT COUNT(*) FROM biz_finish_original_rel relCount
+                                                 WHERE relCount.finish_uuid = f.uuid AND relCount.is_deleted = 0), 0), 0) END) AS finishWeight
                             FROM biz_process_step legacyStep
                             JOIN biz_finish_original_rel rel
                               ON rel.original_uuid = legacyStep.original_uuid
@@ -769,14 +805,18 @@
                                        END AS dimensionName,
                                    </otherwise>
                                </choose>
-                               COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0) AS originalWeight,
+                               CASE WHEN r.weight_status = 'UNKNOWN' AND COALESCE(r.actual_weight, 0) &lt;= 0 THEN NULL
+                                    ELSE COALESCE(r.actual_weight, r.total_weight,
+                                        r.roll_weight * COALESCE(r.piece_num, 1), 0) END AS originalWeight,
                                COALESCE(r.total_loss_weight, 0) AS lossWeight,
                                COALESCE(r.process_amount, 0) AS processAmount,
                                CASE
                                    WHEN COALESCE(orderBase.orderProcessAmount, 0) > 0
                                        THEN COALESCE(r.process_amount, 0)
                                    WHEN COALESCE(orderBase.orderOriginalWeight, 0) > 0
-                                       THEN COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)
+                                       THEN CASE WHEN r.weight_status = 'UNKNOWN' AND COALESCE(r.actual_weight, 0) &lt;= 0 THEN NULL
+                                                 ELSE COALESCE(r.actual_weight, r.total_weight,
+                                                     r.roll_weight * COALESCE(r.piece_num, 1), 0) END
                                    WHEN COALESCE(orderBase.orderRollCount, 0) > 0
                                        THEN 1
                                    ELSE 0
@@ -806,7 +846,8 @@
                         LEFT JOIN (
                             SELECT order_uuid,
                                    COUNT(*) AS orderRollCount,
-                                   SUM(COALESCE(actual_weight, total_weight, roll_weight, 0)) AS orderOriginalWeight,
+                           SUM(CASE WHEN weight_status = 'UNKNOWN' AND COALESCE(actual_weight, 0) &lt;= 0 THEN NULL ELSE COALESCE(actual_weight, total_weight,
+                               roll_weight * COALESCE(piece_num, 1), 0) END) AS orderOriginalWeight,
                                    SUM(COALESCE(process_amount, 0)) AS orderProcessAmount
                             FROM biz_original_roll
                             WHERE is_deleted = 0
@@ -829,7 +870,13 @@
                         LEFT JOIN (
                             SELECT rel.original_uuid,
                                    COUNT(DISTINCT f.uuid) AS finishRollCount,
-                                   SUM(COALESCE(rel.share_weight, f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                                    SUM(CASE WHEN EXISTS (SELECT 1 FROM biz_original_roll ro
+                                                         WHERE ro.uuid = rel.original_uuid AND ro.is_deleted = 0 AND ro.weight_status = 'UNKNOWN'
+                                                           AND COALESCE(ro.actual_weight, 0) &lt;= 0)
+                                     THEN NULL ELSE COALESCE(rel.share_weight,
+                                         COALESCE(f.actual_weight, f.estimate_weight, 0) /
+                                         NULLIF((SELECT COUNT(*) FROM biz_finish_original_rel relCount
+                                                 WHERE relCount.finish_uuid = f.uuid AND relCount.is_deleted = 0), 0), 0) END) AS finishWeight
                             FROM biz_finish_original_rel rel
                             JOIN biz_finish_roll f
                               ON f.uuid = rel.finish_uuid
@@ -963,7 +1010,9 @@
                 LEFT JOIN (
                     SELECT r.order_uuid,
                            COUNT(*) AS originalRollCount,
-                           SUM(COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0)) AS originalWeight,
+                   SUM(CASE WHEN r.weight_status = 'UNKNOWN' AND COALESCE(r.actual_weight, 0) &lt;= 0 THEN NULL
+                            ELSE COALESCE(r.actual_weight, r.total_weight,
+                                r.roll_weight * COALESCE(r.piece_num, 1), 0) END) AS originalWeight,
                            SUM(COALESCE(r.total_loss_weight, 0)) AS lossWeight
                      FROM biz_original_roll r
                      WHERE r.is_deleted = 0
@@ -975,7 +1024,12 @@
                 LEFT JOIN (
                     SELECT f.order_uuid,
                            COUNT(*) AS finishRollCount,
-                           SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                           SUM(CASE WHEN COALESCE(f.actual_weight, 0) > 0 THEN f.actual_weight
+                                    WHEN EXISTS (SELECT 1 FROM biz_finish_original_rel fr
+                                                 JOIN biz_original_roll ro ON ro.uuid = fr.original_uuid AND ro.is_deleted = 0
+                                                WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0 AND ro.weight_status = 'UNKNOWN'
+                                                  AND COALESCE(ro.actual_weight, 0) &lt;= 0)
+                                    THEN NULL ELSE COALESCE(f.estimate_weight, 0) END) AS finishWeight
                     FROM biz_finish_roll f
                     WHERE <include refid="EffectiveFinishRollWhere"/>
                     GROUP BY f.order_uuid
@@ -1099,7 +1153,9 @@
                                    AND r.disposition_action IS NULL THEN 1 END) AS originalRollCount,
                    SUM(CASE WHEN COALESCE(r.process_mode, 0) != 3
                                    AND r.disposition_action IS NULL
-                       THEN COALESCE(r.actual_weight, r.total_weight, r.roll_weight, 0) ELSE 0 END) AS originalWeight,
+                       THEN CASE WHEN r.weight_status = 'UNKNOWN' AND COALESCE(r.actual_weight, 0) &lt;= 0 THEN NULL
+                                 ELSE COALESCE(r.actual_weight, r.total_weight,
+                                     r.roll_weight * COALESCE(r.piece_num, 1), 0) END ELSE 0 END) AS originalWeight,
                    SUM(CASE WHEN COALESCE(r.process_mode, 0) != 3
                                    AND r.disposition_action IS NULL
                        THEN COALESCE(r.total_loss_weight, 0) ELSE 0 END) AS lossWeight,
@@ -1120,7 +1176,12 @@
         LEFT JOIN (
             SELECT f.order_uuid,
                    COUNT(*) AS finishRollCount,
-                   SUM(COALESCE(f.actual_weight, f.estimate_weight, 0)) AS finishWeight
+                           SUM(CASE WHEN COALESCE(f.actual_weight, 0) > 0 THEN f.actual_weight
+                                    WHEN EXISTS (SELECT 1 FROM biz_finish_original_rel fr
+                                                 JOIN biz_original_roll ro ON ro.uuid = fr.original_uuid AND ro.is_deleted = 0
+                                                WHERE fr.finish_uuid = f.uuid AND fr.is_deleted = 0 AND ro.weight_status = 'UNKNOWN'
+                                                  AND COALESCE(ro.actual_weight, 0) &lt;= 0)
+                                    THEN NULL ELSE COALESCE(f.estimate_weight, 0) END) AS finishWeight
             FROM biz_finish_roll f
             WHERE <include refid="EffectiveFinishRollWhere"/>
               <if test="q.paperName != null and q.paperName != ''">

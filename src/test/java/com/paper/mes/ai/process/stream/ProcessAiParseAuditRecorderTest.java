@@ -114,7 +114,7 @@ class ProcessAiParseAuditRecorderTest {
                 new ProcessAiOrderContext("order-1", 7, "cut twice", List.of()),
                 new ProcessAiParseReservation("conversation-1", 2, "1.0.0", 1), memory,
                 new ProcessTextRedactionResult("cut twice", List.of(), false),
-                List.of(), 3, System.nanoTime());
+                List.of(), null, 3, System.nanoTime());
     }
 
     private ProcessAiModelExecution execution() {

@@ -1,7 +1,9 @@
 package com.paper.mes.ai.process.compile;
 
 import com.paper.mes.ai.process.intent.ProcessAiAssignment;
+import com.paper.mes.ai.process.intent.ProcessAiCustomerSpec;
 import com.paper.mes.ai.process.intent.ProcessAiEvidence;
+import com.paper.mes.ai.process.intent.ProcessAiEvidenceTextMatcher;
 import com.paper.mes.ai.process.intent.ProcessAiMeasurement;
 import com.paper.mes.ai.process.intent.ProcessAiRewindIntent;
 import com.paper.mes.ai.process.intent.ProcessAiWidthRule;
@@ -12,6 +14,7 @@ import com.paper.mes.processorder.dto.RewindSegmentPlanDTO;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,10 +27,11 @@ final class ProcessAiPlanEvidenceConsistencyGuard {
             Pattern.CASE_INSENSITIVE);
 
     List<String> validate(ProcessAiAssignment assignment, ProcessPlanDTO plan) {
-        if (!"REWIND".equals(assignment.processType()) || assignment.rewindIntent() == null) {
-            return List.of();
-        }
         List<String> errors = new ArrayList<>();
+        validateCustomerSpecs(assignment, errors);
+        if (!"REWIND".equals(assignment.processType()) || assignment.rewindIntent() == null) {
+            return errors;
+        }
         ProcessAiRewindIntent intent = assignment.rewindIntent();
         Matcher diameter = explicitDiameter(assignment.evidence());
         if (diameter != null) validateDiameter(diameter, intent, plan, errors);
@@ -35,6 +39,28 @@ final class ProcessAiPlanEvidenceConsistencyGuard {
             validateWidthSplit(intent, plan, errors);
         }
         return errors;
+    }
+
+    private void validateCustomerSpecs(ProcessAiAssignment assignment, List<String> errors) {
+        for (ProcessAiCustomerSpec spec : assignment.customerSpecs()) {
+            if (spec.paperName() != null && !evidenceContains(assignment, spec.paperName())) {
+                errors.add("客户品名没有可核验的客户要求依据");
+            }
+            if (spec.gramWeight() != null && !evidenceContains(assignment,
+                    String.valueOf(spec.gramWeight()))) {
+                errors.add("客户克重没有可核验的客户要求依据");
+            }
+            if (spec.finishWidth() != null && !evidenceContains(assignment,
+                    String.valueOf(spec.finishWidth()))) {
+                errors.add("客户门幅没有可核验的客户要求依据");
+            }
+        }
+    }
+
+    private boolean evidenceContains(ProcessAiAssignment assignment, String value) {
+        return assignment.evidence().stream().filter(this::trusted)
+                .map(ProcessAiEvidence::text)
+                .anyMatch(text -> ProcessAiEvidenceTextMatcher.contains(text, value));
     }
 
     private void validateDiameter(Matcher evidence, ProcessAiRewindIntent intent,
@@ -95,17 +121,23 @@ final class ProcessAiPlanEvidenceConsistencyGuard {
                                            ProcessAiWidthRule width) {
         if (width != null && "EXPLICIT".equals(width.type())
                 && width.values() != null && width.values().size() > 1) return true;
-        return evidence.stream().map(ProcessAiEvidence::text)
+        return evidence.stream().filter(this::trusted).map(ProcessAiEvidence::text)
                 .anyMatch(text -> text.contains("门幅") && (text.contains("+")
                         || text.contains("一分二") || text.contains("一分为二")));
     }
 
     private Matcher explicitDiameter(List<ProcessAiEvidence> evidence) {
         for (ProcessAiEvidence item : evidence) {
+            if (!trusted(item)) continue;
             Matcher matcher = EXPLICIT_DIAMETER.matcher(item.text());
             if (matcher.find()) return matcher;
         }
         return null;
+    }
+
+    private boolean trusted(ProcessAiEvidence item) {
+        return Set.of("CUSTOMER_TEXT", "DB_FACT", "APPROVED_MEMORY", "DEFAULT")
+                .contains(item.sourceType());
     }
 
     private int numericDiameter(String value, String unit) {

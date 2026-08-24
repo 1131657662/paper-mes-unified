@@ -50,10 +50,8 @@ export default function ConfigStepWorkspace({ actions, data }: Props) {
       </div>
       <ConfigStepFooter
         autoFinishConfigEnabled={data.autoFinishConfigEnabled}
-        configurationLoading={data.detailLoading || data.aiPackagingLoading}
-        hasUnsavedServiceChanges={service.status?.dirty === true || service.versionSyncBlocked
-          || data.aiPackagingDraftCount > 0}
-        pendingAiPackagingCount={data.aiPackagingDraftCount}
+        configurationLoading={data.detailLoading}
+        hasUnsavedServiceChanges={service.status?.dirty === true || service.versionSyncBlocked}
         onNext={() => void service.runNext(actions.onNext)}
         onPrev={() => void service.runAfterVersionSync(actions.onPrev)}
         progress={progress}

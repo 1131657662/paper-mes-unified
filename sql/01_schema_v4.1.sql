@@ -1,6 +1,6 @@
 -- =============================================================================
 -- 卷筒纸加工管理系统 V4.1  数据库建表脚本
--- Canonical schema version: 3.73
+-- Canonical schema version: 3.76
 -- Phase 1 / P0-1  数据库建表
 -- 引擎: InnoDB   字符集: utf8mb4   排序规则: utf8mb4_general_ci
 -- 规范依据: 开发文档 第三章 + 3.4 节 DDL 统一规范
@@ -2731,6 +2731,7 @@ CREATE TABLE `biz_process_ai_conversation` (
   `memory_generation` INT NOT NULL DEFAULT 1,
   `status` VARCHAR(16) NOT NULL DEFAULT 'OPEN',
   `last_parse_revision` INT NOT NULL DEFAULT 0,
+  `clarification_round` TINYINT NOT NULL DEFAULT 0,
   `expires_at` DATETIME DEFAULT NULL,
   `closed_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2743,7 +2744,9 @@ CREATE TABLE `biz_process_ai_conversation` (
     REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `chk_ai_conversation_step` CHECK (`current_step` IN (3, 4)),
   CONSTRAINT `chk_ai_conversation_status`
-    CHECK (`status` IN ('OPEN', 'INTERRUPTED', 'CLOSED', 'EXPIRED'))
+    CHECK (`status` IN ('OPEN', 'INTERRUPTED', 'CLOSED', 'EXPIRED')),
+  CONSTRAINT `chk_ai_conversation_clarification_round`
+    CHECK (`clarification_round` BETWEEN 0 AND 8)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单级AI工艺解析会话';
 
 CREATE TABLE `biz_process_ai_message` (
@@ -2761,7 +2764,7 @@ CREATE TABLE `biz_process_ai_message` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `uk_ai_message_sequence` (`conversation_id`, `sequence_no`),
-  UNIQUE KEY `uk_ai_message_idempotency` (`conversation_id`, `idempotency_key`),
+  UNIQUE KEY `uk_ai_message_idempotency_generation` (`conversation_id`, `memory_generation`, `idempotency_key`),
   KEY `idx_ai_message_created` (`conversation_id`, `created_at`),
   CONSTRAINT `fk_ai_message_conversation` FOREIGN KEY (`conversation_id`)
     REFERENCES `biz_process_ai_conversation` (`conversation_id`) ON DELETE CASCADE ON UPDATE RESTRICT,
@@ -2780,6 +2783,9 @@ CREATE TABLE `biz_process_ai_parse` (
   `apply_idempotency_key` VARCHAR(80) DEFAULT NULL,
   `expected_version` INT NOT NULL,
   `status` VARCHAR(24) NOT NULL,
+  `dialogue_state` VARCHAR(24) NOT NULL DEFAULT 'PREVIEW_READY',
+  `result_kind` VARCHAR(16) NOT NULL DEFAULT 'EXTRACTION',
+  `workflow_version` TINYINT NOT NULL DEFAULT 1,
   `provider` VARCHAR(32) NOT NULL,
   `model` VARCHAR(80) NOT NULL,
   `model_version` VARCHAR(80) DEFAULT NULL,
@@ -2788,7 +2794,17 @@ CREATE TABLE `biz_process_ai_parse` (
   `project_memory_version` VARCHAR(32) NOT NULL,
   `project_memory_checksum` CHAR(71) NOT NULL,
   `project_memory_item_ids` JSON NOT NULL,
-  `intent_json` JSON NOT NULL COMMENT '脱敏结构化意图，不含客户原文',
+  `intent_json` JSON DEFAULT NULL COMMENT '加密结构化意图，不含客户原文',
+  `understanding_json` JSON DEFAULT NULL,
+  `question_json` JSON DEFAULT NULL,
+  `corrections_json` JSON DEFAULT NULL,
+  `input_hash` CHAR(64) DEFAULT NULL,
+  `context_hash` CHAR(64) DEFAULT NULL,
+  `preview_hash` CHAR(64) DEFAULT NULL,
+  `failure_code` VARCHAR(64) DEFAULT NULL,
+  `failure_trace_id` VARCHAR(64) DEFAULT NULL,
+  `required_default_ids` JSON DEFAULT NULL,
+  `acknowledged_default_ids` JSON DEFAULT NULL,
   `accepted_field_paths` JSON DEFAULT NULL COMMENT '用户明确确认应用的字段路径',
   `result_hash` CHAR(64) NOT NULL,
   `plan_hash` CHAR(64) DEFAULT NULL,
@@ -2805,12 +2821,24 @@ CREATE TABLE `biz_process_ai_parse` (
   UNIQUE KEY `uk_ai_parse_apply_idempotency` (`parse_id`, `apply_idempotency_key`),
   KEY `idx_ai_parse_order_version` (`order_uuid`, `expected_version`),
   KEY `idx_ai_parse_conversation_status` (`conversation_id`, `status`, `created_at`),
+  KEY `idx_ai_parse_conversation_dialogue` (`conversation_id`, `dialogue_state`, `created_at`),
   CONSTRAINT `fk_ai_parse_order` FOREIGN KEY (`order_uuid`)
     REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_ai_parse_conversation` FOREIGN KEY (`conversation_id`)
     REFERENCES `biz_process_ai_conversation` (`conversation_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `chk_ai_parse_status`
     CHECK (`status` IN ('READY', 'CLARIFICATION', 'INTERRUPTED', 'CONFIRMED', 'EXPIRED', 'REJECTED')),
+  CONSTRAINT `chk_ai_parse_dialogue_state`
+    CHECK (`dialogue_state` IN ('UNDERSTANDING', 'CLARIFYING', 'PREVIEW_READY', 'REVISING', 'FAILED', 'COMPLETED')),
+  CONSTRAINT `chk_ai_parse_result_kind`
+    CHECK (`result_kind` IN ('EXTRACTION', 'UNDERSTANDING', 'FAILURE')),
+  CONSTRAINT `chk_ai_parse_workflow_version`
+    CHECK (`workflow_version` IN (1, 2)),
+  CONSTRAINT `chk_ai_parse_result_consistency`
+    CHECK ((`result_kind` = 'EXTRACTION' AND `intent_json` IS NOT NULL)
+      OR (`result_kind` = 'UNDERSTANDING' AND `understanding_json` IS NOT NULL)
+      OR (`result_kind` = 'FAILURE' AND `intent_json` IS NULL
+          AND `understanding_json` IS NULL AND `failure_code` IS NOT NULL)),
   CONSTRAINT `chk_ai_parse_memory_checksum`
     CHECK (`project_memory_checksum` LIKE 'sha256:%' AND CHAR_LENGTH(`project_memory_checksum`) = 71),
   CONSTRAINT `chk_ai_parse_confirmation`
@@ -2894,12 +2922,16 @@ CREATE TABLE `biz_project_memory_candidate` (
 CREATE TABLE `biz_project_memory_candidate_evidence` (
   `uuid` VARCHAR(36) NOT NULL,
   `candidate_uuid` VARCHAR(36) NOT NULL,
-  `order_uuid` VARCHAR(36) NOT NULL,
+  `order_uuid` VARCHAR(36) DEFAULT NULL,
+  `order_ref_hash` CHAR(64) DEFAULT NULL,
   `parse_id` VARCHAR(64) DEFAULT NULL,
+  `parse_ref_hash` CHAR(64) DEFAULT NULL,
   `evidence_hash` CHAR(64) NOT NULL,
   `source_type` VARCHAR(24) NOT NULL DEFAULT 'AI_CONFIRMED',
   `phrase` VARCHAR(2000) DEFAULT NULL,
   `context_json` JSON DEFAULT NULL,
+  `audit_context_ciphertext` MEDIUMTEXT DEFAULT NULL,
+  `audit_context_hash` CHAR(64) DEFAULT NULL,
   `proposed_value_json` JSON DEFAULT NULL,
   `final_value_json` JSON DEFAULT NULL,
   `difference_json` JSON DEFAULT NULL,
@@ -2907,14 +2939,14 @@ CREATE TABLE `biz_project_memory_candidate_evidence` (
   `created_by` VARCHAR(64) DEFAULT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`uuid`),
-  UNIQUE KEY `uk_memory_candidate_order` (`candidate_uuid`, `order_uuid`),
+  UNIQUE KEY `uk_memory_candidate_order_ref` (`candidate_uuid`, `order_ref_hash`),
   KEY `idx_memory_evidence_parse` (`parse_id`),
   CONSTRAINT `fk_memory_evidence_candidate` FOREIGN KEY (`candidate_uuid`)
     REFERENCES `biz_project_memory_candidate` (`uuid`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_memory_evidence_order` FOREIGN KEY (`order_uuid`)
-    REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    REFERENCES `biz_process_order` (`uuid`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `fk_memory_evidence_parse` FOREIGN KEY (`parse_id`)
-    REFERENCES `biz_process_ai_parse` (`parse_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    REFERENCES `biz_process_ai_parse` (`parse_id`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `chk_memory_evidence_source_type`
     CHECK (`source_type` IN ('AI_CONFIRMED', 'MANUAL_FINAL')),
   CONSTRAINT `chk_memory_evidence_preview_ready`
@@ -2973,10 +3005,424 @@ CREATE TABLE `biz_project_memory_learning_outbox` (
     CHECK (`status` IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目记忆学习采集出站箱';
 
+-- =============================================================================
+-- V3.74 canonical baseline: customer-confirmed remain transfer and own inventory.
+-- The Flyway migration contains the same structures for upgraded installations.
+-- =============================================================================
+ALTER TABLE `biz_finish_roll`
+    ADD COLUMN `ownership_status` TINYINT NOT NULL DEFAULT 0
+        COMMENT '0客户所有 1客户/我方分属 2我方所有' AFTER `is_remain`,
+    ADD COLUMN `remain_own_weight` DECIMAL(10,3) NOT NULL DEFAULT 0.000
+        COMMENT '已转入我方的系统重量kg' AFTER `remaining_weight`,
+    ADD COLUMN `remain_transfer_state` TINYINT NOT NULL DEFAULT 0
+        COMMENT '0未转让 1部分转让 2全部转让 3部分恢复' AFTER `ownership_status`,
+    ADD KEY `idx_finish_ownership` (`is_remain`, `ownership_status`, `finish_status`, `is_deleted`),
+    ADD CONSTRAINT `chk_finish_ownership_status` CHECK (`ownership_status` IN (0, 1, 2)),
+    ADD CONSTRAINT `chk_finish_remain_own_weight` CHECK (`remain_own_weight` >= 0);
+
+CREATE TABLE `biz_remain_registration` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `registration_no` VARCHAR(50) NOT NULL,
+    `request_id` VARCHAR(64) NOT NULL,
+    `request_hash` CHAR(64) NOT NULL,
+    `order_uuid` VARCHAR(36) NOT NULL,
+    `customer_uuid` VARCHAR(36) NOT NULL,
+    `registration_date` DATETIME NOT NULL,
+    `confirmation_name` VARCHAR(100) NOT NULL,
+    `confirmation_channel` VARCHAR(32) NOT NULL,
+    `confirmation_at` DATETIME NOT NULL,
+    `confirmation_evidence` VARCHAR(500) NOT NULL,
+    `status` VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    `price_status` VARCHAR(32) NOT NULL DEFAULT 'PRICE_PENDING',
+    `price_version` INT NOT NULL DEFAULT 0,
+    `pricing_basis` VARCHAR(32) DEFAULT NULL,
+    `price_confirmed_at` DATETIME DEFAULT NULL,
+    `price_confirmed_by` VARCHAR(50) DEFAULT NULL,
+    `total_transferred_weight` DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    `total_rolled_back_weight` DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    `total_processed_weight` DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    `total_amount` DECIMAL(12,0) NOT NULL DEFAULT 0,
+    `remark` VARCHAR(500) DEFAULT NULL,
+    `is_deleted` TINYINT NOT NULL DEFAULT 0,
+    `create_by` VARCHAR(50) DEFAULT NULL,
+    `update_by` VARCHAR(50) DEFAULT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `version` INT NOT NULL DEFAULT 1,
+    `ext_str1` VARCHAR(255) DEFAULT NULL,
+    `ext_str2` VARCHAR(255) DEFAULT NULL,
+    `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+    `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_registration_no` (`registration_no`),
+    UNIQUE KEY `uk_remain_registration_request` (`request_id`),
+    KEY `idx_remain_registration_order` (`order_uuid`, `registration_date`, `uuid`),
+    KEY `idx_remain_registration_customer` (`customer_uuid`, `status`, `registration_date`),
+    CONSTRAINT `fk_remain_registration_order` FOREIGN KEY (`order_uuid`) REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_registration_customer` FOREIGN KEY (`customer_uuid`) REFERENCES `sys_customer` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_registration_status` CHECK (`status` IN ('ACTIVE', 'PARTIAL_ROLLED_BACK', 'FULL_ROLLED_BACK')),
+    CONSTRAINT `chk_remain_registration_price_status` CHECK (`price_status` IN ('PRICE_PENDING', 'CONFIRMED', 'VOIDED')),
+    CONSTRAINT `chk_remain_registration_weight` CHECK (`total_transferred_weight` > 0 AND `total_rolled_back_weight` >= 0 AND `total_processed_weight` >= 0 AND `total_rolled_back_weight` + `total_processed_weight` <= `total_transferred_weight`),
+    CONSTRAINT `chk_remain_registration_amount` CHECK (`total_amount` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='余料抵扣登记单';
+
+CREATE TABLE `biz_remain_registration_line` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `registration_uuid` VARCHAR(36) NOT NULL,
+    `source_finish_roll_uuid` VARCHAR(36) NOT NULL,
+    `source_order_uuid` VARCHAR(36) NOT NULL,
+    `source_customer_uuid` VARCHAR(36) NOT NULL,
+    `source_system_weight` DECIMAL(12,3) NOT NULL,
+    `transferred_system_weight` DECIMAL(12,3) NOT NULL,
+    `rolled_back_system_weight` DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    `processed_system_weight` DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    `current_own_weight` DECIMAL(12,3) NOT NULL,
+    `amount` DECIMAL(12,0) NOT NULL DEFAULT 0,
+    `applied_amount` DECIMAL(12,0) NOT NULL DEFAULT 0,
+    `applied_weight` DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    `status` VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    `is_deleted` TINYINT NOT NULL DEFAULT 0,
+    `create_by` VARCHAR(50) DEFAULT NULL,
+    `update_by` VARCHAR(50) DEFAULT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `version` INT NOT NULL DEFAULT 1,
+    `ext_str1` VARCHAR(255) DEFAULT NULL,
+    `ext_str2` VARCHAR(255) DEFAULT NULL,
+    `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+    `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+    `active_source_finish_roll_uuid` VARCHAR(36) GENERATED ALWAYS AS (CASE WHEN `is_deleted` = 0 AND `status` <> 'FULL_ROLLED_BACK' THEN `source_finish_roll_uuid` ELSE NULL END) STORED,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_line_active_source` (`active_source_finish_roll_uuid`),
+    KEY `idx_remain_line_registration` (`registration_uuid`, `status`),
+    KEY `idx_remain_line_source` (`source_finish_roll_uuid`),
+    CONSTRAINT `fk_remain_line_registration` FOREIGN KEY (`registration_uuid`) REFERENCES `biz_remain_registration` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_line_finish_roll` FOREIGN KEY (`source_finish_roll_uuid`) REFERENCES `biz_finish_roll` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_line_order` FOREIGN KEY (`source_order_uuid`) REFERENCES `biz_process_order` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_line_customer` FOREIGN KEY (`source_customer_uuid`) REFERENCES `sys_customer` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_line_status` CHECK (`status` IN ('ACTIVE', 'PARTIAL_ROLLED_BACK', 'FULL_ROLLED_BACK')),
+    CONSTRAINT `chk_remain_line_weights` CHECK (`source_system_weight` > 0 AND `transferred_system_weight` > 0 AND `rolled_back_system_weight` >= 0 AND `processed_system_weight` >= 0 AND `current_own_weight` >= 0 AND `applied_amount` >= 0 AND `applied_weight` >= 0 AND `rolled_back_system_weight` + `processed_system_weight` + `current_own_weight` = `transferred_system_weight`),
+    CONSTRAINT `chk_remain_line_amount` CHECK (`amount` >= 0 AND `applied_amount` <= `amount`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='余料抵扣登记明细';
+
+CREATE TABLE `biz_remain_price_version` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `registration_uuid` VARCHAR(36) NOT NULL,
+    `version_no` INT NOT NULL,
+    `pricing_basis` VARCHAR(32) NOT NULL,
+    `total_amount` DECIMAL(12,0) NOT NULL,
+    `request_id` VARCHAR(64) NOT NULL,
+    `request_hash` CHAR(64) NOT NULL,
+    `status` VARCHAR(16) NOT NULL DEFAULT 'CONFIRMED',
+    `confirmed_at` DATETIME NOT NULL,
+    `confirmed_by` VARCHAR(50) NOT NULL,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_price_version` (`registration_uuid`, `version_no`),
+    UNIQUE KEY `uk_remain_price_request` (`request_id`),
+    CONSTRAINT `fk_remain_price_registration` FOREIGN KEY (`registration_uuid`) REFERENCES `biz_remain_registration` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_price_amount` CHECK (`total_amount` >= 0),
+    CONSTRAINT `chk_remain_price_status` CHECK (`status` IN ('CONFIRMED', 'VOIDED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='余料价格确认版本';
+
+CREATE TABLE `biz_remain_application` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `registration_uuid` VARCHAR(36) NOT NULL,
+    `settle_uuid` VARCHAR(36) NOT NULL,
+    `adjustment_uuid` VARCHAR(36) DEFAULT NULL COMMENT '来源待调整余额',
+    `receive_uuid` VARCHAR(36) DEFAULT NULL,
+    `customer_uuid` VARCHAR(36) NOT NULL,
+    `application_type` VARCHAR(16) NOT NULL DEFAULT 'APPLY',
+    `status` VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    `amount` DECIMAL(12,0) NOT NULL,
+    `weight` DECIMAL(12,3) NOT NULL,
+    `request_id` VARCHAR(64) NOT NULL,
+    `request_hash` CHAR(64) NOT NULL,
+    `reversal_of_uuid` VARCHAR(36) DEFAULT NULL,
+    `create_by` VARCHAR(50) DEFAULT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_by` VARCHAR(50) DEFAULT NULL,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `version` INT NOT NULL DEFAULT 1,
+    `is_deleted` TINYINT NOT NULL DEFAULT 0,
+    `active_registration_settle` VARCHAR(73) GENERATED ALWAYS AS (CASE WHEN `status` = 'ACTIVE' AND `application_type` = 'APPLY' AND `is_deleted` = 0 THEN CONCAT(`registration_uuid`, ':', `settle_uuid`) ELSE NULL END) STORED,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_application_active_target` (`active_registration_settle`),
+    UNIQUE KEY `uk_remain_application_request` (`request_id`),
+    KEY `idx_remain_application_registration` (`registration_uuid`, `status`),
+    KEY `idx_remain_application_settle` (`settle_uuid`, `status`),
+    CONSTRAINT `fk_remain_application_registration` FOREIGN KEY (`registration_uuid`) REFERENCES `biz_remain_registration` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_application_settle` FOREIGN KEY (`settle_uuid`) REFERENCES `biz_settle_order` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_application_customer` FOREIGN KEY (`customer_uuid`) REFERENCES `sys_customer` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_application_type` CHECK (`application_type` IN ('APPLY', 'REVERSE')),
+    CONSTRAINT `chk_remain_application_status` CHECK (`status` IN ('ACTIVE', 'REVERSED')),
+    CONSTRAINT `chk_remain_application_amount` CHECK (`amount` > 0 AND `weight` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='余料抵扣应用及反向关系';
+
+CREATE TABLE `biz_remain_application_line` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `application_uuid` VARCHAR(36) NOT NULL,
+    `registration_line_uuid` VARCHAR(36) NOT NULL,
+    `amount` DECIMAL(12,0) NOT NULL,
+    `weight` DECIMAL(12,3) NOT NULL,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_application_line` (`application_uuid`, `registration_line_uuid`),
+    CONSTRAINT `fk_remain_application_line_application` FOREIGN KEY (`application_uuid`) REFERENCES `biz_remain_application` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_application_line_registration_line` FOREIGN KEY (`registration_line_uuid`) REFERENCES `biz_remain_registration_line` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_application_line_values` CHECK (`amount` >= 0 AND `weight` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='余料抵扣应用来源明细';
+
+CREATE TABLE `biz_remain_adjustment` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `adjustment_no` VARCHAR(50) NOT NULL,
+    `request_id` VARCHAR(64) NOT NULL,
+    `request_hash` CHAR(64) NOT NULL,
+    `registration_uuid` VARCHAR(36) NOT NULL,
+    `source_settle_uuid` VARCHAR(36) DEFAULT NULL,
+    `target_settle_uuid` VARCHAR(36) DEFAULT NULL,
+    `customer_uuid` VARCHAR(36) NOT NULL,
+    `target_type` VARCHAR(24) NOT NULL DEFAULT 'PENDING',
+    `status` VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    `amount` DECIMAL(12,0) NOT NULL,
+    `weight` DECIMAL(12,3) NOT NULL,
+    `reason` VARCHAR(500) DEFAULT NULL,
+    `create_by` VARCHAR(50) DEFAULT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_by` VARCHAR(50) DEFAULT NULL,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `version` INT NOT NULL DEFAULT 1,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_adjustment_no` (`adjustment_no`),
+    UNIQUE KEY `uk_remain_adjustment_request` (`request_id`),
+    KEY `idx_remain_adjustment_registration` (`registration_uuid`, `status`),
+    KEY `idx_remain_adjustment_target` (`target_type`, `status`, `customer_uuid`),
+    CONSTRAINT `fk_remain_adjustment_registration` FOREIGN KEY (`registration_uuid`) REFERENCES `biz_remain_registration` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_adjustment_source_settle` FOREIGN KEY (`source_settle_uuid`) REFERENCES `biz_settle_order` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_adjustment_target_settle` FOREIGN KEY (`target_settle_uuid`) REFERENCES `biz_settle_order` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_adjustment_customer` FOREIGN KEY (`customer_uuid`) REFERENCES `sys_customer` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_adjustment_target` CHECK (`target_type` IN ('PENDING', 'NEXT_SETTLEMENT', 'CUSTOMER_CREDIT', 'REFUND')),
+    CONSTRAINT `chk_remain_adjustment_status` CHECK (`status` IN ('PENDING', 'APPLIED', 'REVERSED', 'CANCELLED')),
+    CONSTRAINT `chk_remain_adjustment_values` CHECK (`amount` > 0 AND `weight` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='余料抵扣结算调整';
+
+CREATE TABLE `biz_remain_adjustment_line` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `adjustment_uuid` VARCHAR(36) NOT NULL,
+    `registration_line_uuid` VARCHAR(36) NOT NULL,
+    `amount` DECIMAL(12,0) NOT NULL,
+    `weight` DECIMAL(12,3) NOT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_adjustment_line` (`adjustment_uuid`, `registration_line_uuid`),
+    CONSTRAINT `fk_remain_adjustment_line_adjustment` FOREIGN KEY (`adjustment_uuid`) REFERENCES `biz_remain_adjustment` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_adjustment_line_registration_line` FOREIGN KEY (`registration_line_uuid`) REFERENCES `biz_remain_registration_line` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_adjustment_line_values` CHECK (`amount` >= 0 AND `weight` >= 0
+        AND (`amount` > 0 OR `weight` > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='余料结算调整来源明细';
+
+CREATE TABLE `biz_remain_customer_credit_account` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `customer_uuid` VARCHAR(36) NOT NULL,
+    `current_amount` DECIMAL(12,0) NOT NULL DEFAULT 0 COMMENT '客户余款余额，整数元',
+    `last_ledger_uuid` VARCHAR(36) DEFAULT NULL,
+    `is_deleted` TINYINT NOT NULL DEFAULT 0,
+    `create_by` VARCHAR(50) DEFAULT NULL,
+    `update_by` VARCHAR(50) DEFAULT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `version` INT NOT NULL DEFAULT 1,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_credit_account_customer` (`customer_uuid`),
+    CONSTRAINT `fk_remain_credit_account_customer` FOREIGN KEY (`customer_uuid`) REFERENCES `sys_customer` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_credit_account_amount` CHECK (`current_amount` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户余料抵扣余款账户';
+
+CREATE TABLE `biz_remain_customer_credit_ledger` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `account_uuid` VARCHAR(36) NOT NULL,
+    `adjustment_uuid` VARCHAR(36) NOT NULL,
+    `customer_uuid` VARCHAR(36) NOT NULL,
+    `event_type` VARCHAR(16) NOT NULL COMMENT 'CREDIT/REVERSE',
+    `amount` DECIMAL(12,0) NOT NULL COMMENT '余额变动金额，整数元',
+    `weight` DECIMAL(12,3) NOT NULL COMMENT '来源系统重量kg',
+    `before_amount` DECIMAL(12,0) NOT NULL,
+    `after_amount` DECIMAL(12,0) NOT NULL,
+    `request_id` VARCHAR(64) NOT NULL,
+    `reversal_of_uuid` VARCHAR(36) DEFAULT NULL,
+    `create_by` VARCHAR(50) DEFAULT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_credit_ledger_request` (`request_id`),
+    UNIQUE KEY `uk_remain_credit_ledger_reversal` (`reversal_of_uuid`),
+    KEY `idx_remain_credit_ledger_account` (`account_uuid`, `create_time`, `uuid`),
+    KEY `idx_remain_credit_ledger_adjustment` (`adjustment_uuid`, `event_type`),
+    CONSTRAINT `fk_remain_credit_ledger_account` FOREIGN KEY (`account_uuid`) REFERENCES `biz_remain_customer_credit_account` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_credit_ledger_adjustment` FOREIGN KEY (`adjustment_uuid`) REFERENCES `biz_remain_adjustment` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_credit_ledger_customer` FOREIGN KEY (`customer_uuid`) REFERENCES `sys_customer` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_credit_ledger_reversal` FOREIGN KEY (`reversal_of_uuid`) REFERENCES `biz_remain_customer_credit_ledger` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_credit_ledger_event` CHECK (`event_type` IN ('CREDIT', 'REVERSE')),
+    CONSTRAINT `chk_remain_credit_ledger_values` CHECK (`amount` > 0 AND `weight` > 0 AND `before_amount` >= 0 AND `after_amount` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户余款不可变流水';
+
+CREATE TABLE `biz_remain_refund` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `refund_no` VARCHAR(50) NOT NULL,
+    `adjustment_uuid` VARCHAR(36) NOT NULL,
+    `customer_uuid` VARCHAR(36) NOT NULL,
+    `amount` DECIMAL(12,0) NOT NULL COMMENT '退款金额，整数元',
+    `weight` DECIMAL(12,3) NOT NULL COMMENT '来源系统重量kg',
+    `status` VARCHAR(16) NOT NULL DEFAULT 'REQUESTED' COMMENT 'REQUESTED/APPROVED/PAID/CANCELLED',
+    `request_id` VARCHAR(64) NOT NULL,
+    `request_hash` CHAR(64) NOT NULL,
+    `approve_request_id` VARCHAR(64) DEFAULT NULL,
+    `pay_request_id` VARCHAR(64) DEFAULT NULL,
+    `cancel_request_id` VARCHAR(64) DEFAULT NULL,
+    `payment_reference` VARCHAR(100) DEFAULT NULL,
+    `reason` VARCHAR(500) DEFAULT NULL,
+    `approved_by` VARCHAR(50) DEFAULT NULL,
+    `approved_at` DATETIME DEFAULT NULL,
+    `paid_by` VARCHAR(50) DEFAULT NULL,
+    `paid_at` DATETIME DEFAULT NULL,
+    `create_by` VARCHAR(50) DEFAULT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_by` VARCHAR(50) DEFAULT NULL,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `version` INT NOT NULL DEFAULT 1,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_refund_no` (`refund_no`),
+    UNIQUE KEY `uk_remain_refund_request` (`request_id`),
+    KEY `idx_remain_refund_adjustment` (`adjustment_uuid`, `status`),
+    KEY `idx_remain_refund_customer` (`customer_uuid`, `status`, `create_time`),
+    CONSTRAINT `fk_remain_refund_adjustment` FOREIGN KEY (`adjustment_uuid`) REFERENCES `biz_remain_adjustment` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_refund_customer` FOREIGN KEY (`customer_uuid`) REFERENCES `sys_customer` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_refund_status` CHECK (`status` IN ('REQUESTED', 'APPROVED', 'PAID', 'CANCELLED')),
+    CONSTRAINT `chk_remain_refund_values` CHECK (`amount` > 0 AND `weight` > 0),
+    CONSTRAINT `chk_remain_refund_payment` CHECK ((`status` = 'PAID' AND `payment_reference` IS NOT NULL AND `paid_at` IS NOT NULL) OR (`status` <> 'PAID'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='余料退款申请与支付事实';
+
+ALTER TABLE `biz_remain_application`
+    ADD CONSTRAINT `fk_remain_application_adjustment` FOREIGN KEY (`adjustment_uuid`)
+        REFERENCES `biz_remain_adjustment` (`uuid`) ON DELETE RESTRICT;
+
+ALTER TABLE `biz_receive_record`
+    ADD COLUMN `source_type` VARCHAR(32) NOT NULL DEFAULT 'LEGACY' COMMENT 'LEGACY/CASH/DISCOUNT/REMAIN_OFFSET' AFTER `receive_type`,
+    ADD COLUMN `remain_application_uuid` VARCHAR(36) DEFAULT NULL COMMENT '余料抵扣应用来源' AFTER `source_type`,
+    ADD KEY `idx_receive_source_type` (`source_type`, `record_status`),
+    ADD KEY `idx_receive_remain_application` (`remain_application_uuid`);
+
+CREATE TABLE `biz_remain_inventory_lot` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `registration_line_uuid` VARCHAR(36) NOT NULL,
+    `source_finish_roll_uuid` VARCHAR(36) NOT NULL,
+    `customer_uuid` VARCHAR(36) NOT NULL,
+    `warehouse_uuid` VARCHAR(36) DEFAULT NULL,
+    `current_weight` DECIMAL(12,3) NOT NULL,
+    `status` VARCHAR(32) NOT NULL DEFAULT 'IN_OWN_STOCK',
+    `price_status` VARCHAR(32) NOT NULL DEFAULT 'PRICE_PENDING',
+    `is_deleted` TINYINT NOT NULL DEFAULT 0,
+    `create_by` VARCHAR(50) DEFAULT NULL,
+    `update_by` VARCHAR(50) DEFAULT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `version` INT NOT NULL DEFAULT 1,
+    `ext_str1` VARCHAR(255) DEFAULT NULL,
+    `ext_str2` VARCHAR(255) DEFAULT NULL,
+    `ext_num1` DECIMAL(12,3) DEFAULT NULL,
+    `ext_num2` DECIMAL(12,3) DEFAULT NULL,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_lot_line` (`registration_line_uuid`),
+    KEY `idx_remain_lot_available` (`is_deleted`, `status`, `price_status`, `current_weight`),
+    CONSTRAINT `fk_remain_lot_line` FOREIGN KEY (`registration_line_uuid`) REFERENCES `biz_remain_registration_line` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_lot_finish_roll` FOREIGN KEY (`source_finish_roll_uuid`) REFERENCES `biz_finish_roll` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_lot_customer` FOREIGN KEY (`customer_uuid`) REFERENCES `sys_customer` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_lot_weight` CHECK (`current_weight` >= 0),
+    CONSTRAINT `chk_remain_lot_status` CHECK (`status` IN ('IN_OWN_STOCK', 'EMPTY', 'VOIDED')),
+    CONSTRAINT `chk_remain_lot_price_status` CHECK (`price_status` IN ('PRICE_PENDING', 'CONFIRMED', 'VOIDED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='我方余料库存批次';
+
+CREATE TABLE `biz_remain_inventory_ledger` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `lot_uuid` VARCHAR(36) NOT NULL,
+    `registration_line_uuid` VARCHAR(36) NOT NULL,
+    `source_finish_roll_uuid` VARCHAR(36) NOT NULL,
+    `event_type` VARCHAR(32) NOT NULL,
+    `weight_delta` DECIMAL(12,3) NOT NULL,
+    `before_weight` DECIMAL(12,3) NOT NULL,
+    `after_weight` DECIMAL(12,3) NOT NULL,
+    `request_id` VARCHAR(64) NOT NULL,
+    `reason` VARCHAR(500) DEFAULT NULL,
+    `reversal_of_uuid` VARCHAR(36) DEFAULT NULL,
+    `create_by` VARCHAR(50) DEFAULT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_ledger_request` (`request_id`),
+    KEY `idx_remain_ledger_lot` (`lot_uuid`, `create_time`, `uuid`),
+    CONSTRAINT `fk_remain_ledger_lot` FOREIGN KEY (`lot_uuid`) REFERENCES `biz_remain_inventory_lot` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_ledger_line` FOREIGN KEY (`registration_line_uuid`) REFERENCES `biz_remain_registration_line` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_ledger_finish_roll` FOREIGN KEY (`source_finish_roll_uuid`) REFERENCES `biz_finish_roll` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_ledger_reversal` FOREIGN KEY (`reversal_of_uuid`) REFERENCES `biz_remain_inventory_ledger` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_ledger_event` CHECK (`event_type` IN ('TRANSFER_IN', 'ROLLBACK', 'SALE_OUT', 'SALE_REVERSAL')),
+    CONSTRAINT `chk_remain_ledger_weight` CHECK (`weight_delta` <> 0 AND `before_weight` >= 0 AND `after_weight` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='我方余料库存不可变流水';
+
+CREATE TABLE `biz_remain_sale` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `sale_no` VARCHAR(50) NOT NULL,
+    `request_id` VARCHAR(64) NOT NULL,
+    `request_hash` CHAR(64) NOT NULL,
+    `sale_kind` VARCHAR(16) NOT NULL DEFAULT 'SALE',
+    `reversal_of_uuid` VARCHAR(36) DEFAULT NULL,
+    `process_date` DATETIME NOT NULL,
+    `warehouse_uuid` VARCHAR(36) DEFAULT NULL,
+    `pricing_mode` VARCHAR(32) NOT NULL,
+    `system_weight` DECIMAL(12,3) NOT NULL,
+    `actual_weight` DECIMAL(12,3) DEFAULT NULL,
+    `unit_price` DECIMAL(12,0) DEFAULT NULL,
+    `calculated_amount` DECIMAL(12,0) NOT NULL DEFAULT 0,
+    `received_amount` DECIMAL(12,0) NOT NULL DEFAULT 0,
+    `buyer_name` VARCHAR(100) DEFAULT NULL,
+    `vehicle_no` VARCHAR(50) DEFAULT NULL,
+    `weighing_ticket_no` VARCHAR(100) DEFAULT NULL,
+    `weighing_evidence` VARCHAR(500) DEFAULT NULL,
+    `status` VARCHAR(16) NOT NULL DEFAULT 'CONFIRMED',
+    `reason` VARCHAR(500) DEFAULT NULL,
+    `create_by` VARCHAR(50) DEFAULT NULL,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_by` VARCHAR(50) DEFAULT NULL,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `version` INT NOT NULL DEFAULT 1,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_sale_no` (`sale_no`),
+    UNIQUE KEY `uk_remain_sale_request` (`request_id`),
+    KEY `idx_remain_sale_status_date` (`status`, `process_date`),
+    CONSTRAINT `fk_remain_sale_reversal` FOREIGN KEY (`reversal_of_uuid`) REFERENCES `biz_remain_sale` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_sale_kind` CHECK (`sale_kind` IN ('SALE', 'REVERSAL')),
+    CONSTRAINT `chk_remain_sale_status` CHECK (`status` IN ('CONFIRMED', 'VOIDED')),
+    CONSTRAINT `chk_remain_sale_values` CHECK (`system_weight` > 0 AND `calculated_amount` >= 0 AND `received_amount` >= 0),
+    CONSTRAINT `chk_remain_sale_reversal` CHECK ((`sale_kind` = 'SALE' AND `reversal_of_uuid` IS NULL) OR (`sale_kind` = 'REVERSAL' AND `reversal_of_uuid` IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='我方余料出售或处理单';
+
+CREATE TABLE `biz_remain_sale_line` (
+    `uuid` VARCHAR(36) NOT NULL,
+    `sale_uuid` VARCHAR(36) NOT NULL,
+    `lot_uuid` VARCHAR(36) NOT NULL,
+    `registration_line_uuid` VARCHAR(36) NOT NULL,
+    `system_weight` DECIMAL(12,3) NOT NULL,
+    `amount` DECIMAL(12,0) NOT NULL DEFAULT 0,
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_remain_sale_line` (`sale_uuid`, `lot_uuid`),
+    KEY `idx_remain_sale_line_lot` (`lot_uuid`, `create_time`),
+    CONSTRAINT `fk_remain_sale_line_sale` FOREIGN KEY (`sale_uuid`) REFERENCES `biz_remain_sale` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_sale_line_lot` FOREIGN KEY (`lot_uuid`) REFERENCES `biz_remain_inventory_lot` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_remain_sale_line_registration_line` FOREIGN KEY (`registration_line_uuid`) REFERENCES `biz_remain_registration_line` (`uuid`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_remain_sale_line_values` CHECK (`system_weight` > 0 AND `amount` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='我方余料处理单明细';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================================================
--- 建表脚本结束（含 V3.73 AI 工艺解析与记忆审核表）
+-- V3.76 canonical baseline: AI process dialogue v2 and redacted memory evidence.
+-- 建表脚本结束（含 V3.76 AI 对话与脱敏证据表）
 --   基础档案 4: sys_customer / sys_paper / sys_machine / sys_warehouse
 --   加工核心 8: biz_process_order / biz_original_roll / biz_process_step /
 --               biz_process_stage_output / biz_process_stage_input_rel /

@@ -60,8 +60,8 @@ public class ProcessAiGroupedPiecePlanGuard {
                 source.type(), source.knifeCount(), widths, source.unit());
         return new ProcessAiAssignment(
                 assignment.sourceRollRefs(), assignment.ownerRollRef(), assignment.coveredRollRefs(),
-                assignment.processType(), assignment.rewindIntent(), normalized,
-                assignment.ancillaryRequirements(), assignment.evidence());
+                assignment.processType(), assignment.processMode(), assignment.rewindIntent(), normalized,
+                assignment.ancillaryRequirements(), assignment.evidence(), assignment.customerSpecs());
     }
 
     private String splitQuestion(String ref, int pieceCount, Map<Integer, Long> counts) {

@@ -10,14 +10,10 @@ import type { calculateRollWeightBalance } from '../weightBalanceModel'
 import type { mergedSourceLocks } from '../rewindConsumptionUtils'
 import type { RollDraft } from '../types'
 import type { ConfigOperation } from './configStepTypes'
-import type { ProcessAiPackagingDraft } from '../../processAi/types'
 
 export type ConfigEditorTab = 'plan' | 'service'
 
 export interface ConfigStepWorkspaceData {
-  aiPackagingLoading: boolean
-  aiPackagingDraft?: ProcessAiPackagingDraft
-  aiPackagingDraftCount: number
   assistantEntry?: ReactNode
   activeEditor: ConfigEditorTab
   allSteps: ProcessStep[]
@@ -53,8 +49,6 @@ export interface ConfigStepWorkspaceData {
 }
 
 export interface ConfigStepWorkspaceActions {
-  onAiPackagingDraftConsumed?: (originalUuid: string) => void
-  onAiPackagingDraftDismissed?: (draft: ProcessAiPackagingDraft) => Promise<void>
   onApplyChecked: () => Promise<void>
   onClearSelection: () => void
   onCurrentServiceSaved: () => void

@@ -24,8 +24,15 @@ class ProcessAiParseReplayService {
 
     Optional<ProcessAiParseResultResponse> replay(String conversationId, String requestKey) {
         return parseStore.findReplay(conversationId, requestKey).map(record -> {
-            var extraction = resultSupport.readExtraction(record);
             var context = contextReader.read(record.orderUuid(), record.expectedVersion());
+            if ("UNDERSTANDING".equals(record.resultKind())) {
+                return resultSupport.replayUnderstanding(
+                        record, resultSupport.readUnderstanding(record), context);
+            }
+            if ("FAILURE".equals(record.resultKind())) {
+                return resultSupport.replayFailure(record, context);
+            }
+            var extraction = resultSupport.readExtraction(record);
             String original = messageService.restoreUserMessage(
                     record.orderUuid(), record.conversationId(), record.expectedVersion(),
                     record.requestIdempotencyKey());

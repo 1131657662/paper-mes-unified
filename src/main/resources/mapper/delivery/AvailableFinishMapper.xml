@@ -8,6 +8,18 @@
         AND o.order_status IN (3, 4, 5)
         AND f.is_deleted = 0
         AND f.finish_status = 2
+        AND (COALESCE(f.is_remain, 0) != 1 OR COALESCE(f.ownership_status, 0) != 2)
+        AND (COALESCE(f.actual_weight, 0) > 0 OR NOT EXISTS (
+            SELECT 1
+            FROM biz_finish_original_rel unknown_rel
+            INNER JOIN biz_original_roll unknown_roll
+              ON unknown_roll.uuid = unknown_rel.original_uuid
+             AND unknown_roll.is_deleted = 0
+            WHERE unknown_rel.finish_uuid = f.uuid
+              AND unknown_rel.is_deleted = 0
+              AND unknown_roll.weight_status = 'UNKNOWN'
+              AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0
+        ))
         AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
         AND f.warehouse_uuid = #{q.warehouseUuid}
         <if test="q.finishUuids != null and !q.finishUuids.isEmpty()">
@@ -101,41 +113,87 @@
     <select id="stats" resultType="com.paper.mes.delivery.dto.AvailableFinishStatsVO">
         SELECT COALESCE(SUM(CASE WHEN f.finish_status = 2
                     AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+                    AND (COALESCE(f.actual_weight, 0) &gt; 0 OR NOT EXISTS (
+                        SELECT 1 FROM biz_finish_original_rel unknown_rel
+                        INNER JOIN biz_original_roll unknown_roll
+                          ON unknown_roll.uuid = unknown_rel.original_uuid AND unknown_roll.is_deleted = 0
+                        WHERE unknown_rel.finish_uuid = f.uuid AND unknown_rel.is_deleted = 0
+                          AND unknown_roll.weight_status = 'UNKNOWN'
+                          AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0))
                     AND f.warehouse_uuid = #{q.warehouseUuid}
                     AND COALESCE(f.is_remain, 0) != 1
                     AND NOT EXISTS (SELECT 1 FROM biz_delivery_detail dd
                         WHERE dd.finish_uuid = f.uuid AND dd.stock_lock_status = 1 AND dd.is_deleted = 0)
-                THEN 1 ELSE 0 END), 0) AS productCount,
+               THEN 1 ELSE 0 END), 0) AS productCount,
                COALESCE(SUM(CASE WHEN f.finish_status = 2
                     AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+                    AND (COALESCE(f.actual_weight, 0) &gt; 0 OR NOT EXISTS (
+                        SELECT 1 FROM biz_finish_original_rel unknown_rel
+                        INNER JOIN biz_original_roll unknown_roll
+                          ON unknown_roll.uuid = unknown_rel.original_uuid AND unknown_roll.is_deleted = 0
+                        WHERE unknown_rel.finish_uuid = f.uuid AND unknown_rel.is_deleted = 0
+                          AND unknown_roll.weight_status = 'UNKNOWN'
+                          AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0))
                     AND f.warehouse_uuid = #{q.warehouseUuid}
                     AND f.is_remain = 1
                     AND NOT EXISTS (SELECT 1 FROM biz_delivery_detail dd
                         WHERE dd.finish_uuid = f.uuid AND dd.stock_lock_status = 1 AND dd.is_deleted = 0)
-                THEN 1 ELSE 0 END), 0) AS remainCount,
+               THEN 1 ELSE 0 END), 0) AS remainCount,
                COALESCE(SUM(CASE WHEN f.finish_status = 2
                     AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+                    AND (COALESCE(f.actual_weight, 0) &gt; 0 OR NOT EXISTS (
+                        SELECT 1 FROM biz_finish_original_rel unknown_rel
+                        INNER JOIN biz_original_roll unknown_roll
+                          ON unknown_roll.uuid = unknown_rel.original_uuid AND unknown_roll.is_deleted = 0
+                        WHERE unknown_rel.finish_uuid = f.uuid AND unknown_rel.is_deleted = 0
+                          AND unknown_roll.weight_status = 'UNKNOWN'
+                          AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0))
                     AND f.warehouse_uuid IS NULL
                     AND NOT EXISTS (SELECT 1 FROM biz_delivery_detail dd
                         WHERE dd.finish_uuid = f.uuid AND dd.stock_lock_status = 1 AND dd.is_deleted = 0)
                     <include refid="RequestedScopeCondition"/>
-                THEN 1 ELSE 0 END), 0) AS unassignedWarehouseCount,
+               THEN 1 ELSE 0 END), 0) AS unassignedWarehouseCount,
                COALESCE(SUM(CASE WHEN f.finish_status = 2
                     AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+                    AND (COALESCE(f.actual_weight, 0) &gt; 0 OR NOT EXISTS (
+                        SELECT 1 FROM biz_finish_original_rel unknown_rel
+                        INNER JOIN biz_original_roll unknown_roll
+                          ON unknown_roll.uuid = unknown_rel.original_uuid AND unknown_roll.is_deleted = 0
+                        WHERE unknown_rel.finish_uuid = f.uuid AND unknown_rel.is_deleted = 0
+                          AND unknown_roll.weight_status = 'UNKNOWN'
+                          AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0))
                     AND f.warehouse_uuid IS NOT NULL AND f.warehouse_uuid != #{q.warehouseUuid}
                     AND NOT EXISTS (SELECT 1 FROM biz_delivery_detail dd
                         WHERE dd.finish_uuid = f.uuid AND dd.stock_lock_status = 1 AND dd.is_deleted = 0)
                     <include refid="RequestedScopeCondition"/>
-                THEN 1 ELSE 0 END), 0) AS otherWarehouseCount,
+               THEN 1 ELSE 0 END), 0) AS otherWarehouseCount,
                COALESCE(SUM(CASE WHEN f.finish_status = 2
                     AND COALESCE(f.remaining_weight, f.actual_weight, 0) &gt; 0
+                    AND (COALESCE(f.actual_weight, 0) &gt; 0 OR NOT EXISTS (
+                        SELECT 1 FROM biz_finish_original_rel unknown_rel
+                        INNER JOIN biz_original_roll unknown_roll
+                          ON unknown_roll.uuid = unknown_rel.original_uuid AND unknown_roll.is_deleted = 0
+                        WHERE unknown_rel.finish_uuid = f.uuid AND unknown_rel.is_deleted = 0
+                          AND unknown_roll.weight_status = 'UNKNOWN'
+                          AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0))
                     AND f.warehouse_uuid = #{q.warehouseUuid}
                     AND EXISTS (SELECT 1 FROM biz_delivery_detail dd
                         WHERE dd.finish_uuid = f.uuid AND dd.stock_lock_status = 1 AND dd.is_deleted = 0)
                     <include refid="RequestedScopeCondition"/>
-                THEN 1 ELSE 0 END), 0) AS lockedCount,
+               THEN 1 ELSE 0 END), 0) AS lockedCount,
                COALESCE(SUM(CASE WHEN f.finish_status = 2
-                    AND COALESCE(f.remaining_weight, f.actual_weight, 0) &lt;= 0
+                    AND (COALESCE(f.remaining_weight, f.actual_weight, 0) &lt;= 0
+                         OR (COALESCE(f.actual_weight, 0) &lt;= 0 AND EXISTS (
+                             SELECT 1
+                             FROM biz_finish_original_rel unknown_rel
+                             INNER JOIN biz_original_roll unknown_roll
+                               ON unknown_roll.uuid = unknown_rel.original_uuid
+                              AND unknown_roll.is_deleted = 0
+                             WHERE unknown_rel.finish_uuid = f.uuid
+                               AND unknown_rel.is_deleted = 0
+                               AND unknown_roll.weight_status = 'UNKNOWN'
+                               AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0
+                         )))
                     AND f.warehouse_uuid = #{q.warehouseUuid}
                     <include refid="RequestedScopeCondition"/>
                 THEN 1 ELSE 0 END), 0) AS invalidWeightCount
@@ -145,6 +203,7 @@
           AND o.is_deleted = 0
           AND o.order_status IN (3, 4, 5)
           AND f.is_deleted = 0
+          AND (COALESCE(f.is_remain, 0) != 1 OR COALESCE(f.ownership_status, 0) != 2)
           <include refid="SearchAndSourceWhere"/>
     </select>
 
@@ -171,7 +230,20 @@
                f.finish_diameter AS finishDiameter,
                f.finish_core_diameter AS finishCoreDiameter,
                f.actual_weight AS actualWeight,
-               COALESCE(f.remaining_weight, f.actual_weight, 0) AS remainingWeight,
+               CASE WHEN COALESCE(f.actual_weight, 0) &gt; 0
+                         OR NOT EXISTS (
+                             SELECT 1
+                             FROM biz_finish_original_rel unknown_rel
+                             INNER JOIN biz_original_roll unknown_roll
+                               ON unknown_roll.uuid = unknown_rel.original_uuid
+                              AND unknown_roll.is_deleted = 0
+                             WHERE unknown_rel.finish_uuid = f.uuid
+                               AND unknown_rel.is_deleted = 0
+                               AND unknown_roll.weight_status = 'UNKNOWN'
+                               AND COALESCE(unknown_roll.actual_weight, 0) &lt;= 0
+                         )
+                    THEN COALESCE(f.remaining_weight, f.actual_weight, 0)
+                    ELSE NULL END AS remainingWeight,
                f.is_remain AS isRemain,
                f.source_type AS sourceType,
                f.finish_status AS finishStatus,

@@ -17,11 +17,11 @@ export function parseStoredProcessAiResult(value: string | undefined): ProcessAi
   try {
     const parsed: unknown = JSON.parse(value)
     if (!isRecord(parsed) || typeof parsed.parseId !== 'string'
-      || typeof parsed.conversationId !== 'string' || !isRecord(parsed.result)
-      || !isRecord(parsed.compiled)) return undefined
+      || typeof parsed.conversationId !== 'string' || !isRecord(parsed.compiled)) return undefined
     const result = parsed as unknown as ProcessAiParseResult
     return {
       ...result,
+      result: isRecord(parsed.result) ? result.result : emptyExtraction(result.parseId),
       compiled: {
         ...result.compiled,
         packagingCandidates: Array.isArray(result.compiled.packagingCandidates)
@@ -32,6 +32,11 @@ export function parseStoredProcessAiResult(value: string | undefined): ProcessAi
   } catch {
     return undefined
   }
+}
+
+function emptyExtraction(parseId: string): ProcessAiParseResult['result'] {
+  return { parseId, schemaVersion: '2.0', assignments: [], unmappedText: [],
+    conflicts: [], needsClarification: true, clarificationQuestions: [] }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

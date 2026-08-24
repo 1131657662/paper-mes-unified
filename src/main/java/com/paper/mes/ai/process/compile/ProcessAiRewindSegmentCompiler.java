@@ -2,6 +2,8 @@ package com.paper.mes.ai.process.compile;
 
 import com.paper.mes.common.BusinessException;
 import com.paper.mes.common.ResultCode;
+import com.paper.mes.ai.process.intent.ProcessAiCustomerSpec;
+import com.paper.mes.processorder.service.FinishCustomerSpecificationPolicy;
 import com.paper.mes.processorder.dto.RewindLayoutItemPlanDTO;
 import com.paper.mes.processorder.dto.RewindSegmentPlanDTO;
 import com.paper.mes.processorder.dto.RewindSourcePlanDTO;
@@ -55,17 +57,41 @@ class ProcessAiRewindSegmentCompiler {
             throw invalid("AI_REWIND_WIDTH_CHANGE_FORBIDDEN", "当前复卷模式不允许改变门幅");
         }
         List<RewindLayoutItemPlanDTO> result = new ArrayList<>();
-        value.widths().forEach(width -> result.add(item("FINISH", width)));
+        for (int index = 0; index < value.widths().size(); index++) {
+            result.add(item("FINISH", value.widths().get(index), index, input, value.input().customerSpecs()));
+        }
         if (remainder && used < sourceWidth) result.add(item("TRIM", sourceWidth - used));
         return result;
     }
 
     private RewindLayoutItemPlanDTO item(String type, int width) {
+        return item(type, width, -1, null, List.of());
+    }
+
+    private RewindLayoutItemPlanDTO item(String type, int width, int index,
+                                         ProcessAiRewindSegmentInput input,
+                                         List<ProcessAiCustomerSpec> specs) {
         RewindLayoutItemPlanDTO item = new RewindLayoutItemPlanDTO();
         item.setItemType(type);
         item.setWidth(width);
         item.setQuantity(1);
+        if ("FINISH".equals(type) && input != null) {
+            specs.stream().filter(spec -> spec.outputIndex().equals(index)).findFirst()
+                    .ifPresent(spec -> applyCustomerSpec(item, spec, input.owner(), width));
+        }
         return item;
+    }
+
+    private void applyCustomerSpec(RewindLayoutItemPlanDTO item, ProcessAiCustomerSpec spec,
+                                   com.paper.mes.ai.process.context.ProcessAiRollContext owner,
+                                   int physicalWidth) {
+        FinishCustomerSpecificationPolicy.requireOverrideReason(owner.paperName(), owner.gramWeight(),
+                physicalWidth, spec.paperName(), spec.gramWeight(), spec.finishWidth(),
+                spec.overrideReason());
+        item.setCustomerPaperName(spec.paperName());
+        item.setCustomerGramWeight(spec.gramWeight());
+        item.setCustomerFinishWidth(spec.finishWidth());
+        item.setCustomerSpecOverrideReason(spec.overrideReason());
     }
 
     private List<RewindSourcePlanDTO> sources(ProcessAiRewindSegmentInput input) {
