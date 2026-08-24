@@ -240,32 +240,24 @@ PREPARE add_parse_fk_stmt FROM @add_parse_fk; EXECUTE add_parse_fk_stmt; DEALLOC
 -- values until the application audit backfill encrypts the minimum audit context, creates
 -- HMAC references, and then clears the plaintext. Candidate learning remains fail-closed
 -- until both backfills finish, so this short transition cannot create new shared knowledge.
-DROP TEMPORARY TABLE IF EXISTS tmp_ai_legacy_evidence_candidates;
--- Derive the temporary key's character set and collation from the live table.
--- Hard-coding the server default causes MySQL 8 to reject the join when the
--- application schema uses utf8mb4_general_ci.
-CREATE TEMPORARY TABLE tmp_ai_legacy_evidence_candidates
-SELECT candidate_uuid
-FROM biz_project_memory_candidate_evidence
-WHERE 1 = 0;
-ALTER TABLE tmp_ai_legacy_evidence_candidates ADD PRIMARY KEY (candidate_uuid);
-INSERT IGNORE INTO tmp_ai_legacy_evidence_candidates (candidate_uuid)
-SELECT DISTINCT candidate_uuid
-FROM biz_project_memory_candidate_evidence
-WHERE order_uuid IS NOT NULL OR parse_id IS NOT NULL
-   OR phrase IS NOT NULL OR context_json IS NOT NULL
-   OR (audit_context_hash IS NULL AND (
-        proposed_value_json IS NOT NULL
-        OR final_value_json IS NOT NULL
-        OR difference_json IS NOT NULL
-      ));
+-- The derived table inherits the live column collation and avoids requiring the
+-- CREATE TEMPORARY TABLES privilege from the production migration account.
 UPDATE biz_project_memory_candidate AS candidate
-JOIN tmp_ai_legacy_evidence_candidates AS legacy
+JOIN (
+  SELECT DISTINCT candidate_uuid
+  FROM biz_project_memory_candidate_evidence
+  WHERE order_uuid IS NOT NULL OR parse_id IS NOT NULL
+     OR phrase IS NOT NULL OR context_json IS NOT NULL
+     OR (audit_context_hash IS NULL AND (
+          proposed_value_json IS NOT NULL
+          OR final_value_json IS NOT NULL
+          OR difference_json IS NOT NULL
+        ))
+) AS legacy
   ON legacy.candidate_uuid = candidate.uuid
 SET candidate.distinct_order_count = 0,
     candidate.status = CASE WHEN candidate.status = 'READY' THEN 'CANDIDATE'
                             ELSE candidate.status END
 WHERE candidate.status <> 'ACTIVE';
-DROP TEMPORARY TABLE IF EXISTS tmp_ai_legacy_evidence_candidates;
 
 SELECT RELEASE_LOCK('paper_mes_ai_process_dialogue_v2') INTO @ai_dialogue_v2_unlock;
