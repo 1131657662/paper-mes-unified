@@ -13,7 +13,6 @@ class RemainRegistrationSchemaContractTest {
     void migration_containsOwnershipRegistrationAndLedgerContracts() throws Exception {
         String sql = Files.readString(Path.of("sql/V3.74__add_remain_registration_and_ownership.sql"));
 
-        assertTrue(sql.contains("ALTER TABLE `biz_finish_roll`"));
         assertTrue(sql.contains("ownership_status"));
         assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS `biz_remain_registration`"));
         assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS `biz_remain_registration_line`"));

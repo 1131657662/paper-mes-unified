@@ -3,18 +3,9 @@
 SET SESSION lock_wait_timeout = 5;
 SET SESSION innodb_lock_wait_timeout = 5;
 
-ALTER TABLE `biz_finish_roll`
-    ADD COLUMN `ownership_status` TINYINT NOT NULL DEFAULT 0
-        COMMENT '0客户所有 1客户/我方分属 2我方所有' AFTER `is_remain`,
-    ADD COLUMN `remain_own_weight` DECIMAL(10,3) NOT NULL DEFAULT 0.000
-        COMMENT '已转入我方的系统重量kg' AFTER `remaining_weight`,
-    ADD COLUMN `remain_transfer_state` TINYINT NOT NULL DEFAULT 0
-        COMMENT '0未转让 1部分转让 2全部转让 3部分恢复' AFTER `ownership_status`,
-    ADD KEY `idx_finish_ownership` (`is_remain`, `ownership_status`, `finish_status`, `is_deleted`),
-    ADD CONSTRAINT `chk_finish_ownership_status`
-        CHECK (`ownership_status` IN (0, 1, 2)),
-    ADD CONSTRAINT `chk_finish_remain_own_weight`
-        CHECK (`remain_own_weight` >= 0);
+-- Finish-roll ownership columns, index, and checks are owned by V3.73.1.
+-- Keeping this migration focused on the registration/ownership tables avoids
+-- duplicate DDL when a database has already applied that compatibility patch.
 
 CREATE TABLE IF NOT EXISTS `biz_remain_registration` (
     `uuid` VARCHAR(36) NOT NULL COMMENT '登记单主键',
@@ -344,17 +335,51 @@ CREATE TABLE IF NOT EXISTS `biz_remain_refund` (
          OR (`status` <> 'PAID'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='余料退款申请与支付事实';
 
-ALTER TABLE `biz_remain_application`
-    ADD CONSTRAINT `fk_remain_application_adjustment` FOREIGN KEY (`adjustment_uuid`)
-        REFERENCES `biz_remain_adjustment` (`uuid`) ON DELETE RESTRICT;
+SET @add_remain_application_adjustment_fk = IF((SELECT COUNT(*)
+  FROM information_schema.table_constraints
+  WHERE constraint_schema = DATABASE() AND table_name = 'biz_remain_application'
+    AND constraint_name = 'fk_remain_application_adjustment') = 0,
+  'ALTER TABLE biz_remain_application ADD CONSTRAINT fk_remain_application_adjustment FOREIGN KEY (adjustment_uuid) REFERENCES biz_remain_adjustment (uuid) ON DELETE RESTRICT',
+  'DO 0');
+PREPARE add_remain_application_adjustment_fk_stmt FROM @add_remain_application_adjustment_fk;
+EXECUTE add_remain_application_adjustment_fk_stmt;
+DEALLOCATE PREPARE add_remain_application_adjustment_fk_stmt;
 
-ALTER TABLE `biz_receive_record`
-    ADD COLUMN `source_type` VARCHAR(32) NOT NULL DEFAULT 'LEGACY'
-        COMMENT 'LEGACY/CASH/DISCOUNT/REMAIN_OFFSET' AFTER `receive_type`,
-    ADD COLUMN `remain_application_uuid` VARCHAR(36) DEFAULT NULL
-        COMMENT '余料抵扣应用来源' AFTER `source_type`,
-    ADD KEY `idx_receive_source_type` (`source_type`, `record_status`),
-    ADD KEY `idx_receive_remain_application` (`remain_application_uuid`);
+SET @add_receive_source_type = IF((SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'biz_receive_record'
+    AND column_name = 'source_type') = 0,
+  'ALTER TABLE biz_receive_record ADD COLUMN source_type VARCHAR(32) NOT NULL DEFAULT ''LEGACY'' COMMENT ''LEGACY/CASH/DISCOUNT/REMAIN_OFFSET'' AFTER receive_type',
+  'DO 0');
+PREPARE add_receive_source_type_stmt FROM @add_receive_source_type;
+EXECUTE add_receive_source_type_stmt;
+DEALLOCATE PREPARE add_receive_source_type_stmt;
+
+SET @add_receive_remain_application = IF((SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'biz_receive_record'
+    AND column_name = 'remain_application_uuid') = 0,
+  'ALTER TABLE biz_receive_record ADD COLUMN remain_application_uuid VARCHAR(36) DEFAULT NULL COMMENT ''余料抵扣应用来源'' AFTER source_type',
+  'DO 0');
+PREPARE add_receive_remain_application_stmt FROM @add_receive_remain_application;
+EXECUTE add_receive_remain_application_stmt;
+DEALLOCATE PREPARE add_receive_remain_application_stmt;
+
+SET @add_receive_source_type_index = IF((SELECT COUNT(*) FROM information_schema.statistics
+  WHERE table_schema = DATABASE() AND table_name = 'biz_receive_record'
+    AND index_name = 'idx_receive_source_type') = 0,
+  'ALTER TABLE biz_receive_record ADD KEY idx_receive_source_type (source_type, record_status)',
+  'DO 0');
+PREPARE add_receive_source_type_index_stmt FROM @add_receive_source_type_index;
+EXECUTE add_receive_source_type_index_stmt;
+DEALLOCATE PREPARE add_receive_source_type_index_stmt;
+
+SET @add_receive_remain_application_index = IF((SELECT COUNT(*) FROM information_schema.statistics
+  WHERE table_schema = DATABASE() AND table_name = 'biz_receive_record'
+    AND index_name = 'idx_receive_remain_application') = 0,
+  'ALTER TABLE biz_receive_record ADD KEY idx_receive_remain_application (remain_application_uuid)',
+  'DO 0');
+PREPARE add_receive_remain_application_index_stmt FROM @add_receive_remain_application_index;
+EXECUTE add_receive_remain_application_index_stmt;
+DEALLOCATE PREPARE add_receive_remain_application_index_stmt;
 
 CREATE TABLE IF NOT EXISTS `biz_remain_inventory_lot` (
     `uuid` VARCHAR(36) NOT NULL COMMENT '我方余料库存批次主键',
