@@ -64,14 +64,6 @@ jobs:
     defaults:
       run:
         working-directory: frontend
-    env:
-      PAPER_MES_E2E_BASE_URL: ${{ secrets.PAPER_MES_E2E_BASE_URL }}
-      PAPER_MES_E2E_LIMITED_PASSWORD: ${{ secrets.PAPER_MES_E2E_LIMITED_PASSWORD }}
-      PAPER_MES_E2E_LIMITED_USERNAME: ${{ secrets.PAPER_MES_E2E_LIMITED_USERNAME }}
-      PAPER_MES_E2E_PASSWORD: ${{ secrets.PAPER_MES_E2E_PASSWORD }}
-      PAPER_MES_E2E_USERNAME: ${{ secrets.PAPER_MES_E2E_USERNAME }}
-      PAPER_MES_E2E_AI_ENABLED: ${{ vars.PAPER_MES_E2E_AI_ENABLED }}
-
     steps:
       - uses: actions/checkout@v5
 
@@ -110,6 +102,8 @@ jobs:
       # ubuntu-latest already supplies the shared browser libraries. Installing
       # apt dependencies on every run can consume the entire 30-minute job limit.
       - run: npx playwright install chromium
+      # Keep the quality gate hermetic. Authenticated and deployed-environment
+      # probes belong to the controlled test-deployment acceptance stage.
       - run: npm run test:e2e
       - run: npm run test:e2e:performance
       - uses: actions/upload-artifact@v7
