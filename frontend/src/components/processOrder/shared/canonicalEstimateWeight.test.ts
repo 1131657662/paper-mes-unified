@@ -103,6 +103,21 @@ describe('canonicalStageOutputWeights', () => {
     expect(weights.get('trim')).toBe(400)
   })
 
+  it('keeps saved stage plans instead of flattening repeated rewind layouts', () => {
+    const weights = canonicalStageOutputWeights(
+      production({ actualWeight: 2403, originalWidth: 1625 }),
+      [
+        output('product-a', 1550, { estimateWeight: 1146, weightStatus: 'ESTIMATED' }),
+        output('trim-a', 75, { estimateWeight: 56, isRemain: 1, outputSort: 2, weightStatus: 'ESTIMATED' }),
+        output('product-b', 1550, { estimateWeight: 1146, outputSort: 3, weightStatus: 'ESTIMATED' }),
+        output('trim-b', 75, { estimateWeight: 55, isRemain: 1, outputSort: 4, weightStatus: 'ESTIMATED' }),
+      ],
+    )
+
+    expect(['product-a', 'trim-a', 'product-b', 'trim-b'].map((key) => weights.get(key)))
+      .toEqual([1146, 56, 1146, 55])
+  })
+
   it('leaves an unlinked next stage unknown instead of inventing parent coverage', () => {
     const weights = canonicalStageOutputWeights(
       production({ actualWeight: 1200, originalWidth: 1200, steps: [
@@ -175,6 +190,21 @@ describe('canonicalStageOutputWeights', () => {
 })
 
 describe('canonicalFinishEstimateWeights', () => {
+  it('keeps saved plans for each repeated rewind layout', () => {
+    const weights = canonicalFinishEstimateWeights({
+      production: production({ actualWeight: 2403, originalWidth: 1625, mainStepType: 2 }),
+      finishes: [
+        { uuid: 'product-a', finishRollNo: 'F001', finishWidth: 1550, estimateWeight: 1146 },
+        { uuid: 'trim-a', finishRollNo: 'F002', finishWidth: 75, estimateWeight: 56, isRemain: 1 },
+        { uuid: 'product-b', finishRollNo: 'F003', finishWidth: 1550, estimateWeight: 1146 },
+        { uuid: 'trim-b', finishRollNo: 'F004', finishWidth: 75, estimateWeight: 55, isRemain: 1 },
+      ],
+    })
+
+    expect(['product-a', 'trim-a', 'product-b', 'trim-b'].map((key) => weights.get(key)))
+      .toEqual([1146, 56, 1146, 55])
+  })
+
   it('reserves measured trim weight before allocating formal products', () => {
     const weights = canonicalFinishEstimateWeights({
       production: production({ originalWidth: 1000, mainStepType: 1 }),

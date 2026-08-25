@@ -69,6 +69,7 @@ export interface FinishRoll {
   finishCoreDiameter?: number
   trimWidthShare?: number
   estimateWeight?: number
+  estimateWeightSnap?: number
   actualWeight?: number
   scrapWeight?: number
   /** 0正品 1边角余料 */

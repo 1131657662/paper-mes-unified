@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react'
 import { Button, Tooltip } from 'antd'
 import { RobotOutlined } from '@ant-design/icons'
 import { PERMISSIONS } from '../../../constants/permissions'
+import { RELEASE_FEATURES } from '../../../config/releaseFeatures'
 import { useHasPermission } from '../../../stores/authStore'
 import type { RollDraft } from '../../processOrderCreate/types'
 import type { ProcessPlanDTO } from '../../../types/processOrder'
@@ -27,18 +28,21 @@ export default function ProcessAiAssistantEntry(props: Props) {
   const [open, setOpen] = useState(false)
   const [session, setSession] = useState<ProcessAiSession>()
   const canUseAi = useHasPermission(PERMISSIONS.aiAssist)
+  const aiButtonsEnabled = RELEASE_FEATURES.aiButtonsEnabled
   const {
     data: status,
     isError: isStatusError,
     isLoading: isLoadingStatus,
     refetch: refetchStatus,
-  } = useProcessAiStatus(canUseAi)
+  } = useProcessAiStatus(canUseAi && aiButtonsEnabled)
   const { mutateAsync: openSession, isPending: isOpening } = useOpenProcessAiSession()
   if (!canUseAi) return null
-  const availability = processAiAvailability(props.orderUuid, status, isStatusError)
+  const availability = aiButtonsEnabled
+    ? processAiAvailability(props.orderUuid, status, isStatusError)
+    : { unavailable: 'AI 工艺助手暂未开放', hint: 'AI 工艺助手暂未开放' }
 
   const handleOpen = async () => {
-    if (!props.orderUuid || availability.unavailable) return
+    if (!aiButtonsEnabled || !props.orderUuid || availability.unavailable) return
     if (isStatusError) {
       const refreshed = await refetchStatus()
       const refreshedAvailability = processAiAvailability(props.orderUuid, refreshed.data)
@@ -56,7 +60,7 @@ export default function ProcessAiAssistantEntry(props: Props) {
   return <>
     <Tooltip title={availability.hint}>
       <Button icon={<RobotOutlined />} loading={isOpening || isLoadingStatus}
-        disabled={Boolean(availability.unavailable)} onClick={() => void handleOpen()}>
+        disabled={!aiButtonsEnabled || Boolean(availability.unavailable)} onClick={() => void handleOpen()}>
         AI 工艺助手
       </Button>
     </Tooltip>

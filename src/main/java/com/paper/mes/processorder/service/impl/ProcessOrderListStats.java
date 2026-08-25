@@ -119,8 +119,7 @@ final class ProcessOrderListStats {
                 .filter(ProcessOrderListStats::isFormalFinishRoll)
                 .map(roll -> hasActualWeight(roll)
                         ? roll.getActualWeight()
-                        : estimateWeights.containsKey(roll.getUuid())
-                            ? estimateWeights.get(roll.getUuid()) : roll.getEstimateWeight())
+                        : estimatedWeight(roll, estimateWeights))
                 .map(ProcessOrderListStats::zeroIfNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
@@ -129,10 +128,31 @@ final class ProcessOrderListStats {
                                                       Map<String, BigDecimal> estimateWeights) {
         return rolls.stream()
                 .filter(ProcessOrderListStats::isFormalFinishRoll)
-                .map(roll -> estimateWeights.containsKey(roll.getUuid())
-                        ? estimateWeights.get(roll.getUuid()) : roll.getEstimateWeight())
+                .map(roll -> estimatedWeight(roll, estimateWeights))
                 .map(ProcessOrderListStats::zeroIfNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private static BigDecimal estimatedWeight(FinishRoll roll, Map<String, BigDecimal> estimateWeights) {
+        BigDecimal stored = storedEstimate(roll);
+        if (stored != null) return stored;
+        if (estimateWeights.containsKey(roll.getUuid())) return estimateWeights.get(roll.getUuid());
+        return roll.getEstimateWeight();
+    }
+
+    private static BigDecimal storedEstimate(FinishRoll roll) {
+        BigDecimal value = roll.getEstimateWeightSnap() != null
+                ? roll.getEstimateWeightSnap() : roll.getEstimateWeight();
+        if (value == null) return null;
+        return roll.getEstimateWeightSnap() != null || roll.getFinishRollNo() != null ? value : null;
+    }
+
+    private static boolean hasStoredEstimate(FinishRoll roll) {
+        return storedEstimate(roll) != null;
+    }
+
+    private static boolean hasCompleteStoredEstimatePlan(List<FinishRoll> rolls) {
+        return !rolls.isEmpty() && rolls.stream().allMatch(ProcessOrderListStats::hasStoredEstimate);
     }
 
     private static Map<String, BigDecimal> canonicalEstimateWeights(
@@ -159,6 +179,10 @@ final class ProcessOrderListStats {
             if (original.getUuid() != null) originalsByUuid.put(original.getUuid(), original);
         }
         for (Map.Entry<String, List<FinishRoll>> entry : groups.entrySet()) {
+            if (hasCompleteStoredEstimatePlan(entry.getValue())) {
+                entry.getValue().forEach(finish -> result.put(finish.getUuid(), storedEstimate(finish)));
+                continue;
+            }
             BigDecimal sourceWeight = sourceWeightForGroup(entry.getValue(), sourceIdsByGroup.get(entry.getKey()),
                     originalsByUuid, relationsByFinish, effectiveRatios);
             if (sourceWeight == null) {

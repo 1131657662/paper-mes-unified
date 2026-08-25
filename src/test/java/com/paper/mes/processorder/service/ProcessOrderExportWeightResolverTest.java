@@ -28,6 +28,26 @@ class ProcessOrderExportWeightResolverTest {
     }
 
     @Test
+    void fallbackWeightsKeepSavedRepeatedRewindPlansWithoutFlatteningTrimWidths() {
+        ProcessOrderDetailVO.RollProductionVO production = production();
+        production.setRollWeight(new BigDecimal("2403"));
+        production.setOriginalWidth(1625);
+        ProcessOrderDetailVO.FinishProductionVO productA = savedFinish("product-a", "F001", 1550, false, "1146");
+        ProcessOrderDetailVO.FinishProductionVO trimA = savedFinish("trim-a", "F002", 75, true, "56");
+        ProcessOrderDetailVO.FinishProductionVO productB = savedFinish("product-b", "F003", 1550, false, "1146");
+        ProcessOrderDetailVO.FinishProductionVO trimB = savedFinish("trim-b", "F004", 75, true, "55");
+        production.setFinishes(List.of(productA, trimA, productB, trimB));
+
+        Map<String, BigDecimal> weights = ProcessOrderExportWeightResolver
+                .fallbackEstimateWeights(List.of(production));
+
+        assertThat(weights).containsEntry("product-a", new BigDecimal("1146"))
+                .containsEntry("trim-a", new BigDecimal("56"))
+                .containsEntry("product-b", new BigDecimal("1146"))
+                .containsEntry("trim-b", new BigDecimal("55"));
+    }
+
+    @Test
     void fallbackWeightsKeepMeasuredProductAndAllocateOnlyTheUnmeasuredRemainder() {
         ProcessOrderDetailVO.RollProductionVO production = production();
         ProcessOrderDetailVO.FinishProductionVO measured = finish("measured", 500, false);
@@ -181,6 +201,14 @@ class ProcessOrderExportWeightResolverTest {
         finish.setUuid(uuid);
         finish.setFinishWidth(width);
         finish.setIsRemain(trim ? 1 : 0);
+        return finish;
+    }
+
+    private ProcessOrderDetailVO.FinishProductionVO savedFinish(String uuid, String rollNo, int width,
+                                                                 boolean trim, String weight) {
+        ProcessOrderDetailVO.FinishProductionVO finish = finish(uuid, width, trim);
+        finish.setFinishRollNo(rollNo);
+        finish.setEstimateWeight(new BigDecimal(weight));
         return finish;
     }
 }

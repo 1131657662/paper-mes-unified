@@ -91,6 +91,8 @@ app:
   upload:
     dir: /opt/paper-mes/upload
     url-prefix: /api/files
+  remain:
+    enabled: ${PAPER_MES_REMAIN_ENABLED:false}
 
 mybatis-plus:
   configuration:

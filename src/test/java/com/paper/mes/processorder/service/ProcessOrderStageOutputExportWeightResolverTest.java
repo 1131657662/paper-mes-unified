@@ -76,6 +76,23 @@ class ProcessOrderStageOutputExportWeightResolverTest {
     }
 
     @Test
+    void keepsSavedStageWeightsForRepeatedRewindLayouts() {
+        ProcessOrderDetailVO.StageOutputVO productA = savedOutput("product-a", 1550, false, "1146");
+        ProcessOrderDetailVO.StageOutputVO trimA = savedOutput("trim-a", 75, true, "56");
+        ProcessOrderDetailVO.StageOutputVO productB = savedOutput("product-b", 1550, false, "1146");
+        ProcessOrderDetailVO.StageOutputVO trimB = savedOutput("trim-b", 75, true, "55");
+        ProcessOrderDetailVO.RollProductionVO production = production("2403", 1625,
+                outputs(productA, trimA, productB, trimB));
+
+        Map<String, BigDecimal> weights = ProcessOrderExportWeightResolver.stageOutputEstimateWeights(production);
+
+        assertThat(weights).containsEntry("product-a", decimal("1146"))
+                .containsEntry("trim-a", decimal("56"))
+                .containsEntry("product-b", decimal("1146"))
+                .containsEntry("trim-b", decimal("55"));
+    }
+
+    @Test
     void knownActualOutputIsLockedAndOnlyUnknownOutputsReceiveFallback() {
         ProcessOrderDetailVO.StageOutputVO actual = output("actual", 1200, false);
         actual.setActualWeight(decimal("700"));
@@ -195,6 +212,13 @@ class ProcessOrderStageOutputExportWeightResolverTest {
         output.setOutputSort(width);
         output.setFinishWidth(width);
         output.setIsRemain(trim ? 1 : 0);
+        return output;
+    }
+
+    private ProcessOrderDetailVO.StageOutputVO savedOutput(String uuid, int width, boolean trim, String weight) {
+        ProcessOrderDetailVO.StageOutputVO output = output(uuid, width, trim);
+        output.setEstimateWeight(decimal(weight));
+        output.setWeightStatus("ESTIMATED");
         return output;
     }
 

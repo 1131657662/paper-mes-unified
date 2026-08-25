@@ -10,10 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RemainRegistrationSchemaContractTest {
 
     @Test
-    void migration_containsOwnershipRegistrationAndLedgerContracts() throws Exception {
+    void migration_chain_containsOwnershipRegistrationAndLedgerContracts() throws Exception {
+        String ownershipSql = Files.readString(Path.of("sql/V3.73.1__add_finish_roll_remain_columns.sql"));
         String sql = Files.readString(Path.of("sql/V3.74__add_remain_registration_and_ownership.sql"));
 
-        assertTrue(sql.contains("ownership_status"));
+        assertTrue(ownershipSql.contains("ownership_status"));
         assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS `biz_remain_registration`"));
         assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS `biz_remain_registration_line`"));
         assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS `biz_remain_inventory_lot`"));

@@ -119,6 +119,7 @@ public class ProcessOrderDetailVO {
         private Integer finishDiameter;
         private Integer finishCoreDiameter;
         private BigDecimal estimateWeight;
+        private BigDecimal estimateWeightSnap;
         private BigDecimal actualWeight;
         private String weightStatus;
         private Integer trimWidthShare;

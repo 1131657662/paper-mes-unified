@@ -726,6 +726,7 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
             item.setFinishDiameter(finish.getFinishDiameter());
             item.setFinishCoreDiameter(finish.getFinishCoreDiameter());
             item.setEstimateWeight(finish.getEstimateWeight());
+            item.setEstimateWeightSnap(finish.getEstimateWeightSnap());
             item.setActualWeight(finish.getActualWeight());
             item.setWeightStatus(resolveFinishWeightStatus(finish, relsByFinish.get(finish.getUuid()), rollByUuid));
             item.setTrimWidthShare(finish.getTrimWidthShare());

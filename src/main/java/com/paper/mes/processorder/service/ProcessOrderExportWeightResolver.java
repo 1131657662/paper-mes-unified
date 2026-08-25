@@ -23,6 +23,10 @@ final class ProcessOrderExportWeightResolver {
     }
 
     static BigDecimal estimateWeight(FinishRoll finish, Map<String, BigDecimal> fallbackWeights) {
+        BigDecimal explicit = ProcessOrderExportText.estimateWeight(finish);
+        if (hasStoredEstimate(finish, explicit)) {
+            return IntegerWeightAllocator.roundTotal(explicit);
+        }
         if (fallbackWeights.containsKey(finish.getUuid())) {
             BigDecimal value = fallbackWeights.get(finish.getUuid());
             return value == null ? null : IntegerWeightAllocator.roundTotal(value);
@@ -31,7 +35,6 @@ final class ProcessOrderExportWeightResolver {
             BigDecimal value = fallbackWeights.get(finish.getFinishRollNo());
             return value == null ? null : IntegerWeightAllocator.roundTotal(value);
         }
-        BigDecimal explicit = ProcessOrderExportText.estimateWeight(finish);
         return isPositive(explicit) ? IntegerWeightAllocator.roundTotal(explicit) : null;
     }
 
@@ -60,12 +63,35 @@ final class ProcessOrderExportWeightResolver {
                 production, finishes, allProductions, effectiveRatios);
         for (ProcessOrderDetailVO.FinishProductionVO finish : finishes) {
             BigDecimal estimate = canonicalWeights.get(finish.getUuid());
+            BigDecimal stored = storedEstimate(finish);
+            if (hasStoredEstimate(finish, stored)) {
+                estimate = IntegerWeightAllocator.roundTotal(stored);
+            }
             if (!canonicalWeights.containsKey(finish.getUuid()) && isPositive(finish.getEstimateWeight())) {
                 estimate = IntegerWeightAllocator.roundTotal(finish.getEstimateWeight());
             }
             putEstimate(result, finish.getUuid(), estimate);
             putEstimate(result, finish.getFinishRollNo(), estimate);
         }
+    }
+
+    private static boolean hasStoredEstimate(ProcessOrderDetailVO.FinishProductionVO finish,
+                                             BigDecimal estimate) {
+        return estimate != null && (finish.getFinishRollNo() != null || finish.getEstimateWeightSnap() != null);
+    }
+
+    private static boolean hasStoredEstimate(FinishRoll finish, BigDecimal estimate) {
+        return estimate != null && (finish.getFinishRollNo() != null || finish.getEstimateWeightSnap() != null);
+    }
+
+    private static BigDecimal storedEstimate(ProcessOrderDetailVO.FinishProductionVO finish) {
+        return finish.getEstimateWeight() != null ? finish.getEstimateWeight() : finish.getEstimateWeightSnap();
+    }
+
+    private static boolean hasCompleteStoredEstimatePlan(
+            List<ProcessOrderDetailVO.FinishProductionVO> finishes) {
+        return !finishes.isEmpty()
+                && finishes.stream().allMatch(finish -> hasStoredEstimate(finish, storedEstimate(finish)));
     }
 
     private static Map<String, BigDecimal> canonicalWeights(
@@ -83,6 +109,11 @@ final class ProcessOrderExportWeightResolver {
             groups.computeIfAbsent(sourceKey(production, finish), ignored -> new ArrayList<>()).add(finish);
         }
         for (List<ProcessOrderDetailVO.FinishProductionVO> group : groups.values()) {
+            if (hasCompleteStoredEstimatePlan(group)) {
+                group.forEach(finish -> result.put(finish.getUuid(), hasStoredEstimate(finish, storedEstimate(finish))
+                        ? IntegerWeightAllocator.roundTotal(storedEstimate(finish)) : null));
+                continue;
+            }
             allocateGroup(result, production, group, allProductions, effectiveRatios);
         }
         return result;
@@ -430,6 +461,11 @@ final class ProcessOrderExportWeightResolver {
                     .filter(output -> (output.getStageLevel() == null ? 1 : output.getStageLevel()) == level)
                     .sorted(Comparator.comparing(output -> output.getOutputSort() == null ? 0 : output.getOutputSort()))
                     .toList();
+            if (stage.stream().anyMatch(ProcessOrderExportWeightResolver::hasStoredStageEstimate)) {
+                stage.forEach(output -> result.put(output.getUuid(), hasStoredStageEstimate(output)
+                        ? IntegerWeightAllocator.roundTotal(output.getEstimateWeight()) : null));
+                continue;
+            }
             BigDecimal source = stageSourceWeight(production, stage, outputs, result);
             if (source == null) {
                 stage.forEach(output -> result.put(output.getUuid(), null));
@@ -444,6 +480,11 @@ final class ProcessOrderExportWeightResolver {
             allocateStageWeights(production, stage, budget, result);
         }
         return result;
+    }
+
+    private static boolean hasStoredStageEstimate(ProcessOrderDetailVO.StageOutputVO output) {
+        return "ESTIMATED".equalsIgnoreCase(output.getWeightStatus())
+                && output.getEstimateWeight() != null && output.getEstimateWeight().signum() >= 0;
     }
 
     private static BigDecimal stageSourceWeight(

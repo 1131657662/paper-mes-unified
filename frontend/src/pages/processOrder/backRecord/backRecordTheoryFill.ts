@@ -83,6 +83,10 @@ function assignItemFinishes(
   rolls: BackRecordFormValues['rolls'],
 ) {
   const entries = item.finishes.filter(({ finish }) => isActiveBackRecordFinish(finish))
+  if (hasCompleteStoredPlan(entries.map(({ finish }) => finish))) {
+    entries.forEach(({ finish }) => values.set(finish.uuid, theoreticalFinishValue(finish, storedPlanWeight(finish))))
+    return
+  }
   const official = entries.filter(({ finish }) => finish.isSpare !== 1 && finish.isRemain !== 1)
   const trims = entries.filter(({ finish }) => finish.isRemain === 1)
   const sourceWeight = itemSourceWeight(item, rolls)
@@ -151,10 +155,7 @@ function theoreticalFinishValue(
     finishWidth: finish.finishWidth && finish.finishWidth > 0 ? finish.finishWidth : undefined,
     finishDiameter: finish.finishDiameter,
     finishCoreDiameter: finish.finishCoreDiameter,
-    actualWeight: finish.isRemain === 1 || finish.isSpare === 1
-      ? finish.actualWeight
-      : finish.actualWeight
-        ?? firstPositive(fallbackWeight),
+    actualWeight: finish.actualWeight ?? fallbackWeight,
     scrapWeight: finish.scrapWeight ?? 0,
     isRemain: finish.isRemain ?? 0,
     isAbnormal: finish.isAbnormal ?? 0,
@@ -254,6 +255,19 @@ function widthPolicy(item: BackRecordWorkItem) {
 
 function firstPositive(...values: Array<number | undefined>) {
   return values.find((value) => value != null && Number.isFinite(value) && value > 0)
+}
+
+function hasStoredPlanWeight(finish: FinishRoll): boolean {
+  return storedPlanWeight(finish) != null
+}
+
+function hasCompleteStoredPlan(finishes: FinishRoll[]): boolean {
+  return finishes.length > 0 && finishes.every(hasStoredPlanWeight)
+}
+
+function storedPlanWeight(finish: FinishRoll): number | undefined {
+  const value = finish.estimateWeightSnap ?? (finish.finishRollNo ? finish.estimateWeight : undefined)
+  return value != null && Number.isFinite(value) && value >= 0 ? roundWeightTotal(value) : undefined
 }
 
 function itemSourceWeight(item: BackRecordWorkItem, rolls: BackRecordFormValues['rolls']) {

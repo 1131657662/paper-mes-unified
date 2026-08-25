@@ -112,6 +112,8 @@ app:
   upload:
     dir: ./upload
     url-prefix: /api/files
+  remain:
+    enabled: ${PAPER_MES_REMAIN_ENABLED:false}
   backup:
     enabled: ${PAPER_MES_BACKUP_ENABLED:true}
     root-dir: ${PAPER_MES_BACKUP_ROOT:}

@@ -36,6 +36,7 @@ export interface FinishProductionVO {
   finishDiameter?: number
   finishCoreDiameter?: number
   estimateWeight?: number
+  estimateWeightSnap?: number
   actualWeight?: number
   weightStatus?: 'UNKNOWN' | 'ESTIMATED' | 'MEASURED'
   trimWidthShare?: number

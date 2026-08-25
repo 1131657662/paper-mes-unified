@@ -6,6 +6,7 @@ import AuthGuard from './AuthGuard'
 import PermissionGuard from '../components/PermissionGuard'
 import RouteErrorBoundary from './RouteErrorBoundary'
 import { PERMISSIONS } from '../constants/permissions'
+import { RELEASE_FEATURES } from '../config/releaseFeatures'
 
 import {
   AppendOrderPage,
@@ -131,7 +132,9 @@ export const router = createBrowserRouter([
             PERMISSIONS.settleDiscountAdminApprove,
           ]) },
           { path: 'settle-orders/:uuid', element: guardedPage(<SettleDetailPage />, [PERMISSIONS.settleView]) },
-          { path: 'remain', element: guardedPage(<RemainPage />, [PERMISSIONS.remainView]) },
+          ...(RELEASE_FEATURES.remainModuleEnabled
+            ? [{ path: 'remain', element: guardedPage(<RemainPage />, [PERMISSIONS.remainView]) }]
+            : []),
           { path: 'reports', element: guardedPage(<ReportLegacyRedirectPage />, [PERMISSIONS.reportView]) },
           { path: 'reports/overview', element: guardedPage(<ReportPage />, [PERMISSIONS.reportView]) },
           { path: 'reports/production', element: guardedPage(<ReportTopicPage topic="production" />, [PERMISSIONS.reportView]) },

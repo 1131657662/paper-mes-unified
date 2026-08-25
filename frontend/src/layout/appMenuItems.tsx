@@ -30,6 +30,7 @@ import type { MenuProps } from 'antd'
 import type { ReactNode } from 'react'
 import { DISPLAY_TERMS } from '../constants/displayTerms'
 import { PERMISSIONS } from '../constants/permissions'
+import { RELEASE_FEATURES } from '../config/releaseFeatures'
 import { hasAnyPermission } from '../utils/permission'
 
 type MenuItem = Required<MenuProps>['items'][number]
@@ -43,7 +44,9 @@ export function buildMenuItems(permissions?: string[]): MenuProps['items'] {
     can([PERMISSIONS.orderView]) && menu('/process-orders', <ContainerOutlined />, '加工单'),
     can([PERMISSIONS.deliveryView]) && deliveryMenu(),
     settlementMenu(can),
-    can([PERMISSIONS.remainView]) && menu('/remain', <ReconciliationOutlined />, '余料业务'),
+    RELEASE_FEATURES.remainModuleEnabled
+      && can([PERMISSIONS.remainView])
+      && menu('/remain', <ReconciliationOutlined />, '余料业务'),
     can([PERMISSIONS.reportView]) && reportMenu(),
     baseChildren.length > 0 && group('base', <ProfileOutlined />, '基础档案', baseChildren),
     systemChildren.length > 0 && group('system', <SettingOutlined />, '系统管理', systemChildren),

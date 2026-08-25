@@ -6,7 +6,7 @@ import {
   stageSourceBudget,
 } from './canonicalStageWeightBudget'
 
-/** Rebuilds every stage output from its preceding stage's closed budget. */
+/** Keeps a complete saved stage plan; incomplete stages retain normal allocation. */
 export function canonicalStageOutputWeights(
   production: RollProductionVO,
   outputs: StageOutputVO[],
@@ -20,6 +20,10 @@ export function canonicalStageOutputWeights(
     .sort((left, right) => left - right)
   for (const level of levels) {
     const stage = ordered.filter((output) => (output.stageLevel ?? 1) === level)
+    if (hasCompleteStoredStagePlan(stage)) {
+      stage.forEach((output) => result.set(output.uuid, storedStageWeight(output)))
+      continue
+    }
     const source = stageSourceBudget(production, stage, outputs, result)
     if (source.weight == null) {
       stage.forEach((output) => result.set(output.uuid, undefined))
@@ -30,4 +34,17 @@ export function canonicalStageOutputWeights(
     }
   }
   return result
+}
+
+function hasStoredStageWeight(output: StageOutputVO): boolean {
+  return output.weightStatus === 'ESTIMATED' && storedStageWeight(output) != null
+}
+
+function hasCompleteStoredStagePlan(outputs: StageOutputVO[]): boolean {
+  return outputs.length > 0 && outputs.every(hasStoredStageWeight)
+}
+
+function storedStageWeight(output: StageOutputVO): number | undefined {
+  const value = output.estimateWeight
+  return value == null || !Number.isFinite(value) || value < 0 ? undefined : value
 }

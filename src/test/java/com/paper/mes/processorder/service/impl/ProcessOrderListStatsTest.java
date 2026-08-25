@@ -104,6 +104,24 @@ class ProcessOrderListStatsTest {
     }
 
     @Test
+    void apply_keepsSavedRepeatedRewindPlansWithoutFlatteningTrimWidths() {
+        ProcessOrder order = new ProcessOrder();
+        OriginalRoll source = original(1, null, "2403");
+        source.setUuid("source-1");
+        source.setOriginalWidth(1625);
+        source.setMainStepType(2);
+        FinishRoll productA = savedFinish("product-a", source, 1550, false, "1146");
+        FinishRoll trimA = savedFinish("trim-a", source, 75, true, "56");
+        FinishRoll productB = savedFinish("product-b", source, 1550, false, "1146");
+        FinishRoll trimB = savedFinish("trim-b", source, 75, true, "55");
+
+        ProcessOrderListStats.apply(order, List.of(source), List.of(productA, trimA, productB, trimB));
+
+        assertEquals(new BigDecimal("2292"), order.getEstimateFinishWeight());
+        assertEquals(new BigDecimal("2292"), order.getFinishRollWeight());
+    }
+
+    @Test
     void apply_reservesTrimFromMotherWeightBeforeSubtractingPlannedLoss() {
         ProcessOrder order = new ProcessOrder();
         OriginalRoll source = original(1, "800", null);
@@ -318,6 +336,15 @@ class ProcessOrderListStatsTest {
         finish.setUuid(uuid);
         finish.setOriginalRollNos(source.getUuid());
         finish.setFinishWidth(800);
+        return finish;
+    }
+
+    private FinishRoll savedFinish(String uuid, OriginalRoll source, int width, boolean trim, String estimateWeight) {
+        FinishRoll finish = finish(0, trim ? 1 : 0, 1, estimateWeight, null);
+        finish.setUuid(uuid);
+        finish.setFinishRollNo(uuid);
+        finish.setOriginalRollNos(source.getUuid());
+        finish.setFinishWidth(width);
         return finish;
     }
 

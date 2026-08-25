@@ -3,6 +3,7 @@ import { Button, Tooltip } from 'antd'
 import { RobotOutlined } from '@ant-design/icons'
 import { useLocation } from 'react-router'
 import { PERMISSIONS } from '../../../constants/permissions'
+import { RELEASE_FEATURES } from '../../../config/releaseFeatures'
 import { useHasPermission } from '../../../stores/authStore'
 import { buildAiContextEpoch, buildAiPageTemplate } from '../aiContext'
 import { useAiStatus } from '../hooks/useAiStatus'
@@ -13,7 +14,22 @@ export default function AiAssistantEntry() {
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const canUseAi = useHasPermission(PERMISSIONS.aiAssist)
-  const { data: status } = useAiStatus(canUseAi)
+  const aiButtonsEnabled = RELEASE_FEATURES.aiButtonsEnabled
+  const { data: status } = useAiStatus(canUseAi && aiButtonsEnabled)
+  if (!canUseAi) return null
+  if (!aiButtonsEnabled) {
+    return (
+      <Tooltip title="智能助手暂未开放">
+        <Button
+          type="text"
+          className="ai-assistant__trigger"
+          icon={<RobotOutlined />}
+          aria-label="智能助手"
+          disabled
+        />
+      </Tooltip>
+    )
+  }
   const isAvailable = canUseAi && status?.enabled === true
     && status.rulesReady && status.dataMode === 'FAQ_ONLY'
 

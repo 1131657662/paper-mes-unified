@@ -31,7 +31,7 @@ export function weightFromCanonicalMap(
   return weights.has(uuid) ? weights.get(uuid) : legacyWeight
 }
 
-/** Rebuilds planned weights from each source combination's closed budget. */
+/** Keeps a complete saved plan; incomplete legacy groups still close against the source budget. */
 export function canonicalFinishEstimateWeights(
   options: CanonicalEstimateOptions,
 ): CanonicalWeightMap {
@@ -45,6 +45,10 @@ export function canonicalFinishEstimateWeights(
   const effectiveRatios = effectiveSourceConsumptionRatios(sourceRelations)
   const result: CanonicalWeightMap = new Map()
   for (const group of finishGroupsBySource(candidates, options.production)) {
+    if (hasCompleteStoredFinishPlan(group)) {
+      group.forEach((finish) => result.set(finish.uuid, storedFinishWeight(finish)))
+      continue
+    }
     allocateCanonicalGroup(options, group, effectiveRatios, result)
   }
   return result
@@ -106,6 +110,18 @@ function fallbackFinishWeights(finishes: FinishProductionVO[]): CanonicalWeightM
 }
 
 function fallbackFinishWeight(finish: FinishProductionVO): number | undefined {
-  const value = finish.estimateWeight
+  return storedFinishWeight(finish)
+}
+
+function hasStoredFinishWeight(finish: FinishProductionVO): boolean {
+  return storedFinishWeight(finish) != null
+}
+
+function hasCompleteStoredFinishPlan(finishes: FinishProductionVO[]): boolean {
+  return finishes.length > 0 && finishes.every(hasStoredFinishWeight)
+}
+
+function storedFinishWeight(finish: FinishProductionVO): number | undefined {
+  const value = finish.estimateWeightSnap ?? (finish.finishRollNo ? finish.estimateWeight : undefined)
   return value == null || !Number.isFinite(value) || value < 0 ? undefined : roundWeightTotal(value)
 }

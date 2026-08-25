@@ -174,8 +174,10 @@ final class ProcessOrderMotherSpecExportWriter {
         if (finish.getActualWeight() != null) {
             return finish.getActualWeight();
         }
-        if (finish.getEstimateWeight() != null) {
-            return IntegerWeightAllocator.roundTotal(finish.getEstimateWeight());
+        java.math.BigDecimal estimate = finish.getEstimateWeight() != null
+                ? finish.getEstimateWeight() : finish.getEstimateWeightSnap();
+        if (estimate != null) {
+            return IntegerWeightAllocator.roundTotal(estimate);
         }
         return null;
     }

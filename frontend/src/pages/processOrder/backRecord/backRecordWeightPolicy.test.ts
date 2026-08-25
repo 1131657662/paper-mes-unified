@@ -107,6 +107,38 @@ describe('母卷重量回录策略', () => {
     expect(weights.reduce((sum, weight) => sum + weight, 0)).toBe(1862)
   })
 
+  it('理论回填保留已保存的复卷成品和余料整数计划', () => {
+    const detail: ProcessOrderDetailVO = {
+      order: { uuid: 'order-1', version: 1 },
+      originalRolls: [{ uuid: 'roll-1', actualWeight: 2403, actualWidth: 1625, weightStatus: 'MEASURED' }],
+      rolls: [],
+      finishRolls: [
+        { uuid: 'product-a', finishRollNo: 'F001', finishWidth: 1550, estimateWeight: 1146 },
+        { uuid: 'trim-a', finishRollNo: 'F002', finishWidth: 75, estimateWeight: 56, isRemain: 1 },
+        { uuid: 'product-b', finishRollNo: 'F003', finishWidth: 1550, estimateWeight: 1146 },
+        { uuid: 'trim-b', finishRollNo: 'F004', finishWidth: 75, estimateWeight: 55, isRemain: 1 },
+      ],
+      steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 2, isMain: 1 }],
+      rollProductions: [{
+        originalUuid: 'roll-1', actualWidth: 1625, actualWeight: 2403, mainStepType: 2,
+        steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 2, isMain: 1 }],
+        finishes: [
+          { uuid: 'product-a', finishRollNo: 'F001', finishWidth: 1550, estimateWeight: 1146 },
+          { uuid: 'trim-a', finishRollNo: 'F002', finishWidth: 75, estimateWeight: 56, isRemain: 1 },
+          { uuid: 'product-b', finishRollNo: 'F003', finishWidth: 1550, estimateWeight: 1146 },
+          { uuid: 'trim-b', finishRollNo: 'F004', finishWidth: 75, estimateWeight: 55, isRemain: 1 },
+        ],
+      }],
+    }
+
+    const values = theoreticalBackRecordValues(detail)
+    const weights = ['product-a', 'trim-a', 'product-b', 'trim-b']
+      .map((uuid) => values.finishes?.[uuid]?.actualWeight)
+
+    expect(weights).toEqual([1146, 56, 1146, 55])
+    expect(weights.reduce<number>((sum, weight) => sum + (weight ?? 0), 0)).toBe(2403)
+  })
+
   it('实测小数导致剩余重量非整数时不伪造成品预估', () => {
     const detail: ProcessOrderDetailVO = {
       order: { uuid: 'order-1', version: 1 },
@@ -161,14 +193,14 @@ describe('母卷重量回录策略', () => {
     expect(values.finishes?.unknown?.actualWeight).toBeUndefined()
   })
 
-  it('理论回填在分摊模式下忽略未实测余料旧估重', () => {
+  it('理论回填在分摊模式下用不完整旧计划的余料预估保留母卷预算', () => {
     const detail: ProcessOrderDetailVO = {
       order: { uuid: 'order-1', version: 1 },
       originalRolls: [{ uuid: 'roll-1', actualWeight: 1000, actualWidth: 1000, weightStatus: 'MEASURED' }],
       rolls: [],
       finishRolls: [
         { uuid: 'finish-a', finishWidth: 600, isRemain: 0 },
-        { uuid: 'trim', finishWidth: 100, isRemain: 1, estimateWeight: 400 },
+        { uuid: 'trim', finishRollNo: 'T001', finishWidth: 100, isRemain: 1, estimateWeight: 400 },
       ],
       steps: [{ uuid: 'step-1', originalUuid: 'roll-1', stageLevel: 1, stepType: 1,
         isMain: 1, widthDifferencePolicy: 'ALLOCATE' }],
@@ -178,7 +210,7 @@ describe('母卷重量回录策略', () => {
           isMain: 1, widthDifferencePolicy: 'ALLOCATE' }],
         finishes: [
           { uuid: 'finish-a', finishWidth: 600, isRemain: 0 },
-          { uuid: 'trim', finishWidth: 100, isRemain: 1, estimateWeight: 400 },
+          { uuid: 'trim', finishRollNo: 'T001', finishWidth: 100, isRemain: 1, estimateWeight: 400 },
         ],
       }],
     }

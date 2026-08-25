@@ -135,7 +135,8 @@ function sumEstimateWeight(detail?: ProcessOrderDetailVO): number {
   })
   const explicit = roundWeightTotal((detail?.finishRolls ?? []).reduce((sum, finish) => {
     if (!isDeliverableFinish(finish)) return sum
-    return sum + (weightFromCanonicalMap(estimates, finish.uuid, finish.estimateWeight) ?? 0)
+    return sum + (weightFromCanonicalMap(estimates, finish.uuid,
+      finish.estimateWeight ?? finish.estimateWeightSnap) ?? 0)
   }, 0))
   const fallback = productions.reduce((sum, production) => sum + sumProductionEstimateWeight(production, productions), 0)
   return roundWeightTotal(Math.max(explicit, fallback))
