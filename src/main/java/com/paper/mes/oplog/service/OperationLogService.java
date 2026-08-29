@@ -1,17 +1,23 @@
 package com.paper.mes.oplog.service;
 
 import com.paper.mes.auth.context.AuthContextHolder;
+import com.paper.mes.common.BusinessException;
+import com.paper.mes.common.ResultCode;
 import com.paper.mes.oplog.entity.OperationLog;
 import com.paper.mes.oplog.mapper.OperationLogMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 
 /** 操作日志写入服务。登录请求始终以当前登录用户作为审计主体。 */
 @Service
 @RequiredArgsConstructor
 public class OperationLogService {
+
+    private static final int MAX_TEXT_VALUE_BYTES = 60_000;
+    public static final String OPERATION_LOG_VALUE_TOO_LARGE = "OPERATION_LOG_VALUE_TOO_LARGE";
 
     public static final String ACTION_ROLL_DISPOSITION = "ROLL_DISPOSITION";
 
@@ -95,6 +101,7 @@ public class OperationLogService {
 
     private void insert(String bizType, String bizUuid, String bizNo,
                         String actionType, String operator, String remark) {
+        requireTextValueFits(remark);
         OperationLog log = new OperationLog();
         log.setBizType(bizType);
         log.setBizUuid(bizUuid);
@@ -119,6 +126,15 @@ public class OperationLogService {
      */
     public void recordField(String bizType, String bizUuid, String bizNo,
                             String fieldName, String oldValue, String newValue, String operator) {
+        recordField(bizType, bizUuid, bizNo, fieldName, oldValue, newValue, operator, null);
+    }
+
+    public void recordField(String bizType, String bizUuid, String bizNo,
+                            String fieldName, String oldValue, String newValue,
+                            String operator, String remark) {
+        requireTextValueFits(oldValue);
+        requireTextValueFits(newValue);
+        requireTextValueFits(remark);
         OperationLog log = new OperationLog();
         log.setBizType(bizType);
         log.setBizUuid(bizUuid);
@@ -129,7 +145,16 @@ public class OperationLogService {
         log.setNewValue(newValue);
         log.setOperator(resolveOperator(operator));
         log.setOperateTime(LocalDateTime.now());
+        log.setRemark(remark);
         operationLogMapper.insert(log);
+    }
+
+    private void requireTextValueFits(String value) {
+        if (value == null || value.getBytes(StandardCharsets.UTF_8).length <= MAX_TEXT_VALUE_BYTES) {
+            return;
+        }
+        throw new BusinessException(ResultCode.ERROR, OPERATION_LOG_VALUE_TOO_LARGE,
+                "审计记录内容超过系统容量，本次修改未保存，请联系管理员处理");
     }
 
     private String resolveOperator(String operator) {

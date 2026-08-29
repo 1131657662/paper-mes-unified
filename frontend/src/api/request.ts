@@ -15,6 +15,8 @@ const ERROR_CODE_TEXT: Record<string, string> = {
   E007: '重量偏差较大，需填写原因',
   E009: '当前计价优惠超过免审额度，请由财务或管理员账号处理',
   E010: '现结加工单存在未结清款项，需要授权放行',
+  OPERATION_LOG_VALUE_TOO_LARGE: '系统审计记录容量不足，本次修改未保存，请联系管理员处理',
+  DATA_STORAGE_LIMIT: '数据保存失败：服务端存储容量不足，本次修改未保存，请联系管理员处理',
 }
 
 const ERROR_NOTIFIED_KEY = '__paperMesErrorNotified'

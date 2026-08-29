@@ -9,8 +9,12 @@ import com.paper.mes.processorder.dto.FinishCustomerSpecItemDTO;
 import com.paper.mes.processorder.dto.FinishCustomerSpecVO;
 import com.paper.mes.processorder.dto.PrintViewVersion;
 import com.paper.mes.processorder.mapper.ProcessOrderMapper;
+import com.paper.mes.oplog.entity.OperationLog;
+import com.paper.mes.oplog.mapper.OperationLogMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.paper.mes.processorder.service.FinishCustomerRevisionPreviewService;
 import com.paper.mes.processorder.service.FinishCustomerRevisionPublisher;
+import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.processorder.service.ProcessOrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +33,7 @@ class ProcessOrderCustomerSpecReissueBusinessFlowIT extends AuthenticatedBusines
     @Autowired private RepresentativeOrderFixture fixture;
     @Autowired private ProcessOrderService processOrderService;
     @Autowired private ProcessOrderMapper orderMapper;
+    @Autowired private OperationLogMapper operationLogMapper;
     @Autowired private FinishCustomerRevisionPreviewService previewService;
     @Autowired private FinishCustomerRevisionPublisher publisher;
 
@@ -56,6 +61,24 @@ class ProcessOrderCustomerSpecReissueBusinessFlowIT extends AuthenticatedBusines
         assertThat(persisted.getSnapPrint()).isNotEqualTo(v1Snapshot);
         assertThat(v2CustomerPaperName).isEqualTo("更新后的客户品名");
         assertThat(historicalV1CustomerPaperName).isEqualTo(v1CustomerPaperName);
+        assertCompactReissueAudit(orderUuid);
+    }
+
+    private void assertCompactReissueAudit(String orderUuid) {
+        List<OperationLog> logs = operationLogMapper.selectList(new LambdaQueryWrapper<OperationLog>()
+                .eq(OperationLog::getBizUuid, orderUuid));
+        assertThat(logs).anySatisfy(log -> {
+            assertThat(log.getActionType()).isEqualTo(OperationLogService.ACTION_REISSUE);
+            assertThat(log.getRemark()).contains("下发版本 V1 -> V2", "字节", "SHA-256=");
+            assertThat(log.getOldValue()).isNull();
+            assertThat(log.getNewValue()).isNull();
+        });
+        assertThat(logs).anySatisfy(log -> {
+            assertThat(log.getFieldName()).contains("客户品名");
+            assertThat(log.getOldValue()).isNotBlank();
+            assertThat(log.getNewValue()).isEqualTo("更新后的客户品名");
+            assertThat(log.getRemark()).contains("客户规格V1", "请求编号");
+        });
     }
 
     private FinishCustomerRevisionRequestDTO request(FinishCustomerSpecVO row, Integer orderVersion) {

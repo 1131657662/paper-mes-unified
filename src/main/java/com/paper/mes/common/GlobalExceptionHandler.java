@@ -20,6 +20,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.BadSqlGrammarException;
 
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -69,10 +70,28 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public R<Void> handleDataIntegrity(DataIntegrityViolationException ex) {
+    public ResponseEntity<R<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
         log.warn("数据库约束冲突", ex);
-        return R.fail(ResultCode.CONFLICT, "数据超出系统允许范围，请检查输入后重试");
+        if (isDataTooLong(ex)) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(R.fail(ResultCode.ERROR, "DATA_STORAGE_LIMIT",
+                            "数据保存失败：服务端存储容量不足，本次修改未保存，请联系管理员处理"));
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(R.fail(ResultCode.CONFLICT, "数据超出系统允许范围，请检查输入后重试"));
+    }
+
+    private boolean isDataTooLong(Throwable throwable) {
+        for (Throwable current = throwable; current != null; current = current.getCause()) {
+            String message = current.getMessage();
+            if (message != null) {
+                String normalized = message.toLowerCase(Locale.ROOT);
+                if (normalized.contains("data too long") || normalized.contains("data truncation")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

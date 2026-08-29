@@ -79,8 +79,6 @@ class GlobalExceptionHandlerTest {
         assertResponseStatus("handleValidation",
                 org.springframework.web.bind.MethodArgumentNotValidException.class, HttpStatus.BAD_REQUEST);
         assertResponseStatus("handleDuplicateKey", Exception.class, HttpStatus.CONFLICT);
-        assertResponseStatus("handleDataIntegrity",
-                org.springframework.dao.DataIntegrityViolationException.class, HttpStatus.CONFLICT);
         assertResponseStatus("handleMissingParam",
                 org.springframework.web.bind.MissingServletRequestParameterException.class, HttpStatus.BAD_REQUEST);
         assertResponseStatus("handleTypeMismatch",
@@ -117,6 +115,31 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getErrorCode()).isEqualTo("SQL_EXECUTION_ERROR");
         assertThat(response.getBody().getMessage()).doesNotContain("数据库结构未同步");
+    }
+
+    @Test
+    void dataTooLongReturnsStorageErrorInsteadOfInputConflict() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        var cause = new SQLException("Data truncation: Data too long for column 'old_value'");
+        var error = new org.springframework.dao.DataIntegrityViolationException("insert failed", cause);
+
+        var response = handler.handleDataIntegrity(error);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getErrorCode()).isEqualTo("DATA_STORAGE_LIMIT");
+        assertThat(response.getBody().getMessage()).contains("本次修改未保存");
+    }
+
+    @Test
+    void ordinaryDataIntegrityReturnsHttp409() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        var response = handler.handleDataIntegrity(
+                new org.springframework.dao.DataIntegrityViolationException("constraint failed"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode()).isEqualTo(ResultCode.CONFLICT);
     }
 
     private void assertResponseStatus(String methodName, Class<?> parameterType, HttpStatus expected) throws Exception {

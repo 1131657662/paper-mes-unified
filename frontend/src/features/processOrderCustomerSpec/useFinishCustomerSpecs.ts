@@ -46,6 +46,14 @@ export function usePublishFinishCustomerSpecs() {
     ),
     onSuccess: async (_, { orderUuid }) => {
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queries.finishCustomerSpec.current(orderUuid).queryKey }),
+        queryClient.invalidateQueries({ queryKey: queries.finishCustomerSpec.revisions(orderUuid).queryKey }),
+        invalidateProcessOrderReadModels(queryClient, orderUuid),
+      ])
+    },
+    onError: async (_, { orderUuid }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queries.finishCustomerSpec.current(orderUuid).queryKey }),
         queryClient.invalidateQueries({ queryKey: queries.finishCustomerSpec.revisions(orderUuid).queryKey }),
         invalidateProcessOrderReadModels(queryClient, orderUuid),
       ])

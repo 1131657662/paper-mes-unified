@@ -6,6 +6,7 @@ import com.paper.mes.oplog.service.OperationLogService;
 import com.paper.mes.processorder.dto.FinishCustomerRevisionPreviewVO;
 import com.paper.mes.processorder.dto.FinishCustomerRevisionRequestDTO;
 import com.paper.mes.processorder.dto.FinishCustomerRevisionSummaryVO;
+import com.paper.mes.processorder.dto.FinishCustomerSpecVO;
 import com.paper.mes.processorder.dto.PrintResultVO;
 import com.paper.mes.processorder.entity.FinishCustomerRevision;
 import lombok.RequiredArgsConstructor;
@@ -63,5 +64,34 @@ public class FinishCustomerRevisionPublisher {
                 OperationLogService.ACTION_CUSTOMER_SPEC_REVISION, null,
                 "客户规格V" + revision.getRevisionNo() + "，影响" + revision.getItemCount()
                         + "件：" + request.getReason().trim());
+        String auditContext = "客户规格V" + revision.getRevisionNo()
+                + "；请求编号 " + request.getRequestId().trim();
+        preview.getItems().forEach(item -> recordChangedFields(preview, item, auditContext));
+    }
+
+    private void recordChangedFields(FinishCustomerRevisionPreviewVO preview,
+                                     FinishCustomerSpecVO item, String auditContext) {
+        recordFieldIfChanged(preview, item, "客户品名",
+                item.getPreviousCustomerPaperName(), item.getCustomerPaperName(), auditContext);
+        recordFieldIfChanged(preview, item, "客户克重",
+                item.getPreviousCustomerGramWeight(), item.getCustomerGramWeight(), auditContext);
+        recordFieldIfChanged(preview, item, "客户门幅",
+                item.getPreviousCustomerFinishWidth(), item.getCustomerFinishWidth(), auditContext);
+        recordFieldIfChanged(preview, item, "客户显示重量",
+                item.getPreviousCustomerDisplayWeight(), item.getCustomerDisplayWeight(), auditContext);
+    }
+
+    private void recordFieldIfChanged(FinishCustomerRevisionPreviewVO preview,
+                                      FinishCustomerSpecVO item, String fieldName,
+                                      Object oldValue, Object newValue, String auditContext) {
+        if (java.util.Objects.equals(oldValue, newValue)) return;
+        operationLogService.recordField(OperationLogService.BIZ_TYPE_ORDER,
+                preview.getOrderUuid(), preview.getOrderNo(),
+                item.getFinishRollNo() + " " + fieldName,
+                text(oldValue), text(newValue), null, auditContext);
+    }
+
+    private String text(Object value) {
+        return value == null ? null : value.toString();
     }
 }

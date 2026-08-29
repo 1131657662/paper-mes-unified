@@ -10,7 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 class OperationLogServiceTest {
@@ -53,6 +55,32 @@ class OperationLogServiceTest {
         service.record("数据安全", "backup", null, "数据备份", "system", "自动备份");
 
         assertThat(captured().getOperator()).isEqualTo("system");
+    }
+
+    @Test
+    void recordField_whenValueExceedsTextCapacity_returnsExplicitStorageError() {
+        String oversized = "中".repeat(20_001);
+
+        assertThatThrownBy(() -> service.recordField(
+                "加工单", "order-1", "JG001", "下发版本快照", oversized, "ok", null))
+                .isInstanceOf(com.paper.mes.common.BusinessException.class)
+                .hasMessage("审计记录内容超过系统容量，本次修改未保存，请联系管理员处理")
+                .extracting(exception -> ((com.paper.mes.common.BusinessException) exception).getCode())
+                .isEqualTo(com.paper.mes.common.ResultCode.ERROR);
+        verify(mapper, never()).insert(org.mockito.ArgumentMatchers.any(OperationLog.class));
+    }
+
+    @Test
+    void record_whenRemarkExceedsTextCapacity_returnsExplicitStorageError() {
+        String oversized = "x".repeat(60_001);
+
+        assertThatThrownBy(() -> service.record(
+                "加工单", "order-1", "JG001", "字段修改", null, oversized))
+                .isInstanceOf(com.paper.mes.common.BusinessException.class)
+                .hasMessage("审计记录内容超过系统容量，本次修改未保存，请联系管理员处理")
+                .extracting(exception -> ((com.paper.mes.common.BusinessException) exception).getErrorCode())
+                .isEqualTo(OperationLogService.OPERATION_LOG_VALUE_TOO_LARGE);
+        verify(mapper, never()).insert(org.mockito.ArgumentMatchers.any(OperationLog.class));
     }
 
     private OperationLog captured() {

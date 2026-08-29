@@ -58,6 +58,7 @@ import com.paper.mes.processorder.dto.ProcessOrderDetailVO;
 import com.paper.mes.processorder.service.ProcessOrderPrintStageResolver;
 import com.paper.mes.processorder.service.ProcessOrderPrintConfirmationPolicy;
 import com.paper.mes.processorder.service.ProcessOrderDeliveryImpactCounter;
+import com.paper.mes.processorder.service.ProcessOrderIssueSnapshotAudit;
 import com.paper.mes.processorder.dto.ProcessOrderIssueVersionVO;
 import com.paper.mes.processorder.dto.ProcessOrderIssueConsistencyVO;
 import com.paper.mes.processorder.dto.ProcessOrderPostProductionNoteDTO;
@@ -1779,11 +1780,10 @@ public class ProcessOrderServiceImpl extends ServiceImpl<ProcessOrderMapper, Pro
         } else {
             issueVersionService.apply(pendingVersion, snapshot, printUser, now);
             appliedVersion = pendingVersion;
-            operationLogService.recordField(BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
-                    "下发版本快照", pendingVersion.getSnapshotBefore(), snapshot, printUser);
             operationLogService.record(BIZ_TYPE_ORDER, order.getUuid(), order.getOrderNo(),
                     OperationLogService.ACTION_REISSUE, printUser,
-                    "重新下发版本 " + pendingVersion.getVersionNo() + "，变更原因：" + pendingVersion.getChangeReason());
+                    ProcessOrderIssueSnapshotAudit.summary(pendingVersion, snapshot)
+                            + "；变更原因：" + pendingVersion.getChangeReason());
         }
         order.setSnapPrint(snapshot);
         order.setOrderStatus(OrderStatus.PROCESSING.getCode());
